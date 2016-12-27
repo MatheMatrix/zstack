@@ -11,7 +11,7 @@ import org.zstack.core.config.GlobalConfigValidation;
 public class EncryptGlobalConfig {
     public static final String CATEGORY = "encrypt";
 
-    public static final String SERVICE_ID = "encrypt.id";
+    public static final String SERVICE_ID = "encrypt";
 
     @GlobalConfigValidation
     public static GlobalConfig ENCRYPT_ALGORITHM = new GlobalConfig(CATEGORY, "encrypt.algorithm");
