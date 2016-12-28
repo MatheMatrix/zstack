@@ -19,7 +19,8 @@
 
     <bean id="EncryptManager" class="org.zstack.core.encrypt.EncryptManagerImpl">
         <zstack:plugin>
-            <zstack:extension interface="org.zstack.header.AbstractService" />
+            <zstack:extension interface="org.zstack.header.Component"/>
+            <zstack:extension interface="org.zstack.header.Service"/>
         </zstack:plugin>
     </bean>
 
