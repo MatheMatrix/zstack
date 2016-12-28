@@ -17,9 +17,9 @@
     <bean id="EncryptAspect" class="org.zstack.core.aspect.EncryptAspect" factory-method="aspectOf" />
     <bean id="DecryptAspect" class="org.zstack.core.aspect.DecryptAspect" factory-method="aspectOf" />
 
-    <bean id="EncryptManagerImpl" class="org.zstack.core.encrypt.EncryptManagerImpl">
+    <bean id="EncryptManager" class="org.zstack.core.encrypt.EncryptManagerImpl">
         <zstack:plugin>
-            <zstack:extension interface="org.zstack.header.Service" />
+            <zstack:extension interface="org.zstack.header.AbstractService" />
         </zstack:plugin>
     </bean>
 
