@@ -88,5 +88,11 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
         if (!L2NetworkType.hasType(msg.getType())) {
             throw new ApiMessageInterceptionException(argerr("unsupported l2Network type[%s]", msg.getType()));
         }
+
+        if (L2NetworkConstant.L2_NO_VLAN_NETWORK_TYPE.equals(msg.getType())) {
+
+        } else if (L2NetworkConstant.L2_VLAN_NETWORK_TYPE.equals(msg.getType())) {
+
+        }
     }
 }
