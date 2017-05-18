@@ -27,6 +27,7 @@ import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.host.*;
 import org.zstack.header.message.*;
 import org.zstack.header.network.l2.*;
+import org.zstack.network.service.NetworkServiceGlobalProperty;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
@@ -36,7 +37,7 @@ import static java.util.Arrays.asList;
 import static org.zstack.core.Platform.argerr;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
-public class L2NoVlanNetwork implements L2Network {
+public class L2NoVlanNetwork implements L2Network, L2NetworkDefaultMtu {
     private static final CLogger logger = Utils.getLogger(L2NoVlanNetwork.class);
 
     @Autowired
@@ -62,8 +63,7 @@ public class L2NoVlanNetwork implements L2Network {
         this.self = self;
     }
 
-    @Override
-    public void deleteHook() {
+    public L2NoVlanNetwork() {
     }
 
     protected L2NetworkInventory getSelfInventory() {
@@ -585,5 +585,19 @@ public class L2NoVlanNetwork implements L2Network {
                 completion.done();
             }
         });
+    }
+
+    @Override
+    public String getL2NetworkType() {
+        return L2NetworkConstant.L2_NO_VLAN_NETWORK_TYPE;
+    }
+
+    @Override
+    public Integer getDefaultMtu() {
+        return NetworkServiceGlobalProperty.DHCP_MTU_NO_VLAN;
+    }
+
+    @Override
+    public void deleteHook() {
     }
 }

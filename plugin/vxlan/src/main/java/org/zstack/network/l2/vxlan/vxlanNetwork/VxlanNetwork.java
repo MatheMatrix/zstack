@@ -32,9 +32,11 @@ import org.zstack.header.network.l3.L3NetworkVO_;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.header.vm.VmInstanceMigrateExtensionPoint;
 import org.zstack.header.vm.VmNicInventory;
+import org.zstack.network.l2.L2NetworkDefaultMtu;
 import org.zstack.network.l2.L2NetworkExtensionPointEmitter;
 import org.zstack.network.l2.L2NetworkManager;
 import org.zstack.network.l2.L2NoVlanNetwork;
+import org.zstack.network.service.NetworkServiceGlobalProperty;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
@@ -48,7 +50,7 @@ import static org.zstack.core.Platform.operr;
  * Created by weiwang on 01/03/2017.
  */
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
-public class VxlanNetwork extends L2NoVlanNetwork implements VmInstanceMigrateExtensionPoint {
+public class VxlanNetwork extends L2NoVlanNetwork implements VmInstanceMigrateExtensionPoint, L2NetworkDefaultMtu {
     private static final CLogger logger = Utils.getLogger(VxlanNetwork.class);
 
     @Autowired
@@ -321,5 +323,15 @@ public class VxlanNetwork extends L2NoVlanNetwork implements VmInstanceMigrateEx
     @Override
     public void  failedToMigrateVm(VmInstanceInventory inv, String destHostUuid, ErrorCode reason) {
 
+    }
+
+    @Override
+    public String getL2NetworkType() {
+        return VxlanNetworkConstant.VXLAN_NETWORK_TYPE;
+    }
+
+    @Override
+    public Integer getDefaultMtu() {
+        return NetworkServiceGlobalProperty.DHCP_MTU_VXLAN;
     }
 }

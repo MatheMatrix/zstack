@@ -115,4 +115,18 @@
             <zstack:extension interface="org.zstack.core.cascade.CascadeExtensionPoint"/>
         </zstack:plugin>
     </bean>
+
+    <bean id="L2NoVlanNetwork" class="org.zstack.network.l2.L2NoVlanNetwork">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.network.l2.L2Network"/>
+            <zstack:extension interface="org.zstack.network.l2.L2NetworkDefaultMtu"/>
+        </zstack:plugin>
+    </bean>
+
+    <bean id="L2VlanNetwork" class="org.zstack.network.l2.L2VlanNetwork">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.network.l2.L2Network"/>
+            <zstack:extension interface="org.zstack.network.l2.L2NetworkDefaultMtu"/>
+        </zstack:plugin>
+    </bean>
 </beans>
