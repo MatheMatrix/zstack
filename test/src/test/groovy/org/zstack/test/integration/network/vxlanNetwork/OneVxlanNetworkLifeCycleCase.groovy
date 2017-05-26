@@ -118,6 +118,16 @@ class OneVxlanNetworkLifeCycleCase extends SubCase {
             delegate.zoneUuid = zone.inventory.getUuid()
         }
 
+        AccountInventory testAcc = createAccount {
+            delegate.name = "TestAcc"
+            delegate.password = "password"
+            delegate.type = "Normal"
+        }
+
+        shareResource {
+            delegate.accountUuids = asList(testAcc.getUuid())
+            delegate.resourceUuids = asList(poolinv.getUuid())
+        }
 
         createVniRange {
             delegate.startVni = 100

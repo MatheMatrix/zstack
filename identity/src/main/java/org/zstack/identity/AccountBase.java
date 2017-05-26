@@ -31,6 +31,8 @@ import org.zstack.header.identity.IdentityCanonicalEvents.UserDeletedData;
 import org.zstack.header.message.APIDeleteMessage.DeletionMode;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
+import org.zstack.header.vo.ResourceVO;
+import org.zstack.header.vo.ResourceVO_;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.DebugUtils;
 import org.zstack.utils.ExceptionDSL;
@@ -43,10 +45,8 @@ import static org.zstack.core.Platform.argerr;
 
 import javax.persistence.Query;
 import javax.persistence.Tuple;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.zstack.utils.CollectionDSL.list;
 
@@ -456,6 +456,17 @@ public class AccountBase extends AbstractAccount {
             String resUuid = t.get(0, String.class);
             String resType = t.get(1, String.class);
             uuidType.put(resUuid, resType);
+        }
+
+        List<String> unfound = msg.getResourceUuids().stream().filter((i -> !uuidType.containsKey(i))).collect(Collectors.toList());
+        if (unfound != null) {
+            List<Tuple> lt = Q.New(ResourceVO.class).select(ResourceVO_.uuid, ResourceVO_.resourceType).in(ResourceVO_.uuid, unfound).listTuple();
+            for (Tuple t: lt) {
+                // Note(WeiW): These are resources belong to admin
+                String resUuid = t.get(0, String.class);
+                String resType = t.get(1, String.class);
+                uuidType.put(resUuid, resType);
+            }
         }
 
         for (String ruuid : msg.getResourceUuids()) {
