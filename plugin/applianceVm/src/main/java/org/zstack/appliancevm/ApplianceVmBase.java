@@ -667,6 +667,13 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             spec.putExtensionData(ApplianceVmConstant.Params.applianceVmSubType.toString(), getSelf().getApplianceVmType());
             spec.setBootOrders(list(VmBootDevice.HardDisk.toString()));
 
+            L3NetworkInventory guestL3 = spec.getL3Networks().stream().filter(l3 -> !l3.isSystem()).findFirst().get();
+
+            String configDrive = ApplianceVmSystemTag.CONFIG_DRIVE.getTokenByResourceUuid(guestL3.getUuid(), ApplianceVmSystemTag.CONFIG_DRIVE_TOKEN);
+            if (configDrive != null) {
+                spec.putExtensionData(ApplianceVmSystemTag.CONFIG_DRIVE_TOKEN, new String(Base64.getDecoder().decode(configDrive.getBytes())));
+            }
+
             changeVmStateInDb(VmInstanceStateEvent.starting);
 
             extEmitter.beforeStartNewCreatedVm(VmInstanceInventory.valueOf(self));

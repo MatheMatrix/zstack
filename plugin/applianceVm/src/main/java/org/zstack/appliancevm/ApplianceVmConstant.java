@@ -11,6 +11,7 @@ public class ApplianceVmConstant {
     public static final String SERVICE_ID = "applianceVm";
 
     public static final String KVM_CHANNEL_AGENT_PATH = "/var/lib/zstack/kvm/agentSocket";
+    public static final String DEFAULT_ISO_PATH = "/var/lib/zstack/configDrive";
 
     public static final String ANSIBLE_PLAYBOOK_NAME = "appliancevm.py";
 

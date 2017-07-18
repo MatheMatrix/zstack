@@ -233,6 +233,7 @@ class VirtualRouterNetworkServiceEnv {
 
                     l3Network {
                         name = "pubL3"
+                        system = true
 
                         ip {
                             startIp = "11.168.100.10"

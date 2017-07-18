@@ -1,5 +1,6 @@
 package org.zstack.appliancevm;
 
+import org.apache.commons.collections.map.HashedMap;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
@@ -17,6 +18,7 @@ import org.zstack.header.vm.VmInstanceSpec;
 import org.zstack.kvm.KVMHostAsyncHttpCallMsg;
 import org.zstack.kvm.KVMHostAsyncHttpCallReply;
 
+import static org.zstack.appliancevm.ApplianceVmConstant.DEFAULT_ISO_PATH;
 import static org.zstack.core.Platform.operr;
 
 import java.util.Map;
@@ -40,6 +42,13 @@ public class ApplianceVmKvmBootstrapFlow extends NoRollbackFlow {
     public void run(final FlowTrigger chain, Map data) {
         final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
         Map<String, Object> info = apvmf.prepareBootstrapInformation(spec);
+
+        String configDrive = spec.getExtensionData(ApplianceVmSystemTag.CONFIG_DRIVE_TOKEN, String.class);
+        if (configDrive != null) {
+            chain.next();
+            return;
+        }
+
         ApplianceVmKvmCommands.PrepareBootstrapInfoCmd cmd = new ApplianceVmKvmCommands.PrepareBootstrapInfoCmd();
         cmd.setInfo(info);
         cmd.setSocketPath(kvmExt.makeChannelSocketPath(spec.getVmInventory().getUuid()));

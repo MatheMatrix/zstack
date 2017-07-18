@@ -68,5 +68,11 @@
         </zstack:plugin>
     </bean>
 
+    <bean id="ApplianceVmConfigDriveAddon" class="org.zstack.appliancevm.ApplianceVmConfigDriveAddon">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.kvm.KVMStartVmAddonExtensionPoint" />
+        </zstack:plugin>
+    </bean>
+
 
 </beans>
