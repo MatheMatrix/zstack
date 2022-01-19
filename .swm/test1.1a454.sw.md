@@ -5,6 +5,7 @@ file_version: 1.0.2
 app_version: 0.7.2-0
 file_blobs:
   conf/zstack.xml: 743b680d36bbce21952209858cc554ac0caa5867
+  core/src/main/java/org/zstack/core/CoreGlobalProperty.java: 79e6c8c6fb10920e31d749fb2977575f1561d738
 ---
 
 look at `📄 build/pom.xml`
@@ -36,6 +37,39 @@ java
 oh, awsome!
 
 in this `vyos.xml`[<sup id="KC4l6">↓</sup>](#f-KC4l6)
+
+<br/>
+
+`📄 header/pom.xml`
+
+<br/>
+
+<!-- NOTE-swimm-snippet: the lines below link your snippet to Swimm -->
+### 📄 core/src/main/java/org/zstack/core/CoreGlobalProperty.java
+```java
+⬜ 12         @GlobalProperty(name = "unitTestOn", defaultValue = "false")
+⬜ 13         @AvailableValues(value ={"true","false"})
+⬜ 14         public static boolean UNIT_TEST_ON;
+🟩 15         @GlobalProperty(name = "beanRefContextConf", defaultValue = "beanRefContext.xml")
+🟩 16         public static String BEAN_REF_CONTEXT_CONF;
+🟩 17         @GlobalProperty(name = "beanConf", defaultValue = "zstack.xml")
+🟩 18         public static String BEAN_CONF;
+🟩 19         @GlobalProperty(name = "vmTracerOn", defaultValue = "true")
+🟩 20         public static boolean VM_TRACER_ON;
+🟩 21         @GlobalProperty(name = "profiler.workflow", defaultValue = "false")
+🟩 22         public static boolean PROFILER_WORKFLOW;
+🟩 23         @GlobalProperty(name = "profiler.httpCall", defaultValue = "false")
+🟩 24         public static boolean PROFILER_HTTP_CALL;
+🟩 25         @GlobalProperty(name = "exitJVMOnBootFailure", defaultValue = "true")
+🟩 26         public static boolean EXIT_JVM_ON_BOOT_FAILURE;
+🟩 27         @GlobalProperty(name = "checkBoxTypeInInventory", defaultValue = "false")
+🟩 28         public static boolean CHECK_BOX_TYPE_IN_INVENTORY;
+🟩 29         @GlobalProperty(name = "pidFilePath", defaultValue = "{user.home}/management-server.pid")
+🟩 30         public static String PID_FILE_PATH;
+⬜ 31         @GlobalProperty(name = "consoleProxyOverriddenIp", defaultValue = "0.0.0.0")
+⬜ 32         public static String CONSOLE_PROXY_OVERRIDDEN_IP;
+⬜ 33         @GlobalProperty(name = "exposeSimulatorType", defaultValue = "false")
+```
 
 <br/>
 
