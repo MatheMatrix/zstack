@@ -134,6 +134,9 @@ public class SourceClassMap {
 			put("org.zstack.faulttolerance.entity.FaultToleranceVmGroupInventory", "org.zstack.sdk.FaultToleranceVmGroupInventory");
 			put("org.zstack.guesttools.GuestToolsInventory", "org.zstack.sdk.GuestToolsInventory");
 			put("org.zstack.guesttools.GuestToolsStateInventory", "org.zstack.sdk.GuestToolsStateInventory");
+			put("org.zstack.guesttools.ScriptExecutedRecordDetailInventory", "org.zstack.sdk.ScriptExecutedRecordDetailInventory");
+			put("org.zstack.guesttools.ScriptExecutedRecordInventory", "org.zstack.sdk.ScriptExecutedRecordInventory");
+			put("org.zstack.guesttools.ScriptInventory", "org.zstack.sdk.ScriptInventory");
 			put("org.zstack.ha.HaStrategyConditionInventory", "org.zstack.sdk.HaStrategyConditionInventory");
 			put("org.zstack.header.acl.AccessControlListEntryInventory", "org.zstack.sdk.AccessControlListEntryInventory");
 			put("org.zstack.header.acl.AccessControlListInventory", "org.zstack.sdk.AccessControlListInventory");
@@ -1178,6 +1181,9 @@ public class SourceClassMap {
 			put("org.zstack.sdk.SchedulerJobInventory", "org.zstack.header.scheduler.SchedulerJobInventory");
 			put("org.zstack.sdk.SchedulerJobSchedulerTriggerInventory", "org.zstack.header.scheduler.SchedulerJobSchedulerTriggerInventory");
 			put("org.zstack.sdk.SchedulerTriggerInventory", "org.zstack.header.scheduler.SchedulerTriggerInventory");
+			put("org.zstack.sdk.ScriptExecutedRecordDetailInventory", "org.zstack.guesttools.ScriptExecutedRecordDetailInventory");
+			put("org.zstack.sdk.ScriptExecutedRecordInventory", "org.zstack.guesttools.ScriptExecutedRecordInventory");
+			put("org.zstack.sdk.ScriptInventory", "org.zstack.guesttools.ScriptInventory");
 			put("org.zstack.sdk.ScsiLunClusterStatusInventory", "org.zstack.header.storageDevice.ScsiLunClusterStatusInventory");
 			put("org.zstack.sdk.ScsiLunHostRefInventory", "org.zstack.header.storageDevice.ScsiLunHostRefInventory");
 			put("org.zstack.sdk.ScsiLunInventory", "org.zstack.header.storageDevice.ScsiLunInventory");
