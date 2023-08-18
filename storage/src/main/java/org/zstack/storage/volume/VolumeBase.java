@@ -446,6 +446,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
         chain.then(new ShareFlow() {
             String installPath;
             String format;
+            String protocol;
             Long actualSize;
             Long virtualSize;
 
@@ -639,6 +640,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
                                 format = ir.getVolume().getFormat();
                                 actualSize = ir.getVolume().getActualSize();
                                 virtualSize = ir.getVolume().getSize();
+                                protocol = ir.getVolume().getProtocol();
 
                                 List<AfterInstantiateVolumeExtensionPoint> exts = pluginRgty.getExtensionList(AfterInstantiateVolumeExtensionPoint.class);
                                 for (AfterInstantiateVolumeExtensionPoint ext : exts) {
@@ -685,6 +687,9 @@ public class VolumeBase extends AbstractVolume implements Volume {
                         if (virtualSize != 0 && virtualSize != self.getSize()) {
                             self.setSize(virtualSize);
                         }
+                        if (protocol != null) {
+                            self.setProtocol(protocol);
+                        }
                         self = dbf.updateAndRefresh(self);
 
                         VolumeInventory vol = getSelfInventory();
@@ -710,7 +715,6 @@ public class VolumeBase extends AbstractVolume implements Volume {
                     }
                 });
             }
-
         }).start();
     }
 
