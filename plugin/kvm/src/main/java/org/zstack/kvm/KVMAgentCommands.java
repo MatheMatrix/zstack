@@ -2031,7 +2031,6 @@ public class KVMAgentCommands {
         private List<CdRomTO> cdRoms = new ArrayList<>();
         private List<VolumeTO> dataVolumes;
         private List<VolumeTO> cacheVolumes;
-        private List<VolumeTO> Volumes;
         private List<NicTO> nics;
         private long timeout;
         private Map<String, Object> addons;

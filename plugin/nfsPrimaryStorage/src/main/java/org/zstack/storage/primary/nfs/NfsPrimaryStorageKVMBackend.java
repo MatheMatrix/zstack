@@ -1356,7 +1356,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
 
     @Override
     public void createVolumeFromImageCache(final PrimaryStorageInventory primaryStorage, final ImageInventory image, final ImageCacheInventory imageCache,
-                                           final VolumeInventory volume, final ReturnValueCompletion<VolumeInfo> completion) {
+                                           final VolumeInventory volume, final ReturnValueCompletion<VolumeStats> completion) {
         HostInventory host = nfsFactory.getConnectedHostForOperation(primaryStorage).get(0);
 
         final String installPath = StringUtils.isNotEmpty(volume.getInstallPath()) ? volume.getInstallPath() :
@@ -1396,7 +1396,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
 
 
                 nfsMgr.reportCapacityIfNeeded(primaryStorage.getUuid(), rsp);
-                completion.success(new VolumeInfo(installPath, rsp.actualSize, rsp.size));
+                completion.success(new VolumeStats(installPath, rsp.actualSize, rsp.size));
             }
         });
     }

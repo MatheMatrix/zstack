@@ -33,6 +33,8 @@ public class VmCdRomInventory implements Serializable {
 
     private String description;
 
+    private String protocol;
+
     private Timestamp createDate;
 
     private Timestamp lastOpDate;
@@ -139,5 +141,13 @@ public class VmCdRomInventory implements Serializable {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getProtocol() {
+        return protocol;
+    }
+
+    public void setProtocol(String protocol) {
+        this.protocol = protocol;
     }
 }
