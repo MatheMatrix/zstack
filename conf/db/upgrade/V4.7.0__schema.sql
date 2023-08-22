@@ -423,3 +423,13 @@ CALL UpdateHygonClusterVmCpuModeConfig();
 DROP PROCEDURE IF EXISTS UpdateHygonClusterVmCpuModeConfig;
 
 UPDATE GlobalConfigVO set `value` = 'InfoSec' where `value` = 'infoSec' and category ='encrypt' and name = 'encrypt.driver';
+
+CREATE TABLE IF NOT EXISTS `zstack`.`SchedulerJobGroupZoneRefVO` (
+    `id` bigint unsigned NOT NULL UNIQUE AUTO_INCREMENT,
+    `schedulerJobGroupUuid` varchar(32) NOT NULL COMMENT 'uuid of schedulerJobGroupUuid',
+    `zoneUuid` varchar(32) NOT NULL COMMENT 'uuid of zone',
+    `lastOpDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
+    `createDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+    CONSTRAINT `fkSchedulerJobGroupZoneRefVOSchedulerJobGroupVO` FOREIGN KEY (`schedulerJobGroupUuid`) REFERENCES SchedulerJobGroupVO (`uuid`) ON DELETE CASCADE,
+    PRIMARY KEY  (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
