@@ -34,7 +34,7 @@ public class AddImageAction extends AbstractAction {
     @Param(required = true, maxLength = 1024, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String url;
 
-    @Param(required = false, validValues = {"RootVolumeTemplate","ISO","DataVolumeTemplate"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    @Param(required = false, validValues = {"RootVolumeTemplate","ISO","DataVolumeTemplate","Kernel"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String mediaType;
 
     @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
@@ -49,7 +49,7 @@ public class AddImageAction extends AbstractAction {
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String format;
 
-    @Param(required = false, validValues = {"Linux","Windows","Other","Paravirtualization","WindowsVirtio"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    @Param(required = false, validValues = {"Linux","Windows","Other","Paravirtualization","WindowsVirtio","Embedded"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String platform;
 
     @Param(required = true, nonempty = true, nullElements = false, emptyString = true, noTrim = false)
@@ -57,6 +57,12 @@ public class AddImageAction extends AbstractAction {
 
     @Param(required = false)
     public java.lang.String type;
+
+    @Param(required = false)
+    public java.lang.String dtbUrl;
+
+    @Param(required = false)
+    public java.lang.String initrdUrl;
 
     @Param(required = false)
     public java.lang.String resourceUuid;
