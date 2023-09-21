@@ -231,6 +231,7 @@ public class GlobalConfigFacadeImpl extends AbstractService implements GlobalCon
                         c.setDescription(d.description());
                         c.setDefaultValue(defaultValue);
                         c.setValue(defaultValue);
+                        c.setEffectiveMode(d.effectiveMode());
                         c.setType(d.type().getName());
                         if (!"".equals(d.validatorRegularExpression())) {
                             c.setValidatorRegularExpression(d.validatorRegularExpression());
@@ -299,7 +300,7 @@ public class GlobalConfigFacadeImpl extends AbstractService implements GlobalCon
                 List<GlobalConfig> toUpdate = new ArrayList<>(); // update both defaultValue and value
                 List<GlobalConfig> toUpdate2 = new ArrayList<>(); // only update defaultValue
                 List<GlobalConfig> toUpdate3 = new ArrayList<>(); // configs' value is not match type (normally the values were from an old zstack version)
-
+                List<GlobalConfig> toUpdate4 = new ArrayList<>(); // update  effectiveMode
                 for (GlobalConfig config : configsFromXml.values()) {
                     GlobalConfig dbcfg = configsFromDatabase.get(config.getIdentity());
                     if (dbcfg != null) {
@@ -311,6 +312,11 @@ public class GlobalConfigFacadeImpl extends AbstractService implements GlobalCon
                             } else {
                                 toUpdate2.add(config);
                             }
+                        }
+
+                        if ((dbcfg.getEffectiveMode() == null && config.getEffectiveMode() != null) ||
+                                (dbcfg.getEffectiveMode() != null && !dbcfg.getEffectiveMode().equals(config.getEffectiveMode()))) {
+                            toUpdate4.add(config);
                         }
 
                         continue;
@@ -370,6 +376,14 @@ public class GlobalConfigFacadeImpl extends AbstractService implements GlobalCon
                             .eq(GlobalConfigVO_.category, config.getCategory())
                             .eq(GlobalConfigVO_.name, config.getName())
                             .set(GlobalConfigVO_.value, config.value())
+                            .update();
+                }
+
+                for (GlobalConfig config : toUpdate4) {
+                    SQL.New(GlobalConfigVO.class)
+                            .eq(GlobalConfigVO_.category, config.getCategory())
+                            .eq(GlobalConfigVO_.name, config.getName())
+                            .set(GlobalConfigVO_.effectiveMode, config.getEffectiveMode())
                             .update();
                 }
             }

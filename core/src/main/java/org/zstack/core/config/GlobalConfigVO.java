@@ -25,6 +25,9 @@ public class GlobalConfigVO {
     @Column
     private String value;
 
+    @Column
+	private String effectiveMode;
+
 	public long getId() {
     	return id;
     }
@@ -72,7 +75,15 @@ public class GlobalConfigVO {
 	public void setValue(String value) {
     	this.value = value;
     }
-	
+
+	public String getEffectiveMode() {
+		return effectiveMode;
+	}
+
+	public void setEffectiveMode(String effectiveMode) {
+		this.effectiveMode = effectiveMode;
+	}
+
 	public GlobalConfig toConfig() {
 		 GlobalConfig c = new GlobalConfig();
 		 c.setCategory(this.getCategory());
@@ -80,6 +91,7 @@ public class GlobalConfigVO {
 		 c.setValue(this.getValue());
 		 c.setName(this.getName());
 		 c.setDescription(this.getDescription());
+		 c.setEffectiveMode(this.getEffectiveMode());
 		 return c;
 	}
 	
@@ -90,6 +102,7 @@ public class GlobalConfigVO {
 		vo.setDescription(c.getDescription());
 		vo.setName(c.getName());
 		vo.setValue(c.getValue());
+		vo.setEffectiveMode(c.getEffectiveMode());
 		return vo;
 	}
 }

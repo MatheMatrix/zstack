@@ -28,6 +28,10 @@ public class PatternedSystemTag extends SystemTag {
         super(tagFormat, resourceClass);
     }
 
+    public PatternedSystemTag(String tagFormat, Class resourceClass, String effectiveMode) {
+        super(tagFormat, resourceClass, effectiveMode);
+    }
+
     @Override
     protected String useTagFormat() {
         return TagUtils.tagPatternToSqlPattern(tagFormat);

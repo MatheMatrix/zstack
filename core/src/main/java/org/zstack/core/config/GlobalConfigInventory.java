@@ -16,6 +16,7 @@ public class GlobalConfigInventory {
 	private String description;
 	private String defaultValue;
 	private String value;
+	private String effectiveMode;
 
 	public static GlobalConfigInventory valueOf(GlobalConfigVO vo) {
 		GlobalConfigInventory inv = new GlobalConfigInventory();
@@ -25,6 +26,7 @@ public class GlobalConfigInventory {
 		inv.setDescription(vo.getDescription());
 		inv.setCategory(vo.getCategory());
 		inv.setValue(vo.getValue());
+		inv.setEffectiveMode(vo.getEffectiveMode());
 		return inv;
 	}
 
@@ -43,6 +45,7 @@ public class GlobalConfigInventory {
 		inv.setDescription(c.getDescription());
 		inv.setCategory(c.getCategory());
 		inv.setValue(c.value());
+		inv.setEffectiveMode(c.getEffectiveMode());
 		return inv;
 	}
 
@@ -92,5 +95,13 @@ public class GlobalConfigInventory {
 
 	public void setId(Long id) {
 		this.id = id;
+	}
+
+	public String getEffectiveMode() {
+		return effectiveMode;
+	}
+
+	public void setEffectiveMode(String effectiveMode) {
+		this.effectiveMode = effectiveMode;
 	}
 }

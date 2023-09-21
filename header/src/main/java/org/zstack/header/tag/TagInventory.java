@@ -14,6 +14,7 @@ public class TagInventory implements Serializable {
     @NoLogging(type = NoLogging.Type.Tag)
     private String tag;
     private String type;
+    private String effectiveMode;
     private Timestamp createDate;
     private Timestamp lastOpDate;
 
@@ -25,6 +26,7 @@ public class TagInventory implements Serializable {
         inv.setLastOpDate(ao.getLastOpDate());
         inv.setResourceUuid(ao.getResourceUuid());
         inv.setTag(ao.getTag());
+        inv.setEffectiveMode(ao.getEffectiveMode());
         return inv;
     }
 
@@ -94,5 +96,13 @@ public class TagInventory implements Serializable {
 
     public void setLastOpDate(Timestamp lastOpDate) {
         this.lastOpDate = lastOpDate;
+    }
+
+    public String getEffectiveMode() {
+        return effectiveMode;
+    }
+
+    public void setEffectiveMode(String effectiveMode) {
+        this.effectiveMode = effectiveMode;
     }
 }

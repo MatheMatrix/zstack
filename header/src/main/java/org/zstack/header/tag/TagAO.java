@@ -33,6 +33,9 @@ public class TagAO {
     private TagType type;
 
     @Column
+    private String effectiveMode;
+
+    @Column
     private Timestamp createDate;
 
     @Column
@@ -51,6 +54,7 @@ public class TagAO {
         this.type = other.type;
         this.createDate = other.createDate;
         this.lastOpDate = other.lastOpDate;
+        this.effectiveMode = other.effectiveMode;
     }
 
     public TagAO() {
@@ -110,5 +114,13 @@ public class TagAO {
 
     public void setType(TagType type) {
         this.type = type;
+    }
+
+    public String getEffectiveMode() {
+        return effectiveMode;
+    }
+
+    public void setEffectiveMode(String effectiveMode) {
+        this.effectiveMode = effectiveMode;
     }
 }

@@ -1,5 +1,6 @@
 package org.zstack.tag;
 
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.Platform;
@@ -22,6 +23,7 @@ import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.identity.AccountConstant;
 import org.zstack.header.identity.SessionInventory;
+import org.zstack.header.managementnode.PrepareDbInitialValueExtensionPoint;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
@@ -45,7 +47,7 @@ import static org.zstack.utils.CollectionUtils.removeDuplicateFromList;
 
 public class TagManagerImpl extends AbstractService implements TagManager,
         SoftDeleteEntityExtensionPoint, GlobalApiMessageInterceptor, SystemTagLifeCycleExtension,
-        HardDeleteEntityExtensionPoint {
+        HardDeleteEntityExtensionPoint, PrepareDbInitialValueExtensionPoint {
     private static final CLogger logger = Utils.getLogger(TagManagerImpl.class);
 
     @Autowired
@@ -95,7 +97,7 @@ public class TagManagerImpl extends AbstractService implements TagManager,
                 }
 
                 if (PatternedSystemTag.class.isAssignableFrom(f.getType())) {
-                    PatternedSystemTag ptag = new PatternedSystemTag(stag.getTagFormat(), stag.getResourceClass());
+                    PatternedSystemTag ptag = new PatternedSystemTag(stag.getTagFormat(), stag.getResourceClass(), stag.getEffectiveMode());
                     ptag.setValidators(stag.getValidators());
                     f.set(null, ptag);
                     systemTags.add(ptag);
@@ -105,7 +107,7 @@ public class TagManagerImpl extends AbstractService implements TagManager,
                     // ephemeral tag is not needed to inject and validate
                     systemTags.add(stag);
                 } else {
-                    SystemTag sstag = new SystemTag(stag.getTagFormat(), stag.getResourceClass());
+                    SystemTag sstag = new SystemTag(stag.getTagFormat(), stag.getResourceClass(), stag.getEffectiveMode());
                     sstag.setValidators(stag.getValidators());
                     f.set(null, sstag);
                     systemTags.add(sstag);
@@ -229,6 +231,25 @@ public class TagManagerImpl extends AbstractService implements TagManager,
         }
     }
 
+    private String findSystemTagEffectiveMode(String resourceType, String tag) {
+        if (!resourceTypeSystemTagMap.containsKey(resourceType)) {
+            return null;
+        }
+
+        List<SystemTag> systemTags = resourceTypeSystemTagMap.get(resourceType);
+        if (CollectionUtils.isEmpty(systemTags)) {
+            return null;
+        }
+
+        for (SystemTag systemTag : systemTags) {
+            if (systemTag.isMatch(tag)) {
+                return systemTag.effectiveMode;
+            }
+        }
+
+        return null;
+    }
+
     @Transactional
     private TagInventory createTag(String resourceUuid, String tag, TagType type, String resourceType) {
         if (!resourceTypeClassMap.keySet().contains(resourceType)) {
@@ -247,6 +268,7 @@ public class TagManagerImpl extends AbstractService implements TagManager,
             vo.setUuid(Platform.getUuid());
             vo.setTag(tag);
             vo.setType(type);
+            vo.setEffectiveMode(findSystemTagEffectiveMode(resourceType, tag));
             dbf.getEntityManager().persist(vo);
             dbf.getEntityManager().flush();
             dbf.getEntityManager().refresh(vo);
@@ -259,7 +281,7 @@ public class TagManagerImpl extends AbstractService implements TagManager,
             vo.setInherent(true);
             vo.setTag(tag);
             vo.setType(type);
-
+            vo.setEffectiveMode(findSystemTagEffectiveMode(resourceType, tag));
             preTagCreated(SystemTagInventory.valueOf(vo));
 
             dbf.getEntityManager().persist(vo);
@@ -304,7 +326,7 @@ public class TagManagerImpl extends AbstractService implements TagManager,
         vo.setInherent(false);
         vo.setTag(tag);
         vo.setType(TagType.System);
-
+        vo.setEffectiveMode(findSystemTagEffectiveMode(resourceType, tag));
         preTagCreated(SystemTagInventory.valueOf(vo));
 
         dbf.getEntityManager().persist(vo);
@@ -335,6 +357,7 @@ public class TagManagerImpl extends AbstractService implements TagManager,
         vo.setInherent(true);
         vo.setTag(tag);
         vo.setType(TagType.System);
+        vo.setEffectiveMode(findSystemTagEffectiveMode(resourceType, tag));
 
         preTagCreated(SystemTagInventory.valueOf(vo));
 
@@ -1069,5 +1092,30 @@ public class TagManagerImpl extends AbstractService implements TagManager,
     @Override
     public void postHardDelete(Collection entityIds, Class entityClass) {
         postDelete(entityIds, entityClass);
+    }
+
+    @Override
+    public void prepareDbInitialValue() {
+        for(SystemTag systemTag : systemTags) {
+            if (StringUtils.isEmpty(systemTag.effectiveMode)) {
+                continue;
+            }
+
+            List<String> systemTagUuids = Q.New(SystemTagVO.class)
+                    .eq(SystemTagVO_.resourceType, systemTag.getResourceClass().getSimpleName())
+                    .like(SystemTagVO_.tag, TagUtils.tagPatternToSqlPattern(systemTag.getTagFormat()))
+                    .notEq(SystemTagVO_.effectiveMode, systemTag.effectiveMode)
+                    .select(SystemTagVO_.uuid)
+                    .findValue();
+
+            if (!CollectionUtils.isEmpty(systemTagUuids)) {
+                UpdateQuery.New(SystemTagVO.class)
+                        .eq(SystemTagVO_.resourceType, systemTag.getResourceClass().getSimpleName())
+                        .like(SystemTagVO_.tag, TagUtils.tagPatternToSqlPattern(systemTag.getTagFormat()))
+                        .in(SystemTagVO_.uuid, systemTagUuids)
+                        .set(SystemTagVO_.effectiveMode, systemTag.effectiveMode)
+                        .update();
+            }
+        }
     }
 }

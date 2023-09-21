@@ -46,6 +46,7 @@ public class GlobalConfig {
     private String validatorRegularExpression;
     private String defaultValue;
     private volatile String value;
+    private String effectiveMode;
     private boolean linked;
     private transient List<GlobalConfigUpdateExtensionPoint> updateExtensions = new ArrayList<>();
     private transient List<GlobalConfigBeforeUpdateExtensionPoint> beforeUpdateExtensions = new ArrayList<>();
@@ -86,7 +87,8 @@ public class GlobalConfig {
                 e("description", description),
                 e("defaultValue", defaultValue),
                 e("value", value),
-                e("validatorRegularExpression", validatorRegularExpression)
+                e("validatorRegularExpression", validatorRegularExpression),
+                e("effectiveMode", effectiveMode)
         ));
     }
 
@@ -125,6 +127,7 @@ public class GlobalConfig {
         setDefaultValue(g.getDefaultValue());
         setValue(g.value());
         setLinked(g.isLinked());
+        setEffectiveMode(g.getEffectiveMode());
 
         validators = new ArrayList<>();
         queryExtensions = new ArrayList<>();
@@ -241,6 +244,14 @@ public class GlobalConfig {
         this.value = value;
     }
 
+    public String getEffectiveMode() {
+        return effectiveMode;
+    }
+
+    public void setEffectiveMode(String effectiveMode) {
+        this.effectiveMode = effectiveMode;
+    }
+
     public <T> T value(Class<T> clz) {
         return TypeUtils.stringToValue(value(), clz);
     }
@@ -256,6 +267,7 @@ public class GlobalConfig {
         conf.setDefaultValue(vo.getDefaultValue());
         conf.setDescription(vo.getDescription());
         conf.setValue(vo.getValue());
+        conf.setEffectiveMode(vo.getEffectiveMode());
         return conf;
     }
 
@@ -267,6 +279,7 @@ public class GlobalConfig {
         ng.setDescription(old.getDescription());
         ng.setDefaultValue(old.getDefaultValue());
         ng.setValidatorRegularExpression(old.getValidatorRegularExpression());
+        ng.setEffectiveMode(old.getEffectiveMode());
         return ng;
     }
 
@@ -277,6 +290,7 @@ public class GlobalConfig {
         vo.setDescription(description);
         vo.setDefaultValue(defaultValue);
         vo.setName(name);
+        vo.setEffectiveMode(effectiveMode);
         return vo;
     }
 
@@ -288,6 +302,7 @@ public class GlobalConfig {
         conf.setDescription(c.getDescription());
         conf.setValue(c.getValue());
         conf.setType(c.getType());
+        conf.setEffectiveMode(c.getEffectiveMode());
         return conf;
     }
 

@@ -127,7 +127,8 @@ public class GlobalConfig {
         "validatorRegularExpression",
         "defaultValue",
         "value",
-        "hidden"
+        "hidden",
+        "effectiveMode"
     })
     public static class Config {
 
@@ -145,6 +146,8 @@ public class GlobalConfig {
         protected String defaultValue;
         @XmlElement(required = true)
         protected String value;
+        @XmlElement(required = true)
+        protected String effectiveMode;
         protected boolean hidden;
 
         /**
@@ -331,6 +334,13 @@ public class GlobalConfig {
             this.hidden = value;
         }
 
+        public String getEffectiveMode() {
+            return effectiveMode;
+        }
+
+        public void setEffectiveMode(String effectiveMode) {
+            this.effectiveMode = effectiveMode;
+        }
     }
 
 }

@@ -2,6 +2,7 @@ package org.zstack.compute.vm;
 
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
+import org.zstack.core.ResourceEffectiveMode;
 import org.zstack.header.tag.AdminOnlyTag;
 import org.zstack.header.tag.TagDefinition;
 import org.zstack.header.vm.VmInstanceVO;
@@ -69,7 +70,7 @@ public class VmSystemTags {
 
     public static String BOOT_ORDER_TOKEN = "bootOrder";
     @AdminOnlyTag
-    public static PatternedSystemTag BOOT_ORDER = new PatternedSystemTag(String.format("bootOrder::{%s}", BOOT_ORDER_TOKEN), VmInstanceVO.class);
+    public static PatternedSystemTag BOOT_ORDER = new PatternedSystemTag(String.format("bootOrder::{%s}", BOOT_ORDER_TOKEN), VmInstanceVO.class, ResourceEffectiveMode.VmReboot.toString());
 
     //this tag is deprecated.
     public static String CDROM_BOOT_ONCE_TOKEN = "cdromBootOnce";

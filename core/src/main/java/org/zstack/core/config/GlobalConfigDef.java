@@ -13,4 +13,5 @@ public @interface GlobalConfigDef {
     String defaultValue() default "";
     String description() default "";
     String validatorRegularExpression() default "";
+    String effectiveMode() default "";
 }

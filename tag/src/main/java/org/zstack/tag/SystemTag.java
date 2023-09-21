@@ -1,6 +1,8 @@
 package org.zstack.tag;
 
 import java.sql.SQLIntegrityConstraintViolationException;
+
+import org.apache.commons.lang.StringUtils;
 import org.hibernate.TransactionException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowire;
@@ -41,6 +43,7 @@ public class SystemTag {
     protected TagManagerImpl tagMgr;
 
     protected String tagFormat;
+    protected String effectiveMode;
     protected Class resourceClass;
     protected List<SystemTagValidator> validators = new ArrayList<>();
     protected List<SystemTagLifeCycleListener> lifeCycleListeners = new ArrayList<>();
@@ -49,6 +52,12 @@ public class SystemTag {
     public SystemTag(String tagFormat, Class resourceClass) {
         this.tagFormat = tagFormat;
         this.resourceClass = resourceClass;
+    }
+
+    public SystemTag(String tagFormat, Class resourceClass, String effectiveMode) {
+        this.tagFormat = tagFormat;
+        this.resourceClass = resourceClass;
+        this.effectiveMode = effectiveMode;
     }
 
     public enum SystemTagOperation {
@@ -211,6 +220,10 @@ public class SystemTag {
         return resourceClass;
     }
 
+    public String getEffectiveMode() {
+        return effectiveMode;
+    }
+
     public void delete(String resourceUuid, Class resourceClass) {
         tagMgr.deleteSystemTag(tagFormat, resourceUuid, resourceClass.getSimpleName(), false);
     }
@@ -343,6 +356,9 @@ public class SystemTag {
                 vo.setInherent(inherent);
                 vo.setTag(tag);
                 vo.setType(TagType.System);
+                if (!StringUtils.isEmpty(effectiveMode)) {
+                    vo.setEffectiveMode(effectiveMode);
+                }
 
                 tagMgr.preTagCreated(SystemTagInventory.valueOf(vo));
 
@@ -379,6 +395,10 @@ public class SystemTag {
 
                 if (tag == null) {
                     tag = getTagFormat();
+                }
+
+                if (StringUtils.isEmpty(effectiveMode)) {
+                    effectiveMode = getEffectiveMode();
                 }
             }
         };

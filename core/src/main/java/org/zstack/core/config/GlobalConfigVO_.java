@@ -11,4 +11,5 @@ public class GlobalConfigVO_ {
     public static volatile SingularAttribute<GlobalConfigVO, String> category;
     public static volatile SingularAttribute<GlobalConfigVO, String> defaultValue;
     public static volatile SingularAttribute<GlobalConfigVO, String> value;
+    public static volatile SingularAttribute<GlobalConfigVO, String> effectiveMode;
 }

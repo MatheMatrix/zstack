@@ -19,6 +19,7 @@
             <zstack:extension interface="org.zstack.core.db.HardDeleteEntityExtensionPoint" />
             <zstack:extension interface="org.zstack.header.apimediator.GlobalApiMessageInterceptor" />
             <zstack:extension interface="org.zstack.header.tag.SystemTagLifeCycleExtension" />
+            <zstack:extension interface="org.zstack.header.managementnode.PrepareDbInitialValueExtensionPoint" />
         </zstack:plugin>
     </bean>
 

@@ -14,6 +14,7 @@ public class TagAO_ {
     public static volatile SingularAttribute<TagAO, String> resourceType;
     public static volatile SingularAttribute<TagAO, String> tag;
     public static volatile SingularAttribute<TagAO, TagType> type;
+    public static volatile SingularAttribute<TagAO, String> effectiveMode;
     public static volatile SingularAttribute<TagAO, Timestamp> createDate;
     public static volatile SingularAttribute<TagAO, Timestamp> lastOpDate;
 }

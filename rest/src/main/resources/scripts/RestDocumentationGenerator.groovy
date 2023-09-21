@@ -205,6 +205,7 @@ class RestDocumentationGenerator implements DocumentGenerator {
                     c.setDefaultValue(defaultValue)
                     c.setValue(defaultValue)
                     c.setType(d.type().getName())
+                    c.setEffectiveMode(d.effectiveMode())
                     if ("" != d.validatorRegularExpression()) {
                         c.setValidatorRegularExpression(d.validatorRegularExpression())
                     }
@@ -772,6 +773,9 @@ class RestDocumentationGenerator implements DocumentGenerator {
                     }
                     if ("CLI手册暴露" == title) {
                         globalConfigMarkDown.isCLIExposed = text
+                    }
+                    if ("生效方式" == title) {
+                        globalConfigMarkDown.globalConfig.effectiveMode = text
                     }
                 }
             }
@@ -2483,6 +2487,7 @@ ${paramString}
         String category = ""
         String valueRange = ""
         String defaultValue = ""
+        String effectiveMode = ""
         List<String> resources = new ArrayList<>()
     }
 
@@ -2523,6 +2528,7 @@ ${paramString}
             globalConfig.category = gc.category
             globalConfig.type = gc.type == null ? "java.lang.String" : gc.type
             globalConfig.defaultValue = gc.defaultValue == null ? "" : gc.defaultValue
+            globalConfig.effectiveMode = gc.effectiveMode == null ? "" : gc.effectiveMode
         }
 
         void merge(GlobalConfigMarkDown newMd) {
@@ -2634,6 +2640,12 @@ ${isCLIExposed}
 
 ```
 ${additionalRemark}
+```
+
+## 生效方式
+
+```
+${globalConfig.effectiveMode}
 ```
 """
         }

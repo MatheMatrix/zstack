@@ -85,6 +85,7 @@
 		<description>whether to use numa structure</description>
 		<type>java.lang.Boolean</type>
 		<defaultValue>false</defaultValue>
+		<effectiveMode>VmReboot</effectiveMode>
 	</config>
 
 	<config>
