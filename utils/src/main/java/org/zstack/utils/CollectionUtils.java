@@ -56,6 +56,16 @@ public class CollectionUtils {
         return from.stream().map(func).collect(Collectors.toList());
     }
 
+    public static <FROM, K> Map<K, FROM> transformToMap(Collection<FROM> from, java.util.function.Function<FROM, K> keyMapper) {
+        return transformToMap(from, keyMapper, java.util.function.Function.identity());
+    }
+
+    public static <FROM, K, V> Map<K, V> transformToMap(Collection<FROM> from,
+                                                        java.util.function.Function<FROM, K> keyMapper,
+                                                        java.util.function.Function<FROM, V> valueMapper) {
+        return from.stream().collect(Collectors.toMap(keyMapper, valueMapper));
+    }
+
     public static <FROM, TO> List<TO> flatten(Collection<FROM> from, java.util.function.Function<FROM, Collection<TO>> func) {
         return from.stream().map(func).filter(Objects::nonNull).flatMap(Collection::stream).collect(Collectors.toList());
     }
