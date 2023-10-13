@@ -1,7 +1,9 @@
 package org.zstack.storage.primary.local;
 
 import com.google.common.collect.Lists;
+import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.compute.host.MigrateNetworkExtensionPoint;
 import org.zstack.compute.vm.*;
@@ -49,12 +51,14 @@ import org.zstack.kvm.KVMConstant;
 import org.zstack.storage.primary.PrimaryStorageCapacityChecker;
 import org.zstack.storage.snapshot.PostMarkRootVolumeAsSnapshotExtension;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
+import org.zstack.storage.volume.ChangeVolumeInstallPathExtensionPoint;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
 
+import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -75,7 +79,7 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
         RecoverDataVolumeExtensionPoint, RecoverVmExtensionPoint, VmPreMigrationExtensionPoint, CreateTemplateFromVolumeSnapshotExtensionPoint,
         HostAfterConnectedExtensionPoint, InstantiateDataVolumeOnCreationExtensionPoint, PrimaryStorageAttachExtensionPoint,
         PostMarkRootVolumeAsSnapshotExtension, AfterTakeLiveSnapshotsOnVolumes, VmCapabilitiesExtensionPoint, PrimaryStorageDetachExtensionPoint,
-        CreateRecycleExtensionPoint, AfterInstantiateVolumeExtensionPoint, CreateDataVolumeExtensionPoint {
+        CreateRecycleExtensionPoint, AfterInstantiateVolumeExtensionPoint, CreateDataVolumeExtensionPoint, ChangeVolumeInstallPathExtensionPoint {
     private final static CLogger logger = Utils.getLogger(LocalStorageFactory.class);
     public static PrimaryStorageType type = new PrimaryStorageType(LocalStorageConstants.LOCAL_STORAGE_TYPE) {
         @Override
@@ -382,6 +386,24 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
     @Override
     public Flow marshalVmOperationFlow(String previousFlowName, String nextFlowName, FlowChain chain, VmInstanceSpec spec) {
         if (VmAllocateHostFlow.class.getName().equals(nextFlowName) || VmAllocateHostAndPrimaryStorageFlow.class.getName().equals(nextFlowName)) {
+            if (spec.getCurrentVmOperation() == VmOperation.ChangeImage) {
+                if (CollectionUtils.isEmpty(spec.getRootVolumeSystemTags())) {
+                    return null;
+                }
+
+                Iterator<String> iterators = spec.getRootVolumeSystemTags().iterator();
+                while (iterators.hasNext()) {
+                    String tag = iterators.next();
+                    if (LocalStorageSystemTags.DEST_HOST_FOR_CREATING_DATA_VOLUME.isMatch(tag)) {
+                        String hostUuid = LocalStorageSystemTags.DEST_HOST_FOR_CREATING_DATA_VOLUME.getTokenByTag(tag, LocalStorageSystemTags.DEST_HOST_FOR_CREATING_DATA_VOLUME_TOKEN);
+                        spec.setDestHost(HostInventory.valueOf(dbf.findByUuid(hostUuid, HostVO.class)));
+                        iterators.remove();
+                        break;
+                    }
+                }
+                return null;
+            }
+
             if (spec.getCurrentVmOperation() != VmOperation.NewCreate || !spec.getImageSpec().relyOnImageCache()) {
                 return null;
             }
@@ -462,8 +484,27 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
                 throw new OperationFailureException(operr("local storage doesn't support live migration for hypervisor[%s]", spec.getVmInventory().getHypervisorType()));
             }
         }
-
         return null;
+    }
+
+
+    private String getHostUuidFromSystemTags(List<String> systemTags) {
+        String hostUuid = null;
+        if (org.apache.commons.collections.CollectionUtils.isEmpty(systemTags)) {
+            return hostUuid;
+        }
+
+        Iterator<String> iterators = systemTags.iterator();
+        while (iterators.hasNext()) {
+            String tag = iterators.next();
+            if (LocalStorageSystemTags.DEST_HOST_FOR_CREATING_DATA_VOLUME.isMatch(tag)) {
+                hostUuid = LocalStorageSystemTags.DEST_HOST_FOR_CREATING_DATA_VOLUME.getTokenByTag(tag, LocalStorageSystemTags.DEST_HOST_FOR_CREATING_DATA_VOLUME_TOKEN);
+                iterators.remove();
+                break;
+            }
+        }
+
+        return hostUuid;
     }
 
     @Override
@@ -1366,5 +1407,43 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
     @Override
     public void afterCreateVolume(VolumeVO volume) {
 
+    }
+
+    @Override
+    public void afterChangeVmVolumeInstallPath(String oldVolumeUuid, VolumeInventory newVol, Completion completion) {
+        String sql = "select ref.hostUuid from LocalStorageResourceRefVO ref " +
+                "where ref.resourceUuid = :uuid " +
+                "and ref.resourceType = :resourceType";
+        String oldVolumeHostUuid = SQL.New(sql).param("uuid", oldVolumeUuid).param("resourceType", VolumeVO.class.getSimpleName()).find();
+        String newVolumeHostUuid = SQL.New(sql).param("uuid", newVol.getUuid()).param("resourceType", VolumeVO.class.getSimpleName()).find();
+        if (oldVolumeHostUuid == null || newVolumeHostUuid == null) {
+            completion.success();
+            return;
+        }
+        if (oldVolumeHostUuid.equals(newVolumeHostUuid)) {
+            completion.success();
+            return;
+        }
+
+        SQL.New(LocalStorageResourceRefVO.class)
+                .eq(LocalStorageResourceRefVO_.resourceUuid, oldVolumeUuid)
+                .eq(LocalStorageResourceRefVO_.resourceType, VolumeVO.class.getSimpleName())
+                .set(LocalStorageResourceRefVO_.hostUuid, newVolumeHostUuid).update();
+
+        completion.success();
+    }
+
+    @Override
+    public void preBeforeInstantiateVmResource(VmInstanceSpec spec) throws VmInstantiateResourceException {
+    }
+
+    @Override
+    public void preInstantiateVmResource(VmInstanceSpec spec, Completion completion) {
+        completion.success();
+    }
+
+    @Override
+    public void preReleaseVmResource(VmInstanceSpec spec, Completion completion) {
+        completion.success();
     }
 }
