@@ -1873,7 +1873,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                             }
                         });
 
-                        bus.send(cmsgs, new CloudBusListCallBack(null) {
+                        bus.send(cmsgs, new CloudBusListCallBack(trigger) {
                             @Override
                             public void run(List<MessageReply> replies) {
                                 int fail = 0;
