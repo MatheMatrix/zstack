@@ -316,14 +316,35 @@ public class VmInstanceExtensionPointEmitter implements Component {
         });
     }
 
-    public void preMigrateVm(final VmInstanceInventory inv, final String dstHostUuid) {
-        CollectionUtils.safeForEach(migrateVmExtensions, arg -> arg.preMigrateVm(inv, dstHostUuid));
+    public void preMigrateVm(final VmInstanceInventory inv, final String dstHostUuid, Completion completion) {
+        new While<>(migrateVmExtensions).each((ext, comp) -> ext.preMigrateVm(inv, dstHostUuid, new Completion(comp) {
+            @Override
+            public void success() {
+                comp.done();
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                comp.addError(errorCode);
+                comp.allDone();
+            }
+        })).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                if (errorCodeList.getCauses().size() > 0) {
+                    completion.fail(errorCodeList.getCauses().get(0));
+                } else {
+                    completion.success();
+                }
+            }
+        });
     }
 
     public void beforeMigrateVm(final VmInstanceInventory inv, final String dstHostUuid) {
         CollectionUtils.safeForEach(migrateVmExtensions, arg -> arg.beforeMigrateVm(inv, dstHostUuid));
     }
 
+<<<<<<< HEAD
     public void postMigrateVm(final VmInstanceInventory inv, final String dstHostUuid, Completion completion) {
         new While<>(migrateVmExtensions).each((ext, comp) -> ext.postMigrateVm(inv, dstHostUuid, new Completion(comp) {
             @Override
@@ -350,18 +371,32 @@ public class VmInstanceExtensionPointEmitter implements Component {
 
     public void afterMigrateVm(final VmInstanceInventory inv, final String srcHostUuid) {
         CollectionUtils.safeForEach(migrateVmExtensions, new ForEachFunction<VmInstanceMigrateExtensionPoint>() {
+=======
+    public void afterMigrateVm(final VmInstanceInventory inv, final String srcHostUuid, NoErrorCompletion completion) {
+        new While<>(migrateVmExtensions).each((ext, comp) -> ext.afterMigrateVm(inv, srcHostUuid, new NoErrorCompletion(comp) {
+>>>>>>> 2db5920217 (<fix>[storage]: support ext ps reimage and miragte)
             @Override
-            public void run(VmInstanceMigrateExtensionPoint arg) {
-                arg.afterMigrateVm(inv, srcHostUuid);
+            public void done() {
+                comp.done();
+            }
+        })).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                completion.done();
             }
         });
     }
 
-    public void failedToMigrateVm(final VmInstanceInventory inv, final String dstHostUuid, final ErrorCode reason) {
-        CollectionUtils.safeForEach(migrateVmExtensions, new ForEachFunction<VmInstanceMigrateExtensionPoint>() {
+    public void failedToMigrateVm(final VmInstanceInventory inv, final String dstHostUuid, final ErrorCode reason, NoErrorCompletion completion) {
+        new While<>(migrateVmExtensions).each((ext, comp) -> ext.failedToMigrateVm(inv, dstHostUuid, reason, new NoErrorCompletion(comp) {
             @Override
-            public void run(final VmInstanceMigrateExtensionPoint arg) {
-                arg.failedToMigrateVm(inv, dstHostUuid, reason);
+            public void done() {
+                comp.done();
+            }
+        })).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                completion.done();
             }
         });
     }
