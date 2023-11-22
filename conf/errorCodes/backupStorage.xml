@@ -27,6 +27,11 @@
     </code>
 
     <code>
+        <id>1005</id>
+        <description>Backup storage has io error</description>
+    </code>
+
+    <code>
         <id>1500</id>
         <description>Unable to connect a backup storage</description>
     </code>

@@ -1,6 +1,7 @@
 package org.zstack.core.progress;
 
 import org.zstack.core.config.GlobalConfig;
+import org.zstack.core.config.GlobalConfigDef;
 import org.zstack.core.config.GlobalConfigDefinition;
 import org.zstack.core.config.GlobalConfigValidation;
 
@@ -17,4 +18,7 @@ public class ProgressGlobalConfig {
     public static GlobalConfig PROGRESS_TTL = new GlobalConfig(CATEGORY, "progress.ttl");
     @GlobalConfigValidation(numberGreaterThan = 1)
     public static GlobalConfig CLEANUP_THREAD_INTERVAL = new GlobalConfig(CATEGORY, "progress.cleanupThreadInterval");
+    @GlobalConfigValidation(numberGreaterThan = 1)
+    @GlobalConfigDef(type = Long.class, defaultValue = "5", description = "default progress monitor interval (in seconds)")
+    public static GlobalConfig MONITOR_INTERVAL = new GlobalConfig(CATEGORY, "monitor.interval");
 }
