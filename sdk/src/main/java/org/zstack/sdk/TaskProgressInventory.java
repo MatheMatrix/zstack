@@ -76,4 +76,12 @@ public class TaskProgressInventory  {
         return this.arguments;
     }
 
+    public java.lang.String apiId;
+    public void setApiId(java.lang.String apiId) {
+        this.apiId = apiId;
+    }
+    public java.lang.String getApiId() {
+        return this.apiId;
+    }
+
 }

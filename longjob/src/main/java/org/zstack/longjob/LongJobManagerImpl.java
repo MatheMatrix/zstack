@@ -660,7 +660,7 @@ public class LongJobManagerImpl extends AbstractService implements LongJobManage
         });
     }
 
-    private void runLongJobCallBack(LongJobVO vo, ErrorCode err) {
+    protected void runLongJobCallBack(LongJobVO vo, ErrorCode err) {
         Optional.ofNullable(longJobCallBacks.remove(vo.getApiId())).ifPresent(it -> {
             APIEvent evt = new APIEvent(vo.getApiId());
             evt.setError(err);

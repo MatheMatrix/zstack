@@ -18,6 +18,7 @@ public class TaskProgressInventory {
     private Long time;
     private List<TaskProgressInventory> subTasks;
     private String arguments;
+    private String apiId;
 
     public TaskProgressInventory() {
     }
@@ -32,6 +33,11 @@ public class TaskProgressInventory {
         taskName = vo.getTaskName();
         time = vo.getTime();
         arguments = vo.getArguments();
+        apiId = vo.getApiId();
+    }
+
+    public static TaskProgressInventory valueOf(TaskProgressVO vo) {
+        return new TaskProgressInventory(vo);
     }
 
     public String getArguments() {
@@ -104,5 +110,13 @@ public class TaskProgressInventory {
 
     public void setTime(Long time) {
         this.time = time;
+    }
+
+    public String getApiId() {
+        return apiId;
+    }
+
+    public void setApiId(String apiId) {
+        this.apiId = apiId;
     }
 }
