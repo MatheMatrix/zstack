@@ -36,49 +36,27 @@ public class PrimaryStorageSortByAvailablePhysicalCapacityFlow extends NoRollbac
         /* we assume that, before this flow, candidate has been sort by priority like this:
         * ShareBlock1, ShareBlock2, Ceph
         * after this flow, ShareBlock1, ShareBlock2 will be sorted by availablePhysicalCapacity */
-        List<PrimaryStorageVO> ret = new ArrayList<>();
-
-        Iterator<PrimaryStorageVO> it = candidates.iterator();
-        PrimaryStorageVO next = it.next();
-
-        String psType = next.getType();
-        List<PrimaryStorageVO> tmp = new ArrayList<>();
-        tmp.add(next);
-        while (it.hasNext()) {
-            next = it.next();
-            if (next.getType().equals(psType)) {
-                tmp.add(next);
+        Comparator<PrimaryStorageVO> comparator = (ps1, ps2) -> {
+            if (ps1.getCapacity().getAvailablePhysicalCapacity() > ps2.getCapacity().getAvailablePhysicalCapacity()) {
+                return -1;
             } else {
-                /* sort ps by availablePhysicalCapacity in desc order */
-                Collections.sort(tmp, new Comparator<PrimaryStorageVO>() {
-                    @Override
-                    public int compare(PrimaryStorageVO o1, PrimaryStorageVO o2) {
-                        if (o1.getCapacity().getAvailablePhysicalCapacity() > o2.getCapacity().getAvailablePhysicalCapacity()) {
-                            return -1;
-                        } else {
-                            return 1;
-                        }
-                    }
-                });
-                ret.addAll(tmp);
-
-                psType = next.getType();
-                tmp = new ArrayList<>();
-                tmp.add(next);
+                return 1;
             }
+        };
+
+        // no group
+        List<List<PrimaryStorageVO>> candidatesGroup = (List<List<PrimaryStorageVO>>)data.get(PrimaryStorageConstant.AllocatorParams.GROUP_CANDIDATES);
+        if (candidatesGroup == null) {
+            candidates.sort(comparator);
+            trigger.next();
+            return;
         }
 
-        Collections.sort(tmp, new Comparator<PrimaryStorageVO>() {
-            @Override
-            public int compare(PrimaryStorageVO o1, PrimaryStorageVO o2) {
-                if (o1.getCapacity().getAvailablePhysicalCapacity() > o2.getCapacity().getAvailablePhysicalCapacity()) {
-                    return -1;
-                } else {
-                    return 1;
-                }
-            }
-        });
-        ret.addAll(tmp);
+        List<PrimaryStorageVO> ret = new ArrayList<>();
+        for (List<PrimaryStorageVO> primaryStorageVOS : candidatesGroup) {
+            primaryStorageVOS.sort(comparator);
+            ret.addAll(primaryStorageVOS);
+        }
 
         data.put(PrimaryStorageConstant.AllocatorParams.CANDIDATES, ret);
 

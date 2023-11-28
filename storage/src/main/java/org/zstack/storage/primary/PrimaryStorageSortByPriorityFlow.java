@@ -12,9 +12,7 @@ import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -22,8 +20,8 @@ import java.util.stream.Collectors;
  */
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
-public class PrimaryStorageSortFlow extends NoRollbackFlow {
-    private static CLogger logger = Utils.getLogger(PrimaryStorageSortFlow.class);
+public class PrimaryStorageSortByPriorityFlow extends NoRollbackFlow {
+    private static CLogger logger = Utils.getLogger(PrimaryStorageSortByPriorityFlow.class);
 
     @Autowired
     protected PrimaryStoragePriorityGetter priorityGetter;
@@ -46,7 +44,11 @@ public class PrimaryStorageSortFlow extends NoRollbackFlow {
         PrimaryStoragePriorityGetter.PrimaryStoragePriority result = priorityGetter
                 .getPrimaryStoragePriority(spec.getImageUuid(), spec.getBackupStorageUuid());
         Map<String, Integer> priority = result.psPriority.stream().collect(Collectors.toMap(it -> it.PS, it -> it.priority));
-        candidates.sort(Comparator.comparing(it -> priority.getOrDefault(it.getType(), result.defaultPriority)));
+        List<List<PrimaryStorageVO>> candidatesGroupByPriority = candidates.stream()
+                .collect(Collectors.groupingBy(it -> priority.getOrDefault(it.getType(), result.defaultPriority)))
+                .entrySet().stream().sorted(Map.Entry.comparingByKey())
+                .map(Map.Entry::getValue).collect(Collectors.toList());
+        data.put(PrimaryStorageConstant.AllocatorParams.GROUP_CANDIDATES, candidatesGroupByPriority);
         trigger.next();
     }
 }

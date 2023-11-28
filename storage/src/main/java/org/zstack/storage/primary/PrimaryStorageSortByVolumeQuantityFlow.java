@@ -36,36 +36,19 @@ public class PrimaryStorageSortByVolumeQuantityFlow extends NoRollbackFlow {
             }
         };
 
-        if (spec.getImageUuid() == null) {
+        // no group
+        List<List<PrimaryStorageVO>> candidatesGroup = (List<List<PrimaryStorageVO>>)data.get(PrimaryStorageConstant.AllocatorParams.GROUP_CANDIDATES);
+        if (candidatesGroup == null) {
             candidates.sort(comparator);
             trigger.next();
             return;
         }
 
         List<PrimaryStorageVO> ret = new ArrayList<>();
-
-        Iterator<PrimaryStorageVO> it = candidates.iterator();
-        PrimaryStorageVO next = it.next();
-
-        String psType = next.getType();
-        List<PrimaryStorageVO> tmp = new ArrayList<>();
-        tmp.add(next);
-        while (it.hasNext()) {
-            next = it.next();
-            if (next.getType().equals(psType)) {
-                tmp.add(next);
-            } else {
-                tmp.sort(comparator);
-                ret.addAll(tmp);
-
-                psType = next.getType();
-                tmp = new ArrayList<>();
-                tmp.add(next);
-            }
+        for (List<PrimaryStorageVO> primaryStorageVOS : candidatesGroup) {
+            primaryStorageVOS.sort(comparator);
+            ret.addAll(primaryStorageVOS);
         }
-
-        tmp.sort(comparator);
-        ret.addAll(tmp);
 
         data.put(PrimaryStorageConstant.AllocatorParams.CANDIDATES, ret);
 
