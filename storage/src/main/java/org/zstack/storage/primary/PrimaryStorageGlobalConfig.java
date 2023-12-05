@@ -35,6 +35,7 @@ public class PrimaryStorageGlobalConfig {
     @GlobalConfigValidation(inNumberRange = {1, 255})
     @GlobalConfigDef(defaultValue = "10", type = Integer.class,  description = "allocator concurrency level, if enabled.")
     public static GlobalConfig ALLOCATE_PRIMARYSTORAGE_CONCURRENCY = new GlobalConfig(CATEGORY, "allocate.primaryStore.Concurrency");
+
     @GlobalConfigValidation()
     @BindResourceConfig(value = {PrimaryStorageVO.class})
     @GlobalConfigDef(defaultValue = "0.9", type = Double.class, description = "The threshold for predicting primary storage's used physical capacity. " +
@@ -49,4 +50,8 @@ public class PrimaryStorageGlobalConfig {
     @GlobalConfigValidation(numberGreaterThan = 1)
     @GlobalConfigDef(defaultValue = "1", type = Long.class)
     public static GlobalConfig COLLECT_AND_FORECAST_INTERVAL = new GlobalConfig(CATEGORY, "collect.forecast.interval");
+
+    @GlobalConfigValidation(numberGreaterThan = 1)
+    @GlobalConfigDef(defaultValue = "60", type = Integer.class,  description = "deactivate volume not in use.")
+    public static GlobalConfig ACTIVE_VOLUME_GARBAGE_COLLECTOR_INTERVAL = new GlobalConfig(CATEGORY, "orphanActiveVolume.garbageCollector.interval");
 }
