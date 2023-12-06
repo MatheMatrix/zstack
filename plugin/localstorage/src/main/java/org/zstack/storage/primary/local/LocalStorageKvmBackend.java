@@ -43,7 +43,6 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.rest.RESTFacade;
 import org.zstack.header.storage.backup.*;
 import org.zstack.header.storage.primary.*;
-import org.zstack.header.storage.primary.UndoSnapshotCreationOnPrimaryStorageMsg;
 import org.zstack.header.storage.snapshot.VolumeSnapshotConstant;
 import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
@@ -1189,14 +1188,14 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         }
 
         String pathInCache = makeCachedImageInstallUrl(ispec.getInventory());
-
-        ImageCache cache = new ImageCache();
-        cache.backupStorage = bsinv;
-        cache.backupStorageInstallPath = backupStorageInstallPath;
-        cache.primaryStorageInstallPath = pathInCache;
-        cache.hostUuid = msg.getHostUuid();
-        cache.image = ispec.getInventory();
-        cache.download(new ReturnValueCompletion<ImageCacheInventory>(completion) {
+        LocalStorageDownloadImageToCacheJob job = new LocalStorageDownloadImageToCacheJob();
+        job.backupStorage = bsinv;
+        job.backupStorageInstallPath = backupStorageInstallPath;
+        job.primaryStorageInstallPath = pathInCache;
+        job.hostUuid = msg.getHostUuid();
+        job.image = ispec.getInventory();
+        job.ps = getSelfInventory();
+        jobf.execute(job.getQueueName(), job.hostUuid, job, new ReturnValueCompletion<ImageCacheInventory>(completion) {
             @Override
             public void success(ImageCacheInventory returnValue) {
                 reply.setImageCache(returnValue);
@@ -1207,7 +1206,22 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
             public void fail(ErrorCode errorCode) {
                 completion.fail(errorCode);
             }
-        });
+        }, ImageCacheInventory.class);
+
+
+
+                /*(Job) j -> cache.download(new ReturnValueCompletion<ImageCacheInventory>(completion) {
+            @Override
+            public void success(ImageCacheInventory returnValue) {
+                reply.setImageCache(returnValue);
+                completion.success(reply);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                completion.fail(errorCode);
+            }
+        }));*/
     }
 
 
@@ -1296,299 +1310,6 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         }
 
         return hostUuid;
-    }
-
-    class ImageCache {
-        ImageInventory image;
-        BackupStorageInventory backupStorage;
-        String volumeResourceInstallPath;
-        boolean incremental;
-        String hostUuid;
-        String primaryStorageInstallPath;
-        String backupStorageInstallPath;
-
-        void download(final ReturnValueCompletion<ImageCacheInventory> completion) {
-            DebugUtils.Assert(image != null, "image cannot be null");
-            DebugUtils.Assert(hostUuid != null, "host uuid cannot be null");
-            DebugUtils.Assert(primaryStorageInstallPath != null, "primaryStorageInstallPath cannot be null");
-
-            thdf.chainSubmit(new ChainTask(completion) {
-                @Override
-                public String getSyncSignature() {
-                    return String.format("download-image-%s-to-localstorage-%s-cache-host-%s", image.getUuid(), self.getUuid(), hostUuid);
-                }
-
-                private void doDownload(final SyncTaskChain chain) {
-                    if (volumeResourceInstallPath == null) {
-                        DebugUtils.Assert(backupStorage != null, "backup storage cannot be null");
-                        DebugUtils.Assert(backupStorageInstallPath != null, "backupStorageInstallPath cannot be null");
-                    }
-
-                    taskProgress("Download the image[%s] to the image cache", image.getName());
-
-                    FlowChain fchain = FlowChainBuilder.newShareFlowChain();
-                    fchain.setName(String.format("download-image-%s-to-local-storage-%s-cache-host-%s",
-                            image.getUuid(), self.getUuid(), hostUuid));
-                    fchain.then(new ShareFlow() {
-                        String psUuid;
-                        long actualSize = image.getActualSize();
-                        String allocatedInstallUrl;
-
-                        @Override
-                        public void setup() {
-                            flow(new Flow() {
-                                String __name__ = "allocate-primary-storage";
-
-                                boolean s = false;
-
-                                @Override
-                                public void run(final FlowTrigger trigger, Map data) {
-                                    AllocatePrimaryStorageSpaceMsg amsg = new AllocatePrimaryStorageSpaceMsg();
-                                    amsg.setRequiredPrimaryStorageUuid(self.getUuid());
-                                    amsg.setRequiredHostUuid(hostUuid);
-                                    amsg.setSize(image.getActualSize());
-                                    amsg.setPurpose(PrimaryStorageAllocationPurpose.DownloadImage.toString());
-                                    amsg.setNoOverProvisioning(true);
-                                    amsg.setImageUuid(image.getUuid());
-                                    bus.makeLocalServiceId(amsg, PrimaryStorageConstant.SERVICE_ID);
-                                    bus.send(amsg, new CloudBusCallBack(trigger) {
-                                        @Override
-                                        public void run(MessageReply reply) {
-                                            if (!reply.isSuccess()) {
-                                                trigger.fail(reply.getError());
-                                                return;
-                                            }
-                                            s = true;
-                                            AllocatePrimaryStorageSpaceReply ar = (AllocatePrimaryStorageSpaceReply) reply;
-                                            allocatedInstallUrl = ar.getAllocatedInstallUrl();
-                                            psUuid = ar.getPrimaryStorageInventory().getUuid();
-                                            trigger.next();
-                                        }
-                                    });
-                                }
-
-                                @Override
-                                public void rollback(FlowRollback trigger, Map data) {
-                                    if (s) {
-                                        ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
-                                        rmsg.setAllocatedInstallUrl(allocatedInstallUrl);
-                                        rmsg.setDiskSize(image.getActualSize());
-                                        rmsg.setNoOverProvisioning(true);
-                                        rmsg.setPrimaryStorageUuid(self.getUuid());
-                                        bus.makeLocalServiceId(rmsg, PrimaryStorageConstant.SERVICE_ID);
-                                        bus.send(rmsg);
-                                    }
-
-                                    trigger.rollback();
-                                }
-                            });
-                            flow(new NoRollbackFlow() {
-                                String __name__ = "download";
-
-                                @Override
-                                public void run(final FlowTrigger trigger, Map data) {
-                                    if (volumeResourceInstallPath != null) {
-                                        if (incremental) {
-                                            incrementalDownloadFromVolume(trigger);
-                                        } else {
-                                            downloadFromVolume(trigger);
-                                        }
-                                    } else {
-                                        downloadFromBackupStorage(trigger);
-                                    }
-                                }
-
-                                private void incrementalDownloadFromVolume(FlowTrigger trigger) {
-                                    CreateVolumeWithBackingCmd cmd = new CreateVolumeWithBackingCmd();
-                                    cmd.installPath = primaryStorageInstallPath;
-                                    cmd.templatePathInCache = volumeResourceInstallPath;
-
-                                    httpCall(CREATE_VOLUME_WITH_BACKING_PATH, hostUuid, cmd, false,
-                                            CreateVolumeWithBackingRsp.class,
-                                            new ReturnValueCompletion<CreateVolumeWithBackingRsp>(trigger) {
-                                                @Override
-                                                public void success(CreateVolumeWithBackingRsp rsp) {
-                                                    actualSize = rsp.actualSize;
-                                                    trigger.next();
-                                                }
-
-                                                @Override
-                                                public void fail(ErrorCode errorCode) {
-                                                    trigger.fail(errorCode);
-                                                }
-                                            });
-                                }
-
-                                private void downloadFromVolume(FlowTrigger trigger) {
-                                    CreateTemplateFromVolumeCmd cmd = new CreateTemplateFromVolumeCmd();
-                                    cmd.setInstallPath(primaryStorageInstallPath);
-                                    cmd.setVolumePath(volumeResourceInstallPath);
-
-                                    httpCall(CREATE_TEMPLATE_FROM_VOLUME, hostUuid, cmd, false,
-                                            CreateTemplateFromVolumeRsp.class,
-                                            new ReturnValueCompletion<CreateTemplateFromVolumeRsp>(trigger) {
-                                                @Override
-                                                public void success(CreateTemplateFromVolumeRsp rsp) {
-                                                    actualSize = rsp.actualSize;
-                                                    trigger.next();
-                                                }
-
-                                                @Override
-                                                public void fail(ErrorCode errorCode) {
-                                                    trigger.fail(errorCode);
-                                                }
-                                            });
-                                }
-
-                                private void downloadFromBackupStorage(FlowTrigger trigger) {
-                                    LocalStorageBackupStorageMediator m = localStorageFactory.getBackupStorageMediator(KVMConstant.KVM_HYPERVISOR_TYPE, backupStorage.getType());
-                                    m.downloadBits(getSelfInventory(), backupStorage,
-                                            backupStorageInstallPath, primaryStorageInstallPath,
-                                            hostUuid, false, new Completion(trigger) {
-                                                @Override
-                                                public void success() {
-                                                    trigger.next();
-                                                }
-
-                                                @Override
-                                                public void fail(ErrorCode errorCode) {
-                                                    trigger.fail(errorCode);
-                                                }
-                                            });
-                                }
-                            });
-
-                            done(new FlowDoneHandler(completion, chain) {
-                                @Override
-                                public void handle(Map data) {
-                                    ImageCacheVO vo = new ImageCacheVO();
-                                    vo.setState(ImageCacheState.ready);
-                                    vo.setMediaType(ImageMediaType.valueOf(image.getMediaType()));
-                                    vo.setImageUuid(image.getUuid());
-                                    vo.setPrimaryStorageUuid(self.getUuid());
-                                    vo.setSize(actualSize);
-                                    vo.setMd5sum("not calculated");
-
-                                    LocalStorageUtils.InstallPath path = new LocalStorageUtils.InstallPath();
-                                    path.installPath = primaryStorageInstallPath;
-                                    path.hostUuid = hostUuid;
-                                    vo.setInstallUrl(path.makeFullPath());
-                                    dbf.persist(vo);
-
-                                    logger.debug(String.format("downloaded image[uuid:%s, name:%s] to the image cache of local primary storage[uuid: %s, installPath: %s] on host[uuid: %s]",
-                                            image.getUuid(), image.getName(), self.getUuid(), primaryStorageInstallPath, hostUuid));
-
-                                    ImageCacheInventory inv = ImageCacheInventory.valueOf(vo);
-                                    inv.setInstallUrl(primaryStorageInstallPath);
-
-                                    pluginRgty.getExtensionList(AfterCreateImageCacheExtensionPoint.class)
-                                            .forEach(exp -> exp.saveEncryptAfterCreateImageCache(hostUuid, inv));
-
-                                    completion.success(inv);
-                                    chain.next();
-                                }
-                            });
-
-                            error(new FlowErrorHandler(completion, chain) {
-                                @Override
-                                public void handle(ErrorCode errCode, Map data) {
-                                    completion.fail(errCode);
-                                    chain.next();
-                                }
-                            });
-                        }
-                    }).start();
-                }
-
-                private void checkEncryptImageCache(ImageCacheInventory inventory, final SyncTaskChain chain) {
-                    List<AfterCreateImageCacheExtensionPoint> extensionList = pluginRgty.getExtensionList(AfterCreateImageCacheExtensionPoint.class);
-
-                    if (extensionList.isEmpty()) {
-                        completion.success(inventory);
-                        chain.next();
-                        return;
-                    }
-
-                    extensionList.forEach(ext -> ext.checkEncryptImageCache(hostUuid, inventory, new Completion(chain) {
-                        @Override
-                        public void success() {
-                            completion.success(inventory);
-                            chain.next();
-                        }
-
-                        @Override
-                        public void fail(ErrorCode errorCode) {
-                            completion.fail(errorCode);
-                            chain.next();
-                        }
-                    }));
-                }
-
-                @Override
-                public void run(final SyncTaskChain chain) {
-                    SimpleQuery<ImageCacheVO> q = dbf.createQuery(ImageCacheVO.class);
-                    q.add(ImageCacheVO_.primaryStorageUuid, Op.EQ, self.getUuid());
-                    q.add(ImageCacheVO_.imageUuid, Op.EQ, image.getUuid());
-                    q.add(ImageCacheVO_.installUrl, Op.LIKE, String.format("%%hostUuid://%s%%", hostUuid));
-                    ImageCacheVO cache = q.find();
-                    if (cache == null) {
-                        doDownload(chain);
-                        return;
-                    }
-
-                    LocalStorageUtils.InstallPath path = new LocalStorageUtils.InstallPath();
-                    path.fullPath = cache.getInstallUrl();
-                    final String installPath = path.disassemble().installPath;
-                    CheckBitsCmd cmd = new CheckBitsCmd();
-                    cmd.path = installPath;
-
-                    httpCall(CHECK_BITS_PATH, hostUuid, cmd, CheckBitsRsp.class, new ReturnValueCompletion<CheckBitsRsp>(completion, chain) {
-                        @Override
-                        public void success(CheckBitsRsp rsp) {
-                            if (rsp.existing) {
-                                logger.debug(String.format("found image[uuid: %s, name: %s] in the image cache of local primary storage[uuid:%s, installPath: %s]",
-                                        image.getUuid(), image.getName(), self.getUuid(), installPath));
-
-                                ImageCacheInventory inv = ImageCacheInventory.valueOf(cache);
-                                inv.setInstallUrl(installPath);
-
-                                checkEncryptImageCache(inv, chain);
-                                return;
-                            }
-
-                            // the image is removed on the host
-                            // delete the cache object and re-download it
-                            SimpleQuery<ImageCacheVO> q = dbf.createQuery(ImageCacheVO.class);
-                            q.add(ImageCacheVO_.primaryStorageUuid, Op.EQ, self.getUuid());
-                            q.add(ImageCacheVO_.imageUuid, Op.EQ, image.getUuid());
-                            q.add(ImageCacheVO_.installUrl, Op.LIKE, String.format("%%hostUuid://%s%%", hostUuid));
-                            ImageCacheVO cvo = q.find();
-
-                            ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
-                            rmsg.setDiskSize(cvo.getSize());
-                            rmsg.setPrimaryStorageUuid(cvo.getPrimaryStorageUuid());
-                            rmsg.setAllocatedInstallUrl(cvo.getInstallUrl());
-                            bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, cvo.getPrimaryStorageUuid());
-                            bus.send(rmsg);
-
-                            dbf.remove(cvo);
-                            doDownload(chain);
-                        }
-
-                        @Override
-                        public void fail(ErrorCode errorCode) {
-                            completion.fail(errorCode);
-                            chain.next();
-                        }
-                    });
-                }
-
-                @Override
-                public String getName() {
-                    return getSyncSignature();
-                }
-            });
-        }
     }
 
     private void createTemporaryRootVolume(InstantiateTemporaryRootVolumeFromTemplateOnPrimaryStorageMsg msg, final ReturnValueCompletion<InstantiateVolumeOnPrimaryStorageReply> completion) {
@@ -1866,13 +1587,14 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         BackupStorageVO bsvo = q.find();
         BackupStorageInventory bsinv = BackupStorageInventory.valueOf(bsvo);
 
-        ImageCache cache = new ImageCache();
-        cache.image = ispec.getInventory();
-        cache.hostUuid = msg.getDestHostUuid();
-        cache.primaryStorageInstallPath = makeCachedImageInstallUrl(ispec.getInventory());
-        cache.backupStorage = bsinv;
-        cache.backupStorageInstallPath = ispec.getSelectedBackupStorage().getInstallPath();
-        cache.download(new ReturnValueCompletion<ImageCacheInventory>(completion) {
+        LocalStorageDownloadImageToCacheJob job = new LocalStorageDownloadImageToCacheJob();
+        job.image = ispec.getInventory();
+        job.hostUuid = msg.getDestHostUuid();
+        job.primaryStorageInstallPath = makeCachedImageInstallUrl(ispec.getInventory());
+        job.backupStorage = bsinv;
+        job.backupStorageInstallPath = ispec.getSelectedBackupStorage().getInstallPath();
+        job.ps = getSelfInventory();
+        jobf.execute(job.getQueueName(), job.hostUuid, job, new ReturnValueCompletion<ImageCacheInventory>(completion) {
             @Override
             public void success(ImageCacheInventory returnValue) {
                 DownloadIsoToPrimaryStorageReply reply = new DownloadIsoToPrimaryStorageReply();
@@ -1884,7 +1606,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
             public void fail(ErrorCode errorCode) {
                 completion.fail(errorCode);
             }
-        });
+        }, ImageCacheInventory.class);
     }
 
     @Override
@@ -3292,14 +3014,15 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
                 .eq(LocalStorageResourceRefVO_.resourceUuid, msg.getVolumeInventory().getUuid())
                 .find();
 
-        ImageCache cache = new ImageCache();
-        cache.primaryStorageInstallPath = makeCachedImageInstallUrl(msg.getImageInventory());
-        cache.hostUuid = ref.getHostUuid();
-        cache.image = msg.getImageInventory();
-        cache.volumeResourceInstallPath = msg.getVolumeInventory().getInstallPath();
-        cache.download(new ReturnValueCompletion<ImageCacheInventory>(completion) {
+        LocalStorageDownloadImageToCacheJob job = new LocalStorageDownloadImageToCacheJob();
+        job.primaryStorageInstallPath = makeCachedImageInstallUrl(msg.getImageInventory());
+        job.hostUuid = ref.getHostUuid();
+        job.image = msg.getImageInventory();
+        job.volumeResourceInstallPath = msg.getVolumeInventory().getInstallPath();
+        job.ps = getSelfInventory();
+        jobf.execute(job.getQueueName(), job.hostUuid, job, new ReturnValueCompletion<ImageCacheInventory>(completion) {
             @Override
-            public void success(ImageCacheInventory cache) {
+            public void success(ImageCacheInventory returnValue) {
                 reply.setLocateHostUuid(ref.getHostUuid());
                 completion.success(reply);
             }
@@ -3308,7 +3031,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
             public void fail(ErrorCode errorCode) {
                 completion.fail(errorCode);
             }
-        });
+        }, ImageCacheInventory.class);
     }
 
     @Override
@@ -3333,18 +3056,19 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
             return;
         }
 
-        ImageCache cache = new ImageCache();
-        cache.primaryStorageInstallPath = makeCachedImageInstallUrl(msg.getImageInventory());
-        cache.hostUuid = ref.getHostUuid();
-        cache.image = msg.getImageInventory();
-        cache.volumeResourceInstallPath = msg.getVolumeSnapshot().getPrimaryStorageInstallPath();
-        cache.incremental =incremental;
-        cache.download(new ReturnValueCompletion<ImageCacheInventory>(completion) {
+        LocalStorageDownloadImageToCacheJob job = new LocalStorageDownloadImageToCacheJob();
+        job.primaryStorageInstallPath = makeCachedImageInstallUrl(msg.getImageInventory());
+        job.hostUuid = ref.getHostUuid();
+        job.image = msg.getImageInventory();
+        job.volumeResourceInstallPath = msg.getVolumeSnapshot().getPrimaryStorageInstallPath();
+        job.incremental =incremental;
+        job.ps = getSelfInventory();
+        jobf.execute(job.getQueueName(), job.hostUuid, job, new ReturnValueCompletion<ImageCacheInventory>(completion) {
             @Override
-            public void success(ImageCacheInventory inv) {
+            public void success(ImageCacheInventory returnValue) {
                 reply.setLocateHostUuid(ref.getHostUuid());
-                reply.setInventory(inv);
-                reply.setIncremental(cache.incremental);
+                reply.setInventory(returnValue);
+                reply.setIncremental(job.incremental);
                 completion.success(reply);
             }
 
@@ -3352,7 +3076,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
             public void fail(ErrorCode errorCode) {
                 completion.fail(errorCode);
             }
-        });
+        }, ImageCacheInventory.class);
     }
 
     @Override
