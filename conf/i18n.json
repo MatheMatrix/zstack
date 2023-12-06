@@ -37890,7 +37890,7 @@
   {
     "raw": "on purpose",
     "en_US": "on purpose",
-    "zh_CN": "",
+    "zh_CN": "故意的",
     "arguments": [],
     "line": 80,
     "fileName": "src/test/java/org/zstack/test/TestSafeWhile.java"
@@ -37898,7 +37898,7 @@
   {
     "raw": "on purpose %d",
     "en_US": "on purpose {0}",
-    "zh_CN": "",
+    "zh_CN": "故意{0}",
     "arguments": [
       "item"
     ],
@@ -37908,7 +37908,7 @@
   {
     "raw": "I should not be in error list %d",
     "en_US": "I should not be in error list {0}",
-    "zh_CN": "",
+    "zh_CN": "我不应在错误列表{0}中",
     "arguments": [
       "item"
     ],
@@ -37918,7 +37918,7 @@
   {
     "raw": "I should not be in error list either %d",
     "en_US": "I should not be in error list either {0}",
-    "zh_CN": "",
+    "zh_CN": "我也不应该在错误列表中{0}",
     "arguments": [
       "item"
     ],
@@ -37928,7 +37928,7 @@
   {
     "raw": "done, on purpose",
     "en_US": "done, on purpose",
-    "zh_CN": "",
+    "zh_CN": "干得好，故意的",
     "arguments": [],
     "line": 63,
     "fileName": "src/test/java/org/zstack/test/TestSafeWhile.java"
@@ -37936,7 +37936,7 @@
   {
     "raw": "I should not be errs list",
     "en_US": "I should not be errs list",
-    "zh_CN": "",
+    "zh_CN": "我不应该是错误的名单。",
     "arguments": [],
     "line": 81,
     "fileName": "src/test/java/org/zstack/test/TestSafeWhile.java"
@@ -37944,7 +37944,7 @@
   {
     "raw": "I should not be errs list either.",
     "en_US": "I should not be errs list either.",
-    "zh_CN": "",
+    "zh_CN": "我也不应该在错误清单上。",
     "arguments": [],
     "line": 82,
     "fileName": "src/test/java/org/zstack/test/TestSafeWhile.java"
@@ -37952,7 +37952,7 @@
   {
     "raw": "unit test asks it to fail",
     "en_US": "unit test asks it to fail",
-    "zh_CN": "",
+    "zh_CN": "单元测试要求它失败",
     "arguments": [],
     "line": 40,
     "fileName": "src/test/java/org/zstack/test/aop/ManInTheMiddleService.java"
@@ -37960,7 +37960,7 @@
   {
     "raw": "On purpose",
     "en_US": "On purpose",
-    "zh_CN": "",
+    "zh_CN": "故意的",
     "arguments": [],
     "line": 22,
     "fileName": "src/test/java/org/zstack/test/compute/hostallocator/HostAllocateExtension.java"
@@ -37968,7 +37968,7 @@
   {
     "raw": "on purpose 3",
     "en_US": "on purpose 3",
-    "zh_CN": "",
+    "zh_CN": "故意的3",
     "arguments": [],
     "line": 67,
     "fileName": "src/test/java/org/zstack/test/core/asyncbackup/TestSafeCompletion.java"
@@ -37976,7 +37976,7 @@
   {
     "raw": "on purpose 1",
     "en_US": "on purpose 1",
-    "zh_CN": "",
+    "zh_CN": "故意1",
     "arguments": [],
     "line": 75,
     "fileName": "src/test/java/org/zstack/test/core/asyncbackup/TestSafeCompletion.java"
@@ -37984,7 +37984,7 @@
   {
     "raw": "on purpose 2",
     "en_US": "on purpose 2",
-    "zh_CN": "",
+    "zh_CN": "故意的2",
     "arguments": [],
     "line": 83,
     "fileName": "src/test/java/org/zstack/test/core/asyncbackup/TestSafeCompletion.java"
