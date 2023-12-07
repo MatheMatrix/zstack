@@ -136,7 +136,7 @@ public class ProgressReportService extends AbstractService implements Management
                 Runnable cleanup = ThreadContextUtils.saveThreadContext();
                 Defer.defer(cleanup);
                 setThreadContext(cmd);
-                taskProgress(TaskType.Progress, cmd.getProgress(), cmd.getDetail());
+                taskProgress(TaskType.Progress, cmd.getDetail(), cmd.getProgress());
                 return null;
             }
         });
@@ -413,7 +413,7 @@ public class ProgressReportService extends AbstractService implements Management
         Platform.getComponentLoader().getComponent(DatabaseFacade.class).persist(vo);
     }
 
-    private static void taskProgress(TaskType type, String fmt, Object... args) {
+    private static void taskProgress(TaskType type, Object details, String fmt, Object... args) {
         if (!ProgressGlobalConfig.PROGRESS_ON.value(Boolean.class)) {
             return;
         }
@@ -448,6 +448,9 @@ public class ProgressReportService extends AbstractService implements Management
         if (args != null) {
             vo.setArguments(JSONObjectUtil.toJsonString(args));
         }
+        if (details != null) {
+            vo.setOpaque(JSONObjectUtil.toJsonString(details));
+        }
         vo.setType(type);
         vo.setTime(System.currentTimeMillis());
         vo.setManagementUuid(Platform.getManagementServerId());
@@ -461,7 +464,7 @@ public class ProgressReportService extends AbstractService implements Management
             return;
         }
 
-        taskProgress(TaskType.Task, fmt, args);
+        taskProgress(TaskType.Task, null, fmt, args);
     }
 
     public static void reportProgress(String fmt) {
@@ -469,7 +472,7 @@ public class ProgressReportService extends AbstractService implements Management
             return;
         }
 
-        taskProgress(TaskType.Progress, fmt);
+        taskProgress(TaskType.Progress, null, fmt);
     }
 
     public static void reportProgress(String fmt, Object... args) {
@@ -477,7 +480,7 @@ public class ProgressReportService extends AbstractService implements Management
             return;
         }
 
-        taskProgress(TaskType.Progress, fmt, args);
+        taskProgress(TaskType.Progress, null, fmt, args);
     }
 
     public void reportProgressUntil(String end, int intervalSec) {

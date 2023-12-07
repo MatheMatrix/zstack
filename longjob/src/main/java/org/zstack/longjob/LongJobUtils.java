@@ -15,6 +15,7 @@ import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.longjob.*;
+import org.zstack.header.storage.backup.BackupStorageErrors;
 import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
@@ -60,6 +61,11 @@ public class LongJobUtils {
 
     public static ErrorCode interruptedErr(String longJobUuid, ErrorCode cause) {
         return err(LongJobErrors.INTERRUPTED, cause, "some error interrupt long job[uuid:%s]," +
+                " analysis the cause to fix it and resume long job if you want to continue.", longJobUuid);
+    }
+
+    public static ErrorCode setupErr(Enum errCode, String longJobUuid, ErrorCode cause) {
+        return err(errCode, cause, "some error suspend long job[uuid:%s]," +
                 " analysis the cause to fix it and resume long job if you want to continue.", longJobUuid);
     }
 
@@ -152,7 +158,7 @@ public class LongJobUtils {
     }
 
     static LongJobStateEvent getEventOnError(ErrorCode errorCode) {
-        if (errorCode.isError(SysErrors.MANAGEMENT_NODE_UNAVAILABLE_ERROR, LongJobErrors.INTERRUPTED)) {
+        if (errorCode.isError(SysErrors.MANAGEMENT_NODE_UNAVAILABLE_ERROR, LongJobErrors.INTERRUPTED, BackupStorageErrors.STORAGE_IO_ERROR)) {
             return LongJobStateEvent.suspend;
         } else if (errorCode.isError(LongJobErrors.CANCELED)) {
             return LongJobStateEvent.canceled;

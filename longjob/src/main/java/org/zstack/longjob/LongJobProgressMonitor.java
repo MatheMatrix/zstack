@@ -1,5 +1,6 @@
 package org.zstack.longjob;
 
+import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.progress.ProgressGlobalConfig;
@@ -7,18 +8,21 @@ import org.zstack.core.thread.PeriodicTask;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.header.Component;
 import org.zstack.header.core.ExceptionSafe;
+import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.longjob.LongJobState;
 import org.zstack.header.longjob.LongJobStateEvent;
 import org.zstack.header.longjob.LongJobVO;
 import org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint;
+import org.zstack.header.storage.backup.BackupStorageErrors;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -37,6 +41,7 @@ public class LongJobProgressMonitor implements Component, ManagementNodeReadyExt
     private LongJobManagerImpl impl;
 
     private Future<Void> monitorTask;
+    private LinkedHashMap<String, Enum> errTagMap = new LinkedHashMap();
 
     @Override
     public boolean start() {
@@ -60,6 +65,7 @@ public class LongJobProgressMonitor implements Component, ManagementNodeReadyExt
     private final AtomicBoolean runonce = new AtomicBoolean(true);
 
     private synchronized void startTaskProgressMonitor() {
+        errTagMap.put("ioHung", BackupStorageErrors.STORAGE_IO_ERROR);
         if (monitorTask != null) {
             monitorTask.cancel(true);
         }
@@ -89,10 +95,6 @@ public class LongJobProgressMonitor implements Component, ManagementNodeReadyExt
 
     @ExceptionSafe
     private void checkTaskProgress() {
-        List<String> tags = new ArrayList<>();
-        tags.add("io-writes");
-        tags.add("io-reads");
-
         List<Tuple> tuples = getRunningLongJobProgressArguments();
         if (CollectionUtils.isEmpty(tuples)) {
             return;
@@ -103,12 +105,8 @@ public class LongJobProgressMonitor implements Component, ManagementNodeReadyExt
             if (uuid.isEmpty()) {
                 return;
             }
-            String arguments = t.get(1, String.class);
-            if (arguments.isEmpty()) {
-                return;
-            }
-
-            if (!isDetailsContainsAnyTag(arguments, tags)){
+            String details = t.get(1, String.class);
+            if (details.isEmpty()) {
                 return;
             }
 
@@ -116,14 +114,14 @@ public class LongJobProgressMonitor implements Component, ManagementNodeReadyExt
             if (job.getState() != LongJobState.Running){
                 return;
             }
-            changeState(uuid, LongJobStateEvent.suspend);
-            impl.runLongJobCallBack(job, LongJobUtils.interruptedErr(uuid, operr(String.format("The job[uuid: %s] status is abnormal, details is %s.", uuid, arguments))));
+
+            checkAndErrorJob(uuid, details, errTagMap.keySet());
         });
 
     }
 
     protected List<Tuple> getRunningLongJobProgressArguments() {
-        String sql = "select job.uuid, progress.arguments from TaskProgressVO progress " +
+        String sql = "select job.uuid, progress.opaque from TaskProgressVO progress " +
                 "inner join LongJobVO job on job.apiId = progress.apiId " +
                 "where job.state =:longJobState and progress.id in " +
                 "(select max(id) from TaskProgressVO group by progress.apiId)";
@@ -132,8 +130,20 @@ public class LongJobProgressMonitor implements Component, ManagementNodeReadyExt
         return q.getResultList();
     }
 
-    protected boolean isDetailsContainsAnyTag(String details, List<String> tags) {
-        return tags.stream().anyMatch(details::contains);
+    protected void checkAndErrorJob(String jobUuid, String details, Set<String> tags) {
+        tags.forEach(tag -> {
+            if (!details.contains(tag)) {
+                return;
+            }
 
+            changeState(jobUuid, LongJobStateEvent.suspend);
+            ErrorCode errorCode = LongJobUtils.setupErr(errTagMap.get(tag), jobUuid,
+                    operr(String.format("The job[uuid: %s] status is abnormal, details is %s.", jobUuid, details)));
+            changeState(jobUuid, getEventOnError(errorCode), it -> {
+                if (Strings.isEmpty(it.getJobResult())) {
+                    it.setJobResult(ErrorCode.getJobResult(errorCode));
+                }
+            });
+        });
     }
 }
