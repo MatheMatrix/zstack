@@ -167,6 +167,11 @@
     </message>
 
     <message>
+        <name>org.zstack.header.vo.APIQueryResourceMsg</name>
+        <serviceId>query</serviceId>
+    </message>
+
+    <message>
         <name>org.zstack.header.identity.APIRenewSessionMsg</name>
     </message>
 </service>
