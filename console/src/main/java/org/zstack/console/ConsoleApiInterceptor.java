@@ -1,5 +1,6 @@
 package org.zstack.console;
 
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.db.DatabaseFacade;
@@ -8,6 +9,7 @@ import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.ApiMessageInterceptor;
 import org.zstack.header.console.APIRequestConsoleAccessMsg;
+import org.zstack.header.console.APIUpdateCertFilePathMsg;
 import org.zstack.header.console.APIUpdateConsoleProxyAgentMsg;
 import org.zstack.header.console.ConsoleConstants;
 import org.zstack.header.message.APIMessage;
@@ -38,9 +40,17 @@ public class ConsoleApiInterceptor implements ApiMessageInterceptor {
             validate((APIRequestConsoleAccessMsg) msg);
         } else if (msg instanceof APIUpdateConsoleProxyAgentMsg) {
             validate((APIUpdateConsoleProxyAgentMsg) msg);
+        } else if (msg instanceof APIUpdateCertFilePathMsg) {
+            validate((APIUpdateCertFilePathMsg) msg);
         }
 
         return msg;
+    }
+
+    private void validate(APIUpdateCertFilePathMsg msg) {
+        if (StringUtils.isBlank(msg.getCertFilePath())) {
+            throw new ApiMessageInterceptionException(operr("certFilePath cannot null"));
+        }
     }
 
     private List<VmInstanceState> consoleAvailableStates = Arrays.asList(

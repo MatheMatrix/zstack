@@ -8,6 +8,10 @@
     </message>
 
     <message>
+        <name>org.zstack.header.console.APIUpdateCertFilePathMsg</name>
+    </message>
+
+    <message>
         <name>org.zstack.header.console.APIReconnectConsoleProxyAgentMsg</name>
     </message>
 

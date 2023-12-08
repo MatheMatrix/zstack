@@ -84,9 +84,18 @@ public class ConsoleManagerImpl extends AbstractService implements ConsoleManage
     private void handleApiMessage(APIMessage msg) {
         if (msg instanceof APIRequestConsoleAccessMsg) {
             handle((APIRequestConsoleAccessMsg) msg);
+        } else if (msg instanceof APIUpdateCertFilePathMsg) {
+            handle((APIUpdateCertFilePathMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
+    }
+
+    private void handle(APIUpdateCertFilePathMsg msg) {
+        CoreGlobalProperty.CONSOLE_PROXY_CERT_FILE = msg.getCertFilePath();
+        APIUpdateCertFilePathEvent evt = new APIUpdateCertFilePathEvent(msg.getId());
+        evt.setCertFilePath(CoreGlobalProperty.CONSOLE_PROXY_CERT_FILE);
+        bus.publish(evt);
     }
 
     private void handle(final APIRequestConsoleAccessMsg msg) {
