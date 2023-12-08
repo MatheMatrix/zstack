@@ -20,6 +20,7 @@ public class EntityMetadata {
     }
 
     private static Map<Class, Metadata> metadata = new HashMap<>();
+    private static Set<Class> classesWithEncryptColumn = new HashSet<>();
 
     @StaticInit
     static void staticInit() {
@@ -34,6 +35,7 @@ public class EntityMetadata {
 
                 if (f.isAnnotationPresent(EncryptColumn.class)) {
                     m.encryptColumns.add(f.getName());
+                    classesWithEncryptColumn.add(clz);
                 }
             });
 
@@ -65,5 +67,13 @@ public class EntityMetadata {
             return new ArrayList<>();
         }
         return m.encryptColumns;
+    }
+
+    public static boolean hasEncryptFiled(Class clz) {
+        return getEncryptColumn(clz).size() != 0;
+    }
+
+    public static Set<Class> getAllEncryptedClass() {
+        return classesWithEncryptColumn;
     }
 }
