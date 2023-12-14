@@ -124,6 +124,9 @@
         <name>org.zstack.header.vm.APITakeVmConsoleScreenshotMsg</name>
     </message>
     <message>
+        <name>org.zstack.header.vm.APITakeVmProcessIdentifierCreateTimeMsg</name>
+    </message>
+    <message>
         <name>org.zstack.header.vm.APIDeleteVmHostnameMsg</name>
     </message>
     <message>

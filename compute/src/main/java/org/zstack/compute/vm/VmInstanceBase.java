@@ -3237,6 +3237,8 @@ public class VmInstanceBase extends AbstractVmInstance {
             handle((APIFstrimVmMsg) msg);
         } else if (msg instanceof APITakeVmConsoleScreenshotMsg) {
             handle((APITakeVmConsoleScreenshotMsg) msg);
+        } else if (msg instanceof APITakeVmProcessIdentifierCreateTimeMsg) {
+            handle((APITakeVmProcessIdentifierCreateTimeMsg) msg);
         } else {
             VmInstanceBaseExtensionFactory ext = vmMgr.getVmInstanceBaseExtensionFactory(msg);
             if (ext != null) {
@@ -3246,6 +3248,29 @@ public class VmInstanceBase extends AbstractVmInstance {
                 bus.dealWithUnknownMessage(msg);
             }
         }
+    }
+
+    private void handle(APITakeVmProcessIdentifierCreateTimeMsg msg) {
+        APITakeVmProcessIdentifierCreateTimeEvent event = new APITakeVmProcessIdentifierCreateTimeEvent(msg.getId());
+
+        TakeVmProcessIdentifierCreateTimeMsg gmsg = new TakeVmProcessIdentifierCreateTimeMsg();
+        gmsg.setVmInstanceUuid(self.getUuid());
+        gmsg.setHostUuid(self.getHostUuid());
+        bus.makeTargetServiceIdByResourceUuid(gmsg, HostConstant.SERVICE_ID, self.getHostUuid());
+
+        bus.send(gmsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    event.setSuccess(false);
+                    event.setError(reply.getError());
+                } else {
+                    TakeVmProcessIdentifierCreateTimeReply re = (TakeVmProcessIdentifierCreateTimeReply) reply;
+                    event.setCreateTime(re.getCreateTime());
+                }
+                bus.publish(event);
+            }
+        });
     }
 
     private void handle(APITakeVmConsoleScreenshotMsg msg) {

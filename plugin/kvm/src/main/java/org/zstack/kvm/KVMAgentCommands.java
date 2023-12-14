@@ -12,9 +12,7 @@ import org.zstack.header.vm.devices.DeviceAddress;
 import org.zstack.header.vm.devices.VirtualDeviceInfo;
 import org.zstack.network.securitygroup.RuleTO;
 import org.zstack.network.securitygroup.SecurityGroupMembersTO;
-import org.zstack.network.securitygroup.SecurityGroupRuleTO;
 import org.zstack.network.securitygroup.VmNicSecurityTO;
-import org.zstack.network.service.MtuGetter;
 
 import java.io.Serializable;
 import java.util.*;
@@ -4129,6 +4127,30 @@ public class KVMAgentCommands {
 
         public void setImageData(String imageData) {
             this.imageData = imageData;
+        }
+    }
+
+    public static class TakeVmProcessIdentifierCreateTimeCmd extends AgentCommand {
+        private String vmUuid;
+
+        public String getVmUuid() {
+            return vmUuid;
+        }
+
+        public void setVmUuid(String vmUuid) {
+            this.vmUuid = vmUuid;
+        }
+    }
+
+    public static class TakeVmProcessIdentifierCreateTimeRsp extends AgentResponse {
+        private String createTime;
+
+        public String getCreateTime() {
+            return createTime;
+        }
+
+        public void setCreateTime(String createTime) {
+            this.createTime = createTime;
         }
     }
 }

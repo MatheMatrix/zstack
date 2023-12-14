@@ -108,6 +108,7 @@ public interface KVMConstant {
     String KVM_HOST_DETACH_VOLUME_PATH = "/host/volume/detach";
     String KVM_BLOCK_COMMIT_VOLUME_PATH = "/vm/volume/blockcommit";
     String TAKE_VM_CONSOLE_SCREENSHOT_PATH = "/vm/console/screenshot";
+    String TAKE_VM_PROCESS_IDENTIFIER_CREATE_TIME_PATH = "/vm/pid/createtime";
 
     String KVM_AGENT_OWNER = "kvm";
 

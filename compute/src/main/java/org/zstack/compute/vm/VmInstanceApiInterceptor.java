@@ -163,10 +163,20 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             validate((APIFstrimVmMsg) msg);
         } else if (msg instanceof APITakeVmConsoleScreenshotMsg) {
             validate((APITakeVmConsoleScreenshotMsg) msg);
+        } else if (msg instanceof APITakeVmProcessIdentifierCreateTimeMsg) {
+            validate((APITakeVmProcessIdentifierCreateTimeMsg) msg);
         }
 
         setServiceId(msg);
         return msg;
+    }
+
+    private void validate(APITakeVmProcessIdentifierCreateTimeMsg msg) {
+        VmInstanceVO vm = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, msg.getVmInstanceUuid()).find();
+        if (!vm.getState().equals(VmInstanceState.Running)) {
+            throw new ApiMessageInterceptionException(operr(
+                    "can not take vm pid createTime for vm[uuid:%s] which is not Running", msg.getVmInstanceUuid()));
+        }
     }
 
     private void validate(APITakeVmConsoleScreenshotMsg msg) {

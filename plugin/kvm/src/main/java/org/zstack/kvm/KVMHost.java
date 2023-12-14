@@ -679,9 +679,69 @@ public class KVMHost extends HostBase implements Host {
             handle((CommitVolumeOnHypervisorMsg) msg);
         } else if (msg instanceof TakeVmConsoleScreenshotMsg) {
             handle((TakeVmConsoleScreenshotMsg) msg);
+        } else if (msg instanceof TakeVmProcessIdentifierCreateTimeMsg) {
+            handle((TakeVmProcessIdentifierCreateTimeMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
+    }
+
+    private void handle(TakeVmProcessIdentifierCreateTimeMsg msg) {
+        TakeVmProcessIdentifierCreateTimeReply reply = new TakeVmProcessIdentifierCreateTimeReply();
+
+        thdf.singleFlightSubmit(new SingleFlightTask(msg)
+                .setSyncSignature(String.format("take-vm-%s-process-identifier-create-time-on-host-%s", msg.getVmInstanceUuid(), msg.getHostUuid()))
+                .run(completion -> {
+                    takeVmProcessIdentifierCreateTime(msg.getVmInstanceUuid(), msg.getHostUuid(), new ReturnValueCompletion<TakeVmProcessIdentifierCreateTimeRsp>(completion) {
+                        @Override
+                        public void success(TakeVmProcessIdentifierCreateTimeRsp returnValue) {
+                            completion.success(returnValue.getCreateTime());
+                        }
+
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            completion.fail(errorCode);
+                        }
+                    });
+                })
+                .done(result -> {
+                    if (result.isSuccess()) {
+                        String returnValue = (String)result.getResult();
+                        reply.setCreateTime(returnValue);
+                    } else {
+                        reply.setError(result.getErrorCode());
+                    }
+                    bus.reply(msg, reply);
+                })
+        );
+    }
+
+    private void takeVmProcessIdentifierCreateTime(String vmInstanceUuid, String hostUuid, ReturnValueCompletion<TakeVmProcessIdentifierCreateTimeRsp> completion) {
+        TakeVmProcessIdentifierCreateTimeCmd cmd = new TakeVmProcessIdentifierCreateTimeCmd();
+        cmd.setVmUuid(vmInstanceUuid);
+
+        KVMHostAsyncHttpCallMsg kmsg = new KVMHostAsyncHttpCallMsg();
+        kmsg.setCommand(cmd);
+        kmsg.setPath(KVMConstant.TAKE_VM_PROCESS_IDENTIFIER_CREATE_TIME_PATH);
+        kmsg.setHostUuid(hostUuid);
+        bus.makeTargetServiceIdByResourceUuid(kmsg, HostConstant.SERVICE_ID, hostUuid);
+        bus.send(kmsg, new CloudBusCallBack(completion) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    completion.fail(reply.getError());
+                    return;
+                }
+
+                KVMHostAsyncHttpCallReply r = reply.castReply();
+                TakeVmProcessIdentifierCreateTimeRsp rsp = r.toResponse(TakeVmProcessIdentifierCreateTimeRsp.class);
+                if (!rsp.isSuccess()) {
+                    completion.fail(operr(rsp.getError()));
+                } else {
+                    completion.success(r.toResponse(TakeVmProcessIdentifierCreateTimeRsp.class));
+                }
+            }
+        });
     }
 
     private void handle(TakeVmConsoleScreenshotMsg msg) {
