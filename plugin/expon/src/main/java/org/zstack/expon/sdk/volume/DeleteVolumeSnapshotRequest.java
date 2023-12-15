@@ -19,12 +19,23 @@ public class DeleteVolumeSnapshotRequest extends ExponRequest {
     @Param
     private String snapshotId;
 
+    @Param
+    private boolean force;
+
     public String getSnapshotId() {
         return snapshotId;
     }
 
     public void setSnapshotId(String snapshotId) {
         this.snapshotId = snapshotId;
+    }
+
+    public boolean isForce() {
+        return force;
+    }
+
+    public void setForce(boolean force) {
+        this.force = force;
     }
 
     @Override
