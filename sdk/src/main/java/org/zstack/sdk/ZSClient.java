@@ -45,14 +45,14 @@ public class ZSClient {
                 .toFormatter(Locale.ENGLISH);
     }
 
-    private static ZSConfig config;
+    private static ThreadLocal<ZSConfig> config = new ThreadLocal<>();
 
     public static ZSConfig getConfig() {
-        return config;
+        return config.get();
     }
 
     public static void configure(ZSConfig c) {
-        config = c;
+        config.set(c);
 
         if (c.readTimeout != null || c.writeTimeout != null) {
             OkHttpClient.Builder b = new OkHttpClient.Builder();
@@ -215,8 +215,8 @@ public class ZSClient {
                 reqBuilder.addHeader(Constants.HEADER_API_TIMEOUT, action.apiTimeout.toString());
             }
 
-            if (config.webHook != null) {
-                reqBuilder.addHeader(Constants.HEADER_WEBHOOK, config.webHook);
+            if (config.get().webHook != null) {
+                reqBuilder.addHeader(Constants.HEADER_WEBHOOK, config.get().webHook);
             }
 
             try {
@@ -232,7 +232,7 @@ public class ZSClient {
             Request request = reqBuilder.build();
 
             try {
-                if (config.webHook != null) {
+                if (config.get().webHook != null) {
                     waittingApis.put(jobUuid, this);
                 }
 
@@ -245,7 +245,7 @@ public class ZSClient {
                         return writeApiResult(response);
                     } else if (response.code() == 202) {
 
-                        if (config.webHook != null) {
+                        if (config.get().webHook != null) {
                             return webHookResult();
                         } else {
                             return pollResult(response);
@@ -313,11 +313,11 @@ public class ZSClient {
             QueryAction qaction = (QueryAction) action;
 
             HttpUrl.Builder urlBuilder = new HttpUrl.Builder().scheme("http")
-                    .host(config.hostname)
-                    .port(config.port);
+                    .host(config.get().hostname)
+                    .port(config.get().port);
 
-            if (config.contextPath != null) {
-                urlBuilder.addPathSegments(config.contextPath);
+            if (config.get().contextPath != null) {
+                urlBuilder.addPathSegments(config.get().contextPath);
             }
 
             urlBuilder.addPathSegment("v1")
@@ -374,11 +374,11 @@ public class ZSClient {
         private void fillNonQueryApiRequestBuilder(Request.Builder reqBuilder) throws Exception {
             HttpUrl.Builder builder = new HttpUrl.Builder()
                     .scheme("http")
-                    .host(config.hostname)
-                    .port(config.port);
+                    .host(config.get().hostname)
+                    .port(config.get().port);
 
-            if (config.contextPath != null) {
-                builder.addPathSegments(config.contextPath);
+            if (config.get().contextPath != null) {
+                builder.addPathSegments(config.get().contextPath);
             }
 
             // HttpUrl will add an extra / to the path segment
@@ -501,7 +501,7 @@ public class ZSClient {
                         " doesn't return the polling location url", action.getClass().getSimpleName()));
             }
 
-            String configHost = String.format("%s:%s", config.getHostname(), config.getPort());
+            String configHost = String.format("%s:%s", config.get().getHostname(), config.get().getPort());
             if (!pollingUrl.contains(configHost)) {
                 String splitRegex = "/zstack/v1/api-jobs";
                 pollingUrl = String.format("http://%s%s%s", configHost, splitRegex ,pollingUrl.split(splitRegex)[1]);
@@ -687,12 +687,12 @@ public class ZSClient {
 
         private long getTimeout(){
             Long timeout = (Long)action.getNonAPIParameterValue("timeout", false);
-            return timeout == ACTION_DEFAULT_TIMEOUT ? config.defaultPollingTimeout : timeout;
+            return timeout == ACTION_DEFAULT_TIMEOUT ? config.get().defaultPollingTimeout : timeout;
         }
 
         private long getInterval(){
             Long interval = (Long) action.getNonAPIParameterValue("pollingInterval", false);
-            return interval == ACTION_DEFAULT_POLLINGINTERVAL ? config.defaultPollingInterval : interval;
+            return interval == ACTION_DEFAULT_POLLINGINTERVAL ? config.get().defaultPollingInterval : interval;
         }
     }
 
