@@ -14,15 +14,15 @@ doc {
 		since "4.4.0"
 	}
 	field {
-		name "numberGreaterThan"
+		name "numberGreaterThanOrEqual"
 		desc ""
 		type "Long"
-		since "4.4.0"
+		since "4.8.0"
 	}
 	field {
-		name "numberLessThan"
+		name "numberLessThanOrEqual"
 		desc ""
 		type "Long"
-		since "4.4.0"
+		since "4.8.0"
 	}
 }
