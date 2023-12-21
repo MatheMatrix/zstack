@@ -128,7 +128,7 @@ doc {
 					type "String"
 					optional true
 					since "0.6"
-					values ("LinuxBridge","OvsDpdk")
+					values ("LinuxBridge","OvsDpdk","MacVlan")
 				}
 			}
         }

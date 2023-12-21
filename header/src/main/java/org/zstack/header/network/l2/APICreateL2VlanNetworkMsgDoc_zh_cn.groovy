@@ -83,6 +83,7 @@ doc {
 					type "String"
 					optional true
 					since "4.1.0"
+					values ("LinuxBridge","OvsDpdk","MacVlan")
 				}
 				column {
 					name "resourceUuid"
