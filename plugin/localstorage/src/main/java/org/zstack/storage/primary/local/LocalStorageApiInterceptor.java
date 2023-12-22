@@ -11,23 +11,25 @@ import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.ApiMessageInterceptor;
+import org.zstack.header.apimediator.GlobalApiMessageInterceptor;
 import org.zstack.header.apimediator.StopRoutingException;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.host.HostVO_;
+import org.zstack.header.image.APICreateDataVolumeTemplateFromVolumeMsg;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.storage.primary.PrimaryStorageState;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.header.storage.primary.PrimaryStorageVO_;
+import org.zstack.header.storage.snapshot.APIDeleteVolumeSnapshotMsg;
+import org.zstack.header.vm.APICreateVmInstanceMsg;
 import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmInstanceVO_;
-import org.zstack.header.volume.VolumeStatus;
-import org.zstack.header.volume.VolumeType;
-import org.zstack.header.volume.VolumeVO;
-import org.zstack.header.volume.VolumeVO_;
+import org.zstack.header.volume.*;
 import org.zstack.storage.primary.PrimaryStoragePhysicalCapacityManager;
+import org.zstack.utils.CollectionDSL;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +39,7 @@ import static org.zstack.core.Platform.*;
 /**
  * Created by frank on 7/1/2015.
  */
-public class LocalStorageApiInterceptor implements ApiMessageInterceptor {
+public class LocalStorageApiInterceptor implements ApiMessageInterceptor, GlobalApiMessageInterceptor {
     @Autowired
     private ErrorFacade errf;
     @Autowired
@@ -55,6 +57,8 @@ public class LocalStorageApiInterceptor implements ApiMessageInterceptor {
             validate((APILocalStorageMigrateVolumeMsg) msg);
         } else if (msg instanceof APILocalStorageGetVolumeMigratableHostsMsg) {
             validate((APILocalStorageGetVolumeMigratableHostsMsg) msg);
+        } else if (msg instanceof APIAttachDataVolumeToVmMsg) {
+            validate((APIAttachDataVolumeToVmMsg) msg);
         }
 
         return msg;
@@ -192,5 +196,18 @@ public class LocalStorageApiInterceptor implements ApiMessageInterceptor {
         if (url.startsWith("/dev") || url.startsWith("/proc") || url.startsWith("/sys")) {
             throw new ApiMessageInterceptionException(argerr(" the url contains an invalid folder[/dev or /proc or /sys]"));
         }
+    }
+
+    private void validate(APIAttachDataVolumeToVmMsg msg) {
+    }
+
+    @Override
+    public List<Class> getMessageClassToIntercept() {
+        return CollectionDSL.list(APIAttachDataVolumeToVmMsg.class);
+    }
+
+    @Override
+    public InterceptorPosition getPosition() {
+        return InterceptorPosition.END;
     }
 }
