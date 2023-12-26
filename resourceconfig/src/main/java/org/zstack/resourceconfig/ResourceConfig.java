@@ -9,6 +9,9 @@ import org.zstack.core.cloudbus.EventCallback;
 import org.zstack.core.cloudbus.EventFacade;
 import org.zstack.core.config.*;
 import org.zstack.core.db.*;
+import org.zstack.core.thread.ChainTask;
+import org.zstack.core.thread.SyncTaskChain;
+import org.zstack.core.thread.ThreadFacade;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.errorcode.SysErrors;
@@ -41,6 +44,9 @@ public class ResourceConfig {
 
     @Autowired
     private EventFacade evtf;
+
+    @Autowired
+    protected ThreadFacade thdf;
 
     protected GlobalConfig globalConfig;
     private List<Class> resourceClasses;
@@ -402,22 +408,39 @@ public class ResourceConfig {
 
     @Transactional
     protected void updateValueInDb(String resourceUuid, String resourceType, String newValue) {
-        ResourceConfigVO vo = loadConfig(resourceUuid);
-        if (vo != null) {
-            vo.setValue(newValue);
-            dbf.getEntityManager().merge(vo);
-            return;
-        }
+        thdf.chainSubmit(new ChainTask(null) {
+            @Override
+            public String getSyncSignature() {
+                return String.format("update-%s-%s-value-for-%s-%s-in-db", globalConfig.getCategory(), globalConfig.getName(), resourceType, resourceUuid);
+            }
 
-        vo = new ResourceConfigVO();
-        vo.setUuid(Platform.getUuid());
-        vo.setCategory(globalConfig.getCategory());
-        vo.setName(globalConfig.getName());
-        vo.setValue(newValue);
-        vo.setDescription(globalConfig.getDescription());
-        vo.setResourceUuid(resourceUuid);
-        vo.setResourceType(resourceType);
-        dbf.getEntityManager().persist(vo);
+            @Override
+            public void run(SyncTaskChain chain) {
+                ResourceConfigVO vo = loadConfig(resourceUuid);
+                if (vo != null) {
+                    vo.setValue(newValue);
+                    dbf.getEntityManager().merge(vo);
+                    return;
+                }
+
+                vo = new ResourceConfigVO();
+                vo.setUuid(Platform.getUuid());
+                vo.setCategory(globalConfig.getCategory());
+                vo.setName(globalConfig.getName());
+                vo.setValue(newValue);
+                vo.setDescription(globalConfig.getDescription());
+                vo.setResourceUuid(resourceUuid);
+                vo.setResourceType(resourceType);
+                dbf.getEntityManager().persist(vo);
+
+                chain.next();
+            }
+
+            @Override
+            public String getName() {
+                return getSyncSignature();
+            }
+        });
     }
 
     protected void deleteInDb(String resourceUuid) {
