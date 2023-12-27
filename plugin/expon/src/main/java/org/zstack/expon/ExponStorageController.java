@@ -113,21 +113,6 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         apiHelper = new ExponApiHelper(accountInfo, client);
     }
 
-    @Override
-    public void getVolumeStats(VolumeInventory vol, ReturnValueCompletion<VolumeStats> comp) {
-        VolumeModule exponVol = apiHelper.queryVolume(buildVolumeName(vol.getUuid()));
-        if (exponVol == null) {
-            comp.fail(operr("cannot find volume[%s] in expon", vol.getUuid()));
-            return;
-        }
-
-        VolumeStats stats = new VolumeStats();
-        stats.setInstallPath(buildExponPath(exponVol.getPoolName(), exponVol.getId()));
-        stats.setSize(exponVol.getVolumeSize());
-        stats.setActualSize(exponVol.getDataSize());
-        comp.success(stats);
-    }
-
     private UssGatewayModule getUssGateway(VolumeProtocol protocol, String managerIp) {
         String protocolStr;
         if (protocol == VolumeProtocol.NVMEoF) {
@@ -184,7 +169,12 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         }
 
         VhostControllerModule vhost = getOrCreateVhostController(vhostName);
-        apiHelper.addVhostVolumeToUss(exponVol.getId(), vhost.getId(), uss.getId());
+
+        List<UssGatewayModule> boundUss = apiHelper.getVhostControllerBoundUss(vhost.getId());
+        if (boundUss.stream().noneMatch(it -> it.getId().equals(uss.getId()))) {
+            apiHelper.addVhostVolumeToUss(exponVol.getId(), vhost.getId(), uss.getId());
+        }
+
         VhostVolumeTO to = new VhostVolumeTO();
         to.setInstallPath(vhost.getPath());
         return to;
@@ -380,9 +370,10 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
             // TODO support other protocols
         }
 
+
         VolumeModule vol = apiHelper.queryVolume(buildVolumeName(volUuid));
         if (vol == null) {
-            return null;
+            return info;
         }
 
         info.setInstallPath(buildExponPath(vol.getPoolName(), vol.getId()));
@@ -767,15 +758,27 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     public void cloneVolume(String srcInstallPath, CreateVolumeSpec dst, ReturnValueCompletion<VolumeStats> comp) {
         String snapId = getSnapIdFromPath(srcInstallPath);
         VolumeModule vol = apiHelper.cloneVolume(snapId, dst.getName(), ExponVolumeQos.valueOf(dst.getQos()));
+        if (vol.getVolumeSize() < dst.getSize()) {
+            vol = apiHelper.expandVolume(vol.getId(), dst.getSize());
+        }
+
         VolumeStats stats = new VolumeStats();
         stats.setInstallPath(buildExponPath(getPoolNameFromPath(srcInstallPath), vol.getId()));
         stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
+        stats.setSize(vol.getVolumeSize());
         comp.success(stats);
     }
 
     @Override
     public void copyVolume(String srcInstallPath, CreateVolumeSpec dst, ReturnValueCompletion<VolumeStats> comp) {
-        throw new RuntimeException("not supported");
+        String snapId = getSnapIdFromPath(srcInstallPath);
+        VolumeSnapshotModule snap = apiHelper.getVolumeSnapshot(snapId);
+
+        VolumeModule vol = apiHelper.copySnapshot(snapId, snap.getPoolId(), dst.getName(), ExponVolumeQos.valueOf(dst.getQos()));
+        VolumeStats stats = new VolumeStats();
+        stats.setInstallPath(buildExponPath(getPoolNameFromPath(srcInstallPath), vol.getId()));
+        stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
+        comp.success(stats);
     }
 
     @Override
