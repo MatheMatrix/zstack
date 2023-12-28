@@ -145,8 +145,8 @@ public class AnsibleFacadeImpl extends AbstractService implements AnsibleFacade 
                     "if $NEED_INSTALL; then " +
                     "sudo bash -c 'rm -rf /var/lib/zstack/virtualenv/zstacksys && virtualenv /var/lib/zstack/virtualenv/zstacksys --python=python2.7; "+
                     ". /var/lib/zstack/virtualenv/zstacksys/bin/activate; "+
-                    "pip install -i file://%s --trusted-host localhost -I setuptools==39.2.0; "+
-                    "pip install -i file://%s --trusted-host localhost -I ansible==4.10.0'; "+
+                    "TMPDIR=/usr/local/zstack/ pip install -i file://%s --trusted-host localhost -I setuptools==39.2.0; "+
+                    "TMPDIR=/usr/local/zstack/ pip install -i file://%s --trusted-host localhost -I ansible==4.10.0'; "+
                     "fi" , AnsibleConstant.PYPI_REPO, AnsibleConstant.PYPI_REPO), false);
 
 
@@ -208,7 +208,7 @@ public class AnsibleFacadeImpl extends AbstractService implements AnsibleFacade 
 
         arguments.put("zstack_root", AnsibleGlobalProperty.ZSTACK_ROOT);
         arguments.put("pkg_zstacklib", AnsibleGlobalProperty.ZSTACKLIB_PACKAGE_NAME);
-        arguments.putAll(getVariables());
+        getVariables().forEach(arguments::putIfAbsent);
         String playBookPath = msg.getPlayBookPath();
         if (!playBookPath.contains("py")) {
             arguments.put("ansible_ssh_user", arguments.get("remote_user"));

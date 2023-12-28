@@ -4,7 +4,7 @@
     <parent>
         <artifactId>zstack</artifactId>
         <groupId>org.zstack</groupId>
-        <version>4.7.0</version>
+        <version>4.8.0</version>
         <relativePath>..</relativePath>
     </parent>
     <artifactId>plugin</artifactId>
@@ -29,8 +29,10 @@
         <module>vxlan</module>
         <module>acl</module>
         <module>sdnController</module>
+        <module>sugonSdnController</module>
         <module>directory</module>
         <module>sshKeyPair</module>
+        <module>hostNetworkInterface</module>
     </modules>
     <dependencies>
         <dependency>

@@ -5,19 +5,25 @@ import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
+import org.zstack.core.db.SQL;
 import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.ApiMessageInterceptor;
+import org.zstack.header.apimediator.GlobalApiMessageInterceptor;
 import org.zstack.header.apimediator.StopRoutingException;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.identity.AccountConstant;
+import org.zstack.header.identity.AccountResourceRefVO;
+import org.zstack.header.identity.AccountResourceRefVO_;
+import org.zstack.header.identity.APIChangeResourceOwnerMsg;
 import org.zstack.identity.Account;
 import org.zstack.identity.QuotaUtil;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.network.service.NetworkServiceL3NetworkRefVO;
 import org.zstack.header.network.service.NetworkServiceL3NetworkRefVO_;
+import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmNicVO;
 import org.zstack.header.vm.VmNicVO_;
 import org.zstack.utils.Utils;
@@ -46,7 +52,7 @@ import static org.zstack.core.Platform.*;
 
 /**
  */
-public class SecurityGroupApiInterceptor implements ApiMessageInterceptor {
+public class SecurityGroupApiInterceptor implements ApiMessageInterceptor, GlobalApiMessageInterceptor {
     private static CLogger logger = Utils.getLogger(SecurityGroupApiInterceptor.class);
 
     @Autowired
@@ -67,6 +73,19 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor {
             VmNicSecurityGroupMessage vmsg = (VmNicSecurityGroupMessage)msg;
             bus.makeTargetServiceIdByResourceUuid(msg, SecurityGroupConstant.SERVICE_ID, vmsg.getVmNicUuid());
         }
+    }
+
+
+    @Override
+    public List<Class> getMessageClassToIntercept() {
+        List<Class> ret = new ArrayList<>();
+        ret.add(APIChangeResourceOwnerMsg.class);
+        return ret;
+    }
+
+    @Override
+    public InterceptorPosition getPosition() {
+        return InterceptorPosition.END;
     }
 
     @Override
@@ -99,11 +118,33 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor {
             validate((APISetVmNicSecurityGroupMsg) msg);
         } else if (msg instanceof APIValidateSecurityGroupRuleMsg) {
             validate((APIValidateSecurityGroupRuleMsg) msg);
+        } else if (msg instanceof APIChangeResourceOwnerMsg) {
+            validate((APIChangeResourceOwnerMsg) msg);
         }
 
         setServiceId(msg);
 
         return msg;
+    }
+
+
+    private void validate(APIChangeResourceOwnerMsg msg) {
+        AccountResourceRefVO ref = Q.New(AccountResourceRefVO.class).eq(AccountResourceRefVO_.resourceUuid, msg.getResourceUuid()).find();
+        if (ref == null) {
+            return;
+        }
+
+        if (VmInstanceVO.class.getSimpleName().equals(ref.getResourceType())) {
+            List<String> nics = SQL.New("select sgRef.vmNicUuid from VmInstanceVO vm, VmNicVO nic, VmNicSecurityGroupRefVO sgRef" +
+                    " where vm.uuid = :vmUuid" +
+                    " and nic.vmInstanceUuid = vm.uuid" +
+                    " and sgRef.vmNicUuid = nic.uuid", String.class)
+                    .param("vmUuid", ref.getResourceUuid())
+                    .list();
+            if (!nics.isEmpty()) {
+                throw new ApiMessageInterceptionException(argerr("could not change resource owner, because the resource[uuid:%s, type:VmInstance] has already attached security group", msg.getResourceUuid()));
+            }
+        }
     }
 
     private void validate(APIValidateSecurityGroupRuleMsg msg) {
@@ -259,7 +300,6 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor {
         Map<Integer, String> aoMap = new HashMap<Integer, String>();
         List<Integer> adminIntegers = new ArrayList<>();
         final String vmAccountUuid = new QuotaUtil().getResourceOwnerAccountUuid(nic.getVmInstanceUuid());
-
         for (APISetVmNicSecurityGroupMsg.VmNicSecurityGroupRefAO ao : msg.getRefs()) {
 
             if (!Q.New(SecurityGroupVO.class).eq(SecurityGroupVO_.uuid, ao.getSecurityGroupUuid()).isExists()) {
@@ -303,6 +343,7 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor {
                 }
             }
         }
+
 
         if (!AccountConstant.isAdminPermission(msg.getSession())) {
             List<VmNicSecurityGroupRefVO> userRefs = new ArrayList<>();
@@ -906,6 +947,7 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor {
 
         if (SecurityGroupConstant.WORLD_OPEN_CIDR.equals(cidr) || SecurityGroupConstant.WORLD_OPEN_CIDR_IPV6.equals(cidr)) {
             return false;
+
         }
 
         return true;
@@ -926,10 +968,10 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor {
             if (msg.getRemoteSecurityGroupUuids().stream().distinct().count() != msg.getRemoteSecurityGroupUuids().size()) {
                 throw new ApiMessageInterceptionException(argerr("could not add security group rule, because duplicate uuid in remoteSecurityGroupUuids: %s", msg.getRemoteSecurityGroupUuids()));
             }
-            
+
             List<String> sgUuids = Q.New(SecurityGroupVO.class).select(SecurityGroupVO_.uuid).in(SecurityGroupVO_.uuid, msg.getRemoteSecurityGroupUuids()).listValues();
             msg.getRemoteSecurityGroupUuids().stream().forEach(uuid -> {
-                sgUuids.stream().filter(s -> s.equals(uuid)).findFirst().orElseThrow(() -> 
+                sgUuids.stream().filter(s -> s.equals(uuid)).findFirst().orElseThrow(() ->
                         new ApiMessageInterceptionException(argerr("could not add security group rule, because security group[uuid:%s] does not exist", uuid)));
             });
 
@@ -938,7 +980,7 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor {
                     throw new ApiMessageInterceptionException(argerr("could not add security group rule, because the remote security group uuid is conflict"));
                 }
             });
-            
+
             List<APIAddSecurityGroupRuleMsg.SecurityGroupRuleAO> aos = new ArrayList<APIAddSecurityGroupRuleMsg.SecurityGroupRuleAO>();
 
             msg.getRemoteSecurityGroupUuids().stream().forEach(uuid -> {
@@ -978,18 +1020,6 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor {
 
         // Basic check
         for (APIAddSecurityGroupRuleMsg.SecurityGroupRuleAO ao : newRules) {
-            if (!SecurityGroupRuleType.isValid(ao.getType())) {
-                throw new ApiMessageInterceptionException(argerr("could not add security group rule, because invalid rule type[%s], valid types are %s", ao.getType(), SecurityGroupRuleType.getAllType()));
-            }
-
-            if (ao.getState() == null) {
-                ao.setState(SecurityGroupRuleState.Enabled.toString());
-            } else {
-                if (!SecurityGroupRuleState.isValid(ao.getState())) {
-                    throw new ApiMessageInterceptionException(argerr("could not add security group rule, because invalid rule state[%s], valid states are %s", ao.getState(), SecurityGroupRuleState.getAllState()));
-                }
-            }
-
             if (!SecurityGroupRuleProtocolType.isValid(ao.getProtocol())) {
                 throw new ApiMessageInterceptionException(argerr("could not add security group rule, because invalid rule protocol[%s], valid protocols are %s", ao.getProtocol(), SecurityGroupRuleProtocolType.getAllProtocol()));
             }
@@ -1076,6 +1106,7 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor {
                         throw new ApiMessageInterceptionException(argerr("could not add security group rule, because dstPortRange[%s] and starPort[%s] are in conflict", ao.getDstPortRange(), ao.getStartPort()));
                     }
 
+
                     if (ao.getStartPort().equals(ao.getEndPort())) {
                         ao.setDstPortRange(String.valueOf(ao.getStartPort()));
                     } else {
@@ -1095,7 +1126,7 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor {
             for (int j = newRules.size() - 1; j > i; j--) {
                 if (newRules.get(i).equals(newRules.get(j))) {
                     throw new ApiMessageInterceptionException(argerr("could not add security group rule, because rule[%s] and rule[%s] are dupilicated",
-                                    JSONObjectUtil.toJsonString(newRules.get(i)), JSONObjectUtil.toJsonString(newRules.get(j))));
+                            JSONObjectUtil.toJsonString(newRules.get(i)), JSONObjectUtil.toJsonString(newRules.get(j))));
                 }
             }
         }

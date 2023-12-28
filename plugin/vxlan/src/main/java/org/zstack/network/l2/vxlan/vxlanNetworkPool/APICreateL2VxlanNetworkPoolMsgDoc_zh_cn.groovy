@@ -3,11 +3,11 @@ package org.zstack.network.l2.vxlan.vxlanNetworkPool
 import org.zstack.network.l2.vxlan.vxlanNetworkPool.APICreateL2VxlanNetworkPoolEvent
 
 doc {
-    title "CreateL2VxlanNetworkPool"
+    title "创建VXLAN资源池(CreateL2VxlanNetworkPool)"
 
     category "network.l2"
 
-    desc """在这里填写API描述"""
+    desc """创建VXLAN资源池"""
 
     rest {
         request {
@@ -96,7 +96,7 @@ doc {
 				column {
 					name "vSwitchType"
 					enclosedIn "params"
-					desc ""
+					desc "虚拟交换机类型"
 					location "body"
 					type "String"
 					optional true
@@ -111,6 +111,24 @@ doc {
 					type "List"
 					optional true
 					since "3.4.0"
+				}
+				column {
+					name "isolated"
+					enclosedIn "params"
+					desc ""
+					location "body"
+					type "Boolean"
+					optional true
+					since "4.8.0"
+				}
+				column {
+					name "pvlan"
+					enclosedIn "params"
+					desc ""
+					location "body"
+					type "String"
+					optional true
+					since "4.8.0"
 				}
 			}
         }

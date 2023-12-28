@@ -56,6 +56,7 @@ public class KVMRealizeL2NoVlanNetworkBackend implements L2NetworkRealizationExt
         cmd.setL2NetworkUuid(l2Network.getUuid());
         cmd.setDisableIptables(NetworkGlobalProperty.BRIDGE_DISABLE_IPTABLES);
         cmd.setMtu(new MtuGetter().getL2Mtu(l2Network));
+        cmd.setIsolated(l2Network.getIsolated());
 
         KVMHostAsyncHttpCallMsg msg = new KVMHostAsyncHttpCallMsg();
         msg.setCommand(cmd);
@@ -177,15 +178,9 @@ public class KVMRealizeL2NoVlanNetworkBackend implements L2NetworkRealizationExt
     }
     @Override
     public NicTO completeNicInformation(L2NetworkInventory l2Network, L3NetworkInventory l3Network, VmNicInventory nic) {
-        NicTO to = new NicTO();
-        to.setMac(nic.getMac());
-        to.setUuid(nic.getUuid());
+        NicTO to = KVMAgentCommands.NicTO.fromVmNicInventory(nic);
         to.setBridgeName(makeBridgeName(l2Network.getUuid()));
         to.setPhysicalInterface(l2Network.getPhysicalInterface());
-        to.setDeviceId(nic.getDeviceId());
-        to.setNicInternalName(nic.getInternalName());
-        to.setType(nic.getType());
-
         to.setMtu(new MtuGetter().getMtu(l3Network.getUuid()));
 
         return to;

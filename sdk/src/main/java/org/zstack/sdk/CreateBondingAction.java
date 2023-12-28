@@ -28,11 +28,14 @@ public class CreateBondingAction extends AbstractAction {
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.util.List hostUuids;
 
-    @Param(required = true, validRegexValues = "[A-Za-z0-9_-]+", maxLength = 15, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    @Param(required = true, validRegexValues = "^(?![0-9])[A-Za-z0-9_-]+$", maxLength = 7, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String bondingName;
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.util.List slaveUuids;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.util.List slaveNames;
 
     @Param(required = true, validValues = {"LinuxBonding","OvsBonding"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String type = "LinuxBonding";

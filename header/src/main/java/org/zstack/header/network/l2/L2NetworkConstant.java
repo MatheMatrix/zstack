@@ -8,6 +8,8 @@ public interface L2NetworkConstant {
     public static final String SERVICE_ID = "network.l2";
     public static final String L2_VLAN_NETWORK_FACTORY_SERVICE_ID = "network.l2.vlan";
 
+    public static final String L2_PRIVATE_VLAN_SERVICE_ID = "network.l2.pvlan";
+
     public static final String ACTION_CATEGORY = "l2Network";
 
     @PythonClass
@@ -18,6 +20,7 @@ public interface L2NetworkConstant {
     public static final String HARDWARE_VXLAN_NETWORK_POOL_TYPE = "HardwareVxlanNetworkPool";
     @PythonClass
     public static final String HARDWARE_VXLAN_NETWORK_TYPE = "HardwareVxlanNetwork";
+    public static final String L2_TF_NETWORK_TYPE = "TfL2Network";
     @PythonClass
     public static final String VXLAN_NETWORK_TYPE = "VxlanNetwork";
     @PythonClass

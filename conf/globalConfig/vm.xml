@@ -233,7 +233,7 @@
 	<config>
 		<name>resourceBinding.Scene</name>
 		<description>Scenarios supported by resource binding</description>
-		<defaultValue>Auto</defaultValue>
+		<defaultValue>All</defaultValue>
 		<category>vm</category>
 		<type>java.lang.String</type>
 	</config>
@@ -310,4 +310,11 @@
 		<defaultValue>false</defaultValue>
 	</config>
 
+	<config>
+		<category>vm</category>
+		<name>uniqueVmName</name>
+		<description>enable vm name unique</description>
+		<type>java.lang.Boolean</type>
+		<defaultValue>false</defaultValue>
+	</config>
 </globalConfig>

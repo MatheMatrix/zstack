@@ -220,6 +220,10 @@ class EnvSpec extends ApiHelper implements Node  {
 
                 dclasses.each {
                     def action = it.getConstructor().newInstance()
+                    if (delegate.value.inventory == null) {
+                        return
+                    }
+
                     logger.debug("auto-deleting resource by ${it} uuid:${delegate.value.inventory.uuid}")
                     action.uuid = delegate.value.inventory.uuid
                     action.sessionId = session.uuid
@@ -1043,6 +1047,8 @@ class EnvSpec extends ApiHelper implements Node  {
                 ret = handler()
             } else if (handler.maximumNumberOfParameters == 1) {
                 ret = handler(entity)
+            } else if (handler.maximumNumberOfParameters == 3) {
+                ret = handler(req, entity, this)
             } else {
                 ret = handler(entity, this)
             }

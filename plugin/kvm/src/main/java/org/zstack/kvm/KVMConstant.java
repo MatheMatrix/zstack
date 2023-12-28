@@ -106,6 +106,12 @@ public interface KVMConstant {
     String KVM_HOST_PHYSICAL_NIC_ALARM_EVENT = "/host/physicalNic/alarm";
     String KVM_HOST_ATTACH_VOLUME_PATH = "/host/volume/attach";
     String KVM_HOST_DETACH_VOLUME_PATH = "/host/volume/detach";
+    String KVM_BLOCK_COMMIT_VOLUME_PATH = "/vm/volume/blockcommit";
+    String TAKE_VM_CONSOLE_SCREENSHOT_PATH = "/vm/console/screenshot";
+
+    String KVM_HOST_IPSET_ATTACH_NIC_PATH = "/network/ipset/attach";
+    String KVM_HOST_IPSET_DETACH_NIC_PATH = "/network/ipset/detach";
+    String KVM_HOST_IPSET_SYNC_PATH = "/network/ipset/sync";
 
     String KVM_AGENT_OWNER = "kvm";
 
@@ -118,6 +124,7 @@ public interface KVMConstant {
     String CPU_MODE_CUSTOM = "custom";
     String CPU_MODE_HOST_MODEL = "host-model";
     String CPU_MODE_HOST_PASSTHROUGH = "host-passthrough";
+    String CPU_MODE_HYGON_CUSTOMIZED = "Hygon_Customized";
 
     String IPTABLES_COMMENTS = "kvmagent.allow.port";
 
@@ -131,6 +138,10 @@ public interface KVMConstant {
     int IPMI_DEFAULT_PORT = 623;
     int KVM_HOST_POWER_OPERATION_TIMEOUT_SECONDS = 300;
 
+    String KVM_HOST_SKIP_PING_NO_FAILURE_EXTENSIONS = "kvm.host.skip.ping.no.failure.extensions";
+
+
+    public static final String L2_PROVIDER_TYPE_LINUX_BRIDGE = "LinuxBridge";
 
     enum KvmVmState {
         NoState,

@@ -44,3 +44,5 @@ alter table SNSDingTalkAtPersonVO
 
 alter table SNSDingTalkAtPersonVO
     add remark varchar(128) default '' null;
+
+UPDATE ImageEO SET md5sum = NULL where md5sum != 'not calculated';

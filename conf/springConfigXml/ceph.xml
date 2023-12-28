@@ -73,6 +73,12 @@
         </zstack:plugin>
     </bean>
 
+    <bean id="CephTrashCleaner" class="org.zstack.storage.ceph.primary.CephTrashCleaner">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint" />
+        </zstack:plugin>
+    </bean>
+
     <bean id="CephBackupStoragePrimaryStorageExtension" class="org.zstack.storage.ceph.backup.CephBackupStoragePrimaryStorageExtension">
         <zstack:plugin>
             <zstack:extension interface="org.zstack.header.storage.backup.BackupStoragePrimaryStorageExtensionPoint" />
@@ -111,6 +117,12 @@
     </bean>
 
     <bean id="SandStoneCephPrimaryCapacityBaseUpdater" class="org.zstack.storage.ceph.primary.capacity.SandStoneCephPrimaryCapacityBaseUpdater">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.storage.ceph.primary.capacity.CephPrimaryCapacityUpdater"/>
+        </zstack:plugin>
+    </bean>
+
+    <bean id="ZStoneCephPrimaryCapacityBaseUpdater" class="org.zstack.storage.ceph.primary.capacity.ZStoneCephPrimaryCapacityBaseUpdater">
         <zstack:plugin>
             <zstack:extension interface="org.zstack.storage.ceph.primary.capacity.CephPrimaryCapacityUpdater"/>
         </zstack:plugin>

@@ -78,6 +78,8 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
     private TagManager tagMgr;
     @Autowired
     private ResourceConfigFacade rcf;
+    @Autowired
+    protected L3NetworkExtensionPointEmitter extpEmitter;
 
     private Map<String, IpRangeFactory> ipRangeFactories = Collections.synchronizedMap(new HashMap<String, IpRangeFactory>());
     private Map<String, L3NetworkFactory> l3NetworkFactories = Collections.synchronizedMap(new HashMap<String, L3NetworkFactory>());
@@ -425,11 +427,8 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
     }
 
     private void handle(APICreateL3NetworkMsg msg) {
-        SimpleQuery<L2NetworkVO> query = dbf.createQuery(L2NetworkVO.class);
-        query.select(L2NetworkVO_.zoneUuid);
-        query.add(L2NetworkVO_.uuid, Op.EQ, msg.getL2NetworkUuid());
-        String zoneUuid = query.findValue();
-        assert zoneUuid != null;
+        L2NetworkVO l2Vo = Q.New(L2NetworkVO.class).eq(L2NetworkVO_.uuid, msg.getL2NetworkUuid()).find();
+        assert l2Vo.getZoneUuid() != null;
 
         L3NetworkVO vo = new L3NetworkVO();
         if (msg.getResourceUuid() != null) {
@@ -442,10 +441,11 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
         vo.setL2NetworkUuid(msg.getL2NetworkUuid());
         vo.setName(msg.getName());
         vo.setSystem(msg.isSystem());
-        vo.setZoneUuid(zoneUuid);
+        vo.setZoneUuid(l2Vo.getZoneUuid());
         vo.setState(L3NetworkState.Enabled);
         vo.setCategory(L3NetworkCategory.valueOf(msg.getCategory()));
         vo.setEnableIPAM(msg.getEnableIPAM());
+        vo.setIsolated(l2Vo.getIsolated());
         if (msg.getIpVersion() != null) {
             vo.setIpVersion(msg.getIpVersion());
         } else {
@@ -475,6 +475,8 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
                 }
             }
         }
+
+        extpEmitter.afterCreate(inv);
 
         APICreateL3NetworkEvent evt = new APICreateL3NetworkEvent(msg.getId());
         evt.setInventory(inv);

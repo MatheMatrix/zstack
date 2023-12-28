@@ -5,7 +5,7 @@
     <parent>
         <artifactId>zstack</artifactId>
         <groupId>org.zstack</groupId>
-        <version>4.7.0</version>
+        <version>4.8.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -139,6 +139,11 @@
         </dependency>
         <dependency>
             <groupId>org.zstack</groupId>
+            <artifactId>hostNetworkInterface</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.zstack</groupId>
             <artifactId>sdnController</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -155,6 +160,11 @@
         <dependency>
             <groupId>org.zstack</groupId>
             <artifactId>flatNetworkProvider</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.zstack</groupId>
+            <artifactId>sugonSdnController</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

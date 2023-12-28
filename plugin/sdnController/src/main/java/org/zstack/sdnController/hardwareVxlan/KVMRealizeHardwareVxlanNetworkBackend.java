@@ -62,6 +62,7 @@ public class KVMRealizeHardwareVxlanNetworkBackend implements L2NetworkRealizati
         cmd.setVlan(vlanId);
         cmd.setMtu(new MtuGetter().getL2Mtu(vxlan));
         cmd.setL2NetworkUuid(l2Network.getUuid());
+        cmd.setIsolated(vxlan.getIsolated());
 
         int finalVlanId = vlanId;
         KVMHostAsyncHttpCallMsg msg = new KVMHostAsyncHttpCallMsg();
@@ -189,12 +190,8 @@ public class KVMRealizeHardwareVxlanNetworkBackend implements L2NetworkRealizati
         HardwareVxlanHelper.VxlanHostMappingStruct struct = HardwareVxlanHelper.getHardwareVxlanMappingVxlanId(vxlan, host);
         Integer vlanId = struct.getVlanId();
 
-        NicTO to = new NicTO();
-		to.setMac(nic.getMac());
-        to.setUuid(nic.getUuid());
+        NicTO to = KVMAgentCommands.NicTO.fromVmNicInventory(nic);
 		to.setBridgeName(makeBridgeName(l2Network.getUuid(), vlanId));
-		to.setDeviceId(nic.getDeviceId());
-		to.setNicInternalName(nic.getInternalName());
 		to.setMetaData(String.valueOf(vlanId));
         to.setMtu(new MtuGetter().getMtu(l3Network.getUuid()));
 		return to;

@@ -107,4 +107,7 @@
     <import resource="springConfigXml/cas.xml"/>
     <import resource="springConfigXml/directoryManager.xml"/>
     <import resource="springConfigXml/sshKeyPair.xml"/>
+    <import resource="springConfigXml/sugonSdnController.xml"/>
+    <import resource="springConfigXml/TfPortAllocator.xml"/>
+    <import resource="springConfigXml/HostNetworkManager.xml"/>
 </beans>
