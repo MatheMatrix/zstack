@@ -62,7 +62,6 @@ import org.zstack.header.tag.SystemTagValidator;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.header.vm.VmInstanceDeletionPolicyManager.VmInstanceDeletionPolicy;
-import org.zstack.header.vm.cdrom.VmCdRomInventory;
 import org.zstack.header.vm.cdrom.VmCdRomVO;
 import org.zstack.header.vm.cdrom.VmCdRomVO_;
 import org.zstack.header.volume.*;
@@ -1070,6 +1069,13 @@ public class VmInstanceManagerImpl extends AbstractService implements
         creator.recreate = true;
         creator.setTagByTokens(map(e(VmSystemTags.SYNC_PORTS_TOKEN, finalVo.getUuid())));
         creator.create();
+
+        // create no_operation_system tag
+        boolean rootVolumeCreatedWithImage = msg.getImageUuid() != null;
+        boolean hasCdRom = !VmInstanceUtils.extractCdromList(msg).isEmpty();
+        if (!rootVolumeCreatedWithImage && !hasCdRom) {
+            VmSystemTags.NO_OPERATING_SYSTEM.newSystemTagCreator(finalVo.getUuid()).create();
+        }
     }
 
     private List<ErrorCode> extEmitterHandleSystemTag(final CreateVmInstanceMsg msg, final APICreateMessage cmsg, VmInstanceVO finalVo) {

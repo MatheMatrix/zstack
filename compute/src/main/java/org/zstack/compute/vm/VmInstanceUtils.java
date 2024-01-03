@@ -9,13 +9,20 @@ import org.zstack.header.vm.APICreateVmInstanceMsg;
 import org.zstack.header.vm.CreateVmInstanceMsg;
 import org.zstack.header.vm.UpdateVmInstanceMsg;
 import org.zstack.header.vm.UpdateVmInstanceSpec;
+import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.tag.SystemTagUtils;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
+import static org.zstack.compute.vm.VmSystemTags.*;
+
 /**
  * Created by Wenhao.Zhang on 22/03/10
  */
@@ -131,5 +138,28 @@ public class VmInstanceUtils {
                 && rootdiskAO.getSystemTags().contains(VmSystemTags.VIRTIO.getTagFormat())) {
             cmsg.setVirtio(true);
         }
+    }
+
+    public static List<String> extractCdromList(CreateVmInstanceMsg msg) {
+        if (msg.getSystemTags() == null) {
+            return Collections.emptyList();
+        }
+
+        final String tag = msg.getSystemTags().stream()
+                .filter(CREATE_VM_CD_ROM_LIST::isMatch)
+                .findAny()
+                .orElse(null);
+        if (tag == null) {
+            return Collections.emptyList();
+        }
+
+        Map<String, String> tagMap = CREATE_VM_CD_ROM_LIST.getTokensByTag(tag);
+        return Arrays.asList(
+                        tagMap.get(CD_ROM_0),
+                        tagMap.get(CD_ROM_1),
+                        tagMap.get(CD_ROM_2)
+                ).stream()
+                .filter(item -> !VmInstanceConstant.NONE_CDROM.equals(item))
+                .collect(Collectors.toList());
     }
 }
