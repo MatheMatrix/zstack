@@ -39,6 +39,8 @@ import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupInventory;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefVO;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
 import org.zstack.header.storage.snapshot.group.*;
+import org.zstack.header.storage.snapshot.reference.VolumeSnapshotReferenceVO;
+import org.zstack.header.storage.snapshot.reference.VolumeSnapshotReferenceVO_;
 import org.zstack.header.tag.SystemTagVO;
 import org.zstack.header.tag.SystemTagVO_;
 import org.zstack.header.vm.*;
@@ -59,6 +61,7 @@ import org.zstack.utils.TimeUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.ForEachFunction;
 import org.zstack.utils.function.Function;
+import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.TypedQuery;
@@ -1395,6 +1398,10 @@ public class VolumeBase extends AbstractVolume implements Volume {
 
         String newVolumeProvisioning = VOLUME_PROVISIONING_STRATEGY.getTokenByResourceUuid(transientVolume.getUuid(),
                 VolumeVO.class, VOLUME_PROVISIONING_STRATEGY_TOKEN);
+        VolumeDeletionPolicy oldVolumeDeletionPolicy = pluginRgty.getExtensionList(ChangeVolumeProcessingMethodExtensionPoint.class)
+                .stream().map(ext -> ext.getTransientVolumeDeletionPolicy(volume))
+                .filter(Objects::nonNull).findFirst().orElse(VolumeDeletionPolicy.Direct);
+
         FlowChain chain = new SimpleFlowChain();
         chain.setName("cover-volume-from-transient-volume");
         chain.then(new NoRollbackFlow() {
@@ -1403,6 +1410,22 @@ public class VolumeBase extends AbstractVolume implements Volume {
             @Override
             public void run(FlowTrigger trigger, Map data) {
                 new SQLBatch() {
+                    private void changeVolumeSnapshotRefIfNeed() {
+                        if (oldVolumeDeletionPolicy != VolumeDeletionPolicy.Direct) {
+                            return;
+                        }
+                        VolumeSnapshotReferenceVO refVO = Q.New(VolumeSnapshotReferenceVO.class)
+                                .eq(VolumeSnapshotReferenceVO_.referenceVolumeUuid, volume.getUuid())
+                                .find();
+                        if (refVO != null && refVO.getReferenceType().equals(VolumeVO.class.getSimpleName())
+                                && volume.getInstallPath().equals(refVO.getReferenceInstallUrl())
+                                && volume.getUuid().equals(refVO.getReferenceUuid())) {
+                            sql(VolumeSnapshotReferenceVO.class).eq(VolumeSnapshotReferenceVO_.id, refVO.getId())
+                                    .set(VolumeSnapshotReferenceVO_.referenceVolumeUuid, transientVolume.getUuid())
+                                    .update();
+                        }
+                    }
+
                     @Override
                     protected void scripts() {
                         // Do a swap to keep volume uuid ...
@@ -1423,6 +1446,8 @@ public class VolumeBase extends AbstractVolume implements Volume {
                                 .set(VolumeVO_.primaryStorageUuid, transientVolume.getPrimaryStorageUuid())
                                 .set(VolumeVO_.actualSize, transientVolume.getActualSize())
                                 .update();
+
+                        changeVolumeSnapshotRefIfNeed();
                         flush();
                     }
                 }.execute();
@@ -1471,10 +1496,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
                 DeleteVolumeMsg dmsg = new DeleteVolumeMsg();
                 VolumeVO vo = dbf.findByUuid(transientVolume.getUuid(), VolumeVO.class);
 
-                VolumeDeletionPolicy volumeDeletionPolicy = pluginRgty.getExtensionList(ChangeVolumeProcessingMethodExtensionPoint.class)
-                        .stream().map(ext -> ext.getTransientVolumeDeletionPolicy(vo))
-                        .filter(Objects::nonNull).findFirst().orElse(VolumeDeletionPolicy.Direct);
-                dmsg.setDeletionPolicy(volumeDeletionPolicy.toString());
+                dmsg.setDeletionPolicy(oldVolumeDeletionPolicy.toString());
                 dmsg.setUuid(transientVolume.getUuid());
                 dmsg.setDetachBeforeDeleting(true);
                 bus.makeTargetServiceIdByResourceUuid(dmsg, VolumeConstant.SERVICE_ID, transientVolume.getUuid());
