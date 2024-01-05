@@ -533,7 +533,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
         sqlBuilder.append(") nic ")
                 .append("left join (select uuid, name from AccountVO) ac on ac.uuid = nic.accountUuid ")
                 .append("left join (select uuid, name, createDate, state, type from VmInstanceVO) vm ")
-                .append("on vm.uuid = nic.vmInstanceUuid")
+                .append("on vm.uuid = nic.vmInstanceUuid where vm.type = 'UserVm'")
                 .append(" order by ").append(sortBy).append(' ').append(msg.getSortDirection());
         if (!byIp) {
             sqlBuilder.append(" limit ").append(msg.getLimit()).append(" offset ").append(msg.getStart());
@@ -573,9 +573,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
         Map<String, VmInstanceVO> vmvos = vms.stream()
                 .collect(Collectors.toMap(VmInstanceVO::getUuid, inv -> inv));
         Map<String, List<String>> vmToDefaultIpMap = new HashMap<>();
-        Map<String, Tuple> vrInfos = getApplianceVmInfo(vmUuids);
 
-        List<IpStatisticData> copiedElements = new ArrayList<>();
         for (IpStatisticData element : ipStatistics) {
             VmInstanceVO vmvo = vmvos.get(element.getVmInstanceUuid());
             if (vmvo == null) {
@@ -603,45 +601,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
             } else {
                 element.setVmDefaultIp(vmToDefaultIpMap.get(vmvo.getUuid()));
             }
-
-            if (element.getVmInstanceUuid() != null) {
-                Tuple vrInfo = vrInfos.get(element.getVmInstanceUuid());
-                if (vrInfo != null) {
-                    String vmInstanceType = vrInfo.get(1, String.class);
-                    L3NetworkGetIpStatisticExtensionPoint exp = getExtensionPointFactory(vmInstanceType);
-                    if (exp != null) {
-                        List<String> ownerUuids = exp.getParentUuid(element.getVmInstanceUuid(), element.getVipUuid());
-                        if (ownerUuids.size() == 0) {
-                            element.setApplianceVmOwnerUuid(element.getApplianceVmOwnerUuid());
-                        } else if (ownerUuids.size() == 1) {
-                            element.setApplianceVmOwnerUuid(ownerUuids.get(0));
-                        } else {
-                            element.setApplianceVmOwnerUuid(ownerUuids.get(0));
-                            int cn = 1;
-                            while(cn < ownerUuids.size()) {
-                                IpStatisticData copy = new IpStatisticData();
-                                copy.setIp(element.getIp());
-                                copy.setVipUuid(element.getVipUuid());
-                                copy.setVipName(element.getVipName());
-                                copy.setVmInstanceUuid(element.getVmInstanceUuid());
-                                copy.setVmInstanceName(element.getVmInstanceName());
-                                copy.setVmInstanceType(element.getVmInstanceType());
-                                copy.setResourceTypes(element.getResourceTypes());
-                                copy.setState(element.getState());
-                                copy.setUseFor(element.getUseFor());
-                                copy.setCreateDate(element.getCreateDate());
-                                copy.setOwnerName(element.getOwnerName());
-                                copy.setVmDefaultIp(element.getVmDefaultIp());
-                                copy.setApplianceVmOwnerUuid(ownerUuids.get(cn));
-                                copiedElements.add(copy);
-                                cn = cn + 1;
-                            }
-                        }
-                    }
-                }
-            }
         }
-        ipStatistics.addAll(copiedElements);
 
         return ipStatistics;
     }
