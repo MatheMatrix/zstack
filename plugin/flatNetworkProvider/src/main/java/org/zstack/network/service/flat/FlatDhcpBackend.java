@@ -663,8 +663,9 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
 
     private Long countVMNicIp(APIGetL3NetworkIpStatisticMsg msg) {
         if (acntMgr.isAdmin(msg.getSession())) {
-            String sql = "select count(*) from UsedIpVO u, VmNicVO n " +
-                    "where u.l3NetworkUuid = :l3Uuid and u.vmNicUuid = n.uuid";
+            String sql = "select count(*) from UsedIpVO u, VmNicVO n, VmInstanceVO i " +
+                    "where u.l3NetworkUuid = :l3Uuid and u.vmNicUuid = n.uuid and n.vmInstanceUuid = i.uuid " +
+                    "and i.type = 'UserVm'";
             if (StringUtils.isNotEmpty(msg.getIp())) {
                 sql += " and u.ip like '" + msg.getIp() + '\'';
             }
@@ -672,9 +673,9 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
                     .param("l3Uuid", msg.getL3NetworkUuid())
                     .find();
         } else {
-            String sql = "select count(*) from UsedIpVO u, VmNicVO n, AccountResourceRefVO a " +
-                    "where a.accountUuid = :accUuid and u.l3NetworkUuid = :l3Uuid " +
-                    "and u.vmNicUuid = n.uuid and n.uuid = a.resourceUuid";
+            String sql = "select count(*) from UsedIpVO u, VmNicVO n, VmInstanceVO i, AccountResourceRefVO a " +
+                    "where a.accountUuid = :accUuid and u.l3NetworkUuid = :l3Uuid and i.type = 'UserVm'" +
+                    "and u.vmNicUuid = n.uuid and n.vmInstanceUuid = i.uuid and n.uuid = a.resourceUuid";
             if (StringUtils.isNotEmpty(msg.getIp())) {
                 sql += " and u.ip like '" + msg.getIp() + '\'';
             }
