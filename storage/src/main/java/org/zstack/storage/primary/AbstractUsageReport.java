@@ -12,6 +12,7 @@ import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.thread.PeriodicTask;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.header.storage.primary.*;
+import org.zstack.utils.ShellResult;
 import org.zstack.utils.ShellUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.data.SizeUnit;
@@ -23,6 +24,7 @@ import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -188,9 +190,9 @@ public abstract class AbstractUsageReport<T extends PrimaryStorageHistoricalUsag
         }
     }
 
-    protected final Map<String, HistoricalUsage> historicalUsageMap = new HashMap<>();
+    protected final Map<String, HistoricalUsage> historicalUsageMap = new ConcurrentHashMap<>();
 
-    protected final Map<String, usedPhysicalCapacityForecasts> usedPhysicalCapacityForecastsMap = new HashMap<>();
+    protected final Map<String, usedPhysicalCapacityForecasts> usedPhysicalCapacityForecastsMap = new ConcurrentHashMap<>();
 
     public List<Double> getFutureForecastsInPercent(String resourceUuid) {
         if (!usedPhysicalCapacityForecastsMap.containsKey(resourceUuid)) {
@@ -407,25 +409,28 @@ public abstract class AbstractUsageReport<T extends PrimaryStorageHistoricalUsag
     }
 
     private boolean skipCollectUsage(String resourceUuid, LocalDate nowRecordDate) {
-        if (historicalUsageMap.containsKey(resourceUuid) &&
-                historicalUsageMap.get(resourceUuid).getRecordDates()
-                        .contains(Timestamp.valueOf(nowRecordDate.atStartOfDay()).getTime())) {
-            return true;
-        }
+        return historicalUsageMap.containsKey(resourceUuid) && historicalUsageMap.get(resourceUuid).getRecordDates()
+                .contains(Timestamp.valueOf(nowRecordDate.atStartOfDay()).getTime());
+    }
 
-        Map<String, Timestamp> historicalLastUsageRecordDateMap = getHistoricalLastUsageRecordDateMap();
+    private boolean collectUsageWithOutPersist(String resourceUuid, LocalDate nowRecordDate, Map<String, Timestamp> historicalLastUsageRecordDateMap) {
         if (!historicalLastUsageRecordDateMap.containsKey(resourceUuid)) {
-            return false;
+            return true;
         }
 
         long nowRecordDateToEpochMilli = Timestamp.valueOf(nowRecordDate.atStartOfDay()).getTime();
         long lastUsageRecordDateMilli = historicalLastUsageRecordDateMap.get(resourceUuid).getTime();
-        return nowRecordDateToEpochMilli <= lastUsageRecordDateMilli;
+        return nowRecordDateToEpochMilli > lastUsageRecordDateMilli;
     }
 
     protected void collectUsage(LocalDate nowRecordDate) {
+        logger.debug(String.format("start to collect usage, time=%s", nowRecordDate));
+
         List<T> usagesToPersist = new ArrayList<>();
         List<ResourceUsage> resourceUsages = getResourceUsages();
+
+        Map<String, Timestamp> historicalLastUsageRecordDateMap = getHistoricalLastUsageRecordDateMap();
+
         resourceUsages.forEach(usage -> {
             if (skipCollectUsage(usage.getResourceUuid(), nowRecordDate)) {
                 return;
@@ -442,7 +447,10 @@ public abstract class AbstractUsageReport<T extends PrimaryStorageHistoricalUsag
             vo.setTotalPhysicalCapacity(usage.getTotalPhysicalCapacity());
             vo.setUsedPhysicalCapacity(usage.getUsedPhysicalCapacity());
             vo.setRecordDate(Timestamp.valueOf(nowRecordDate.atStartOfDay()));
-            usagesToPersist.add(vo);
+
+            if (collectUsageWithOutPersist(usage.getResourceUuid(), nowRecordDate, historicalLastUsageRecordDateMap)) {
+                usagesToPersist.add(vo);
+            }
 
             historicalUsageMap.computeIfAbsent(usage.getResourceUuid(), k -> new HistoricalUsage(usage.getResourceUuid()));
             historicalUsageMap.get(usage.getResourceUuid()).getHistoricalUsedPhysicalCapacities().add(usage.getUsedPhysicalCapacity());
@@ -459,6 +467,8 @@ public abstract class AbstractUsageReport<T extends PrimaryStorageHistoricalUsag
     }
 
     protected void forecastUsage() {
+        logger.debug(String.format("start to forecast usage, time=%s", LocalDate.now()));
+
         List<String> resourceUuids = getResourceUuids();
 
         resourceUuids.forEach(resourceUuid -> {
