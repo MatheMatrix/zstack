@@ -143,4 +143,34 @@
     <index name="org.zstack.sdnController.header.VxlanClusterMappingVO" baseClass="false">
         <prop name="name"/>
     </index>
+    <index name="org.zstack.baremetal2.provisionnetwork.BareMetal2ProvisionNetworkVO" baseClass="false">
+        <prop name="name"/>
+    </index>
+    <index name="org.zstack.baremetal2.gateway.BareMetal2GatewayVO" baseClass="false">
+        <prop name="name"/>
+    </index>
+    <index name="org.zstack.baremetal2.chassis.BareMetal2ChassisAO" baseClass="true">
+        <prop name="name"/>
+    </index>
+    <index name="org.zstack.baremetal2.chassis.ipmi.BareMetal2IpmiChassisVO" baseClass="false">
+        <prop name="name"/>
+    </index>
+    <index name="org.zstack.baremetal2.configuration.BareMetal2ChassisOfferingVO" baseClass="false">
+        <prop name="name"/>
+    </index>
+    <index name="org.zstack.baremetal2.instance.BareMetal2InstanceVO" baseClass="false">
+        <prop name="name"/>
+    </index>
+    <index name="org.zstack.header.baremetal.pxeserver.BaremetalPxeServerVO" baseClass="false">
+        <prop name="name"/>
+    </index>
+    <index name="org.zstack.header.baremetal.chassis.BaremetalChassisVO" baseClass="false">
+        <prop name="name"/>
+    </index>
+    <index name="org.zstack.header.baremetal.preconfiguration.PreconfigurationTemplateVO" baseClass="false">
+        <prop name="name"/>
+    </index>
+    <index name="org.zstack.header.baremetal.instance.BaremetalInstanceVO" baseClass="false">
+        <prop name="name"/>
+    </index>
 </indexes>
