@@ -907,6 +907,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
         cmd.filtPaths = trash.findTrashInstallPath(msg.getSrcFolderPath(), msg.getSrcPrimaryStorageUuid());
         cmd.isMounted = mounted;
         cmd.volumeInstallPath = msg.getVolumeInstallPath();
+        cmd.dependentFiles = msg.getDependentFiles();
 
         if (!mounted) {
             cmd.options = NfsSystemTags.MOUNT_OPTIONS.getTokenByResourceUuid(dstPsInv.getUuid(), NfsSystemTags.MOUNT_OPTIONS_TOKEN);
@@ -939,7 +940,8 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
         cmd.srcPsMountPath = Q.New(PrimaryStorageVO.class).select(PrimaryStorageVO_.mountPath).eq(PrimaryStorageVO_.uuid, msg.getSrcPsUuid()).findValue();
         cmd.dstPsMountPath = Q.New(PrimaryStorageVO.class).select(PrimaryStorageVO_.mountPath).eq(PrimaryStorageVO_.uuid, msg.getDstPsUuid()).findValue();
         cmd.dstVolumeFolderPath = msg.getDstVolumeFolderPath();
-        cmd.dstImageCacheTemplateFolderPath = msg.getDstImageCacheTemplateFolderPath();
+        cmd.dstImageCacheTemplateFoldersPath = msg.getDstImageCacheTemplateFoldersPath();
+        cmd.primaryStorageUuid = inv.getUuid();
 
         final HostInventory host = nfsFactory.getConnectedHostForOperation(inv).get(0);
         new KvmCommandSender(host.getUuid()).send(cmd, NFS_REBASE_VOLUME_BACKING_FILE_PATH, new KvmCommandFailureChecker() {
