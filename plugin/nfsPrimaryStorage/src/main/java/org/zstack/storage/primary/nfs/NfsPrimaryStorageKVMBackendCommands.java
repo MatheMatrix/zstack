@@ -853,6 +853,7 @@ public class NfsPrimaryStorageKVMBackendCommands {
         public String srcFolderPath;
         public String dstFolderPath;
         public List<String> filtPaths;
+        public List<String> dependentFiles;
 
         public String independentPath;
         public boolean isMounted = false;
