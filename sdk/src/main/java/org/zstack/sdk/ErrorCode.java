@@ -55,9 +55,25 @@ public class ErrorCode  {
     public ErrorCode cause;
     public void setCause(ErrorCode cause) {
         this.cause = cause;
+        if (causes == null) {
+            causes = new java.util.ArrayList();
+        }
+        causes.add(cause);
     }
     public ErrorCode getCause() {
         return this.cause;
+    }
+
+    public java.util.List causes;
+    public void setCauses(java.util.List causes) {
+        if (this.causes == null) {
+            this.causes = causes;
+        } else {
+            this.causes.addAll(causes);
+        }
+    }
+    public java.util.List getCauses() {
+        return this.causes;
     }
 
     public java.util.LinkedHashMap opaque;
