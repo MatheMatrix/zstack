@@ -4,9 +4,6 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.componentloader.PluginRegistry;
-import org.zstack.core.config.GlobalConfigVO;
-import org.zstack.core.config.GlobalConfigVO_;
-import org.zstack.core.db.Q;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.allocator.*;
 import org.zstack.header.core.ReturnValueCompletion;
@@ -16,12 +13,12 @@ import org.zstack.header.host.HostInventory;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.utils.DebugUtils;
-import org.zstack.utils.SizeUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.err;
@@ -34,6 +31,8 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     private static final CLogger logger = Utils.getLogger(HostAllocatorChain.class);
 
     private HostAllocatorSpec allocationSpec;
+    private HostAllocatorResults results;
+
     private String name;
     private List<AbstractHostAllocatorFlow> flows;
 
@@ -43,7 +42,8 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     private List<HostVO> result = null;
     private boolean isDryRun;
     private ReturnValueCompletion<List<HostInventory>> completion;
-    private ReturnValueCompletion<List<HostInventory>> dryRunCompletion;
+    private ReturnValueCompletion<List<HostInventory>> useCompletion;
+    private Consumer<ReturnValueCompletion<List<HostInventory>>> doneHandler;
 
     private int skipCounter = 0;
 
@@ -85,36 +85,7 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     }
 
     private void done() {
-        if (result == null) {
-            if (isDryRun) {
-                if (HostAllocatorError.NO_AVAILABLE_HOST.toString().equals(errorCode.getCode())) {
-                    dryRunCompletion.success(new ArrayList<HostInventory>());
-                } else {
-                    dryRunCompletion.fail(errorCode);
-                }
-            } else {
-                completion.fail(errorCode);
-            }
-            return;
-        }
-
-        // in case a wrong flow returns an empty result set
-        if (result.isEmpty()) {
-            if (isDryRun) {
-                dryRunCompletion.fail(err(HostAllocatorError.NO_AVAILABLE_HOST,
-                        "host allocation flow doesn't indicate any details"));
-            } else {
-                completion.fail(err(HostAllocatorError.NO_AVAILABLE_HOST,
-                        "host allocation flow doesn't indicate any details"));
-            }
-            return;
-        }
-
-        if (isDryRun) {
-            dryRunCompletion.success(HostInventory.valueOf(result));
-        } else {
-            completion.success(HostInventory.valueOf(result));
-        }
+        doneHandler.accept(useCompletion);
     }
 
     private void startOver() {
@@ -150,10 +121,6 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     }
 
     private void start() {
-        for (HostAllocatorPreStartExtensionPoint processor : pluginRgty.getExtensionList(HostAllocatorPreStartExtensionPoint.class)) {
-            processor.beforeHostAllocatorStart(allocationSpec, flows);
-        }
-
         if (HostAllocatorGlobalConfig.USE_PAGINATION.value(Boolean.class)) {
             paginationInfo = new HostAllocationPaginationInfo();
             paginationInfo.setLimit(HostAllocatorGlobalConfig.PAGINATION_LIMIT.value(Integer.class));
@@ -161,18 +128,6 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
         it = flows.iterator();
         DebugUtils.Assert(it.hasNext(), "can not run an empty host allocation chain");
         runFlow(it.next());
-    }
-
-    private void allocate(ReturnValueCompletion<List<HostInventory>> completion) {
-        isDryRun = false;
-        this.completion = completion;
-        start();
-    }
-
-    private void dryRun(ReturnValueCompletion<List<HostInventory>> completion) {
-        isDryRun = true;
-        this.dryRunCompletion = completion;
-        start();
     }
 
     @Override
@@ -238,14 +193,54 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     }
 
     @Override
-    public void allocate(HostAllocatorSpec spec, ReturnValueCompletion<List<HostInventory>> completion) {
-        this.allocationSpec = spec;
-        allocate(completion);
+    public void allocate(HostAllocatorResults results, ReturnValueCompletion<List<HostInventory>> completion) {
+        this.results = results;
+        this.allocationSpec = results.spec;
+        isDryRun = false;
+        this.completion = this.useCompletion = completion;
+        this.doneHandler = this::allocateDone;
+        start();
+    }
+
+    private void allocateDone(ReturnValueCompletion<List<HostInventory>> completion) {
+        if (result == null) {
+            completion.fail(errorCode);
+            return;
+        }
+
+        if (result.isEmpty()) {
+            completion.fail(err(HostAllocatorError.NO_AVAILABLE_HOST,
+                    "host allocation flow doesn't indicate any details"));
+            return;
+        }
+        completion.success(HostInventory.valueOf(result));
     }
 
     @Override
-    public void dryRun(HostAllocatorSpec spec, ReturnValueCompletion<List<HostInventory>> completion) {
-        this.allocationSpec = spec;
-        dryRun(completion);
+    public void dryRun(HostAllocatorResults results, ReturnValueCompletion<List<HostInventory>> completion) {
+        this.results = results;
+        this.allocationSpec = results.spec;
+        isDryRun = true;
+        this.useCompletion = completion;
+        this.doneHandler = this::dryRunDone;
+        start();
+    }
+
+    private void dryRunDone(ReturnValueCompletion<List<HostInventory>> completion) {
+        if (result == null) {
+            if (HostAllocatorError.NO_AVAILABLE_HOST.toString().equals(errorCode.getCode())) {
+                completion.success(new ArrayList<>());
+            } else {
+                completion.fail(errorCode);
+            }
+            return;
+        }
+
+        if (result.isEmpty()) {
+            completion.fail(err(HostAllocatorError.NO_AVAILABLE_HOST,
+                    "host allocation flow doesn't indicate any details"));
+            return;
+        }
+        completion.success(HostInventory.valueOf(result));
     }
 }

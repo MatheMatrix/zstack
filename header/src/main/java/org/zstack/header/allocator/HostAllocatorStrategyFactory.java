@@ -6,6 +6,4 @@ public interface HostAllocatorStrategyFactory {
     HostAllocatorStrategy getHostAllocatorStrategy();
 
     HostSortorStrategy getHostSortorStrategy();
-
-    void marshalSpec(HostAllocatorSpec spec, AllocateHostMsg msg);
 }

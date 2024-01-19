@@ -14,14 +14,12 @@ import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
-import org.zstack.core.workflow.FlowChainBuilder;
+import org.zstack.core.workflow.SimpleFlowChain;
 import org.zstack.header.AbstractService;
 import org.zstack.header.allocator.*;
 import org.zstack.header.allocator.datatypes.CpuMemoryCapacityData;
 import org.zstack.header.cluster.ClusterVO;
-import org.zstack.header.cluster.ClusterVO_;
 import org.zstack.header.cluster.ReportHostCapacityMessage;
-import org.zstack.header.core.Completion;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
@@ -39,7 +37,6 @@ import org.zstack.header.vm.VmAbnormalLifeCycleExtensionPoint;
 import org.zstack.header.vm.VmAbnormalLifeCycleStruct;
 import org.zstack.header.vm.VmAbnormalLifeCycleStruct.VmAbnormalLifeCycleOperation;
 import org.zstack.header.vm.VmInstanceState;
-import org.zstack.header.volume.VolumeFormat;
 import org.zstack.header.zone.ZoneVO;
 import org.zstack.query.QueryFacade;
 import org.zstack.utils.CollectionUtils;
@@ -368,6 +365,9 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
     }
 
     private void handle(final AllocateHostMsg msg) {
+        HostAllocatorSpec spec = HostAllocatorSpec.fromAllocationMsg(msg);
+        spec.setBackupStoragePrimaryStorageMetrics(backupStoragePrimaryStorageMetrics);
+
         if (HostAllocatorGlobalConfig.HOST_ALLOCATOR_ALLOW_CONCURRENT.value(Boolean.class)) {
             thdf.chainSubmit(new ChainTask(msg) {
                 @Override
@@ -377,14 +377,16 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
 
                 @Override
                 public void run(SyncTaskChain chain) {
-                    doHandleAllocateHost(msg, new Completion(chain) {
+                    allocateHost(spec, new ReturnValueCompletion<HostAllocatorResults>(chain) {
                         @Override
-                        public void success() {
+                        public void success(HostAllocatorResults results) {
+                            bus.reply(msg, results.createReply());
                             chain.next();
                         }
 
                         @Override
                         public void fail(ErrorCode errorCode) {
+                            bus.reply(msg, HostAllocatorResults.createReply(errorCode));
                             chain.next();
                         }
                     });
@@ -412,14 +414,16 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
 
             @Override
             public void run(SyncTaskChain chain) {
-                doHandleAllocateHost(msg, new Completion(chain) {
+                allocateHost(spec, new ReturnValueCompletion<HostAllocatorResults>(chain) {
                     @Override
-                    public void success() {
+                    public void success(HostAllocatorResults results) {
+                        bus.reply(msg, results.createReply());
                         chain.next();
                     }
 
                     @Override
                     public void fail(ErrorCode errorCode) {
+                        bus.reply(msg, HostAllocatorResults.createReply(errorCode));
                         chain.next();
                     }
                 });
@@ -432,30 +436,161 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
         });
     }
 
-    private void doHandleAllocateHost(final AllocateHostMsg msg, Completion completion) {
-        HostAllocatorSpec spec = HostAllocatorSpec.fromAllocationMsg(msg);
-        spec.setBackupStoragePrimaryStorageMetrics(backupStoragePrimaryStorageMetrics);
+    @SuppressWarnings("rawtypes")
+    private void allocateHost(HostAllocatorSpec spec, ReturnValueCompletion<HostAllocatorResults> completion) {
+        triggerBeforeAllocateHostExtensions(spec);
 
-        String hvType = spec.getHypervisorType();
-        if (hvType == null && msg instanceof DesignatedAllocateHostMsg) {
-            DesignatedAllocateHostMsg dmsg = (DesignatedAllocateHostMsg) msg;
-            if (dmsg.getHostUuid() != null) {
-                hvType = Q.New(HostVO.class).eq(HostVO_.uuid, dmsg.getHostUuid()).select(HostVO_.hypervisorType).findValue();
-            } else if (!org.apache.commons.collections.CollectionUtils.isEmpty(dmsg.getClusterUuids())) {
-                List<String> hvTypes = Q.New(ClusterVO.class).in(ClusterVO_.uuid, dmsg.getClusterUuids())
-                        .groupBy(ClusterVO_.hypervisorType).select(ClusterVO_.hypervisorType).listValues();
-                hvType = hvTypes.size() == 1 ? hvTypes.get(0) : null;
+        final HostAllocatorStrategyFactory factory = findHostAllocatorStrategy(spec);
+        final HostAllocatorResults results = new HostAllocatorResults()
+                .withSpec(spec)
+                .withAllocatorStrategyFactory(factory);
+        HostAllocatorStrategy strategy = factory.getHostAllocatorStrategy();
+        HostSortorStrategy sortors = factory.getHostSortorStrategy();
+
+        SimpleFlowChain chain = new SimpleFlowChain();
+        chain.setChainName("allocate-host");
+        chain.then(new NoRollbackFlow() {
+            String __name__ = "allocate-host-candidates-dry-run";
+
+            @Override
+            public boolean skip(Map data) {
+                return !spec.isDryRun();
             }
-        }
 
-        if (hvType == null && msg.getImage() != null && !msg.isDryRun()) {
-            HypervisorType type = VolumeFormat.getMasterHypervisorTypeByVolumeFormat(msg.getImage().getFormat());
-            if (type != null) {
-                hvType = type.toString();
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                strategy.dryRun(results, new ReturnValueCompletion<List<HostInventory>>(trigger) {
+                    @Override
+                    public void success(List<HostInventory> hosts) {
+                        results.results = hosts;
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        trigger.fail(errorCode);
+                    }
+                });
             }
-        }
-        spec.setHypervisorType(hvType);
+        }).then(new NoRollbackFlow() {
+            String __name__ = "sort-host-candidates-dry-run";
 
+            @Override
+            public boolean skip(Map data) {
+                return !spec.isDryRun() || CollectionUtils.isEmpty(results.results);
+            }
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                sortors.dryRunSort(spec, results.results, new ReturnValueCompletion<List<HostInventory>>(trigger) {
+                    @Override
+                    public void success(List<HostInventory> returnValue) {
+                        results.results = returnValue;
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        trigger.fail(errorCode);
+                    }
+                });
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "allocate-host-candidates";
+
+            @Override
+            public boolean skip(Map data) {
+                return spec.isDryRun();
+            }
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                strategy.allocate(results, new ReturnValueCompletion<List<HostInventory>>(trigger) {
+                    @Override
+                    public void success(List<HostInventory> returnValue) {
+                        results.results = returnValue;
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        trigger.fail(errorCode);
+                    }
+                });
+            }
+        }).then(new Flow() {
+            String __name__ = "sort-and-reserve-host-capacity";
+
+            @Override
+            public boolean skip(Map data) {
+                return spec.isDryRun() || CollectionUtils.isEmpty(results.results);
+            }
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                sortors.sort(spec, results.results, new ReturnValueCompletion<HostInventory>(trigger) {
+                    @Override
+                    public void success(HostInventory returnValue) {
+                        results.firstCandidate = returnValue;
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        trigger.fail(errorCode);
+                    }
+                });
+            }
+
+            @Override
+            public void rollback(FlowRollback trigger, Map data) {
+                if (results.firstCandidate == null) {
+                    trigger.rollback();
+                    return;
+                }
+
+                ReturnHostCapacityMsg rmsg = new ReturnHostCapacityMsg();
+                rmsg.setHostUuid(results.firstCandidate.getUuid());
+                rmsg.setMemoryCapacity(spec.getMemoryCapacity());
+                rmsg.setCpuCapacity(spec.getCpuCapacity());
+                bus.makeTargetServiceIdByResourceUuid(rmsg, HostAllocatorConstant.SERVICE_ID, rmsg.getHostUuid());
+                bus.send(rmsg);
+                trigger.rollback();
+            }
+        }).then(new NoRollbackFlow() {
+            @Override
+            public boolean skip(Map data) {
+                return spec.isDryRun();
+            }
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                String hostUuid = results.firstCandidate == null ? null : results.firstCandidate.getUuid();
+                for (HostAllocateExtensionPoint exp: pluginRgty.getExtensionList(HostAllocateExtensionPoint.class)) {
+                    exp.beforeAllocateHostSuccessReply(spec, hostUuid);
+                }
+                trigger.next();
+            }
+        }).done(new FlowDoneHandler(completion) {
+            @Override
+            public void handle(Map data) {
+                completion.success(results);
+            }
+        }).error(new FlowErrorHandler(completion) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                completion.fail(errCode);
+            }
+        }).start();
+    }
+
+    private void triggerBeforeAllocateHostExtensions(HostAllocatorSpec spec) {
+        for (BeforeAllocateHostExtensionPoint ext : pluginRgty.getExtensionList(BeforeAllocateHostExtensionPoint.class)) {
+            ext.beforeAllocateHost(spec);
+        }
+    }
+
+    private HostAllocatorStrategyFactory findHostAllocatorStrategy(HostAllocatorSpec spec) {
         String allocatorStrategyType = null;
         for (HostAllocatorStrategyExtensionPoint ext : pluginRgty.getExtensionList(HostAllocatorStrategyExtensionPoint.class)) {
             allocatorStrategyType = ext.getHostAllocatorStrategyName(spec);
@@ -466,133 +601,12 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
         }
 
         if (allocatorStrategyType == null) {
-            allocatorStrategyType = msg.getAllocatorStrategy();
+            allocatorStrategyType = spec.getDefaultAllocatorStrategy();
         }
 
         HostAllocatorStrategyFactory factory = getHostAllocatorStrategyFactory(HostAllocatorStrategyType.valueOf(allocatorStrategyType));
         logger.debug("found strategy factory: " + factory.getClass().getSimpleName());
-        HostAllocatorStrategy strategy = factory.getHostAllocatorStrategy();
-        HostSortorStrategy sortors = factory.getHostSortorStrategy();
-
-        factory.marshalSpec(spec, msg);
-
-        if (msg.isDryRun()) {
-            final AllocateHostDryRunReply reply = new AllocateHostDryRunReply();
-            strategy.dryRun(spec, new ReturnValueCompletion<List<HostInventory>>(msg) {
-                @Override
-                public void success(List<HostInventory> hosts) {
-                    if (hosts.isEmpty()){
-                        reply.setHosts(new ArrayList<>());
-                        bus.reply(msg, reply);
-                        completion.success();
-                        return;
-                    }
-
-                    sortors.dryRunSort(spec, hosts, new ReturnValueCompletion<List<HostInventory>>(msg) {
-                        @Override
-                        public void success(List<HostInventory> returnValue) {
-                            reply.setHosts(returnValue);
-                            bus.reply(msg, reply);
-                            completion.success();
-                        }
-
-                        @Override
-                        public void fail(ErrorCode errorCode) {
-                            reply.setError(errorCode);
-                            bus.reply(msg, reply);
-                            completion.fail(errorCode);
-                        }
-                    });
-                }
-
-                @Override
-                public void fail(ErrorCode errorCode) {
-                    reply.setError(errorCode);
-                    bus.reply(msg, reply);
-                    completion.fail(errorCode);
-                }
-            });
-        } else {
-            final AllocateHostReply reply = new AllocateHostReply();
-            FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
-
-            String allocatedHosts = "HOST_CANDIDATES";
-            chain.setName("do-handle-allocate-host-flow");
-            chain.then(new NoRollbackFlow() {
-                String __name__ = "allocate-host-candidates";
-
-                @Override
-                public void run(FlowTrigger trigger, Map data) {
-                    strategy.allocate(spec, new ReturnValueCompletion<List<HostInventory>>(trigger) {
-                        @Override
-                        public void success(List<HostInventory> returnValue) {
-                            data.put(allocatedHosts, returnValue);
-                            trigger.next();
-                        }
-
-                        @Override
-                        public void fail(ErrorCode errorCode) {
-                            trigger.fail(errorCode);
-                        }
-                    });
-                }
-            }).then(new Flow() {
-                String __name__ = "sort-and-reserve-host-capacity";
-
-                @Override
-                public boolean skip(Map data) {
-                    return reply.getHost() != null;
-                }
-
-                @Override
-                public void run(FlowTrigger trigger, Map data) {
-                    sortors.sort(spec, (List<HostInventory>) data.get(allocatedHosts), new ReturnValueCompletion<HostInventory>(completion, msg) {
-                        @Override
-                        public void success(HostInventory returnValue) {
-                            reply.setHost(returnValue);
-                            trigger.next();
-                        }
-
-                        @Override
-                        public void fail(ErrorCode errorCode) {
-                            trigger.fail(errorCode);
-                        }
-                    });
-                }
-
-                @Override
-                public void rollback(FlowRollback trigger, Map data) {
-                    ReturnHostCapacityMsg rmsg = new ReturnHostCapacityMsg();
-                    rmsg.setHostUuid(reply.getHost().getUuid());
-                    rmsg.setMemoryCapacity(spec.getMemoryCapacity());
-                    rmsg.setCpuCapacity(spec.getCpuCapacity());
-                    bus.makeTargetServiceIdByResourceUuid(rmsg, HostAllocatorConstant.SERVICE_ID, rmsg.getHostUuid());
-                    bus.send(rmsg);
-                    trigger.rollback();
-                }
-            }).then(new NoRollbackFlow() {
-                @Override
-                public void run(FlowTrigger trigger, Map data) {
-                    for (HostAllocateExtensionPoint exp: pluginRgty.getExtensionList(HostAllocateExtensionPoint.class)) {
-                        exp.beforeAllocateHostSuccessReply(spec, reply.getHost().getUuid());
-                    }
-                    trigger.next();
-                }
-            }).done(new FlowDoneHandler(completion, msg) {
-                @Override
-                public void handle(Map data) {
-                    bus.reply(msg, reply);
-                    completion.success();
-                }
-            }).error(new FlowErrorHandler(completion, msg) {
-                @Override
-                public void handle(ErrorCode errCode, Map data) {
-                    reply.setError(errCode);
-                    bus.reply(msg, reply);
-                    completion.fail(errCode);
-                }
-            }).start();
-        }
+        return factory;
     }
 
     private void handleApiMessage(APIMessage msg) {

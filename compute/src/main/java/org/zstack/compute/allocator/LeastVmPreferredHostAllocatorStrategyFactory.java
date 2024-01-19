@@ -18,7 +18,7 @@ public class LeastVmPreferredHostAllocatorStrategyFactory extends AbstractHostAl
 
 	@Override
 	public void beforeAllocateHostSuccessReply(HostAllocatorSpec spec, String replyHostUuid) {
-		if (!HostAllocatorConstant.LEAST_VM_PREFERRED_HOST_ALLOCATOR_STRATEGY_TYPE.equals(spec.getAllocatorStrategy())) {
+		if (!HostAllocatorConstant.LEAST_VM_PREFERRED_HOST_ALLOCATOR_STRATEGY_TYPE.equals(spec.getDefaultAllocatorStrategy())) {
 			return;
 		}
 

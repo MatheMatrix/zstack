@@ -63,6 +63,12 @@
         <property name="backupStoragePrimaryStorageMetrics" ref="BackupStoragePrimaryStorageMetrics"/>
     </bean>
 
+    <bean id="CloudHostAllocator" class="org.zstack.compute.allocator.preset.CloudHostAllocator">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.allocator.BeforeAllocateHostExtensionPoint"/>
+        </zstack:plugin>
+    </bean>
+
     <bean id="HostCapacityReserveManager" class="org.zstack.compute.allocator.HostCapacityReserveManagerImpl">
         <zstack:plugin>
             <zstack:extension interface="org.zstack.header.Component"/>

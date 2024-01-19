@@ -18,7 +18,7 @@ public class StoppedVmAwareLeastVmPreferredHostAllocatorStrategyFactory extends 
 
 	@Override
 	public void beforeAllocateHostSuccessReply(HostAllocatorSpec spec, String replyHostUuid) {
-		if (!HostAllocatorConstant.STOPPED_VM_AWARE_LEAST_VM_PREFERRED_HOST_ALLOCATOR_STRATEGY_TYPE.equals(spec.getAllocatorStrategy())) {
+		if (!HostAllocatorConstant.STOPPED_VM_AWARE_LEAST_VM_PREFERRED_HOST_ALLOCATOR_STRATEGY_TYPE.equals(spec.getDefaultAllocatorStrategy())) {
 			return;
 		}
 	}

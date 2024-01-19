@@ -16,12 +16,11 @@ public class HostAllocatorSpec {
     private List<String> l3NetworkUuids;
     private long diskSize;
     private String hypervisorType;
-    private String allocatorStrategy;
+    private String defaultAllocatorStrategy;
     private VmInstanceInventory vmInstance;
     private ImageInventory image;
     private String vmOperation;
     private List<DiskOfferingInventory> diskOfferings = new ArrayList<>();
-    private Map<Object, Object> extraData = new HashMap<>();
     private boolean allowNoL3Networks;
     private boolean listAllHosts;
     private String requiredBackupStorageUuid;
@@ -37,6 +36,12 @@ public class HostAllocatorSpec {
     private long oldMemoryCapacity = 0;
     private AllocationScene allocationScene;
     private String architecture;
+
+    // from DesignatedAllocateHostMsg
+    private boolean designated;
+    private String designatedZoneUuid;
+    private List<String> designatedClusterUuids;
+    private String designatedHostUuid;
 
     public AllocationScene getAllocationScene() {
         return allocationScene;
@@ -182,12 +187,12 @@ public class HostAllocatorSpec {
         this.hypervisorType = hypervisorType;
     }
 
-    public String getAllocatorStrategy() {
-        return allocatorStrategy;
+    public String getDefaultAllocatorStrategy() {
+        return defaultAllocatorStrategy;
     }
 
-    public void setAllocatorStrategy(String allocatorStrategy) {
-        this.allocatorStrategy = allocatorStrategy;
+    public void setDefaultAllocatorStrategy(String defaultAllocatorStrategy) {
+        this.defaultAllocatorStrategy = defaultAllocatorStrategy;
     }
 
     public VmInstanceInventory getVmInstance() {
@@ -196,14 +201,6 @@ public class HostAllocatorSpec {
 
     public void setVmInstance(VmInstanceInventory vmInstance) {
         this.vmInstance = vmInstance;
-    }
-
-    public Map<Object, Object> getExtraData() {
-        return extraData;
-    }
-
-    public void setExtraData(Map<Object, Object> extraData) {
-        this.extraData = extraData;
     }
 
     public ImageInventory getImage() {
@@ -222,9 +219,29 @@ public class HostAllocatorSpec {
         this.architecture = architecture;
     }
 
+    // no set methods
+    public boolean isDesignated() {
+        return designated;
+    }
+
+    // no set methods
+    public String getDesignatedZoneUuid() {
+        return designatedZoneUuid;
+    }
+
+    // no set methods
+    public List<String> getDesignatedClusterUuids() {
+        return designatedClusterUuids;
+    }
+
+    // no set methods
+    public String getDesignatedHostUuid() {
+        return designatedHostUuid;
+    }
+
     public static HostAllocatorSpec fromAllocationMsg(AllocateHostMsg msg) {
         HostAllocatorSpec spec = new HostAllocatorSpec();
-        spec.setAllocatorStrategy(msg.getAllocatorStrategy());
+        spec.setDefaultAllocatorStrategy(msg.getAllocatorStrategy());
         spec.setAvoidHostUuids(msg.getAvoidHostUuids());
         spec.setSoftAvoidHostUuids(msg.getSoftAvoidHostUuids());
         spec.setCpuCapacity(msg.getCpuCapacity());
@@ -252,6 +269,15 @@ public class HostAllocatorSpec {
         spec.setArchitecture(msg.getArchitecture());
         if (msg.getSystemTags() != null && !msg.getSystemTags().isEmpty()){
             spec.setSystemTags(new ArrayList<String>(msg.getSystemTags()));
+        }
+
+        if (msg instanceof DesignatedAllocateHostMsg) {
+            final DesignatedAllocateHostMsg castMsg = (DesignatedAllocateHostMsg) msg;
+            spec.designated = true;
+            spec.designatedZoneUuid = castMsg.getZoneUuid();
+            spec.designatedClusterUuids = castMsg.getClusterUuids() == null ?
+                    Collections.emptyList() : castMsg.getClusterUuids();
+            spec.designatedHostUuid = castMsg.getHostUuid();
         }
 
         return spec;

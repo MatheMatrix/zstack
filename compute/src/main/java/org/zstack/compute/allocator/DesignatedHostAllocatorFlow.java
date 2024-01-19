@@ -8,7 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.Platform;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
-import org.zstack.header.allocator.HostAllocatorConstant;
 import org.zstack.header.host.HostState;
 import org.zstack.header.host.HostStatus;
 import org.zstack.header.host.HostVO;
@@ -76,9 +75,9 @@ public class DesignatedHostAllocatorFlow extends AbstractHostAllocatorFlow {
 
     @Override
     public void allocate() {
-        String zoneUuid = (String) spec.getExtraData().get(HostAllocatorConstant.LocationSelector.zone);
-        List<String> clusterUuids = (List<String>) spec.getExtraData().get(HostAllocatorConstant.LocationSelector.cluster);
-        String hostUuid = (String) spec.getExtraData().get(HostAllocatorConstant.LocationSelector.host);
+        String zoneUuid = spec.getDesignatedZoneUuid();
+        List<String> clusterUuids = spec.getDesignatedClusterUuids();
+        String hostUuid = spec.getDesignatedHostUuid();
 
         if (zoneUuid == null && CollectionUtils.isEmpty(clusterUuids) && hostUuid == null && spec.getHypervisorType() == null) {
             next(candidates);
