@@ -1231,13 +1231,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         msg.setVirtio(true);
     }
 
-    private void validate(APICreateVmInstanceMsg msg) {
-        validate((NewVmInstanceMessage2) msg);
-
-        if (CollectionUtils.isNotEmpty(msg.getDiskAOs())) {
-            validateDiskAO(msg);
-        }
-
+    private void validateBasedOnImage(APICreateVmInstanceMsg msg) {
         ImageVO image = Q.New(ImageVO.class).eq(ImageVO_.uuid, msg.getImageUuid()).find();
         if (image == null) {
             String err = "";
@@ -1259,10 +1253,6 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
 
             if (!err.isEmpty()) {
                 throw new ApiMessageInterceptionException(argerr(String.format("when imageUuid is null, %s", err)));
-            }
-
-            if (msg.getVirtio() == null) {
-                msg.setVirtio(false);
             }
         } else {
             ImageState imgState = image.getState();
@@ -1298,15 +1288,28 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             }
 
             validateRootDiskOffering(imgFormat, msg);
-
-            if (msg.getVirtio() == null) {
-                if (image.getVirtio() != null) {
-                    msg.setVirtio(image.getVirtio());
-                } else {
-                    msg.setVirtio(false);
-                }
-            }
         }
+
+        if (msg.getVirtio() != null) {
+            return;
+        }
+
+        if (image == null || image.getVirtio() == null) {
+            msg.setVirtio(false);
+            return;
+        }
+
+        msg.setVirtio(image.getVirtio());
+    }
+
+    private void validate(APICreateVmInstanceMsg msg) {
+        validate((NewVmInstanceMessage2) msg);
+
+        if (CollectionUtils.isNotEmpty(msg.getDiskAOs())) {
+            validateDiskAO(msg);
+        }
+
+        validateBasedOnImage(msg);
 
         validateDataDiskSizes(msg);
 
