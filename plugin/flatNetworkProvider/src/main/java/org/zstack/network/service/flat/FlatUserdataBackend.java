@@ -3,6 +3,7 @@ package org.zstack.network.service.flat;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.compute.vm.UserdataBuilder;
+import org.zstack.compute.vm.VmHostNameHelper;
 import org.zstack.compute.vm.VmSystemTags;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
@@ -177,7 +178,7 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
                     UserdataTO to = new UserdataTO();
                     MetadataTO mto = new MetadataTO();
                     mto.vmUuid = vmuuid;
-                    mto.vmHostname = VmSystemTags.HOSTNAME.getTokenByResourceUuid(vmuuid, VmSystemTags.HOSTNAME_TOKEN);
+                    mto.vmHostname = new VmHostNameHelper().getHostName(vmuuid);
                     to.metadata = mto;
 
                     VmIpL3Uuid l = vmipl3.get(vmuuid);
@@ -626,7 +627,7 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
 
                         MetadataTO to = new MetadataTO();
                         to.vmUuid = struct.getVmUuid();
-                        to.vmHostname = VmSystemTags.HOSTNAME.getTokenByResourceUuid(struct.getVmUuid(), VmSystemTags.HOSTNAME_TOKEN);
+                        to.vmHostname = new VmHostNameHelper().getHostName(struct.getVmUuid());
                         UserdataTO uto = new UserdataTO();
                         uto.metadata = to;
                         uto.userdataList = struct.getUserdataList();
