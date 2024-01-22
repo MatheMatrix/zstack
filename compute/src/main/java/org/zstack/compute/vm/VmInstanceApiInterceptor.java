@@ -1302,10 +1302,37 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         msg.setVirtio(image.getVirtio());
     }
 
+    private void validateDiskAOUsedAgainstOldParams(APICreateVmInstanceMsg msg) {
+        if (msg.getRootDiskOfferingUuid() != null || msg.getRootDiskSize() != null) {
+            throw new ApiMessageInterceptionException(argerr("rootDiskOfferingUuid and rootDiskSize cannot be set when diskAOs is set"));
+        }
+
+        if (msg.getDataDiskOfferingUuids() != null || msg.getDataDiskSizes() != null) {
+            throw new ApiMessageInterceptionException(argerr("dataDiskOfferingUuids and dataDiskSizes cannot be set when diskAOs is set"));
+        }
+
+        if (msg.getRootVolumeSystemTags() != null && !msg.getRootVolumeSystemTags().isEmpty()) {
+            throw new ApiMessageInterceptionException(argerr("rootVolumeSystemTags cannot be set when diskAOs is set"));
+        }
+
+        if (msg.getDataVolumeSystemTags() != null && !msg.getDataVolumeSystemTags().isEmpty()) {
+            throw new ApiMessageInterceptionException(argerr("dataVolumeSystemTags cannot be set when diskAOs is set"));
+        }
+
+        if (msg.getPrimaryStorageUuidForRootVolume() != null) {
+            throw new ApiMessageInterceptionException(argerr("primaryStorageUuidForRootVolume cannot be set when diskAOs is set"));
+        }
+
+        if (msg.getDataVolumeSystemTagsOnIndex() != null && !msg.getDataVolumeSystemTagsOnIndex().isEmpty()) {
+            throw new ApiMessageInterceptionException(argerr("dataVolumeSystemTagsOnIndex cannot be set when diskAOs is set"));
+        }
+    }
+
     private void validate(APICreateVmInstanceMsg msg) {
         validate((NewVmInstanceMessage2) msg);
 
         if (CollectionUtils.isNotEmpty(msg.getDiskAOs())) {
+            validateDiskAOUsedAgainstOldParams(msg);
             validateDiskAO(msg);
         }
 
