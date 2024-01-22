@@ -1206,25 +1206,36 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         });
     }
 
+    private void validateDiskAO(APICreateVmInstanceMsg msg) {
+        APICreateVmInstanceMsg.DiskAO rootDiskAO = msg.getDiskAOs().stream()
+                .filter(APICreateVmInstanceMsg.DiskAO::isBoot).findFirst().orElse(null);
+        if (rootDiskAO == null) {
+            throw new ApiMessageInterceptionException(argerr("missing root disk"));
+        }
+        msg.setPlatform(rootDiskAO.getPlatform());
+        msg.setGuestOsType(rootDiskAO.getGuestOsType());
+        msg.setArchitecture(rootDiskAO.getArchitecture());
+
+        if (CollectionUtils.isEmpty(rootDiskAO.getSystemTags())) {
+            msg.setVirtio(false);
+            return;
+        }
+
+        // skip if virtio system tag is not set at this point, virtio
+        // value of api message keep null. cloud will try to get
+        // virtio value from its image after this validation
+        if (!rootDiskAO.getSystemTags().contains(VmSystemTags.VIRTIO.getTagFormat())) {
+            return;
+        }
+
+        msg.setVirtio(true);
+    }
+
     private void validate(APICreateVmInstanceMsg msg) {
         validate((NewVmInstanceMessage2) msg);
 
         if (CollectionUtils.isNotEmpty(msg.getDiskAOs())) {
-            APICreateVmInstanceMsg.DiskAO rootDiskAO = msg.getDiskAOs().stream()
-                    .filter(APICreateVmInstanceMsg.DiskAO::isBoot).findFirst().orElse(null);
-            if (rootDiskAO == null) {
-                throw new ApiMessageInterceptionException(argerr("missing root disk"));
-            }
-            msg.setPlatform(rootDiskAO.getPlatform());
-            msg.setGuestOsType(rootDiskAO.getGuestOsType());
-            msg.setArchitecture(rootDiskAO.getArchitecture());
-            if (CollectionUtils.isNotEmpty(rootDiskAO.getSystemTags())) {
-                if (rootDiskAO.getSystemTags().contains(VmSystemTags.VIRTIO.getTagFormat())) {
-                    msg.setVirtio(true);
-                }
-            } else {
-                msg.setVirtio(false);
-            }
+            validateDiskAO(msg);
         }
 
         ImageVO image = Q.New(ImageVO.class).eq(ImageVO_.uuid, msg.getImageUuid()).find();
@@ -1248,6 +1259,10 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
 
             if (!err.isEmpty()) {
                 throw new ApiMessageInterceptionException(argerr(String.format("when imageUuid is null, %s", err)));
+            }
+
+            if (msg.getVirtio() == null) {
+                msg.setVirtio(false);
             }
         } else {
             ImageState imgState = image.getState();
