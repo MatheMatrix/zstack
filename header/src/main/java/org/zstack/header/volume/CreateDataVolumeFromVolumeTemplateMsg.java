@@ -15,9 +15,11 @@ public class CreateDataVolumeFromVolumeTemplateMsg extends NeedReplyMessage impl
     private String name;
     private String description;
     private String primaryStorageUuid;
+    @Deprecated
     private String hostUuid;
     private String resourceUuid;
     private String accountUuid;
+    private String allocatedInstallUrl;
     private APICreateDataVolumeFromVolumeTemplateMsg apiMsg;
 
     public CreateDataVolumeFromVolumeTemplateMsg() {

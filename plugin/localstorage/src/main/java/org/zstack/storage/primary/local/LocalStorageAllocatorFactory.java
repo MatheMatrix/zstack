@@ -347,6 +347,15 @@ public class LocalStorageAllocatorFactory implements PrimaryStorageAllocatorStra
     @Override
     public String buildAllocatedInstallUrl(AllocatePrimaryStorageSpaceMsg msg, PrimaryStorageInventory psInv) {
         String hostUuid = null;
+
+        // systemTags 属于参数，优先级最高，然后，其他参数有值，不相同报错，相同则
+        if (msg.getSystemTags() != null) {
+            PatternedSystemTag lsTag = LocalStorageSystemTags.DEST_HOST_FOR_CREATING_DATA_VOLUME;
+            hostUuid = msg.getSystemTags().stream().filter(lsTag::isMatch)
+                    .map(it -> lsTag.getTokenByTag(it, LocalStorageSystemTags.DEST_HOST_FOR_CREATING_DATA_VOLUME_TOKEN))
+                    .findAny().orElse(null);
+        }
+
         if (msg.getRequiredInstallUri() != null) {
             String protocol;
             try {
