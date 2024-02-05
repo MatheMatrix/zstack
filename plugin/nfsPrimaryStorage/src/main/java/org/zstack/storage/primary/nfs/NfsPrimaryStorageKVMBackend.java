@@ -20,10 +20,10 @@ import org.zstack.core.step.StepRun;
 import org.zstack.core.step.StepRunCondition;
 import org.zstack.core.timeout.ApiTimeoutManager;
 import org.zstack.core.trash.StorageTrash;
+import org.zstack.core.workflow.FlowChainBuilder;
+import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.core.*;
-import org.zstack.header.core.workflow.Flow;
-import org.zstack.header.core.workflow.FlowTrigger;
-import org.zstack.header.core.workflow.NoRollbackFlow;
+import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
@@ -114,6 +114,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
     public static final String ESTIMATE_TEMPLATE_SIZE_PATH = "/nfsprimarystorage/estimatetemplatesize";
     public static final String CREATE_VOLUME_WITH_BACKING_PATH = "/nfsprimarystorage/createvolumewithbacking";
     public static final String OFFLINE_SNAPSHOT_MERGE = "/nfsprimarystorage/offlinesnapshotmerge";
+    public static final String OFFLINE_SNAPSHOT_COMMIT = "/nfsprimarystorage/offlinesnapshotcommit";
     public static final String REMOUNT_PATH = "/nfsprimarystorage/remount";
     public static final String GET_VOLUME_SIZE_PATH = "/nfsprimarystorage/getvolumesize";
     public static final String BATCH_GET_VOLUME_SIZE_PATH = "/nfsprimarystorage/batchgetvolumesize";
@@ -1989,5 +1990,179 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
                 gc.submit(NfsPrimaryStorageGlobalConfig.GC_INTERVAL.value(Long.class), TimeUnit.SECONDS);
             }
         });
+    }
+
+    @Override
+    public void pullSnapshot(PullVolumeSnapshotOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<PullVolumeSnapshotOnPrimaryStorageReply> completion) {
+        PullVolumeSnapshotOnPrimaryStorageReply reply = new PullVolumeSnapshotOnPrimaryStorageReply();
+
+        FlowChain chain = FlowChainBuilder.newShareFlowChain();
+        chain.setName("pull-volume-snapshot-on-primary-storage");
+        chain.then(new ShareFlow() {
+            String srcPath;
+
+            @Override
+            public void setup() {
+                flow(new NoRollbackFlow() {
+                    String __name__ = String.format("get-backing-chain-%s", msg.getSrcSnapshot().getPrimaryStorageInstallPath());
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        GetBackingChainCmd cmd = new GetBackingChainCmd();
+                        cmd.installPath = msg.getSrcSnapshot().getPrimaryStorageInstallPath();
+                        cmd.volumeUuid = msg.getVolume().getUuid();
+                        cmd.setUuid(msg.getVolume().getPrimaryStorageUuid());
+                        new KvmCommandSender(hostUuid).send(cmd, GET_BACKING_CHAIN_PATH, new KvmCommandFailureChecker() {
+                            @Override
+                            public ErrorCode getError(KvmResponseWrapper wrapper) {
+                                GetBackingChainRsp rsp = wrapper.getResponse(GetBackingChainRsp.class);
+                                return rsp.isSuccess() ? null : operr("operation error, because:%s", rsp.getError());
+                            }
+                        }, new ReturnValueCompletion<KvmResponseWrapper>(completion) {
+                            @Override
+                            public void success(KvmResponseWrapper w) {
+                                GetBackingChainRsp rsp = w.getResponse(GetBackingChainRsp.class);
+                                srcPath = CollectionUtils.isEmpty(rsp.backingChain) ? null : rsp.backingChain.get(0);
+                                trigger.next();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.fail(operr("failed to get backing chain for volume[uuid:%s] on host[uuid:%s], %s", msg.getVolume().getUuid(), hostUuid, errorCode));
+                            }
+                        });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "do-pull-volume-snapshot-on-primary-storage";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        if (msg.isOnline()) {
+                            PullVolumeSnapshotOnHypervisorMsg pmsg = new PullVolumeSnapshotOnHypervisorMsg();
+                            pmsg.setHostUuid(hostUuid);
+                            pmsg.setVolume(msg.getVolume());
+                            pmsg.setBasePath(srcPath);
+                            bus.makeTargetServiceIdByResourceUuid(pmsg, HostConstant.SERVICE_ID, hostUuid);
+                            bus.send(pmsg, new CloudBusCallBack(completion) {
+                                @Override
+                                public void run(MessageReply r) {
+                                    if (!r.isSuccess()) {
+                                        trigger.fail(r.getError());
+                                        return;
+                                    }
+
+                                    PullVolumeSnapshotOnHypervisorReply re = r.castReply();
+                                    reply.setSize(re.getSize());
+                                    trigger.next();
+                                }
+                            });
+                        } else {
+                            OfflineMergeSnapshotCmd cmd = new OfflineMergeSnapshotCmd();
+                            cmd.setSrcPath(srcPath);
+                            cmd.setDestPath(msg.getDstSnapshot().getPrimaryStorageInstallPath());
+                            cmd.setUuid(msg.getVolume().getPrimaryStorageUuid());
+                            cmd.setFullRebase(srcPath == null);
+
+                            KVMHostAsyncHttpCallMsg kmsg = new KVMHostAsyncHttpCallMsg();
+                            kmsg.setCommand(cmd);
+                            kmsg.setPath(OFFLINE_SNAPSHOT_MERGE);
+                            kmsg.setHostUuid(hostUuid);
+                            bus.makeTargetServiceIdByResourceUuid(kmsg, HostConstant.SERVICE_ID, hostUuid);
+                            bus.send(kmsg, new CloudBusCallBack(completion) {
+                                @Override
+                                public void run(MessageReply r) {
+                                    if (!r.isSuccess()) {
+                                        trigger.fail(r.getError());
+                                        return;
+                                    }
+
+                                    OfflineMergeSnapshotRsp rsp = ((KVMHostAsyncHttpCallReply) r).toResponse(OfflineMergeSnapshotRsp.class);
+                                    if (!rsp.isSuccess()) {
+                                        trigger.fail(operr("operation error, because:%s", rsp.getError()));
+                                        return;
+                                    }
+
+                                    reply.setSize(rsp.getSize());
+                                  trigger.next();
+                                }
+                            });
+                        }
+                    }
+                });
+
+                done(new FlowDoneHandler(completion) {
+                    @Override
+                    public void handle(Map data) {
+                        completion.success(reply);
+                    }
+                });
+
+                error(new FlowErrorHandler(completion) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        completion.fail(errCode);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    @Override
+    public void commitSnapshot(CommitVolumeSnapshotOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<CommitVolumeSnapshotOnPrimaryStorageReply> completion) {
+        if (msg.isOnline()) {
+            CommitVolumeSnapshotOnHypervisorMsg hmsg = new CommitVolumeSnapshotOnHypervisorMsg();
+            hmsg.setHostUuid(hostUuid);
+            hmsg.setVolume(msg.getVolume());
+            hmsg.setSrcPath(msg.getSrcSnapshot().getPrimaryStorageInstallPath());
+            hmsg.setDstPath(msg.getDstSnapshot().getPrimaryStorageInstallPath());
+            hmsg.setSrcChildrenInstallPathInDb(msg.getSrcChildrenInstallPathInDb());
+            bus.makeTargetServiceIdByResourceUuid(hmsg, HostConstant.SERVICE_ID, hostUuid);
+            bus.send(hmsg, new CloudBusCallBack(msg) {
+                @Override
+                public void run(MessageReply r) {
+                    if (!r.isSuccess()) {
+                        completion.fail(r.getError());
+                        return;
+                    }
+                    CommitVolumeSnapshotOnHypervisorReply treply = r.castReply();
+                    CommitVolumeSnapshotOnPrimaryStorageReply reply = new CommitVolumeSnapshotOnPrimaryStorageReply();
+                    reply.setNewInstallPath(treply.getNewInstallPath());
+                    reply.setSize(treply.getSize());
+                    completion.success(reply);
+                }
+            });
+        } else {
+            OfflineCommitSnapshotCmd cmd = new OfflineCommitSnapshotCmd();
+            cmd.srcPath = msg.getSrcSnapshot().getPrimaryStorageInstallPath();
+            cmd.dstPath = msg.getDstSnapshot().getPrimaryStorageInstallPath();
+
+            KVMHostAsyncHttpCallMsg kmsg = new KVMHostAsyncHttpCallMsg();
+            kmsg.setCommand(cmd);
+            kmsg.setPath(OFFLINE_SNAPSHOT_COMMIT);
+            kmsg.setHostUuid(hostUuid);
+            bus.makeTargetServiceIdByResourceUuid(kmsg, HostConstant.SERVICE_ID, hostUuid);
+            bus.send(kmsg, new CloudBusCallBack(completion) {
+                @Override
+                public void run(MessageReply r) {
+                    if (!r.isSuccess()) {
+                        completion.fail(r.getError());
+                        return;
+                    }
+
+                    OfflineCommitSnapshotRsp rsp = ((KVMHostAsyncHttpCallReply) r).toResponse(OfflineCommitSnapshotRsp.class);
+                    if (!rsp.isSuccess()) {
+                        completion.fail(operr("operation error, because:%s", rsp.getError()));
+                        return;
+                    }
+
+                    CommitVolumeSnapshotOnPrimaryStorageReply reply = new CommitVolumeSnapshotOnPrimaryStorageReply();
+                    reply.setNewInstallPath(rsp.getNewInstallPath());
+                    reply.setSize(rsp.getSize());
+                    completion.success(reply);
+                }
+            });
+        }
     }
 }
