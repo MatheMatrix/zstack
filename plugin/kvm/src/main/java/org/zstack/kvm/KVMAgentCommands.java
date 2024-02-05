@@ -3589,6 +3589,7 @@ public class KVMAgentCommands {
     }
 
     public static class MergeSnapshotRsp extends AgentResponse {
+        public long size;
     }
 
     public static class MergeSnapshotCmd extends AgentCommand implements HasThreadContext {
@@ -3687,12 +3688,15 @@ public class KVMAgentCommands {
         }
     }
 
-    public static class BlockCommitVolumeCmd extends AgentCommand implements HasThreadContext {
+    public static class BlockCommitVolumeSnapshotCmd extends AgentCommand implements HasThreadContext {
         private String vmUuid;
         private String volumeUuid;
         private VolumeTO volume;
         private String top;
         private String base;
+        private List<String> aliveChainInstallPathInDb = new ArrayList<>();
+        private List<String> topChildrenInstallPathInDb = new ArrayList<>();
+        private List<String> snapshotChainFromSrcToDst = new ArrayList<>();
 
         public String getVmUuid() {
             return vmUuid;
@@ -3733,11 +3737,33 @@ public class KVMAgentCommands {
         public void setBase(String base) {
             this.base = base;
         }
+
+        public List<String> getAliveChainInstallPathInDb() {
+            return aliveChainInstallPathInDb;
+        }
+
+        public void setAliveChainInstallPathInDb(List<String> aliveChainInstallPathInDb) {
+            this.aliveChainInstallPathInDb = aliveChainInstallPathInDb;
+        }
+
+        public List<String> getTopChildrenInstallPathInDb() {
+            return topChildrenInstallPathInDb;
+        }
+
+        public void setTopChildrenInstallPathInDb(List<String> topChildrenInstallPathInDb) {
+            this.topChildrenInstallPathInDb = topChildrenInstallPathInDb;
+        }
+
+        public List<String> getSnapshotChainFromSrcToDst() {
+            return snapshotChainFromSrcToDst;
+        }
+
+        public void setSnapshotChainFromSrcToDst(List<String> snapshotChainFromSrcToDst) {
+            this.snapshotChainFromSrcToDst = snapshotChainFromSrcToDst;
+        }
     }
 
-    public static class BlockCommitVolumeResponse extends AgentResponse {
-        @Validation
-        private String newVolumeInstallPath;
+    public static class BlockCommitVolumeSnapshotResponse extends AgentResponse {
         @Validation(notZero = true)
         private long size;
 
@@ -3748,14 +3774,67 @@ public class KVMAgentCommands {
         public void setSize(long size) {
             this.size = size;
         }
+    }
 
-        public String getNewVolumeInstallPath() {
-            return newVolumeInstallPath;
+    public static class BlockPullVolumeCmd extends AgentCommand implements HasThreadContext {
+        private String vmUuid;
+        private String volumeUuid;
+        private VolumeTO volume;
+        private String top;
+        private String base;
+        private List<String> aliveChainInstallPathInDb;
+
+        public String getVmUuid() {
+            return vmUuid;
         }
 
-        public void setNewVolumeInstallPath(String newVolumeInstallPath) {
-            this.newVolumeInstallPath = newVolumeInstallPath;
+        public void setVmUuid(String vmUuid) {
+            this.vmUuid = vmUuid;
         }
+
+        public String getVolumeUuid() {
+            return volumeUuid;
+        }
+
+        public void setVolumeUuid(String volumeUuid) {
+            this.volumeUuid = volumeUuid;
+        }
+
+        public VolumeTO getVolume() {
+            return volume;
+        }
+
+        public void setVolume(VolumeTO volume) {
+            this.volume = volume;
+        }
+
+        public String getTop() {
+            return top;
+        }
+
+        public void setTop(String top) {
+            this.top = top;
+        }
+
+        public String getBase() {
+            return base;
+        }
+
+        public void setBase(String base) {
+            this.base = base;
+        }
+
+        public List<String> getAliveChainInstallPathInDb() {
+            return aliveChainInstallPathInDb;
+        }
+
+        public void setAliveChainInstallPathInDb(List<String> aliveChainInstallPathInDb) {
+            this.aliveChainInstallPathInDb = aliveChainInstallPathInDb;
+        }
+    }
+
+    public static class BlockPullVolumeResponse extends AgentResponse {
+        public long size;
     }
 
     public static class TakeSnapshotCmd extends AgentCommand implements HasThreadContext {

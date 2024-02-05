@@ -10,8 +10,8 @@ import org.zstack.header.volume.VolumeVO_
 import org.zstack.kvm.KVMAgentCommands
 import org.zstack.storage.primary.nfs.NfsPrimaryStorageConstant
 import org.zstack.testlib.EnvSpec
-import org.zstack.testlib.LocalStorageSpec
 import org.zstack.testlib.NfsPrimaryStorageSpec
+import org.zstack.testlib.vfs.Qcow2
 import org.zstack.testlib.vfs.VFS
 import org.zstack.testlib.vfs.extensions.VFSPrimaryStorageTakeSnapshotBackend
 import org.zstack.testlib.vfs.extensions.VFSSnapshot
@@ -48,6 +48,35 @@ class NFSVFSPrimaryStorageTakeSnapshotBackend implements AbstractFileSystemBased
 
     @Override
     void blockStream(HttpEntity<String> e, EnvSpec spec, VolumeInventory volume) {
-        blockStream(NfsPrimaryStorageSpec.vfs(volume.getPrimaryStorageUuid(), spec), volume)
+        VFS vfs = NfsPrimaryStorageSpec.vfs(volume.getPrimaryStorageUuid(), spec)
+        if (vfs.exists(volume.getInstallPath())) {
+            vfs.delete(volume.getInstallPath())
+        }
+        blockStream(vfs, volume)
+    }
+
+    @Override
+    Qcow2 blockCommit(HttpEntity<String> e, EnvSpec spec, KVMAgentCommands.BlockCommitVolumeSnapshotCmd cmd, VolumeInventory volume) {
+        String primaryStorageUuid = Q.New(VolumeVO.class).select(VolumeVO_.primaryStorageUuid)
+                .eq(VolumeVO_.uuid, volume.uuid).findValue()
+        VFS vfs = NfsPrimaryStorageSpec.vfs(primaryStorageUuid, spec)
+        Qcow2 top = vfs.getFile(cmd.top, true)
+        Qcow2 base = vfs.getFile(cmd.base, true)
+        Qcow2.commit(vfs, top, base)
+        return vfs.getFile(cmd.base, true)
+    }
+
+    @Override
+    Qcow2 blockPull(HttpEntity<String> e, EnvSpec spec, KVMAgentCommands.BlockPullVolumeCmd cmd, VolumeInventory volume) {
+        String primaryStorageUuid = Q.New(VolumeVO.class).select(VolumeVO_.primaryStorageUuid)
+                .eq(VolumeVO_.uuid, volume.uuid).findValue()
+        VFS vfs = NfsPrimaryStorageSpec.vfs(primaryStorageUuid, spec)
+        Qcow2 volumePath = vfs.getFile(volume.getInstallPath(), true)
+        if (cmd.base == null) {
+            volumePath.rebase((String) null)
+        } else {
+            volumePath.rebase(cmd.base)
+        }
+        return vfs.getFile(volume.getInstallPath(), true)
     }
 }
