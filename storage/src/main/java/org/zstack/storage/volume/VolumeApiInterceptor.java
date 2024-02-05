@@ -40,11 +40,7 @@ import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO_;
 import org.zstack.header.storage.primary.PrimaryStorageHostRefVO;
 import org.zstack.header.storage.primary.PrimaryStorageHostRefVO_;
 import org.zstack.header.storage.primary.PrimaryStorageHostStatus;
-import org.zstack.header.storage.snapshot.ConsistentType;
-import org.zstack.header.storage.snapshot.VolumeSnapshotTreeVO;
-import org.zstack.header.storage.snapshot.VolumeSnapshotTreeVO_;
-import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
-import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
+import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.storage.snapshot.group.MemorySnapshotValidatorExtensionPoint;
 import org.zstack.header.vm.APICreateVmInstanceMsg;
 import org.zstack.header.vm.VmInstanceInventory;
@@ -578,6 +574,7 @@ public class VolumeApiInterceptor implements ApiMessageInterceptor, Component, G
     }
 
     private void validate(APIUndoSnapshotCreationMsg msg) {
+        // 云盘快照树
         String currentTreeUuid = Q.New(VolumeSnapshotTreeVO.class)
                 .select(VolumeSnapshotTreeVO_.uuid)
                 .eq(VolumeSnapshotTreeVO_.current, true)
@@ -587,6 +584,7 @@ public class VolumeApiInterceptor implements ApiMessageInterceptor, Component, G
             throw new ApiMessageInterceptionException(operr("can not found in used snapshot tree of volume[uuid: %s]", msg.getUuid()));
         }
 
+        // 是不是快照的top，快照连倒数第二个，top的父节点
         boolean isLatest = Q.New(VolumeSnapshotVO.class)
                 .eq(VolumeSnapshotVO_.uuid, msg.getSnapShotUuid())
                 .eq(VolumeSnapshotVO_.latest, true)
@@ -596,6 +594,14 @@ public class VolumeApiInterceptor implements ApiMessageInterceptor, Component, G
         if (!isLatest) {
             throw new ApiMessageInterceptionException(argerr("cannot undo not latest snapshot"));
         }
+
+        VolumeSnapshotVO volumeSnapshot = Q.New(VolumeSnapshotVO.class)
+                .eq(VolumeSnapshotVO_.uuid, msg.getSnapShotUuid())
+                .eq(VolumeSnapshotVO_.treeUuid, currentTreeUuid).find();
+        if (volumeSnapshot == null) {
+            throw new ApiMessageInterceptionException(argerr("cannot find snapShot"));
+        }
+        msg.setSnapshotInventory(VolumeSnapshotInventory.valueOf(volumeSnapshot));
     }
 
     @Transactional

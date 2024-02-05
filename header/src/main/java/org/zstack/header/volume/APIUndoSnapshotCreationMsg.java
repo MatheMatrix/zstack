@@ -4,7 +4,9 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
+import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 
 /**
@@ -25,6 +27,9 @@ public class APIUndoSnapshotCreationMsg extends APIMessage implements VolumeMess
     @APIParam(resourceType = VolumeSnapshotVO.class, checkAccount = true, operationTarget = true)
     private String snapShotUuid;
 
+    @APINoSee
+    VolumeSnapshotInventory snapshotInventory;
+
     public String getSnapShotUuid() {
         return snapShotUuid;
     }
@@ -39,6 +44,14 @@ public class APIUndoSnapshotCreationMsg extends APIMessage implements VolumeMess
 
     public void setUuid(String uuid) {
         this.uuid = uuid;
+    }
+
+    public VolumeSnapshotInventory getSnapshotInventory() {
+        return snapshotInventory;
+    }
+
+    public void setSnapshotInventory(VolumeSnapshotInventory snapshotInventory) {
+        this.snapshotInventory = snapshotInventory;
     }
 
     @Override

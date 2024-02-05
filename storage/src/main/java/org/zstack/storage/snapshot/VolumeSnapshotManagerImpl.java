@@ -13,14 +13,13 @@ import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.errorcode.ErrorFacade;
+import org.zstack.core.thread.ChainTask;
+import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.AbstractService;
-import org.zstack.header.core.Completion;
-import org.zstack.header.core.ExceptionSafe;
-import org.zstack.header.core.NopeCompletion;
-import org.zstack.header.core.WhileDoneCompletion;
+import org.zstack.header.core.*;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
@@ -67,6 +66,7 @@ import java.util.stream.Stream;
 import static org.zstack.core.Platform.err;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.core.progress.ProgressReportService.reportProgress;
+import static org.zstack.storage.snapshot.VolumeSnapshotMessageRouter.getResourceIdToRouteMsg;
 import static org.zstack.utils.CollectionDSL.list;
 
 /**
@@ -169,6 +169,8 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
             handle((GetVolumeSnapshotTreeRootNodeMsg) msg);
         } else if (msg instanceof GetVolumeSnapshotEncryptedMsg) {
             handle((GetVolumeSnapshotEncryptedMsg) msg);
+        } else if (msg instanceof BatchDeleteVolumeSnapshotGroupInnerMsg) {
+            handle((BatchDeleteVolumeSnapshotGroupInnerMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
@@ -245,7 +247,11 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (err[0] == null) {
-                    passThrough(msg);
+                    if (msg.getGroupUuids().isEmpty()) {
+                        passThrough(msg);
+                        return;
+                    }
+                    handleApiMessage((APIMessage) msg);
                     return;
                 }
 
@@ -1158,6 +1164,8 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
     private void handleApiMessage(APIMessage msg) {
         if (msg instanceof APIBatchDeleteVolumeSnapshotMsg) {
             handle((APIBatchDeleteVolumeSnapshotMsg) msg);
+        } else if (msg instanceof APIBatchDeleteVolumeSnapshotGroupMsg) {
+            handle((APIBatchDeleteVolumeSnapshotGroupMsg) msg);
         } else if (msg instanceof APICheckVolumeSnapshotGroupAvailabilityMsg) {
             handle((APICheckVolumeSnapshotGroupAvailabilityMsg) msg);
         } else if (msg instanceof APIGetMemorySnapshotGroupReferenceMsg) {
@@ -1437,5 +1445,88 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
     public void volumeJustBeforeDeleteFromDb(VolumeInventory inv) {
         VolumeSnapshotReferenceUtils.handleVolumeDeletion(inv);
         deleteStaleSnapshotRecords(inv.getUuid(), VolumeType.valueOf(inv.getType()), inv.getVmInstanceUuid());
+    }
+
+    private void handle(APIBatchDeleteVolumeSnapshotGroupMsg msg) {
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return String.format("delete-vm-%s-snapshot-group", msg.getVolumeSnapshotGroups().get(0).getVmInstanceUuid());
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                handleDelete(msg, new NoErrorCompletion(chain) {
+                    @Override
+                    public void done() {
+                        chain.next();
+                    }
+                });
+            }
+
+            @Override
+            public String getName() {
+                return "delete-snapshot-group";
+            }
+        });
+    }
+
+    private void handleDelete(APIBatchDeleteVolumeSnapshotGroupMsg msg, NoErrorCompletion completion) {
+        APIDeleteVolumeSnapshotGroupEvent event = new APIDeleteVolumeSnapshotGroupEvent(msg.getId());
+
+        BatchDeleteVolumeSnapshotGroupInnerMsg bmag = new BatchDeleteVolumeSnapshotGroupInnerMsg();
+        VolumeSnapshotGroupOverlayMsg omsg = new VolumeSnapshotGroupOverlayMsg();
+        omsg.setVmInstanceUuid(msg.getVolumeSnapshotGroups().get(0).getVmInstanceUuid());
+        omsg.setMessage(bmag);
+        bus.makeTargetServiceIdByResourceUuid(omsg, VmInstanceConstant.SERVICE_ID, msg.getVolumeSnapshotGroups().get(0).getVmInstanceUuid());
+        bus.send(omsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    event.setError(reply.getError());
+                    return;
+                }
+
+                if (reply instanceof DeleteVolumeSnapshotGroupInnerReply) {
+                    event.setResults(((DeleteVolumeSnapshotGroupInnerReply) reply).getResults());
+                }
+            }
+        });
+    }
+
+    private void overlaySend(VolumeSnapshotGroupMessage imsg, String VmInstanceUuid, CloudBusCallBack callBack) {
+        VolumeSnapshotGroupOverlayMsg omsg = new VolumeSnapshotGroupOverlayMsg();
+        omsg.setVmInstanceUuid(VmInstanceUuid);
+        omsg.setMessage((NeedReplyMessage) imsg);
+        bus.makeTargetServiceIdByResourceUuid(omsg, VmInstanceConstant.SERVICE_ID, VmInstanceUuid);
+        bus.send(omsg, callBack);
+    }
+
+    private void handle(BatchDeleteVolumeSnapshotGroupInnerMsg msg) {
+        BatchDeleteVolumeSnapshotGroupInnerReply reply = new BatchDeleteVolumeSnapshotGroupInnerReply();
+
+        List<ErrorCode> errorCodes = new ArrayList<>();
+        new While<>(msg.getVolumeSnapshotGroupInventories()).each((snapshotGroup, compl) -> {
+            DeleteVolumeSnapshotGroupMsg dmsg = new DeleteVolumeSnapshotGroupMsg();
+            dmsg.setUuid(snapshotGroup.getUuid());
+            dmsg.setDeletionMode(msg.getDeletionMode());
+            overlaySend(dmsg, snapshotGroup.getVmInstanceUuid(), new CloudBusCallBack(msg) {
+                @Override
+                public void run(MessageReply r) {
+                    if (!r.isSuccess()) {
+                        errorCodes.add(r.getError());
+                        compl.allDone();
+                        return;
+                    }
+                    compl.done();
+                }
+            });
+        }).run(new WhileDoneCompletion(msg) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                // 情况1：全部成功；前面删除成功，后面删除失败；第一个删除失败；
+                bus.reply(msg, reply);
+            }
+        });
     }
 }
