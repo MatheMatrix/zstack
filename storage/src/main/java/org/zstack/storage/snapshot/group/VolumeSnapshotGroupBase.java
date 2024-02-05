@@ -184,9 +184,12 @@ public class VolumeSnapshotGroupBase implements VolumeSnapshotGroup {
 
     private void handleDelete(APIDeleteVolumeSnapshotGroupMsg msg, NoErrorCompletion completion) {
         APIDeleteVolumeSnapshotGroupEvent event = new APIDeleteVolumeSnapshotGroupEvent(msg.getId());
+
         DeleteVolumeSnapshotGroupInnerMsg imsg = new DeleteVolumeSnapshotGroupInnerMsg();
         imsg.setUuid(msg.getUuid());
         imsg.setDeletionMode(msg.getDeletionMode());
+        imsg.setScope(msg.getScope());
+        imsg.setDirection(msg.getDirection());
         bus.makeTargetServiceIdByResourceUuid(imsg, VolumeSnapshotConstant.SERVICE_ID, msg.getUuid());
         overlaySend(imsg, new CloudBusCallBack(msg) {
             @Override
@@ -218,7 +221,8 @@ public class VolumeSnapshotGroupBase implements VolumeSnapshotGroup {
             rmsg.setVolumeUuid(snapshot.getVolumeUuid());
             rmsg.setTreeUuid(snapshot.getTreeUuid());
             rmsg.setDeletionMode(msg.getDeletionMode());
-
+            rmsg.setScope(msg.getScope());
+            rmsg.setDirection(msg.getDirection());
             bus.makeTargetServiceIdByResourceUuid(rmsg, VolumeSnapshotConstant.SERVICE_ID, getResourceIdToRouteMsg(snapshot));
             bus.send(rmsg, new CloudBusCallBack(compl) {
                 @Override

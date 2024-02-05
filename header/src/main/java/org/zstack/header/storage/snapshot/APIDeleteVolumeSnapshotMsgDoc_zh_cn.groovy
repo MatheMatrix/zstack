@@ -40,6 +40,24 @@ doc {
 					since "0.6"
 				}
 				column {
+					name "direction"
+					enclosedIn ""
+					desc "数据合并方向"
+					location "body"
+					type "String"
+					optional true
+					since "zsv 4.10.6"
+				}
+				column {
+					name "scope"
+					enclosedIn ""
+					desc "数据合并方式"
+					location "body"
+					type "String"
+					optional true
+					since "zsv 4.10.6"
+				}
+				column {
 					name "systemTags"
 					enclosedIn ""
 					desc "系统标签"

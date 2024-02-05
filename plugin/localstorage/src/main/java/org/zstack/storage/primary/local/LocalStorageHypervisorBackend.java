@@ -6,7 +6,6 @@ import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.core.workflow.Flow;
 import org.zstack.header.image.ImageInventory;
 import org.zstack.header.storage.primary.*;
-import org.zstack.header.storage.primary.UndoSnapshotCreationOnPrimaryStorageMsg;
 import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
 import org.zstack.header.volume.BatchSyncVolumeSizeOnPrimaryStorageMsg;
 import org.zstack.header.volume.BatchSyncVolumeSizeOnPrimaryStorageReply;
@@ -122,5 +121,7 @@ public abstract class LocalStorageHypervisorBackend extends LocalStorageBase {
 
     abstract void handle(GetVolumeSnapshotEncryptedOnPrimaryStorageMsg msg, ReturnValueCompletion<GetVolumeSnapshotEncryptedOnPrimaryStorageReply> completion);
 
-    abstract void handle(UndoSnapshotCreationOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<UndoSnapshotCreationOnPrimaryStorageReply> completion);
+    abstract void handle(CommitVolumeSnapshotOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<CommitVolumeSnapshotOnPrimaryStorageReply> completion);
+
+    abstract void handle(PullVolumeSnapshotOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<PullVolumeSnapshotOnPrimaryStorageReply> completion);
 }

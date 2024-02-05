@@ -1,6 +1,8 @@
 package org.zstack.storage.primary.local;
 
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.compute.vm.ImageBackupStorageSelector;
 import org.zstack.core.Platform;
@@ -43,10 +45,7 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.rest.RESTFacade;
 import org.zstack.header.storage.backup.*;
 import org.zstack.header.storage.primary.*;
-import org.zstack.header.storage.primary.UndoSnapshotCreationOnPrimaryStorageMsg;
-import org.zstack.header.storage.snapshot.VolumeSnapshotConstant;
-import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
-import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
+import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.vm.VmInstanceSpec.ImageSpec;
 import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.vm.VmInstanceVO;
@@ -81,6 +80,7 @@ import static org.zstack.utils.CollectionDSL.list;
  */
 public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
     private final static CLogger logger = Utils.getLogger(LocalStorageKvmBackend.class);
+    private static final Logger log = LoggerFactory.getLogger(LocalStorageKvmBackend.class);
 
     @Autowired
     private AccountManager acntMgr;
@@ -660,14 +660,6 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         private String destPath;
         private boolean fullRebase;
 
-        public boolean isFullRebase() {
-            return fullRebase;
-        }
-
-        public void setFullRebase(boolean fullRebase) {
-            this.fullRebase = fullRebase;
-        }
-
         public String getSrcPath() {
             return srcPath;
         }
@@ -683,9 +675,52 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         public void setDestPath(String destPath) {
             this.destPath = destPath;
         }
+
+        public boolean isFullRebase() {
+            return fullRebase;
+        }
+
+        public void setFullRebase(boolean fullRebase) {
+            this.fullRebase = fullRebase;
+        }
     }
 
     public static class OfflineMergeSnapshotRsp extends AgentResponse {
+        private long size;
+
+        public long getSize() {
+            return size;
+        }
+
+        public void setSize(long size) {
+            this.size = size;
+        }
+    }
+
+    public static class OfflineCommitSnapshotCmd extends AgentCommand implements HasThreadContext {
+        public String srcPath;
+        public String dstPath;
+    }
+
+    public static class OfflineCommitSnapshotRsp extends AgentResponse {
+        private String newInstallPath;
+        private Long size;
+
+        public String getNewInstallPath() {
+            return newInstallPath;
+        }
+
+        public void setNewInstallPath(String newInstallPath) {
+            this.newInstallPath = newInstallPath;
+        }
+
+        public Long getSize() {
+            return size;
+        }
+
+        public void setSize(Long size) {
+            this.size = size;
+        }
     }
 
     public static class CheckBitsCmd extends AgentCommand {
@@ -894,6 +929,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
     public static final String REINIT_IMAGE_PATH = "/localstorage/reinit/image";
     public static final String MERGE_SNAPSHOT_PATH = "/localstorage/snapshot/merge";
     public static final String OFFLINE_MERGE_PATH = "/localstorage/snapshot/offlinemerge";
+    public static final String OFFLINE_COMMIT_PATH = "/localstorage/snapshot/offlinecommit";
     public static final String GET_MD5_PATH = "/localstorage/getmd5";
     public static final String CHECK_MD5_PATH = "/localstorage/checkmd5";
     public static final String GET_BACKING_FILE_PATH = "/localstorage/volume/getbackingfile";
@@ -2008,32 +2044,6 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
     }
 
     @Override
-    void handle(final UndoSnapshotCreationOnPrimaryStorageMsg msg, final String hostUuid, final ReturnValueCompletion<UndoSnapshotCreationOnPrimaryStorageReply> completion) {
-        CommitVolumeOnHypervisorMsg hmsg = new CommitVolumeOnHypervisorMsg();
-        hmsg.setHostUuid(hostUuid);
-        hmsg.setVmUuid(msg.getVmUuid());
-        hmsg.setVolume(msg.getVolume());
-        hmsg.setSrcPath(msg.getSrcPath());
-        hmsg.setDstPath(msg.getDstPath());
-        bus.makeTargetServiceIdByResourceUuid(hmsg, HostConstant.SERVICE_ID, hostUuid);
-        bus.send(hmsg, new CloudBusCallBack(completion) {
-            @Override
-            public void run(MessageReply reply) {
-                if (!reply.isSuccess()) {
-                    completion.fail(reply.getError());
-                    return;
-                }
-
-                UndoSnapshotCreationOnPrimaryStorageReply ret = new UndoSnapshotCreationOnPrimaryStorageReply();
-                CommitVolumeOnHypervisorReply treply = (CommitVolumeOnHypervisorReply) reply;
-                ret.setSize(treply.getSize());
-                ret.setNewVolumeInstallPath(treply.getNewVolumeInstallPath());
-                completion.success(ret);
-            }
-        });
-    }
-
-    @Override
     void handle(final DeleteSnapshotOnPrimaryStorageMsg msg, final String hostUuid, final ReturnValueCompletion<DeleteSnapshotOnPrimaryStorageReply> completion) {
         final DeleteSnapshotOnPrimaryStorageReply reply = new DeleteSnapshotOnPrimaryStorageReply();
         deleteBits(msg.getSnapshot().getPrimaryStorageInstallPath(), hostUuid, new Completion(completion) {
@@ -2468,11 +2478,17 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
     @Override
     void handle(GetVolumeBackingChainFromPrimaryStorageMsg msg, ReturnValueCompletion<GetVolumeBackingChainFromPrimaryStorageReply> completion) {
         GetVolumeBackingChainFromPrimaryStorageReply reply = new GetVolumeBackingChainFromPrimaryStorageReply();
+        String hostUuid;
+        if (msg.getHostUuid() != null) {
+            hostUuid = msg.getHostUuid();
+        } else {
+            hostUuid = getHostUuidByResourceUuid(msg.getVolumeUuid(), VolumeVO.class.getSimpleName());
+        }
         new While<>(msg.getRootInstallPaths()).each((installPath, compl) -> {
             GetBackingChainCmd cmd = new GetBackingChainCmd();
             cmd.installPath = installPath;
             cmd.volumeUuid = msg.getVolumeUuid();
-            httpCall(GET_BACKING_CHAIN_PATH, msg.getHostUuid(), cmd, GetBackingChainRsp.class, new ReturnValueCompletion<GetBackingChainRsp>(compl) {
+            httpCall(GET_BACKING_CHAIN_PATH, hostUuid, cmd, GetBackingChainRsp.class, new ReturnValueCompletion<GetBackingChainRsp>(compl) {
                 @Override
                 public void success(GetBackingChainRsp rsp) {
                     if (CollectionUtils.isEmpty(rsp.backingChain)) {
@@ -3762,5 +3778,144 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
 
     private String makeInitializedFilePath() {
         return String.format("%s/%s-initialized-file", self.getMountPath(), self.getUuid());
+    }
+
+    @Override
+    void handle(CommitVolumeSnapshotOnPrimaryStorageMsg msg, String hostUuid, final ReturnValueCompletion<CommitVolumeSnapshotOnPrimaryStorageReply> completion) {
+        CommitVolumeSnapshotOnPrimaryStorageReply reply = new CommitVolumeSnapshotOnPrimaryStorageReply();
+        if (msg.isOnline()) {
+            CommitVolumeSnapshotOnHypervisorMsg hmsg = new CommitVolumeSnapshotOnHypervisorMsg();
+            hmsg.setHostUuid(hostUuid);
+            hmsg.setVolume(msg.getVolume());
+            hmsg.setSrcPath(msg.getSrcSnapshot().getPrimaryStorageInstallPath());
+            hmsg.setDstPath(msg.getDstSnapshot().getPrimaryStorageInstallPath());
+            bus.makeTargetServiceIdByResourceUuid(hmsg, HostConstant.SERVICE_ID, hostUuid);
+            bus.send(hmsg, new CloudBusCallBack(msg) {
+                @Override
+                public void run(MessageReply r) {
+                    if (!r.isSuccess()) {
+                        completion.fail(r.getError());
+                        return;
+                    }
+
+                    CommitVolumeSnapshotOnHypervisorReply re = r.castReply();
+                    reply.setSize(re.getSize());
+                    reply.setNewInstallPath(msg.getDstSnapshot().getPrimaryStorageInstallPath());
+                    completion.success(reply);
+                }
+            });
+        } else {
+            OfflineCommitSnapshotCmd cmd = new OfflineCommitSnapshotCmd();
+            cmd.srcPath = msg.getSrcSnapshot().getPrimaryStorageInstallPath();
+            cmd.dstPath = msg.getDstSnapshot().getPrimaryStorageInstallPath();
+            httpCall(OFFLINE_COMMIT_PATH, hostUuid, cmd, OfflineCommitSnapshotRsp.class, new ReturnValueCompletion<OfflineCommitSnapshotRsp>(completion) {
+                @Override
+                public void success(OfflineCommitSnapshotRsp returnValue) {
+                    reply.setNewInstallPath(returnValue.getNewInstallPath());
+                    reply.setSize(returnValue.getSize());
+                    completion.success(reply);
+                }
+
+                @Override
+                public void fail(ErrorCode errorCode) {
+                    completion.fail(errorCode);
+                }
+            });
+        }
+    }
+
+    @Override
+    void handle(PullVolumeSnapshotOnPrimaryStorageMsg msg, String hostUuid, final ReturnValueCompletion<PullVolumeSnapshotOnPrimaryStorageReply> completion) {
+        PullVolumeSnapshotOnPrimaryStorageReply reply = new PullVolumeSnapshotOnPrimaryStorageReply();
+
+        FlowChain chain = FlowChainBuilder.newShareFlowChain();
+        chain.setName("pull-volume-snapshot");
+        chain.then(new ShareFlow() {
+            String srcPath;
+
+            @Override
+            public void setup() {
+                flow(new NoRollbackFlow() {
+                    String __name__ = String.format("get-backing-chain-%s", msg.getSrcSnapshot().getPrimaryStorageInstallPath());
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        GetBackingChainCmd cmd = new GetBackingChainCmd();
+                        cmd.installPath = msg.getSrcSnapshot().getPrimaryStorageInstallPath();
+                        cmd.volumeUuid = msg.getVolume().getUuid();
+                        httpCall(GET_BACKING_CHAIN_PATH, hostUuid, cmd, GetBackingChainRsp.class, new ReturnValueCompletion<GetBackingChainRsp>(completion) {
+                            @Override
+                            public void success(GetBackingChainRsp rsp) {
+                                srcPath = CollectionUtils.isEmpty(rsp.backingChain) ? null : rsp.backingChain.get(0);
+                                trigger.next();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.fail(operr("failed to get backing chain for volume[uuid:%s] on host[uuid:%s], %s", msg.getVolume().getUuid(), hostUuid, errorCode));
+                            }
+                        });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = String.format("extend-dstPath-%s", msg.getDstSnapshot().getPrimaryStorageInstallPath());
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        if (msg.isOnline()) {
+                            PullVolumeSnapshotOnHypervisorMsg pmsg = new PullVolumeSnapshotOnHypervisorMsg();
+                            pmsg.setHostUuid(hostUuid);
+                            pmsg.setBasePath(srcPath);
+                            pmsg.setVolume(msg.getVolume());
+                            bus.makeTargetServiceIdByResourceUuid(pmsg, HostConstant.SERVICE_ID, hostUuid);
+                            bus.send(pmsg, new CloudBusCallBack(completion) {
+                                @Override
+                                public void run(MessageReply r) {
+                                    if (!r.isSuccess()) {
+                                        trigger.fail(r.getError());
+                                        return;
+                                    }
+
+                                    PullVolumeSnapshotOnHypervisorReply re = r.castReply();
+                                    reply.setSize(re.getSize());
+                                    trigger.next();
+                                }
+                            });
+                        } else {
+                            OfflineMergeSnapshotCmd cmd = new OfflineMergeSnapshotCmd();
+                            cmd.srcPath = srcPath;
+                            cmd.destPath = msg.getDstSnapshot().getPrimaryStorageInstallPath();
+                            httpCall(OFFLINE_MERGE_PATH, hostUuid, cmd, OfflineMergeSnapshotRsp.class, new ReturnValueCompletion<OfflineMergeSnapshotRsp>(completion) {
+                                @Override
+                                public void success(OfflineMergeSnapshotRsp rsp) {
+                                    reply.setSize(rsp.getSize());
+                                    trigger.next();
+                                }
+
+                                @Override
+                                public void fail(ErrorCode errorCode) {
+                                    trigger.fail(errorCode);
+                                }
+                            });
+                        }
+                    }
+                });
+
+                done(new FlowDoneHandler(completion) {
+                    @Override
+                    public void handle(Map data) {
+                        completion.success(reply);
+                    }
+                });
+
+                error(new FlowErrorHandler(completion) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        completion.fail(errCode);
+                    }
+                });
+            }
+        }).start();
     }
 }
