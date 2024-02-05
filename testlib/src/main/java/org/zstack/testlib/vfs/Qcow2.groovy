@@ -6,6 +6,7 @@ import org.zstack.utils.logging.CLogger
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.stream.Collectors
 
 class Qcow2 extends Volume {
     private static CLogger logger = Utils.getLogger(Qcow2.class)
@@ -167,6 +168,38 @@ class Qcow2 extends Volume {
         }
 
         return baseImage
+    }
+
+    static void commit(VFS vfs, Qcow2 top, Qcow2 base, List<String> topChildrenInstallPathInDb) {
+        assert top.getBackingFile().toAbsolutePath().toString() == base.pathString()
+
+        List<Qcow2> childrenOfBase = getQcow2Children(vfs, base)
+        List<Qcow2> childrenOfTop = getQcow2Children(vfs, top)
+        assert childrenOfTop.size() == topChildrenInstallPathInDb.size()
+        childrenOfTop.forEach { it ->
+            it.backingFile = vfs.getPath(base.pathString())
+            it.update()
+            topChildrenInstallPathInDb.contains(it.pathString())
+        }
+
+        base.actualSize = base.actualSize + top.actualSize
+        if (base.actualSize >= base.virtualSize) {
+            base.actualSize = base.virtualSize
+        }
+        base.update()
+
+        List<Qcow2> afterCommitChildrenOfBase = getQcow2Children(vfs, base)
+        afterCommitChildrenOfBase.forEach { it -> assert it.backingFile.toAbsolutePath().toString() == base.pathString() }
+    }
+
+    static private List<Qcow2> getQcow2Children(VFS vfs, Qcow2 q) {
+        List<Qcow2> children = []
+        vfs.walkFileSystem { vfile ->
+            if (vfile instanceof Qcow2 && vfile.backingFile != null && vfile.backingFile.toAbsolutePath().toString() == q.pathString()) {
+                children.add(vfile)
+            }
+        }
+        return children
     }
 }
 

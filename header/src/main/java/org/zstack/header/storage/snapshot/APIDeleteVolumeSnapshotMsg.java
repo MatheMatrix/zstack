@@ -62,6 +62,9 @@ public class APIDeleteVolumeSnapshotMsg extends APIDeleteMessage implements Dele
     @APINoSee
     private String treeUuid;
 
+    @APIParam(required = false)
+    private boolean onlySelf = false;
+
     @Override
     public String getTreeUuid() {
         return treeUuid;
@@ -83,6 +86,14 @@ public class APIDeleteVolumeSnapshotMsg extends APIDeleteMessage implements Dele
     @Override
     public String getSnapshotUuid() {
         return uuid;
+    }
+
+    public boolean isOnlySelf() {
+        return onlySelf;
+    }
+
+    public void setOnlySelf(boolean onlySelf) {
+        this.onlySelf = onlySelf;
     }
 
     @Override
