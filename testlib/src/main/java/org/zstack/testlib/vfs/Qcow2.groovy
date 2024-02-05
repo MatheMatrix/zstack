@@ -168,5 +168,28 @@ class Qcow2 extends Volume {
 
         return baseImage
     }
+
+     List<Qcow2> getChildren() {
+        List<Qcow2> children = []
+        vfs.walkFileSystem { vfile ->
+            if (vfile instanceof Qcow2 && vfile.backingFile != null && vfile.backingFile.toAbsolutePath().toString() == pathString()) {
+                children.add(vfile)
+            }
+        }
+        return children
+    }
+
+    static void commit(VFS vfs, Qcow2 top, Qcow2 base, List<String> topChildrenInstallPathInDb) {
+        List<Qcow2> childrenOfTop = top.getChildren()
+        assert topChildrenInstallPathInDb.size() == childrenOfTop.size()
+        childrenOfTop.forEach { children ->
+            children.backingFile = vfs.getPath(base.pathString())
+            children.update()
+            topChildrenInstallPathInDb.contains(children.pathString())
+        }
+
+        base.actualSize = base.actualSize + top.actualSize >= base.virtualSize ? base.virtualSize : base.actualSize + top.actualSize
+        base.update()
+    }
 }
 

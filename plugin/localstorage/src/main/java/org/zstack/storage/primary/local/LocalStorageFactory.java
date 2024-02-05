@@ -47,6 +47,7 @@ import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.header.volume.*;
 import org.zstack.kvm.KVMConstant;
 import org.zstack.storage.primary.PrimaryStorageCapacityChecker;
+import org.zstack.storage.snapshot.MarkSnapshotAsVolumeExtension;
 import org.zstack.storage.snapshot.PostMarkRootVolumeAsSnapshotExtension;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
 import org.zstack.tag.SystemTagCreator;
@@ -75,7 +76,7 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
         RecoverDataVolumeExtensionPoint, RecoverVmExtensionPoint, VmPreMigrationExtensionPoint, CreateTemplateFromVolumeSnapshotExtensionPoint,
         HostAfterConnectedExtensionPoint, InstantiateDataVolumeOnCreationExtensionPoint, PrimaryStorageAttachExtensionPoint,
         PostMarkRootVolumeAsSnapshotExtension, AfterTakeLiveSnapshotsOnVolumes, VmCapabilitiesExtensionPoint, PrimaryStorageDetachExtensionPoint,
-        CreateRecycleExtensionPoint, AfterInstantiateVolumeExtensionPoint, CreateDataVolumeExtensionPoint {
+        CreateRecycleExtensionPoint, AfterInstantiateVolumeExtensionPoint, CreateDataVolumeExtensionPoint, MarkSnapshotAsVolumeExtension {
     private final static CLogger logger = Utils.getLogger(LocalStorageFactory.class);
     public static PrimaryStorageType type = new PrimaryStorageType(LocalStorageConstants.LOCAL_STORAGE_TYPE) {
         @Override
@@ -1207,6 +1208,16 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
             }
         }.execute();
 
+    }
+
+    @Override
+    public void afterMarkSnapshotAsVolume(VolumeSnapshotInventory snapshot) {
+        String type = Q.New(PrimaryStorageVO.class).eq(PrimaryStorageVO_.uuid, snapshot.getPrimaryStorageUuid())
+                .select(PrimaryStorageVO_.type).findValue();
+        if (!type.equals(LocalStorageConstants.LOCAL_STORAGE_TYPE)) {
+            return;
+        }
+        SQL.New(LocalStorageResourceRefVO.class).eq(LocalStorageResourceRefVO_.resourceUuid, snapshot.getUuid()).delete();
     }
 
     protected String getDestMigrationAddress(String srcHostUuid, String dstHostUuid){
