@@ -45,7 +45,6 @@ import org.zstack.header.image.ImageInventory;
 import org.zstack.header.image.ImageStatus;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.log.NoLogging;
-import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
@@ -3044,17 +3043,16 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         }).start();
     }
 
-    private void handle(final UndoSnapshotCreationOnPrimaryStorageMsg msg) {
+    private void handle(final DeleteVolumeSnapshotSelfOnPrimaryStorageMsg msg) {
         VolumeSnapshotDeletionMsg dmsg = new VolumeSnapshotDeletionMsg();
         dmsg.setTreeUuid(msg.getSnapshot().getTreeUuid());
         dmsg.setVolumeUuid(msg.getSnapshot().getVolumeUuid());
         dmsg.setSnapshotUuid(msg.getSnapshot().getUuid());
-        dmsg.setVolumeDeletion(false);
         bus.makeTargetServiceIdByResourceUuid(dmsg, VolumeSnapshotConstant.SERVICE_ID, msg.getSnapshot().getUuid());
         bus.send(dmsg, new CloudBusCallBack(msg) {
             @Override
             public void run(MessageReply reply) {
-                UndoSnapshotCreationOnPrimaryStorageReply ret = new UndoSnapshotCreationOnPrimaryStorageReply();
+                DeleteVolumeSnapshotSelfOnPrimaryStorageReply ret = new DeleteVolumeSnapshotSelfOnPrimaryStorageReply();
                 if (!reply.isSuccess()) {
                     ret.setError(reply.getError());
                     bus.reply(msg, ret);
@@ -4388,12 +4386,11 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
             handle((GetPrimaryStorageUsageReportMsg) msg);
         } else if (msg instanceof CleanUpStorageTrashOnPrimaryStorageMsg) {
             handle((CleanUpStorageTrashOnPrimaryStorageMsg)msg);
-        } else if (msg instanceof UndoSnapshotCreationOnPrimaryStorageMsg) {
-            handle((UndoSnapshotCreationOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof DeleteVolumeSnapshotSelfOnPrimaryStorageMsg) {
+            handle((DeleteVolumeSnapshotSelfOnPrimaryStorageMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
-
     }
 
     public static class CheckIsBitsExistingRsp extends AgentResponse {

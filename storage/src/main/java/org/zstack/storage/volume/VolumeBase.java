@@ -31,7 +31,6 @@ import org.zstack.header.host.*;
 import org.zstack.header.image.*;
 import org.zstack.header.message.APIDeleteMessage.DeletionMode;
 import org.zstack.header.message.*;
-import org.zstack.header.storage.backup.VolumeBackupOverlayMsg;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.storage.snapshot.group.MemorySnapshotGroupExtensionPoint;
@@ -59,7 +58,6 @@ import org.zstack.utils.DebugUtils;
 import org.zstack.utils.TimeUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.ForEachFunction;
-import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.TypedQuery;
@@ -3495,147 +3493,25 @@ public class VolumeBase extends AbstractVolume implements Volume {
             return;
         }
 
-        FlowChain chain = FlowChainBuilder.newShareFlowChain();
-        // currently, we only deal with overlay commit to snapshot
-        // TODO expand msg properties to support intermediate commit
-        chain.setName(String.format("undo-snapshot-snapshot-%s-creation", snapShot.getUuid()));
-        chain.then(new ShareFlow() {
-            String originVolumePath = self.getInstallPath();
-            String newVolumeInstallPath;
-            long size;
-
+        VolumeSnapshotDeletionMsg dmsg = new VolumeSnapshotDeletionMsg();
+        dmsg.setTreeUuid(snapShot.getTreeUuid());
+        dmsg.setVolumeUuid(snapShot.getVolumeUuid());
+        dmsg.setSnapshotUuid(snapShot.getUuid());
+        dmsg.setOnlySelf(true);
+        bus.makeTargetServiceIdByResourceUuid(dmsg, VolumeSnapshotConstant.SERVICE_ID, snapShot.getUuid());
+        bus.send(dmsg, new CloudBusCallBack(msg) {
             @Override
-            public void setup() {
-                flow(new NoRollbackFlow() {
-                    String __name__ = "undo-snapshot-creation-on-primary-storage";
-
-                    @Override
-                    public void run(FlowTrigger trigger, Map data) {
-                        UndoSnapshotCreationOnPrimaryStorageMsg bmsg = new UndoSnapshotCreationOnPrimaryStorageMsg();
-                        bmsg.setVolume(getSelfInventory());
-                        bmsg.setDstPath(snapShot.getPrimaryStorageInstallPath());
-                        bmsg.setSrcPath(originVolumePath);
-                        bmsg.setSnapshot(VolumeSnapshotInventory.valueOf(snapShot));
-                        bmsg.setVmUuid(self.getVmInstanceUuid());
-                        bmsg.setPrimaryStorageUuid(self.getPrimaryStorageUuid());
-                        bus.makeTargetServiceIdByResourceUuid(bmsg, PrimaryStorageConstant.SERVICE_ID, self.getPrimaryStorageUuid());
-                        bus.send(bmsg, new CloudBusCallBack(trigger) {
-                            @Override
-                            public void run(MessageReply reply) {
-                                if (!reply.isSuccess()) {
-                                    trigger.fail(reply.getError());
-                                    return;
-                                }
-
-                                UndoSnapshotCreationOnPrimaryStorageReply treply = (UndoSnapshotCreationOnPrimaryStorageReply) reply;
-                                newVolumeInstallPath = treply.getNewVolumeInstallPath();
-                                size = treply.getSize();
-                                trigger.next();
-                            }
-                        });
-                    }
-                });
-
-                flow(new NoRollbackFlow() {
-                    String __name__ = "delete-origin-volume-bits";
-
-                    @Override
-                    public boolean skip(Map data) {
-                        return originVolumePath.equals(newVolumeInstallPath);
-                    }
-
-                    @Override
-                    public void run(FlowTrigger trigger, Map data) {
-                        DeleteVolumeBitsOnPrimaryStorageMsg dmsg = new DeleteVolumeBitsOnPrimaryStorageMsg();
-                        dmsg.setPrimaryStorageUuid(self.getPrimaryStorageUuid());
-                        dmsg.setInstallPath(originVolumePath);
-                        dmsg.setSize(self.getSize());
-                        dmsg.setBitsType(VolumeVO.class.getSimpleName());
-                        dmsg.setBitsUuid(self.getUuid());
-                        dmsg.setHypervisorType(VolumeFormat.getMasterHypervisorTypeByVolumeFormat(getSelfInventory().getFormat()).toString());
-                        dmsg.setFolder(false);
-                        dmsg.setFromRecycle(true);
-                        bus.makeTargetServiceIdByResourceUuid(dmsg, PrimaryStorageConstant.SERVICE_ID, self.getPrimaryStorageUuid());
-                        bus.send(dmsg, new CloudBusCallBack(trigger) {
-                            @Override
-                            public void run(MessageReply reply) {
-                                if (!reply.isSuccess()) {
-                                    if (reply.getError().isError(VolumeErrors.VOLUME_IN_USE)) {
-                                        logger.warn(String.format("unable to delete path:%s right now", originVolumePath));
-                                    }
-
-                                    trigger.fail(reply.getError());
-                                    return;
-                                }
-
-                                trigger.next();
-                            }
-                        });
-                    }
-                });
-
-                flow(new NoRollbackFlow() {
-                    String __name__ = "update-db-install-path";
-
-                    @Override
-                    public boolean skip(Map data) {
-                        return originVolumePath.equals(newVolumeInstallPath);
-                    }
-
-                    @Override
-                    public void run(FlowTrigger trigger, Map data) {
-                        MarkSnapshotAsVolumeMsg mmsg = new MarkSnapshotAsVolumeMsg();
-                        mmsg.setVolumeUuid(self.getUuid());
-                        mmsg.setSnapshotUuid(snapShot.getUuid());
-                        mmsg.setSize(size);
-                        mmsg.setVolumePath(newVolumeInstallPath);
-                        mmsg.setTreeUuid(snapShot.getTreeUuid());
-                        bus.makeTargetServiceIdByResourceUuid(mmsg, VolumeSnapshotConstant.SERVICE_ID, snapShot.getUuid());
-                        bus.send(mmsg, new CloudBusCallBack(trigger) {
-                            @Override
-                            public void run(MessageReply reply) {
-                                if (!reply.isSuccess()) {
-                                    logger.warn(String.format("mark snapshot:%s as volume failed", snapShot.getUuid()));
-                                    trigger.fail(reply.getError());
-                                    return;
-                                }
-
-                                trigger.next();
-                            }
-                        });
-                    }
-                });
-
-                flow(new NoRollbackFlow() {
-                    String __name__ = "release-origin-volume-size";
-
-                    @Override
-                    public void run(FlowTrigger trigger, Map data) {
-                        RecalculatePrimaryStorageCapacityMsg rmsg = new RecalculatePrimaryStorageCapacityMsg();
-                        rmsg.setPrimaryStorageUuid(self.getPrimaryStorageUuid());
-                        bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, self.getPrimaryStorageUuid());
-                        bus.send(rmsg);
-                        trigger.next();
-                    }
-                });
-
-                done(new FlowDoneHandler(completion) {
-                    @Override
-                    public void handle(Map data) {
-                        refreshVO();
-                        reply.setVolume(getSelfInventory());
-                        completion.success(reply);
-                    }
-                });
-
-                error(new FlowErrorHandler(completion) {
-                    @Override
-                    public void handle(ErrorCode errCode, Map data) {
-                        completion.fail(errCode);
-                    }
-                });
+            public void run(MessageReply r) {
+                VolumeSnapshotDeletionReply ret = r.castReply();
+                if (!r.isSuccess()) {
+                    ret.setError(r.getError());
+                    bus.reply(msg, ret);
+                    return;
+                }
+                reply.setVolume(getSelfInventory());
+                bus.reply(msg, ret);
             }
-        }).start();
+        });
     }
 
     private void handle(UndoSnapshotCreationMsg msg) {

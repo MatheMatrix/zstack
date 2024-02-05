@@ -24,4 +24,6 @@ interface VFSPrimaryStorageTakeSnapshotBackend {
     List<TakeSnapshotsOnKvmResultStruct> takeSnapshotsOnVolumes(String primaryStorageUuid, HttpEntity<String> e, EnvSpec spec, List<TakeSnapshotsOnKvmJobStruct> snapshotJobs)
 
     void blockStream(HttpEntity<String> e, EnvSpec spec, VolumeInventory volume)
+
+    void blockCommit(HttpEntity<String> e, EnvSpec spec, KVMAgentCommands.BlockCommitVolumeCmd cmd, VolumeInventory volume)
 }
