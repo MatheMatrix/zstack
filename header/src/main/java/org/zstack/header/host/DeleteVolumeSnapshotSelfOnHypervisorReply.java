@@ -1,8 +1,8 @@
-package org.zstack.header.storage.primary;
+package org.zstack.header.host;
 
 import org.zstack.header.message.MessageReply;
 
-public class UndoSnapshotCreationOnPrimaryStorageReply extends MessageReply {
+public class DeleteVolumeSnapshotSelfOnHypervisorReply extends MessageReply {
     private String newVolumeInstallPath;
     private long size;
 

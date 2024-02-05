@@ -4,17 +4,23 @@ import org.zstack.header.message.NeedReplyMessage;
 import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
 import org.zstack.header.volume.VolumeInventory;
 
+import java.util.List;
+
 /**
  * @ Author : yh.w
  * @ Date   : Created in 11:47 2023/8/21
  */
-public class UndoSnapshotCreationOnPrimaryStorageMsg extends NeedReplyMessage implements PrimaryStorageMessage {
+public class DeleteVolumeSnapshotSelfOnPrimaryStorageMsg extends NeedReplyMessage implements PrimaryStorageMessage {
     private String vmUuid;
     private VolumeInventory volume;
-    private VolumeSnapshotInventory snapshot;
     private String srcPath;
     private String dstPath;
     private String primaryStorageUuid;
+    private VolumeSnapshotInventory snapshot;
+    private long requiredExtraSize;
+    private List<String> aliveChainInstallPathInDb;
+    private List<String> srcChildrenInstallPathInDb;
+    private List<String> srcAncestorsInstallPathInDb;
 
     public VolumeSnapshotInventory getSnapshot() {
         return snapshot;
@@ -63,5 +69,37 @@ public class UndoSnapshotCreationOnPrimaryStorageMsg extends NeedReplyMessage im
     @Override
     public String getPrimaryStorageUuid() {
         return primaryStorageUuid;
+    }
+
+    public long getRequiredExtraSize() {
+        return requiredExtraSize;
+    }
+
+    public void setRequiredExtraSize(long requiredExtraSize) {
+        this.requiredExtraSize = requiredExtraSize;
+    }
+
+    public List<String> getAliveChainInstallPathInDb() {
+        return aliveChainInstallPathInDb;
+    }
+
+    public void setAliveChainInstallPathInDb(List<String> aliveChainInstallPathInDb) {
+        this.aliveChainInstallPathInDb = aliveChainInstallPathInDb;
+    }
+
+    public List<String> getSrcChildrenInstallPathInDb() {
+        return srcChildrenInstallPathInDb;
+    }
+
+    public void setSrcChildrenInstallPathInDb(List<String> srcChildrenInstallPathInDb) {
+        this.srcChildrenInstallPathInDb = srcChildrenInstallPathInDb;
+    }
+
+    public List<String> getSrcAncestorsInstallPathInDb() {
+        return srcAncestorsInstallPathInDb;
+    }
+
+    public void setSrcAncestorsInstallPathInDb(List<String> srcAncestorsInstallPathInDb) {
+        this.srcAncestorsInstallPathInDb = srcAncestorsInstallPathInDb;
     }
 }

@@ -1,0 +1,91 @@
+package org.zstack.header.host;
+
+import org.zstack.header.message.NeedReplyMessage;
+import org.zstack.header.volume.VolumeInventory;
+
+import java.util.List;
+
+public class DeleteVolumeSnapshotSelfOnHypervisorMsg extends NeedReplyMessage implements HostMessage {
+    private String hostUuid;
+    private String vmUuid;
+    private VolumeInventory volume;
+    private String srcPath;
+    private String dstPath;
+    private long requiredExtraSize;
+    private List<String> aliveChainInstallPathInDb;
+    private List<String> srcChildrenInstallPathInDb;
+    private List<String> srcAncestorsInstallPathInDb;
+
+    public VolumeInventory getVolume() {
+        return volume;
+    }
+
+    public void setVolume(VolumeInventory volume) {
+        this.volume = volume;
+    }
+
+    @Override
+    public String getHostUuid() {
+        return hostUuid;
+    }
+
+    public void setHostUuid(String hostUuid) {
+        this.hostUuid = hostUuid;
+    }
+
+    public String getVmUuid() {
+        return vmUuid;
+    }
+
+    public void setVmUuid(String vmUuid) {
+        this.vmUuid = vmUuid;
+    }
+
+    public String getSrcPath() {
+        return srcPath;
+    }
+
+    public void setSrcPath(String srcPath) {
+        this.srcPath = srcPath;
+    }
+
+    public String getDstPath() {
+        return dstPath;
+    }
+
+    public void setDstPath(String dstPath) {
+        this.dstPath = dstPath;
+    }
+
+    public long getRequiredExtraSize() {
+        return requiredExtraSize;
+    }
+
+    public void setRequiredExtraSize(long requiredExtraSize) {
+        this.requiredExtraSize = requiredExtraSize;
+    }
+
+    public List<String> getAliveChainInstallPathInDb() {
+        return aliveChainInstallPathInDb;
+    }
+
+    public void setAliveChainInstallPathInDb(List<String> aliveChainInstallPathInDb) {
+        this.aliveChainInstallPathInDb = aliveChainInstallPathInDb;
+    }
+
+    public List<String> getSrcChildrenInstallPathInDb() {
+        return srcChildrenInstallPathInDb;
+    }
+
+    public void setSrcChildrenInstallPathInDb(List<String> srcChildrenInstallPathInDb) {
+        this.srcChildrenInstallPathInDb = srcChildrenInstallPathInDb;
+    }
+
+    public List<String> getSrcAncestorsInstallPathInDb() {
+        return srcAncestorsInstallPathInDb;
+    }
+
+    public void setSrcAncestorsInstallPathInDb(List<String> srcAncestorsInstallPathInDb) {
+        this.srcAncestorsInstallPathInDb = srcAncestorsInstallPathInDb;
+    }
+}

@@ -17,10 +17,13 @@ import java.util.concurrent.TimeUnit;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteVolumeSnapshotGroupEvent.class
 )
-@DefaultTimeout(timeunit = TimeUnit.HOURS, value = 3)
+@DefaultTimeout(timeunit = TimeUnit.HOURS, value = 36)
 public class APIDeleteVolumeSnapshotGroupMsg extends APIDeleteMessage implements VolumeSnapshotGroupMessage {
     @APIParam(resourceType = VolumeSnapshotGroupVO.class, successIfResourceNotExisting = true)
     private String uuid;
+
+    @APIParam(required = false)
+    private boolean onlySelf = false;
 
     public String getUuid() {
         return uuid;
@@ -28,6 +31,14 @@ public class APIDeleteVolumeSnapshotGroupMsg extends APIDeleteMessage implements
 
     public void setUuid(String uuid) {
         this.uuid = uuid;
+    }
+
+    public boolean isOnlySelf() {
+        return onlySelf;
+    }
+
+    public void setOnlySelf(boolean onlySelf) {
+        this.onlySelf = onlySelf;
     }
 
     @Override
