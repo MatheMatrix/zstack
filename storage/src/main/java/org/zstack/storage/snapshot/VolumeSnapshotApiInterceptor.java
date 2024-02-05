@@ -29,8 +29,10 @@ import static org.zstack.core.Platform.operr;
 import static org.zstack.storage.snapshot.VolumeSnapshotMessageRouter.getResourceIdToRouteMsg;
 
 import javax.persistence.Tuple;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 
@@ -74,6 +76,8 @@ public class VolumeSnapshotApiInterceptor implements ApiMessageInterceptor {
             validate((APIBatchDeleteVolumeSnapshotMsg) msg);
         } else if (msg instanceof APIRevertVmFromSnapshotGroupMsg) {
             validate((APIRevertVmFromSnapshotGroupMsg) msg);
+        } else if (msg instanceof APIDeleteVolumeSnapshotGroupMsg) {
+            validate((APIDeleteVolumeSnapshotGroupMsg) msg);
         }
 
         setServiceId(msg);
@@ -215,6 +219,25 @@ public class VolumeSnapshotApiInterceptor implements ApiMessageInterceptor {
         }
         if (msg.getVolumeUuid() == null) {
             throw new ApiMessageInterceptionException(operr("can not find volume uuid for snapshosts[uuid: %s]", msg.getUuids()));
+        }
+    }
+
+    private void validate(APIDeleteVolumeSnapshotGroupMsg msg) {
+        String vmUuid = Q.New(VolumeSnapshotGroupVO.class).select(VolumeSnapshotGroupVO_.vmInstanceUuid)
+                .eq(VolumeSnapshotGroupVO_.uuid, msg.getUuid()).findValue();
+
+        List<VolumeSnapshotGroupVO> groups = Q.New(VolumeSnapshotGroupVO.class)
+                .eq(VolumeSnapshotGroupVO_.vmInstanceUuid, vmUuid).list();
+
+        List<VolumeSnapshotGroupVO> incompleteGroups = groups.stream()
+                .filter(group -> !Objects.equals(group.getUuid(), msg.getUuid()))
+                .filter(group -> group.getVolumeSnapshotRefs().stream().anyMatch(VolumeSnapshotGroupRefVO::isSnapshotDeleted))
+                .collect(Collectors.toList());
+
+        if (!incompleteGroups.isEmpty()) {
+            throw new ApiMessageInterceptionException(operr("snapshots group are incomplete. " +
+                            "please delete the following incomplete snapshot groups first: %s",
+                    incompleteGroups.stream().map(VolumeSnapshotGroupVO::getUuid).collect(Collectors.toList())));
         }
     }
 }
