@@ -32,6 +32,9 @@ public class APIBatchDeleteVolumeSnapshotMsg extends APIDeleteMessage implements
     @APIParam(resourceType = VolumeSnapshotVO.class, successIfResourceNotExisting = true, nonempty = true, emptyString = false)
     private List<String> uuids;
 
+    @APIParam(required = false)
+    private boolean onlySelf = false;
+
     /**
      * @ignore
      */
@@ -52,6 +55,14 @@ public class APIBatchDeleteVolumeSnapshotMsg extends APIDeleteMessage implements
 
     public void setUuids(List<String> uuids) {
         this.uuids = uuids;
+    }
+
+    public boolean isOnlySelf() {
+        return onlySelf;
+    }
+
+    public void setOnlySelf(boolean onlySelf) {
+        this.onlySelf = onlySelf;
     }
 
     public static APIBatchDeleteVolumeSnapshotMsg __example__() {
