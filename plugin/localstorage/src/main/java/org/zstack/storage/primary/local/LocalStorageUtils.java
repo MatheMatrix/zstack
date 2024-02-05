@@ -15,6 +15,8 @@ import org.zstack.header.image.ImageConstant;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
+import org.zstack.header.volume.VolumeVO;
+import org.zstack.header.volume.VolumeVO_;
 import org.zstack.storage.primary.PrimaryStoragePhysicalCapacityManager;
 import org.zstack.utils.DebugUtils;
 import org.zstack.utils.Utils;
@@ -237,6 +239,19 @@ public class LocalStorageUtils {
 
         public InstallPath disassemble() {
             DebugUtils.Assert(fullPath != null, "fullPath cannot be null");
+
+            if (fullPath.startsWith("volume://")) {
+                String volumeUuid = fullPath.replaceFirst("volume://", "");
+                String path = Q.New(VolumeVO.class).select(VolumeVO_.installPath).eq(VolumeVO_.uuid, volumeUuid).findValue();
+                hostUuid = Q.New(LocalStorageResourceRefVO.class)
+                        .select(LocalStorageResourceRefVO_.hostUuid)
+                        .eq(LocalStorageResourceRefVO_.resourceUuid, volumeUuid)
+                        .eq(LocalStorageResourceRefVO_.resourceType, VolumeVO.class.getSimpleName())
+                        .findValue();
+                installPath = path;
+                return this;
+            }
+
             String[] pair = fullPath.split(";");
             DebugUtils.Assert(pair.length == 2, String.format("invalid cache path %s", fullPath));
             hostUuid = pair[1].replaceFirst("hostUuid://", "");
