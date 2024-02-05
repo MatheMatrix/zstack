@@ -17,6 +17,7 @@ import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.core.thread.ChainTask;
+import org.zstack.core.thread.RunInQueue;
 import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.trash.StorageTrash;
@@ -212,8 +213,6 @@ public class VolumeSnapshotTreeBase {
             handle((RevertVolumeFromSnapshotGroupMsg) msg);
         } else if (msg instanceof CancelDeleteVolumeSnapshotMsg) {
             handle((CancelDeleteVolumeSnapshotMsg) msg);
-        } else if (msg instanceof MarkSnapshotAsVolumeMsg) {
-            handle((MarkSnapshotAsVolumeMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
@@ -378,9 +377,114 @@ public class VolumeSnapshotTreeBase {
             return;
         }
 
-        FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
-        chain.setName(String.format("delete-snapshot-%s", currentRoot.getUuid()));
+        FlowChain chain = FlowChainBuilder.newShareFlowChain();
         chain.allowEmptyFlow();
+
+        String primaryStorageType = Q.New(PrimaryStorageVO.class).select(PrimaryStorageVO_.type)
+                .eq(PrimaryStorageVO_.uuid, getSelfInventory().getPrimaryStorageUuid()).findValue();
+
+        chain.then(new ShareFlow() {
+            @Override
+            public void setup() {
+                flow(new NoRollbackFlow() {
+                    String __name__ = "check-snapshot-reference";
+
+                    @Override
+                    public boolean skip(Map data) {
+                        return msg.isDbOnly();
+                    }
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        List<String> refVolUuids = VolumeSnapshotReferenceUtils.getAllReferenceVolumeUuids(currentLeaf);
+                        if (refVolUuids.isEmpty()) {
+                            trigger.next();
+                            return;
+                        }
+
+                        trigger.fail(operr("snapshot or its desendant has reference volume[uuids:%s]", refVolUuids));
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "run snapshot protector";
+
+                    @Override
+                    public boolean skip(Map data) {
+                        return msg.isDbOnly();
+                    }
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        if (Platform.isSimulatorOn()) {
+                            trigger.next();
+                            return;
+                        }
+
+                        ErrorCodeList errList = new ErrorCodeList();
+                        new While<>(currentLeaf.getDescendants()).all((sp, whileCompletion) -> {
+                            Optional<VolumeSnapshotDeletionProtector> protector = pluginRgty.getExtensionList(VolumeSnapshotDeletionProtector.class).stream().filter(p -> p.getPrimaryStorageType().equals(primaryStorageType))
+                                    .findFirst();
+                            if (!protector.isPresent()) {
+                                logger.warn(String.format("there are no protector for primary storage: %s", primaryStorageType));
+                                whileCompletion.done();
+                                return;
+                            }
+
+                            if (sp == null) {
+                                logger.warn(String.format("skip protector, got null descendant"));
+                                whileCompletion.done();
+                                return;
+                            }
+                            if (sp.getPrimaryStorageInstallPath() == null || sp.getVolumeUuid() == null) {
+                                logger.warn(String.format("skip protector, descendant primary storage install path or volume uuid is null"));
+                                whileCompletion.done();
+                                return;
+                            }
+
+                            protector.get().protect(sp, new Completion(whileCompletion) {
+                                @Override
+                                public void success() {
+                                    whileCompletion.done();
+                                }
+
+                                @Override
+                                public void fail(ErrorCode errorCode) {
+                                    errList.getCauses().add(errorCode);
+                                    whileCompletion.done();
+                                }
+                            });
+                        }).run(new WhileDoneCompletion(completion) {
+                            @Override
+                            public void done(ErrorCodeList errorCodeList) {
+                                if (errList.getCauses().isEmpty()) {
+                                    trigger.next();
+                                    return;
+                                }
+                                trigger.fail(errList.getCauses().get(0));
+                            }
+                        });
+                    }
+                });
+            }
+        });
+
+        if (msg.getScope() == null) {
+            logger.warn("snapshot deletion scope is null, default to Chain scope");
+            deleteChain(chain, msg, completion);
+            return;
+        }
+
+        if (Objects.equals(msg.getScope(), DeleteVolumeSnapshotScope.Chain.toString())) {
+            deleteChain(chain, msg, completion);
+            return;
+        }
+
+        deleteSingle(chain, msg, completion);
+    }
+
+    private void deleteChain(FlowChain chain, final VolumeSnapshotDeletionMsg msg, NoErrorCompletion completion) {
+        final VolumeSnapshotDeletionReply reply = new VolumeSnapshotDeletionReply();
 
         boolean ancestorOfLatest = false;
         long size = 0;
@@ -395,356 +499,720 @@ public class VolumeSnapshotTreeBase {
                 .select(VolumeVO_.size)
                 .eq(VolumeVO_.uuid, msg.getVolumeUuid())
                 .findValue();
-        long requiredSize = size < volumeVirtualSize ? size : volumeVirtualSize;
+        long requiredSize = Math.min(size, volumeVirtualSize);
 
-        String primaryStorageType = Q.New(PrimaryStorageVO.class).select(PrimaryStorageVO_.type)
-                .eq(PrimaryStorageVO_.uuid, getSelfInventory().getPrimaryStorageUuid()).findValue();
-
-        chain.then(new NoRollbackFlow() {
-            String __name__ = "check-snapshot-reference";
-
+        chain.setName(String.format("delete-snapshot-%s", currentRoot.getUuid()));
+        boolean finalAncestorOfLatest = ancestorOfLatest;
+        chain.then(new ShareFlow() {
             @Override
-            public boolean skip(Map data) {
-                return msg.isDbOnly();
-            }
+            public void setup() {
 
-            @Override
-            public void run(FlowTrigger trigger, Map data) {
-                List<String> refVolUuids = VolumeSnapshotReferenceUtils.getAllReferenceVolumeUuids(currentLeaf);
-                if (refVolUuids.isEmpty()) {
-                    trigger.next();
-                    return;
-                }
+                flow(new Flow() {
+                    String __name__ = String.format("change-volume-snapshot-status-%s", VolumeSnapshotStatus.Deleting);
 
-                trigger.fail(operr("snapshot or its desendant has reference volume[uuids:%s]", refVolUuids));
-            }
-        });
-        chain.then(new NoRollbackFlow() {
-            String __name__ = "run snapshot protector";
+                    public void run(final FlowTrigger trigger, Map data) {
+                        changeStatusOfSnapshots(StatusEvent.delete, currentLeaf.getDescendants(), new Completion(trigger) {
+                            @Override
+                            public void success() {
+                                trigger.next();
+                            }
 
-            @Override
-            public boolean skip(Map data) {
-                return msg.isDbOnly();
-            }
-
-            @Override
-            public void run(FlowTrigger trigger, Map data) {
-                if (Platform.isSimulatorOn()) {
-                    trigger.next();
-                    return;
-                }
-
-                ErrorCodeList errList = new ErrorCodeList();
-                new While<>(currentLeaf.getDescendants()).all((sp, whileCompletion) -> {
-                    Optional<VolumeSnapshotDeletionProtector> protector = pluginRgty.getExtensionList(VolumeSnapshotDeletionProtector.class).stream().filter(p -> p.getPrimaryStorageType().equals(primaryStorageType))
-                            .findFirst();
-                    if (!protector.isPresent()) {
-                        logger.warn(String.format("there are no protector for primary storage: %s", primaryStorageType));
-                        whileCompletion.done();
-                        return;
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.fail(errorCode);
+                            }
+                        });
                     }
 
-                    if (sp == null)  {
-                        logger.warn(String.format("skip protector, got null descendant"));
-                        whileCompletion.done();
-                        return;
+                    @Override
+                    public void rollback(final FlowRollback trigger, Map data) {
+                        changeStatusOfSnapshots(StatusEvent.ready, currentLeaf.getDescendants(), new Completion(trigger) {
+                            @Override
+                            public void success() {
+                                trigger.rollback();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.rollback();
+                            }
+                        });
                     }
-                    if (sp.getPrimaryStorageInstallPath() == null || sp.getVolumeUuid() == null) {
-                        logger.warn(String.format("skip protector, descendant primary storage install path or volume uuid is null"));
-                        whileCompletion.done();
-                        return;
+                });
+
+                if (!msg.isVolumeDeletion()) {
+                    // this deletion is caused by snapshot deletion, check if merge need
+                    SimpleQuery<VolumeSnapshotTreeVO> tq = dbf.createQuery(VolumeSnapshotTreeVO.class);
+                    tq.select(VolumeSnapshotTreeVO_.current);
+                    tq.add(VolumeSnapshotTreeVO_.uuid, Op.EQ, currentRoot.getTreeUuid());
+                    Boolean onCurrentTree = tq.findValue();
+
+                    boolean needMerge = onCurrentTree && finalAncestorOfLatest && currentRoot.getPrimaryStorageUuid() != null && VolumeSnapshotConstant.HYPERVISOR_SNAPSHOT_TYPE.toString().equals(currentRoot.getType());
+                    if (needMerge) {
+                        flow(new Flow() {
+                            String __name__ = "allocate-primary-storage";
+
+                            boolean success;
+
+                            @Override
+                            public void run(FlowTrigger trigger, Map data) {
+                                AllocatePrimaryStorageMsg amsg = new AllocatePrimaryStorageMsg();
+                                for (SnapshotDeletionExtensionPoint ext : pluginRgty.getExtensionList(SnapshotDeletionExtensionPoint.class)) {
+                                    String hostUuid = ext.getHostUuidByResourceUuid(currentRoot.getPrimaryStorageUuid(), currentRoot.getVolumeUuid());
+                                    amsg.setRequiredHostUuid(hostUuid);
+                                }
+                                amsg.setRequiredPrimaryStorageUuid(currentRoot.getPrimaryStorageUuid());
+                                amsg.setSize(requiredSize);
+                                amsg.setNoOverProvisioning(true);
+                                bus.makeTargetServiceIdByResourceUuid(amsg, PrimaryStorageConstant.SERVICE_ID, currentRoot.getPrimaryStorageUuid());
+                                bus.send(amsg, new CloudBusCallBack(trigger) {
+                                    @Override
+                                    public void run(MessageReply reply) {
+                                        if (!reply.isSuccess()) {
+                                            trigger.fail(reply.getError());
+                                        } else {
+                                            success = true;
+                                            trigger.next();
+                                        }
+                                    }
+                                });
+                            }
+
+                            @Override
+                            public void rollback(FlowRollback trigger, Map data) {
+                                if (success) {
+                                    IncreasePrimaryStorageCapacityMsg imsg = new IncreasePrimaryStorageCapacityMsg();
+                                    imsg.setPrimaryStorageUuid(currentRoot.getPrimaryStorageUuid());
+                                    imsg.setDiskSize(requiredSize);
+                                    imsg.setNoOverProvisioning(true);
+                                    bus.makeTargetServiceIdByResourceUuid(imsg, PrimaryStorageConstant.SERVICE_ID, currentRoot.getPrimaryStorageUuid());
+                                    bus.send(imsg);
+                                }
+
+                                trigger.rollback();
+                            }
+                        });
+                        flow(new NoRollbackFlow() {
+                            String __name__ = "merge-volume-snapshots-to-volume";
+
+                            @Override
+                            public void run(final FlowTrigger trigger, Map data) {
+                                MergeVolumeSnapshotOnPrimaryStorageMsg mmsg = new MergeVolumeSnapshotOnPrimaryStorageMsg();
+                                VolumeSnapshotInventory from = currentLeaf.getParent() == null ? currentLeaf.getInventory() : currentLeaf.getParent().getInventory();
+                                mmsg.setFrom(from);
+                                VolumeVO vol = dbf.findByUuid(currentRoot.getVolumeUuid(), VolumeVO.class);
+                                mmsg.setTo(VolumeInventory.valueOf(vol));
+                                mmsg.setFullRebase(currentLeaf.getParent() == null);
+                                bus.makeTargetServiceIdByResourceUuid(mmsg, PrimaryStorageConstant.SERVICE_ID, currentRoot.getPrimaryStorageUuid());
+                                bus.send(mmsg, new CloudBusCallBack(trigger) {
+                                    @Override
+                                    public void run(MessageReply reply) {
+                                        IncreasePrimaryStorageCapacityMsg imsg = new IncreasePrimaryStorageCapacityMsg();
+                                        imsg.setPrimaryStorageUuid(currentRoot.getPrimaryStorageUuid());
+                                        imsg.setDiskSize(requiredSize);
+                                        imsg.setNoOverProvisioning(true);
+                                        bus.makeTargetServiceIdByResourceUuid(imsg, PrimaryStorageConstant.SERVICE_ID, currentRoot.getPrimaryStorageUuid());
+                                        bus.send(imsg);
+                                        if (!reply.isSuccess()) {
+                                            trigger.fail(reply.getError());
+                                        } else {
+                                            trigger.next();
+                                        }
+                                    }
+                                });
+                            }
+                        });
                     }
 
-                    protector.get().protect(sp, new Completion(whileCompletion) {
+                    flow(new NoRollbackFlow() {
+                        String __name__ = "delete-volume-snapshots-from-backup-storage";
+
                         @Override
-                        public void success() {
-                            whileCompletion.done();
-                        }
+                        public void run(final FlowTrigger trigger, Map data) {
+                            final List<VolumeSnapshotBackupStorageDeletionMsg> dmsgs = makeVolumeSnapshotBackupStorageDeletionMsg(null);
+                            if (dmsgs.isEmpty()) {
+                                trigger.next();
+                                return;
+                            }
 
-                        @Override
-                        public void fail(ErrorCode errorCode) {
-                            errList.getCauses().add(errorCode);
-                            whileCompletion.done();
+                            bus.send(dmsgs, VolumeSnapshotGlobalConfig.SNAPSHOT_DELETE_PARALLELISM_DEGREE.value(Integer.class), new CloudBusListCallBack(trigger) {
+                                @Override
+                                public void run(List<MessageReply> replies) {
+                                    for (MessageReply r : replies) {
+                                        if (!r.isSuccess()) {
+                                            VolumeSnapshotBackupStorageDeletionMsg dmsg = dmsgs.get(replies.indexOf(r));
+                                            logger.warn(String.format("failed to delete snapshot[uuid:%s] on backup storage[uuids: %s], the backup storage should cleanup",
+                                                    dmsg.getSnapshotUuid(), dmsg.getBackupStorageUuids()));
+                                        }
+                                    }
+
+                                    trigger.next();
+                                }
+                            });
                         }
                     });
-                }).run(new WhileDoneCompletion(completion) {
+                }
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "delete-volume-snapshots-from-primary-storage";
+
                     @Override
-                    public void done(ErrorCodeList errorCodeList) {
-                        if (errList.getCauses().isEmpty()) {
+                    public boolean skip(Map data) {
+                        return msg.isDbOnly();
+                    }
+
+                    @Override
+                    public void run(final FlowTrigger trigger, Map data) {
+                        final List<VolumeSnapshotPrimaryStorageDeletionMsg> pmsgs = CollectionUtils.transformToList(currentLeaf.getDescendants(), new Function<VolumeSnapshotPrimaryStorageDeletionMsg, VolumeSnapshotInventory>() {
+                            @Override
+                            public VolumeSnapshotPrimaryStorageDeletionMsg call(VolumeSnapshotInventory arg) {
+                                if (arg.getPrimaryStorageUuid() == null) {
+                                    return null;
+                                }
+
+                                VolumeSnapshotPrimaryStorageDeletionMsg pmsg = new VolumeSnapshotPrimaryStorageDeletionMsg();
+                                pmsg.setUuid(arg.getUuid());
+                                pmsg.setVolumeDelete(msg.isVolumeDeletion());
+                                bus.makeTargetServiceIdByResourceUuid(pmsg, VolumeSnapshotConstant.SERVICE_ID, arg.getPrimaryStorageUuid());
+                                return pmsg;
+                            }
+                        });
+
+                        if (pmsgs.isEmpty()) {
                             trigger.next();
                             return;
                         }
-                        trigger.fail(errList.getCauses().get(0));
+
+                        bus.send(pmsgs, VolumeSnapshotGlobalConfig.SNAPSHOT_DELETE_PARALLELISM_DEGREE.value(Integer.class), new CloudBusListCallBack(trigger) {
+                            @Override
+                            public void run(List<MessageReply> replies) {
+                                ErrorCodeList errors = new ErrorCodeList();
+                                for (MessageReply r : replies) {
+                                    if (!r.isSuccess()) {
+                                        VolumeSnapshotPrimaryStorageDeletionMsg pmsg = pmsgs.get(replies.indexOf(r));
+                                        if (!msg.isVolumeDeletion() && VolumeSnapshotErrors.FULL_SNAPSHOT_ERROR.toString().equals(r.getError().getCode())) {
+                                            errors.getCauses().add(r.getError());
+                                        } else {
+                                            logger.warn(String.format("failed to delete snapshot[uuid:%s] on primary storage[uuid:%s] cause: [%s], the primary storage should cleanup",
+                                                    pmsg.getSnapshotUuid(), currentRoot.getPrimaryStorageUuid(), r.getError().getDetails()));
+                                        }
+                                    }
+                                }
+                                if (errors.getCauses().size() > 0) {
+                                    trigger.fail(errors);
+                                } else {
+                                    trigger.next();
+                                }
+                            }
+                        });
+                    }
+                });
+
+                done(new FlowDoneHandler(msg, completion) {
+                    @Override
+                    public void handle(Map data) {
+                        new SQLBatch() {
+                            @Override
+                            protected void scripts() {
+                                if (msg.isVolumeDeletion()) {
+                                    sql("update VolumeSnapshotTreeVO tree set tree.volumeUuid = NULL where tree.uuid = :treeUuid")
+                                            .param("treeUuid", currentRoot.getTreeUuid()).execute();
+
+                                    sql("update VolumeSnapshotVO s set s.volumeUuid = NULL where s.treeUuid = :treeUuid")
+                                            .param("treeUuid", currentRoot.getTreeUuid()).execute();
+                                }
+
+
+                                if (!msg.isVolumeDeletion() && finalAncestorOfLatest && currentRoot.getParentUuid() != null) {
+                                    // reset latest
+                                    sql(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, currentRoot.getParentUuid())
+                                            .set(VolumeSnapshotVO_.latest, true).update();
+                                    logger.debug(String.format("reset latest snapshot of tree[uuid:%s] to snapshot[uuid:%s]",
+                                            currentRoot.getTreeUuid(), currentRoot.getParentUuid()));
+                                }
+                            }
+                        }.execute();
+
+                        if (!cleanup()) {
+                            changeStatusOfSnapshots(StatusEvent.ready, currentLeaf.getDescendants(), new Completion(msg, completion) {
+                                @Override
+                                public void success() {
+                                    bus.reply(msg, reply);
+                                    completion.done();
+                                }
+
+                                @Override
+                                public void fail(ErrorCode errorCode) {
+                                    reply.setError(errorCode);
+                                    bus.reply(msg, reply);
+                                    completion.done();
+                                }
+                            });
+                        } else {
+                            if (msg.isVolumeDeletion()) {
+                                List<String> aliveAncestors = currentLeaf.getAncestors().stream().map(VolumeSnapshotInventory::getUuid).collect(Collectors.toList());
+                                if (!aliveAncestors.isEmpty()) {
+                                    SQL.New(VolumeSnapshotTreeVO.class).eq(VolumeSnapshotTreeVO_.uuid, currentRoot.getTreeUuid())
+                                            .set(VolumeSnapshotTreeVO_.volumeUuid, currentRoot.getVolumeUuid())
+                                            .update();
+                                    SQL.New(VolumeSnapshotVO.class).in(VolumeSnapshotVO_.uuid, aliveAncestors)
+                                            .set(VolumeSnapshotVO_.volumeUuid, currentRoot.getVolumeUuid())
+                                            .update();
+                                }
+                            }
+
+                            bus.reply(msg, reply);
+                            completion.done();
+                        }
+                    }
+                });
+                error(new FlowErrorHandler(msg, completion) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        reply.setError(errCode);
+                        bus.reply(msg, reply);
+                        completion.done();
                     }
                 });
             }
-        });
+        }).start();
+    }
 
-        chain.then(new Flow() {
-            String __name__ = String.format("change-volume-snapshot-status-%s", VolumeSnapshotStatus.Deleting);
+    private void deleteSingle(FlowChain chain, final VolumeSnapshotDeletionMsg msg, NoErrorCompletion completion) {
+        final VolumeSnapshotDeletionReply reply = new VolumeSnapshotDeletionReply();
 
-            public void run(final FlowTrigger trigger, Map data) {
-                changeStatusOfSnapshots(StatusEvent.delete, currentLeaf.getDescendants(), new Completion(trigger) {
-                    @Override
-                    public void success() {
-                        trigger.next();
-                    }
+        VolumeVO volume = dbf.findByUuid(msg.getVolumeUuid(), VolumeVO.class);
+        VolumeSnapshotVO currentSnapshotVO = currentRoot;
 
-                    @Override
-                    public void fail(ErrorCode errorCode) {
-                        trigger.fail(errorCode);
-                    }
-                });
+        VmInstanceState vmState = null;
+        if (volume.getVmInstanceUuid() != null) {
+            vmState = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, volume.getVmInstanceUuid())
+                    .select(VmInstanceVO_.state).findValue();
+            if (vmState != VmInstanceState.Running && vmState != VmInstanceState.Paused &&
+                    vmState != VmInstanceState.Destroyed && vmState != VmInstanceState.Stopped
+                    && vmState != VmInstanceState.Destroying) {
+                reply.setError(operr("vm[uuid:%s] is not Running, Paused or Stopped, Destroyed, Destroying, " +
+                        "current state[%s]", volume.getVmInstanceUuid(), vmState));
+                bus.reply(msg, reply);
+                return;
             }
+        }
 
+        boolean isCurrent = Q.New(VolumeSnapshotTreeVO.class)
+                .eq(VolumeSnapshotTreeVO_.uuid, currentSnapshotVO.getTreeUuid())
+                .select(VolumeSnapshotTreeVO_.current).findValue();
+        List<VolumeSnapshotVO> vos = Q.New(VolumeSnapshotVO.class)
+                .eq(VolumeSnapshotVO_.treeUuid, currentSnapshotVO.getTreeUuid()).list();
+        VolumeTree volumeTree = VolumeTree.fromVOs(vos, isCurrent, volume);
+
+        VolumeTree.VolumeSnapshotDeletionContext context = volumeTree.
+                createDeletionContext(VolumeSnapshotInventory.valueOf(currentSnapshotVO), vmState, msg.getDirection());
+
+        if (context.getErrorString() != null) {
+            reply.setError(operr(context.getErrorString()));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        chain.setName(String.format("delete-single-volume-snapshot-%s", currentSnapshotVO.getUuid()));
+        chain.then(new ShareFlow() {
             @Override
-            public void rollback(final FlowRollback trigger, Map data) {
-                changeStatusOfSnapshots(StatusEvent.ready, currentLeaf.getDescendants(), new Completion(trigger) {
-                    @Override
-                    public void success() {
-                        trigger.rollback();
-                    }
+            public void setup() {
+                if (!context.getPullMsgs().isEmpty()) {
+                    context.getPullMsgs().forEach(this::setupDeleteSnapshotByPullFlows);
+                }
 
-                    @Override
-                    public void fail(ErrorCode errorCode) {
-                        trigger.rollback();
-                    }
-                });
-            }
-        });
+                if (context.getCommitMsg() != null) {
+                    setupDeleteSnapshotByCommitFlows(context.getCommitMsg());
+                }
 
-        if (!msg.isVolumeDeletion()) {
-            // this deletion is caused by snapshot deletion, check if merge need
-            SimpleQuery<VolumeSnapshotTreeVO> tq = dbf.createQuery(VolumeSnapshotTreeVO.class);
-            tq.select(VolumeSnapshotTreeVO_.current);
-            tq.add(VolumeSnapshotTreeVO_.uuid, Op.EQ, currentRoot.getTreeUuid());
-            Boolean onCurrentTree = tq.findValue();
-
-            boolean needMerge = onCurrentTree && ancestorOfLatest && currentRoot.getPrimaryStorageUuid() != null && VolumeSnapshotConstant.HYPERVISOR_SNAPSHOT_TYPE.toString().equals(currentRoot.getType());
-            if (needMerge) {
-                chain.then(new Flow() {
-                    String __name__ = "allocate-primary-storage";
-
-                    boolean success;
+                flow(new NoRollbackFlow() {
+                    String __name__ = String.format("delete-snapshot-%s-on-primary-storage", currentSnapshotVO.getUuid());
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        AllocatePrimaryStorageMsg amsg = new AllocatePrimaryStorageMsg();
-                        for (SnapshotDeletionExtensionPoint ext : pluginRgty.getExtensionList(SnapshotDeletionExtensionPoint.class)) {
-                            String hostUuid = ext.getHostUuidByResourceUuid(currentRoot.getPrimaryStorageUuid() ,currentRoot.getVolumeUuid());
-                            amsg.setRequiredHostUuid(hostUuid);
-                        }
-                        amsg.setRequiredPrimaryStorageUuid(currentRoot.getPrimaryStorageUuid());
-                        amsg.setSize(requiredSize);
+                        VolumeSnapshotPrimaryStorageDeletionMsg pmsg = new VolumeSnapshotPrimaryStorageDeletionMsg();
+                        pmsg.setUuid(currentSnapshotVO.getUuid());
+                        bus.makeTargetServiceIdByResourceUuid(pmsg, VolumeSnapshotConstant.SERVICE_ID, currentSnapshotVO.getPrimaryStorageUuid());
+                        bus.send(pmsg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (!reply.isSuccess()) {
+                                    trigger.fail(operr(String.format("failed to delete snapshot[uuid:%s] on primary storage[uuid:%s], " +
+                                            "%s", currentSnapshotVO.getUuid(), currentSnapshotVO.getPrimaryStorageUuid(), reply.getError().getDetails())));
+                                    return;
+                                }
+                                cleanupInQueue(VolumeSnapshotInventory.valueOf(currentSnapshotVO), new NoErrorCompletion() {
+                                    @Override
+                                    public void done() {
+                                        trigger.next();
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = String.format("sync-volume-%s-size", volume.getUuid());
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        SyncVolumeSizeMsg msg = new SyncVolumeSizeMsg();
+                        msg.setVolumeUuid(volume.getUuid());
+                        bus.makeTargetServiceIdByResourceUuid(msg, VolumeConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                        bus.send(msg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (!reply.isSuccess()) {
+                                    logger.warn(String.format("failed to sync volume[%s] size, because %s", volume.getUuid(), reply.getError()));
+                                }
+                                trigger.next();
+                            }
+                        });
+                    }
+                });
+
+                done(new FlowDoneHandler(completion) {
+                    @Override
+                    public void handle(Map data) {
+                        bus.reply(msg, reply);
+                        completion.done();
+                    }
+                });
+
+                error(new FlowErrorHandler(completion) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        reply.setError(errCode);
+                        bus.reply(msg, reply);
+                        completion.done();
+                    }
+                });
+            }
+
+            private void setupDeleteSnapshotByPullFlows(PullVolumeSnapshotOnPrimaryStorageMsg pullMsg) {
+                flow(new Flow() {
+                    String __name__ = "allocate-primary-storage-capacity";
+
+                    String allocatedInstall;
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        AllocatePrimaryStorageSpaceMsg amsg = new AllocatePrimaryStorageSpaceMsg();
+                        amsg.setRequiredPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+                        amsg.setSize(pullMsg.getSrcSnapshot().getSize());
                         amsg.setNoOverProvisioning(true);
-                        bus.makeTargetServiceIdByResourceUuid(amsg, PrimaryStorageConstant.SERVICE_ID, currentRoot.getPrimaryStorageUuid());
+                        amsg.setRequiredInstallUri(String.format("volume://%s", volume.getUuid()));
+                        bus.makeTargetServiceIdByResourceUuid(amsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
                         bus.send(amsg, new CloudBusCallBack(trigger) {
                             @Override
                             public void run(MessageReply reply) {
                                 if (!reply.isSuccess()) {
                                     trigger.fail(reply.getError());
-                                } else {
-                                    success = true;
-                                    trigger.next();
+                                    return;
                                 }
+                                AllocatePrimaryStorageSpaceReply r = reply.castReply();
+                                allocatedInstall = r.getAllocatedInstallUrl();
+                                trigger.next();
                             }
                         });
                     }
 
                     @Override
                     public void rollback(FlowRollback trigger, Map data) {
-                        if (success) {
-                            IncreasePrimaryStorageCapacityMsg imsg = new IncreasePrimaryStorageCapacityMsg();
-                            imsg.setPrimaryStorageUuid(currentRoot.getPrimaryStorageUuid());
-                            imsg.setDiskSize(requiredSize);
-                            imsg.setNoOverProvisioning(true);
-                            bus.makeTargetServiceIdByResourceUuid(imsg, PrimaryStorageConstant.SERVICE_ID, currentRoot .getPrimaryStorageUuid());
-                            bus.send(imsg);
+                        if (allocatedInstall == null) {
+                            trigger.rollback();
+                            return;
                         }
-
+                        releasePrimaryStorageCapacity(pullMsg.getSrcSnapshot().getSize(), allocatedInstall);
                         trigger.rollback();
                     }
                 });
-                chain.then(new NoRollbackFlow() {
-                    String __name__ = "merge-volume-snapshots-to-volume";
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "pull-volume-snapshot-on-primary-storage";
 
                     @Override
-                    public void run(final FlowTrigger trigger, Map data) {
-                        MergeVolumeSnapshotOnPrimaryStorageMsg mmsg = new MergeVolumeSnapshotOnPrimaryStorageMsg();
-                        VolumeSnapshotInventory from = currentLeaf.getParent() == null ? currentLeaf.getInventory() : currentLeaf.getParent().getInventory();
-                        mmsg.setFrom(from);
-                        VolumeVO vol = dbf.findByUuid(currentRoot.getVolumeUuid(), VolumeVO.class);
-                        mmsg.setTo(VolumeInventory.valueOf(vol));
-                        mmsg.setFullRebase(currentLeaf.getParent() == null);
-                        bus.makeTargetServiceIdByResourceUuid(mmsg, PrimaryStorageConstant.SERVICE_ID, currentRoot.getPrimaryStorageUuid());
-                        bus.send(mmsg, new CloudBusCallBack(trigger) {
+                    public void run(FlowTrigger trigger, Map data) {
+                        bus.makeTargetServiceIdByResourceUuid(pullMsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                        bus.send(pullMsg, new CloudBusCallBack(trigger) {
                             @Override
                             public void run(MessageReply reply) {
-                                IncreasePrimaryStorageCapacityMsg imsg = new IncreasePrimaryStorageCapacityMsg();
-                                imsg.setPrimaryStorageUuid(currentRoot.getPrimaryStorageUuid());
-                                imsg.setDiskSize(requiredSize);
-                                imsg.setNoOverProvisioning(true);
-                                bus.makeTargetServiceIdByResourceUuid(imsg, PrimaryStorageConstant.SERVICE_ID, currentRoot.getPrimaryStorageUuid());
-                                bus.send(imsg);
                                 if (!reply.isSuccess()) {
                                     trigger.fail(reply.getError());
-                                } else {
+                                    return;
+                                }
+                                releasePrimaryStorageCapacity(pullMsg.getSrcSnapshot().getSize(), String.format("volume://%s", volume.getUuid()));
+
+                                PullVolumeSnapshotOnPrimaryStorageReply r = reply.castReply();
+                                VolumeSnapshotInventory srcSnapshotInv = pullMsg.getSrcSnapshot();
+                                VolumeSnapshotInventory dstSnapshotInv = pullMsg.getDstSnapshot();
+
+                                if (Objects.equals(dstSnapshotInv.getUuid(), volume.getUuid())) {
+                                    String newLatestSnapshotUuid = srcSnapshotInv.getParentUuid();
+                                    if (srcSnapshotInv.getParentUuid() != null) {
+                                        SQL.New(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, newLatestSnapshotUuid)
+                                                .set(VolumeSnapshotVO_.latest, true).update();
+                                        logger.debug(String.format("reset latest snapshot of tree[uuid:%s] to snapshot[uuid:%s]",
+                                                currentSnapshotVO.getTreeUuid(), newLatestSnapshotUuid));
+                                    }
+                                    trigger.next();
+                                    return;
+                                }
+
+                                updateSnapshotSize(r.getSize(), dstSnapshotInv.getUuid());
+                                updateVolumeSnapshotVO(srcSnapshotInv, dstSnapshotInv);
+                                trigger.next();
+                            }
+                        });
+                    }
+
+                    private void updateSnapshotSize(long newInstallPathSize, String snapshotUuid) {
+                        SQL.New(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, snapshotUuid)
+                                .set(VolumeSnapshotVO_.size, newInstallPathSize).update();
+                        logger.debug(String.format("update the size of snapshot[uuid:%s] to %s", snapshotUuid, newInstallPathSize));
+                    }
+
+                    private void updateVolumeSnapshotVO(VolumeSnapshotInventory srcSnapshotInv,
+                                                        VolumeSnapshotInventory dstSnapshotInv) {
+                        new SQLBatch() {
+                            @Override
+                            protected void scripts() {
+                                String newParentUuid = srcSnapshotInv.getParentUuid();
+                                if (newParentUuid != null) {
+                                    sql(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, dstSnapshotInv.getUuid())
+                                            .set(VolumeSnapshotVO_.parentUuid, newParentUuid).update();
+                                    logger.debug(String.format("update the parent of snapshot[uuid:%s] to %s", dstSnapshotInv.getUuid(), newParentUuid));
+                                }
+
+                                // create and update treeUuid
+                                List<String> newTreeAllSnapshotUuids = volumeTree.getSnapshotAllDescendantsUuid(dstSnapshotInv.getUuid());
+                                newTreeAllSnapshotUuids.add(dstSnapshotInv.getUuid());
+                                if (currentSnapshotVO.getParentUuid() == null && !newTreeAllSnapshotUuids.contains(volume.getUuid())) {
+                                    VolumeSnapshotTreeVO tree = new VolumeSnapshotTreeVO();
+                                    tree.setCurrent(false);
+                                    tree.setVolumeUuid(volume.getUuid());
+                                    tree.setUuid(Platform.getUuid());
+                                    tree.setStatus(VolumeSnapshotTreeStatus.Completed);
+                                    dbf.persist(tree);
+                                    logger.debug(String.format("created new volume snapshot tree[tree uuid:%s, volume uuid:%s, " +
+                                            "root snapshot uuid:%s]", tree.getUuid(), volume.getUuid(), currentSnapshotVO.getUuid()));
+                                    sql(VolumeSnapshotVO.class).in(VolumeSnapshotVO_.uuid, newTreeAllSnapshotUuids)
+                                            .set(VolumeSnapshotVO_.treeUuid, tree.getUuid()).update();
+                                }
+
+                                // update distance
+                                sql(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, dstSnapshotInv.getUuid())
+                                        .set(VolumeSnapshotVO_.distance, dstSnapshotInv.getDistance() - 1).update();
+
+                                List<String> allDescendantsUuid = volumeTree.getSnapshotAllDescendantsUuid(dstSnapshotInv.getUuid());
+                                if (!allDescendantsUuid.isEmpty()) {
+                                    List<VolumeSnapshotVO> vos = q(VolumeSnapshotVO.class).in(VolumeSnapshotVO_.uuid, allDescendantsUuid).list();
+                                    vos.forEach(vo -> vo.setDistance(vo.getDistance() - 1));
+                                    if (!vos.isEmpty()) {
+                                        dbf.updateCollection(vos);
+                                    }
+                                }
+                            }
+                        }.execute();
+                    }
+                });
+            }
+
+            private void setupDeleteSnapshotByCommitFlows(CommitVolumeSnapshotOnPrimaryStorageMsg commitMsg) {
+                if (Objects.equals(commitMsg.getSrcSnapshot().getPrimaryStorageInstallPath(), volume.getInstallPath())) {
+                    flow(new NoRollbackFlow() {
+                        String __name__ = String.format("get-volume-%s-current-size", volume.getUuid());
+
+                        @Override
+                        public void run(FlowTrigger trigger, Map data) {
+                            SyncVolumeSizeOnPrimaryStorageMsg smsg = new SyncVolumeSizeOnPrimaryStorageMsg();
+                            smsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+                            smsg.setVolumeUuid(volume.getUuid());
+                            smsg.setInstallPath(volume.getInstallPath());
+                            bus.makeTargetServiceIdByResourceUuid(smsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                            bus.send(smsg, new CloudBusCallBack(completion) {
+                                @Override
+                                public void run(MessageReply reply) {
+                                    if (!reply.isSuccess()) {
+                                        trigger.fail(operr(String.format("failed to get volume[uuid:%s, installPath:%s] size " +
+                                                        "on primary storage[uuid:%s], %s", volume.getUuid(), volume.getInstallPath(),
+                                                volume.getPrimaryStorageUuid(), reply.getError().getDetails())));
+                                        return;
+                                    }
+
+                                    SyncVolumeSizeOnPrimaryStorageReply r = reply.castReply();
+                                    commitMsg.getSrcSnapshot().setSize(r.getActualSize());
                                     trigger.next();
                                 }
+                            });
+                        }
+                    });
+                }
+
+                flow(new Flow() {
+                    String __name__ = "allocate-primary-storage-capacity";
+
+                    String allocatedInstall;
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        AllocatePrimaryStorageSpaceMsg amsg = new AllocatePrimaryStorageSpaceMsg();
+                        amsg.setRequiredPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+                        amsg.setSize(commitMsg.getSrcSnapshot().getSize());
+                        amsg.setNoOverProvisioning(true);
+                        amsg.setRequiredInstallUri(String.format("volume://%s", volume.getUuid()));
+                        bus.makeTargetServiceIdByResourceUuid(amsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                        bus.send(amsg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (!reply.isSuccess()) {
+                                    trigger.fail(reply.getError());
+                                    return;
+                                }
+                                AllocatePrimaryStorageSpaceReply r = reply.castReply();
+                                allocatedInstall = r.getAllocatedInstallUrl();
+                                trigger.next();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void rollback(FlowRollback trigger, Map data) {
+                        if (allocatedInstall == null) {
+                            trigger.rollback();
+                            return;
+                        }
+                        releasePrimaryStorageCapacity(commitMsg.getSrcSnapshot().getSize(), allocatedInstall);
+                        trigger.rollback();
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = String.format("commit-volume-snapshot-on-primary-storage");
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        bus.makeTargetServiceIdByResourceUuid(commitMsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                        bus.send(commitMsg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (!reply.isSuccess()) {
+                                    trigger.fail(reply.getError());
+                                    return;
+                                }
+
+                                releasePrimaryStorageCapacity(commitMsg.getSrcSnapshot().getSize(), String.format("volume://%s", volume.getUuid()));
+
+                                CommitVolumeSnapshotOnPrimaryStorageReply r = reply.castReply();
+                                String newInstallPath = r.getNewInstallPath();
+                                long newInstallPathSize = r.getSize();
+
+                                VolumeSnapshotInventory srcSnapshotInv = commitMsg.getSrcSnapshot();
+                                VolumeSnapshotInventory dstSnapshotInv = commitMsg.getDstSnapshot();
+
+                                if (Objects.equals(srcSnapshotInv.getUuid(), volume.getUuid())) {
+                                    markSnapshotAsVolume(srcSnapshotInv, dstSnapshotInv, newInstallPath, newInstallPathSize);
+                                    trigger.next();
+                                    return;
+                                }
+
+                                updateVolumeSnapshotVO(srcSnapshotInv, dstSnapshotInv, newInstallPath, newInstallPathSize);
+                                trigger.next();
+                            }
+
+                            private void markSnapshotAsVolume(VolumeSnapshotInventory srcSnapshotInv,
+                                                              VolumeSnapshotInventory dstSnapshotInv,
+                                                              String newInstallPath, long newInstallPathSize) {
+                                new SQLBatch() {
+                                    @Override
+                                    protected void scripts() {
+                                        sql(VolumeVO.class).eq(VolumeVO_.uuid, srcSnapshotInv.getUuid())
+                                                .set(VolumeVO_.installPath, newInstallPath)
+                                                .set(VolumeVO_.actualSize, newInstallPathSize)
+                                                .update();
+
+                                        sql(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, dstSnapshotInv.getUuid())
+                                                .set(VolumeSnapshotVO_.primaryStorageInstallPath, srcSnapshotInv.getPrimaryStorageInstallPath())
+                                                .set(VolumeSnapshotVO_.size, srcSnapshotInv.getSize())
+                                                .update();
+
+                                        if (dstSnapshotInv.getParentUuid() != null) {
+                                            sql(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, dstSnapshotInv.getParentUuid())
+                                                    .set(VolumeSnapshotVO_.latest, true).update();
+                                            logger.debug(String.format("reset latest snapshot of tree[uuid:%s] to snapshot[uuid:%s]",
+                                                    dstSnapshotInv.getTreeUuid(), dstSnapshotInv.getParentUuid()));
+                                        }
+
+                                        VolumeSnapshotReferenceUtils.updateReferenceAfterMarkSnapshotAsVolume(currentRoot);
+                                    }
+                                }.execute();
+                            }
+
+                            private void updateVolumeSnapshotVO(VolumeSnapshotInventory srcSnapshotInv,
+                                                                VolumeSnapshotInventory dstSnapshotInv,
+                                                                String newInstallPath, long newInstallPathSize) {
+                                new SQLBatch() {
+                                    @Override
+                                    protected void scripts() {
+                                        // update installPath and size
+                                        sql(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, srcSnapshotInv.getUuid())
+                                                .set(VolumeSnapshotVO_.primaryStorageInstallPath, newInstallPath)
+                                                .set(VolumeSnapshotVO_.size, newInstallPathSize).update();
+                                        if (srcSnapshotInv.getGroupUuid() != null) {
+                                            sql(VolumeSnapshotGroupRefVO.class)
+                                                    .eq(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, srcSnapshotInv.getGroupUuid())
+                                                    .eq(VolumeSnapshotGroupRefVO_.volumeSnapshotUuid, srcSnapshotInv.getUuid())
+                                                    .set(VolumeSnapshotGroupRefVO_.volumeSnapshotInstallPath, newInstallPath)
+                                                    .update();
+                                        }
+
+                                        sql(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, dstSnapshotInv.getUuid())
+                                                .set(VolumeSnapshotVO_.primaryStorageInstallPath, srcSnapshotInv.getPrimaryStorageInstallPath())
+                                                .set(VolumeSnapshotVO_.size, srcSnapshotInv.getSize()).update();
+                                        if (dstSnapshotInv.getGroupUuid() != null) {
+                                            sql(VolumeSnapshotGroupRefVO.class)
+                                                    .eq(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, dstSnapshotInv.getGroupUuid())
+                                                    .eq(VolumeSnapshotGroupRefVO_.volumeSnapshotUuid, dstSnapshotInv.getUuid())
+                                                    .set(VolumeSnapshotGroupRefVO_.volumeSnapshotInstallPath, srcSnapshotInv.getPrimaryStorageInstallPath())
+                                                    .update();
+                                        }
+
+                                        // update parentUuid
+                                        if (dstSnapshotInv.getParentUuid() != null) {
+                                            sql(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, srcSnapshotInv.getUuid())
+                                                    .set(VolumeSnapshotVO_.parentUuid, dstSnapshotInv.getParentUuid()).update();
+                                            logger.debug(String.format("update the parent of snapshot[uuid:%s] to %s", srcSnapshotInv.getUuid(), dstSnapshotInv.getParentUuid()));
+                                        }
+
+                                        // update distance
+                                        sql(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, srcSnapshotInv.getUuid())
+                                                .set(VolumeSnapshotVO_.distance, srcSnapshotInv.getDistance() - 1).update();
+
+                                        List<String> allDescendantsUuid = volumeTree.getSnapshotAllDescendantsUuid(srcSnapshotInv.getUuid());
+                                        if (!allDescendantsUuid.isEmpty()) {
+                                            List<VolumeSnapshotVO> vos = q(VolumeSnapshotVO.class).in(VolumeSnapshotVO_.uuid, allDescendantsUuid).list();
+                                            vos.forEach(vo -> vo.setDistance(vo.getDistance() - 1));
+                                            if (!vos.isEmpty()) {
+                                                dbf.updateCollection(vos);
+                                            }
+                                        }
+                                    }
+                                }.execute();
                             }
                         });
                     }
                 });
             }
 
-            chain.then(new NoRollbackFlow() {
-                String __name__ = "delete-volume-snapshots-from-backup-storage";
-
-                @Override
-                public void run(final FlowTrigger trigger, Map data) {
-                    final List<VolumeSnapshotBackupStorageDeletionMsg> dmsgs = makeVolumeSnapshotBackupStorageDeletionMsg(null);
-                    if (dmsgs.isEmpty()) {
-                        trigger.next();
-                        return;
-                    }
-
-                    bus.send(dmsgs, VolumeSnapshotGlobalConfig.SNAPSHOT_DELETE_PARALLELISM_DEGREE.value(Integer.class), new CloudBusListCallBack(trigger) {
-                        @Override
-                        public void run(List<MessageReply> replies) {
-                            for (MessageReply r : replies) {
-                                if (!r.isSuccess()) {
-                                    VolumeSnapshotBackupStorageDeletionMsg dmsg = dmsgs.get(replies.indexOf(r));
-                                    logger.warn(String.format("failed to delete snapshot[uuid:%s] on backup storage[uuids: %s], the backup storage should cleanup",
-                                            dmsg.getSnapshotUuid(), dmsg.getBackupStorageUuids()));
-                                }
-                            }
-
-                            trigger.next();
-                        }
-                    });
-                }
-            });
-        }
-
-        chain.then(new NoRollbackFlow() {
-            String __name__ = "delete-volume-snapshots-from-primary-storage";
-
-            @Override
-            public boolean skip(Map data) {
-                return msg.isDbOnly();
-            }
-
-            @Override
-            public void run(final FlowTrigger trigger, Map data) {
-                final List<VolumeSnapshotPrimaryStorageDeletionMsg> pmsgs = CollectionUtils.transformToList(currentLeaf.getDescendants(), new Function<VolumeSnapshotPrimaryStorageDeletionMsg, VolumeSnapshotInventory>() {
-                    @Override
-                    public VolumeSnapshotPrimaryStorageDeletionMsg call(VolumeSnapshotInventory arg) {
-                        if (arg.getPrimaryStorageUuid() == null) {
-                            return null;
-                        }
-
-                        VolumeSnapshotPrimaryStorageDeletionMsg pmsg = new VolumeSnapshotPrimaryStorageDeletionMsg();
-                        pmsg.setUuid(arg.getUuid());
-                        pmsg.setVolumeDelete(msg.isVolumeDeletion());
-                        bus.makeTargetServiceIdByResourceUuid(pmsg, VolumeSnapshotConstant.SERVICE_ID, arg.getPrimaryStorageUuid());
-                        return pmsg;
-                    }
-                });
-
-                if (pmsgs.isEmpty()) {
-                    trigger.next();
-                    return;
-                }
-
-                bus.send(pmsgs, VolumeSnapshotGlobalConfig.SNAPSHOT_DELETE_PARALLELISM_DEGREE.value(Integer.class), new CloudBusListCallBack(trigger) {
-                    @Override
-                    public void run(List<MessageReply> replies) {
-                        ErrorCodeList errors = new ErrorCodeList();
-                        for (MessageReply r : replies) {
-                            if (!r.isSuccess()) {
-                                VolumeSnapshotPrimaryStorageDeletionMsg pmsg = pmsgs.get(replies.indexOf(r));
-                                if (!msg.isVolumeDeletion() && VolumeSnapshotErrors.FULL_SNAPSHOT_ERROR.toString().equals(r.getError().getCode())) {
-                                    errors.getCauses().add(r.getError());
-                                } else {
-                                    logger.warn(String.format("failed to delete snapshot[uuid:%s] on primary storage[uuid:%s] cause: [%s], the primary storage should cleanup",
-                                            pmsg.getSnapshotUuid(), currentRoot.getPrimaryStorageUuid(), r.getError().getDetails()));
-                                }
-                            }
-                        }
-                        if (errors.getCauses().size() > 0) {
-                            trigger.fail(errors);
-                        } else {
-                            trigger.next();
-                        }
-                    }
-                });
-            }
-        });
-
-        final boolean finalAncestorOfLatest = ancestorOfLatest;
-        chain.done(new FlowDoneHandler(msg, completion) {
-            @Override
-            public void handle(Map data) {
-                new SQLBatch() {
-                    @Override
-                    protected void scripts() {
-                        if (msg.isVolumeDeletion()) {
-                            sql("update VolumeSnapshotTreeVO tree set tree.volumeUuid = NULL where tree.uuid = :treeUuid")
-                                    .param("treeUuid", currentRoot.getTreeUuid()).execute();
-
-                            sql("update VolumeSnapshotVO s set s.volumeUuid = NULL where s.treeUuid = :treeUuid")
-                                    .param("treeUuid", currentRoot.getTreeUuid()).execute();
-                        }
-
-
-                        if (!msg.isVolumeDeletion() && finalAncestorOfLatest && currentRoot.getParentUuid() != null) {
-                            // reset latest
-                            sql(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, currentRoot.getParentUuid())
-                                    .set(VolumeSnapshotVO_.latest, true).update();
-                            logger.debug(String.format("reset latest snapshot of tree[uuid:%s] to snapshot[uuid:%s]",
-                                    currentRoot.getTreeUuid(), currentRoot.getParentUuid()));
-                        }
-                    }
-                }.execute();
-
-                if (!cleanup()) {
-                    changeStatusOfSnapshots(StatusEvent.ready, currentLeaf.getDescendants(), new Completion(msg, completion) {
-                        @Override
-                        public void success() {
-                            bus.reply(msg, reply);
-                            completion.done();
-                        }
-
-                        @Override
-                        public void fail(ErrorCode errorCode) {
-                            reply.setError(errorCode);
-                            bus.reply(msg, reply);
-                            completion.done();
-                        }
-                    });
-                } else {
-                    if (msg.isVolumeDeletion()) {
-                        List<String> aliveAncestors = currentLeaf.getAncestors().stream().map(VolumeSnapshotInventory::getUuid).collect(Collectors.toList());
-                        if (!aliveAncestors.isEmpty()) {
-                            SQL.New(VolumeSnapshotTreeVO.class).eq(VolumeSnapshotTreeVO_.uuid, currentRoot.getTreeUuid())
-                                    .set(VolumeSnapshotTreeVO_.volumeUuid, currentRoot.getVolumeUuid())
-                                    .update();
-                            SQL.New(VolumeSnapshotVO.class).in(VolumeSnapshotVO_.uuid, aliveAncestors)
-                                    .set(VolumeSnapshotVO_.volumeUuid, currentRoot.getVolumeUuid())
-                                    .update();
-                        }
-                    }
-
-                    bus.reply(msg, reply);
-                    completion.done();
-                }
-            }
-        }).error(new FlowErrorHandler(msg, completion) {
-            @Override
-            public void handle(ErrorCode errCode, Map data) {
-                reply.setError(errCode);
-                bus.reply(msg, reply);
-                completion.done();
+            private void releasePrimaryStorageCapacity(long size, String allocatedInstallUrl) {
+                ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
+                rmsg.setDiskSize(size);
+                rmsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+                rmsg.setAllocatedInstallUrl(allocatedInstallUrl);
+                bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                bus.send(rmsg);
             }
         }).start();
     }
@@ -1475,6 +1943,65 @@ public class VolumeSnapshotTreeBase {
         }
     }
 
+    private void cleanupInQueue(VolumeSnapshotInventory volumeSnapshotInv, NoErrorCompletion completion) {
+        if (volumeSnapshotInv.getGroupUuid() == null) {
+            cleanupAfterDeleteSingleSnapshot(volumeSnapshotInv, new NoErrorCompletion() {
+                @Override
+                public void done() {
+                    completion.done();
+                }
+            });
+            return;
+        }
+
+        new RunInQueue(String.format("cleanup-snapshot-on-volumeSnapshotGroup-%s", volumeSnapshotInv.getGroupUuid()), thdf, 1)
+                .name("cleanup-snapshot-on-volumeSnapshotGroup-in-queue").asyncBackup(completion)
+                .run(chain -> cleanupAfterDeleteSingleSnapshot(volumeSnapshotInv, new NoErrorCompletion(chain) {
+                    @Override
+                    public void done() {
+                        completion.done();
+                        chain.next();
+                    }
+                }));
+    }
+
+    private void cleanupAfterDeleteSingleSnapshot(VolumeSnapshotInventory volumeSnapshotInv, final NoErrorCompletion completion) {
+        boolean cleanup = new SQLBatchWithReturn<Boolean>() {
+            @Override
+            protected Boolean scripts() {
+                sql(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, volumeSnapshotInv.getUuid()).hardDelete();
+                if (!q(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.treeUuid, volumeSnapshotInv.getTreeUuid()).isExists()) {
+                    logger.debug(String.format("volume snapshot tree[uuid:%s] has no leaf, delete it", volumeSnapshotInv.getTreeUuid()));
+                    sql(VolumeSnapshotTreeVO.class).eq(VolumeSnapshotTreeVO_.uuid, volumeSnapshotInv.getTreeUuid()).hardDelete();
+                }
+                return true;
+            }
+        }.execute();
+
+        if (cleanup) {
+            ungroupAfterDeleteSingleSnapshot(volumeSnapshotInv);
+        }
+
+        completion.done();
+    }
+
+    private void ungroupAfterDeleteSingleSnapshot(VolumeSnapshotInventory volumeSnapshotInv) {
+        if (volumeSnapshotInv.getGroupUuid() == null) {
+            return;
+        }
+
+        SQL.New(VolumeSnapshotGroupRefVO.class).eq(VolumeSnapshotGroupRefVO_.volumeSnapshotUuid, volumeSnapshotInv.getUuid())
+                .set(VolumeSnapshotGroupRefVO_.snapshotDeleted, true).update();
+        long count = Q.New(VolumeSnapshotGroupRefVO.class)
+                .eq(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, volumeSnapshotInv.getGroupUuid())
+                .eq(VolumeSnapshotGroupRefVO_.snapshotDeleted, false).count();
+        if (count == 0) {
+            dbf.removeByPrimaryKey(volumeSnapshotInv.getGroupUuid(), VolumeSnapshotGroupVO.class);
+            logger.debug(String.format("snapshot group[uuid:%s] all volume snapshot has been deleted, " +
+                    "delete snapshot group", volumeSnapshotInv.getGroupUuid()));
+        }
+    }
+
     private List<VolumeSnapshotBackupStorageDeletionMsg> makeVolumeSnapshotBackupStorageDeletionMsg(List<String> bsUuids) {
         List<VolumeSnapshotBackupStorageDeletionMsg> msgs = new ArrayList<VolumeSnapshotBackupStorageDeletionMsg>();
 
@@ -1883,7 +2410,6 @@ public class VolumeSnapshotTreeBase {
         });
     }
 
-
     private void revert(final RevertVolumeSnapshotMessage msg, final Completion completion) {
         refreshVO();
         final ErrorCode err = isOperationAllowed((Message) msg);
@@ -2197,7 +2723,8 @@ public class VolumeSnapshotTreeBase {
 
     private void deleteVolumeSnapshot(final DeleteVolumeSnapshotMessage msg, Completion completion) {
         final String issuer = VolumeSnapshotVO.class.getSimpleName();
-        final List<VolumeSnapshotInventory> ctx = Arrays.asList(getSelfInventory());
+        VolumeSnapshotDeletionStructs ctx = new VolumeSnapshotDeletionStructs(
+                Collections.singletonList(getSelfInventory()), msg.getDirection(), msg.getScope());
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
         chain.setName(String.format("delete-snapshot-%s", msg.getSnapshotUuid()));
 
@@ -2283,62 +2810,6 @@ public class VolumeSnapshotTreeBase {
             public void fail(ErrorCode errorCode) {
                 evt.setError(errorCode);
                 bus.publish(evt);
-            }
-        });
-    }
-
-    private void handle(final MarkSnapshotAsVolumeMsg msg) {
-        thdf.chainSubmit(new ChainTask(msg) {
-            @Override
-            public String getSyncSignature() {
-                return syncSignature;
-            }
-
-            @Override
-            public void run(final SyncTaskChain chain) {
-                refreshVO();
-                MarkSnapshotAsVolumeReply reply = new MarkSnapshotAsVolumeReply();
-                if (!currentRoot.isLatest()) {
-                    reply.setError(operr("current snapshot:%s is not latest snapshot, cannot mark as volume", currentRoot.getUuid()));
-                    bus.reply(msg, reply);
-                    chain.next();
-                    return;
-                }
-
-                new SQLBatch() {
-                    @Override
-                    protected void scripts() {
-                        sql(VolumeVO.class).eq(VolumeVO_.uuid, msg.getVolumeUuid())
-                                .set(VolumeVO_.installPath, msg.getVolumePath())
-                                .set(VolumeVO_.actualSize, msg.getSize())
-                                .update();
-
-                        sql(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, msg.getSnapshotUuid())
-                                .set(VolumeSnapshotVO_.primaryStorageInstallPath, null)
-                                .set(VolumeSnapshotVO_.primaryStorageUuid, null)
-                                .update();
-
-                        if (currentRoot.getParentUuid() != null) {
-                            // reset latest
-                            sql(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, currentRoot.getParentUuid())
-                                    .set(VolumeSnapshotVO_.latest, true).update();
-                            logger.debug(String.format("reset latest snapshot of tree[uuid:%s] to snapshot[uuid:%s]",
-                                    currentRoot.getTreeUuid(), currentRoot.getParentUuid()));
-                        }
-
-                        VolumeSnapshotReferenceUtils.updateReferenceAfterMarkSnapshotAsVolume(currentRoot);
-                    }
-                }.execute();
-
-                cleanup();
-
-                bus.reply(msg, reply);
-                chain.next();
-            }
-
-            @Override
-            public String getName() {
-                return String.format("mark-snapshot-%s-as-volume", currentRoot.getUuid());
             }
         });
     }

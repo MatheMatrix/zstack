@@ -6,6 +6,7 @@ import org.zstack.kvm.KVMAgentCommands;
 import org.zstack.kvm.KVMAgentCommands.AgentCommand;
 import org.zstack.kvm.KVMAgentCommands.AgentResponse;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -783,6 +784,42 @@ public class NfsPrimaryStorageKVMBackendCommands {
     }
 
     public static class OfflineMergeSnapshotRsp extends NfsPrimaryStorageAgentResponse {
+        private long actualSize;
+
+        public long getActualSize() {
+            return actualSize;
+        }
+
+        public void setActualSize(long actualSize) {
+            this.actualSize = actualSize;
+        }
+    }
+
+    public static class OfflineCommitSnapshotCmd extends NfsPrimaryStorageAgentCommand implements HasThreadContext {
+        public String srcPath;
+        public String dstPath;
+        public List<String> srcChildrenInstallPathInDb = new ArrayList<>();
+    }
+
+    public static class OfflineCommitSnapshotRsp extends NfsPrimaryStorageAgentResponse {
+        private String newInstallPath;
+        private Long actualSize;
+
+        public String getNewInstallPath() {
+            return newInstallPath;
+        }
+
+        public void setNewInstallPath(String newInstallPath) {
+            this.newInstallPath = newInstallPath;
+        }
+
+        public Long getActualSize() {
+            return actualSize;
+        }
+
+        public void setActualSize(Long actualSize) {
+            this.actualSize = actualSize;
+        }
     }
 
     public static class RemountCmd extends NfsPrimaryStorageAgentCommand {
@@ -839,6 +876,16 @@ public class NfsPrimaryStorageKVMBackendCommands {
     public static class GetBackingChainRsp extends NfsPrimaryStorageAgentResponse {
         public List<String> backingChain;
         public long totalSize;
+    }
+
+    public static class GetBackingFileCmd extends NfsPrimaryStorageAgentCommand {
+        public String volumeUuid;
+        public String installPath;
+    }
+
+    public static class GetBackingFileRsp extends NfsPrimaryStorageAgentResponse {
+        public String backingFile;
+        public long size;
     }
 
     public static class UpdateMountPointCmd extends NfsPrimaryStorageAgentCommand {
