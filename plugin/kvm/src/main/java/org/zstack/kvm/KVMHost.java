@@ -217,6 +217,7 @@ public class KVMHost extends HostBase implements Host {
     private String detachVolumePath;
     private String vmFstrimPath;
     private String blockCommitVolumePath;
+    private String blockPullVolumePath;
     private String agentPackageName = KVMGlobalProperty.AGENT_PACKAGE_NAME;
     private String hostTakeOverFlagPath = KVMGlobalProperty.TAKEVOERFLAGPATH;
     private String updateVmCpuQuotaPath;
@@ -448,6 +449,10 @@ public class KVMHost extends HostBase implements Host {
         ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
         ub.path(KVMConstant.KVM_BLOCK_COMMIT_VOLUME_PATH);
         blockCommitVolumePath = ub.build().toString();
+
+        ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
+        ub.path(KVMConstant.KVM_BLOCK_PULL_VOLUME_PATH);
+        blockPullVolumePath = ub.build().toString();
 
         ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
         ub.path(KVMConstant.KVM_HOST_GET_BLOCK_DEVICES_PATH);
@@ -690,8 +695,8 @@ public class KVMHost extends HostBase implements Host {
             handle((GetHostPowerStatusMsg) msg);
         } else if (msg instanceof FstrimVmMsg) {
             handle((FstrimVmMsg) msg);
-        } else if (msg instanceof CommitVolumeOnHypervisorMsg) {
-            handle((CommitVolumeOnHypervisorMsg) msg);
+        } else if (msg instanceof DeleteVolumeSnapshotSelfOnHypervisorMsg) {
+            handle((DeleteVolumeSnapshotSelfOnHypervisorMsg) msg);
         } else if (msg instanceof TakeVmConsoleScreenshotMsg) {
             handle((TakeVmConsoleScreenshotMsg) msg);
         } else if (msg instanceof GetVmUptimeMsg) {
@@ -857,16 +862,16 @@ public class KVMHost extends HostBase implements Host {
         });
     }
 
-    private void handle(CommitVolumeOnHypervisorMsg msg) {
-        inQueue().name(String.format("block-commit-on-kvm-%s", self.getUuid()))
+    private void handle(DeleteVolumeSnapshotSelfOnHypervisorMsg msg) {
+        inQueue().name(String.format("delete-volume-%s-snapshot-by-block-commit-on-kvm-%s", msg.getVolume().getUuid(), self.getUuid()))
                 .asyncBackup(msg)
                 .run(chain -> {
-                    commitVolume(msg);
+                    deleteVolumeSnapshotSelf(msg);
                     chain.next();
                 });
     }
 
-    private void commitVolume(final CommitVolumeOnHypervisorMsg msg) {
+    private void deleteVolumeSnapshotSelf(final DeleteVolumeSnapshotSelfOnHypervisorMsg msg) {
         thdf.chainSubmit(new ChainTask(msg) {
             @Override
             public String getSyncSignature() {
@@ -875,7 +880,7 @@ public class KVMHost extends HostBase implements Host {
 
             @Override
             public void run(SyncTaskChain chain) {
-                doCommitVolume(msg, new NoErrorCompletion() {
+                doDeleteVolumeSnapshotSelf(msg, new NoErrorCompletion() {
                     @Override
                     public void done() {
                         chain.next();
@@ -890,18 +895,18 @@ public class KVMHost extends HostBase implements Host {
 
             @Override
             public String getName() {
-                return String.format("block-commit-volume-on-kvm-%s", self.getUuid());
+                return String.format(String.format("do-delete-volume-%s-snapshot-by-block-commit-on-kvm-%s", msg.getVolume().getUuid(), self.getUuid()));
             }
         });
     }
 
-    private void doCommitVolume(final CommitVolumeOnHypervisorMsg msg, final NoErrorCompletion completion) {
+    private void doDeleteVolumeSnapshotSelf(final DeleteVolumeSnapshotSelfOnHypervisorMsg msg, final NoErrorCompletion completion) {
         checkStateAndStatus();
-        final CommitVolumeOnHypervisorReply reply = new CommitVolumeOnHypervisorReply();
+        final DeleteVolumeSnapshotSelfOnHypervisorReply reply = new DeleteVolumeSnapshotSelfOnHypervisorReply();
 
-        BlockCommitVolumeCmd cmd = new BlockCommitVolumeCmd();
+        VmInstanceState state = null;
         if (msg.getVmUuid() != null) {
-            VmInstanceState state = Q.New(VmInstanceVO.class)
+            state = Q.New(VmInstanceVO.class)
                     .eq(VmInstanceVO_.uuid, msg.getVmUuid())
                     .select(VmInstanceVO_.state)
                     .findValue();
@@ -911,22 +916,18 @@ public class KVMHost extends HostBase implements Host {
             }
         }
 
-        cmd.setVmUuid(msg.getVmUuid());
-        cmd.setVolume(VolumeTO.valueOf(msg.getVolume(), (KVMHostInventory) getSelfInventory()));
-        cmd.setTop(msg.getSrcPath());
-        cmd.setBase(msg.getDstPath());
-
         FlowChain chain = FlowChainBuilder.newShareFlowChain();
-        chain.setName(String.format("block-commit-for-volume-%s", msg.getVolume().getUuid()));
+        chain.setName(String.format("delete-snapshot-self-for-volume-%s", msg.getVolume().getUuid()));
+        VmInstanceState finalState = state;
         chain.then(new ShareFlow() {
             @Override
             public void setup() {
                 flow(new NoRollbackFlow() {
-                    String __name__ = String.format("before-block-commit-for-volume-%s", msg.getVolume().getUuid());
+                    String __name__ = String.format("before-delete-snapshot-self-for-volume-%s", msg.getVolume().getUuid());
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        extEmitter.beforeCommitVolume((KVMHostInventory) getSelfInventory(), msg, cmd, new Completion(trigger) {
+                        extEmitter.beforeDeleteVolumeSnapshotSelf((KVMHostInventory) getSelfInventory(), msg, chain.getData(), new Completion(trigger) {
                             @Override
                             public void success() {
                                 trigger.next();
@@ -941,45 +942,86 @@ public class KVMHost extends HostBase implements Host {
                 });
 
                 flow(new NoRollbackFlow() {
-                    String __name__ = String.format("do-block-commit-for-volume-%s", msg.getVolume().getUuid());
+                    String __name__ = String.format("do-delete-snapshot-self-for-volume-%s", msg.getVolume().getUuid());
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        new Http<>(blockCommitVolumePath, cmd, BlockCommitVolumeResponse.class).call(new ReturnValueCompletion<BlockCommitVolumeResponse>(msg, trigger) {
-                            @Override
-                            public void success(BlockCommitVolumeResponse ret) {
-                                if (ret.isSuccess()) {
-                                    if (Objects.equals(ret.getNewVolumeInstallPath(), cmd.getTop())) {
-                                        throw new OperationFailureException(operr("after block commit, new volume path still use %s", ret.getNewVolumeInstallPath()));
+                        if (msg.isDeleteByBlockCommit()) {
+                            BlockCommitVolumeCmd cmd = new BlockCommitVolumeCmd();
+                            if (msg.getAliveChainInstallPathInDb().contains(msg.getSrcSnapshotPath()) &&
+                                    (finalState == VmInstanceState.Running || finalState == VmInstanceState.Paused)) {
+                                cmd.setVmUuid(msg.getVmUuid());
+                            }
+                            cmd.setVolume(VolumeTO.valueOf(msg.getVolume(), (KVMHostInventory) getSelfInventory()));
+                            cmd.setTop(msg.getSrcSnapshotPath());
+                            cmd.setBase(msg.getDstSnapshotPath());
+                            cmd.setAliveChainInstallPathInDb(msg.getAliveChainInstallPathInDb());
+                            cmd.setTopChildrenInstallPathInDb(msg.getSrcChildrenInstallPathInDb());
+                            new Http<>(blockCommitVolumePath, cmd, BlockPullVolumeResponse.class).call(new ReturnValueCompletion<BlockPullVolumeResponse>(msg, trigger) {
+                                @Override
+                                public void success(BlockPullVolumeResponse ret) {
+                                    if (!ret.isSuccess()) {
+                                        ErrorCode err = operr("operation error, because:%s", ret.getError());
+                                        extEmitter.failedToDeleteVolumeSnapshotSelf((KVMHostInventory) getSelfInventory(), msg, ret, chain.getData(), err);
+                                        trigger.fail(err);
+                                        return;
                                     }
-                                } else {
-                                    ErrorCode err = operr("operation error, because:%s", ret.getError());
-                                    extEmitter.failedToCommitVolume((KVMHostInventory) getSelfInventory(), msg, cmd, ret, err);
-                                    trigger.fail(err);
-                                    return;
+
+                                    reply.setNewInstallPath(ret.getNewVolumeInstallPath());
+                                    reply.setSize(ret.getSize());
+                                    trigger.next();
                                 }
 
-                                reply.setNewVolumeInstallPath(ret.getNewVolumeInstallPath());
-                                reply.setSize(ret.getSize());
-                                trigger.next();
+                                @Override
+                                public void fail(ErrorCode errorCode) {
+                                    extEmitter.failedToDeleteVolumeSnapshotSelf((KVMHostInventory) getSelfInventory(), msg, null, chain.getData(), errorCode);
+                                    reply.setError(errorCode);
+                                    trigger.fail(errorCode);
+                                }
+                            });
+                        } else {
+                            BlockPullVolumeCmd cmd = new BlockPullVolumeCmd();
+                            if (msg.getAliveChainInstallPathInDb().contains(msg.getSrcSnapshotPath()) &&
+                                    (finalState == VmInstanceState.Running || finalState == VmInstanceState.Paused)) {
+                                cmd.setVmUuid(msg.getVmUuid());
                             }
+                            cmd.setVolume(VolumeTO.valueOf(msg.getVolume(), (KVMHostInventory) getSelfInventory()));
+                            cmd.setTop(msg.getSrcSnapshotPath());
+                            cmd.setBase(msg.getDstSnapshotPath());
+                            cmd.setAliveChainInstallPathInDb(msg.getAliveChainInstallPathInDb());
+                            new Http<>(blockPullVolumePath, cmd, BlockPullVolumeResponse.class).call(new ReturnValueCompletion<BlockPullVolumeResponse>(msg, trigger) {
+                                @Override
+                                public void success(BlockPullVolumeResponse ret) {
+                                    if (!ret.isSuccess()) {
+                                        ErrorCode err = operr("operation error, because:%s", ret.getError());
+                                        extEmitter.failedToDeleteVolumeSnapshotSelf((KVMHostInventory) getSelfInventory(), msg, ret, chain.getData(), err);
+                                        trigger.fail(err);
+                                        return;
+                                    }
 
-                            @Override
-                            public void fail(ErrorCode errorCode) {
-                                extEmitter.failedToCommitVolume((KVMHostInventory) getSelfInventory(), msg, cmd, null, errorCode);
-                                reply.setError(errorCode);
-                                trigger.fail(errorCode);
-                            }
-                        });
+                                    reply.setNewInstallPath(ret.getNewVolumeInstallPath());
+                                    reply.setSize(ret.getSize());
+                                    trigger.next();
+                                }
+
+                                @Override
+                                public void fail(ErrorCode errorCode) {
+                                    extEmitter.failedToDeleteVolumeSnapshotSelf((KVMHostInventory) getSelfInventory(), msg, null, chain.getData(), errorCode);
+                                    reply.setError(errorCode);
+                                    trigger.fail(errorCode);
+                                }
+                            });
+
+                        }
                     }
                 });
 
                 flow(new NoRollbackFlow() {
-                    String __name__ = String.format("after-block-commit-for-volume-%s", msg.getVolume().getUuid());
+                    String __name__ = String.format("after-delete-snapshot-self-for-volume-%s", msg.getVolume().getUuid());
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        extEmitter.afterCommitVolume((KVMHostInventory) getSelfInventory(), msg, cmd, reply, new Completion(trigger) {
+                        extEmitter.afterDeleteVolumeSnapshotSelf((KVMHostInventory) getSelfInventory(), msg, chain.getData(), reply, new Completion(trigger) {
                             @Override
                             public void success() {
                                 trigger.next();
