@@ -844,8 +844,8 @@ public class LocalStorageBase extends PrimaryStorageBase {
             handle((GetVolumeBackingChainFromPrimaryStorageMsg) msg);
         } else if (msg instanceof GetPrimaryStorageUsageReportMsg) {
             handle((GetPrimaryStorageUsageReportMsg) msg);
-        } else if (msg instanceof UndoSnapshotCreationOnPrimaryStorageMsg) {
-            handle((UndoSnapshotCreationOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof DeleteVolumeSnapshotOnPrimaryStorageMsg) {
+            handle((DeleteVolumeSnapshotOnPrimaryStorageMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
@@ -948,7 +948,16 @@ public class LocalStorageBase extends PrimaryStorageBase {
     }
 
     private void handle(GetVolumeBackingChainFromPrimaryStorageMsg msg) {
-        LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(msg.getHostUuid());
+        LocalStorageHypervisorFactory f;
+        if (msg.getHostUuid() != null) {
+            f = getHypervisorBackendFactoryByHostUuid(msg.getHostUuid());
+        } else {
+            f = getHypervisorBackendFactoryByResourceUuid(msg.getVolumeUuid(), VolumeVO.class.getSimpleName());
+            String hostUuid = Q.New(LocalStorageResourceRefVO.class)
+                    .eq(LocalStorageResourceRefVO_.resourceUuid, msg.getVolumeUuid())
+                    .select(LocalStorageResourceRefVO_.hostUuid).findValue();
+            msg.setHostUuid(hostUuid);
+        }
         LocalStorageHypervisorBackend bkd = f.getHypervisorBackend(self);
         bkd.handle(msg, new ReturnValueCompletion<GetVolumeBackingChainFromPrimaryStorageReply>(msg) {
             @Override
@@ -1542,20 +1551,20 @@ public class LocalStorageBase extends PrimaryStorageBase {
         });
     }
 
-    private void handle(final UndoSnapshotCreationOnPrimaryStorageMsg msg) {
+    private void handle(final DeleteVolumeSnapshotOnPrimaryStorageMsg msg) {
         final String hostUuid = getHostUuidByResourceUuid(msg.getVolume().getUuid());
 
         LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(hostUuid);
         LocalStorageHypervisorBackend bkd = f.getHypervisorBackend(self);
-        bkd.handle(msg, hostUuid, new ReturnValueCompletion<UndoSnapshotCreationOnPrimaryStorageReply>(msg) {
+        bkd.handle(msg, hostUuid, new ReturnValueCompletion<DeleteVolumeSnapshotSelfOnPrimaryStorageReply>(msg) {
             @Override
-            public void success(UndoSnapshotCreationOnPrimaryStorageReply returnValue) {
+            public void success(DeleteVolumeSnapshotSelfOnPrimaryStorageReply returnValue) {
                 bus.reply(msg, returnValue);
             }
 
             @Override
             public void fail(ErrorCode errorCode) {
-                UndoSnapshotCreationOnPrimaryStorageReply reply = new UndoSnapshotCreationOnPrimaryStorageReply();
+                DeleteVolumeSnapshotSelfOnPrimaryStorageReply reply = new DeleteVolumeSnapshotSelfOnPrimaryStorageReply();
                 reply.setError(errorCode);
                 bus.reply(msg, reply);
             }

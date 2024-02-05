@@ -1,7 +1,6 @@
 package org.zstack.testlib.vfs.storage
 
 import org.springframework.http.HttpEntity
-import org.zstack.core.Platform
 import org.zstack.core.db.Q
 import org.zstack.core.db.SQL
 import org.zstack.header.storage.primary.PrimaryStorageVO
@@ -117,6 +116,38 @@ class LocalStorageVFSPrimaryStorageTakeSnapshotBackend implements AbstractFileSy
                 .find()
 
         VFS vfs = LocalStorageSpec.vfs(LocalStorageSpec.hostUuidFromHTTPHeaders(e), storagePath, spec)
+        if (vfs.exists(volume.getInstallPath())) {
+            vfs.delete(volume.getInstallPath())
+        }
         blockStream(vfs, volume)
+    }
+
+    @Override
+    Qcow2 blockCommit(HttpEntity<String> e, EnvSpec spec, KVMAgentCommands.BlockCommitVolumeSnapshotCmd cmd, VolumeInventory volume) {
+        String storagePath = Q.New(PrimaryStorageVO.class)
+                .select(PrimaryStorageVO_.mountPath)
+                .eq(PrimaryStorageVO_.uuid, volume.primaryStorageUuid)
+                .findValue()
+        VFS vfs = LocalStorageSpec.vfs(LocalStorageSpec.hostUuidFromHTTPHeaders(e), storagePath, spec)
+        Qcow2 top = vfs.getFile(cmd.top, true)
+        Qcow2 base = vfs.getFile(cmd.base, true)
+        Qcow2.commit(vfs, top, base)
+        return vfs.getFile(cmd.base, true)
+    }
+
+    @Override
+    Qcow2 blockPull(HttpEntity<String> e, EnvSpec spec, KVMAgentCommands.BlockPullVolumeCmd cmd, VolumeInventory volume) {
+        String storagePath = Q.New(PrimaryStorageVO.class)
+                .select(PrimaryStorageVO_.mountPath)
+                .eq(PrimaryStorageVO_.uuid, volume.primaryStorageUuid)
+                .findValue()
+        VFS vfs = LocalStorageSpec.vfs(LocalStorageSpec.hostUuidFromHTTPHeaders(e), storagePath, spec)
+        Qcow2 volumePath = vfs.getFile(volume.getInstallPath(), true)
+        if (cmd.base == null) {
+            volumePath.rebase((String) null)
+        } else {
+            volumePath.rebase(cmd.base)
+        }
+        return vfs.getFile(volume.getInstallPath(), true)
     }
 }
