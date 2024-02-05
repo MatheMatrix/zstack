@@ -43,7 +43,6 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.rest.RESTFacade;
 import org.zstack.header.storage.backup.*;
 import org.zstack.header.storage.primary.*;
-import org.zstack.header.storage.primary.UndoSnapshotCreationOnPrimaryStorageMsg;
 import org.zstack.header.storage.snapshot.VolumeSnapshotConstant;
 import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
@@ -2006,13 +2005,29 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
     }
 
     @Override
-    void handle(final UndoSnapshotCreationOnPrimaryStorageMsg msg, final String hostUuid, final ReturnValueCompletion<UndoSnapshotCreationOnPrimaryStorageReply> completion) {
-        CommitVolumeOnHypervisorMsg hmsg = new CommitVolumeOnHypervisorMsg();
+    void handle(final DeleteVolumeSnapshotSelfOnPrimaryStorageMsg msg, final String hostUuid, final ReturnValueCompletion<DeleteVolumeSnapshotSelfOnPrimaryStorageReply> completion) {
+        VmInstanceState state = null;
+        if (msg.getVolume().getVmInstanceUuid() != null){
+            state = Q.New(VmInstanceVO.class)
+                    .select(VmInstanceVO_.state)
+                    .eq(VmInstanceVO_.uuid, msg.getVolume().getVmInstanceUuid())
+                    .findValue();
+
+            if (state != VmInstanceState.Running && state != VmInstanceState.Paused && state != VmInstanceState.Stopped){
+                completion.fail(operr("vm[uuid:%s] is not Running, Paused or Stopped, current state[%s]",
+                        msg.getVolume().getVmInstanceUuid(), state));
+                return;
+            }
+        }
+
+        DeleteVolumeSnapshotSelfOnHypervisorMsg hmsg = new DeleteVolumeSnapshotSelfOnHypervisorMsg();
         hmsg.setHostUuid(hostUuid);
-        hmsg.setVmUuid(msg.getVmUuid());
+        hmsg.setVmUuid(state != VmInstanceState.Stopped ? msg.getVolume().getVmInstanceUuid() : null);
         hmsg.setVolume(msg.getVolume());
         hmsg.setSrcPath(msg.getSrcPath());
         hmsg.setDstPath(msg.getDstPath());
+        hmsg.setAliveChainInstallPathInDb(msg.getAliveChainInstallPathInDb());
+        hmsg.setSrcChildrenInstallPath(msg.getSrcChildrenInstallPath());
         bus.makeTargetServiceIdByResourceUuid(hmsg, HostConstant.SERVICE_ID, hostUuid);
         bus.send(hmsg, new CloudBusCallBack(completion) {
             @Override
@@ -2022,8 +2037,8 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
                     return;
                 }
 
-                UndoSnapshotCreationOnPrimaryStorageReply ret = new UndoSnapshotCreationOnPrimaryStorageReply();
-                CommitVolumeOnHypervisorReply treply = (CommitVolumeOnHypervisorReply) reply;
+                DeleteVolumeSnapshotSelfOnPrimaryStorageReply ret = new DeleteVolumeSnapshotSelfOnPrimaryStorageReply();
+                DeleteVolumeSnapshotSelfOnHypervisorReply treply = reply.castReply();
                 ret.setSize(treply.getSize());
                 ret.setNewVolumeInstallPath(treply.getNewVolumeInstallPath());
                 completion.success(ret);

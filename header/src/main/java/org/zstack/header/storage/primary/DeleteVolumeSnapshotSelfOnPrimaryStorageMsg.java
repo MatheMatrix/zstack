@@ -4,17 +4,20 @@ import org.zstack.header.message.NeedReplyMessage;
 import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
 import org.zstack.header.volume.VolumeInventory;
 
+import java.util.List;
+
 /**
  * @ Author : yh.w
  * @ Date   : Created in 11:47 2023/8/21
  */
-public class UndoSnapshotCreationOnPrimaryStorageMsg extends NeedReplyMessage implements PrimaryStorageMessage {
-    private String vmUuid;
+public class DeleteVolumeSnapshotSelfOnPrimaryStorageMsg extends NeedReplyMessage implements PrimaryStorageMessage {
     private VolumeInventory volume;
     private VolumeSnapshotInventory snapshot;
     private String srcPath;
     private String dstPath;
     private String primaryStorageUuid;
+    private List<String> aliveChainInstallPathInDb;
+    private List<String> srcChildrenInstallPath;
 
     public VolumeSnapshotInventory getSnapshot() {
         return snapshot;
@@ -30,14 +33,6 @@ public class UndoSnapshotCreationOnPrimaryStorageMsg extends NeedReplyMessage im
 
     public void setVolume(VolumeInventory volume) {
         this.volume = volume;
-    }
-
-    public String getVmUuid() {
-        return vmUuid;
-    }
-
-    public void setVmUuid(String vmUuid) {
-        this.vmUuid = vmUuid;
     }
 
     public String getSrcPath() {
@@ -63,5 +58,21 @@ public class UndoSnapshotCreationOnPrimaryStorageMsg extends NeedReplyMessage im
     @Override
     public String getPrimaryStorageUuid() {
         return primaryStorageUuid;
+    }
+
+    public List<String> getAliveChainInstallPathInDb() {
+        return aliveChainInstallPathInDb;
+    }
+
+    public void setAliveChainInstallPathInDb(List<String> aliveChainInstallPathInDb) {
+        this.aliveChainInstallPathInDb = aliveChainInstallPathInDb;
+    }
+
+    public List<String> getSrcChildrenInstallPath() {
+        return srcChildrenInstallPath;
+    }
+
+    public void setSrcChildrenInstallPath(List<String> srcChildrenInstallPath) {
+        this.srcChildrenInstallPath = srcChildrenInstallPath;
     }
 }

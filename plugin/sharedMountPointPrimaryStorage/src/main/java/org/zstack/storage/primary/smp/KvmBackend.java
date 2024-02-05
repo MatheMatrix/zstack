@@ -41,8 +41,10 @@ import org.zstack.header.vm.VmInstanceSpec.ImageSpec;
 import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmInstanceVO_;
-import org.zstack.header.volume.*;
-import org.zstack.identity.AccountManager;
+import org.zstack.header.volume.VolumeConstant;
+import org.zstack.header.volume.VolumeInventory;
+import org.zstack.header.volume.VolumeType;
+import org.zstack.header.volume.VolumeVO;
 import org.zstack.kvm.*;
 import org.zstack.storage.primary.*;
 import org.zstack.storage.volume.VolumeErrors;
@@ -57,7 +59,6 @@ import org.zstack.utils.path.PathUtil;
 import javax.persistence.Tuple;
 import java.io.File;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.operr;
@@ -1774,16 +1775,17 @@ public class KvmBackend extends HypervisorBackend {
     }
 
     @Override
-    void handle(UndoSnapshotCreationOnPrimaryStorageMsg msg, ReturnValueCompletion<UndoSnapshotCreationOnPrimaryStorageReply> completion) {
+    void handle(DeleteVolumeSnapshotSelfOnPrimaryStorageMsg msg, ReturnValueCompletion<DeleteVolumeSnapshotSelfOnPrimaryStorageReply> completion) {
         VolumeInventory vol = msg.getVolume();
         String hostUuid;
         String connectedHostUuid = primaryStorageFactory.getConnectedHostForOperation(getSelfInventory()).get(0).getUuid();
+        VmInstanceState state = null;
         if (vol.getVmInstanceUuid() != null){
             Tuple t = Q.New(VmInstanceVO.class)
                     .select(VmInstanceVO_.state, VmInstanceVO_.hostUuid)
                     .eq(VmInstanceVO_.uuid, vol.getVmInstanceUuid())
                     .findTuple();
-            VmInstanceState state = t.get(0, VmInstanceState.class);
+            state = t.get(0, VmInstanceState.class);
             String vmHostUuid = t.get(1, String.class);
 
             if (state == VmInstanceState.Running || state == VmInstanceState.Paused){
@@ -1801,23 +1803,28 @@ public class KvmBackend extends HypervisorBackend {
             hostUuid = connectedHostUuid;
         }
 
-        CommitVolumeOnHypervisorMsg hmsg = new CommitVolumeOnHypervisorMsg();
+
+        DeleteVolumeSnapshotSelfOnPrimaryStorageReply ret = new DeleteVolumeSnapshotSelfOnPrimaryStorageReply();
+
+        DeleteVolumeSnapshotSelfOnHypervisorMsg hmsg = new DeleteVolumeSnapshotSelfOnHypervisorMsg();
         hmsg.setHostUuid(hostUuid);
-        hmsg.setVmUuid(msg.getVmUuid());
+        hmsg.setVmUuid(state != VmInstanceState.Stopped ? msg.getVolume().getVmInstanceUuid() : null);
         hmsg.setVolume(msg.getVolume());
         hmsg.setSrcPath(msg.getSrcPath());
         hmsg.setDstPath(msg.getDstPath());
+        hmsg.setAliveChainInstallPathInDb(msg.getAliveChainInstallPathInDb());
+        hmsg.setSrcChildrenInstallPath(msg.getSrcChildrenInstallPath());
         bus.makeTargetServiceIdByResourceUuid(hmsg, HostConstant.SERVICE_ID, hostUuid);
         bus.send(hmsg, new CloudBusCallBack(msg) {
             @Override
             public void run(MessageReply reply) {
-                UndoSnapshotCreationOnPrimaryStorageReply ret = new UndoSnapshotCreationOnPrimaryStorageReply();
+                DeleteVolumeSnapshotSelfOnPrimaryStorageReply ret = new DeleteVolumeSnapshotSelfOnPrimaryStorageReply();
                 if (!reply.isSuccess()) {
                     completion.fail(reply.getError());
                     return;
                 }
 
-                CommitVolumeOnHypervisorReply treply = (CommitVolumeOnHypervisorReply) reply;
+                DeleteVolumeSnapshotSelfOnHypervisorReply treply =  reply.castReply();
                 ret.setSize(treply.getSize());
                 ret.setNewVolumeInstallPath(treply.getNewVolumeInstallPath());
                 completion.success(ret);
