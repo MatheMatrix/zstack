@@ -202,6 +202,7 @@ class ExponIscsiCase extends SubCase {
          */
         def poolId = controller.addonInfo.getPools()[0].id
         def exponVol = controller.apiHelper.createVolume("test_iscsi_vol_jin_" + Platform.uuid, poolId, SizeUnit.GIGABYTE.toByte(17))
+        assert exponVol.runStatus == "normal"
 
 
         /**

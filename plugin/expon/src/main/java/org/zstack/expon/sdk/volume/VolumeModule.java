@@ -28,6 +28,15 @@ public class VolumeModule {
     private boolean isDelete;
     private boolean qosStatus;
     private ExponVolumeQos qos;
+    private String runStatus;
+
+    public String getRunStatus() {
+        return runStatus;
+    }
+
+    public void setRunStatus(String runStatus) {
+        this.runStatus = runStatus;
+    }
 
     public String getId() {
         return id;
