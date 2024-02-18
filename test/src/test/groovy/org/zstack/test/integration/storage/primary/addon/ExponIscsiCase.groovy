@@ -40,7 +40,7 @@ class ExponIscsiCase extends SubCase {
     ExponNameHelper nameHelper
     DatabaseFacade dbf
 
-    String exponUrl = "https://admin:Admin123@172.25.102.64:443/pool"
+    String exponUrl = "https://admin:Admin123@172.25.130.128:443/pool"
     String exportProtocol = "iscsi://"
 
     @Override
