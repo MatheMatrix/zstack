@@ -124,6 +124,14 @@ public class UsbDeviceInventory  {
         return this.attachType;
     }
 
+    public java.lang.String accountUuid;
+    public void setAccountUuid(java.lang.String accountUuid) {
+        this.accountUuid = accountUuid;
+    }
+    public java.lang.String getAccountUuid() {
+        return this.accountUuid;
+    }
+
     public java.sql.Timestamp createDate;
     public void setCreateDate(java.sql.Timestamp createDate) {
         this.createDate = createDate;
