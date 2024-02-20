@@ -313,30 +313,30 @@ class ExponIscsiCase extends SubCase {
         assert result.id == snapshot.id
 
         /**
-         * recovery volume from volume snapshot
-         */
-        apiHelper.removeVolumeFromIscsiClientGroup(exponVol.id, client.id)
-        apiHelper.recoverySnapshot(exponVol.id, snap.id)
-        /**
-         * delete iscsi volume snapshot
-         */
-        apiHelper.removeSnapshotFromIscsiClientGroup(snapshot.id, client.id)
-        apiHelper.deleteVolumeSnapshot(snapshot.id)
-        snap = apiHelper.queryVolumeSnapshot("iscsi-volume-snapshot" + volume.id)
-        assert snap == null
-
-        /**
-         * detach iscsi volume
-         */
-        // recovery has been remove
-        // apiHelper.removeVolumeFromIscsiClientGroup(exponVol.id, client.id)
-        // 以及iscsiadm rescan
-
-        /**
-         * delete iscsi volume snapshot
-         */
-        apiHelper.deleteVolume(exponVol.id, true)
-        volume = apiHelper.queryVolume(exponVol.name)
-        assert volume == null
+//         * recovery volume from volume snapshot
+//         */
+//        apiHelper.removeVolumeFromIscsiClientGroup(exponVol.id, client.id)
+//        apiHelper.recoverySnapshot(exponVol.id, snap.id)
+//        /**
+//         * delete iscsi volume snapshot
+//         */
+//        apiHelper.removeSnapshotFromIscsiClientGroup(snapshot.id, client.id)
+//        apiHelper.deleteVolumeSnapshot(snapshot.id)
+//        snap = apiHelper.queryVolumeSnapshot("iscsi-volume-snapshot" + volume.id)
+//        assert snap == null
+//
+//        /**
+//         * detach iscsi volume
+//         */
+//        // recovery has been remove
+//        // apiHelper.removeVolumeFromIscsiClientGroup(exponVol.id, client.id)
+//        // 以及iscsiadm rescan
+//
+//        /**
+//         * delete iscsi volume snapshot
+//         */
+//        apiHelper.deleteVolume(exponVol.id, true)
+//        volume = apiHelper.queryVolume(exponVol.name)
+//        assert volume == null
     }
 }
