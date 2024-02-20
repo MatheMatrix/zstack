@@ -11,7 +11,7 @@ import java.util.Map;
         path = "/block/volumes/{id}/name",
         method = HttpMethod.PUT,
         responseClass = UpdateVolumeResponse.class,
-        sync = true
+        sync = false
 )
 public class UpdateVolumeRequest extends ExponRequest {
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
