@@ -26,6 +26,7 @@ public class VolumeTO extends BaseVirtualDeviceTO {
     public static final String MINISTORAGE = "mini";
     public static final String QUORUM = "quorum";
     public static final String VHOST = "vhost";
+    public static final String iSCSI = "iscsi";
     public static final Map<VolumeProtocol, String> deviceTypes = new HashMap<>();
     public static List<KVMConvertVolumeExtensionPoint> exts;
 
@@ -52,6 +53,7 @@ public class VolumeTO extends BaseVirtualDeviceTO {
 
     static {
         deviceTypes.put(VolumeProtocol.Vhost, VHOST);
+        deviceTypes.put(VolumeProtocol.iSCSI, iSCSI);
     }
 
     public VolumeTO() {

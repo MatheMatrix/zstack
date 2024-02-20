@@ -248,6 +248,15 @@ public class ExponApiHelper {
         return getVolume(rsp.getId());
     }
 
+    public VolumeModule updateVolume(String volId, String name) {
+        UpdateVolumeRequest req = new UpdateVolumeRequest();
+        req.setId(volId);
+        req.setName(name);
+        UpdateVolumeResponse rsp = callErrorOut(req, UpdateVolumeResponse.class);
+
+        return getVolume(volId);
+    }
+
     public void deleteVolume(String volId, boolean force) {
         DeleteVolumeRequest req = new DeleteVolumeRequest();
         req.setVolId(volId);
@@ -327,6 +336,16 @@ public class ExponApiHelper {
         req.setDescription(description);
         req.setVolumeId(volId);
         CreateVolumeSnapshotResponse rsp = callErrorOut(req, CreateVolumeSnapshotResponse.class);
+
+        return queryVolumeSnapshot(name);
+    }
+
+    public VolumeSnapshotModule updateVolumeSnapshot(String snapId, String name, String description) {
+        UpdateVolumeSnapshotRequest req = new UpdateVolumeSnapshotRequest();
+        req.setId(snapId);
+        req.setName(name);
+        req.setDescription(description);
+        UpdateVolumeSnapshotResponse rsp = callErrorOut(req, UpdateVolumeSnapshotResponse.class);
 
         return queryVolumeSnapshot(name);
     }
