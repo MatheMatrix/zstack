@@ -165,6 +165,11 @@ class ExternalPrimaryStorageCase extends SubCase {
     @Override
     void test() {
         env.create {
+            if (System.getProperty("inTestSuite") != null) {
+                logger.debug("skip expon case in test suite")
+                return
+            }
+
             cluster = env.inventoryByName("cluster") as ClusterInventory
             instanceOffering = env.inventoryByName("instanceOffering") as InstanceOfferingInventory
             diskOffering = env.inventoryByName("diskOffering") as DiskOfferingInventory
