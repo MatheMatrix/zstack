@@ -26,7 +26,7 @@ CREATE TABLE  `zstack`.`SNSWeComAtPersonVO` (
     `endpointUuid` varchar(32) NOT NULL,
     `remark` varchar(128) default '' null,
     `lastOpDate` timestamp ON UPDATE CURRENT_TIMESTAMP,
-    `createDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+    `createDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY  (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -44,7 +44,7 @@ CREATE TABLE  `zstack`.`SNSFeiShuAtPersonVO` (
     `endpointUuid` varchar(32) NOT NULL,
     `remark` varchar(128) default '' null,
     `lastOpDate` timestamp ON UPDATE CURRENT_TIMESTAMP,
-    `createDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+    `createDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY  (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -55,7 +55,7 @@ alter table SNSDingTalkAtPersonVO
     add lastOpDate timestamp ON UPDATE CURRENT_TIMESTAMP;
 
 alter table SNSDingTalkAtPersonVO
-    add createDate timestamp NOT NULL DEFAULT '0000-00-00 00:00:00';
+    add createDate timestamp NULL;
 
 alter table SNSDingTalkAtPersonVO
     add remark varchar(128) default '' null;
