@@ -16,6 +16,9 @@ import org.zstack.header.securitymachine.secretresourcepool.SecretResourcePoolCo
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.kvm.KVMBeforeAsyncJsonPostExtensionPoint;
 import org.zstack.kvm.KVMConstant;
+import org.zstack.securitymachine.secretresourcepool.CreateSecretkeyReply;
+import org.zstack.securitymachine.secretresourcepool.QuerySecretKeyReply;
+import org.zstack.securitymachine.secretresourcepool.TPSecretResourcePoolConstant;
 import org.zstack.storage.volume.VolumeSystemTags;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.utils.Utils;
