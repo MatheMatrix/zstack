@@ -789,4 +789,13 @@ public class ExponApiHelper {
         req.setTrashRecycle(days);
         callErrorOut(req, SetTrashExpireTimeResponse.class);
     }
+
+    public VolumeModule updateVolume(String volId, String name) {
+        UpdateVolumeRequest req = new UpdateVolumeRequest();
+        req.setId(volId);
+        req.setName(name);
+        UpdateVolumeResponse rsp = callErrorOut(req, UpdateVolumeResponse.class);
+
+        return getVolume(volId);
+    }
 }
