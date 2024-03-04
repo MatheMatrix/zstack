@@ -1,13 +1,15 @@
 package org.zstack.expon;
 
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.db.DatabaseFacade;
+import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.expon.sdk.ExponClient;
-import org.zstack.expon.sdk.ExponConfig;
+import org.zstack.expon.sdk.ExponConnectConfig;
 import org.zstack.expon.sdk.cluster.TianshuClusterModule;
 import org.zstack.expon.sdk.iscsi.IscsiClientGroupModule;
 import org.zstack.expon.sdk.iscsi.IscsiModule;
@@ -29,6 +31,8 @@ import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.expon.HealthStatus;
 import org.zstack.header.host.HostInventory;
+import org.zstack.header.host.HostVO;
+import org.zstack.header.host.HostVO_;
 import org.zstack.header.storage.addon.*;
 import org.zstack.header.storage.addon.primary.*;
 import org.zstack.header.storage.primary.ImageCacheInventory;
@@ -41,7 +45,9 @@ import org.zstack.header.volume.VolumeStats;
 import org.zstack.iscsi.IscsiUtils;
 import org.zstack.iscsi.kvm.IscsiHeartbeatVolumeTO;
 import org.zstack.iscsi.kvm.IscsiVolumeTO;
+import org.zstack.storage.addon.primary.ExternalPrimaryStorageFactory;
 import org.zstack.storage.primary.PrimaryStorageGlobalConfig;
+import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.data.SizeUnit;
 import org.zstack.utils.gson.JSONObjectUtil;
@@ -69,9 +75,11 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     @Autowired
     private ThreadFacade thdf;
     private ExternalPrimaryStorageVO self;
-    private ExponAddonInfo addonInfo;
-
-    private final ExponApiHelper apiHelper;
+    public ExponAddonInfo addonInfo;
+    private ExponConfig config;
+    public final ExponApiHelper apiHelper;
+    @Autowired
+    private ExternalPrimaryStorageFactory extPsFactory;
 
     // TODO static nqn
     private final static String hostNqn = "nqn.2014-08.org.nvmexpress:uuid:zstack";
@@ -108,7 +116,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     public ExponStorageController(String url) {
         URI uri = URI.create(url);
 
-        ExponConfig clientConfig = new ExponConfig();
+        ExponConnectConfig clientConfig = new ExponConnectConfig();
         clientConfig.hostname = uri.getHost();
         clientConfig.port = uri.getPort();
         clientConfig.readTimeout = TimeUnit.MINUTES.toMillis(10);
@@ -195,7 +203,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         return to;
     }
 
-    private List<IscsiSeverNode> getIscsiServers(String tianshuId) {
+    public List<IscsiSeverNode> getIscsiServers(String tianshuId) {
         List<IscsiSeverNode> nodes = apiHelper.getIscsiTargetServer(tianshuId);
         nodes.removeIf(it -> !it.getUssName().startsWith("iscsi_zstack"));
         if (nodes.isEmpty()) {
@@ -203,18 +211,34 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         }
 
         List<UssGatewayModule> uss = apiHelper.listUssGateway();
-        Set<String> ussIds = uss.stream()
+        Map<String, String> ussIdAndNetwork = uss.stream()
                 .filter(it -> !it.getStatus().equals(HealthStatus.error.name()))
-                .map(UssGatewayModule::getId)
-                .collect(Collectors.toSet());
-        nodes.removeIf(it -> !ussIds.contains(it.getUssGwId()));
+                .collect(Collectors.toMap(UssGatewayModule::getId, UssGatewayModule::getBusinessNetwork));
+        nodes.removeIf(it -> !ussIdAndNetwork.containsKey(it.getUssGwId()));
+
         if (nodes.isEmpty()) {
             throw new RuntimeException("no healthy uss server found");
         }
-        return nodes;
+
+        // deduplicate same uss iscsi server.
+        return nodes.stream().collect(Collectors.groupingBy(IscsiSeverNode::getUssGwId))
+                .entrySet().stream().map(it -> {
+                    String businessIp = ussIdAndNetwork.get(it.getKey()).split("/")[0];
+                    List<IscsiSeverNode> ns = it.getValue();
+                    // prefer business network
+                    return ns.stream().filter(n -> n.getGatewayIp().equals(businessIp)).findFirst().orElse(ns.get(0));
+                }).collect(Collectors.toList());
     }
 
     private synchronized ActiveVolumeTO activeIscsiVolume(HostInventory h, BaseVolumeInfo vol, boolean shareable) {
+        String clientIqn = IscsiUtils.getHostInitiatorName(h.getUuid());
+        if (clientIqn == null) {
+            throw new RuntimeException(String.format("cannot get host[uuid:%s] initiator name", h.getUuid()));
+        }
+        return activeIscsiVolume(clientIqn, vol, shareable);
+    }
+
+    public synchronized ActiveVolumeTO activeIscsiVolume(String clientIqn, BaseVolumeInfo vol, boolean shareable) {
         String lunId;
         LunType lunType;
         String source = vol.getInstallPath();
@@ -226,23 +250,18 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
             lunType = LunType.Volume;
         }
 
-        String clientIqn = IscsiUtils.getHostInitiatorName(h.getUuid());
-        if (clientIqn == null) {
-            throw new RuntimeException(String.format("cannot get host[uuid:%s] initiator name", h.getUuid()));
-        }
-
         String tianshuId = addonInfo.getClusters().get(0).getId();
         List<IscsiSeverNode> nodes = getIscsiServers(tianshuId);
 
-        IscsiModule iscsi = allocateIscsiTarget(nodes);
+        IscsiModule iscsi = "image".equals(vol.getType()) ? allocateImageIscsiTarget(nodes) : allocateIscsiTarget(nodes);
 
-        String iscsiClientName = buildIscsiVolumeClientName(vol.getUuid());
+        // for active image, we use one iscsi client group for one iscsi target to save client group count
+        String iscsiClientName = "image".equals(vol.getType()) ? iscsi.getName() : buildIscsiVolumeClientName(vol.getUuid());
         IscsiClientGroupModule client = prepareOneToOneIscsiClientGroup(iscsiClientName, iscsi.getId(), tianshuId, clientIqn);
 
-        // one iscsi client group can only have one lun
-        if (lunType == LunType.Volume && client.getVolNum() == 0) {
+        if (lunType == LunType.Volume && !apiHelper.getVolumeAttachedIscsiClientGroups(lunId).contains(client.getId())) {
             apiHelper.addVolumeToIscsiClientGroup(lunId, client.getId(), iscsi.getId(), shareable);
-        } else if (lunType == LunType.Snapshot && client.getSnapNum() == 0) {
+        } else if (lunType == LunType.Snapshot && !apiHelper.getSnapshotAttachedIscsiClientGroups(lunId).contains(client.getId())) {
             apiHelper.addSnapshotToIscsiClientGroup(lunId, client.getId(), iscsi.getId());
         }
 
@@ -295,7 +314,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
             return createIscsiTarget(currentIscsiTargetIndex + 1, tianshuId, nodes);
         }
 
-        if (iscsi.getClientCount() < MAX_ISCSI_TARGET_LUN_COUNT) {
+        if (iscsi.getLunCount() < MAX_ISCSI_TARGET_LUN_COUNT) {
             return iscsi;
         }
 
@@ -308,6 +327,37 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
                 tianshuId, 3260, IscsiUssResource.valueOf(nodes));
         addonInfo.setCurrentIscsiTargetId(iscsi.getId());
         addonInfo.setCurrentIscsiTargetIndex(index);
+        SQL.New(ExternalPrimaryStorageVO.class).eq(ExternalPrimaryStorageVO_.uuid, self.getUuid())
+                .set(ExternalPrimaryStorageVO_.addonInfo, JSONObjectUtil.toJsonString(addonInfo)).update();
+        return iscsi;
+    }
+
+    private synchronized IscsiModule allocateImageIscsiTarget(List<IscsiSeverNode> nodes) {
+        IscsiModule iscsi;
+        String tianshuId = addonInfo.getClusters().get(0).getId();
+        if (addonInfo.getCurrentImageIscsiTargetId() == null) {
+            return createImageIscsiTarget(1, tianshuId, nodes);
+        }
+
+        iscsi = apiHelper.getIscsiController(addonInfo.getCurrentImageIscsiTargetId());
+        if (iscsi == null) {
+            int currentIscsiImageTargetIndex = addonInfo.getCurrentImageIscsiTargetIndex();
+            return createImageIscsiTarget(currentIscsiImageTargetIndex + 1, tianshuId, nodes);
+        }
+
+        if (iscsi.getLunCount() < MAX_ISCSI_TARGET_LUN_COUNT) {
+            return iscsi;
+        }
+
+        int index = Integer.parseInt(iscsi.getName().substring(iscsi.getName().lastIndexOf("_") + 1));
+        return createImageIscsiTarget(index, tianshuId, nodes);
+    }
+
+    private IscsiModule createImageIscsiTarget(int index, String tianshuId, List<IscsiSeverNode> nodes) {
+        IscsiModule iscsi = apiHelper.createIscsiController(buildImageIscsiTargetName(index),
+                tianshuId, 3260, IscsiUssResource.valueOf(nodes));
+        addonInfo.setCurrentImageIscsiTargetId(iscsi.getId());
+        addonInfo.setCurrentImageIscsiTargetIndex(index);
         SQL.New(ExternalPrimaryStorageVO.class).eq(ExternalPrimaryStorageVO_.uuid, self.getUuid())
                 .set(ExternalPrimaryStorageVO_.addonInfo, JSONObjectUtil.toJsonString(addonInfo)).update();
         return iscsi;
@@ -360,17 +410,22 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         } else if (VolumeProtocol.iSCSI.toString().equals(v.getProtocol())) {
             String lunId;
             LunType lunType;
+            List<String> clientIds;
             if (v.getInstallPath().contains("@")) {
                 lunId = getSnapIdFromPath(v.getInstallPath());
                 lunType = LunType.Snapshot;
+                clientIds = apiHelper.getSnapshotAttachedIscsiClientGroups(lunId);
             } else {
                 lunId = getVolIdFromPath(v.getInstallPath());
                 lunType = LunType.Volume;
+                clientIds = apiHelper.getVolumeAttachedIscsiClientGroups(lunId);
             }
 
-            String iscsiClientName = buildIscsiVolumeClientName(v.getUuid());
-            IscsiClientGroupModule client = apiHelper.queryIscsiClient(iscsiClientName);
-            IscsiModule iscsi = apiHelper.getIscsiClientAttachedTargets(client.getId()).get(0);
+            if (clientIds.isEmpty()) {
+                return null;
+            }
+
+            IscsiModule iscsi = apiHelper.getIscsiClientAttachedTargets(clientIds.get(0)).get(0);
             List<IscsiSeverNode> nodes = getIscsiServers(addonInfo.getClusters().get(0).getId());
 
             IscsiRemoteTarget target = new IscsiRemoteTarget();
@@ -416,13 +471,13 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
 
     @Override
     public List<ActiveVolumeClient> getActiveClients(String installPath, String protocol) {
-        VolumeModule vol = apiHelper.getVolume(getVolIdFromPath(installPath));
-        if (vol == null) {
-            return Collections.emptyList();
-        }
-
-        String volUuid = getVolumeInfo(vol.getName()).getUuid();
         if (VolumeProtocol.Vhost.toString().equals(protocol)) {
+            VolumeModule vol = apiHelper.getVolume(getVolIdFromPath(installPath));
+            if (vol == null) {
+                return Collections.emptyList();
+            }
+
+            String volUuid = getVolumeInfo(vol.getName()).getUuid();
             String vhostName = buildVhostControllerName(volUuid);
             VhostControllerModule vhost = apiHelper.queryVhostController(vhostName);
             if (vhost == null) {
@@ -436,8 +491,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
                 return client;
             }).collect(Collectors.toList());
         } else if (VolumeProtocol.iSCSI.toString().equals(protocol)) {
-            String iscsiClientName = buildIscsiVolumeClientName(volUuid);
-            IscsiClientGroupModule client = apiHelper.queryIscsiClient(iscsiClientName);
+            IscsiClientGroupModule client = getLunAttachedIscsiClient(installPath);
             if (client == null) {
                 return Collections.emptyList();
             }
@@ -457,6 +511,24 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         }
     }
 
+    private IscsiClientGroupModule getLunAttachedIscsiClient(String installPath) {
+        List<String> clientIds;
+        if (installPath.contains("@")) {
+            String lunId = getSnapIdFromPath(installPath);
+            clientIds = apiHelper.getSnapshotAttachedIscsiClientGroups(lunId);
+        } else {
+            String lunId = getVolIdFromPath(installPath);
+            clientIds = apiHelper.getVolumeAttachedIscsiClientGroups(lunId);
+        }
+
+        if (clientIds.isEmpty()) {
+            return null;
+        }
+
+        // one lun can only attach to one client group
+        return apiHelper.getIscsiClient(clientIds.get(0));
+    }
+
     @Override
     public void deactivate(String installPath, String protocol, HostInventory h, Completion comp) {
         logger.debug(String.format("deactivating volume[path: %s, protocol:%s] on host[uuid:%s, ip:%s]",
@@ -466,12 +538,25 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
             comp.success();
             return;
         } else if (VolumeProtocol.iSCSI.toString().equals(protocol)) {
+            // iscsi target is shared by all hosts, we cannot control one volume on one host for now.
             deactivateIscsi(installPath, h);
             comp.success();
             return;
         }
 
         comp.fail(operr("not supported protocol[%s] for deactivate", protocol));
+    }
+
+    @Override
+    public void deactivate(String installPath, String protocol, ActiveVolumeClient client, Completion comp) {
+        HostVO host = Q.New(HostVO.class).eq(HostVO_.managementIp, client.getManagerIp()).find();
+        if (host != null) {
+            deactivate(installPath, protocol, HostInventory.valueOf(host), comp);
+        } else {
+            // bm instance InitiatorName
+            deactivateIscsi(installPath, client.getQualifiedName());
+            comp.success();
+        }
     }
 
     public void cleanActiveRecord(VolumeInventory vol) {
@@ -491,13 +576,8 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     }
 
     public void cleanActiveRecord(ImageCacheInventory cache) {
-        String iscsiClientName = buildIscsiVolumeClientName(cache.getImageUuid());
-        IscsiClientGroupModule client = apiHelper.queryIscsiClient(iscsiClientName);
-        if (client != null) {
-            apiHelper.deleteIscsiClient(client.getId());
-        }
+        // TODO
     }
-
 
     @Override
     public void blacklist(String installPath, String protocol, HostInventory h, Completion comp) {
@@ -637,28 +717,35 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     }
 
     private void deactivateIscsi(String installPath, HostInventory h) {
-        String volId = getVolIdFromPath(installPath);
-        VolumeModule vol = apiHelper.getVolume(volId);
-        if (vol == null) {
-            return;
-        }
-
-        String volUuid = getVolumeInfo(vol.getName()).getUuid();
-
-        String iscsiClientName = buildIscsiVolumeClientName(volUuid);
-        IscsiClientGroupModule client = apiHelper.queryIscsiClient(iscsiClientName);
-        if (client == null) {
-            return;
-        }
-
         String iqn = IscsiUtils.getHostInitiatorName(h.getUuid());
         if (iqn == null) {
             throw new RuntimeException(String.format("cannot get host[uuid:%s] initiator name", h.getUuid()));
         }
+        deactivateIscsi(installPath, iqn);
+    }
 
-        if (client.getHosts().contains(iqn)) {
-            apiHelper.removeHostFromIscsiClient(iqn, client.getId());
+    public void deactivateIscsi(String installPath, String iqn) {
+        IscsiClientGroupModule client = getLunAttachedIscsiClient(installPath);
+        if (client == null) {
+            return;
         }
+
+        int lunCount = client.getSnapNum() + client.getVolNum();
+        if (lunCount > 1) {
+            logger.debug(String.format("%s attached sharable iscsi client group[lun count: %d], skip deactivate", installPath, lunCount));
+            return;
+        }
+
+        if (!client.getHosts().contains(iqn)) {
+            return;
+        }
+
+        if (client.getHosts().size() == 1) {
+            apiHelper.deleteIscsiClient(client.getId());
+            return;
+        }
+
+        apiHelper.removeHostFromIscsiClient(iqn, client.getId());
     }
 
     private synchronized void unexportIscsi(String source, String clientIp) {
@@ -716,17 +803,29 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         ExponAddonInfo info = new ExponAddonInfo();
 
         List<FailureDomainModule> pools = apiHelper.queryPools();
+        if (CollectionUtils.isEmpty(pools)) {
+            comp.fail(operr("no pool found"));
+            return;
+        }
+
         pools = pools.stream().map(it -> apiHelper.getPool(it.getId())).collect(Collectors.toList());
         info.setPools(pools.stream().map(ExponAddonInfo.Pool::valueOf).collect(Collectors.toList()));
         List<TianshuClusterModule> clusters = apiHelper.queryClusters();
         info.setClusters(clusters.stream().map(ExponAddonInfo.TianshuCluster::valueOf).collect(Collectors.toList()));
 
         List<IscsiModule> iscsiTargets = apiHelper.listIscsiController();
-        iscsiTargets.removeIf(it -> !it.getName().startsWith(iscsiTargetPrefix));
+        iscsiTargets.removeIf(it -> !it.getName().startsWith(iscsiTargetPrefix) && !it.getName().startsWith(iscsiTargetImagePrefix));
         if (!iscsiTargets.isEmpty()) {
-            iscsiTargets.stream().max(Comparator.comparingInt(o -> Integer.parseInt(o.getName().substring(o.getName().lastIndexOf("_") + 1)))).ifPresent(i -> {
+            iscsiTargets.stream().filter(it -> it.getName().startsWith(iscsiTargetPrefix))
+                    .max(Comparator.comparingInt(o -> Integer.parseInt(o.getName().substring(o.getName().lastIndexOf("_") + 1)))).ifPresent(i -> {
                 info.setCurrentIscsiTargetId(i.getId());
                 info.setCurrentIscsiTargetIndex(Integer.parseInt(i.getName().substring(i.getName().lastIndexOf("_") + 1)));
+            });
+
+            iscsiTargets.stream().filter(it -> it.getName().startsWith(iscsiTargetImagePrefix))
+                    .max(Comparator.comparingInt(o -> Integer.parseInt(o.getName().substring(o.getName().lastIndexOf("_") + 1)))).ifPresent(i -> {
+                info.setCurrentImageIscsiTargetId(i.getId());
+                info.setCurrentImageIscsiTargetIndex(Integer.parseInt(i.getName().substring(i.getName().lastIndexOf("_") + 1)));
             });
         }
         addonInfo = info;
@@ -734,10 +833,15 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         comp.success(JSONObjectUtil.rehashObject(addonInfo, LinkedHashMap.class));
     }
 
+    private void reloadDbInfo() {
+        self = dbf.reload(self);
+        addonInfo = StringUtils.isEmpty(self.getAddonInfo()) ? new ExponAddonInfo() : JSONObjectUtil.toObject(self.getAddonInfo(), ExponAddonInfo.class);
+        config = StringUtils.isEmpty(self.getConfig()) ? new ExponConfig() : JSONObjectUtil.toObject(self.getConfig(), ExponConfig.class);
+    }
+
     @Override
     public void reportCapacity(ReturnValueCompletion<StorageCapacity> comp) {
-        self = dbf.reload(self);
-        addonInfo = JSONObjectUtil.toObject(self.getAddonInfo(), ExponAddonInfo.class);
+        reloadDbInfo();
 
         List<FailureDomainModule> pools = getSelfPools();
         long total = pools.stream().mapToLong(FailureDomainModule::getValidSize).sum();
@@ -763,6 +867,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     public void reportHealthy(ReturnValueCompletion<StorageHealthy> comp) {
         self = dbf.reload(self);
         addonInfo = JSONObjectUtil.toObject(self.getAddonInfo(), ExponAddonInfo.class);
+        config = JSONObjectUtil.toObject(self.getConfig(), ExponConfig.class);
 
         List<FailureDomainModule> pools = getSelfPools();
         comp.success(getHealthy(pools));
@@ -770,30 +875,60 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
 
     @Override
     public void reportNodeHealthy(HostInventory host, ReturnValueCompletion<NodeHealthy> comp) {
+        String hostProtocol = getProtocolByHypervisorType(host.getHypervisorType());
         NodeHealthy healthy = new NodeHealthy();
-        Arrays.asList(VolumeProtocol.Vhost).forEach(it -> {
-            String ussName = buildUssGwName(protocolToString(it), host.getManagementIp());
-            UssGatewayModule uss = apiHelper.queryUssGateway(ussName);
-            if (uss == null) {
-                healthy.setHealthy(it, StorageHealthy.Failed);
-            } else if (uss.getStatus().equals(HealthStatus.health.name())) {
-                healthy.setHealthy(it, StorageHealthy.Ok);
-            } else if (uss.getStatus().equals(HealthStatus.error.name())) {
-                healthy.setHealthy(it, StorageHealthy.Failed);
-            } else if (uss.getStatus().equals(HealthStatus.warning.name())){
-                healthy.setHealthy(it, StorageHealthy.Warn);
-            } else {
-                healthy.setHealthy(it, StorageHealthy.Unknown);
-            }
-        });
+        if (VolumeProtocol.Vhost.toString().equals(hostProtocol)) {
+            setNodeHealthyByVhost(host, healthy);
+        }
 
+        if (VolumeProtocol.iSCSI.toString().equals(hostProtocol)) {
+            setNodeHealthyByIscsi(host, healthy);
+        }
         comp.success(healthy);
     }
 
-    private List<FailureDomainModule> getSelfPools() {
-        // TODO check config
-        Set<String> poolIds = addonInfo.getPools().stream().map(ExponAddonInfo.Pool::getId).collect(Collectors.toSet());
+    private void setNodeHealthyByIscsi(HostInventory host, NodeHealthy healthy) {
+        // for iscsi protocol , just judge exist or not
+        VolumeProtocol protocol = VolumeProtocol.iSCSI;
+        String tianshuId = addonInfo.getClusters().get(0).getId();
+        List<IscsiSeverNode> nodes = apiHelper.getIscsiTargetServer(tianshuId);
+        if (nodes.stream().anyMatch(it -> it.getUssName().startsWith(iscsiPrefix)
+                && it.getManagerIp().equals(host.getManagementIp()))) {
+            healthy.setHealthy(protocol, StorageHealthy.Ok);
+        } else {
+            healthy.setHealthy(protocol, StorageHealthy.Unknown);
+        }
+    }
 
+    private void setNodeHealthyByVhost(HostInventory host, NodeHealthy healthy) {
+        VolumeProtocol protocol = VolumeProtocol.Vhost;
+        String ussName = buildUssGwName(protocolToString(protocol), host.getManagementIp());
+        UssGatewayModule uss = apiHelper.queryUssGateway(ussName);
+        if (uss == null) {
+            healthy.setHealthy(protocol, StorageHealthy.Failed);
+        } else if (uss.getStatus().equals(HealthStatus.health.name())) {
+            healthy.setHealthy(protocol, StorageHealthy.Ok);
+        } else if (uss.getStatus().equals(HealthStatus.error.name())) {
+            healthy.setHealthy(protocol, StorageHealthy.Failed);
+        } else if (uss.getStatus().equals(HealthStatus.warning.name())){
+            healthy.setHealthy(protocol, StorageHealthy.Warn);
+        } else {
+            healthy.setHealthy(protocol, StorageHealthy.Unknown);
+        }
+    }
+
+    private String getProtocolByHypervisorType(String type) {
+        NodeHealthyCheckProtocolExtensionPoint point = extPsFactory.nodeHealthyCheckProtocolExtensions.get(type);
+        if (point != null) {
+            return point.getHealthyProtocol();
+        }
+        return VolumeProtocol.Vhost.toString();
+    }
+
+    private List<FailureDomainModule> getSelfPools() {
+        Set<String> configPoolNames = config.getPoolNames();
+        Set<String> poolIds = addonInfo.getPools().stream().filter(it -> configPoolNames.contains(it.getName()))
+                .map(ExponAddonInfo.Pool::getId).collect(Collectors.toSet());
 
         List<FailureDomainModule> pools = apiHelper.queryPools();
         pools.removeIf(it -> !poolIds.contains(it.getId()));
@@ -854,6 +989,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         stats.setSize(exponVol.getVolumeSize());
         stats.setActualSize(exponVol.getDataSize());
         stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
+        stats.setRunStatus(exponVol.getRunStatus());
         comp.success(stats);
     }
 
@@ -1086,7 +1222,13 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
 
     @Override
     public void deleteSnapshot(String installPath, Completion comp) {
-        apiHelper.deleteVolumeSnapshot(getSnapIdFromPath(installPath));
+        apiHelper.deleteVolumeSnapshot(getSnapIdFromPath(installPath), false);
+        comp.success();
+    }
+
+    @Override
+    public void expungeSnapshot(String installPath, Completion comp) {
+        apiHelper.deleteVolumeSnapshot(getSnapIdFromPath(installPath), true);
         comp.success();
     }
 

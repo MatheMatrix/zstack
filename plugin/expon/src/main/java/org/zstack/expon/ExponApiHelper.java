@@ -1,5 +1,7 @@
 package org.zstack.expon;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import org.zstack.expon.sdk.*;
 import org.zstack.expon.sdk.cluster.QueryTianshuClusterRequest;
 import org.zstack.expon.sdk.cluster.QueryTianshuClusterResponse;
@@ -17,6 +19,8 @@ import org.zstack.expon.sdk.volume.*;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.errorcode.OperationFailureException;
+import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.expon.ExponError;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.gson.JSONObjectUtil;
@@ -25,6 +29,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
@@ -35,6 +40,10 @@ public class ExponApiHelper {
     ExponClient client;
     String sessionId;
     String refreshToken;
+
+    private static final Cache<String, String> snapshotClientCache = CacheBuilder.newBuilder()
+            .maximumSize(1000)
+            .build();
 
     ExponApiHelper(AccountInfo accountInfo, ExponClient client) {
         this.accountInfo = accountInfo;
@@ -108,7 +117,7 @@ public class ExponApiHelper {
 
     public void errorOut(ExponResponse rsp) {
         if (!rsp.isSuccess()) {
-            throw new RuntimeException(String.format("expon request failed, code %s, message: %s.", rsp.getRetCode(), rsp.getMessage()));
+            throw new OperationFailureException(operr("expon request failed, code %s, message: %s.", rsp.getRetCode(), rsp.getMessage()));
         }
     }
 
@@ -339,9 +348,10 @@ public class ExponApiHelper {
     }
 
     // TODO change to async
-    public void deleteVolumeSnapshot(String snapId) {
+    public void deleteVolumeSnapshot(String snapId, boolean force) {
         DeleteVolumeSnapshotRequest req = new DeleteVolumeSnapshotRequest();
         req.setSnapshotId(snapId);
+        req.setForce(force);
         callErrorOut(req, DeleteVolumeSnapshotResponse.class);
     }
 
@@ -609,6 +619,14 @@ public class ExponApiHelper {
         return rsp.getClients().stream().filter(it -> it.getName().equals(name)).findFirst().orElse(null);
     }
 
+    public IscsiClientGroupModule getIscsiClient(String id) {
+        GetIscsiClientGroupRequest req = new GetIscsiClientGroupRequest();
+        req.setId(id);
+        GetIscsiClientGroupResponse rsp = callErrorOut(req, GetIscsiClientGroupResponse.class);
+
+        return JSONObjectUtil.rehashObject(rsp, IscsiClientGroupModule.class);
+    }
+
     public IscsiClientGroupModule createIscsiClient(String name, String tianshuId, List<String> clients) {
         CreateIscsiClientGroupRequest req = new CreateIscsiClientGroupRequest();
         req.setName(name);
@@ -707,18 +725,50 @@ public class ExponApiHelper {
         errorOut(rsp);
     }
 
-    public List<String> getIscsiClientGroupAttachedVolumes(String clientId) {
+    public Set<String> getIscsiClientGroupAttachedVolumes(String clientId) {
         GetVolumesInIscsiClientGroupRequest req = new GetVolumesInIscsiClientGroupRequest();
         req.setId(clientId);
         GetVolumesInIscsiClientGroupResponse rsp = callErrorOut(req, GetVolumesInIscsiClientGroupResponse.class);
-        return rsp.getLuns().stream().map(IscsiClientMappedLunModule::getId).collect(Collectors.toList());
+        return rsp.getLuns().stream().map(IscsiClientMappedLunModule::getId).collect(Collectors.toSet());
     }
 
-    public List<String> getIscsiClientGroupAttachedSnapshots(String clientId) {
+    public Set<String> getIscsiClientGroupAttachedSnapshots(String clientId) {
         GetSnapshotsInIscsiClientGroupRequest req = new GetSnapshotsInIscsiClientGroupRequest();
         req.setId(clientId);
         GetSnapshotsInIscsiClientGroupResponse rsp = callErrorOut(req, GetSnapshotsInIscsiClientGroupResponse.class);
-        return rsp.getLuns().stream().map(IscsiClientMappedLunModule::getId).collect(Collectors.toList());
+        return rsp.getLuns().stream().map(IscsiClientMappedLunModule::getId).collect(Collectors.toSet());
+    }
+
+    public List<String> getVolumeAttachedIscsiClientGroups(String volId) {
+        GetVolumeBoundIscsiClientGroupRequest req = new GetVolumeBoundIscsiClientGroupRequest();
+        req.setVolumeId(volId);
+        GetVolumeBoundIscsiClientGroupResponse rsp = callErrorOut(req, GetVolumeBoundIscsiClientGroupResponse.class);
+        return rsp.getClients().stream().map(LunBoundIscsiClientGroupModule::getId).collect(Collectors.toList());
+    }
+
+    public List<String> getSnapshotAttachedIscsiClientGroups(String snapId) {
+        String cacheClientId = snapshotClientCache.getIfPresent(snapId);
+        if (cacheClientId != null) {
+            if (getIscsiClientGroupAttachedSnapshots(cacheClientId).contains(snapId)) {
+                return Collections.singletonList(cacheClientId);
+            } else {
+                snapshotClientCache.invalidate(snapId);
+            }
+        }
+
+        // TODO
+        QueryIscsiClientGroupRequest req = new QueryIscsiClientGroupRequest();
+        QueryIscsiClientGroupResponse rsp = queryErrorOut(req, QueryIscsiClientGroupResponse.class);
+        for (IscsiClientGroupModule client : rsp.getClients()) {
+            if (client.getSnapNum() > 0) {
+                if (getIscsiClientGroupAttachedSnapshots(client.getId()).contains(snapId)) {
+                    snapshotClientCache.put(snapId, client.getId());
+                    return Collections.singletonList(client.getId());
+                }
+            }
+        }
+
+        return Collections.emptyList();
     }
 
     public void removeVolumeFromIscsiClientGroup(String volId, String clientId) {
@@ -788,5 +838,28 @@ public class ExponApiHelper {
         SetTrashExpireTimeRequest req = new SetTrashExpireTimeRequest();
         req.setTrashRecycle(days);
         callErrorOut(req, SetTrashExpireTimeResponse.class);
+    }
+
+    public VolumeModule updateVolume(String volId, String name) {
+        UpdateVolumeRequest req = new UpdateVolumeRequest();
+        req.setSessionId(sessionId);
+        req.setId(volId);
+        req.setName(name);
+        UpdateVolumeResponse rsp = callErrorOut(req, UpdateVolumeResponse.class);
+
+        return getVolume(volId);
+    }
+
+    public VolumeSnapshotModule updateVolumeSnapshot(String snapshotId, String name, String description) {
+        UpdateVolumeSnapshotRequest req = new UpdateVolumeSnapshotRequest();
+        req.setSessionId(sessionId);
+        req.setDescription(description);
+        req.setId(snapshotId);
+        if (queryVolumeSnapshot(name) == null) {
+            req.setName(name);
+        }
+        UpdateVolumeSnapshotResponse rsp = callErrorOut(req, UpdateVolumeSnapshotResponse.class);
+
+        return queryVolumeSnapshot(name);
     }
 }
