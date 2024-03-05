@@ -28,6 +28,7 @@ public interface IpStatisticConstants {
     interface VmType {
         String USER_VM = "UserVm";
         String APPLIANCE_VM = "ApplianceVm";
+        String TEMPLATE_VM = "TemplateVm";
         String VROUTER = "vrouter";
         String VPC_VROUTER = "vpcvrouter";
     }

@@ -13,6 +13,7 @@ public class VmInstanceAO_ extends ResourceVO_ {
     public static volatile SingularAttribute<VmInstanceAO, String> zoneUuid;
     public static volatile SingularAttribute<VmInstanceAO, String> clusterUuid;
     public static volatile SingularAttribute<VmInstanceAO, String> imageUuid;
+    public static volatile SingularAttribute<VmInstanceAO, String> vmInstanceTemplateUuid;
     public static volatile SingularAttribute<VmInstanceAO, String> rootVolumeUuid;
     public static volatile SingularAttribute<VmInstanceAO, String> instanceOfferingUuid;
     public static volatile SingularAttribute<VmInstanceAO, String> defaultL3NetworkUuid;

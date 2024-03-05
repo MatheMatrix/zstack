@@ -8,9 +8,7 @@ import org.zstack.header.vo.ForeignKey;
 import org.zstack.header.vo.ForeignKey.ReferenceOption;
 import org.zstack.header.vo.Index;
 import org.zstack.header.vo.ResourceVO;
-import org.zstack.header.volume.Volume;
 import org.zstack.header.volume.VolumeEO;
-import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.zone.ZoneEO;
 
 import javax.persistence.*;

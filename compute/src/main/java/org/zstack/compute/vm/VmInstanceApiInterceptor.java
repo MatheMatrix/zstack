@@ -62,6 +62,7 @@ import java.util.stream.Collectors;
 import static java.lang.Integer.parseInt;
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.operr;
+import static org.zstack.header.configuration.ConfigurationConstant.*;
 import static org.zstack.utils.CollectionDSL.list;
 import static org.zstack.utils.CollectionUtils.getDuplicateElementsOfList;
 
@@ -167,10 +168,25 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             validate((APITakeVmConsoleScreenshotMsg) msg);
         } else if (msg instanceof APIGetVmUptimeMsg) {
             validate((APIGetVmUptimeMsg) msg);
+        } else if (msg instanceof APICreateVmInstanceTemplateMsg) {
+            validate((APICreateVmInstanceTemplateMsg) msg);
         }
 
         setServiceId(msg);
         return msg;
+    }
+
+    private void validate(APICreateVmInstanceTemplateMsg msg) {
+        VmInstanceVO vm = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, msg.getVmInstanceUuid()).find();
+        if (!vm.getState().equals(VmInstanceState.Stopped)) {
+            throw new ApiMessageInterceptionException(operr(
+                    "can not create vm template for vm[uuid:%s] which is not Stopped", msg.getVmInstanceUuid()));
+        }
+
+        if (vm.getType().equals(TEMPLATE_VM_INSTANCE_OFFERING_TYPE)) {
+            throw new ApiMessageInterceptionException(operr(
+                    "can not create vm template for vm[uuid:%s] whose type is %s", msg.getVmInstanceUuid(), TEMPLATE_VM_INSTANCE_OFFERING_TYPE));
+        }
     }
 
     private void validate(APIGetVmUptimeMsg msg) {

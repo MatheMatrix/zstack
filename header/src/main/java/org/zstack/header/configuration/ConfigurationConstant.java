@@ -3,6 +3,7 @@ package org.zstack.header.configuration;
 public interface ConfigurationConstant {
     public static final String SERVICE_ID = "configuration";
     public static final String USER_VM_INSTANCE_OFFERING_TYPE = "UserVm";
+    public static final String TEMPLATE_VM_INSTANCE_OFFERING_TYPE = "TemplateVm";
 
     public static final String ACTION_CATEGORY = "configuration";
 
