@@ -9,7 +9,7 @@ import java.sql.Timestamp;
 import java.util.Collections;
 import java.util.List;
 
-@RestResponse(fieldsTo = {"inventory", "volumeTemplates"})
+@RestResponse(fieldsTo = {"all"})
 public class APICreateVmInstanceTemplateEvent extends APIEvent {
 
     VmInstanceTemplateInventory inventory;
