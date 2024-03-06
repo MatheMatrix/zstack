@@ -14,7 +14,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APICreateVmInstanceTemplateEvent.class,
         parameterName = "params"
 )
-public class APICreateVmInstanceTemplateMsg extends APICreateMessage implements APIAuditor {
+public class APICreateVmInstanceTemplateMsg extends APICreateMessage {
     @APIParam(resourceType = VmInstanceVO.class, checkAccount = true, operationTarget = true)
     private String vmInstanceUuid;
 
@@ -45,10 +45,5 @@ public class APICreateVmInstanceTemplateMsg extends APICreateMessage implements 
 
     public void setClone(Boolean clone) {
         this.clone = clone;
-    }
-
-    @Override
-    public Result audit(APIMessage msg, APIEvent rsp) {
-        return new Result(rsp.isSuccess() ? ((APICreateVmInstanceTemplateEvent) rsp).getInventory().getUuid() : "", VmInstanceTemplateVO.class);
     }
 }
