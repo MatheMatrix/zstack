@@ -28,8 +28,7 @@ doc {
 					location "body"
 					type "String"
 					optional false
-					since "4.2.0"
-
+					since "zsv 4.2.0"
 				}
 				column {
 					name "name"
@@ -38,8 +37,7 @@ doc {
 					location "body"
 					type "String"
 					optional true
-					since "4.2.0"
-
+					since "zsv 4.2.0"
 				}
 				column {
 					name "clone"
@@ -48,8 +46,7 @@ doc {
 					location "body"
 					type "boolean"
 					optional true
-					since "4.2.0"
-
+					since "zsv 4.2.0"
 				}
 				column {
 					name "resourceUuid"
@@ -58,8 +55,7 @@ doc {
 					location "body"
 					type "String"
 					optional true
-					since "4.2.0"
-
+					since "zsv 4.2.0"
 				}
 				column {
 					name "tagUuids"
@@ -68,8 +64,7 @@ doc {
 					location "body"
 					type "List"
 					optional true
-					since "4.2.0"
-
+					since "zsv 4.2.0"
 				}
 				column {
 					name "systemTags"
@@ -78,8 +73,7 @@ doc {
 					location "body"
 					type "List"
 					optional true
-					since "4.2.0"
-
+					since "zsv 4.2.0"
 				}
 				column {
 					name "userTags"
@@ -88,8 +82,7 @@ doc {
 					location "body"
 					type "List"
 					optional true
-					since "4.2.0"
-
+					since "zsv 4.2.0"
 				}
 			}
         }
