@@ -23,8 +23,8 @@ doc {
 		clz ErrorCode.class
 	}
 	ref {
-		name "inventory"
-		path "org.zstack.header.vm.APICreateVmInstanceTemplateEvent.inventory"
+		name "vmTemplate"
+		path "org.zstack.header.vm.APICreateVmInstanceTemplateEvent.vmTemplate"
 		desc "null"
 		type "VmInstanceTemplateInventory"
 		since "4.2.0"

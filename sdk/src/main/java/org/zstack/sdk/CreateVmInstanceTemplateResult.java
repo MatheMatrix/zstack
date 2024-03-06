@@ -3,12 +3,13 @@ package org.zstack.sdk;
 import org.zstack.sdk.VmInstanceTemplateInventory;
 
 public class CreateVmInstanceTemplateResult {
-    public VmInstanceTemplateInventory inventory;
-    public void setInventory(VmInstanceTemplateInventory inventory) {
-        this.inventory = inventory;
+    public VmInstanceTemplateInventory vmTemplate;
+    public VmInstanceTemplateInventory getVmTemplate() {
+        return vmTemplate;
     }
-    public VmInstanceTemplateInventory getInventory() {
-        return this.inventory;
+
+    public void setVmTemplate(VmInstanceTemplateInventory vmTemplate) {
+        this.vmTemplate = vmTemplate;
     }
 
     public java.util.List volumeTemplates;

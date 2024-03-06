@@ -12,7 +12,7 @@ import java.util.List;
 @RestResponse(fieldsTo = {"all"})
 public class APICreateVmInstanceTemplateEvent extends APIEvent {
 
-    VmInstanceTemplateInventory inventory;
+    VmInstanceTemplateInventory vmTemplate;
 
     List<VolumeTemplateInventory> volumeTemplates;
 
@@ -24,12 +24,12 @@ public class APICreateVmInstanceTemplateEvent extends APIEvent {
         super(apiId);
     }
 
-    public VmInstanceTemplateInventory getInventory() {
-        return inventory;
+    public VmInstanceTemplateInventory getVmTemplate() {
+        return vmTemplate;
     }
 
-    public void setInventory(VmInstanceTemplateInventory inventory) {
-        this.inventory = inventory;
+    public void setVmTemplate(VmInstanceTemplateInventory vmTemplate) {
+        this.vmTemplate = vmTemplate;
     }
 
     public List<VolumeTemplateInventory> getVolumeTemplates() {
@@ -57,7 +57,7 @@ public class APICreateVmInstanceTemplateEvent extends APIEvent {
         volumeTemplate.setCreateDate(new Timestamp(org.zstack.header.message.DocUtils.date));
         volumeTemplate.setLastOpDate(new Timestamp(org.zstack.header.message.DocUtils.date));
 
-        event.setInventory(vmTemplate);
+        event.setVmTemplate(vmTemplate);
         event.setVolumeTemplates(Collections.singletonList(volumeTemplate));
         return event;
     }
