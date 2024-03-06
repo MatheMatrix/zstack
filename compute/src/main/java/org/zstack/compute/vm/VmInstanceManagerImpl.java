@@ -273,7 +273,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                         .listTuple()
                         .forEach(t -> sql(VolumeVO.class)
                                 .eq(VolumeVO_.uuid, t.get(0, String.class))
-                                .set(VolumeVO_.type, t.get(1, String.class))
+                                .set(VolumeVO_.type, t.get(1, VolumeType.class))
                                 .update());
 
                 sql(VmInstanceTemplateVO.class).eq(VmInstanceTemplateVO_.uuid, msg.getVmInstanceTemplateUuid()).hardDelete();
