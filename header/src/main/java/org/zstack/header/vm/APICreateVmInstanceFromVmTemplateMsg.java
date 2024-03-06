@@ -10,7 +10,7 @@ import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 
 @RestRequest(
-        path = "/vm-instances/VmInstanceTemplate/{VmInstanceTemplateUuid}",
+        path = "/vm-instances/VmInstanceTemplate/{vmInstanceTemplateUuid}",
         method = HttpMethod.POST,
         responseClass = APICreateVmInstanceFromVmTemplateEvent.class,
         parameterName = "params"

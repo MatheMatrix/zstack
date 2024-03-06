@@ -100,7 +100,7 @@ public class CreateVmInstanceFromVmTemplateAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "POST";
-        info.path = "/vm-instances/VmInstanceTemplate/{VmInstanceTemplateUuid}";
+        info.path = "/vm-instances/VmInstanceTemplate/{vmInstanceTemplateUuid}";
         info.needSession = true;
         info.needPoll = true;
         info.parameterName = "params";

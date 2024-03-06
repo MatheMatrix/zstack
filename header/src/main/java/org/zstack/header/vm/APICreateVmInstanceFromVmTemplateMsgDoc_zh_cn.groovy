@@ -11,7 +11,7 @@ doc {
 
     rest {
         request {
-			url "POST /v1/vm-instances/VmInstanceTemplate/{VmInstanceTemplateUuid}"
+			url "POST /v1/vm-instances/VmInstanceTemplate/{vmInstanceTemplateUuid}"
 
 			header (Authorization: 'OAuth the-session-uuid')
 
