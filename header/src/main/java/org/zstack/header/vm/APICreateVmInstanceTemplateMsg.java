@@ -49,6 +49,6 @@ public class APICreateVmInstanceTemplateMsg extends APICreateMessage implements 
 
     @Override
     public Result audit(APIMessage msg, APIEvent rsp) {
-        return new Result(rsp.isSuccess() ? ((APICreateVmInstanceTemplateEvent) rsp).getInventory().getUuid() : "", VmInstanceTemplateVO.class);
+        return new Result(rsp.isSuccess() ? ((APICreateVmInstanceTemplateEvent) rsp).getVmTemplate().getUuid() : "", VmInstanceTemplateVO.class);
     }
 }

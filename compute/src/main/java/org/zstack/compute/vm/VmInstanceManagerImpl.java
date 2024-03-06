@@ -317,7 +317,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
             volume.setType(VolumeType.TemplateVolume);
             dbf.update(volume);
         });
-        event.setInventory(VmInstanceTemplateInventory.valueOf(vmInstanceTemplate));
+        event.setVmTemplate(VmInstanceTemplateInventory.valueOf(vmInstanceTemplate));
         event.setVolumeTemplates(VolumeTemplateInventory.valueOf(volumeTemplates));
         bus.publish(event);
     }
