@@ -272,6 +272,8 @@ public class VmInstanceInventory implements Serializable, Cloneable {
 
     private String guestOsType;
 
+    private String ip;
+
     protected VmInstanceInventory(VmInstanceVO vo) {
         this.setUuid(vo.getUuid());
         this.setName(vo.getName());
@@ -301,6 +303,7 @@ public class VmInstanceInventory implements Serializable, Cloneable {
         this.setPlatform(vo.getPlatform());
         this.setArchitecture(vo.getArchitecture());
         this.setGuestOsType(vo.getGuestOsType());
+        this.setIp(vo.getIp());
     }
 
     public static VmInstanceInventory valueOf(VmInstanceVO vo) {
@@ -387,6 +390,7 @@ public class VmInstanceInventory implements Serializable, Cloneable {
         this.setAllocatorStrategy(inv.getAllocatorStrategy());
         this.setArchitecture(inv.getArchitecture());
         this.setGuestOsType(inv.getGuestOsType());
+        this.setIp(inv.getIp());
     }
 
     public VolumeInventory getRootVolume() {
@@ -623,5 +627,13 @@ public class VmInstanceInventory implements Serializable, Cloneable {
 
     public void setGuestOsType(String guestOsType) {
         this.guestOsType = guestOsType;
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
     }
 }
