@@ -56,6 +56,9 @@ public class VmInstanceVO extends VmInstanceAO implements OwnedByAccount, ToInve
     @Transient
     private String accountUuid;
 
+    @Column
+    private String ip;
+
     @Override
     public String getAccountUuid() {
         return accountUuid;
@@ -74,6 +77,7 @@ public class VmInstanceVO extends VmInstanceAO implements OwnedByAccount, ToInve
         this.vmNics = other.vmNics;
         this.allVolumes = other.allVolumes;
         this.accountUuid = other.accountUuid;
+        this.ip = other.ip;
     }
 
     public Set<VmNicVO> getVmNics() {
@@ -131,5 +135,13 @@ public class VmInstanceVO extends VmInstanceAO implements OwnedByAccount, ToInve
 
     public void setVmCdRoms(Set<VmCdRomVO> vmCdRoms) {
         this.vmCdRoms = vmCdRoms;
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
     }
 }
