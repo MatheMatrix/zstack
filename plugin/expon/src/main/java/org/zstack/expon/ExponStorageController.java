@@ -71,7 +71,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     private ExternalPrimaryStorageVO self;
     private ExponAddonInfo addonInfo;
 
-    private final ExponApiHelper apiHelper;
+    public final ExponApiHelper apiHelper;
 
     // TODO static nqn
     private final static String hostNqn = "nqn.2014-08.org.nvmexpress:uuid:zstack";
@@ -455,6 +455,34 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         } else {
             throw new OperationFailureException(operr("not supported protocol[%s] for active", protocol));
         }
+    }
+
+    @Override
+    public List<ActiveVolumeClient> getIscsiActiveClients(String installPath, VolumeInventory volume) {
+        VolumeModule vol = apiHelper.getVolume(getVolIdFromPath(installPath));
+        if (vol == null) {
+            return Collections.emptyList();
+        }
+
+        if (VolumeProtocol.iSCSI.toString().equals(volume.getProtocol())) {
+            String iscsiClientName = buildIscsiVolumeClientName(volume.getUuid());
+            IscsiClientGroupModule client = apiHelper.queryIscsiClient(iscsiClientName);
+            if (client == null) {
+                return Collections.emptyList();
+            }
+
+            return client.getHosts().stream().map(it -> {
+                ActiveVolumeClient c = new ActiveVolumeClient();
+                if (it.contains("iqn")) {
+                    c.setQualifiedName(it);
+                    c.setManagerIp(getHostMnIpFromInitiatorName(it));
+                } else {
+                    c.setManagerIp(it);
+                }
+                return c;
+            }).collect(Collectors.toList());
+        }
+        return null;
     }
 
     @Override
@@ -854,6 +882,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         stats.setSize(exponVol.getVolumeSize());
         stats.setActualSize(exponVol.getDataSize());
         stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
+        stats.setRunStatus(exponVol.getRunStatus());
         comp.success(stats);
     }
 
