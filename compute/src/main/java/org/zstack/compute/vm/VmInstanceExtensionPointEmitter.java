@@ -325,6 +325,7 @@ public class VmInstanceExtensionPointEmitter implements Component {
     }
 
     public void preMigrateVm(final VmInstanceInventory inv, final String dstHostUuid, Completion completion) {
+        //TODO: vm migration extension point need to be enhanced
         new While<>(migrateVmExtensions).each((ext, comp) -> ext.preMigrateVm(inv, dstHostUuid, new Completion(comp) {
             @Override
             public void success() {
@@ -334,7 +335,7 @@ public class VmInstanceExtensionPointEmitter implements Component {
             @Override
             public void fail(ErrorCode errorCode) {
                 comp.addError(errorCode);
-                comp.allDone();
+                comp.done();
             }
         })).run(new WhileDoneCompletion(completion) {
             @Override
