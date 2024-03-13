@@ -339,9 +339,10 @@ public class ExponApiHelper {
     }
 
     // TODO change to async
-    public void deleteVolumeSnapshot(String snapId) {
+    public void deleteVolumeSnapshot(String snapId, boolean force) {
         DeleteVolumeSnapshotRequest req = new DeleteVolumeSnapshotRequest();
         req.setSnapshotId(snapId);
+        req.setForce(force);
         callErrorOut(req, DeleteVolumeSnapshotResponse.class);
     }
 
