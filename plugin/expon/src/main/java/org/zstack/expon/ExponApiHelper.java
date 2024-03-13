@@ -339,9 +339,10 @@ public class ExponApiHelper {
     }
 
     // TODO change to async
-    public void deleteVolumeSnapshot(String snapId) {
+    public void deleteVolumeSnapshot(String snapId, boolean force) {
         DeleteVolumeSnapshotRequest req = new DeleteVolumeSnapshotRequest();
         req.setSnapshotId(snapId);
+        req.setForce(force);
         callErrorOut(req, DeleteVolumeSnapshotResponse.class);
     }
 
@@ -788,5 +789,26 @@ public class ExponApiHelper {
         SetTrashExpireTimeRequest req = new SetTrashExpireTimeRequest();
         req.setTrashRecycle(days);
         callErrorOut(req, SetTrashExpireTimeResponse.class);
+    }
+
+    public VolumeModule updateVolume(String volId, String name) {
+        UpdateVolumeRequest req = new UpdateVolumeRequest();
+        req.setSessionId(sessionId);
+        req.setId(volId);
+        req.setName(name);
+        UpdateVolumeResponse rsp = callErrorOut(req, UpdateVolumeResponse.class);
+
+        return getVolume(volId);
+    }
+
+    public VolumeSnapshotModule updateVolumeSnapshot(String snapshotId, String name, String description) {
+        UpdateVolumeSnapshotRequest req = new UpdateVolumeSnapshotRequest();
+        req.setSessionId(sessionId);
+        req.setName(name);
+        req.setDescription(description);
+        req.setId(snapshotId);
+        UpdateVolumeSnapshotResponse rsp = callErrorOut(req, UpdateVolumeSnapshotResponse.class);
+
+        return queryVolumeSnapshot(name);
     }
 }
