@@ -29,4 +29,18 @@ public class ExprAtomVisitor extends ZQLBaseVisitor<ASTNode.ExprAtom> {
         o.setText(ctx.getText());
         return o;
     }
+
+    @Override
+    public ASTNode.ExprAtom visitRelationshipEntityExprAtom(ZQLParser.RelationshipEntityExprAtomContext ctx) {
+        ASTNode.ExprAtom o = new ASTNode.ExprAtom();
+        o.setQueryTarget(ctx.queryTarget().accept(new QueryTargetVisitor()));
+        return o;
+    }
+
+    @Override
+    public ASTNode.ExprAtom visitFunctionCallExpressionAtom(ZQLParser.FunctionCallExpressionAtomContext ctx) {
+        ASTNode.ExprAtom o = new ASTNode.ExprAtom();
+        o.setFunctionCall(ctx.functionCall().accept(new FunctionCallVisitor()));
+        return o;
+    }
 }

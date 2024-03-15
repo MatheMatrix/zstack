@@ -88,10 +88,26 @@ expr
     : field operator complexValue?
     ;
 
+joinExpr
+    : leftExpr operator rightExpr
+    ;
+
+leftExpr: entity '.' ID;
+
+rightExpr: entity '.' ID;
+
 exprAtom
-    : ID    #columnNameExprAtom
-    | '(' exprAtom (',' exprAtom)* ')'  #nestedExprAtom
-    | left=exprAtom mathOperator right=exprAtom #mathExprAtom
+    : ID                                            #columnNameExprAtom
+    | queryTarget                                   #relationshipEntityExprAtom
+    | functionCall                                  #functionCallExpressionAtom
+    | '(' exprAtom (',' exprAtom)* ')'              #nestedExprAtom
+    | left=exprAtom mathOperator right=exprAtom     #mathExprAtom
+    ;
+
+// Functions
+functionCall
+    : ID '(' ID ')'             #singleColumnFunctionCall
+    | ID '(' queryTarget ')'    #entityColumnFunctionCall
     ;
 
 equal
@@ -102,6 +118,7 @@ condition
     : '(' condition ')' #parenthesisCondition
     | left=condition (op=logicalOperator right=condition)+ #nestCondition
     | expr #simpleCondition
+    | joinExpr #joinCondition
     ;
 
 queryTarget
@@ -115,8 +132,8 @@ function
     ;
 
 queryTargetWithFunction
-    : queryTarget #withoutFunction
-    | function '(' queryTargetWithFunction ')' #withFunction
+    : queryTarget joinClause*                               #withoutFunction
+    | function '(' queryTargetWithFunction ')'              #withFunction
     ;
 
 orderByExpr
@@ -197,6 +214,11 @@ namedAs
     : NAMED_AS namedAsValue
     ;
 
+joinClause
+	: (INNER) JOIN queryTarget ON condition+            #innerJoin
+	| (LEFT|RIGHT) JOIN queryTarget ON condition+       #outerJoin
+	;
+
 query
     : QUERY queryTargetWithFunction (WHERE condition+)? restrictBy? returnWith? groupBy? orderBy? limit? offset? filterBy? namedAs?
     ;
@@ -234,6 +256,15 @@ mathOperator
     : '*' | '/' | '%' | '+' | '-' | '--'
     ;
 
+INNER: 'inner';
+
+LEFT: 'left';
+
+RIGHT: 'right';
+
+JOIN: 'join';
+
+ON: 'on';
 
 FILTER_BY: 'filter by';
 

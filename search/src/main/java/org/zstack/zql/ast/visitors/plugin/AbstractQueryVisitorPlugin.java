@@ -92,4 +92,18 @@ public abstract class AbstractQueryVisitorPlugin extends QueryVisitorPlugin {
         fs.forEach(inventory::errorIfNoField);
         return node.getGroupBy() == null ? null : (String) node.getGroupBy().accept(new GroupByVisitor());
     }
+
+    @Override
+    public String joinTables() {
+        if (node.getTarget().getJoinClauseList() == null
+                || node.getTarget().getJoinClauseList().isEmpty()) {
+            return null;
+        }
+
+        List<String> joinTables = node.getTarget().getJoinClauseList().stream()
+                .map(it->(String) it.accept(new JoinClauseVisitor()))
+                .collect(Collectors.toList());
+
+        return StringUtils.join(joinTables, " ");
+    }
 }

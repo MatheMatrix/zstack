@@ -16,7 +16,7 @@ public class OrderByVisitor implements ASTVisitor<String, ASTNode.OrderBy> {
         String inventoryName = ZQLContext.peekQueryTargetInventoryName();
         ZQLMetadata.InventoryMetadata m = ZQLMetadata.getInventoryMetadataByName(inventoryName);
         for (ASTNode.OrderByExpr orderByExpr : node.getExprs()) {
-            orderByExpr.getTarget().getFields().stream()
+            orderByExpr.getExpr().getFields().stream()
                     .filter(f -> !hasInventoryField(f, m))
                     .findFirst().ifPresent(f -> {
                         throw new ZQLError(Platform.i18n("invalid order by clause, inventory[%s] doesn't have field[%s]",

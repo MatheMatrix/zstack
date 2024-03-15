@@ -224,6 +224,48 @@ public interface ZQLListener extends ParseTreeListener {
 	 */
 	void exitExpr(ZQLParser.ExprContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link ZQLParser#joinExpr}.
+	 * @param ctx the parse tree
+	 */
+	void enterJoinExpr(ZQLParser.JoinExprContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link ZQLParser#joinExpr}.
+	 * @param ctx the parse tree
+	 */
+	void exitJoinExpr(ZQLParser.JoinExprContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link ZQLParser#leftExpr}.
+	 * @param ctx the parse tree
+	 */
+	void enterLeftExpr(ZQLParser.LeftExprContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link ZQLParser#leftExpr}.
+	 * @param ctx the parse tree
+	 */
+	void exitLeftExpr(ZQLParser.LeftExprContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link ZQLParser#rightExpr}.
+	 * @param ctx the parse tree
+	 */
+	void enterRightExpr(ZQLParser.RightExprContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link ZQLParser#rightExpr}.
+	 * @param ctx the parse tree
+	 */
+	void exitRightExpr(ZQLParser.RightExprContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code functionCallExpressionAtom}
+	 * labeled alternative in {@link ZQLParser#exprAtom}.
+	 * @param ctx the parse tree
+	 */
+	void enterFunctionCallExpressionAtom(ZQLParser.FunctionCallExpressionAtomContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code functionCallExpressionAtom}
+	 * labeled alternative in {@link ZQLParser#exprAtom}.
+	 * @param ctx the parse tree
+	 */
+	void exitFunctionCallExpressionAtom(ZQLParser.FunctionCallExpressionAtomContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code columnNameExprAtom}
 	 * labeled alternative in {@link ZQLParser#exprAtom}.
 	 * @param ctx the parse tree
@@ -248,6 +290,18 @@ public interface ZQLListener extends ParseTreeListener {
 	 */
 	void exitMathExprAtom(ZQLParser.MathExprAtomContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code relationshipEntityExprAtom}
+	 * labeled alternative in {@link ZQLParser#exprAtom}.
+	 * @param ctx the parse tree
+	 */
+	void enterRelationshipEntityExprAtom(ZQLParser.RelationshipEntityExprAtomContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code relationshipEntityExprAtom}
+	 * labeled alternative in {@link ZQLParser#exprAtom}.
+	 * @param ctx the parse tree
+	 */
+	void exitRelationshipEntityExprAtom(ZQLParser.RelationshipEntityExprAtomContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code nestedExprAtom}
 	 * labeled alternative in {@link ZQLParser#exprAtom}.
 	 * @param ctx the parse tree
@@ -259,6 +313,30 @@ public interface ZQLListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitNestedExprAtom(ZQLParser.NestedExprAtomContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code singleColumnFunctionCall}
+	 * labeled alternative in {@link ZQLParser#functionCall}.
+	 * @param ctx the parse tree
+	 */
+	void enterSingleColumnFunctionCall(ZQLParser.SingleColumnFunctionCallContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code singleColumnFunctionCall}
+	 * labeled alternative in {@link ZQLParser#functionCall}.
+	 * @param ctx the parse tree
+	 */
+	void exitSingleColumnFunctionCall(ZQLParser.SingleColumnFunctionCallContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code entityColumnFunctionCall}
+	 * labeled alternative in {@link ZQLParser#functionCall}.
+	 * @param ctx the parse tree
+	 */
+	void enterEntityColumnFunctionCall(ZQLParser.EntityColumnFunctionCallContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code entityColumnFunctionCall}
+	 * labeled alternative in {@link ZQLParser#functionCall}.
+	 * @param ctx the parse tree
+	 */
+	void exitEntityColumnFunctionCall(ZQLParser.EntityColumnFunctionCallContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link ZQLParser#equal}.
 	 * @param ctx the parse tree
@@ -305,6 +383,18 @@ public interface ZQLListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitParenthesisCondition(ZQLParser.ParenthesisConditionContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code joinCondition}
+	 * labeled alternative in {@link ZQLParser#condition}.
+	 * @param ctx the parse tree
+	 */
+	void enterJoinCondition(ZQLParser.JoinConditionContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code joinCondition}
+	 * labeled alternative in {@link ZQLParser#condition}.
+	 * @param ctx the parse tree
+	 */
+	void exitJoinCondition(ZQLParser.JoinConditionContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code onlyEntity}
 	 * labeled alternative in {@link ZQLParser#queryTarget}.
@@ -579,6 +669,30 @@ public interface ZQLListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitNamedAs(ZQLParser.NamedAsContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code innerJoin}
+	 * labeled alternative in {@link ZQLParser#joinClause}.
+	 * @param ctx the parse tree
+	 */
+	void enterInnerJoin(ZQLParser.InnerJoinContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code innerJoin}
+	 * labeled alternative in {@link ZQLParser#joinClause}.
+	 * @param ctx the parse tree
+	 */
+	void exitInnerJoin(ZQLParser.InnerJoinContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code outerJoin}
+	 * labeled alternative in {@link ZQLParser#joinClause}.
+	 * @param ctx the parse tree
+	 */
+	void enterOuterJoin(ZQLParser.OuterJoinContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code outerJoin}
+	 * labeled alternative in {@link ZQLParser#joinClause}.
+	 * @param ctx the parse tree
+	 */
+	void exitOuterJoin(ZQLParser.OuterJoinContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link ZQLParser#query}.
 	 * @param ctx the parse tree

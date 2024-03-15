@@ -140,6 +140,31 @@ public interface ZQLVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitExpr(ZQLParser.ExprContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link ZQLParser#joinExpr}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitJoinExpr(ZQLParser.JoinExprContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link ZQLParser#leftExpr}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitLeftExpr(ZQLParser.LeftExprContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link ZQLParser#rightExpr}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRightExpr(ZQLParser.RightExprContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code functionCallExpressionAtom}
+	 * labeled alternative in {@link ZQLParser#exprAtom}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitFunctionCallExpressionAtom(ZQLParser.FunctionCallExpressionAtomContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code columnNameExprAtom}
 	 * labeled alternative in {@link ZQLParser#exprAtom}.
 	 * @param ctx the parse tree
@@ -154,12 +179,33 @@ public interface ZQLVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitMathExprAtom(ZQLParser.MathExprAtomContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code relationshipEntityExprAtom}
+	 * labeled alternative in {@link ZQLParser#exprAtom}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRelationshipEntityExprAtom(ZQLParser.RelationshipEntityExprAtomContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code nestedExprAtom}
 	 * labeled alternative in {@link ZQLParser#exprAtom}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	T visitNestedExprAtom(ZQLParser.NestedExprAtomContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code singleColumnFunctionCall}
+	 * labeled alternative in {@link ZQLParser#functionCall}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSingleColumnFunctionCall(ZQLParser.SingleColumnFunctionCallContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code entityColumnFunctionCall}
+	 * labeled alternative in {@link ZQLParser#functionCall}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitEntityColumnFunctionCall(ZQLParser.EntityColumnFunctionCallContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link ZQLParser#equal}.
 	 * @param ctx the parse tree
@@ -187,6 +233,13 @@ public interface ZQLVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitParenthesisCondition(ZQLParser.ParenthesisConditionContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code joinCondition}
+	 * labeled alternative in {@link ZQLParser#condition}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitJoinCondition(ZQLParser.JoinConditionContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code onlyEntity}
 	 * labeled alternative in {@link ZQLParser#queryTarget}.
@@ -350,6 +403,20 @@ public interface ZQLVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitNamedAs(ZQLParser.NamedAsContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code innerJoin}
+	 * labeled alternative in {@link ZQLParser#joinClause}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitInnerJoin(ZQLParser.InnerJoinContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code outerJoin}
+	 * labeled alternative in {@link ZQLParser#joinClause}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitOuterJoin(ZQLParser.OuterJoinContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link ZQLParser#query}.
 	 * @param ctx the parse tree

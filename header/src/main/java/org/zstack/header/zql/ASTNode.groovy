@@ -32,11 +32,12 @@ class ASTNode {
     }
 
     static class QueryTarget extends ASTNode {
-         String entity
-         List<String> fields
+        String entity
+        List<String> fields
     }
 
     static class QueryTargetWithFunction extends QueryTarget {
+        List<JoinClause> joinClauseList
         Function function
         QueryTargetWithFunction subTarget
 
@@ -64,7 +65,7 @@ class ASTNode {
     }
 
     static class ComplexValue extends ASTNode implements Value {
-         SubQuery subQuery
+        SubQuery subQuery
     }
 
     static class PlainValue extends ASTNode implements Value {
@@ -74,28 +75,44 @@ class ASTNode {
     }
 
     static class ListValue extends ASTNode implements Value {
-         List<Value> values
+        List<Value> values
     }
 
     static class Expr extends ASTNode implements Condition {
-         String operator
-         List<String> left
-         Value right
+        String operator
+        List<String> left
+        Value right
     }
 
     static class LogicalOperator extends ASTNode implements Condition {
-         String operator
-         Condition left
-         Condition right
+        String operator
+        Condition left
+        Condition right
+    }
+
+    static class JoinExpr extends ASTNode implements Condition {
+        String leftTable
+        String leftField
+        String operator
+        String rightTable
+        String rightField
     }
 
     static class ExprAtom extends ASTNode {
         String text
         List<String> fields = new ArrayList<>()
+        QueryTarget queryTarget
+        FunctionCall functionCall
+    }
+
+    static class FunctionCall extends ASTNode {
+        String functionName
+        String singleColumn
+        QueryTarget entityColumn
     }
 
     static class OrderByExpr extends ASTNode {
-        ExprAtom target
+        ExprAtom expr
         String direction
     }
 
@@ -104,18 +121,18 @@ class ASTNode {
     }
 
     static class Limit extends ASTNode {
-         int limit
+        int limit
     }
 
     static class Offset extends ASTNode {
-         int offset
+        int offset
     }
 
     static class RestrictExpr extends ASTNode {
-         String entity
-         String field
-         String operator
-         Value value
+        String entity
+        String field
+        String operator
+        Value value
     }
 
     static class RestrictBy extends ASTNode {
@@ -132,7 +149,7 @@ class ASTNode {
     }
 
     static class ReturnWith extends ASTNode {
-         List<ReturnWithExpr> exprs
+        List<ReturnWithExpr> exprs
     }
 
     static class Sum extends Query {
@@ -156,7 +173,7 @@ class ASTNode {
         GroupByExpr groupBy
 
         void addRestrictExpr(RestrictExpr expr) {
-            if (restrictBy == null)  {
+            if (restrictBy == null) {
                 restrictBy = new RestrictBy()
             }
 
@@ -169,22 +186,22 @@ class ASTNode {
     }
 
     static class SubQueryTarget extends ASTNode {
-         String entity
-         List<String> fields
+        String entity
+        List<String> fields
     }
 
     static class SubQuery extends ASTNode {
-         SubQueryTarget target
-         List<Condition> conditions
+        SubQueryTarget target
+        List<Condition> conditions
     }
 
     static class FilterByExpr extends ASTNode {
-         String filterName
-         String content
+        String filterName
+        String content
     }
 
     static class FilterBy extends ASTNode {
-         List<FilterByExpr> exprs
+        List<FilterByExpr> exprs
     }
 
     static class Search extends ASTNode {
@@ -201,5 +218,13 @@ class ASTNode {
 
     static class Index extends ASTNode {
         List<String> indexs
+    }
+
+    static class JoinClause extends ASTNode {
+        String joinType
+        String join
+        QueryTarget queryTarget
+        String on
+        List<Condition> conditions
     }
 }
