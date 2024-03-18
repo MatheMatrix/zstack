@@ -100,9 +100,6 @@ import org.zstack.utils.tester.ZTester;
 
 import javax.persistence.TypedQuery;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -2906,7 +2903,8 @@ public class KVMHost extends HostBase implements Host {
                         cmd.setUseNuma(rcf.getResourceConfigValue(VmGlobalConfig.NUMA, vmUuid, Boolean.class));
                         cmd.setReload(s.reload);
                         cmd.setDownTime(s.downTime);
-                        cmd.setBandwidth(s.bandwidth);
+                        cmd.setBandwidthByVolumeInstallPath(s.bandwidthByVolumeUuid);
+
                         cmd.setNics(nicTos);
 
                         if (s.diskMigrationMap != null) {
@@ -3073,7 +3071,7 @@ public class KVMHost extends HostBase implements Host {
         String srcHostUuid;
         Map<String, String> diskMigrationMap;
         boolean reload;
-        long bandwidth;
+        Map<String, Long> bandwidthByVolumeUuid;
     }
 
     private MigrateStruct buildMigrateStuct(final MigrateVmOnHypervisorMsg msg){
@@ -3087,7 +3085,7 @@ public class KVMHost extends HostBase implements Host {
         s.downTime = msg.getDownTime();
         s.diskMigrationMap = msg.getDiskMigrationMap();
         s.reload = msg.isReload();
-        s.bandwidth = msg.getBandwidth();
+        s.bandwidthByVolumeUuid = msg.getBandwidthByVolumeUuid();
 
         MigrateNetworkExtensionPoint.MigrateInfo migrateIpInfo = null;
         for (MigrateNetworkExtensionPoint ext: pluginRgty.getExtensionList(MigrateNetworkExtensionPoint.class)) {

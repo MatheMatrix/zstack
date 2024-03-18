@@ -3300,7 +3300,8 @@ public class KVMAgentCommands {
         private List<NicTO> nics;
         private Map<String, VolumeTO> disks;  // A map from old install path to new volume
         private boolean reload;
-        private long bandwidth;
+        private boolean bandwidth;
+        Map<String, Long> bandwidthByVolumeInstallPath;
 
         public Integer getDownTime() {
             return downTime;
@@ -3406,12 +3407,20 @@ public class KVMAgentCommands {
             this.destHostManagementIp = destHostManagementIp;
         }
 
-        public long getBandwidth() {
+        public boolean isBandwidth() {
             return bandwidth;
         }
 
-        public void setBandwidth(long bandwidth) {
+        public void setBandwidth(boolean bandwidth) {
             this.bandwidth = bandwidth;
+        }
+
+        public Map<String, Long> getBandwidthByVolumeInstallPath() {
+            return bandwidthByVolumeInstallPath;
+        }
+
+        public void setBandwidthByVolumeInstallPath(Map<String, Long> bandwidthByVolumeInstallPath) {
+            this.bandwidthByVolumeInstallPath = bandwidthByVolumeInstallPath;
         }
 
         public List<NicTO> getNics() {
