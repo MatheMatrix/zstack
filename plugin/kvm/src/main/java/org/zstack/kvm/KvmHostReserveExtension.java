@@ -16,6 +16,9 @@ import org.zstack.header.host.RecalculateHostCapacityMsg;
 import org.zstack.header.zone.ZoneVO;
 import org.zstack.utils.SizeUtils;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  */
 public class KvmHostReserveExtension implements HostReservedCapacityExtensionPoint, Component {
@@ -37,6 +40,19 @@ public class KvmHostReserveExtension implements HostReservedCapacityExtensionPoi
         hc.setReservedCpuCapacity(reserve.getReservedCpuCapacity());
         String reserveMem = rcf.getResourceConfigValue(KVMGlobalConfig.RESERVED_MEMORY_CAPACITY, hostUuid, String.class);
         hc.setReservedMemoryCapacity(SizeUtils.sizeStringToBytes(reserveMem));
+        return hc;
+    }
+
+    @Override
+    public ReservedHostCapacity getReservedHostsCapacity(List<String> hostUuids) {
+        ReservedHostCapacity hc = new ReservedHostCapacity();
+        hc.setReservedCpuCapacity(reserve.getReservedCpuCapacity());
+        long mem = 0;
+        Map<String, String> values = rcf.getResourceConfigValues(KVMGlobalConfig.RESERVED_MEMORY_CAPACITY, hostUuids, String.class);
+        for (String reserveMem : values.values()) {
+            mem += SizeUtils.sizeStringToBytes(reserveMem);
+        }
+        hc.setReservedMemoryCapacity(mem);
         return hc;
     }
 

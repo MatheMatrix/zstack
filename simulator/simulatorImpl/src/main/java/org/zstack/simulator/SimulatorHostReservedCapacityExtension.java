@@ -5,6 +5,8 @@ import org.zstack.header.allocator.ReservedHostCapacity;
 import org.zstack.header.simulator.SimulatorConstant;
 import org.zstack.utils.SizeUtils;
 
+import java.util.List;
+
 /**
  */
 public class SimulatorHostReservedCapacityExtension implements HostReservedCapacityExtensionPoint {
@@ -21,6 +23,14 @@ public class SimulatorHostReservedCapacityExtension implements HostReservedCapac
         ReservedHostCapacity c = new ReservedHostCapacity();
         c.setReservedMemoryCapacity(SizeUtils.sizeStringToBytes(reservedMemory));
         c.setReservedCpuCapacity(SizeUtils.sizeStringToBytes(reservedCpu));
+        return c;
+    }
+
+    @Override
+    public ReservedHostCapacity getReservedHostsCapacity(List<String> hostUuids) {
+        ReservedHostCapacity c = new ReservedHostCapacity();
+        c.setReservedMemoryCapacity(SizeUtils.sizeStringToBytes(reservedMemory) * hostUuids.size());
+        c.setReservedCpuCapacity(SizeUtils.sizeStringToBytes(reservedCpu) * hostUuids.size());
         return c;
     }
 }
