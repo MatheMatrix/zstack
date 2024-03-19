@@ -75,23 +75,19 @@ public class HostCapacityReserveManagerImpl implements HostCapacityReserveManage
 
             List<Tuple> tuples = hq.listTuple();
 
-            tuples.parallelStream().forEach(t -> {
-                String huuid = t.get(0, String.class);
-                String hvType = t.get(1, String.class);
+            Map<String, List<String>> hypervisorTypeMap = tuples.stream()
+                    .collect(Collectors.groupingBy(t -> t.get(1, String.class),
+                            Collectors.mapping(t -> t.get(0, String.class), Collectors.toList())
+                    ));
 
-                HostReservedCapacityExtensionPoint ext = exts.get(hvType);
+            hypervisorTypeMap.keySet().parallelStream().forEach(key -> {
+                HostReservedCapacityExtensionPoint ext = exts.get(key);
                 if (ext == null) {
                     return;
                 }
 
-                ReservedHostCapacity hc = result.get(huuid);
-                ReservedHostCapacity extHc = ext.getReservedHostCapacity(huuid);
-                if (hc.getReservedMemoryCapacity() == -1) {
-                    hc.setReservedMemoryCapacity(extHc.getReservedMemoryCapacity());
-                }
-                if (hc.getReservedCpuCapacity() == -1) {
-                    hc.setReservedCpuCapacity(extHc.getReservedCpuCapacity());
-                }
+                ReservedHostCapacity ret = ext.getReservedHostsCapacity(hypervisorTypeMap.get(key));
+                result.put(key, ret);
             });
         }
 
