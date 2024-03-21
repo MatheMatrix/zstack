@@ -5543,7 +5543,6 @@ public class KVMHost extends HostBase implements Host {
                                     runner.setUsername(getSelf().getUsername());
                                     runner.setPassword(getSelf().getPassword());
                                     runner.setSshPort(getSelf().getPort());
-
                                     runner.restartAgent(AnsibleConstant.KVM_AGENT_NAME, new Completion(trigger) {
                                         @Override
                                         public void success() {
