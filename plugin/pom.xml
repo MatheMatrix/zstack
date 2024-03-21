@@ -36,6 +36,9 @@
         <module>vhost</module>
         <module>expon</module>
         <module>externalStorage</module>
+        <module>cbd</module>
+        <module>curve</module>
+        <module>zbs</module>
     </modules>
     <dependencies>
         <dependency>
