@@ -12,7 +12,6 @@ import org.zstack.core.db.Q;
 import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
-import org.zstack.core.timeout.Timer;
 import org.zstack.header.AbstractService;
 import org.zstack.header.console.*;
 import org.zstack.header.core.Completion;
@@ -33,6 +32,7 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.Query;
+import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -54,8 +54,6 @@ public class ConsoleManagerImpl extends AbstractService implements ConsoleManage
     private PluginRegistry pluginRgty;
     @Autowired
     private ThreadFacade thdf;
-    @Autowired
-    private Timer timer;
 
     private Map<String, ConsoleBackend> consoleBackends = new HashMap<String, ConsoleBackend>();
     private Map<String, ConsoleHypervisorBackend> consoleHypervisorBackends = new HashMap<String, ConsoleHypervisorBackend>();
@@ -338,7 +336,7 @@ public class ConsoleManagerImpl extends AbstractService implements ConsoleManage
             return;
         }
 
-        if (timer.getCurrentTimestamp().after(vo.getExpiredDate())) {
+        if (new Timestamp(System.currentTimeMillis()).after(vo.getExpiredDate())) {
             // token is stale
             dbf.remove(vo);
             completion.success();

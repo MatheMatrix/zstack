@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.errorcode.ErrorFacade;
-import org.zstack.core.timeout.Timer;
 import org.zstack.header.console.*;
 import org.zstack.header.console.ConsoleProxyCommands.DeleteProxyCmd;
 import org.zstack.header.console.ConsoleProxyCommands.DeleteProxyRsp;
@@ -42,8 +41,6 @@ public class ConsoleProxyBase implements ConsoleProxy {
     private ConsoleManager consoleMgr;
     @Autowired
     private ErrorFacade errf;
-    @Autowired
-    private Timer timer;
 
     private final int agentPort;
 
@@ -71,7 +68,7 @@ public class ConsoleProxyBase implements ConsoleProxy {
 
         int idleTimeout = ConsoleGlobalConfig.PROXY_IDLE_TIMEOUT.value(Integer.class);
         long tokenTimeout = ConsoleGlobalConfig.VNC_TOKEN_TIMEOUT.value(Long.class);
-        long expiredDate = timer.getCurrentTimeMillis() + tokenTimeout * 1000;
+        long expiredDate = System.currentTimeMillis() + tokenTimeout * 1000;
 
         ConsoleProxyCommands.EstablishProxyCmd cmd = new ConsoleProxyCommands.EstablishProxyCmd();
         cmd.setVmUuid(self.getVmInstanceUuid());
