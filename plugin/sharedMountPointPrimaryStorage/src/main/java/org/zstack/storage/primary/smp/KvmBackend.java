@@ -1859,6 +1859,7 @@ public class KvmBackend extends HypervisorBackend {
         cache.download(new ReturnValueCompletion<ImageCacheInventory>(completion) {
             @Override
             public void success(ImageCacheInventory cache) {
+                reply.setImageCacheId(cache.getId());
                 completion.success(reply);
             }
 

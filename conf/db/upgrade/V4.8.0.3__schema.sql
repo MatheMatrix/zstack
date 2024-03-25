@@ -33,3 +33,5 @@ CREATE TABLE `zstack`.`VolumeTemplateVO` (
     PRIMARY KEY  (`uuid`),
     CONSTRAINT `fkVolumeTemplateVOVolumeEO` FOREIGN KEY (`volumeUuid`) REFERENCES VolumeEO (`uuid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `zstack`.`ImageCacheVolumeRefVO` ADD COLUMN `imageUuid` varchar(32);

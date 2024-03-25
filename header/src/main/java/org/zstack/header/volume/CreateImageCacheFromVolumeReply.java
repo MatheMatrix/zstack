@@ -7,6 +7,7 @@ import org.zstack.header.message.MessageReply;
  */
 public class CreateImageCacheFromVolumeReply extends MessageReply {
     private String locateHostUuid;
+    private long imageCacheId;
 
     public String getLocateHostUuid() {
         return locateHostUuid;
@@ -14,5 +15,13 @@ public class CreateImageCacheFromVolumeReply extends MessageReply {
 
     public void setLocateHostUuid(String locateHostUuid) {
         this.locateHostUuid = locateHostUuid;
+    }
+
+    public long getImageCacheId() {
+        return imageCacheId;
+    }
+
+    public void setImageCacheId(long imageCacheId) {
+        this.imageCacheId = imageCacheId;
     }
 }

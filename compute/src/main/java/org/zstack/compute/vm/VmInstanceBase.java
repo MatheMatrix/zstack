@@ -67,6 +67,7 @@ import org.zstack.network.l3.IpRangeHelper;
 import org.zstack.network.l3.L3NetworkManager;
 import org.zstack.resourceconfig.ResourceConfig;
 import org.zstack.resourceconfig.ResourceConfigFacade;
+import org.zstack.tag.PatternedSystemTag;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.tag.SystemTagUtils;
 import org.zstack.tag.TagManager;
@@ -523,6 +524,8 @@ public class VmInstanceBase extends AbstractVmInstance {
             handle((FlattenVmInstanceMsg) msg);
         } else if (msg instanceof CancelFlattenVmInstanceMsg) {
             handle((CancelFlattenVmInstanceMsg) msg);
+        } else if (msg instanceof CreateVmInstanceFromVmInstanceTemplateMsg) {
+            handle((CreateVmInstanceFromVmInstanceTemplateMsg) msg);
         } else {
             VmInstanceBaseExtensionFactory ext = vmMgr.getVmInstanceBaseExtensionFactory(msg);
             if (ext != null) {
@@ -8685,6 +8688,315 @@ public class VmInstanceBase extends AbstractVmInstance {
                 noErrorCompletion.done();
             }
         });
+    }
+
+    private void handle(CreateVmInstanceFromVmInstanceTemplateMsg msg) {
+        CreateVmFromVmTemplateResourceSpec spec = msg.getSpec();
+
+        FlowChain flowChain = FlowChainBuilder.newShareFlowChain();
+        flowChain.setName("create-vm-from-vm-template");
+        flowChain.then(new ShareFlow() {
+            @Override
+            public void setup() {
+                CloneTemplateVmResults results = new CloneTemplateVmResults();
+                final Map<String, String> existedImageByTemplateVolume = new HashMap<>();
+                final Map<String, String> imageByTemplateVolume = new HashMap<>();
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "check-existed-image-for-template-volume";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        List<ImageCacheVolumeRefVO> refVOs = Q.New(ImageCacheVolumeRefVO.class)
+                                .in(ImageCacheVolumeRefVO_.volumeUuid, spec.getTemplateVolumeUuids()).list();
+
+                        new While<>(refVOs).each((refVO, comp) -> {
+                            GetPrimaryStorageResourceLocationMsg gmsg = new GetPrimaryStorageResourceLocationMsg();
+                            gmsg.setResourceUuid(refVO.getImageUuid());
+                            gmsg.setResourceType(ImageCacheVO.class.getSimpleName());
+                            gmsg.setPrimaryStorageUuid(refVO.getPrimaryStorageUuid());
+                            bus.makeLocalServiceId(gmsg, PrimaryStorageConstant.SERVICE_ID);
+                            bus.send(gmsg, new CloudBusCallBack(comp) {
+                                @Override
+                                public void run(MessageReply reply) {
+                                    if (!reply.isSuccess()) {
+                                        comp.done();
+                                        return;
+                                    }
+
+                                    Map<String, ImageCacheVolumeRefVO> imageCacheRefByVolume = refVOs.stream()
+                                            .collect(Collectors.toMap(ImageCacheVolumeRefVO::getVolumeUuid, ref -> ref));
+
+                                    Map<String, APICreateVmInstanceMsg.DiskAO> diskAOByVolume =  spec.getTemplateVolumeDiskAOs().stream()
+                                            .collect(Collectors.toMap(APICreateVmInstanceMsg.DiskAO::getSourceUuid, diskAO -> diskAO));
+
+                                    String imageCachePsUuid = imageCacheRefByVolume.get(refVO.getVolumeUuid()).getPrimaryStorageUuid();
+                                    String diskAOPsUuid = diskAOByVolume.get(refVO.getVolumeUuid()).getPrimaryStorageUuid();
+                                    if (!Objects.equals(imageCachePsUuid, diskAOPsUuid)) {
+                                        comp.done();
+                                        return;
+                                    }
+
+                                    GetPrimaryStorageResourceLocationReply r = reply.castReply();
+                                    if (CollectionUtils.isEmpty(r.getHostUuids())) {
+                                        existedImageByTemplateVolume.put(refVO.getVolumeUuid(), refVO.getImageUuid());
+                                        comp.done();
+                                        return;
+                                    }
+                                    if (r.getHostUuids().contains(spec.getApiMsg().getHostUuid())) {
+                                        existedImageByTemplateVolume.put(refVO.getVolumeUuid(), refVO.getImageUuid());
+                                        comp.done();
+                                        return;
+                                    }
+                                    comp.done();
+                                }
+                            });
+                        }).run(new WhileDoneCompletion(trigger) {
+                            @Override
+                            public void done(ErrorCodeList errorCodeList) {
+                                trigger.next();
+                            }
+                        });
+                    }
+                });
+
+                flow(new Flow() {
+                    String __name__ = "create-image-for-template-volume";
+
+                    boolean successCreateImage = false;
+                    final List<ImageCacheVolumeRefVO> refVOs = new ArrayList<>();
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        new While<>(spec.getTemplateVolumeUuids()).each((volumeUuid, comp) -> {
+                            if (existedImageByTemplateVolume.containsKey(volumeUuid)) {
+                                imageByTemplateVolume.put(volumeUuid, existedImageByTemplateVolume.get(volumeUuid));
+                                comp.done();
+                                return;
+                            }
+
+                            CreateTemplateFromTemplateVolumeMsg cmsg = new CreateTemplateFromTemplateVolumeMsg();
+                            cmsg.setSession(spec.getSession());
+                            cmsg.setVolumeUuid(volumeUuid);
+                            if (volumeUuid.equals(spec.getVmInstanceInventory().getRootVolumeUuid())) {
+                                cmsg.setMediaType(ImageConstant.ImageMediaType.RootVolumeTemplate.toString());
+                            } else {
+                                cmsg.setMediaType(ImageConstant.ImageMediaType.DataVolumeTemplate.toString());
+                            }
+                            bus.makeLocalServiceId(cmsg, ImageConstant.SERVICE_ID);
+                            bus.send(cmsg, new CloudBusCallBack(comp) {
+                                @Override
+                                public void run(MessageReply reply) {
+                                    if (!reply.isSuccess()) {
+                                        comp.allDone();
+                                        return;
+                                    }
+                                    CreateTemplateFromTemplateVolumeReply r = reply.castReply();
+                                    ImageInventory inventory = r.getInventory();
+
+                                    ImageCacheVolumeRefVO ref = new ImageCacheVolumeRefVO();
+                                    ref.setImageUuid(inventory.getUuid());
+                                    ref.setImageCacheId(r.getImageCacheId());
+                                    ref.setVolumeUuid(volumeUuid);
+                                    ref.setPrimaryStorageUuid(r.getLocatePsUuid());
+
+                                    imageByTemplateVolume.put(volumeUuid, ref.getImageUuid());
+                                    refVOs.add(ref);
+                                    comp.done();
+                                }
+                            });
+                        }).run(new WhileDoneCompletion(trigger) {
+                            @Override
+                            public void done(ErrorCodeList errorCodeList) {
+                                if (!refVOs.isEmpty()) {
+                                    dbf.persistCollection(refVOs);
+                                }
+                                successCreateImage = true;
+                                trigger.next();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void rollback(FlowRollback trigger, Map data) {
+                        if (successCreateImage) {
+                            trigger.rollback();
+                            return;
+                        }
+                        imageByTemplateVolume.values().forEach(imageUuid -> {
+                            ImageDeletionMsg dmsg = new ImageDeletionMsg();
+                            dmsg.setImageUuid(imageUuid);
+                            dmsg.setForceDelete(true);
+                            dmsg.setDeletionPolicy(ImageDeletionPolicyManager.ImageDeletionPolicy.Direct.toString());
+                            bus.makeTargetServiceIdByResourceUuid(dmsg, ImageConstant.SERVICE_ID, dmsg.getImageUuid());
+                            bus.send(dmsg, new CloudBusCallBack(trigger) {
+                                @Override
+                                public void run(MessageReply reply) {
+                                    trigger.rollback();
+                                }
+                            });
+                        });
+                        dbf.removeCollection(refVOs, ImageCacheVolumeRefVO.class);
+                        trigger.rollback();
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "update-volume-template-diskAO";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        List<APICreateVmInstanceMsg.DiskAO> diskAOs = spec.getAllDiskAOs();
+                        diskAOs.forEach(diskAO -> {
+                            diskAO.setTemplateUuid(imageByTemplateVolume.get(diskAO.getSourceUuid()));
+                            diskAO.setName(String.format("data-volume-clone-from-template-volume-%s", diskAO.getSourceUuid()));
+                            diskAO.setPrimaryStorageUuid(diskAO.getPrimaryStorageUuid());
+                        });
+                        spec.setAllDiskAOs(diskAOs);
+                        trigger.next();
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "create-vm-instance";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        VmInstanceInventory vmInv = spec.getVmInstanceInventory();
+
+                        List<CreateVmInstanceMsg> cmsgs = CollectionUtils.transformToList(spec.getNames(), new Function<CreateVmInstanceMsg, String>() {
+                            @Override
+                            public CreateVmInstanceMsg call(String name) {
+                                CreateVmInstanceMsg cmsg = NewVmInstanceMsgBuilder.fromAPINewVmInstanceMsg(spec.getApiMsg());
+                                cmsg.setName(name);
+                                cmsg.setDiskAOs(spec.getAllDiskAOs());
+                                cmsg.setImageUuid(imageByTemplateVolume.get(vmInv.getRootVolumeUuid()));
+                                cmsg.setCpuSpeed(vmInv.getCpuSpeed());
+                                cmsg.setSshKeyPairUuids(spec.getSshKeyPairUuids());
+                                APICreateVmInstanceMsg.DiskAO rootDisk = spec.getAllDiskAOs().stream()
+                                        .filter(APICreateVmInstanceMsg.DiskAO::isBoot).collect(Collectors.toList()).get(0);
+                                cmsg.setPlatform(rootDisk.getPlatform() != null ? rootDisk.getPlatform() : vmInv.getPlatform());
+                                cmsg.setGuestOsType(rootDisk.getGuestOsType() != null ? rootDisk.getGuestOsType() : vmInv.getGuestOsType());
+                                cmsg.setArchitecture(rootDisk.getArchitecture() != null ? rootDisk.getArchitecture() : vmInv.getArchitecture());
+                                cmsg.setVirtio(VmSystemTags.VIRTIO.hasTag(vmInv.getUuid()));
+                                cmsg.setStrategy(VmCreationStrategy.CreateStopped.toString());
+                                bus.makeLocalServiceId(cmsg, VmInstanceConstant.SERVICE_ID);
+                                return cmsg;
+                            }
+                        });
+
+                        new While<>(cmsgs).all((cmsg, completion) -> bus.send(cmsg, new CloudBusCallBack(completion) {
+                            @Override
+                            public void run(MessageReply r) {
+                                CloneTemplateVmInstanceInventory inv = new CloneTemplateVmInstanceInventory();
+                                if (r.isSuccess()) {
+                                    CreateVmInstanceReply vmReply = r.castReply();
+                                    inv.setInventory(vmReply.getInventory());
+                                } else {
+                                    inv.setError(r.getError());
+                                }
+                                results.addVmInstanceInventory(inv);
+                                completion.done();
+                            }
+                        })).run(new WhileDoneCompletion(trigger) {
+                            @Override
+                            public void done(ErrorCodeList errorCodeList) {
+                                trigger.next();
+                            }
+                        });
+                    }
+
+                    private String checkSystemTagIsExisted(List<String> systemTags, PatternedSystemTag patternedSystemTag) {
+                        List<String> tags = systemTags.stream().filter(patternedSystemTag::isMatch).collect(Collectors.toList());
+                        if (tags.isEmpty()) {
+                            return null;
+                        }
+                        return tags.get(0);
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = String.format("clone-ssh-key-pairs-from-origin-vm-%s-before-start", spec.getVmInstanceInventory().getUuid());
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        for (CloneTemplateVmInstanceInventory inventory : results.getInventoriesWithoutError()) {
+                            extEmitter.cloneSshKeyPairsToVm(spec.getVmInstanceInventory().getUuid(), inventory.getInventory().getUuid());
+                        }
+                        trigger.next();
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "start-vm";
+
+                    @Override
+                    public boolean skip(Map data) {
+                        return !VmCreationStrategy.InstantStart.name().equals(spec.getApiMsg().getStrategy());
+                    }
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        new While<>(results.getInventoriesWithoutError()).all((inv, completion) -> {
+                            StartVmInstanceMsg smsg = new StartVmInstanceMsg();
+                            smsg.setAccountUuid(spec.getSession().getAccountUuid());
+                            smsg.setVmInstanceUuid(inv.getInventory().getUuid());
+                            bus.makeTargetServiceIdByResourceUuid(smsg, VmInstanceConstant.SERVICE_ID, inv.getInventory().getUuid());
+                            bus.send(smsg, new CloudBusCallBack(completion) {
+                                @Override
+                                public void run(MessageReply reply) {
+                                    if (!reply.isSuccess()) {
+                                        logger.debug(String.format("vm %s start failed", smsg.getVmInstanceUuid()));
+                                        inv.setError(reply.getError());
+                                        completion.done();
+                                        return;
+                                    }
+
+                                    StartVmInstanceReply r = reply.castReply();
+                                    inv.setInventory(r.getInventory());
+                                    completion.done();
+                                }
+                            });
+                        }).run(new WhileDoneCompletion(trigger) {
+                            @Override
+                            public void done(ErrorCodeList errorCodeList) {
+                                trigger.next();
+                            }
+                        });
+                    }
+                });
+
+                done(new FlowDoneHandler(msg) {
+                    @Override
+                    public void handle(Map data) {
+                        CreateVmInstanceFromVmInstanceTemplateReply reply = new CreateVmInstanceFromVmInstanceTemplateReply();
+
+                        List<CloneTemplateVmInstanceInventory> vmInvs = results.getInventoriesWithoutError();
+                        if (!vmInvs.isEmpty()) {
+                            Map<String, CloneTemplateVmInstanceInventory> vmInvsMap = new HashMap<>();
+                            vmInvs.forEach(inventory -> vmInvsMap.put(inventory.getInventory().getUuid(), inventory));
+                            List<String> vmUuids = vmInvs.stream().map(inv -> inv.getInventory().getUuid()).collect(Collectors.toList());
+                            List<VmInstanceVO> vmVOs = Q.New(VmInstanceVO.class).in(VmInstanceVO_.uuid, vmUuids).list();
+                            vmVOs.forEach(vmVO -> vmInvsMap.get(vmVO.getUuid()).setInventory(VmInstanceInventory.valueOf(vmVO)));
+                        }
+
+                        results.resetNumberOfCloneVm();
+                        reply.setResults(results);
+                        bus.reply(msg, reply);
+                    }
+                });
+
+                error(new FlowErrorHandler(msg) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        CreateVmInstanceFromVmInstanceTemplateReply reply = new CreateVmInstanceFromVmInstanceTemplateReply();
+                        reply.setError(errCode);
+                        bus.reply(msg, reply);
+                    }
+                });
+            }
+        }).start();
+
     }
 }
 

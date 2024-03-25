@@ -229,7 +229,11 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
         vol.setName(msg.getName());
         vol.setDescription(msg.getDescription());
         vol.setFormat(template.getFormat());
-        vol.setSize(template.getSize());
+        if (msg.getResize() > 0) {
+            vol.setSize(msg.getResize());
+        } else {
+            vol.setSize(template.getSize());
+        }
         vol.setActualSize(template.getActualSize());
         vol.setRootImageUuid(template.getUuid());
         vol.setStatus(VolumeStatus.Creating);
@@ -337,7 +341,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
                     @Override
                     public void run(final FlowTrigger trigger, Map data) {
                         AllocatePrimaryStorageSpaceMsg amsg = new AllocatePrimaryStorageSpaceMsg();
-                        amsg.setSize(template.getSize());
+                        amsg.setSize(vol.getSize());
                         amsg.setPurpose(PrimaryStorageAllocationPurpose.CreateDataVolume.toString());
                         amsg.setRequiredPrimaryStorageUuid(msg.getPrimaryStorageUuid());
                         amsg.setRequiredHostUuid(msg.getHostUuid());
@@ -371,7 +375,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
                     public void rollback(FlowRollback trigger, Map data) {
                         if (targetPrimaryStorage != null) {
                             ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
-                            rmsg.setDiskSize(template.getSize());
+                            rmsg.setDiskSize(vol.getSize());
                             rmsg.setPrimaryStorageUuid(targetPrimaryStorage.getUuid());
                             rmsg.setAllocatedInstallUrl(allocatedInstallUrl);
                             bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, targetPrimaryStorage.getUuid());
