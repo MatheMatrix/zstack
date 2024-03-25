@@ -1,5 +1,7 @@
 package org.zstack.header.storage.primary;
 
+import org.zstack.header.image.ImageEO;
+import org.zstack.header.image.ImageVO;
 import org.zstack.header.vo.ForeignKey;
 import org.zstack.header.vo.ForeignKey.ReferenceOption;
 import org.zstack.header.vo.SoftDeletionCascade;
@@ -17,9 +19,10 @@ import java.sql.Timestamp;
 @Table
 @SoftDeletionCascades({
         @SoftDeletionCascade(parent = PrimaryStorageVO.class, joinColumn = "primaryStorageUuid"),
-        @SoftDeletionCascade(parent = VolumeVO.class, joinColumn = "volumeUuid")
+        @SoftDeletionCascade(parent = VolumeVO.class, joinColumn = "volumeUuid"),
+        @SoftDeletionCascade(parent = ImageVO.class, joinColumn = "imageUuid"),
+        @SoftDeletionCascade(parent = ImageCacheVO.class, joinColumn = "id")
 })
-@Deprecated
 public class ImageCacheVolumeRefVO {
     @Id
     @Column
@@ -27,7 +30,7 @@ public class ImageCacheVolumeRefVO {
     private long id;
 
     @Column
-    @ForeignKey(parentEntityClass = ImageCacheVO.class, parentKey = "id", onDeleteAction = ReferenceOption.RESTRICT)
+    @ForeignKey(parentEntityClass = ImageCacheVO.class, parentKey = "id", onDeleteAction = ReferenceOption.CASCADE)
     private long imageCacheId;
 
     @Column
@@ -37,6 +40,10 @@ public class ImageCacheVolumeRefVO {
     @Column
     @ForeignKey(parentEntityClass = PrimaryStorageEO.class, parentKey = "uuid", onDeleteAction = ReferenceOption.CASCADE)
     private String primaryStorageUuid;
+
+    @Column
+    @ForeignKey(parentEntityClass = ImageEO.class, parentKey = "uuid", onDeleteAction = ReferenceOption.CASCADE)
+    private String imageUuid;
 
     @Column
     private Timestamp createDate;
@@ -95,5 +102,13 @@ public class ImageCacheVolumeRefVO {
 
     public void setLastOpDate(Timestamp lastOpDate) {
         this.lastOpDate = lastOpDate;
+    }
+
+    public String getImageUuid() {
+        return imageUuid;
+    }
+
+    public void setImageUuid(String imageUuid) {
+        this.imageUuid = imageUuid;
     }
 }

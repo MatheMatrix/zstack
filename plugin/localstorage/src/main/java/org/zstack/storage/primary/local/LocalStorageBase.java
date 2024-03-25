@@ -2139,7 +2139,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
         }
     }
 
-    private void createResourceRefVO(String resUuid, String resType, long size, String hostUuid) {
+    public void createResourceRefVO(String resUuid, String resType, long size, String hostUuid) {
         LocalStorageResourceRefVO ref = new LocalStorageResourceRefVO();
         ref.setPrimaryStorageUuid(self.getUuid());
         ref.setSize(size);

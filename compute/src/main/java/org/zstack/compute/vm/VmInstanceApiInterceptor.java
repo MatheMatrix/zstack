@@ -171,6 +171,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             validate((APIConvertVmInstanceToVmTemplateMsg) msg);
         } else if (msg instanceof APIConvertVmTemplateToVmInstanceMsg) {
             validate((APIConvertVmTemplateToVmInstanceMsg) msg);
+        } else if (msg instanceof APICreateVmInstanceFromVmInstanceTemplateMsg) {
+            validate((APICreateVmInstanceFromVmInstanceTemplateMsg) msg);
         }
 
         setServiceId(msg);
@@ -1660,5 +1662,35 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     "vm[uuid:%s] can only fstrim when state is Running, current state is %s", msg.getUuid(), state));
         }
         msg.setHostUuid(t.get(1, String.class));
+    }
+
+    private void validate(APICreateVmInstanceFromVmInstanceTemplateMsg msg) {
+        VmTemplateVO vmTemplateVO = dbf.findByUuid(msg.getVmInstanceTemplateUuid(), VmTemplateVO.class);
+        msg.setVmTemplateVO(vmTemplateVO);
+        VmInstanceVO vmInstanceVO = dbf.findByUuid(vmTemplateVO.getVmInstanceUuid(), VmInstanceVO.class);
+        if (vmInstanceVO == null) {
+            throw new ApiMessageInterceptionException(operr("vmInstance %s is not exist", vmTemplateVO.getVmInstanceUuid()));
+        }
+
+        if (!Objects.equals(vmInstanceVO.getType(), VmInstanceConstant.TEMPLATE_VM_TYPE)) {
+            throw new ApiMessageInterceptionException(argerr("vmInstanceTemplateUuid must be a vm template, " +
+                    "but it's %s", vmInstanceVO.getType()));
+        }
+        msg.setVmInstanceInventory(VmInstanceInventory.valueOf(vmInstanceVO));
+
+        VmInstanceInventory vm = msg.getVmInstanceInventory();
+        msg.setZoneUuid(msg.getZoneUuid() != null ? msg.getZoneUuid() : vm.getZoneUuid());
+        msg.setCpuNum(msg.getCpuNum() != null ? msg.getCpuNum() : vm.getCpuNum());
+        msg.setMemorySize(msg.getMemorySize() != null ? msg.getMemorySize() : vm.getMemorySize());
+        msg.setReservedMemorySize(msg.getReservedMemorySize() != null ? msg.getReservedMemorySize() : vm.getReservedMemorySize());
+        msg.setClusterUuid(msg.getClusterUuid() != null ? msg.getClusterUuid() : vm.getClusterUuid());
+        msg.setHostUuid(msg.getHostUuid() != null ? msg.getHostUuid() : msg.getVmInstanceInventory().getHostUuid());
+        msg.setType(vm.getType());
+        msg.setDescription(msg.getDescription() != null ? msg.getDescription() :
+                String.format("vmInstance from vmInstance template[uuid:%s]", msg.getVmInstanceTemplateUuid()));
+        msg.setDefaultL3NetworkUuid(msg.getDefaultL3NetworkUuid() != null ? msg.getDefaultL3NetworkUuid() : vm.getDefaultL3NetworkUuid());
+        msg.setSystemTags(msg.getSystemTags() != null ? msg.getSystemTags() : new ArrayList<>());
+
+        validate((NewVmInstanceMessage2) msg);
     }
 }

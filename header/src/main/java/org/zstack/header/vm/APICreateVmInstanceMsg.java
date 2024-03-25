@@ -222,6 +222,7 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
         private String sourceUuid;
         private List<String> systemTags;
         private String name;
+        private long resize;
 
         public boolean isBoot() {
             return boot;
@@ -317,6 +318,14 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
 
         public void setName(String name) {
             this.name = name;
+        }
+
+        public long getResize() {
+            return resize;
+        }
+
+        public void setResize(long resize) {
+            this.resize = resize;
         }
     }
 

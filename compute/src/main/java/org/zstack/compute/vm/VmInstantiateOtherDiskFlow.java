@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.compute.allocator.HostAllocatorManager;
+import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.componentloader.PluginRegistry;
@@ -16,8 +17,10 @@ import org.zstack.header.configuration.DiskOfferingVO_;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.image.ImageBackupStorageRefVO;
 import org.zstack.header.image.ImageVO;
+import org.zstack.header.image.ImageVO_;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.storage.backup.BackupStorageVO;
 import org.zstack.header.storage.backup.BackupStorageVO_;
@@ -266,11 +269,15 @@ public class VmInstantiateOtherDiskFlow implements Flow {
 
                     @Override
                     public void run(final FlowTrigger innerTrigger, Map data) {
+                        long size = Q.New(ImageVO.class).select(ImageVO_.size).eq(ImageVO_.uuid, diskAO.getTemplateUuid()).findValue();
                         ImageVO template = dbf.findByUuid(diskAO.getTemplateUuid(), ImageVO.class);
+                        if (diskAO.getResize() > template.getSize()) {
+                            size = diskAO.getResize();
+                        }
 
                         AllocatePrimaryStorageSpaceMsg amsg = new AllocatePrimaryStorageSpaceMsg();
                         amsg.setDryRun(true);
-                        amsg.setSize(template.getSize());
+                        amsg.setSize(size);
                         amsg.setPurpose(PrimaryStorageAllocationPurpose.CreateDataVolume.toString());
                         amsg.setRequiredHostUuid(instantiateVm.getLastHostUuid());
                         amsg.setRequiredClusterUuids(Collections.singletonList(instantiateVm.getClusterUuid()));

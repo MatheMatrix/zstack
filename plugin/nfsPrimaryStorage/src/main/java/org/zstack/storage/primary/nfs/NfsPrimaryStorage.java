@@ -1066,6 +1066,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
 
                     @Override
                     public void success(ImageCacheInventory cache) {
+                        reply.setImageCacheId(cache.getId());
                         bus.reply(msg, reply);
                     }
 

@@ -139,6 +139,7 @@ public class VmImageSelectBackupStorageFlow extends NoRollbackFlow {
         if (VmOperation.NewCreate == spec.getCurrentVmOperation()
                 || VmOperation.ChangeImage == spec.getCurrentVmOperation()) {
             if (spec.getImageSpec().getInventory() == null) {
+            //if (spec.getImageSpec().getInventory() == null || spec.getImageSpec().getInventory().getBackupStorageRefs().isEmpty()) {
                 trigger.next();
                 return;
             }

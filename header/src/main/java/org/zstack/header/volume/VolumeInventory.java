@@ -305,6 +305,10 @@ public class VolumeInventory implements Serializable {
         return VolumeType.Data.toString().equals(type) || VolumeType.Root.toString().equals(type);
     }
 
+    public boolean isTemplateDisk() {
+        return VolumeType.Template.toString().equals(type);
+    }
+
     public long getSize() {
         if (size != null) {
             return size;

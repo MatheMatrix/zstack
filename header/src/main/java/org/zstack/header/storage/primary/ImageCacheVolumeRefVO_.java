@@ -12,4 +12,5 @@ public class ImageCacheVolumeRefVO_ {
     public static volatile SingularAttribute<ImageCacheVolumeRefVO, Long> imageCacheId;
     public static volatile SingularAttribute<ImageCacheVolumeRefVO, String> volumeUuid;
     public static volatile SingularAttribute<ImageCacheVolumeRefVO, String> primaryStorageUuid;
+    public static volatile SingularAttribute<ImageCacheVolumeRefVO, String> imageUuid;
 }

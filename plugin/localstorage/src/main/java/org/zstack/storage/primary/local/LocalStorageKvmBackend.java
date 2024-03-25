@@ -38,6 +38,7 @@ import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.image.ImageInventory;
 import org.zstack.header.image.ImageStatus;
 import org.zstack.header.image.ImageVO;
+import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.rest.RESTFacade;
@@ -1484,6 +1485,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
                                     pluginRgty.getExtensionList(AfterCreateImageCacheExtensionPoint.class)
                                             .forEach(exp -> exp.saveEncryptAfterCreateImageCache(hostUuid, inv));
 
+                                    createResourceRefVO(vo.getImageUuid(), ImageCacheVO.class.getSimpleName(), vo.getSize(), hostUuid);
                                     completion.success(inv);
                                     chain.next();
                                 }
@@ -3301,6 +3303,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
             @Override
             public void success(ImageCacheInventory cache) {
                 reply.setLocateHostUuid(ref.getHostUuid());
+                reply.setImageCacheId(cache.getId());
                 completion.success(reply);
             }
 

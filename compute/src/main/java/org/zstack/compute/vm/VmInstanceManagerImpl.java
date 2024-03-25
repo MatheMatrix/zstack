@@ -89,6 +89,7 @@ import static java.lang.Integer.parseInt;
 import static java.lang.Integer.valueOf;
 import static java.util.Arrays.asList;
 import static org.zstack.core.Platform.*;
+import static org.zstack.header.vm.CreateVmFromVmTemplateResourceSpec.buildSpecFromApi;
 import static org.zstack.utils.CollectionDSL.*;
 import static org.zstack.utils.CollectionUtils.merge;
 import static org.zstack.utils.CollectionUtils.transformToList;
@@ -240,6 +241,8 @@ public class VmInstanceManagerImpl extends AbstractService implements
             handle((APIConvertVmInstanceToVmTemplateMsg) msg);
         } else if (msg instanceof APIConvertVmTemplateToVmInstanceMsg) {
             handle((APIConvertVmTemplateToVmInstanceMsg) msg);
+        } else if (msg instanceof APICreateVmInstanceFromVmInstanceTemplateMsg) {
+            handle((APICreateVmInstanceFromVmInstanceTemplateMsg) msg);
         } else if (msg instanceof VmInstanceMessage) {
             passThrough((VmInstanceMessage) msg);
         } else {
@@ -342,6 +345,37 @@ public class VmInstanceManagerImpl extends AbstractService implements
         });
         event.setInventory(VmTemplateInventory.valueOf(vmTemplate));
         bus.publish(event);
+    }
+
+    private void handle(final APICreateVmInstanceFromVmInstanceTemplateMsg msg) {
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return String.format("create-vm-from-vm-%s-template", msg.getVmInstanceInventory().getUuid());
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                APICreateVmInstanceFromVmInstanceTemplateEvent event = new APICreateVmInstanceFromVmInstanceTemplateEvent(msg.getId());
+                CreateVmInstanceFromVmInstanceTemplateMsg cmsg = new CreateVmInstanceFromVmInstanceTemplateMsg();
+                cmsg.setSpec(buildSpecFromApi(msg));
+                bus.makeTargetServiceIdByResourceUuid(cmsg, VmInstanceConstant.SERVICE_ID, msg.getVmInstanceInventory().getUuid());
+                bus.send(cmsg, new CloudBusCallBack(chain) {
+                    @Override
+                    public void run(MessageReply reply) {
+                        CreateVmInstanceFromVmInstanceTemplateReply r = reply.castReply();
+                        event.setResult(r.getResults());
+                        bus.publish(event);
+                        chain.next();
+                    }
+                });
+            }
+
+            @Override
+            public String getName() {
+                return String.format("create-vm-from-vm-%s-template", msg.getVmInstanceInventory().getUuid());
+            }
+        });
     }
 
     private void handle(APIGetInterdependentL3NetworksBackupStoragesMsg msg) {

@@ -560,6 +560,10 @@ public class VmInstanceInventory implements Serializable, Cloneable {
         return getAllVolumes(VolumeInventory::isDisk);
     }
 
+    public List<VolumeInventory> getAllTemplateDiskVolumes() {
+        return getAllVolumes(VolumeInventory::isTemplateDisk);
+    }
+
     @Deprecated
     public List<VolumeInventory> getAllVolumes() {
         return allVolumes;

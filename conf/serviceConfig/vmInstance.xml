@@ -252,4 +252,7 @@
         <name>org.zstack.header.vm.APIQueryVmTemplateMsg</name>
         <serviceId>query</serviceId>
     </message>
+    <message>
+        <name>org.zstack.header.vm.APICreateVmInstanceFromVmInstanceTemplateMsg</name>
+    </message>
 </service>

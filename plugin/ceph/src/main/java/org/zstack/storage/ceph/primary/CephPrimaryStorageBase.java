@@ -2571,6 +2571,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                         ref.setImageCacheId(cache.getId());
                         ref.setPrimaryStorageUuid(self.getUuid());
                         ref.setVolumeUuid(vol.getUuid());
+                        ref.setImageUuid(cache.getImageUuid());
                         dbf.persist(ref);
 
                         bus.reply(msg, reply);
@@ -2771,6 +2772,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                             @Override
                             public void success(ImageCacheVO cache) {
                                 reply.setActualSize(cache.getSize());
+                                reply.setImageCacheId(cache.getId());
                                 reportProgress(stage.getEnd().toString());
                                 trigger.next();
                             }
