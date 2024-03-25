@@ -235,6 +235,13 @@ public class LocalStorageUtils {
         public String installPath;
         public String volumeSnapshotUuid;
 
+        public InstallPath() {
+        }
+
+        public InstallPath(String fullPath) {
+            this.fullPath = fullPath;
+        }
+
         public InstallPath disassemble() {
             DebugUtils.Assert(fullPath != null, "fullPath cannot be null");
             String[] pair = fullPath.split(";");

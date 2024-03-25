@@ -171,6 +171,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             validate((APIConvertVmInstanceToVmTemplateMsg) msg);
         } else if (msg instanceof APIConvertVmTemplateToVmInstanceMsg) {
             validate((APIConvertVmTemplateToVmInstanceMsg) msg);
+        } else if (msg instanceof APICreateVmInstanceFromVmInstanceTemplateMsg) {
+            validate((APICreateVmInstanceFromVmInstanceTemplateMsg) msg);
         }
 
         setServiceId(msg);
@@ -1660,5 +1662,41 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     "vm[uuid:%s] can only fstrim when state is Running, current state is %s", msg.getUuid(), state));
         }
         msg.setHostUuid(t.get(1, String.class));
+    }
+
+    private void validate(APICreateVmInstanceFromVmInstanceTemplateMsg msg) {
+        VmInstanceVO vmInstanceVO = dbf.findByUuid(msg.getVmInstanceUuid(), VmInstanceVO.class);
+        if (vmInstanceVO == null) {
+            throw new ApiMessageInterceptionException(operr("template vmInstance %s is not exist", msg.getVmInstanceUuid()));
+        }
+        if (!vmInstanceVO.isTemplate()) {
+            throw new ApiMessageInterceptionException(operr("vmInstance must be a template, but it's %s", vmInstanceVO.getType()));
+        }
+
+        msg.setVmInstanceVO(vmInstanceVO);
+        msg.setZoneUuid(msg.getZoneUuid() != null ? msg.getZoneUuid() : vmInstanceVO.getZoneUuid());
+        msg.setClusterUuid(msg.getClusterUuid() != null ? msg.getClusterUuid() : vmInstanceVO.getClusterUuid());
+        msg.setCpuNum(msg.getCpuNum() != null ? msg.getCpuNum() : vmInstanceVO.getCpuNum());
+        msg.setMemorySize(msg.getMemorySize() != null ? msg.getMemorySize() : vmInstanceVO.getMemorySize());
+        msg.setReservedMemorySize(msg.getReservedMemorySize() != null ? msg.getReservedMemorySize() : vmInstanceVO.getReservedMemorySize());
+        msg.setType(vmInstanceVO.getType());
+        msg.setDescription(msg.getDescription() != null ? msg.getDescription() : String.format("vmInstance from templateVm[uuid:%s]", vmInstanceVO.getUuid()));
+        msg.setSystemTags(msg.getSystemTags() != null ? msg.getSystemTags() : new ArrayList<>());
+
+        if (msg.getHostUuid() != null) {
+            msg.setHostUuid(msg.getHostUuid());
+        } else {
+            Tuple t = Q.New(HostVO.class).eq(HostVO_.uuid, vmInstanceVO.getLastHostUuid())
+                    .select(HostVO_.state, HostVO_.status).findTuple();
+            if (t != null) {
+                HostState state = t.get(0, HostState.class);
+                HostStatus status = t.get(1, HostStatus.class);
+                if (state != HostState.Disabled && status == HostStatus.Connected) {
+                    msg.setHostUuid(vmInstanceVO.getLastHostUuid());
+                }
+            }
+        }
+
+        validate((NewVmInstanceMessage2) msg);
     }
 }

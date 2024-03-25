@@ -1121,6 +1121,8 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
             createTemporaryEmptyVolume((InstantiateTemporaryVolumeOnPrimaryStorageMsg) msg, completion);
         } else if (msg instanceof InstantiateMemoryVolumeOnPrimaryStorageMsg) {
             createMemoryVolume((InstantiateMemoryVolumeOnPrimaryStorageMsg) msg, completion);
+        } else if (msg instanceof InstantiateVolumeFromImageCacheOnPrimaryStorageMsg) {
+            createVolumeFromImageCache((InstantiateVolumeFromImageCacheOnPrimaryStorageMsg) msg, completion);
         } else {
             createEmptyVolume(msg, completion);
         }
@@ -1589,6 +1591,73 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
                 }
             });
         }
+    }
+
+    private void createVolumeFromImageCache(InstantiateVolumeFromImageCacheOnPrimaryStorageMsg msg, final ReturnValueCompletion<InstantiateVolumeOnPrimaryStorageReply> completion) {
+        final VolumeInventory volume = msg.getVolume();
+        final ImageInventory image = msg.getImage();
+        final ImageCacheInventory imageCache = msg.getImageCache();
+        final String hostUuid = msg.getHostUuid();
+
+        FlowChain chain = FlowChainBuilder.newShareFlowChain();
+        chain.setName(String.format("create-volume-from-image-cache-%s", image.getUuid()));
+        chain.then(new ShareFlow() {
+            final String pathInCache = imageCache.getInstallUrl();
+            final String installPath = StringUtils.isNotEmpty(volume.getInstallPath()) ? volume.getInstallPath() : makeVolumeInstallDir(volume) ;
+
+            @Override
+            public void setup() {
+                flow(new NoRollbackFlow() {
+                    String __name__ = "create-volume-from-cache";
+
+                    @Override
+                    public void run(final FlowTrigger trigger, Map data) {
+                        CreateVolumeFromCacheCmd cmd = new CreateVolumeFromCacheCmd();
+                        cmd.setInstallUrl(installPath);
+                        cmd.setTemplatePathInCache(pathInCache);
+                        cmd.setVolumeUuid(volume.getUuid());
+                        if (image.getSize() < volume.getSize()) {
+                            cmd.virtualSize = volume.getSize();
+                        }
+
+
+                        httpCall(CREATE_VOLUME_FROM_CACHE_PATH, hostUuid, cmd, CreateVolumeFromCacheRsp.class, new ReturnValueCompletion<CreateVolumeFromCacheRsp>(trigger) {
+                            @Override
+                            public void success(CreateVolumeFromCacheRsp returnValue) {
+                                volume.setInstallPath(installPath);
+                                volume.setActualSize(returnValue.actualSize);
+                                if (returnValue.size != null) {
+                                    volume.setSize(returnValue.size);
+                                }
+
+                                trigger.next();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.fail(errorCode);
+                            }
+                        });
+                    }
+                });
+
+                done(new FlowDoneHandler(completion) {
+                    @Override
+                    public void handle(Map data) {
+                        InstantiateVolumeOnPrimaryStorageReply reply = new InstantiateVolumeOnPrimaryStorageReply();
+                        reply.setVolume(volume);
+                        completion.success(reply);
+                    }
+                });
+
+                error(new FlowErrorHandler(completion) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        completion.fail(errCode);
+                    }
+                });
+            }
+        }).start();
     }
 
     private void createTemporaryRootVolume(InstantiateTemporaryRootVolumeFromTemplateOnPrimaryStorageMsg msg, final ReturnValueCompletion<InstantiateVolumeOnPrimaryStorageReply> completion) {
@@ -3292,6 +3361,27 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
                 .eq(LocalStorageResourceRefVO_.resourceUuid, msg.getVolumeInventory().getUuid())
                 .find();
 
+        List<Tuple> imageCacheTuples = Q.New(ImageCacheVO.class)
+                .eq(ImageCacheVO_.imageUuid, msg.getImageInventory().getUuid())
+                .eq(ImageCacheVO_.primaryStorageUuid, self.getUuid())
+                .select(ImageCacheVO_.id, ImageCacheVO_.installUrl)
+                .listTuple();
+
+        if (!imageCacheTuples.isEmpty()) {
+            List<Tuple> ts = imageCacheTuples.stream()
+                    .filter(tuple -> new LocalStorageUtils.InstallPath(tuple.get(1, String.class))
+                            .disassemble().hostUuid.equals(ref.getHostUuid())).collect(Collectors.toList());
+            if (!ts.isEmpty()) {
+                reply.setLocateHostUuid(ref.getHostUuid());
+                reply.setImageCacheId(ts.get(0).get(0, Long.class));
+                reply.setCreated(true);
+                logger.debug(String.format("imageCacheId[uuid:%d] for volume[uuid:%s] has been created on the primaryStorage[uuid:%s]",
+                        reply.getImageCacheId(), msg.getVolumeInventory().getUuid(), self.getUuid()));
+                completion.success(reply);
+                return;
+            }
+        }
+
         ImageCache cache = new ImageCache();
         cache.primaryStorageInstallPath = makeCachedImageInstallUrl(msg.getImageInventory());
         cache.hostUuid = ref.getHostUuid();
@@ -3301,6 +3391,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
             @Override
             public void success(ImageCacheInventory cache) {
                 reply.setLocateHostUuid(ref.getHostUuid());
+                reply.setImageCacheId(cache.getId());
                 completion.success(reply);
             }
 

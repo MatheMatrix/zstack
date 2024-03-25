@@ -331,6 +331,8 @@ public class SourceClassMap {
 			put("org.zstack.header.tag.UserTagInventory", "org.zstack.sdk.UserTagInventory");
 			put("org.zstack.header.vdpa.VmVdpaNicInventory", "org.zstack.sdk.VmVdpaNicInventory");
 			put("org.zstack.header.vipQos.VipQosInventory", "org.zstack.sdk.VipQosInventory");
+			put("org.zstack.header.vm.CloneTemplateVmInstanceInventory", "org.zstack.sdk.CloneTemplateVmInstanceInventory");
+			put("org.zstack.header.vm.CloneTemplateVmResults", "org.zstack.sdk.CloneTemplateVmResults");
 			put("org.zstack.header.vm.CloneVmInstanceInventory", "org.zstack.sdk.CloneVmInstanceInventory");
 			put("org.zstack.header.vm.CloneVmInstanceResults", "org.zstack.sdk.CloneVmInstanceResults");
 			put("org.zstack.header.vm.VdiPortInfo", "org.zstack.sdk.VdiPortInfo");
@@ -833,6 +835,8 @@ public class SourceClassMap {
 			put("org.zstack.sdk.ChronyServerInfo", "org.zstack.zops.ChronyServerInfo");
 			put("org.zstack.sdk.ChronyServerInfoPair", "org.zstack.zops.ChronyServerInfoPair");
 			put("org.zstack.sdk.CleanTrashResult", "org.zstack.header.core.trash.CleanTrashResult");
+			put("org.zstack.sdk.CloneTemplateVmInstanceInventory", "org.zstack.header.vm.CloneTemplateVmInstanceInventory");
+			put("org.zstack.sdk.CloneTemplateVmResults", "org.zstack.header.vm.CloneTemplateVmResults");
 			put("org.zstack.sdk.CloneVmInstanceInventory", "org.zstack.header.vm.CloneVmInstanceInventory");
 			put("org.zstack.sdk.CloneVmInstanceResults", "org.zstack.header.vm.CloneVmInstanceResults");
 			put("org.zstack.sdk.CloudFormationStackEventInventory", "org.zstack.header.cloudformation.CloudFormationStackEventInventory");

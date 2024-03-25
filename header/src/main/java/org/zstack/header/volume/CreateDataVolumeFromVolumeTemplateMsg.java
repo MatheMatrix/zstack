@@ -19,6 +19,8 @@ public class CreateDataVolumeFromVolumeTemplateMsg extends NeedReplyMessage impl
     private String resourceUuid;
     private String accountUuid;
     private APICreateDataVolumeFromVolumeTemplateMsg apiMsg;
+    private long resize;
+    private boolean downloaded;
 
     public CreateDataVolumeFromVolumeTemplateMsg() {
     }
@@ -96,5 +98,21 @@ public class CreateDataVolumeFromVolumeTemplateMsg extends NeedReplyMessage impl
 
     public void setApiMsg(APICreateDataVolumeFromVolumeTemplateMsg amsg) {
         this.apiMsg = amsg;
+    }
+
+    public long getResize() {
+        return resize;
+    }
+
+    public void setResize(long resize) {
+        this.resize = resize;
+    }
+
+    public boolean isDownloaded() {
+        return downloaded;
+    }
+
+    public void setDownloaded(boolean downloaded) {
+        this.downloaded = downloaded;
     }
 }

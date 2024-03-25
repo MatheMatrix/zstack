@@ -1113,6 +1113,8 @@ public class VolumeBase extends AbstractVolume implements Volume {
                 } else {
                     CreateImageCacheFromVolumeOnPrimaryStorageReply reply = r.castReply();
                     outReply.setLocateHostUuid(reply.getLocateHostUuid());
+                    outReply.setImageCacheId(reply.getImageCacheId());
+                    outReply.setCreated(reply.isCreated());
                 }
 
                 bus.reply(msg, outReply);

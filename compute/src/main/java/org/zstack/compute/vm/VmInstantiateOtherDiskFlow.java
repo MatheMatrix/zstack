@@ -29,7 +29,6 @@ import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
-import java.sql.Array;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -322,6 +321,15 @@ public class VmInstantiateOtherDiskFlow implements Flow {
                             cmsg.setPrimaryStorageUuid(diskAO.getPrimaryStorageUuid());
                         } else {
                             cmsg.setPrimaryStorageUuid(allocatedPrimaryStorageUuid[0]);
+                        }
+                        cmsg.setResize(diskAO.getResize());
+                        boolean downloaded = Q.New(ImageCacheVolumeRefVO.class)
+                                .eq(ImageCacheVolumeRefVO_.imageUuid, diskAO.getTemplateUuid())
+                                .eq(ImageCacheVolumeRefVO_.volumeUuid, diskAO.getSourceUuid())
+                                .eq(ImageCacheVolumeRefVO_.primaryStorageUuid, diskAO.getPrimaryStorageUuid())
+                                .isExists();
+                        if (downloaded) {
+                            cmsg.setDownloaded(true);
                         }
 
                         bus.makeLocalServiceId(cmsg, VolumeConstant.SERVICE_ID);

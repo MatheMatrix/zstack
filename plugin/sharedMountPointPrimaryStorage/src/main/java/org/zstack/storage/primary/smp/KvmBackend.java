@@ -530,6 +530,8 @@ public class KvmBackend extends HypervisorBackend {
             createTemporaryEmptyVolume((InstantiateTemporaryVolumeOnPrimaryStorageMsg) msg, completion);
         } else if (msg instanceof InstantiateMemoryVolumeOnPrimaryStorageMsg) {
             createMemoryVolume((InstantiateMemoryVolumeOnPrimaryStorageMsg) msg, completion);
+        } else if (msg instanceof InstantiateVolumeFromImageCacheOnPrimaryStorageMsg) {
+            createVolumeFromImageCache((InstantiateVolumeFromImageCacheOnPrimaryStorageMsg) msg, completion);
         } else {
             createEmptyVolume(msg.getVolume(), msg.getDestHost().getUuid(), completion);
         }
@@ -1045,6 +1047,75 @@ public class KvmBackend extends HypervisorBackend {
                         volume.setInstallPath(installPath);
                         volume.setFormat(VolumeConstant.VOLUME_FORMAT_QCOW2);
                         volume.setActualSize(actualSize);
+                        reply.setVolume(volume);
+                        completion.success(reply);
+                    }
+                });
+
+                error(new FlowErrorHandler(completion) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        completion.fail(errCode);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void createVolumeFromImageCache(InstantiateVolumeFromImageCacheOnPrimaryStorageMsg msg, final ReturnValueCompletion<InstantiateVolumeOnPrimaryStorageReply> completion) {
+        final VolumeInventory volume = msg.getVolume();
+        final ImageInventory image = msg.getImage();
+        final ImageCacheInventory imageCache = msg.getImageCache();
+        final String hostUuid = msg.getHostUuid();
+
+        FlowChain chain = FlowChainBuilder.newShareFlowChain();
+        chain.setName(String.format("kvm-smp-storage-create-root-volume-from-image-%s", image.getUuid()));
+        chain.then(new ShareFlow() {
+
+
+            @Override
+            public void setup() {
+                flow(new NoRollbackFlow() {
+                    String __name__ = "create-volume-from-cache";
+
+                    final String installPath = makeRootVolumeInstallUrl(volume);
+
+                    @Override
+                    public void run(final FlowTrigger trigger, Map data) {
+                        CreateVolumeFromCacheCmd cmd = new CreateVolumeFromCacheCmd();
+                        cmd.templatePathInCache = makeCachedImageInstallUrl(image);
+                        cmd.installPath = installPath;
+                        cmd.volumeUuid = volume.getUuid();
+                        if (image.getSize() < volume.getSize()) {
+                            cmd.virtualSize = volume.getSize();
+                        }
+
+                        httpCall(CREATE_VOLUME_FROM_CACHE_PATH, hostUuid, cmd, CreateVolumeFromCacheRsp.class,
+                                new ReturnValueCompletion<CreateVolumeFromCacheRsp>(trigger) {
+                                    @Override
+                                    public void success(CreateVolumeFromCacheRsp rsp) {
+                                        volume.setInstallPath(installPath);
+                                        volume.setFormat(VolumeConstant.VOLUME_FORMAT_QCOW2);
+                                        volume.setActualSize(rsp.actualSize);
+                                        if (rsp.size != null) {
+                                            volume.setSize(rsp.size);
+                                        }
+
+                                        trigger.next();
+                                    }
+
+                                    @Override
+                                    public void fail(ErrorCode errorCode) {
+                                        trigger.fail(errorCode);
+                                    }
+                                });
+                    }
+                });
+
+                done(new FlowDoneHandler(completion) {
+                    @Override
+                    public void handle(Map data) {
+                        InstantiateVolumeOnPrimaryStorageReply reply = new InstantiateVolumeOnPrimaryStorageReply();
                         reply.setVolume(volume);
                         completion.success(reply);
                     }
@@ -1852,6 +1923,19 @@ public class KvmBackend extends HypervisorBackend {
     void handle(CreateImageCacheFromVolumeOnPrimaryStorageMsg msg, ReturnValueCompletion<CreateImageCacheFromVolumeOnPrimaryStorageReply> completion) {
         CreateImageCacheFromVolumeOnPrimaryStorageReply reply = new CreateImageCacheFromVolumeOnPrimaryStorageReply();
 
+        Long imageCacheId = Q.New(ImageCacheVolumeRefVO.class)
+                .eq(ImageCacheVolumeRefVO_.imageUuid, msg.getImageInventory().getUuid())
+                .eq(ImageCacheVolumeRefVO_.primaryStorageUuid, msg.getVolumeInventory().getPrimaryStorageUuid())
+                .select(ImageCacheVolumeRefVO_.id).find();
+        if (imageCacheId > 0) {
+            reply.setImageCacheId(imageCacheId);
+            reply.setCreated(true);
+            logger.debug(String.format("imageCacheId[uuid:%d] for volume[uuid:%s] has been created on the primaryStorage[uuid:%s]",
+                    reply.getImageCacheId(), msg.getVolumeInventory().getUuid(), self.getUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
+
         final ImageCache cache = new ImageCache();
         cache.image = msg.getImageInventory();
         cache.primaryStorageInstallPath = makeCachedImageInstallUrl(msg.getImageInventory());
@@ -1859,6 +1943,7 @@ public class KvmBackend extends HypervisorBackend {
         cache.download(new ReturnValueCompletion<ImageCacheInventory>(completion) {
             @Override
             public void success(ImageCacheInventory cache) {
+                reply.setImageCacheId(cache.getId());
                 completion.success(reply);
             }
 

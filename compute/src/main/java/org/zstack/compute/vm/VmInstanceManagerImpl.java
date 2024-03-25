@@ -89,6 +89,7 @@ import static java.lang.Integer.parseInt;
 import static java.lang.Integer.valueOf;
 import static java.util.Arrays.asList;
 import static org.zstack.core.Platform.*;
+import static org.zstack.header.vm.CreateVmFromVmTemplateResourceSpec.buildSpecFromApi;
 import static org.zstack.utils.CollectionDSL.*;
 import static org.zstack.utils.CollectionUtils.merge;
 import static org.zstack.utils.CollectionUtils.transformToList;

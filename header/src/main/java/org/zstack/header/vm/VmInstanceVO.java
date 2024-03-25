@@ -56,6 +56,16 @@ public class VmInstanceVO extends VmInstanceAO implements OwnedByAccount, ToInve
     @Transient
     private String accountUuid;
 
+    private boolean isTemplate;
+
+    public boolean isTemplate() {
+        return isTemplate;
+    }
+
+    public void setTemplate(boolean template) {
+        isTemplate = template;
+    }
+
     @Override
     public String getAccountUuid() {
         return accountUuid;

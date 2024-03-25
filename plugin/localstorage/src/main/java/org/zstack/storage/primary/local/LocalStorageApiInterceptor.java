@@ -1,43 +1,40 @@
 package org.zstack.storage.primary.local;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.zstack.compute.allocator.HostAllocatorChain;
 import org.zstack.compute.vm.IsoOperator;
 import org.zstack.core.cloudbus.CloudBus;
-import org.zstack.core.db.DatabaseFacade;
-import org.zstack.core.db.Q;
-import org.zstack.core.db.SQLBatch;
-import org.zstack.core.db.SimpleQuery;
+import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.ApiMessageInterceptor;
+import org.zstack.header.apimediator.GlobalApiMessageInterceptor;
 import org.zstack.header.apimediator.StopRoutingException;
 import org.zstack.header.errorcode.SysErrors;
-import org.zstack.header.host.HostInventory;
-import org.zstack.header.host.HostVO;
-import org.zstack.header.host.HostVO_;
+import org.zstack.header.host.*;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.storage.primary.PrimaryStorageState;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.header.storage.primary.PrimaryStorageVO_;
-import org.zstack.header.vm.VmInstanceState;
-import org.zstack.header.vm.VmInstanceVO;
-import org.zstack.header.vm.VmInstanceVO_;
-import org.zstack.header.volume.VolumeStatus;
-import org.zstack.header.volume.VolumeType;
-import org.zstack.header.volume.VolumeVO;
-import org.zstack.header.volume.VolumeVO_;
+import org.zstack.header.vm.*;
+import org.zstack.header.volume.*;
 import org.zstack.storage.primary.PrimaryStoragePhysicalCapacityManager;
+import org.zstack.utils.Utils;
+import org.zstack.utils.logging.CLogger;
 
-import java.util.ArrayList;
-import java.util.List;
+import javax.persistence.Tuple;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.*;
 
 /**
  * Created by frank on 7/1/2015.
  */
-public class LocalStorageApiInterceptor implements ApiMessageInterceptor {
+public class LocalStorageApiInterceptor implements GlobalApiMessageInterceptor {
+    private static final CLogger logger = Utils.getLogger(LocalStorageApiInterceptor.class);
+
     @Autowired
     private ErrorFacade errf;
     @Autowired
@@ -55,6 +52,8 @@ public class LocalStorageApiInterceptor implements ApiMessageInterceptor {
             validate((APILocalStorageMigrateVolumeMsg) msg);
         } else if (msg instanceof APILocalStorageGetVolumeMigratableHostsMsg) {
             validate((APILocalStorageGetVolumeMigratableHostsMsg) msg);
+        } else if (msg instanceof APICreateVmInstanceFromVmInstanceTemplateMsg) {
+            validate((APICreateVmInstanceFromVmInstanceTemplateMsg) msg);
         }
 
         return msg;
@@ -192,5 +191,57 @@ public class LocalStorageApiInterceptor implements ApiMessageInterceptor {
         if (url.startsWith("/dev") || url.startsWith("/proc") || url.startsWith("/sys")) {
             throw new ApiMessageInterceptionException(argerr(" the url contains an invalid folder[/dev or /proc or /sys]"));
         }
+    }
+
+    private void validate(APICreateVmInstanceFromVmInstanceTemplateMsg msg) {
+        VmInstanceInventory vmInv = VmInstanceInventory.valueOf(msg.getVmInstanceVO());
+        List<String> volumeUuids = vmInv.getAllDiskVolumes().stream().map(VolumeInventory::getUuid).collect(Collectors.toList());
+        String sql = "select volume from VolumeVO v, PrimaryStorageVO ps " +
+                "where v.uuid in (:uuids) and v.primaryStorageUuid = ps.uuid and ps.type = :type";
+        List<String> volumeUuid = SQL.New(sql, VolumeVO.class)
+                .param("uuids", volumeUuids)
+                .param("type", LocalStorageConstants.LOCAL_STORAGE_TYPE)
+                .list();
+        if (volumeUuid.isEmpty()) {
+            return;
+        }
+
+        String sql2 = "select host.uuid,host.state,host.status from HostVO host, LocalStorageResourceRefVO ref " +
+                "where ref.resourceUuid = :resourceUuid and ref.resourceType= :resourceType and host.uuid = ref.hostUuid";
+        Tuple t = SQL.New(sql2, Tuple.class)
+                .param("resourceUuid", volumeUuids.get(0))
+                .param("resourceType", VolumeVO.class.getSimpleName())
+                .param("hostUuid", LocalStorageConstants.LOCAL_STORAGE_TYPE)
+                .find();
+
+        String hostUuid = t.get(0, String.class);
+        HostState state = t.get(1, HostState.class);
+        HostStatus status = t.get(2, HostStatus.class);
+        if (!(state == HostState.Enabled && status == HostStatus.Connected)) {
+            if (volumeUuids.contains(vmInv.getRootVolumeUuid())) {
+                throw new ApiMessageInterceptionException(operr("the root volume[uuid:%s] of the vm[uuid:%s] is on the host[uuid:%s], " +
+                        "but the host is not in state of Enabled and the host is not in status of Connected, " +
+                        "current is [%s, %s]", vmInv.getRootVolumeUuid(), vmInv.getUuid(), hostUuid, state, status));
+            }
+
+            msg.setUnusableTemplateVolumeUuids(volumeUuids);
+            logger.warn(String.format("the volumes[uuid:%s] of the vm[uuid:%s] is on the host[uuid:%s], " +
+                    "but the host is not in state of Enabled and the host is not in status of Connected, " +
+                    "current is [%s, %s]", volumeUuids, vmInv.getUuid(), hostUuid, state, status));
+        }
+
+        if (msg.getHostUuid() == null) {
+            msg.setHostUuid(hostUuid);
+        }
+    }
+
+    @Override
+    public List<Class> getMessageClassToIntercept() {
+        return Arrays.asList(APILocalStorageGetVolumeMigratableHostsMsg.class);
+    }
+
+    @Override
+    public InterceptorPosition getPosition() {
+        return InterceptorPosition.END;
     }
 }

@@ -30,6 +30,8 @@ import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.*;
 import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.image.ImageInventory;
+import org.zstack.header.image.ImageVO;
+import org.zstack.header.image.ImageVO_;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.storage.backup.BackupStorageInventory;
@@ -1001,11 +1003,71 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
             handle((InstantiateRootVolumeFromTemplateOnPrimaryStorageMsg) msg);
         } else if (msg instanceof InstantiateTemporaryVolumeOnPrimaryStorageMsg) {
             createTemporaryEmptyVolume((InstantiateTemporaryVolumeOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof InstantiateVolumeFromImageCacheOnPrimaryStorageMsg) {
+            createVolumeFromImageCache((InstantiateVolumeFromImageCacheOnPrimaryStorageMsg) msg);
         } else if (msg instanceof InstantiateMemoryVolumeOnPrimaryStorageMsg) {
             createMemoryVolume((InstantiateMemoryVolumeOnPrimaryStorageMsg) msg);
         } else {
             createEmptyVolume(msg);
         }
+    }
+
+    private void createVolumeFromImageCache(InstantiateVolumeFromImageCacheOnPrimaryStorageMsg msg) {
+        final VolumeInventory volume = msg.getVolume();
+        final ImageInventory image = msg.getImage();
+        final ImageCacheInventory imageCache = msg.getImageCache();
+
+        FlowChain chain = FlowChainBuilder.newShareFlowChain();
+        chain.setName(String.format("create-root-volume-from-image-%s", image.getUuid()));
+        chain.then(new ShareFlow() {
+            PrimaryStorageInventory primaryStorage = getSelfInventory();
+
+            @Override
+            public void setup() {
+                flow(new NoRollbackFlow() {
+                    @Override
+                    public void run(final FlowTrigger trigger, Map data) {
+                        NfsPrimaryStorageBackend backend = factory.getHypervisorBackend(nfsMgr.findHypervisorTypeByImageFormatAndPrimaryStorageUuid(image.getFormat(), self.getUuid()));
+                        backend.createVolumeFromImageCache(primaryStorage, image, imageCache, volume, new ReturnValueCompletion<VolumeInfo>(trigger) {
+                            @Override
+                            public void success(VolumeInfo returnValue) {
+                                volume.setInstallPath(returnValue.getInstallPath());
+                                volume.setFormat(image.getFormat());
+                                volume.setActualSize(returnValue.getActualSize());
+                                if (returnValue.getSize() != null) {
+                                    volume.setSize(returnValue.getSize());
+                                }
+
+                                trigger.next();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.fail(errorCode);
+                            }
+                        });
+                    }
+                });
+
+                done(new FlowDoneHandler(msg) {
+                    @Override
+                    public void handle(Map data) {
+                        InstantiateVolumeOnPrimaryStorageReply reply = new InstantiateVolumeOnPrimaryStorageReply();
+                        reply.setVolume(volume);
+                        bus.reply(msg, reply);
+                    }
+                });
+
+                error(new FlowErrorHandler(msg) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        InstantiateVolumeOnPrimaryStorageReply reply = new InstantiateVolumeOnPrimaryStorageReply();
+                        reply.setError(errCode);
+                        bus.reply(msg, reply);
+                    }
+                });
+            }
+        }).start();
     }
 
     @Override
@@ -1052,6 +1114,19 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     protected void handle(CreateImageCacheFromVolumeOnPrimaryStorageMsg msg) {
         CreateImageCacheFromVolumeOnPrimaryStorageReply reply = new CreateImageCacheFromVolumeOnPrimaryStorageReply();
 
+        Long imageCacheId = Q.New(ImageCacheVolumeRefVO.class)
+                .eq(ImageCacheVolumeRefVO_.imageUuid, msg.getImageInventory().getUuid())
+                .eq(ImageCacheVolumeRefVO_.primaryStorageUuid, msg.getVolumeInventory().getPrimaryStorageUuid())
+                .select(ImageCacheVolumeRefVO_.id).find();
+        if (imageCacheId > 0) {
+            reply.setImageCacheId(imageCacheId);
+            reply.setCreated(true);
+            logger.debug(String.format("imageCacheId[uuid:%d] for volume[uuid:%s] has been created on the primaryStorage[uuid:%s]",
+                    reply.getImageCacheId(), msg.getVolumeInventory().getUuid(), self.getUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
+
         ImageSpec spec = new ImageSpec();
         spec.setInventory(msg.getImageInventory());
 
@@ -1066,6 +1141,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
 
                     @Override
                     public void success(ImageCacheInventory cache) {
+                        reply.setImageCacheId(cache.getId());
                         bus.reply(msg, reply);
                     }
 

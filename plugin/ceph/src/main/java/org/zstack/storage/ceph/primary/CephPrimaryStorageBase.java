@@ -2066,9 +2066,101 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
     protected void handle(final InstantiateVolumeOnPrimaryStorageMsg msg) {
         if (msg instanceof InstantiateRootVolumeFromTemplateOnPrimaryStorageMsg) {
             createVolumeFromTemplate((InstantiateRootVolumeFromTemplateOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof InstantiateVolumeFromImageCacheOnPrimaryStorageMsg) {
+            createVolumeFromImageCache((InstantiateVolumeFromImageCacheOnPrimaryStorageMsg) msg);
         } else {
             createEmptyVolume(msg);
         }
+    }
+
+    private void createVolumeFromImageCache(final InstantiateVolumeFromImageCacheOnPrimaryStorageMsg msg) {
+        final InstantiateVolumeOnPrimaryStorageReply reply = new InstantiateVolumeOnPrimaryStorageReply();
+        String targetCephPoolName = getTargetPoolNameFromAllocatedUrl(msg.getAllocatedInstallUrl());
+
+        FlowChain chain = FlowChainBuilder.newShareFlowChain();
+        chain.setName(String.format("create-root-volume-%s", msg.getVolume().getUuid()));
+        chain.then(new ShareFlow() {
+            String cloneInstallPath;
+            final String volumePath = makeVolumeInstallPathByTargetPool(msg.getVolume().getUuid(), targetCephPoolName);
+            Long actualSize;
+
+            @Override
+            public void setup() {
+                flow(new NoRollbackFlow() {
+                    String __name__ = "clone-image";
+
+                    @Override
+                    public void run(final FlowTrigger trigger, Map data) {
+                        CloneCmd cmd = new CloneCmd();
+                        cmd.srcPath = cloneInstallPath;
+                        cmd.dstPath = volumePath;
+
+                        httpCall(CLONE_PATH, cmd, CloneRsp.class, new ReturnValueCompletion<CloneRsp>(trigger) {
+                            @Override
+                            public void fail(ErrorCode err) {
+                                trigger.fail(err);
+                            }
+
+                            @Override
+                            public void success(CloneRsp ret) {
+                                actualSize = ret.actualSize;
+                                trigger.next();
+                            }
+                        });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "resize-volume-on-primary-storage";
+
+                    @Override
+                    public boolean skip(Map data) {
+                        return msg.getSize() >= msg.getVolume().getSize();
+                    }
+
+                    @Override
+                    public void run(final FlowTrigger trigger, Map data) {
+                        ResizeVolumeOnPrimaryStorageMsg rmsg = new ResizeVolumeOnPrimaryStorageMsg();
+                        rmsg.setVolume(msg.getVolume());
+                        rmsg.setSize(msg.getVolume().getSize());
+                        rmsg.setPrimaryStorageUuid(msg.getVolume().getPrimaryStorageUuid());
+                        bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, msg.getVolume().getPrimaryStorageUuid());
+                        bus.send(rmsg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (reply.isSuccess()) {
+                                    trigger.next();
+                                } else {
+                                    trigger.fail(reply.getError());
+                                }
+                            }
+                        });
+                        trigger.next();
+                    }
+                });
+
+                done(new FlowDoneHandler(msg) {
+                    @Override
+                    public void handle(Map data) {
+                        VolumeInventory vol = msg.getVolume();
+                        vol.setInstallPath(volumePath);
+                        vol.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
+                        vol.setActualSize(actualSize);
+                        reply.setVolume(vol);
+
+                        bus.reply(msg, reply);
+                    }
+                });
+
+                error(new FlowErrorHandler(msg) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        reply.setError(errCode);
+                        bus.reply(msg, reply);
+                    }
+                });
+            }
+        }).start();
     }
 
     class DownloadToCache {
@@ -2571,6 +2663,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                         ref.setImageCacheId(cache.getId());
                         ref.setPrimaryStorageUuid(self.getUuid());
                         ref.setVolumeUuid(vol.getUuid());
+                        ref.setImageUuid(cache.getImageUuid());
                         dbf.persist(ref);
 
                         bus.reply(msg, reply);
@@ -2716,6 +2809,19 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         String volumeUuid = msg.getVolumeInventory().getUuid();
         String imageUuid = msg.getImageInventory().getUuid();
 
+        Long imageCacheId = Q.New(ImageCacheVolumeRefVO.class)
+                .eq(ImageCacheVolumeRefVO_.imageUuid, msg.getImageInventory().getUuid())
+                .eq(ImageCacheVolumeRefVO_.primaryStorageUuid, msg.getVolumeInventory().getPrimaryStorageUuid())
+                .select(ImageCacheVolumeRefVO_.id).find();
+        if (imageCacheId > 0) {
+            reply.setImageCacheId(imageCacheId);
+            reply.setCreated(true);
+            logger.debug(String.format("imageCacheId[uuid:%d] for volume[uuid:%s] has been created on the primaryStorage[uuid:%s]",
+                    reply.getImageCacheId(), msg.getVolumeInventory().getUuid(), self.getUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
+
         FlowChain chain = FlowChainBuilder.newShareFlowChain();
         chain.setName(String.format("create-snapshot-and-image-from-volume-%s", volumeUuid));
         chain.preCheck(data -> buildErrIfCanceled());
@@ -2771,6 +2877,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                             @Override
                             public void success(ImageCacheVO cache) {
                                 reply.setActualSize(cache.getSize());
+                                reply.setImageCacheId(cache.getId());
                                 reportProgress(stage.getEnd().toString());
                                 trigger.next();
                             }

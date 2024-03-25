@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.Platform;
 import org.zstack.core.db.DatabaseFacade;
+import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
 import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
@@ -17,19 +18,14 @@ import org.zstack.header.host.HostVO;
 import org.zstack.header.image.ImageBackupStorageRefInventory;
 import org.zstack.header.image.ImageStatus;
 import org.zstack.header.storage.backup.*;
-import org.zstack.header.storage.primary.ImageCacheVO;
-import org.zstack.header.storage.primary.ImageCacheVO_;
-import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO;
-import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO_;
+import org.zstack.header.storage.primary.*;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.zstack.core.Platform.err;
 import static org.zstack.core.Platform.operr;
@@ -46,6 +42,10 @@ public class ImageBackupStorageAllocatorFlow extends AbstractHostAllocatorFlow {
     private ErrorFacade errf;
 
     private boolean checkIfNeedBackupStorageToDownloadImage(HostAllocatorSpec spec, List<HostVO> candidates) {
+        if (Q.New(ImageCacheVolumeRefVO.class).eq(ImageCacheVolumeRefVO_.imageUuid, spec.getImage().getUuid()).isExists()) {
+            return false;
+        }
+
         List<String> clusterUuids = CollectionUtils.transformToList(candidates, new Function<String, HostVO>() {
             @Override
             public String call(HostVO arg) {

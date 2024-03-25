@@ -3156,6 +3156,23 @@ public class LocalStorageBase extends PrimaryStorageBase {
     protected void handle(GetPrimaryStorageResourceLocationMsg msg) {
         GetPrimaryStorageResourceLocationReply reply = new GetPrimaryStorageResourceLocationReply();
         reply.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
+
+        if (Objects.equals(msg.getResourceType(), ImageCacheVO.class.getSimpleName())) {
+            List<String> installUrls = Q.New(ImageCacheVO.class)
+                    .eq(ImageCacheVO_.imageUuid, msg.getResourceUuid())
+                    .eq(ImageCacheVO_.primaryStorageUuid, msg.getPrimaryStorageUuid())
+                    .select(ImageCacheVO_.installUrl)
+                    .listValues();
+
+            List<String> hostUuids = installUrls.stream()
+                    .map(installUrl -> new LocalStorageUtils.InstallPath(installUrl).disassemble().hostUuid)
+                    .collect(Collectors.toList());
+
+            reply.setHostUuids(hostUuids);
+            bus.reply(msg, reply);
+            return;
+        }
+
         List<String> hostUuids = Q.New(LocalStorageResourceRefVO.class)
                 .eq(LocalStorageResourceRefVO_.resourceUuid, msg.getResourceUuid())
                 .select(LocalStorageResourceRefVO_.hostUuid)
