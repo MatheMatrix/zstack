@@ -804,7 +804,7 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
     @SyncThread
     public void nodeLeft(ManagementNodeInventory inv) {
         logger.debug(String.format("Management node[uuid:%s] left, node[uuid:%s] starts to take over hosts", inv.getUuid(), Platform.getManagementServerId()));
-        loadHost(true);
+        loadHost();
     }
 
     @Override
@@ -875,7 +875,7 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
                 .collect(Collectors.toList());
     }
 
-    private void loadHost(boolean skipConnected) {
+    private void loadHost() {
         Bucket hosts = getHostManagedByUs();
         List<String> connected = hosts.get(0);
         List<String> disconnected = hosts.get(1);
@@ -894,10 +894,7 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
             }
         }
 
-        if (skipConnected) {
-            hostsToLoad.removeAll(connected);
-        }
-
+        hostsToLoad.removeAll(connected);
         if (hostsToLoad.isEmpty()) {
             return;
         }
@@ -952,7 +949,7 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
 
         // Disconnected and connecting are not expected host status for ZStack
         // Need to reconnect those hosts when the node started.
-        loadHost(true);
+        loadHost();
         startPeriodTasks();
     }
 
