@@ -873,24 +873,44 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
 
     @Override
     public void reportNodeHealthy(HostInventory host, ReturnValueCompletion<NodeHealthy> comp) {
+        VolumeProtocol protocol = getProtocolByHost(host);
         NodeHealthy healthy = new NodeHealthy();
-        Arrays.asList(VolumeProtocol.Vhost).forEach(it -> {
-            String ussName = buildUssGwName(protocolToString(it), host.getManagementIp());
-            UssGatewayModule uss = apiHelper.queryUssGateway(ussName);
-            if (uss == null) {
-                healthy.setHealthy(it, StorageHealthy.Failed);
-            } else if (uss.getStatus().equals(HealthStatus.health.name())) {
-                healthy.setHealthy(it, StorageHealthy.Ok);
-            } else if (uss.getStatus().equals(HealthStatus.error.name())) {
-                healthy.setHealthy(it, StorageHealthy.Failed);
-            } else if (uss.getStatus().equals(HealthStatus.warning.name())){
-                healthy.setHealthy(it, StorageHealthy.Warn);
-            } else {
-                healthy.setHealthy(it, StorageHealthy.Unknown);
-            }
-        });
+        if (VolumeProtocol.Vhost.equals(protocol)) {
+            Arrays.asList(VolumeProtocol.Vhost).forEach(it -> {
+                String ussName = buildUssGwName(protocolToString(it), host.getManagementIp());
+                UssGatewayModule uss = apiHelper.queryUssGateway(ussName);
+                if (uss == null) {
+                    healthy.setHealthy(it, StorageHealthy.Failed);
+                } else if (uss.getStatus().equals(HealthStatus.health.name())) {
+                    healthy.setHealthy(it, StorageHealthy.Ok);
+                } else if (uss.getStatus().equals(HealthStatus.error.name())) {
+                    healthy.setHealthy(it, StorageHealthy.Failed);
+                } else if (uss.getStatus().equals(HealthStatus.warning.name())){
+                    healthy.setHealthy(it, StorageHealthy.Warn);
+                } else {
+                    healthy.setHealthy(it, StorageHealthy.Unknown);
+                }
+            });
+        }
 
+        if (VolumeProtocol.iSCSI.equals(protocol)) {
+            // for iscsi protocol , just judge exist or not
+            String tianshuId = addonInfo.getClusters().get(0).getId();
+            List<IscsiSeverNode> nodes = apiHelper.getIscsiTargetServer(tianshuId);
+            if (nodes.stream().anyMatch(it -> it.getUssName().startsWith("iscsi_zstack"))) {
+                healthy.setHealthy(protocol, StorageHealthy.Ok);
+            } else {
+                healthy.setHealthy(protocol, StorageHealthy.Unknown);
+            }
+        }
         comp.success(healthy);
+    }
+
+    private VolumeProtocol getProtocolByHost(HostInventory host) {
+        if (host.getHypervisorType().equals("baremetal2")) {
+            return VolumeProtocol.iSCSI;
+        }
+        return VolumeProtocol.Vhost;
     }
 
     private List<FailureDomainModule> getSelfPools() {
