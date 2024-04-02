@@ -23,6 +23,8 @@ class StorageTest extends Test {
         lb()
         portForwarding()
         include("expon.xml")
+        include("zbs.xml")
+        include("cbd.xml")
         include("vhost.xml")
         include("iscsi.xml")
     }
