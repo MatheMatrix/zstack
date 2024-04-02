@@ -36,6 +36,7 @@
         <module>vhost</module>
         <module>expon</module>
         <module>externalStorage</module>
+        <module>zbs</module>
     </modules>
     <dependencies>
         <dependency>
