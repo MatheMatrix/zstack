@@ -97,6 +97,11 @@ class SpringSpec {
         include("ceph.xml")
     }
 
+    void zbs() {
+        include("zbs.xml")
+        include("cbd.xml")
+    }
+
     void smp() {
         include("sharedMountPointPrimaryStorage.xml")
     }
