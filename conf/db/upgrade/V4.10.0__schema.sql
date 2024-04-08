@@ -196,6 +196,7 @@ update `ClusterDRSVO` set `state` = 'Disabled' where `clusterUuid` in
     (select `resourceUuid` from `ResourceConfigVO` where `name` = 'drs.enable' and `resourceType` = 'ClusterVO' and `value` = 'false');
 delete from `ResourceConfigVO` where `name` = 'drs.enable' and `resourceType` = 'ClusterVO';
 delete from `GlobalConfigVO` where `name` = 'drs.enable';
+delete from `SystemTagVO` where `resourceUuid` in (select `uuid` from `HostCapacityVO` where `cpuSockets` != 1) and `tag` like "cpuProcessorNum::%";
 
 CALL INSERT_COLUMN('VmVfNicVO', 'haState', 'varchar(32)', 0, 'Disabled', 'pciDeviceUuid');
 
