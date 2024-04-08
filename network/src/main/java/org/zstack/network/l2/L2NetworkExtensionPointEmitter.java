@@ -57,6 +57,10 @@ public class L2NetworkExtensionPointEmitter implements Component {
         CollectionUtils.safeForEach(updateExtensions, arg -> arg.afterChangeL2NetworkVlanId(inv));
     }
 
+    public void beforeUpdate(final L2NetworkInventory inv) {
+        CollectionUtils.safeForEach(updateExtensions, arg -> arg.beforeChangeL2NetworkVlanId(inv));
+    }
+
     @Override
     public boolean start() {
         populateExtensions();

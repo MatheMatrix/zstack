@@ -84,6 +84,7 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
     public static final String BATCH_APPLY_USER_DATA = "/flatnetworkprovider/userdata/batchapply";
     public static final String RELEASE_USER_DATA = "/flatnetworkprovider/userdata/release";
     public static final String CLEANUP_USER_DATA = "/flatnetworkprovider/userdata/cleanup";
+    public static final String BATCH_CLEANUP_USER_DATA = "/flatnetworkprovider/userdata/batchcleanup";
 
     @Override
     public Flow createKvmHostConnectingFlow(final KVMHostConnectedContext context) {
@@ -513,6 +514,19 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
 
     }
 
+    public static class BatchCleanupUserdataCmd extends KVMAgentCommands.AgentCommand {
+        @GrayVersion(value = "5.1.0")
+        public String bridgeName;
+        @GrayVersion(value = "5.1.0")
+        public List<String> l3NetworkUuids;
+        @GrayVersion(value = "5.1.0")
+        public List<String> namespaceNames;
+    }
+
+    public static class BatchCleanupUserdataRsp extends KVMAgentCommands.AgentResponse {
+
+    }
+
     public static class BatchApplyUserdataCmd extends KVMAgentCommands.AgentCommand {
         @GrayVersion(value = "5.0.0")
         public List<UserdataTO> userdata;
@@ -785,7 +799,69 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
 
     @Override
     public void beforeChangeL2NetworkVlanId(L2NetworkInventory l2Inv) {
+        new While<>(L2NetworkHostHelper.getHostsByL2NetworkAttachedCluster(l2Inv)).step((host, whileCompletion) -> {
+            FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
+            chain.setName(String.format("before-l2-%s-cleanup-flat-network-userdata-apply-in-host-%s",
+                    l2Inv.getUuid(), host.getUuid()));
+            chain.then(new NoRollbackFlow() {
+                @Override
+                public void run(FlowTrigger trigger, Map data) {
+                    BatchCleanupUserdataCmd cmd = new BatchCleanupUserdataCmd();
+                    cmd.bridgeName = KVMSystemTags.L2_BRIDGE_NAME.getTokenByResourceUuid(
+                            l2Inv.getUuid(), KVMSystemTags.L2_BRIDGE_NAME_TOKEN);
+                    List<String> l3Uuids = Q.New(L3NetworkVO.class)
+                            .select(L3NetworkVO_.uuid).eq(L3NetworkVO_.l2NetworkUuid, l2Inv.getUuid()).listValues();
+                    if (l3Uuids.isEmpty()) {
+                        trigger.next();
+                        return;
+                    }
+                    cmd.l3NetworkUuids = new ArrayList<>();
+                    cmd.namespaceNames = new ArrayList<>();
+                    l3Uuids.forEach(l3Uuid -> {
+                        cmd.l3NetworkUuids.add(l3Uuid);
+                        cmd.namespaceNames.add(FlatDhcpBackend.makeNamespaceName(cmd.bridgeName, l3Uuid));
+                    });
+                    new KvmCommandSender(host.getUuid()).send(cmd, BATCH_CLEANUP_USER_DATA, w -> {
+                        BatchCleanupUserdataRsp rsp = w.getResponse(BatchCleanupUserdataRsp.class);
+                        return rsp.isSuccess() ? null : operr("operation error, because:%s", rsp.getError());
+                    }, new ReturnValueCompletion<KvmResponseWrapper>(null) {
+                        @Override
+                        public void success(KvmResponseWrapper w) {
+                            logger.debug(String.format("successfully cleanup userdata service on the host[uuid:%s]" +
+                                            " for the change L2 network[uuid:%s, name:%s]",
+                                    host.getUuid(), l2Inv.getUuid(), l2Inv.getName()));
+                        }
 
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            logger.warn(errorCode.toString());
+                        }
+                    });
+                }
+            });
+            chain.done(new FlowDoneHandler(whileCompletion) {
+                @Override
+                public void handle(Map data) {
+                    whileCompletion.done();
+                }
+            }).error(new FlowErrorHandler(whileCompletion) {
+                @Override
+                public void handle(ErrorCode errCode, Map data) {
+                    whileCompletion.addError(errCode);
+                    whileCompletion.allDone();
+                }
+            }).start();
+        }, 10).run(new WhileDoneCompletion(null) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                if (!errorCodeList.getCauses().isEmpty()) {
+                    logger.error(String.format("cleanup userdata failed before L2Network changed, because:%s",
+                            errorCodeList.getCauses().get(0)));
+                } else {
+                    logger.debug("cleanup userdata successful before L2Network changed");
+                }
+            }
+        });
     }
 
     @Override

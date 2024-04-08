@@ -387,6 +387,7 @@ public class L2NoVlanNetwork implements L2Network {
                 changeL2NetworkVlanId(msg, new Completion(chain) {
                     @Override
                     public void success() {
+                        extpEmitter.beforeUpdate(getSelfInventory());
                         changeL2NetworkVlanIdInDb(msg);
                         extpEmitter.afterUpdate(getSelfInventory());
                         event.setInventory(getSelfInventory());
