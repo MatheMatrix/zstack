@@ -3599,14 +3599,22 @@ public class KVMHost extends HostBase implements Host {
             @Override
             public void success(StopVmResponse ret) {
                 StopVmOnHypervisorReply reply = new StopVmOnHypervisorReply();
-                if (!ret.isSuccess()) {
+
+                boolean stopSuccess = ret.isSuccess();
+                if (!stopSuccess && ret.getError() != null && ret.getError().contains("domain is not running")) {
+                    logger.debug("VM domain is not running, and the operation has achieved the goal");
+                    stopSuccess = true;
+                }
+
+                if (stopSuccess) {
+                    extEmitter.stopVmOnKvmSuccess(KVMHostInventory.valueOf(getSelf()), vminv);
+                } else {
                     reply.setError(err(HostErrors.FAILED_TO_STOP_VM_ON_HYPERVISOR, "unable to stop vm[uuid:%s,  name:%s] on kvm host[uuid:%s, ip:%s], because %s", vminv.getUuid(),
                             vminv.getName(), self.getUuid(), self.getManagementIp(), ret.getError()));
                     logger.warn(reply.getError().getDetails());
                     extEmitter.stopVmOnKvmFailed(KVMHostInventory.valueOf(getSelf()), vminv, reply.getError());
-                } else {
-                    extEmitter.stopVmOnKvmSuccess(KVMHostInventory.valueOf(getSelf()), vminv);
                 }
+
                 bus.reply(msg, reply);
                 completion.done();
             }
