@@ -5,10 +5,7 @@ import org.yaml.snakeyaml.Yaml;
 import org.zstack.header.tag.AdminOnlyTag;
 import org.zstack.header.tag.TagDefinition;
 import org.zstack.header.vm.VmInstanceVO;
-import org.zstack.tag.PatternedSystemTag;
-import org.zstack.tag.SensitiveTagOutputHandler;
-import org.zstack.tag.SensitiveTag;
-import org.zstack.tag.SystemTag;
+import org.zstack.tag.*;
 
 import java.util.Base64;
 import java.util.LinkedHashMap;

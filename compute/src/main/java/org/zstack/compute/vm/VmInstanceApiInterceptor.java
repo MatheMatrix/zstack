@@ -1176,14 +1176,16 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         }
     }
 
-    private void validateZoneOrClusterOrHostOrL3Exist(NewVmInstanceMessage2 msg) {
+    private static void validateZoneOrClusterOrHostOrL3Exist(NewVmInstanceMessage2 msg) {
         if (CollectionUtils.isEmpty(msg.getL3NetworkUuids()) && StringUtils.isEmpty(msg.getZoneUuid())
                 && StringUtils.isEmpty(msg.getClusterUuid()) && StringUtils.isEmpty(msg.getHostUuid())) {
             throw new ApiMessageInterceptionException(operr("could not create vm, because at least one of field (l3NetworkUuids,zoneUuid,clusterUuid,hostUuid) should be set"));
         }
     }
 
-    private void validateInstanceSettings(NewVmInstanceMessage2 msg) {
+    public static  void validateInstanceSettings(NewVmInstanceMessage2 msg) {
+        DatabaseFacade dbf = Platform.getComponentLoader().getComponent(DatabaseFacade.class);
+
         final String instanceOfferingUuid = msg.getInstanceOfferingUuid();
 
         if (instanceOfferingUuid == null) {
@@ -1412,7 +1414,10 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         validate((NewVmInstanceMessage2) msg);
     }
 
-    private void validate(NewVmInstanceMessage2 msg) {
+    public static void validate(NewVmInstanceMessage2 msg) {
+        DatabaseFacade dbf = Platform.getComponentLoader().getComponent(DatabaseFacade.class);
+        VmNicManager nicManager = Platform.getComponentLoader().getComponent(VmNicManager.class);
+
         validateInstanceSettings(msg);
         boolean uniqueVmName = VmGlobalConfig.UNIQUE_VM_NAME.value(Boolean.class);
         if (uniqueVmName && Q.New(VmInstanceVO.class).eq(VmInstanceVO_.name, msg.getName()).isExists()) {
@@ -1544,7 +1549,9 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         validateZoneOrClusterOrHostOrL3Exist(msg);
     }
 
-    private void validateCdRomsTag(NewVmInstanceMessage msg) {
+    private static void validateCdRomsTag(NewVmInstanceMessage msg) {
+        DatabaseFacade dbf = Platform.getComponentLoader().getComponent(DatabaseFacade.class);
+
         if (msg.getSystemTags() == null || msg.getSystemTags().isEmpty()) {
             return;
         }

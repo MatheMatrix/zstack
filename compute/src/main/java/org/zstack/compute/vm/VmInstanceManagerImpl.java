@@ -1341,7 +1341,6 @@ public class VmInstanceManagerImpl extends AbstractService implements
                     }
                 });
 
-
                 if (!CollectionUtils.isEmpty(otherDisks)) {
                     otherDisks.forEach(diskAO -> flow(new VmInstantiateOtherDiskFlow(diskAO)));
                 }
