@@ -878,7 +878,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
                 r.setActualSize(resp.getActualSize());
                 r.setSize(resp.getSize());
                 r.setInstallPath(resp.getInstallPath());
-                r.setFormat(resp.getFormat());
+                r.setFormat(getUploadImageFinalFormat(msg.getImageUuid()));
                 r.setDownloadSize(resp.getDownloadSize());
                 r.setLastOpTime(resp.getLastOpTime());
                 r.setSupportSuspend(true);
@@ -891,6 +891,18 @@ public class CephBackupStorageBase extends BackupStorageBase {
                 bus.reply(msg, r);
             }
         });
+    }
+
+    private String getUploadImageFinalFormat(String imageUuid) {
+        String format = Q.New(ImageVO.class)
+                .eq(ImageVO_.uuid, imageUuid)
+                .select(ImageVO_.format)
+                .findValue();
+        if (ImageConstant.ISO_FORMAT_STRING.equals(format)) {
+            return ImageConstant.ISO_FORMAT_STRING;
+        }
+
+        return ImageConstant.RAW_FORMAT_STRING;
     }
 
     protected void handle(final BakeImageMetadataMsg msg) {
