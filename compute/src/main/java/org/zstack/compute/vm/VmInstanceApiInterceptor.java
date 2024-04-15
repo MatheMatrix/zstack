@@ -165,10 +165,53 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             validate((APITakeVmConsoleScreenshotMsg) msg);
         } else if (msg instanceof APIGetVmUptimeMsg) {
             validate((APIGetVmUptimeMsg) msg);
+        } else if (msg instanceof APIConvertVmInstanceToTemplateVmInstanceMsg) {
+            validate((APIConvertVmInstanceToTemplateVmInstanceMsg) msg);
+        } else if (msg instanceof APIConvertTemplateVmInstanceToVmInstanceMsg) {
+            validate((APIConvertTemplateVmInstanceToVmInstanceMsg) msg);
         }
 
         setServiceId(msg);
         return msg;
+    }
+
+    private void validate(APIConvertTemplateVmInstanceToVmInstanceMsg msg) {
+        if (msg.getVmInstanceUuid() == null) {
+            msg.setVmInstanceUuid(msg.getTemplateVmInstanceUuid());
+        }
+
+        if (VmGlobalConfig.UNIQUE_VM_NAME.value(Boolean.class)) {
+            boolean exists = Q.New(VmInstanceVO.class)
+                    .eq(VmInstanceVO_.name, msg.getName())
+                    .notEq(VmInstanceVO_.uuid, msg.getTemplateVmInstanceUuid())
+                    .isExists();
+            if (exists) {
+                throw new ApiMessageInterceptionException(argerr("the vm with the name [%s] already exists", msg.getName()));
+            }
+        }
+    }
+
+    private void validate(APIConvertVmInstanceToTemplateVmInstanceMsg msg) {
+        VmInstanceVO vm = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, msg.getVmInstanceUuid()).find();
+
+        if (Q.New(TemplateVmInstanceVO.class).eq(TemplateVmInstanceVO_.uuid, msg.getVmInstanceUuid()).isExists()) {
+            throw new ApiMessageInterceptionException(operr("failed to convert vm template[uuid:%s] to vm template",
+                    msg.getVmInstanceUuid()));
+        } else if (Q.New(TemplateVmInstanceCacheVO.class).eq(TemplateVmInstanceCacheVO_.cacheVmInstanceUuid, msg.getVmInstanceUuid()).isExists()) {
+            throw new ApiMessageInterceptionException(operr("failed to convert vm template cache[uuid:%s] to vm template",
+                    msg.getVmInstanceUuid()));
+        }
+
+        List<String> sharedVolumeUuids = Q.New(VolumeVO.class)
+                .eq(VolumeVO_.vmInstanceUuid, msg.getVmInstanceUuid())
+                .eq(VolumeVO_.isShareable, true)
+                .select(VolumeVO_.uuid)
+                .listValues();
+        if (!sharedVolumeUuids.isEmpty()) {
+            throw new ApiMessageInterceptionException(operr(
+                    "vm[uuid:%s] cannot be convert to vm template while shared volume[uuids:%s] attached",
+                    msg.getVmInstanceUuid(), sharedVolumeUuids));
+        }
     }
 
     private void validate(APIGetVmUptimeMsg msg) {

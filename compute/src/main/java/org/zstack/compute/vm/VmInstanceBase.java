@@ -3253,6 +3253,10 @@ public class VmInstanceBase extends AbstractVmInstance {
             handle((APITakeVmConsoleScreenshotMsg) msg);
         } else if (msg instanceof APIGetVmUptimeMsg) {
             handle((APIGetVmUptimeMsg) msg);
+        } else if (msg instanceof APIConvertVmInstanceToTemplateVmInstanceMsg) {
+            handle((APIConvertVmInstanceToTemplateVmInstanceMsg) msg);
+        } else if (msg instanceof APIConvertTemplateVmInstanceToVmInstanceMsg) {
+            handle((APIConvertTemplateVmInstanceToVmInstanceMsg) msg);
         } else {
             VmInstanceBaseExtensionFactory ext = vmMgr.getVmInstanceBaseExtensionFactory(msg);
             if (ext != null) {
@@ -3262,6 +3266,41 @@ public class VmInstanceBase extends AbstractVmInstance {
                 bus.dealWithUnknownMessage(msg);
             }
         }
+    }
+
+    private void handle(APIConvertTemplateVmInstanceToVmInstanceMsg msg) {
+        APIConvertTemplateVmInstanceToVmInstanceEvent event = new APIConvertTemplateVmInstanceToVmInstanceEvent(msg.getId());
+
+        String templateVmInstanceUuid = msg.getTemplateVmInstanceUuid();
+        SQL.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, templateVmInstanceUuid)
+                .set(VmInstanceVO_.name, msg.getName())
+                .update();
+        boolean exists = Q.New(TemplateVmInstanceCacheVO.class)
+                .eq(TemplateVmInstanceCacheVO_.templateVmInstanceUuid, templateVmInstanceUuid)
+                .isExists();
+        if (!exists) {
+            dbf.removeByPrimaryKey(templateVmInstanceUuid, TemplateVmInstanceVO.class);
+        }
+
+        event.setInventory(VmInstanceInventory.valueOf(dbf.findByUuid(templateVmInstanceUuid, VmInstanceVO.class)));
+        bus.publish(event);
+    }
+
+    private void handle(APIConvertVmInstanceToTemplateVmInstanceMsg msg) {
+        refreshVO();
+        ErrorCode error = validateOperationByState(msg, self.getState(), SysErrors.OPERATION_ERROR);
+        if (error != null) {
+            throw new OperationFailureException(error);
+        }
+
+        APIConvertVmInstanceToTemplateVmInstanceEvent event = new APIConvertVmInstanceToTemplateVmInstanceEvent(msg.getId());
+        TemplateVmInstanceVO templateVmInstance = new TemplateVmInstanceVO();
+        templateVmInstance.setUuid(msg.getVmInstanceUuid());
+        dbf.persistAndRefresh(templateVmInstance);
+
+        TemplateVmInstanceInventory inventory = TemplateVmInstanceInventory.valueOf(templateVmInstance);
+        event.setInventory(inventory);
+        bus.publish(event);
     }
 
     private void handle(APIGetVmUptimeMsg msg) {
