@@ -3257,6 +3257,10 @@ public class VmInstanceBase extends AbstractVmInstance {
             handle((APIConvertVmInstanceToTemplateVmInstanceMsg) msg);
         } else if (msg instanceof APIConvertTemplateVmInstanceToVmInstanceMsg) {
             handle((APIConvertTemplateVmInstanceToVmInstanceMsg) msg);
+        } else if (msg instanceof APIUpdateVmInstanceTemplateMsg) {
+            handle((APIUpdateVmInstanceTemplateMsg) msg);
+        } else if (msg instanceof APIDeleteVmInstanceTemplateMsg) {
+            handle((APIDeleteVmInstanceTemplateMsg) msg);
         } else {
             VmInstanceBaseExtensionFactory ext = vmMgr.getVmInstanceBaseExtensionFactory(msg);
             if (ext != null) {
@@ -3266,6 +3270,59 @@ public class VmInstanceBase extends AbstractVmInstance {
                 bus.dealWithUnknownMessage(msg);
             }
         }
+    }
+
+    private void handle(APIUpdateVmInstanceTemplateMsg msg) {
+        APIUpdateVmInstanceTemplateEvent event = new APIUpdateVmInstanceTemplateEvent(msg.getId());
+        UpdateVmInstanceMsg umsg = new UpdateVmInstanceMsg();
+        umsg.setUuid(msg.getUuid());
+        umsg.setName(msg.getName());
+        umsg.setDescription(msg.getDescription());
+        umsg.setCpuNum(msg.getCpuNum());
+        umsg.setMemorySize(msg.getMemorySize());
+        umsg.setSystemTags(msg.getSystemTags());
+        bus.makeTargetServiceIdByResourceUuid(umsg, VmInstanceConstant.SERVICE_ID, umsg.getVmInstanceUuid());
+        bus.send(umsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    event.setError(reply.getError());
+                    bus.publish(event);
+                    return;
+                }
+
+                UpdateVmInstanceReply r = reply.castReply();
+                VmInstanceInventory vm = r.getInventory();
+
+                VmInstanceTemplateVO vmInstanceTemplate = dbf.findByUuid(msg.getUuid(), VmInstanceTemplateVO.class);
+                vmInstanceTemplate.setName(vm.getName());
+                dbf.updateAndRefresh(vmInstanceTemplate);
+                event.setInventory(VmInstanceTemplateInventory.valueOf(vmInstanceTemplate));
+                bus.publish(event);
+            }
+        });
+    }
+
+    private void handle(APIDeleteVmInstanceTemplateMsg msg) {
+        APIDeleteVmInstanceTemplateEvent event = new APIDeleteVmInstanceTemplateEvent(msg.getId());
+        String vmUuid = Q.New(VmInstanceTemplateVO.class).eq(VmInstanceTemplateVO_.uuid, msg.getUuid())
+                .select(VmInstanceTemplateVO_.vmInstanceUuid)
+                .findValue();
+
+        DestroyVmInstanceMsg dmsg = new DestroyVmInstanceMsg();
+        dmsg.setVmInstanceUuid(vmUuid);
+        dmsg.setDeletionPolicy(VmInstanceDeletionPolicyManager.VmInstanceDeletionPolicy.Direct);
+        bus.makeTargetServiceIdByResourceUuid(dmsg, VmInstanceConstant.SERVICE_ID, vmUuid);
+        bus.send(dmsg, new CloudBusCallBack(null) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    logger.warn(String.format("failed to delete vm [%s]", vmUuid));
+                    event.setError(reply.getError());
+                }
+                bus.publish(event);
+            }
+        });
     }
 
     private void handle(APIConvertTemplateVmInstanceToVmInstanceMsg msg) {

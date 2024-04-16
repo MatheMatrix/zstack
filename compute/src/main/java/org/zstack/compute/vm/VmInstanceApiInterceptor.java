@@ -169,10 +169,32 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             validate((APIConvertVmInstanceToTemplateVmInstanceMsg) msg);
         } else if (msg instanceof APIConvertTemplateVmInstanceToVmInstanceMsg) {
             validate((APIConvertTemplateVmInstanceToVmInstanceMsg) msg);
+        } else if (msg instanceof APIUpdateVmInstanceTemplateMsg) {
+            validate((APIUpdateVmInstanceTemplateMsg) msg);
+        } else if (msg instanceof APIDeleteVmInstanceTemplateMsg) {
+            validate((APIDeleteVmInstanceTemplateMsg) msg);
         }
 
         setServiceId(msg);
         return msg;
+    }
+
+    private void validate(APIUpdateVmInstanceTemplateMsg msg) {
+        String vmUuid = Q.New(VmInstanceTemplateVO.class).eq(VmInstanceTemplateVO_.uuid, msg.getUuid())
+                .select(VmInstanceTemplateVO_.vmInstanceUuid).findValue();
+        boolean exists = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.name, msg.getName()).notEq(VmInstanceVO_.uuid, vmUuid).isExists();
+        if (VmGlobalConfig.UNIQUE_VM_NAME.value(Boolean.class) && exists) {
+            throw new ApiMessageInterceptionException(operr("the vm with the name [%s] already exists",
+                    msg.getName()));
+        }
+    }
+
+    private void validate(APIDeleteVmInstanceTemplateMsg msg) {
+        if (!dbf.isExist(msg.getUuid(), VmInstanceTemplateVO.class)) {
+            APIDeleteVmInstanceTemplateEvent evt = new APIDeleteVmInstanceTemplateEvent(msg.getId());
+            bus.publish(evt);
+            throw new StopRoutingException();
+        }
     }
 
     private void validate(APIConvertTemplateVmInstanceToVmInstanceMsg msg) {
