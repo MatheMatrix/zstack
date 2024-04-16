@@ -126,11 +126,15 @@ public class RestServer implements Component, CloudBusEventListener {
         String remoteHost;
         String requestUrl;
         final String method;
+        final String clientIp;
+        final String clientBrowser;
         HttpHeaders headers = new HttpHeaders();
 
         public RequestInfo(HttpServletRequest req) {
             session = req.getSession();
             remoteHost = req.getRemoteHost();
+            clientIp = HttpServletRequestUtils.getClientIP(req);
+            clientBrowser = HttpServletRequestUtils.getClientBrowser(req);
 
             for (Enumeration e = req.getHeaderNames(); e.hasMoreElements() ;) {
                 String name = e.nextElement().toString();
@@ -953,6 +957,8 @@ public class RestServer implements Component, CloudBusEventListener {
             PropertyUtils.setProperty(msg, mappingKey == null ? key : mappingKey, e.getValue());
         }
 
+        msg.setClientIp(requestInfo.get().clientIp);
+        msg.setClientBrowser(requestInfo.get().clientBrowser);
         msg.setServiceId(ApiMediatorConstant.SERVICE_ID);
         sendMessage(msg, api, rsp);
     }
