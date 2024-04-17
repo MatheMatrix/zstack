@@ -758,7 +758,23 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
             return;
         }
 
-        apiHelper.removeHostFromIscsiClient(iqn, client.getId());
+        retry(() -> apiHelper.removeHostFromIscsiClient(iqn, client.getId()));
+        retry(() -> checkIscsiAfterDeactivate(installPath, iqn));
+    }
+
+    private void checkIscsiAfterDeactivate(String installPath, String iqn) {
+        boolean result = false;
+        IscsiClientGroupModule client = getLunAttachedIscsiClient(installPath);
+        if (client == null) {
+            result = true;
+        }
+
+        if (!client.getHosts().contains(iqn)) {
+            result = true;
+        }
+        if (!result) {
+            throw new RuntimeException("deactive iscsi failed, need retry");
+        }
     }
 
     private synchronized void unexportIscsi(String source, String clientIp) {
