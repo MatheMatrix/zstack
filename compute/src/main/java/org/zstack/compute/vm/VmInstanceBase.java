@@ -527,8 +527,6 @@ public class VmInstanceBase extends AbstractVmInstance {
             handle((CancelFlattenVmInstanceMsg) msg);
         } else if (msg instanceof KvmReportVmShutdownEventMsg) {
             handle((KvmReportVmShutdownEventMsg) msg);
-        } else if (msg instanceof KvmReportVmShutdownFromGuestEventMsg) {
-            handle((KvmReportVmShutdownFromGuestEventMsg) msg);
         } else {
             VmInstanceBaseExtensionFactory ext = vmMgr.getVmInstanceBaseExtensionFactory(msg);
             if (ext != null) {
@@ -540,37 +538,13 @@ public class VmInstanceBase extends AbstractVmInstance {
         }
     }
 
-    private void handle(KvmReportVmShutdownFromGuestEventMsg msg) {
-        thdf.chainSubmit(new ChainTask(msg) {
-            @Override
-            public void run(SyncTaskChain chain) {
-                KvmReportVmShutdownFromGuestEventReply reply = new KvmReportVmShutdownFromGuestEventReply();
-                for (KvmReportVmShutdownFromGuestEventExtensionPoint ext : pluginRgty.getExtensionList(KvmReportVmShutdownFromGuestEventExtensionPoint.class)) {
-                    ext.kvmReportVmShutdownEvent(msg.getVmInstanceUuid());
-                }
-                bus.reply(msg, reply);
-                chain.next();
-            }
-
-            @Override
-            public String getSyncSignature() {
-                return syncThreadName;
-            }
-
-            @Override
-            public String getName() {
-                return syncThreadName;
-            }
-        });
-    }
-
     private void handle(KvmReportVmShutdownEventMsg msg) {
         thdf.chainSubmit(new ChainTask(msg) {
             @Override
             public void run(SyncTaskChain chain) {
                 KvmReportVmShutdownEventReply reply = new KvmReportVmShutdownEventReply();
                 for (KvmReportVmShutdownEventExtensionPoint ext : pluginRgty.getExtensionList(KvmReportVmShutdownEventExtensionPoint.class)) {
-                    ext.kvmReportVmShutdownEvent(msg.getVmInstanceUuid());
+                    ext.kvmReportVmShutdownEvent(KvmReportVmShutdownEventExtensionPoint.ShutdownDetail.of(msg));
                 }
                 bus.reply(msg, reply);
                 chain.next();
