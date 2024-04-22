@@ -5652,6 +5652,11 @@ public class KVMHost extends HostBase implements Host {
                             deployArguments.setIsBareMetal2Gateway("true");
                         }
 
+                        if (KVMSystemTags.FORCE_DEPLOYMENT_ONCE.hasTag(self.getUuid())) {
+                            runner.setForceRun(true);
+                            KVMSystemTags.FORCE_DEPLOYMENT_ONCE.delete(self.getUuid());
+                        }
+
                         String enableKsm = rcf.getResourceConfigValue(KVMGlobalConfig.HOST_KSM, self.getUuid(), String.class);
                         kvmHostConfigChecker.setRequireKsmCheck(enableKsm);
                         deployArguments.setIsEnableKsm(enableKsm);
