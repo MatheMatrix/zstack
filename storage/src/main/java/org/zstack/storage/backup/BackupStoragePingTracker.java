@@ -178,7 +178,6 @@ public class BackupStoragePingTracker extends PingTracker implements ManagementN
     }
 
     private ReconnectDecision makeReconnectDecision(String uuid, MessageReply reply) {
-        PingBackupStorageReply r = reply.castReply();
         boolean autoReconnect = BackupStorageGlobalConfig.AUTO_RECONNECT_ON_ERROR.value(Boolean.class);
 
         if (!autoReconnect) {
@@ -193,8 +192,8 @@ public class BackupStoragePingTracker extends PingTracker implements ManagementN
             return ReconnectDecision.StopReconnectTask;
         }
 
-        if (r.getError() != null) {
-            boolean checkReconnect = (boolean) r.getError().getOpaque().getOrDefault(BackupStorageErrors.Opaque.NEED_RECONNECT_CHECKING.toString(), false);
+        if (reply.getError() != null) {
+            boolean checkReconnect = (boolean) reply.getError().getOpaque().getOrDefault(BackupStorageErrors.Opaque.NEED_RECONNECT_CHECKING.toString(), false);
             if (checkReconnect) {
                 return ReconnectDecision.SubmitReconnectTask;
             }
@@ -204,7 +203,7 @@ public class BackupStoragePingTracker extends PingTracker implements ManagementN
                 .eq(BackupStorageVO_.uuid, uuid)
                 .eq(BackupStorageVO_.status, BackupStorageStatus.Disconnected).isExists();
 
-        if (r.isSuccess() && isDisconnected) {
+        if (reply.isSuccess() && isDisconnected) {
             return ReconnectDecision.SubmitReconnectTask;
         }
 
