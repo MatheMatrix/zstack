@@ -67,7 +67,9 @@ public class HttpServletRequestUtils {
             return "Sogou Explorer";
         } else if (userAgent.contains("safari")) {
             return "Safari";
-        } else {
+        } else if (userAgent.contains("cli")) {
+            return "cli";
+        }else {
             return "Other";
         }
     }
