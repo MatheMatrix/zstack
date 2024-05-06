@@ -21,12 +21,10 @@ import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.rest.RESTFacade;
-import org.zstack.header.storage.addon.NodeHealthy;
-import org.zstack.header.storage.addon.RemoteTarget;
-import org.zstack.header.storage.addon.StorageCapacity;
-import org.zstack.header.storage.addon.StorageHealthy;
+import org.zstack.header.storage.addon.*;
 import org.zstack.header.storage.addon.primary.*;
 import org.zstack.header.storage.primary.PrimaryStorageStatus;
+import org.zstack.header.storage.primary.VolumeSnapshotCapability;
 import org.zstack.header.storage.snapshot.VolumeSnapshotStats;
 import org.zstack.header.volume.VolumeConstant;
 import org.zstack.header.volume.VolumeProtocol;
@@ -64,6 +62,26 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     public static final String GET_CAPACITY_PATH = "/zbs/primarystorage/capacity";
     public static final String CREATE_VOLUME_PATH = "/zbs/primarystorage/volume/create";
     public static final String DELETE_VOLUME_PATH = "/zbs/primarystorage/volume/delete";
+    public static final String CBD_TO_NBD_PATH = "/zbs/primarystorage/volume/cbd2nbd";
+    public static final String CREATE_SNAPSHOT_PATH = "/zbs/primarystorage/snapshot/create";
+    public static final String CLONE_VOLUME_PATH = "/zbs/primarystorage/volume/clone";
+    public static final String QUERY_VOLUME_PATH = "/zbs/primarystorage/volume/query";
+
+    private static final String ZBS_CBD_LUN_PATH_FORMAT = "cbd:%s/%s/%s";
+    private static final String ZBS_CBD_LUN_SNAPSHOT_NAME_FORMAT = "%s/%s@%s";
+    private static final StorageCapabilities capabilities = new StorageCapabilities();
+
+    static {
+        VolumeSnapshotCapability scap = new VolumeSnapshotCapability();
+        scap.setSupport(true);
+        scap.setArrangementType(VolumeSnapshotCapability.VolumeSnapshotArrangementType.INDIVIDUAL);
+        scap.setSupportCreateOnHypervisor(false);
+        capabilities.setSnapshotCapability(scap);
+        capabilities.setSupportCloneFromVolume(false);
+        capabilities.setSupportStorageQos(false);
+        capabilities.setSupportLiveExpandVolume(false);
+        capabilities.setSupportedImageFormats(Collections.singletonList("raw"));
+    }
 
     @Override
     public void activate(BaseVolumeInfo v, HostInventory h, boolean shareable, ReturnValueCompletion<ActiveVolumeTO> comp) {
@@ -318,12 +336,19 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     @Override
     public void reportNodeHealthy(HostInventory host, ReturnValueCompletion<NodeHealthy> comp) {
+        NodeHealthy healthy = new NodeHealthy();
 
+        Arrays.asList(VolumeProtocol.CBD).forEach(it -> {
+            //TODO: CHECK_HOST_STORAGE_CONNECTION_PATH call
+            healthy.setHealthy(it, StorageHealthy.Ok);
+        });
+
+        comp.success(healthy);
     }
 
     @Override
     public StorageCapabilities reportCapabilities() {
-        return null;
+        return capabilities;
     }
 
     @Override
@@ -377,7 +402,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     @Override
     public void cloneVolume(String srcInstallPath, CreateVolumeSpec dst, ReturnValueCompletion<VolumeStats> comp) {
-
+        doCloneVolume(srcInstallPath, dst, comp);
     }
 
     @Override
@@ -392,7 +417,25 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     @Override
     public void stats(String installPath, ReturnValueCompletion<VolumeStats> comp) {
+        QueryVolumeCmd cmd = new QueryVolumeCmd();
+        cmd.installPath = installPath;
 
+        httpCall(QUERY_VOLUME_PATH, cmd, QueryVolumeRsp.class, new ReturnValueCompletion<QueryVolumeRsp>(comp) {
+            @Override
+            public void success(QueryVolumeRsp returnValue) {
+                VolumeStats stats = new VolumeStats();
+                stats.setInstallPath(installPath);
+                stats.setSize(returnValue.getSize());
+                stats.setActualSize(returnValue.getSize());
+                stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
+                comp.success(stats);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                comp.fail(errorCode);
+            }
+        });
     }
 
     @Override
@@ -412,17 +455,42 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     @Override
     public void export(ExportSpec espec, VolumeProtocol protocol, ReturnValueCompletion<RemoteTarget> comp) {
+        if (protocol != VolumeProtocol.CBD) {
+            throw new RuntimeException("unsupported target " + protocol.name());
+        }
 
+        CbdToNbdCmd cmd = new CbdToNbdCmd();
+        cmd.installPath = espec.getInstallPath();
+
+        httpCall(CBD_TO_NBD_PATH, cmd, CbdToNbdRsp.class, new ReturnValueCompletion<CbdToNbdRsp>(comp) {
+            @Override
+            public void success(CbdToNbdRsp returnValue) {
+                CbdRemoteTarget target = new CbdRemoteTarget();
+                target.setResourceURI(returnValue.getCbdToNbdPath());
+                comp.success(target);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                comp.fail(errorCode);
+            }
+        });
     }
 
     @Override
     public void unexport(ExportSpec espec, VolumeProtocol protocol, Completion comp) {
-
+        if (protocol == VolumeProtocol.CBD) {
+            unexportCbd(espec.getInstallPath());
+        } else {
+            comp.fail(operr("unsupported protocol %s", protocol.name()));
+            return;
+        }
+        comp.success();
     }
 
     @Override
     public void createSnapshot(CreateVolumeSnapshotSpec spec, ReturnValueCompletion<VolumeSnapshotStats> comp) {
-
+        doCreateSnapshot(spec, comp);
     }
 
     @Override
@@ -445,6 +513,90 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     }
 
+    private void doCloneVolume(String srcInstallPath, CreateVolumeSpec dst, ReturnValueCompletion<VolumeStats> comp) {
+        final String srcPath = String.format(
+                ZBS_CBD_LUN_SNAPSHOT_NAME_FORMAT,
+                getLogicalPoolNameFromPath(srcInstallPath),
+                getLunIdFromPath(srcInstallPath),
+                getSnapIdFromPath(srcInstallPath)
+        );
+        final String destPath = String.format(
+                ZBS_CBD_LUN_PATH_FORMAT,
+                getPhysicalPoolNameFromPath(srcInstallPath),
+                getLogicalPoolNameFromPath(srcInstallPath),
+                dst.getName()
+        );
+
+        CloneVolumeCmd cmd = new CloneVolumeCmd();
+        cmd.srcPath = srcPath;
+        cmd.destPath = destPath;
+
+        httpCall(CLONE_VOLUME_PATH, cmd, CloneVolumeRsp.class, new ReturnValueCompletion<CloneVolumeRsp>(comp) {
+            @Override
+            public void success(CloneVolumeRsp returnValue) {
+                VolumeStats stats = new VolumeStats();
+                stats.setInstallPath(returnValue.installPath);
+                stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
+                stats.setSize(returnValue.getSize());
+                stats.setActualSize(returnValue.getSize());
+                comp.success(stats);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                comp.fail(errorCode);
+            }
+        });
+    }
+
+    public void doCreateSnapshot(CreateVolumeSnapshotSpec spec, ReturnValueCompletion<VolumeSnapshotStats> comp) {
+        final String snapPath = String.format(
+                ZBS_CBD_LUN_SNAPSHOT_NAME_FORMAT,
+                getLogicalPoolNameFromPath(spec.getVolumeInstallPath()),
+                getLunIdFromPath(spec.getVolumeInstallPath()),
+                spec.getName()
+        );
+
+        CreateSnapshotCmd cmd = new CreateSnapshotCmd();
+        cmd.skipOnExisting = true;
+        cmd.snapPath = snapPath;
+
+        httpCall(CREATE_SNAPSHOT_PATH, cmd, CreateSnapshotRsp.class, new ReturnValueCompletion<CreateSnapshotRsp>(comp) {
+            @Override
+            public void success(CreateSnapshotRsp returnValue) {
+                VolumeSnapshotStats stats = new VolumeSnapshotStats();
+                stats.setInstallPath(returnValue.getInstallPath());
+                stats.setActualSize(returnValue.getSize());
+                comp.success(stats);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                comp.fail(errorCode);
+            }
+        });
+    }
+
+    private synchronized void unexportCbd(String source) {
+
+    }
+
+    public String getLogicalPoolNameFromPath(String url) {
+        return url.split("/")[1];
+    }
+
+    public String getPhysicalPoolNameFromPath(String url) {
+        return url.split("/")[0].split(":")[1];
+    }
+
+    public String getLunIdFromPath(String url) {
+        return url.split("/")[2].split("@")[0];
+    }
+
+    public String getSnapIdFromPath(String url) {
+        return url.split("/")[2].split("@")[1];
+    }
+
     public void doDeleteVolume(String installPath, Boolean force, Completion comp) {
         DeleteVolumeCmd cmd = new DeleteVolumeCmd();
         cmd.installPath = installPath;
@@ -465,7 +617,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     public static String buildVolumePath(String physicalPoolName, String logicalPoolName, String volId) {
         String base = volId.replace("-", "");
-        return String.format("cbd:%s/%s/%s", physicalPoolName, logicalPoolName, base);
+        return String.format(ZBS_CBD_LUN_PATH_FORMAT, physicalPoolName, logicalPoolName, base);
     }
 
     private void reloadDbInfo() {
@@ -596,6 +748,72 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         }
     }
 
+    public static class QueryVolumeRsp extends AgentResponse {
+        public Long size;
+
+        public Long getSize() {
+            return size;
+        }
+
+        public void setSize(Long size) {
+            this.size = size;
+        }
+    }
+
+    public static class CbdToNbdRsp extends AgentResponse {
+        public String cbdToNbdPath;
+
+        public String getCbdToNbdPath() {
+            return cbdToNbdPath;
+        }
+
+        public void setCbdToNbdPath(String cbdToNbdPath) {
+            this.cbdToNbdPath = cbdToNbdPath;
+        }
+    }
+
+    public static class CloneVolumeRsp extends AgentResponse {
+        public Long size;
+        public String installPath;
+
+        public Long getSize() {
+            return size;
+        }
+
+        public void setSize(Long size) {
+            this.size = size;
+        }
+
+        public String getInstallPath() {
+            return installPath;
+        }
+
+        public void setInstallPath(String installPath) {
+            this.installPath = installPath;
+        }
+    }
+
+    public static class CreateSnapshotRsp extends AgentResponse {
+        String installPath;
+        Long size;
+
+        public String getInstallPath() {
+            return installPath;
+        }
+
+        public void setInstallPath(String installPath) {
+            this.installPath = installPath;
+        }
+
+        public Long getSize() {
+            return size;
+        }
+
+        public void setSize(Long size) {
+            this.size = size;
+        }
+    }
+
     public static class DeleteVolumeRsp extends AgentResponse {
     }
 
@@ -660,6 +878,72 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     }
 
     public static class AgentResponse extends ZbsMdsBase.AgentResponse {
+    }
+
+    public static class QueryVolumeCmd extends AgentCommand {
+        public String installPath;
+
+        public String getInstallPath() {
+            return installPath;
+        }
+
+        public void setInstallPath(String installPath) {
+            this.installPath = installPath;
+        }
+    }
+
+    public static class CbdToNbdCmd extends AgentCommand {
+        public String installPath;
+
+        public String getInstallPath() {
+            return installPath;
+        }
+
+        public void setInstallPath(String installPath) {
+            this.installPath = installPath;
+        }
+    }
+
+    public static class CloneVolumeCmd extends AgentCommand {
+        String srcPath;
+        String destPath;
+
+        public String getSrcPath() {
+            return srcPath;
+        }
+
+        public void setSrcPath(String srcPath) {
+            this.srcPath = srcPath;
+        }
+
+        public String getDestPath() {
+            return destPath;
+        }
+
+        public void setDestPath(String destPath) {
+            this.destPath = destPath;
+        }
+    }
+
+    public static class CreateSnapshotCmd extends AgentCommand {
+        boolean skipOnExisting;
+        String snapPath;
+
+        public boolean isSkipOnExisting() {
+            return skipOnExisting;
+        }
+
+        public void setSkipOnExisting(boolean skipOnExisting) {
+            this.skipOnExisting = skipOnExisting;
+        }
+
+        public String getSnapPath() {
+            return snapPath;
+        }
+
+        public void setSnapPath(String snapPath) {
+            this.snapPath = snapPath;
+        }
     }
 
     public static class DeleteVolumeCmd extends AgentCommand {

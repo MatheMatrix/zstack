@@ -9,5 +9,6 @@ public interface RemoteTarget {
     //  - nbd://host/export-name
     //  - rbd://pool/image
     //  - nvme://host-nqn@ip:port/nqn/diskId
+    //  - cbd:/pool/lpool/export-name
     String getResourceURI();
 }
