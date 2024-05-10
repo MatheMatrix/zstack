@@ -216,10 +216,13 @@ public class VolumeSnapshotTreeWithVolume {
 
     private VolumeSnapshotLeaf root;
     private String volumeUuid;
+    private VolumeSnapshotInventory snapshotInventoryForVolume;
     private List<VolumeSnapshotInventory> aliveChainInDb;
     private boolean isCurrent;
 
     public static VolumeSnapshotTreeWithVolume fromInventories(List<VolumeSnapshotInventory> invs, boolean treeIsCurrent, VolumeVO volumeVO) {
+        VolumeSnapshotTreeWithVolume tree = new VolumeSnapshotTreeWithVolume();
+
         if (treeIsCurrent) {
             VolumeSnapshotInventory latestInv = invs.stream().filter(VolumeSnapshotInventory::isLatest).collect(Collectors.toList()).get(0);
             VolumeSnapshotVO snapshotVO = new VolumeSnapshotVO();
@@ -233,9 +236,10 @@ public class VolumeSnapshotTreeWithVolume {
             snapshotVO.setPrimaryStorageInstallPath(volumeVO.getInstallPath());
             snapshotVO.setPrimaryStorageUuid(volumeVO.getPrimaryStorageUuid());
             invs.add(VolumeSnapshotInventory.valueOf(snapshotVO));
+            tree.snapshotInventoryForVolume = VolumeSnapshotInventory.valueOf(snapshotVO);
+            tree.volumeUuid = volumeVO.getUuid();
         }
 
-        VolumeSnapshotTreeWithVolume tree = new VolumeSnapshotTreeWithVolume();
         Map<String, VolumeSnapshotLeaf> map = new HashMap<>();
         for (VolumeSnapshotInventory inv : invs) {
             VolumeSnapshotLeaf leaf = map.get(inv.getUuid());
@@ -260,11 +264,9 @@ public class VolumeSnapshotTreeWithVolume {
             } else {
                 tree.root = leaf;
             }
-
-            tree.volumeUuid = inv.getVolumeUuid();
         }
 
-        tree.aliveChainInDb = tree.getAliveChainInventory();
+        tree.aliveChainInDb = tree.getAliveChainSnapshotInventory();
         Collections.reverse(tree.aliveChainInDb);
         tree.isCurrent = treeIsCurrent;
         DebugUtils.Assert(tree.root != null, "why tree root is null???");
@@ -345,7 +347,7 @@ public class VolumeSnapshotTreeWithVolume {
         return isCurrent && getAliveChainSnapshotUuids().contains(snapshotUuid);
     }
 
-    private List<VolumeSnapshotInventory> getAliveChainInventory() {
+    private List<VolumeSnapshotInventory> getAliveChainSnapshotInventory() {
         List<VolumeSnapshotInventory> latestSnapshots = getAllSnapshotLeafs().stream().map(VolumeSnapshotLeaf::getInventory)
                 .filter(VolumeSnapshotInventory::isLatest).collect(Collectors.toList());
         if (latestSnapshots.isEmpty()) {
@@ -358,21 +360,26 @@ public class VolumeSnapshotTreeWithVolume {
                 return arg.getUuid().equals(latestSnapshots.get(0).getUuid());
             }
         });
-        return latestLeaf.getAncestors();
+
+        List<VolumeSnapshotInventory> aliveChainSnapshotInventory = latestLeaf.getAncestors();
+        if (isCurrent) {
+            aliveChainSnapshotInventory.add(snapshotInventoryForVolume);
+        }
+        return aliveChainSnapshotInventory;
     }
 
     public List<String> getAliveChainSnapshotUuids() {
-        if (getAliveChainInventory().isEmpty()) {
+        if (getAliveChainSnapshotInventory().isEmpty()) {
             return new ArrayList<>();
         }
-        return getAliveChainInventory().stream().map(VolumeSnapshotInventory::getUuid).collect(Collectors.toList());
+        return getAliveChainSnapshotInventory().stream().map(VolumeSnapshotInventory::getUuid).collect(Collectors.toList());
     }
 
-    public List<String> getAliveChainSnapshotInstallPath() {
-        if (getAliveChainInventory().isEmpty()) {
+    public List<String> getAliveChainSnapshotInstallPaths() {
+        if (getAliveChainSnapshotInventory().isEmpty()) {
             return new ArrayList<>();
         }
-        return getAliveChainInventory().stream().map(VolumeSnapshotInventory::getPrimaryStorageInstallPath).collect(Collectors.toList());
+        return getAliveChainSnapshotInventory().stream().map(VolumeSnapshotInventory::getPrimaryStorageInstallPath).collect(Collectors.toList());
     }
 
     public List<VolumeSnapshotLeaf> getSiblingLeaves(VolumeSnapshotLeaf leaf) {
