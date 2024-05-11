@@ -67,6 +67,9 @@ public class APIAddIpv6RangeMsg extends APICreateMessage implements L3NetworkMes
     @APIParam(required = false, validValues = {"Normal", "AddressPool"})
     private String ipRangeType;
 
+    @APIParam(required = false, validValues = {"enable", "disable"})
+    private String state;
+
     @Override
     public String getL3NetworkUuid() {
         return l3NetworkUuid;
@@ -138,6 +141,14 @@ public class APIAddIpv6RangeMsg extends APICreateMessage implements L3NetworkMes
 
     public void setIpRangeType(String ipRangeType) {
         this.ipRangeType = ipRangeType;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
     }
 
     public static APIAddIpv6RangeMsg __example__() {

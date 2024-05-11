@@ -982,11 +982,67 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
         return bus.makeLocalServiceId(FlatNetworkServiceConstant.SERVICE_ID);
     }
 
+    private void upgradeFlatDhcpServerIp() {
+        NetworkServiceProviderVO nsVO = Q.New(NetworkServiceProviderVO.class)
+                .eq(NetworkServiceProviderVO_.type, FlatNetworkServiceConstant.FLAT_NETWORK_SERVICE_TYPE)
+                .find();
+        List<L3NetworkVO> l3NetworkVos = Q.New(L3NetworkVO.class).list();
+        for (L3NetworkVO l3vo : l3NetworkVos) {
+            List<NetworkServiceL3NetworkRefVO> dhcps = l3vo.getNetworkServices().stream()
+                    .filter(ref -> ref.getNetworkServiceType().equals(NetworkServiceType.DHCP.toString())
+                            && ref.getNetworkServiceProviderUuid().equals(nsVO.getUuid()))
+                    .collect(Collectors.toList());
+            if (dhcps.isEmpty()) {
+                /* no dhcp service */
+                continue;
+            }
+
+            List<Integer> ipVersions = l3vo.getIpVersions();
+            if (ipVersions.size() == 1) {
+                Integer ipVersion = ipVersions.get(0);
+                if (ipVersion == IPv6Constants.IPv4) {
+                    Map<String, String> dhcpMap = getExistingDhcpServerIp(l3vo.getUuid(), IPv6Constants.IPv4);
+                    if (dhcpMap.isEmpty()) {
+                        allocateDhcpIp(l3vo.getUuid(), IPv6Constants.IPv4);
+                    }
+                } else {
+                    Map<String, String> dhcpMap = getExistingDhcpServerIp(l3vo.getUuid(), IPv6Constants.IPv6);
+                    if (dhcpMap.isEmpty()) {
+                        allocateDhcpIp(l3vo.getUuid(), IPv6Constants.IPv6);
+                    }
+                }
+            } else if (ipVersions.size() == 2) {
+                /* dual stack */
+                Map<String, String> dhcpMap = getExistingDhcpServerIp(l3vo.getUuid(), IPv6Constants.DUAL_STACK);
+                boolean hasIpv4 = false;
+                boolean hasIpv6 = false;
+                for (Map.Entry<String, String> e : dhcpMap.entrySet()) {
+                    if (IPv6NetworkUtils.isValidIpv4(e.getKey())) {
+                        hasIpv4 = true;
+                    } else if (IPv6NetworkUtils.isIpv6Address(e.getKey())) {
+                        hasIpv6 = true;
+                    }
+                }
+                if (!hasIpv4) {
+                    allocateDhcpIp(l3vo.getUuid(), IPv6Constants.IPv4);
+                }
+                if (!hasIpv6) {
+                    allocateDhcpIp(l3vo.getUuid(), IPv6Constants.IPv6);
+                }
+            }
+        }
+    }
+
     @Override
     public boolean start() {
         for (L3NetworkGetIpStatisticExtensionPoint ext : pluginRgty.getExtensionList(L3NetworkGetIpStatisticExtensionPoint.class)) {
             getIpStatisticExts.put(ext.getApplianceVmInstanceType(), ext);
         }
+
+        if (FlatDhcpGlobalProperty.UPGRADE_FLAT_DHCP_SERVER_IP) {
+            upgradeFlatDhcpServerIp();
+        }
+
         return true;
     }
 

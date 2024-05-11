@@ -49,6 +49,9 @@ public class AddIpRangeAction extends AbstractAction {
     @Param(required = false, validValues = {"Normal","AddressPool"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String ipRangeType;
 
+    @Param(required = false, validValues = {"enable","disable"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String state;
+
     @Param(required = false)
     public java.lang.String resourceUuid;
 

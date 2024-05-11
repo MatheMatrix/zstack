@@ -28,6 +28,8 @@ public class APIAddIpRangeByNetworkCidrMsg extends APICreateMessage implements L
     private String networkCidr;
     @APIParam(required = false, maxLength = 64)
     private String gateway;
+    @APIParam(required = false, validValues = {"enable", "disable"})
+    private String state;
 
     /**
      * @desc IPv4 range type
@@ -82,6 +84,14 @@ public class APIAddIpRangeByNetworkCidrMsg extends APICreateMessage implements L
 
     public void setIpRangeType(String ipRangeType) {
         this.ipRangeType = ipRangeType;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
     }
 
     public static APIAddIpRangeByNetworkCidrMsg __example__() {

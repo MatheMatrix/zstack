@@ -1,6 +1,7 @@
 package org.zstack.sdk;
 
 import org.zstack.sdk.IpRangeType;
+import org.zstack.sdk.IpRangeState;
 
 public class IpRangeInventory  {
 
@@ -106,6 +107,14 @@ public class IpRangeInventory  {
     }
     public IpRangeType getIpRangeType() {
         return this.ipRangeType;
+    }
+
+    public IpRangeState state;
+    public void setState(IpRangeState state) {
+        this.state = state;
+    }
+    public IpRangeState getState() {
+        return this.state;
     }
 
     public java.sql.Timestamp createDate;

@@ -8,10 +8,7 @@ import org.zstack.header.vo.ResourceVO;
 import org.zstack.utils.network.IPv6Constants;
 import org.zstack.utils.network.NetworkUtils;
 
-import javax.persistence.Column;
-import javax.persistence.Id;
-import javax.persistence.MappedSuperclass;
-import javax.persistence.PreUpdate;
+import javax.persistence.*;
 import java.sql.Timestamp;
 
 @MappedSuperclass
@@ -51,6 +48,10 @@ public class IpRangeAO extends ResourceVO {
 
     @Column
     private Integer prefixLen;
+
+    @Column
+    @Enumerated(EnumType.STRING)
+    private IpRangeState state;
 
     @Column
     private String addressMode;
@@ -181,5 +182,13 @@ public class IpRangeAO extends ResourceVO {
         } else {
             return 0;
         }
+    }
+
+    public IpRangeState getState() {
+        return state;
+    }
+
+    public void setState(IpRangeState state) {
+        this.state = state;
     }
 }

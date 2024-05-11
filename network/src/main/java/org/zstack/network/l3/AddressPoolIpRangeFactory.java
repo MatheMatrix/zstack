@@ -40,6 +40,7 @@ public class AddressPoolIpRangeFactory implements IpRangeFactory {
                 vo.setIpVersion(ipr.getIpVersion());
                 vo.setAddressMode(ipr.getAddressMode());
                 vo.setPrefixLen(ipr.getPrefixLen());
+                vo.setState(ipr.getState());
                 dbf.getEntityManager().persist(vo);
                 dbf.getEntityManager().flush();
                 dbf.getEntityManager().refresh(vo);

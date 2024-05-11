@@ -382,6 +382,7 @@ public class L3BasicNetwork implements L3Network {
         rq.select(IpRangeVO_.startIp, IpRangeVO_.endIp, IpRangeVO_.gateway);
         rq.add(IpRangeVO_.l3NetworkUuid, Op.EQ, self.getUuid());
         rq.add(IpRangeVO_.ipVersion, Op.EQ, ipversion);
+        rq.add(IpRangeVO_.state, Op.EQ, IpRangeState.Enabled);
         List<Tuple> ts = rq.listTuple();
 
         List<String> addressPoolGateways = Q.New(AddressPoolVO.class)
@@ -580,18 +581,24 @@ public class L3BasicNetwork implements L3Network {
         }
 
         if (msg.getIpRangeUuid() != null) {
-            IpRangeVO ipr = dbf.findByUuid(msg.getIpRangeUuid(), IpRangeVO.class);
-            ipRangeVOs.add(ipr);
+            IpRangeVO ipr = Q.New(IpRangeVO.class)
+                    .eq(IpRangeVO_.uuid, msg.getIpRangeUuid())
+                    .eq(IpRangeVO_.state, IpRangeState.Enabled).find();
+            if (ipr != null) {
+                ipRangeVOs.add(ipr);
+            }
         } else {
             if (msg.getIpRangeType() == null) {
                 List<IpRangeVO> tempIpRangeVO = Q.New(IpRangeVO.class)
                         .eq(IpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid())
+                        .eq(IpRangeVO_.state, IpRangeState.Enabled)
                         .in(IpRangeVO_.ipVersion, ipVersions)
                         .list();
                 ipRangeVOs.addAll(tempIpRangeVO);
             } else if (msg.getIpRangeType().equals(IpRangeType.Normal.toString())) {
                 List<IpRangeVO> tempIpRangeVO = Q.New(NormalIpRangeVO.class)
                         .eq(NormalIpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid())
+                        .eq(NormalIpRangeVO_.state, IpRangeState.Enabled)
                         .in(NormalIpRangeVO_.ipVersion, ipVersions)
                         .list();
                 ipRangeVOs.addAll(tempIpRangeVO);
@@ -599,6 +606,7 @@ public class L3BasicNetwork implements L3Network {
             } else {
                 List<IpRangeVO> tempIpRangeVO = Q.New(AddressPoolVO.class)
                         .eq(AddressPoolVO_.l3NetworkUuid, msg.getL3NetworkUuid())
+                        .eq(AddressPoolVO_.state, IpRangeState.Enabled)
                         .in(AddressPoolVO_.ipVersion, ipVersions)
                         .list();
                 ipRangeVOs.addAll(tempIpRangeVO);
@@ -704,13 +712,29 @@ public class L3BasicNetwork implements L3Network {
 
 
     private void handle(APIChangeL3NetworkStateMsg msg) {
-        if (L3NetworkStateEvent.enable.toString().equals(msg.getStateEvent())) {
-            self.setState(L3NetworkState.Enabled);
+        if (msg.getIpRangeUuid() == null) {
+            if (L3NetworkStateEvent.enable.toString().equals(msg.getStateEvent())) {
+                self.setState(L3NetworkState.Enabled);
+                for (IpRangeVO ipr : self.getIpRanges()) {
+                    ipr.setState(IpRangeState.Enabled);
+                }
+            } else {
+                self.setState(L3NetworkState.Disabled);
+                for (IpRangeVO ipr : self.getIpRanges()) {
+                    ipr.setState(IpRangeState.Disabled);
+                }
+            }
+            self = dbf.updateAndRefresh(self);
         } else {
-            self.setState(L3NetworkState.Disabled);
+            if (L3NetworkStateEvent.enable.toString().equals(msg.getStateEvent())) {
+                SQL.New(IpRangeVO.class).eq(IpRangeVO_.uuid, msg.getIpRangeUuid())
+                        .set(IpRangeVO_.state, IpRangeState.Enabled);
+            } else {
+                SQL.New(IpRangeVO.class).eq(IpRangeVO_.uuid, msg.getIpRangeUuid())
+                        .set(IpRangeVO_.state, IpRangeState.Disabled);
+            }
+            self = dbf.reload(self);
         }
-
-        self = dbf.updateAndRefresh(self);
 
         APIChangeL3NetworkStateEvent evt = new APIChangeL3NetworkStateEvent(msg.getId());
         evt.setInventory(L3NetworkInventory.valueOf(self));

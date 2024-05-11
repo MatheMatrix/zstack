@@ -67,6 +67,7 @@ class StripNetworkAndBroadcastAddressCase extends SubCase {
             fakeIpr_1.netmask = '255.255.255.0'
             fakeIpr_1.ipVersion = 4
             fakeIpr_1.l3NetworkUuid = l3.uuid
+            fakeIpr_1.state = org.zstack.header.network.l3.IpRangeState.Enabled
             fakeIpr_1.setAccountUuid(AccountConstant.INITIAL_SYSTEM_ADMIN_UUID)
             dbf.persist(fakeIpr_1)
             expect(AssertionError.class) {

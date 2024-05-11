@@ -48,9 +48,11 @@ public abstract class AbstractIpAllocatorStrategy implements IpAllocatorStrategy
         List<IpRangeVO> iprs;
         if (ipRangeType.equals(IpRangeType.Normal.toString())) {
             iprs = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, l3NetworkUuid)
+                    .eq(NormalIpRangeVO_.state, IpRangeState.Enabled)
                     .eq(NormalIpRangeVO_.ipVersion, ipVersion).list();
         } else {
             iprs = Q.New(AddressPoolVO.class).eq(AddressPoolVO_.l3NetworkUuid, l3NetworkUuid)
+                    .eq(NormalIpRangeVO_.state, IpRangeState.Enabled)
                     .eq(AddressPoolVO_.ipVersion, ipVersion).list();
         }
         if (ipVersion == IPv6Constants.IPv4) {
@@ -68,7 +70,9 @@ public abstract class AbstractIpAllocatorStrategy implements IpAllocatorStrategy
         List<IpRangeVO> iprs;
 
         if (msg.getIpRangeUuid() != null) {
-            iprs = Q.New(IpRangeVO.class).eq(IpRangeVO_.uuid, msg.getIpRangeUuid()).list();
+            iprs = Q.New(IpRangeVO.class).eq(IpRangeVO_.state, IpRangeState.Enabled)
+                    .eq(IpRangeVO_.state, IpRangeState.Enabled)
+                    .eq(IpRangeVO_.uuid, msg.getIpRangeUuid()).list();
         } else {
             iprs = getIpRanges(getReqIpRangeType(msg), msg.getL3NetworkUuid(), ipVersion, false);
         }

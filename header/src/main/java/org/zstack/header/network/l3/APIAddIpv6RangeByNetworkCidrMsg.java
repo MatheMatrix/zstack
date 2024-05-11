@@ -37,6 +37,9 @@ public class APIAddIpv6RangeByNetworkCidrMsg extends APICreateMessage implements
     @APIParam(required = false, validValues = {"Normal", "AddressPool"})
     private String ipRangeType;
 
+    @APIParam(required = false, validValues = {"enable", "disable"})
+    private String state;
+
     @Override
     public String getL3NetworkUuid() {
         return l3NetworkUuid;
@@ -84,6 +87,14 @@ public class APIAddIpv6RangeByNetworkCidrMsg extends APICreateMessage implements
 
     public void setIpRangeType(String ipRangeType) {
         this.ipRangeType = ipRangeType;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
     }
 
     public static APIAddIpv6RangeByNetworkCidrMsg __example__() {

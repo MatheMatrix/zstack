@@ -86,6 +86,8 @@ public class IpRangeInventory implements Serializable {
 
     private IpRangeType ipRangeType;
 
+    private IpRangeState state;
+
     /**
      * @desc the time this resource gets created
      */
@@ -112,6 +114,7 @@ public class IpRangeInventory implements Serializable {
         inv.setIpVersion(vo.getIpVersion());
         inv.setAddressMode(vo.getAddressMode());
         inv.setPrefixLen(vo.getPrefixLen());
+        inv.setState(vo.getState());
 
         return inv;
     }
@@ -244,6 +247,14 @@ public class IpRangeInventory implements Serializable {
         this.ipRangeType = ipRangeType;
     }
 
+    public IpRangeState getState() {
+        return state;
+    }
+
+    public void setState(IpRangeState state) {
+        this.state = state;
+    }
+
     @Override
     public String toString() {
         return JSONObjectUtil.toJsonString(this);
@@ -267,6 +278,7 @@ public class IpRangeInventory implements Serializable {
         ipr.setUuid(msg.getResourceUuid());
         ipr.setIpVersion(IPv6Constants.IPv4);
         ipr.setIpRangeType(IpRangeType.valueOf(msg.getIpRangeType()));
+        ipr.setState(IpRangeState.valueOf(msg.getState()));
         return ipr;
     }
 
@@ -287,6 +299,8 @@ public class IpRangeInventory implements Serializable {
         ipr.setL3NetworkUuid(msg.getL3NetworkUuid());
         ipr.setUuid(msg.getResourceUuid());
         ipr.setIpVersion(IPv6Constants.IPv4);
+
+        ipr.setState(IpRangeState.valueOf(msg.getState()));
 
         return ipr;
     }
@@ -349,6 +363,7 @@ public class IpRangeInventory implements Serializable {
         ipr.setIpVersion(IPv6Constants.IPv6);
         ipr.setPrefixLen(IPv6NetworkUtils.getPrefixLenOfNetworkCidr(msg.getNetworkCidr()));
         ipr.setIpRangeType(IpRangeType.valueOf(msg.getIpRangeType()));
+        ipr.setState(IpRangeState.valueOf(msg.getState()));
 
         return ipr;
     }
@@ -369,6 +384,7 @@ public class IpRangeInventory implements Serializable {
         ipr.setUuid(msg.getResourceUuid());
         ipr.setIpVersion(IPv6Constants.IPv6);
         ipr.setIpRangeType(IpRangeType.valueOf(msg.getIpRangeType()));
+        ipr.setState(IpRangeState.valueOf(msg.getState()));
 
         return ipr;
     }

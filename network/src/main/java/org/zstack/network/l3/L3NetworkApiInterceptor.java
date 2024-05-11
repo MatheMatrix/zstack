@@ -10,6 +10,7 @@ import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
+import org.zstack.core.db.SQL;
 import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
@@ -103,6 +104,8 @@ public class L3NetworkApiInterceptor implements ApiMessageInterceptor {
             validate((APIDeleteIpRangeMsg) msg);
         } else if (msg instanceof APISetL3NetworkMtuMsg) {
             validate((APISetL3NetworkMtuMsg) msg);
+        } else if (msg instanceof APIChangeL3NetworkStateMsg) {
+            validate((APIChangeL3NetworkStateMsg) msg);
         }
 
         setServiceId(msg);
@@ -158,6 +161,17 @@ public class L3NetworkApiInterceptor implements ApiMessageInterceptor {
         if (noVlanMax != null && msg.getMtu() > noVlanMax) {
             throw new ApiMessageInterceptionException(argerr("could not set mtu because l2 network[uuid:%s] of " +
                     "l3 network [uuid:%s] mtu can not be bigger than the novlan network", l2VO.getUuid(), msg.getL3NetworkUuid()));
+        }
+    }
+
+    private void validate(APIChangeL3NetworkStateMsg msg) {
+        if (msg.getIpRangeUuid() != null) {
+            if (Q.New(IpRangeVO.class).eq(IpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid())
+                    .eq(IpRangeVO_.uuid, msg.getIpRangeUuid()).isExists()) {
+                throw new ApiMessageInterceptionException(argerr("could not change ip range state, " +
+                        "because ip range[uuid:%s] is not belonged l3 network[uuid:%s]",
+                        msg.getIpRangeUuid(), msg.getL3NetworkUuid()));
+            }
         }
     }
 
@@ -287,6 +301,10 @@ public class L3NetworkApiInterceptor implements ApiMessageInterceptor {
             msg.setIpRangeType(IpRangeType.Normal.toString());
         }
 
+        if (msg.getState() == null) {
+            msg.setState(IpRangeState.Enabled.toString());
+        }
+
         IpRangeInventory ipr = IpRangeInventory.fromMessage(msg);
         validateIpv6Range(ipr);
     }
@@ -324,6 +342,10 @@ public class L3NetworkApiInterceptor implements ApiMessageInterceptor {
             throw new ApiMessageInterceptionException(argerr("can not add ip range, because ipv6 address pool is not supported"));
             /* fake gateway
             msg.setGateway(msg.getStartIp()); */
+        }
+
+        if (msg.getState() == null) {
+            msg.setState(IpRangeState.Enabled.toString());
         }
 
         IpRangeInventory ipr = IpRangeInventory.fromMessage(msg);
@@ -409,6 +431,10 @@ public class L3NetworkApiInterceptor implements ApiMessageInterceptor {
 
         if (msg.getIpRangeType() == null) {
             msg.setIpRangeType(IpRangeType.Normal.toString());
+        }
+
+        if (msg.getState() == null) {
+            msg.setState(IpRangeState.Enabled.toString());
         }
 
         List<IpRangeInventory> iprs = IpRangeInventory.fromMessage(msg);
@@ -638,6 +664,10 @@ public class L3NetworkApiInterceptor implements ApiMessageInterceptor {
         if (msg.getIpRangeType().equals(IpRangeType.AddressPool.toString())) {
             /* fake gateway */
             msg.setGateway(msg.getStartIp());
+        }
+
+        if (msg.getState() == null) {
+            msg.setState(IpRangeState.Enabled.toString());
         }
 
         IpRangeInventory ipr = IpRangeInventory.fromMessage(msg);
