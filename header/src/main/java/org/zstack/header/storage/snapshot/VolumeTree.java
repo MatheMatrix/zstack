@@ -230,6 +230,7 @@ public class VolumeTree {
             snapshotVO.setLatest(false);
             snapshotVO.setName(String.format("volume-%s-%s", volumeVO.getName(), volumeVO.getUuid()));
             snapshotVO.setUuid(volumeVO.getUuid());
+            snapshotVO.setVolumeUuid(volumeVO.getUuid());
             snapshotVO.setParentUuid(latestInv.getUuid());
             snapshotVO.setTreeUuid(latestInv.getTreeUuid());
             snapshotVO.setState(VolumeSnapshotState.Enabled);
@@ -264,10 +265,9 @@ public class VolumeTree {
             } else {
                 tree.root = leaf;
             }
-
-            tree.volumeUuid = inv.getVolumeUuid();
         }
 
+        tree.volumeUuid = invs.get(0).getVolumeUuid();
         tree.aliveChainInDb = tree.getAliveChainSnapshotInventory();
         Collections.reverse(tree.aliveChainInDb);
         tree.isCurrent = treeIsCurrent;

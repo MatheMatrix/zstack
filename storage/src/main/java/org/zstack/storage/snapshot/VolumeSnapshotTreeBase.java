@@ -995,6 +995,15 @@ public class VolumeSnapshotTreeBase {
                         bmsg.setVolume(VolumeInventory.valueOf(volume));
                         bmsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
                         bmsg.setAliveChainInstallPathInDb(inAliveChain() ? currentVolumeTree.getAliveChainSnapshotInstallPaths() : new ArrayList<>());
+                        VolumeTree.VolumeSnapshotLeaf srcSnapshotLeaf = currentVolumeTree
+                                .findSnapshot(new Function<Boolean, VolumeSnapshotInventory>() {
+                                    @Override
+                                    public Boolean call(VolumeSnapshotInventory arg) {
+                                        return arg.getUuid().equals(srcSnapshotInv.getUuid());
+                                    }
+                                });
+                        bmsg.setSrcChildrenInstallPathInDb(srcSnapshotLeaf.getChildren().stream()
+                                .map(it -> it.getInventory().getPrimaryStorageInstallPath()).collect(Collectors.toList()));
                         if (onlineDelete()) {
                             bmsg.setVmUuid(volume.getVmInstanceUuid());
                         }

@@ -1254,7 +1254,9 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
             sq.add(VolumeSnapshotVO_.treeUuid, Op.EQ, inv.getUuid());
             List<VolumeSnapshotVO> vos = sq.list();
             VolumeSnapshotTree tree = VolumeSnapshotTree.fromVOs(vos);
-            inv.setTree(tree.getRoot().toLeafInventory(querySnapshotUuids(inv.getUuid(), session)));
+            List<String> snapUuids = Q.New(VolumeSnapshotVO.class).in(VolumeSnapshotVO_.uuid, querySnapshotUuids(inv.getUuid(), session))
+                    .notEq(VolumeSnapshotVO_.status, VolumeSnapshotStatus.Deleted).select(VolumeSnapshotVO_.uuid).listValues();
+            inv.setTree(tree.getRoot().toLeafInventory(new HashSet<>(snapUuids)));
         }
     }
 

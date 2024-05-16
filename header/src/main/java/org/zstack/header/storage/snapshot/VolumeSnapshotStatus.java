@@ -21,10 +21,16 @@ public enum VolumeSnapshotStatus {
         Ready.transactions(
                 new Transaction(StatusEvent.ready, VolumeSnapshotStatus.Ready),
                 new Transaction(StatusEvent.delete, VolumeSnapshotStatus.Deleting)
-
         );
         Deleting.transactions(
-                new Transaction(StatusEvent.ready, VolumeSnapshotStatus.Ready)
+                new Transaction(StatusEvent.ready, VolumeSnapshotStatus.Ready),
+                new Transaction(StatusEvent.delete, VolumeSnapshotStatus.Deleted),
+                new Transaction(StatusEvent.ready, VolumeSnapshotStatus.Deleted)
+        );
+        Deleted.transactions(
+                new Transaction(StatusEvent.ready, VolumeSnapshotStatus.Ready),
+                new Transaction(StatusEvent.delete, VolumeSnapshotStatus.Deleted),
+                new Transaction(StatusEvent.ready, VolumeSnapshotStatus.Deleted)
         );
     }
 

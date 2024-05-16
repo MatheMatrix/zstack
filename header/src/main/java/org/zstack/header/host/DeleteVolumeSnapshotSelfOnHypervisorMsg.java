@@ -12,6 +12,7 @@ public class DeleteVolumeSnapshotSelfOnHypervisorMsg extends NeedReplyMessage im
     private String srcPath;
     private String dstPath;
     private List<String> aliveChainInstallPathInDb;
+    private List<String> srcChildrenInstallPathInDb;
 
     public VolumeInventory getVolume() {
         return volume;
@@ -60,5 +61,13 @@ public class DeleteVolumeSnapshotSelfOnHypervisorMsg extends NeedReplyMessage im
 
     public void setAliveChainInstallPathInDb(List<String> aliveChainInstallPathInDb) {
         this.aliveChainInstallPathInDb = aliveChainInstallPathInDb;
+    }
+
+    public List<String> getSrcChildrenInstallPathInDb() {
+        return srcChildrenInstallPathInDb;
+    }
+
+    public void setSrcChildrenInstallPathInDb(List<String> srcChildrenInstallPathInDb) {
+        this.srcChildrenInstallPathInDb = srcChildrenInstallPathInDb;
     }
 }
