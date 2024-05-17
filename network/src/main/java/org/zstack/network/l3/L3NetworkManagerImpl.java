@@ -223,7 +223,10 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
                             element.avail = element.total;
                             element.ipv4TotalCapacity += t;
                             element.ipv4TotalCapacity = Math.min(element.ipv4TotalCapacity, Integer.MAX_VALUE);
-                            
+                            if (state == IpRangeState.Enabled) {
+                                ipv4AvailableCapacity += t;
+                                ipv4AvailableCapacity = Math.min(ipv4AvailableCapacity, (long) Integer.MAX_VALUE);
+                            }
                             element.ipv4AvailableCapacity = element.ipv4TotalCapacity;
                             ipv4TotalCapacity += t;
                             total += t;
@@ -238,6 +241,10 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
                         element.ipv6TotalCapacity += t;
                         element.ipv6TotalCapacity = Math.min(element.ipv6TotalCapacity, Integer.MAX_VALUE);
                         element.ipv6AvailableCapacity = element.ipv6TotalCapacity;
+                        if (state == IpRangeState.Enabled) {
+                            ipv6AvailableCapacity += t;
+                            ipv6AvailableCapacity = Math.min(ipv6AvailableCapacity, (long) Integer.MAX_VALUE);
+                        }
                         ipv6TotalCapacity += t;
                         total += t;
                         ipv6TotalCapacity = Math.min(ipv6TotalCapacity, (long)Integer.MAX_VALUE);
@@ -246,8 +253,8 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
 
                 }
                 capacity.ipv4TotalCapacity = ipv4TotalCapacity;
-                capacity.ipv4AvailableCapacity = ipv4TotalCapacity;
-                capacity.ipv6AvailableCapacity = ipv6TotalCapacity;
+                capacity.ipv4AvailableCapacity = ipv4AvailableCapacity;
+                capacity.ipv6AvailableCapacity = ipv6AvailableCapacity;
                 capacity.ipv6TotalCapacity = ipv6TotalCapacity;
                 capacity.total = total;
                 capacity.avail = total;

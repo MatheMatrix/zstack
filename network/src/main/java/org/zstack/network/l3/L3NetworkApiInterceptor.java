@@ -113,29 +113,117 @@ public class L3NetworkApiInterceptor implements ApiMessageInterceptor {
     }
 
     private void validate(APIReserveIpRangeMsg msg) {
+        L3NetworkVO l3NetworkVO = dbf.findByUuid(msg.getL3NetworkUuid(), L3NetworkVO.class);
         if (!NetworkUtils.isValidIPAddress(msg.getStartIp())) {
-            throw new ApiMessageInterceptionException(argerr("could not reserve ip address, " +
+            throw new ApiMessageInterceptionException(argerr("could not reserve ip range, " +
                     "because start ip[%s] is not valid ip address", msg.getStartIp()));
         }
 
         if (!NetworkUtils.isValidIPAddress(msg.getEndIp())) {
-            throw new ApiMessageInterceptionException(argerr("could not reserve ip address, " +
+            throw new ApiMessageInterceptionException(argerr("could not reserve ip range, " +
                     "because start ip[%s] is not valid ip address", msg.getStartIp()));
         }
 
         if (NetworkUtils.isIpv4Address(msg.getStartIp()) && !NetworkUtils.isIpv4Address(msg.getEndIp())) {
-            throw new ApiMessageInterceptionException(argerr("could not reserve ip address, " +
+            throw new ApiMessageInterceptionException(argerr("could not reserve ip range, " +
                     "because end ip[%s] is not ipv4 address", msg.getEndIp()));
         }
 
         if (IPv6NetworkUtils.isIpv6Address(msg.getStartIp()) && !IPv6NetworkUtils.isIpv6Address(msg.getEndIp())) {
-            throw new ApiMessageInterceptionException(argerr("could not reserve ip address, " +
+            throw new ApiMessageInterceptionException(argerr("could not reserve ip range, " +
                     "because end ip[%s] is not ipv6 address", msg.getEndIp()));
         }
 
         if (!IPv6NetworkUtils.isValidIpRange(msg.getStartIp(), msg.getEndIp())) {
-            throw new ApiMessageInterceptionException(argerr("could not reserve ip address, " +
+            throw new ApiMessageInterceptionException(argerr("could not reserve ip range, " +
                     "because end ip[%s] is less than start ip[%s]", msg.getEndIp(), msg.getStartIp()));
+        }
+
+        if (NetworkUtils.isValidIPAddress(msg.getStartIp())) {
+            List<IpRangeVO> ipv4Ranges = l3NetworkVO.getIpRanges().stream()
+                    .filter(ipr -> (ipr.getIpVersion() == IPv6Constants.IPv4
+                            && ipr.getState() == IpRangeState.Enabled))
+                    .collect(Collectors.toList());
+            if (ipv4Ranges.isEmpty()) {
+                throw new ApiMessageInterceptionException(argerr("could not reserve ip range, " +
+                        "because there is no ipv4 range"));
+            }
+
+            boolean startInRange = false;
+            boolean endInRange = false;
+            for (IpRangeVO ipr : ipv4Ranges) {
+                if (NetworkUtils.isInRange(msg.getStartIp(), ipr.getStartIp(), ipr.getEndIp())) {
+                    startInRange = true;
+                }
+                if (NetworkUtils.isInRange(msg.getEndIp(), ipr.getStartIp(), ipr.getEndIp())) {
+                    endInRange = true;
+                }
+            }
+
+            if (!startInRange) {
+                throw new ApiMessageInterceptionException(argerr("could not reserve ip range, " +
+                        "because start ip[%s] is not in any valid ip range", msg.getStartIp()));
+            }
+
+            if (!endInRange) {
+                throw new ApiMessageInterceptionException(argerr("could not reserve ip range, " +
+                        "because end ip[%s] is not in any valid ip range", msg.getEndIp()));
+            }
+
+            long start = NetworkUtils.ipv4StringToLong(msg.getStartIp());
+            long end = NetworkUtils.ipv4StringToLong(msg.getEndIp());
+
+            if (Q.New(UsedIpVO.class)
+                    .eq(UsedIpVO_.l3NetworkUuid, msg.getL3NetworkUuid())
+                    .eq(UsedIpVO_.ipVersion, IPv6Constants.IPv4)
+                    .gte(UsedIpVO_.ipInLong, start).lte(UsedIpVO_.ipInLong, end)
+                    .isExists()) {
+                throw new ApiMessageInterceptionException(argerr("could not reserve ip range, " +
+                        "because there is ip address allocated in [%s:%s]", msg.getStartIp(), msg.getEndIp()));
+            }
+        }
+
+        if (IPv6NetworkUtils.isIpv6Address(msg.getStartIp())) {
+            List<IpRangeVO> ipv6Ranges = l3NetworkVO.getIpRanges().stream()
+                    .filter(ipr -> ipr.getIpVersion() == IPv6Constants.IPv6 &&
+                            ipr.getState() == IpRangeState.Enabled)
+                    .collect(Collectors.toList());
+            if (ipv6Ranges.isEmpty()) {
+                throw new ApiMessageInterceptionException(argerr("could not reserve ip range, " +
+                        "because there is no ipv6 range"));
+            }
+
+            boolean startInRange = false;
+            boolean endInRange = false;
+            for (IpRangeVO ipr : ipv6Ranges) {
+                if (IPv6NetworkUtils.isIpv6InRange(msg.getStartIp(), ipr.getStartIp(), ipr.getEndIp())) {
+                    startInRange = true;
+                }
+                if (IPv6NetworkUtils.isIpv6InRange(msg.getEndIp(), ipr.getStartIp(), ipr.getEndIp())) {
+                    endInRange = true;
+                }
+            }
+
+            if (!startInRange) {
+                throw new ApiMessageInterceptionException(argerr("could not reserve ip range, " +
+                        "because start ip[%s] is not in any valid ip range", msg.getStartIp()));
+            }
+
+            if (!endInRange) {
+                throw new ApiMessageInterceptionException(argerr("could not reserve ip range, " +
+                        "because end ip[%s] is not in any valid ip range", msg.getEndIp()));
+            }
+
+            List<UsedIpVO> usedIpVOS = Q.New(UsedIpVO.class)
+                    .eq(UsedIpVO_.l3NetworkUuid, msg.getL3NetworkUuid())
+                    .eq(UsedIpVO_.ipVersion, IPv6Constants.IPv6).list();
+            for (UsedIpVO ip : usedIpVOS) {
+                if (IPv6NetworkUtils.isIpv6InRange(ip.getIp(), msg.getStartIp(), msg.getEndIp())) {
+                    throw new ApiMessageInterceptionException(argerr("could not reserve ip range, " +
+                            "because there is ip address[%s] allocated in [%s:%s]",
+                            ip.getIp(), msg.getStartIp(), msg.getEndIp()));
+                }
+            }
         }
     }
 
