@@ -186,7 +186,8 @@ public class DhcpExtension extends AbstractNetworkServiceExtension implements Co
                 }
             } else {
                 List<NormalIpRangeVO> iprs = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, ip.getL3NetworkUuid())
-                        .eq(NormalIpRangeVO_.ipVersion, ip.getIpVersion()).list();
+                        .eq(NormalIpRangeVO_.ipVersion, ip.getIpVersion())
+                        .eq(NormalIpRangeVO_.state, IpRangeState.Enabled).list();
                 if (iprs.get(0).getAddressMode().equals(IPv6Constants.SLAAC)) {
                     continue;
                 }
@@ -211,7 +212,8 @@ public class DhcpExtension extends AbstractNetworkServiceExtension implements Co
             }
         } else {
             List<NormalIpRangeVO> iprs = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, ip.getL3NetworkUuid())
-                    .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv6).list();
+                    .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv6)
+                    .eq(NormalIpRangeVO_.state, IpRangeState.Enabled).list();
             struct.setGateway6(ip.getGateway());
             struct.setIp6(ip.getIp());
             struct.setRaMode(iprs.get(0).getAddressMode());

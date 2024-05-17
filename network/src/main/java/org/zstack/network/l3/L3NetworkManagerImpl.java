@@ -202,13 +202,16 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
                 Map<String, IpCapacity> elements = capacity.elements;
                 long total = 0;
                 long ipv4TotalCapacity = 0;
+                long ipv4AvailableCapacity = 0;
                 long ipv6TotalCapacity = 0;
+                long ipv6AvailableCapacity = 0;
 
                 for (Tuple tuple : tuples) {
                     String sip = tuple.get(0, String.class);
                     String eip = tuple.get(1, String.class);
                     int ipVersion = tuple.get(3, Integer.class);
                     String elementUuid = tuple.get(4, String.class);
+                    IpRangeState state = tuple.get(5, IpRangeState.class);
 
                     IpCapacity element = elements.getOrDefault(elementUuid, new IpCapacity());
                     elements.put(elementUuid, element);
@@ -220,6 +223,7 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
                             element.avail = element.total;
                             element.ipv4TotalCapacity += t;
                             element.ipv4TotalCapacity = Math.min(element.ipv4TotalCapacity, Integer.MAX_VALUE);
+                            
                             element.ipv4AvailableCapacity = element.ipv4TotalCapacity;
                             ipv4TotalCapacity += t;
                             total += t;
@@ -301,7 +305,7 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
 
                 if (msg.getIpRangeUuids() != null && !msg.getIpRangeUuids().isEmpty()) {
                     reply.setResourceType(IpRangeVO.class.getSimpleName());
-                    String sql = "select ipr.startIp, ipr.endIp, ipr.netmask, ipr.ipVersion, ipr.uuid from IpRangeVO ipr where ipr.uuid in (:uuids)";
+                    String sql = "select ipr.startIp, ipr.endIp, ipr.netmask, ipr.ipVersion, ipr.uuid, ipr.state from IpRangeVO ipr where ipr.uuid in (:uuids)";
                     TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
                     q.setParameter("uuids", msg.getIpRangeUuids());
                     List<Tuple> ts = q.getResultList();
@@ -317,7 +321,7 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
                     return ret;
                 } else if (msg.getL3NetworkUuids() != null && !msg.getL3NetworkUuids().isEmpty()) {
                     reply.setResourceType(L3NetworkVO.class.getSimpleName());
-                    String sql = "select ipr.startIp, ipr.endIp, ipr.netmask, ipr.ipVersion, l3.uuid from IpRangeVO ipr, L3NetworkVO l3 where ipr.l3NetworkUuid = l3.uuid and l3.uuid in (:uuids)";
+                    String sql = "select ipr.startIp, ipr.endIp, ipr.netmask, ipr.ipVersion, l3.uuid, ipr.state from IpRangeVO ipr, L3NetworkVO l3 where ipr.l3NetworkUuid = l3.uuid and l3.uuid in (:uuids)";
                     TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
                     q.setParameter("uuids", msg.getL3NetworkUuids());
                     List<Tuple> ts = q.getResultList();
@@ -333,7 +337,7 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
                     return ret;
                 } else if (msg.getZoneUuids() != null && !msg.getZoneUuids().isEmpty()) {
                     reply.setResourceType(ZoneVO.class.getSimpleName());
-                    String sql = "select ipr.startIp, ipr.endIp, ipr.netmask, ipr.ipVersion, zone.uuid from IpRangeVO ipr, L3NetworkVO l3, ZoneVO zone where ipr.l3NetworkUuid = l3.uuid and l3.zoneUuid = zone.uuid and zone.uuid in (:uuids)";
+                    String sql = "select ipr.startIp, ipr.endIp, ipr.netmask, ipr.ipVersion, zone.uuid, ipr.state from IpRangeVO ipr, L3NetworkVO l3, ZoneVO zone where ipr.l3NetworkUuid = l3.uuid and l3.zoneUuid = zone.uuid and zone.uuid in (:uuids)";
                     TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
                     q.setParameter("uuids", msg.getZoneUuids());
                     List<Tuple> ts = q.getResultList();
@@ -704,7 +708,8 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
         }
 
         List<NormalIpRangeVO> iprs = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv6)
-                .eq(NormalIpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid()).list();
+                .eq(NormalIpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid())
+                .eq(NormalIpRangeVO_.state, IpRangeState.Enabled).list();
         if (iprs.isEmpty()) {
             return;
         }

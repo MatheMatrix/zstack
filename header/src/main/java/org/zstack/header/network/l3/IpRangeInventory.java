@@ -86,6 +86,8 @@ public class IpRangeInventory implements Serializable {
 
     private IpRangeType ipRangeType;
 
+    private IpRangeState state;
+
     /**
      * @desc the time this resource gets created
      */
@@ -112,6 +114,7 @@ public class IpRangeInventory implements Serializable {
         inv.setIpVersion(vo.getIpVersion());
         inv.setAddressMode(vo.getAddressMode());
         inv.setPrefixLen(vo.getPrefixLen());
+        inv.setState(vo.getState());
 
         return inv;
     }
@@ -242,6 +245,14 @@ public class IpRangeInventory implements Serializable {
 
     public void setIpRangeType(IpRangeType ipRangeType) {
         this.ipRangeType = ipRangeType;
+    }
+
+    public IpRangeState getState() {
+        return state;
+    }
+
+    public void setState(IpRangeState state) {
+        this.state = state;
     }
 
     @Override

@@ -89,7 +89,9 @@ public class FlatHostRouteBackend implements NetworkServiceHostRouteBackend, Dhc
             return;
         }
 
-        if (!Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, L3NetworkUuid).isExists()) {
+        if (!Q.New(NormalIpRangeVO.class)
+                .eq(NormalIpRangeVO_.state, IpRangeState.Enabled)
+                .eq(NormalIpRangeVO_.l3NetworkUuid, L3NetworkUuid).isExists()) {
             return;
         }
 

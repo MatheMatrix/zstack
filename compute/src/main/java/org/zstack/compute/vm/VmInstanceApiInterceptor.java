@@ -287,6 +287,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             staticIps.computeIfAbsent(msg.getDestL3NetworkUuid(), k -> new ArrayList<>()).add(msg.getStaticIp());
             SimpleQuery<NormalIpRangeVO> iprq = dbf.createQuery(NormalIpRangeVO.class);
             iprq.add(NormalIpRangeVO_.l3NetworkUuid, Op.EQ, msg.getDestL3NetworkUuid());
+            iprq.add(NormalIpRangeVO_.state, Op.EQ, IpRangeState.Enabled);
             List<NormalIpRangeVO> iprs = iprq.list();
 
             boolean found = false;
@@ -326,6 +327,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             List<String> ips = e.getValue();
             SimpleQuery<NormalIpRangeVO> iprq = dbf.createQuery(NormalIpRangeVO.class);
             iprq.add(NormalIpRangeVO_.l3NetworkUuid, Op.EQ, l3Uuid);
+            iprq.add(NormalIpRangeVO_.state, Op.EQ, IpRangeState.Enabled);
             List<NormalIpRangeVO> iprs = iprq.list();
 
             boolean found = false;

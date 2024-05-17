@@ -1,6 +1,7 @@
 package org.zstack.network.l3;
 
 import com.googlecode.ipv6.IPv6Address;
+import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
@@ -21,14 +22,12 @@ import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
-import org.zstack.header.allocator.ResourceBindingStrategy;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.NopeCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
-import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.host.HostVO_;
 import org.zstack.header.identity.SharedResourceVO;
@@ -60,13 +59,11 @@ import org.zstack.utils.stopwatch.StopWatch;
 import javax.persistence.Tuple;
 import java.math.BigInteger;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.err;
 import static org.zstack.utils.CollectionDSL.e;
 import static org.zstack.utils.CollectionDSL.map;
-import static org.zstack.utils.network.NetworkUtils.compareIpv4Address;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class L3BasicNetwork implements L3Network {
@@ -374,8 +371,8 @@ public class L3BasicNetwork implements L3Network {
             handle((APIAddHostRouteToL3NetworkMsg) msg);
         } else if (msg instanceof APIRemoveHostRouteFromL3NetworkMsg) {
             handle((APIRemoveHostRouteFromL3NetworkMsg) msg);
-        } else if (msg instanceof APIReserveIpAddressMsg) {
-            handle((APIReserveIpAddressMsg) msg);
+        } else if (msg instanceof APIReserveIpRangeMsg) {
+            handle((APIReserveIpRangeMsg) msg);
         } else if (msg instanceof APIDeleteIpAddressMsg) {
             handle((APIDeleteIpAddressMsg) msg);
         } else {
@@ -383,8 +380,8 @@ public class L3BasicNetwork implements L3Network {
         }
     }
 
-    private void handle(APIReserveIpAddressMsg msg) {
-        APIReserveIpAddreessEvent event = new APIReserveIpAddreessEvent(msg.getId());
+    private void handle(APIReserveIpRangeMsg msg) {
+        APIReserveIpRangeEvent event = new APIReserveIpRangeEvent(msg.getId());
         List<IpRangeVO> ipv4Ranges = self.getIpRanges().stream()
                 .filter(ipr -> ipr.getIpVersion() == IPv6Constants.IPv4)
                 .collect(Collectors.toList());
@@ -466,16 +463,7 @@ public class L3BasicNetwork implements L3Network {
         }
 
         if (!usedIpVOS.isEmpty()) {
-            StopWatch watch = Utils.getStopWatch();
-            watch.start();
-            dbf.persistCollection(usedIpVOS);
-            List<UsedIpVO> ret = Q.New(UsedIpVO.class)
-                    .eq(UsedIpVO_.l3NetworkUuid, msg.getL3NetworkUuid())
-                    .eq(UsedIpVO_.usedFor, IpAllocatedReason.Reserved.toString()).list();
-            watch.stop();
-            logger.debug(String.format("it takes %d microseconds to save %d ip addresses", watch.getLapse(), usedIpVOS.size()));
-            ret = ret.stream().filter(r -> usedIpUuids.contains(r.getUuid())).collect(Collectors.toList());
-            event.setInventories(UsedIpInventory.valueOf(ret));
+
         }
 
 
@@ -508,6 +496,7 @@ public class L3BasicNetwork implements L3Network {
 
         List<String> addressPoolGateways = Q.New(AddressPoolVO.class)
                 .select(AddressPoolVO_.gateway)
+                .eq(AddressPoolVO_.state, IpRangeState.Enabled)
                 .eq(AddressPoolVO_.l3NetworkUuid,self.getUuid()).listValues();
 
         boolean inRange = false;
@@ -569,7 +558,8 @@ public class L3BasicNetwork implements L3Network {
 
         /* this api only support ipv4 */
         List<NormalIpRangeVO> ipRangeVOS = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid())
-                .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv4).list();
+                .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv4)
+                .eq(NormalIpRangeVO_.state, IpRangeState.Enabled).list();
         if (ipRangeVOS == null || ipRangeVOS.isEmpty()) {
             reply.setRouterInterfaceIp(null);
             bus.reply(msg, reply);
@@ -708,6 +698,7 @@ public class L3BasicNetwork implements L3Network {
             if (msg.getIpRangeType() == null) {
                 List<IpRangeVO> tempIpRangeVO = Q.New(IpRangeVO.class)
                         .eq(IpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid())
+                        .eq(IpRangeVO_.state, IpRangeState.Enabled)
                         .in(IpRangeVO_.ipVersion, ipVersions)
                         .list();
                 ipRangeVOs.addAll(tempIpRangeVO);
@@ -715,12 +706,14 @@ public class L3BasicNetwork implements L3Network {
                 List<IpRangeVO> tempIpRangeVO = Q.New(NormalIpRangeVO.class)
                         .eq(NormalIpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid())
                         .in(NormalIpRangeVO_.ipVersion, ipVersions)
+                        .eq(NormalIpRangeVO_.state, IpRangeState.Enabled)
                         .list();
                 ipRangeVOs.addAll(tempIpRangeVO);
 
             } else {
                 List<IpRangeVO> tempIpRangeVO = Q.New(AddressPoolVO.class)
                         .eq(AddressPoolVO_.l3NetworkUuid, msg.getL3NetworkUuid())
+                        .eq(AddressPoolVO_.state, IpRangeState.Enabled)
                         .in(AddressPoolVO_.ipVersion, ipVersions)
                         .list();
                 ipRangeVOs.addAll(tempIpRangeVO);

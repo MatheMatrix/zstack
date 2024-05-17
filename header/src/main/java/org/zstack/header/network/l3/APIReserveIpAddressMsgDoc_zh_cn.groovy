@@ -1,7 +1,5 @@
 package org.zstack.header.network.l3
 
-import org.zstack.header.network.l3.APIReserveIpAddreessEvent
-
 doc {
     title "ReserveIpAddress"
 
@@ -15,7 +13,7 @@ doc {
 
 			header (Authorization: 'OAuth the-session-uuid')
 
-            clz APIReserveIpAddressMsg.class
+            clz APIReserveIpRangeMsg.class
 
             desc """"""
             
@@ -88,7 +86,7 @@ doc {
         }
 
         response {
-            clz APIReserveIpAddreessEvent.class
+            clz APIReserveIpRangeEvent.class
         }
     }
 }

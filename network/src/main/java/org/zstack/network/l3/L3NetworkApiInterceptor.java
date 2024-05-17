@@ -103,8 +103,8 @@ public class L3NetworkApiInterceptor implements ApiMessageInterceptor {
             validate((APIDeleteIpRangeMsg) msg);
         } else if (msg instanceof APISetL3NetworkMtuMsg) {
             validate((APISetL3NetworkMtuMsg) msg);
-        } else if (msg instanceof APIReserveIpAddressMsg) {
-            validate((APIReserveIpAddressMsg) msg);
+        } else if (msg instanceof APIReserveIpRangeMsg) {
+            validate((APIReserveIpRangeMsg) msg);
         }
 
         setServiceId(msg);
@@ -112,7 +112,7 @@ public class L3NetworkApiInterceptor implements ApiMessageInterceptor {
         return msg;
     }
 
-    private void validate(APIReserveIpAddressMsg msg) {
+    private void validate(APIReserveIpRangeMsg msg) {
         if (!NetworkUtils.isValidIPAddress(msg.getStartIp())) {
             throw new ApiMessageInterceptionException(argerr("could not reserve ip address, " +
                     "because start ip[%s] is not valid ip address", msg.getStartIp()));
@@ -198,7 +198,8 @@ public class L3NetworkApiInterceptor implements ApiMessageInterceptor {
 
         /* address pool only related to Ipv4 */
         long normaCnt = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, ipr.getL3NetworkUuid())
-                .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv4).count();
+                .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv4)
+                .eq(NormalIpRangeVO_.state, IpRangeState.Enabled).count();
         long addressPoolCnt = Q.New(AddressPoolVO.class).eq(AddressPoolVO_.l3NetworkUuid, ipr.getL3NetworkUuid()).count();
         if (addressPoolCnt > 0 && normaCnt == 1) {
             throw new ApiMessageInterceptionException(argerr("can not delete the last normal ip range because there is still has address pool"));
@@ -245,7 +246,8 @@ public class L3NetworkApiInterceptor implements ApiMessageInterceptor {
         }
         /* this API only related ipv4 */
         List<NormalIpRangeVO> ipRangeVOS = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid())
-                .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv4).list();
+                .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv4)
+                .eq(NormalIpRangeVO_.state, IpRangeState.Enabled).list();
         if (ipRangeVOS == null || ipRangeVOS.isEmpty()) {
             throw new ApiMessageInterceptionException(argerr("no ip range in l3[%s]", msg.getL3NetworkUuid()));
         }
