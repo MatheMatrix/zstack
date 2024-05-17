@@ -1,15 +1,17 @@
 package org.zstack.header.network.l3
 
-doc {
-    title "ReserveIpAddress"
+import org.zstack.header.network.l3.APIReserveIpRangeEvent
 
-    category "未知类别"
+doc {
+    title "ReserveIpRange"
+
+    category "network.l3"
 
     desc """在这里填写API描述"""
 
     rest {
         request {
-			url "POST /v1/l3-networks/{l3NetworkUuid}/ip-address"
+			url "POST /v1/l3-networks/{l3NetworkUuid}/ip-ranges/reserve"
 
 			header (Authorization: 'OAuth the-session-uuid')
 

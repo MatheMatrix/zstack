@@ -14786,6 +14786,33 @@ abstract class ApiHelper {
     }
 
 
+    def deleteReservedIpRange(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.DeleteReservedIpRangeAction.class) Closure c) {
+        def a = new org.zstack.sdk.DeleteReservedIpRangeAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def deleteResourceConfig(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.DeleteResourceConfigAction.class) Closure c) {
         def a = new org.zstack.sdk.DeleteResourceConfigAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -34904,8 +34931,8 @@ abstract class ApiHelper {
     }
 
 
-    def reserveIpAddress(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.ReserveIpAddressAction.class) Closure c) {
-        def a = new org.zstack.sdk.ReserveIpAddressAction()
+    def reserveIpRange(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.ReserveIpRangeAction.class) Closure c) {
+        def a = new org.zstack.sdk.ReserveIpRangeAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
