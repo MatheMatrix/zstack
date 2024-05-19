@@ -41,6 +41,7 @@ import org.zstack.header.rest.RestAuthenticationBackend;
 import org.zstack.header.rest.RestAuthenticationParams;
 import org.zstack.header.rest.RestAuthenticationType;
 import org.zstack.header.vo.*;
+import org.zstack.header.volume.VolumeVO;
 import org.zstack.identity.rbac.PolicyUtils;
 import org.zstack.utils.*;
 import org.zstack.utils.function.ForEachFunction;
@@ -1071,7 +1072,7 @@ public class AccountManagerImpl extends AbstractService implements AccountManage
         }
 
         AccountType atype = types.get(0);
-        if (AccountType.SystemAdmin == atype) {
+        if (AccountType.SystemAdmin == atype && resourceType != VolumeVO.class) {
             return null;
         }
 
