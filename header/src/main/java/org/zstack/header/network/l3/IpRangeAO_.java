@@ -19,7 +19,6 @@ public class IpRangeAO_ extends ResourceVO_ {
     public static volatile SingularAttribute<IpRangeAO, Integer> ipVersion;
     public static volatile SingularAttribute<IpRangeAO, String> addressMode;
     public static volatile SingularAttribute<IpRangeAO, Integer> prefixLen;
-    public static volatile SingularAttribute<IpRangeAO, IpRangeState> state;
     public static volatile SingularAttribute<IpRangeAO, Timestamp> lastOpDate;
     public static volatile SingularAttribute<IpRangeAO, Timestamp> createDate;
 }

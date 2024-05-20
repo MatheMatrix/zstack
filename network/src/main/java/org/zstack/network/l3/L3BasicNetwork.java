@@ -53,6 +53,7 @@ import org.zstack.utils.logging.CLogger;
 import org.zstack.utils.network.IPv6Constants;
 import org.zstack.utils.network.IPv6NetworkUtils;
 import org.zstack.utils.network.NetworkUtils;
+import org.zstack.utils.stopwatch.StopWatch;
 
 import javax.persistence.Tuple;
 import java.math.BigInteger;
@@ -373,253 +374,69 @@ public class L3BasicNetwork implements L3Network {
             handle((APIReserveIpRangeMsg) msg);
         } else if (msg instanceof APIDeleteIpAddressMsg) {
             handle((APIDeleteIpAddressMsg) msg);
+        } else if (msg instanceof APIDeleteReservedIpRangeMsg) {
+            handle((APIDeleteReservedIpRangeMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
     }
 
-    private List<IpRangeInventory> reserveIpv4Range(APIReserveIpRangeMsg msg) {
-        List<IpRangeInventory> ret = new ArrayList<>();
-
-        List<IpRangeVO> ipv4Ranges = self.getIpRanges().stream()
-                .filter(ipr -> ipr.getIpVersion() == IPv6Constants.IPv4
-                        && ipr.getState() == IpRangeState.Enabled)
-                .collect(Collectors.toList());
-
-        if (ipv4Ranges.isEmpty()) {
-            /* this should not happen because interceptor filter this case */
-            return ret;
-        }
-
-        long start = NetworkUtils.ipv4StringToLong(msg.getStartIp());
-        long end = NetworkUtils.ipv4StringToLong(msg.getEndIp());
-
-        Comparator<IpRangeVO> ipv4Comparator
-                = Comparator.comparing(
-                IpRangeVO::getStartIp, NetworkUtils::compareIpv4Address);
-        ipv4Ranges.sort(ipv4Comparator);
-
-        /* for each ip range if start ip is range, there are 4 cases:
-         *  case 1
-         *   ip range:                [first,   last]
-         *   msg:       [start,  end]
-         *   case 2
-         *   ip range:          [first,   last]
-         *   msg:       [start,  end]
-         *   case 3
-         *   ip range:          [first,   last]
-         *   msg:       [start,                  end]
-         *   case 4
-         *   ip range:    [first,   last]
-         *   msg:         [start,  end]
-         *   case 5
-         *   ip range:    [first,   last]
-         *   msg:         [start,         end]
-         *   case 6
-         *   ip range:    [first,      last]
-         *   msg:            [start, end]
-         *   case 7
-         *   ip range:    [first,      last]
-         *   msg:            [start,       end]
-         *   case 8
-         *   ip range:    [first,      last]
-         *   msg:                             [start,       end]
-        * */
-        for (IpRangeVO ipr : ipv4Ranges) {
-            long first = NetworkUtils.ipv4StringToLong(ipr.getStartIp());
-            long last = NetworkUtils.ipv4StringToLong(ipr.getEndIp());
-
-            /* single ip address range */
-            if (last == first) {
-                if (NetworkUtils.isInRange(ipr.getStartIp(), msg.getStartIp(), msg.getEndIp())) {
-                    ipr.setState(IpRangeState.Disabled);
-                    ipr = dbf.updateAndRefresh(ipr);
-                    ret.add(IpRangeInventory.valueOf(ipr));
-                }
-                continue;
-            }
-
-            if (end < first) {
-                /* case 1 */
-                continue;
-            }
-
-            if (start <= first) {
-                if (end < last /* && end >= first*/) { /* case 2,4 */
-                    /* update old ip range */
-                    ipr.setStartIp(NetworkUtils.longToIpv4String(end + 1));
-                    dbf.persist(ipr);
-
-                    /* create reserved ip range */
-                    IpRangeVO range = getIpRangeVO(ipr.getStartIp(), msg.getEndIp(), IpRangeState.Disabled, ipr);
-                    range = dbf.persistAndRefresh(range);
-                    ret.add(IpRangeInventory.valueOf(range));
-                } else { /* case 3,5 */
-                    ipr.setState(IpRangeState.Disabled);
-                    ipr = dbf.persistAndRefresh(ipr);
-                    ret.add(IpRangeInventory.valueOf(ipr));
-                }
-            } else if (start < end /* && start > first */) {
-                /* create first range */
-                IpRangeVO range = getIpRangeVO(ipr.getStartIp(), NetworkUtils.longToIpv4String(start -1), IpRangeState.Disabled, ipr);
-                dbf.persistAndRefresh(range);
-                if (end < last) { /* case 6 */
-                    /* create reserved ip range */
-                    IpRangeVO range1 = getIpRangeVO(msg.getStartIp(), msg.getEndIp(), IpRangeState.Disabled, ipr);
-                    range1 = dbf.persistAndRefresh(range1);
-                    ret.add(IpRangeInventory.valueOf(range1));
-
-                    /* update ip range */
-                    ipr.setStartIp(NetworkUtils.longToIpv4String(end + 1));
-                    dbf.persist(ipr);
-
-                } else { /* case 7 */
-                    /* create reserved ip range */
-                    IpRangeVO range1 = getIpRangeVO(msg.getStartIp(), ipr.getEndIp(), IpRangeState.Disabled, ipr);
-                    range1 = dbf.persistAndRefresh(range1);
-                    ret.add(IpRangeInventory.valueOf(range1));
-                }
-            } else {
-                /* case 8 */
-            }
-        }
-
-        return ret;
-    }
-
-    private List<IpRangeInventory> reserveIpv6Range(APIReserveIpRangeMsg msg) {
-        List<IpRangeInventory> ret = new ArrayList<>();
-
-        List<IpRangeVO> ipv6Ranges = self.getIpRanges().stream()
-                .filter(ipr -> ipr.getIpVersion() == IPv6Constants.IPv6
-                        && ipr.getState() == IpRangeState.Enabled)
-                .collect(Collectors.toList());
-
-        if (ipv6Ranges.isEmpty()) {
-            /* this should not happen because interceptor filter this case */
-            return ret;
-        }
-
-        BigInteger start = IPv6NetworkUtils.getBigIntegerFromString(msg.getStartIp());
-        BigInteger end = IPv6NetworkUtils.getBigIntegerFromString(msg.getEndIp());
-
-        Comparator<IpRangeVO> ipv6Comparator
-                = Comparator.comparing(
-                IpRangeVO::getStartIp, IPv6NetworkUtils::compareIpv6Address);
-        ipv6Ranges.sort(ipv6Comparator);
-
-        /* for each ip range if start ip is range, there are 4 cases:
-         *  case 1
-         *   ip range:                [first,   last]
-         *   msg:       [start,  end]
-         *   case 2
-         *   ip range:          [first,   last]
-         *   msg:       [start,  end]
-         *   case 3
-         *   ip range:          [first,   last]
-         *   msg:       [start,                  end]
-         *   case 4
-         *   ip range:    [first,   last]
-         *   msg:         [start,  end]
-         *   case 5
-         *   ip range:    [first,   last]
-         *   msg:         [start,         end]
-         *   case 6
-         *   ip range:    [first,      last]
-         *   msg:            [start, end]
-         *   case 7
-         *   ip range:    [first,      last]
-         *   msg:            [start,       end]
-         *   case 8
-         *   ip range:    [first,      last]
-         *   msg:                             [start,       end]
-         * */
-        for (IpRangeVO ipr : ipv6Ranges) {
-            BigInteger first = IPv6NetworkUtils.getBigIntegerFromString(ipr.getStartIp());
-            BigInteger last = IPv6NetworkUtils.getBigIntegerFromString(ipr.getEndIp());
-
-            /* single ip address range */
-            if (last.compareTo(first) == 0) {
-                if (IPv6NetworkUtils.isIpv6InRange(ipr.getStartIp(), msg.getStartIp(), msg.getEndIp())) {
-                    ipr.setState(IpRangeState.Disabled);
-                    ipr = dbf.updateAndRefresh(ipr);
-                    ret.add(IpRangeInventory.valueOf(ipr));
-                }
-                continue;
-            }
-
-            if (end.compareTo(first) < 0 /* end < first*/) {
-                /* case 1 */
-                continue;
-            }
-
-            if (start.compareTo(first) <= 0/* start <= first */) {
-                if (end.compareTo(last) < 0 /* && end >= first### end < last */) { /* case 2,4 */
-                    /* update old ip range */
-                    ipr.setStartIp(IPv6NetworkUtils.ipv6AddressToString(end.add(BigInteger.ONE)));
-                    dbf.persist(ipr);
-
-                    /* create reserved ip range */
-                    IpRangeVO range = getIpRangeVO(ipr.getStartIp(), msg.getEndIp(), IpRangeState.Disabled, ipr);
-                    range = dbf.persistAndRefresh(range);
-                    ret.add(IpRangeInventory.valueOf(range));
-                } else { /* case 3,5 */
-                    ipr.setState(IpRangeState.Disabled);
-                    ipr = dbf.persistAndRefresh(ipr);
-                    ret.add(IpRangeInventory.valueOf(ipr));
-                }
-            } else if (start.compareTo(end) < 0 /* && start > first ### start < end*/) {
-                /* create first range */
-                IpRangeVO range = getIpRangeVO(ipr.getStartIp(),
-                        IPv6NetworkUtils.ipv6AddressToString(start.subtract(BigInteger.ONE)), IpRangeState.Disabled, ipr);
-                dbf.persistAndRefresh(range);
-                if (end.compareTo(last) < 0 /* #### end < last */) { /* case 6 */
-                    /* create reserved ip range */
-                    IpRangeVO range1 = getIpRangeVO(msg.getStartIp(), msg.getEndIp(), IpRangeState.Disabled, ipr);
-                    range1 = dbf.persistAndRefresh(range1);
-                    ret.add(IpRangeInventory.valueOf(range1));
-
-                    /* update ip range */
-                    ipr.setStartIp(IPv6NetworkUtils.ipv6AddressToString(end.add(BigInteger.ONE)));
-                    dbf.persist(ipr);
-
-                } else { /* case 7 */
-                    /* create reserved ip range */
-                    IpRangeVO range1 = getIpRangeVO(msg.getStartIp(), ipr.getEndIp(), IpRangeState.Disabled, ipr);
-                    range1 = dbf.persistAndRefresh(range1);
-                    ret.add(IpRangeInventory.valueOf(range1));
-                }
-            } else {
-                /* case 8 */
-            }
-        }
-
-        return ret;
-    }
-
-    private static IpRangeVO getIpRangeVO(String startIp, String endIp, IpRangeState state, IpRangeVO ipr,) {
-        IpRangeVO range = new IpRangeVO();
-        range.setUuid(Platform.getUuid());
-        range.setStartIp(startIp);
-        range.setEndIp(endIp);
-        range.setNetmask(ipr.getNetmask());
-        range.setGateway(ipr.getGateway());
-        range.setNetworkCidr(ipr.getNetworkCidr());
-        range.setIpVersion(ipr.getIpVersion());
-        range.setPrefixLen(ipr.getPrefixLen());
-        range.setAddressMode(ipr.getAddressMode());
-        range.setState(state);
-        range.setIpVersion(ipr.getIpVersion());
-        return range;
-    }
-
     private void handle(APIReserveIpRangeMsg msg) {
         APIReserveIpRangeEvent event = new APIReserveIpRangeEvent(msg.getId());
-        List<IpRangeInventory> ret;
-        if(IPv6NetworkUtils.isValidIpv4(msg.getStartIp())) {
-            ret = reserveIpv4Range(msg);
-        } else if (IPv6NetworkUtils.isValidIpv6(msg.getStartIp())){
-            ret = reserveIpv6Range(msg);
+
+        /* step 1: create reservedIpRangeVO */
+        ReservedIpRangeVO reservedIpRangeVO = new ReservedIpRangeVO();
+        reservedIpRangeVO.setUuid(Platform.getUuid());
+        reservedIpRangeVO.setStartIp(msg.getStartIp());
+        reservedIpRangeVO.setEndIp(msg.getEndIp());
+        reservedIpRangeVO = dbf.persistAndRefresh(reservedIpRangeVO);
+
+        /* step 2: allocate usedIpVO */
+        List<IpRangeVO> ipv4Ranges = self.getIpRanges().stream()
+                .filter(ipr -> ipr.getIpVersion() == IPv6Constants.IPv4)
+                .collect(Collectors.toList());
+        List<IpRangeVO> ipv6Ranges = self.getIpRanges().stream()
+                .filter(ipr -> ipr.getIpVersion() == IPv6Constants.IPv6).collect(Collectors.toList());
+        List<UsedIpVO> usedIpVOS = new ArrayList<>();
+        List<String> usedIpUuids = new ArrayList<>();
+        if(IPv6NetworkUtils.isValidIpv4(msg.getStartIp()) && !ipv4Ranges.isEmpty()) {
+            long start = NetworkUtils.ipv4StringToLong(msg.getStartIp());
+            long end  = NetworkUtils.ipv4StringToLong(msg.getEndIp());
+            Comparator<IpRangeVO> ipv4Comparator
+                    = Comparator.comparing(
+                    IpRangeVO::getStartIp, (s1, s2) -> {
+                        return NetworkUtils.compareIpv4Address(s1, s2);
+                    });
+            ipv4Ranges.sort(ipv4Comparator);
+            Iterator<IpRangeVO> ip4 = ipv4Ranges.iterator();
+            IpRangeVO ipr = ip4.next();
+
+            for (long i = start; i <= end && ipr != null;) {
+                String newIp = NetworkUtils.longToIpv4String(i);
+                if (NetworkUtils.isInRange(newIp, ipr.getStartIp(), ipr.getEndIp())) {
+                    i++;
+                    UsedIpVO vo = new UsedIpVO();
+                    vo.setUuid(Platform.getUuid());
+                    usedIpUuids.add(vo.getUuid());
+                    vo.setIpRangeUuid(ipr.getUuid());
+                    vo.setL3NetworkUuid(ipr.getL3NetworkUuid());
+                    //vo.setVmNicUuid(nic.getUuid());
+                    vo.setIpVersion(ipr.getIpVersion());
+                    vo.setIp(newIp);
+                    vo.setNetmask(ipr.getNetmask());
+                    vo.setGateway(ipr.getGateway());
+                    vo.setIpInLong(i);
+                    vo.setUsedFor(IpAllocatedReason.Reserved.toString());
+                    vo.setMetaData(reservedIpRangeVO.getUuid());
+
+                    usedIpVOS.add(vo);
+                } else if (ip4.hasNext()) {
+                    ipr = ip4.next();
+                } else {
+                    ipr = null;
+                }
+            }
+        } else if (IPv6NetworkUtils.isValidIpv6(msg.getStartIp()) && !ipv6Ranges.isEmpty()){
             BigInteger start = IPv6Address.fromString(msg.getStartIp()).toBigInteger();
             BigInteger end = IPv6Address.fromString(msg.getEndIp()).toBigInteger();
             Comparator<IpRangeVO> ipv6Comparator
@@ -646,6 +463,7 @@ public class L3BasicNetwork implements L3Network {
                     vo.setNetmask(ipr.getNetmask());
                     vo.setGateway(ipr.getGateway());
                     vo.setUsedFor(IpAllocatedReason.Reserved.toString());
+                    vo.setMetaData(reservedIpRangeVO.getUuid());
 
                     usedIpVOS.add(vo);
                 } else if (ip6.hasNext()) {
@@ -657,9 +475,24 @@ public class L3BasicNetwork implements L3Network {
         }
 
         if (!usedIpVOS.isEmpty()) {
-
+            StopWatch watch = Utils.getStopWatch();
+            watch.start();
+            dbf.persistCollection(usedIpVOS);
+            watch.stop();
+            logger.debug(String.format("it takes %d microseconds to save %d ip addresses", watch.getLapse(), usedIpVOS.size()));
         }
 
+        event.setInventory(ReservedIpRangeInventory.valueOf(reservedIpRangeVO));
+
+        bus.publish(event);
+    }
+
+    private void handle(APIDeleteReservedIpRangeMsg msg) {
+        APIDeleteIpAddressEvent event = new APIDeleteIpAddressEvent(msg.getId());
+
+        SQL.New(UsedIpVO.class).eq(UsedIpVO_.l3NetworkUuid, msg.getL3NetworkUuid())
+                .eq(UsedIpVO_.metaData, msg.getIpRangeUuid())
+                .delete();
 
         bus.publish(event);
     }
@@ -669,7 +502,6 @@ public class L3BasicNetwork implements L3Network {
 
         SQL.New(UsedIpVO.class).eq(UsedIpVO_.l3NetworkUuid, msg.getL3NetworkUuid())
                 .in(UsedIpVO_.uuid, msg.getUsedIpUuids())
-                .eq(UsedIpVO_.usedFor, IpAllocatedReason.Reserved.toString())
                 .delete();
 
         bus.publish(event);

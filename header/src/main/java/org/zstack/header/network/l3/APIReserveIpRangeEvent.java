@@ -6,12 +6,12 @@ import java.util.List;
 
 import static org.codehaus.groovy.runtime.InvokerHelper.asList;
 
-@RestResponse(allTo = "inventories")
+@RestResponse(allTo = "inventory")
 public class APIReserveIpRangeEvent extends APIEvent {
     /**
      * @desc see :ref:`IpRangeInventory`
      */
-    private List<IpRangeInventory> inventories;
+    private ReservedIpRangeInventory inventory;
 
     public APIReserveIpRangeEvent(String apiId) {
         super(apiId);
@@ -21,26 +21,24 @@ public class APIReserveIpRangeEvent extends APIEvent {
         super(null);
     }
 
-    public List<IpRangeInventory> getInventories() {
-        return inventories;
+    public ReservedIpRangeInventory getInventory() {
+        return inventory;
     }
 
-    public void setInventories(List<IpRangeInventory> inventories) {
-        this.inventories = inventories;
+    public void setInventory(ReservedIpRangeInventory inventory) {
+        this.inventory = inventory;
     }
 
     public static APIReserveIpRangeEvent __example__() {
         APIReserveIpRangeEvent event = new APIReserveIpRangeEvent();
-        IpRangeInventory ipRange = new IpRangeInventory();
+        ReservedIpRangeInventory ipRange = new ReservedIpRangeInventory();
 
         ipRange.setL3NetworkUuid(uuid());
         ipRange.setName("Test-IP-Range");
         ipRange.setStartIp("192.168.100.10");
         ipRange.setEndIp("192.168.100.250");
-        ipRange.setNetmask("255.255.255.0");
-        ipRange.setGateway("192.168.100.1");
 
-        event.setInventories(asList(ipRange));
+        event.setInventory(ipRange);
         return event;
     }
 

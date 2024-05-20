@@ -126,6 +126,10 @@
     </message>
 
     <message>
+        <name>org.zstack.header.network.l3.APIDeleteReservedIpRangeMsg</name>
+    </message>
+
+    <message>
         <name>org.zstack.header.network.l3.APIDeleteIpAddressMsg</name>
     </message>
 
