@@ -947,9 +947,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
                 for (int ipVersion : l3NetworkVO.getIpVersions()) {
                     String ip = allocateDhcpIp(msg.getL3NetworkUuid(), ipVersion);
                     if (ip != null) {
-                        List<NormalIpRangeVO> iprs = Q.New(NormalIpRangeVO.class)
-                                .eq(NormalIpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid())
-                                .eq(NormalIpRangeVO_.state, IpRangeState.Enabled)
+                        List<NormalIpRangeVO> iprs = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid())
                                 .eq(NormalIpRangeVO_.ipVersion, ipVersion).list();
                         if (iprs == null || iprs.isEmpty()) {
                             logger.warn(String.format("there is no ip range for dhcp server ip [%s]", ip));

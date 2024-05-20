@@ -522,7 +522,6 @@ public class L3BasicNetwork implements L3Network {
 
         List<String> addressPoolGateways = Q.New(AddressPoolVO.class)
                 .select(AddressPoolVO_.gateway)
-                .eq(AddressPoolVO_.state, IpRangeState.Enabled)
                 .eq(AddressPoolVO_.l3NetworkUuid,self.getUuid()).listValues();
 
         boolean inRange = false;
@@ -584,8 +583,7 @@ public class L3BasicNetwork implements L3Network {
 
         /* this api only support ipv4 */
         List<NormalIpRangeVO> ipRangeVOS = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid())
-                .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv4)
-                .eq(NormalIpRangeVO_.state, IpRangeState.Enabled).list();
+                .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv4).list();
         if (ipRangeVOS == null || ipRangeVOS.isEmpty()) {
             reply.setRouterInterfaceIp(null);
             bus.reply(msg, reply);
@@ -724,7 +722,6 @@ public class L3BasicNetwork implements L3Network {
             if (msg.getIpRangeType() == null) {
                 List<IpRangeVO> tempIpRangeVO = Q.New(IpRangeVO.class)
                         .eq(IpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid())
-                        .eq(IpRangeVO_.state, IpRangeState.Enabled)
                         .in(IpRangeVO_.ipVersion, ipVersions)
                         .list();
                 ipRangeVOs.addAll(tempIpRangeVO);
@@ -732,14 +729,12 @@ public class L3BasicNetwork implements L3Network {
                 List<IpRangeVO> tempIpRangeVO = Q.New(NormalIpRangeVO.class)
                         .eq(NormalIpRangeVO_.l3NetworkUuid, msg.getL3NetworkUuid())
                         .in(NormalIpRangeVO_.ipVersion, ipVersions)
-                        .eq(NormalIpRangeVO_.state, IpRangeState.Enabled)
                         .list();
                 ipRangeVOs.addAll(tempIpRangeVO);
 
             } else {
                 List<IpRangeVO> tempIpRangeVO = Q.New(AddressPoolVO.class)
                         .eq(AddressPoolVO_.l3NetworkUuid, msg.getL3NetworkUuid())
-                        .eq(AddressPoolVO_.state, IpRangeState.Enabled)
                         .in(AddressPoolVO_.ipVersion, ipVersions)
                         .list();
                 ipRangeVOs.addAll(tempIpRangeVO);

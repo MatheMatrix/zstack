@@ -268,7 +268,6 @@ public class VirtualRouterApiInterceptor implements ApiMessageInterceptor, Globa
     private void checkIfManagementNetworkReachable(String managementNetworkUuid) {
         SimpleQuery<NormalIpRangeVO> q = dbf.createQuery(NormalIpRangeVO.class);
         q.add(NormalIpRangeVO_.l3NetworkUuid, Op.EQ, managementNetworkUuid);
-        q.add(NormalIpRangeVO_.state, Op.EQ, IpRangeState.Enabled)
         List<NormalIpRangeVO> iprs = q.list();
         if (iprs.isEmpty()) {
             throw new ApiMessageInterceptionException(operr("the management network[uuid:%s] doesn't have any IP range", managementNetworkUuid));

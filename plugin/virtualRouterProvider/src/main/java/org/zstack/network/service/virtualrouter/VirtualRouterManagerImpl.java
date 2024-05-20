@@ -2146,8 +2146,7 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
 
                     /* for guest nic, if there has other ip range left, will not delete the nic */
                     if (Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, ip.getL3NetworkUuid())
-                            .eq(NormalIpRangeVO_.ipVersion, ip.getIpVersion())
-                            .eq(NormalIpRangeVO_.state, IpRangeState.Enabled).count() > 1) {
+                            .eq(NormalIpRangeVO_.ipVersion, ip.getIpVersion()).count() > 1) {
                         continue;
                     }
                     toDeleteNics.add(nic);
@@ -2178,8 +2177,7 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
                    but gateway ip is no allocated in UsedIpVO: there is no ipv6 for virtual router */
                 if (VirtualRouterNicMetaData.isGuestNic(nic) && nic.getUsedIpUuid() == null && l3Uuids.contains(nic.getL3NetworkUuid())) {
                     if (Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, nic.getL3NetworkUuid())
-                            .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv4)
-                            .eq(NormalIpRangeVO_.state, IpRangeState.Enabled).count() <= 1) {
+                            .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv4).count() <= 1) {
                         toDeleted.add(vos);
                     }
                     break;
@@ -2611,7 +2609,6 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
         } else {
             List<String> ipv4RangeUuids = ipv4RangeVOS.stream().map(IpRangeVO::getUuid).collect(Collectors.toList());
             List<String> gateways = Q.New(NormalIpRangeVO.class).select(NormalIpRangeVO_.gateway)
-                    .eq(NormalIpRangeVO_.state, IpRangeState.Enabled)
                     .in(NormalIpRangeVO_.uuid, ipv4RangeUuids).listValues();
             vrUuid = Q.New(VmNicVO.class).select(VmNicVO_.vmInstanceUuid)
                     .eq(VmNicVO_.l3NetworkUuid, privateL3.getUuid())
