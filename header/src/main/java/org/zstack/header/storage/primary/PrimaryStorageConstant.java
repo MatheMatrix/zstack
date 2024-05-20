@@ -31,6 +31,7 @@ public interface PrimaryStorageConstant {
     enum AllocatorParams {
         SPEC,
         CANDIDATES,
+        GROUP_CANDIDATES,
     }
 
     interface StatusConfig {

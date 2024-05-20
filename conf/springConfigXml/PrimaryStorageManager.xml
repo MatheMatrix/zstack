@@ -45,7 +45,7 @@
         </property>
         <property name="sortFlowNames">
             <list>
-                <value>org.zstack.storage.primary.PrimaryStorageSortFlow</value>
+                <value>org.zstack.storage.primary.PrimaryStorageSortByPriorityFlow</value>
                 <value>org.zstack.storage.primary.PrimaryStorageSortByAvailablePhysicalCapacityFlow</value>
             </list>
         </property>
@@ -69,7 +69,7 @@
         </property>
         <property name="sortFlowNames">
             <list>
-                <value>org.zstack.storage.primary.PrimaryStorageSortFlow</value>
+                <value>org.zstack.storage.primary.PrimaryStorageSortByPriorityFlow</value>
                 <value>org.zstack.storage.primary.PrimaryStorageSortByVolumeQuantityFlow</value>
             </list>
         </property>
@@ -93,7 +93,7 @@
         </property>
         <property name="sortFlowNames">
             <list>
-                <value>org.zstack.storage.primary.PrimaryStorageSortFlow</value>
+                <value>org.zstack.storage.primary.PrimaryStorageSortByPriorityFlow</value>
                 <value>org.zstack.storage.primary.PrimaryStorageSortByAvailableVirtualCapacityFlow</value>
             </list>
         </property>
@@ -117,7 +117,7 @@
         </property>
         <property name="sortFlowNames">
             <list>
-                <value>org.zstack.storage.primary.PrimaryStorageSortFlow</value>
+                <value>org.zstack.storage.primary.PrimaryStorageSortByPriorityFlow</value>
                 <value>org.zstack.storage.primary.PrimaryStorageSortByCustomOrderFlow</value>
             </list>
         </property>
