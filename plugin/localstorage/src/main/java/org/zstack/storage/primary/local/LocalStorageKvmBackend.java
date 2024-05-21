@@ -2013,6 +2013,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         hmsg.setSrcPath(msg.getSrcPath());
         hmsg.setDstPath(msg.getDstPath());
         hmsg.setAliveChainInstallPathInDb(msg.getAliveChainInstallPathInDb());
+        hmsg.setSrcChildrenInstallPathInDb(msg.getSrcChildrenInstallPathInDb());
         bus.makeTargetServiceIdByResourceUuid(hmsg, HostConstant.SERVICE_ID, hostUuid);
         bus.send(hmsg, new CloudBusCallBack(completion) {
             @Override

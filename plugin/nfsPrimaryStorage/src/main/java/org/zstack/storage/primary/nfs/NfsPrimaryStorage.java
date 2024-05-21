@@ -175,6 +175,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
         hmsg.setSrcPath(msg.getSrcPath());
         hmsg.setDstPath(msg.getDstPath());
         hmsg.setAliveChainInstallPathInDb(msg.getAliveChainInstallPathInDb());
+        hmsg.setSrcChildrenInstallPathInDb(msg.getSrcChildrenInstallPathInDb());
         bus.makeTargetServiceIdByResourceUuid(hmsg, HostConstant.SERVICE_ID, huuid);
         bus.send(hmsg, new CloudBusCallBack(msg) {
             @Override
