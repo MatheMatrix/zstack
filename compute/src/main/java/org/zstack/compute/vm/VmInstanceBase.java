@@ -41,6 +41,10 @@ import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.*;
+import org.zstack.header.identity.AccountResourceRefVO;
+import org.zstack.header.identity.AccountResourceRefVO_;
+import org.zstack.header.identity.ShareResourcePermission;
+import org.zstack.header.identity.SharedResourceVO_;
 import org.zstack.header.image.*;
 import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.message.*;
@@ -5669,6 +5673,31 @@ public class VmInstanceBase extends AbstractVmInstance {
         }
 
         if (volUuids == null) {                             // accessed by a system admin
+            List<String> ownVolumeUuids = Q.New(AccountResourceRefVO.class)
+                    .select(AccountResourceRefVO_.resourceUuid)
+                    .eq(AccountResourceRefVO_.accountUuid,accountUuid)
+                    .eq(AccountResourceRefVO_.resourceType,VolumeVO.class.getSimpleName())
+                    .listValues();
+
+            sql = "select " +
+                    "r.resourceUuid " +
+                    "from " +
+                    "SharedResourceVO r " +
+                    "where " +
+                    "(r.toPublic = :toPublic or r.receiverAccountUuid = :auuid) " +
+                    "and r.resourceType = :rtype " +
+                    "and r.permission in (:permissionCode)";
+            List<Integer> permissionCode = new ArrayList<>();
+            permissionCode.add(ShareResourcePermission.READ.code);
+            permissionCode.add(ShareResourcePermission.WRITE.code);
+            TypedQuery<String> srq = dbf.getEntityManager().createQuery(sql, String.class);
+            srq.setParameter("toPublic", true);
+            srq.setParameter("auuid", accountUuid);
+            srq.setParameter("rtype", VolumeVO.class.getSimpleName());
+            srq.setParameter("permissionCode", permissionCode);
+            List<String> sharedFromOthers = srq.getResultList();
+            ownVolumeUuids.addAll(sharedFromOthers);
+
             // if vm.clusterUuid is not null
             sql = "select vol" +
                     " from VolumeVO vol, VmInstanceVO vm, PrimaryStorageClusterRefVO ref" +
@@ -5680,6 +5709,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                     " and vm.clusterUuid = ref.clusterUuid" +
                     " and ref.primaryStorageUuid = vol.primaryStorageUuid" +
                     " and vm.uuid = :vmUuid" +
+                    " and vol.uuid in (:ownVolumeUuids)" +
                     " group by vol.uuid";
             TypedQuery<VolumeVO> q = dbf.getEntityManager().createQuery(sql, VolumeVO.class);
             q.setParameter("volState", VolumeState.Enabled);
@@ -5687,6 +5717,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             q.setParameter("formats", formats);
             q.setParameter("vmUuid", self.getUuid());
             q.setParameter("type", VolumeType.Data);
+            q.setParameter("ownVolumeUuids", ownVolumeUuids);
             vos = q.getResultList();
 
             // if vm.clusterUuid is null
@@ -5699,6 +5730,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                         " and vol.status = :volStatus" +
                         " and vol.format in (:formats)" +
                         " and vol.vmInstanceUuid is null" +
+                        " and vol.uuid in (:ownVolumeUuids)" +
                         " group by vol.uuid";
                 List<VolumeVO> dvs = SQL.New(sql)
                         .param("psUuids", psUuids)
@@ -5706,6 +5738,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                         .param("volState", VolumeState.Enabled)
                         .param("volStatus", VolumeStatus.Ready)
                         .param("formats", formats)
+                        .param("ownVolumeUuids", ownVolumeUuids)
                         .list();
                 vos.addAll(dvs);
             }
@@ -5716,11 +5749,13 @@ public class VmInstanceBase extends AbstractVmInstance {
                     " where vol.type = :type" +
                     " and vol.status = :volStatus" +
                     " and vol.state = :volState" +
+                    " and vol.uuid in (:ownVolumeUuids)" +
                     " group by vol.uuid";
             q = dbf.getEntityManager().createQuery(sql, VolumeVO.class);
             q.setParameter("type", VolumeType.Data);
             q.setParameter("volState", VolumeState.Enabled);
             q.setParameter("volStatus", VolumeStatus.NotInstantiated);
+            q.setParameter("ownVolumeUuids", ownVolumeUuids);
             vos.addAll(q.getResultList());
         } else {                                            // accessed by a normal account
             // if vm.clusterUuid is not null
