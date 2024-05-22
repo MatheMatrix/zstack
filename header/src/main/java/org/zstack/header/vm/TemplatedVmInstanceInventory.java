@@ -47,11 +47,9 @@ public class TemplatedVmInstanceInventory implements Serializable {
     public static TemplatedVmInstanceInventory valueOf(TemplatedVmInstanceVO vo) {
         TemplatedVmInstanceInventory inventory = new TemplatedVmInstanceInventory();
         inventory.setUuid(vo.getUuid());
-        if (vo.getVm() != null) {
-            inventory.setName(vo.getVm().getName());
-            inventory.setZoneUuid(vo.getVm().getZoneUuid());
-            inventory.setAccountUuid(vo.getVm().getAccountUuid());
-        }
+        inventory.setName(vo.getVm() != null ? vo.getVm().getName() : null);
+        inventory.setZoneUuid(vo.getVm() != null ? vo.getVm().getZoneUuid() : null);
+        inventory.setAccountUuid(vo.getVm() != null ? vo.getVm().getAccountUuid() : vo.getAccountUuid());
         inventory.setCreateDate(vo.getCreateDate());
         inventory.setLastOpDate(vo.getLastOpDate());
         return inventory;

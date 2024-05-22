@@ -3575,11 +3575,13 @@ public class VmInstanceBase extends AbstractVmInstance {
         }
 
         APIConvertVmInstanceToTemplatedVmInstanceEvent event = new APIConvertVmInstanceToTemplatedVmInstanceEvent(msg.getId());
-        TemplatedVmInstanceVO templatedVmInstance = new TemplatedVmInstanceVO();
-        templatedVmInstance.setUuid(msg.getVmInstanceUuid());
-        dbf.persistAndRefresh(templatedVmInstance);
+        TemplatedVmInstanceVO vo = new TemplatedVmInstanceVO();
+        String vmUuid = msg.getVmInstanceUuid();
+        vo.setUuid(vmUuid);
+        vo.setAccountUuid(Account.getAccountUuidOfResource(vmUuid));
+        vo = dbf.persistAndRefresh(vo);
 
-        TemplatedVmInstanceInventory inventory = TemplatedVmInstanceInventory.valueOf(templatedVmInstance);
+        TemplatedVmInstanceInventory inventory = TemplatedVmInstanceInventory.valueOf(vo);
         event.setInventory(inventory);
         bus.publish(event);
     }

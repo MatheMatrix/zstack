@@ -1,5 +1,6 @@
 CREATE TABLE `zstack`.`TemplatedVmInstanceVO` (
     `uuid` char(32) NOT NULL UNIQUE,
+    `accountUuid` varchar(32) NOT NULL,
     `lastOpDate` timestamp ON UPDATE CURRENT_TIMESTAMP,
     `createDate` timestamp,
     PRIMARY KEY  (`uuid`)

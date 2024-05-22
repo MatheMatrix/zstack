@@ -1,5 +1,7 @@
 package org.zstack.header.vm;
 
+import org.zstack.header.identity.AccountVO;
+import org.zstack.header.identity.OwnedByAccount;
 import org.zstack.header.vo.*;
 import org.zstack.header.vo.EntityGraph;
 import org.zstack.header.vo.ForeignKey;
@@ -10,17 +12,13 @@ import java.sql.Timestamp;
 
 @Entity
 @Table
+@BaseResource
 @EntityGraph(
         parents = {
                 @EntityGraph.Neighbour(type = VmInstanceVO.class, myField = "uuid", targetField = "uuid")
         }
 )
-public class TemplatedVmInstanceVO {
-    @Id
-    @Column
-    @ForeignKey(parentEntityClass = VmInstanceEO.class, onDeleteAction = ReferenceOption.CASCADE)
-    private String uuid;
-
+public class TemplatedVmInstanceVO extends ResourceVO implements OwnedByAccount {
     @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "uuid")
     @NoView
@@ -31,6 +29,10 @@ public class TemplatedVmInstanceVO {
 
     @Column
     private Timestamp lastOpDate;
+
+    @Column
+    @ForeignKey(parentEntityClass = AccountVO.class, parentKey = "uuid", onDeleteAction = ReferenceOption.CASCADE)
+    private String accountUuid;
 
     public String getUuid() {
         return uuid;
@@ -62,5 +64,13 @@ public class TemplatedVmInstanceVO {
 
     public void setLastOpDate(Timestamp lastOpDate) {
         this.lastOpDate = lastOpDate;
+    }
+
+    public String getAccountUuid() {
+        return accountUuid;
+    }
+
+    public void setAccountUuid(String accountUuid) {
+        this.accountUuid = accountUuid;
     }
 }
