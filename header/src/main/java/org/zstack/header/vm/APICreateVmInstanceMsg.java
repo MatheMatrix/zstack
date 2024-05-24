@@ -82,6 +82,7 @@ import static java.util.Arrays.asList;
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 12)
 public class APICreateVmInstanceMsg extends APICreateMessage implements APIAuditor, NewVmInstanceMessage2 {
+
     /**
      * @desc max length of 255 characters
      */
