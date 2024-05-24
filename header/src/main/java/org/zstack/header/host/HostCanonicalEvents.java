@@ -24,6 +24,96 @@ public class HostCanonicalEvents {
     public static final String HOST_PHYSICAL_DISK_INSERT_TRIGGERED = "/host/physicalDisk/insert/triggered";
     public static final String HOST_PHYSICAL_DISK_REMOVE_TRIGGERED = "/host/physicalDisk/remove/triggered";
 
+    public static final String HOST_PHYSICAL_GPU_REMOVE_TRIGGERED = "/host/physicalGpu/remove/triggered";
+    public static final String HOST_PHYSICAL_GPU_STATUS_ABNORMAL = "/host/physicalGpu/status/abnormal";
+    public static final String HOST_PHYSICAL_VGPU_STATUS_ABNORMAL = "/host/physicalVGpu/status/abnormal";
+
+
+    @NeedJsonSchema
+    public static class HostPhysicalGpuRemoveTriggeredData {
+        private String hostUuid;
+        private String pcideviceAddress;
+
+        public String getHostUuid() {
+            return hostUuid;
+        }
+
+        public void setHostUuid(String hostUuid) {
+            this.hostUuid = hostUuid;
+        }
+
+        public String getPcideviceAddress() {
+            return pcideviceAddress;
+        }
+
+        public void setPcideviceAddress(String pcideviceAddress) {
+            this.pcideviceAddress = pcideviceAddress;
+        }
+    }
+
+    @NeedJsonSchema
+    public static class HostPhysicalVGpuStatusAbnormalData {
+        private String hostUuid;
+        private String pcideviceAddress;
+        private String status;
+
+        public String getHostUuid() {
+            return hostUuid;
+        }
+
+        public void setHostUuid(String hostUuid) {
+            this.hostUuid = hostUuid;
+        }
+
+        public String getPcideviceAddress() {
+            return pcideviceAddress;
+        }
+
+        public void setPcideviceAddress(String pcideviceAddress) {
+            this.pcideviceAddress = pcideviceAddress;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+    }
+
+
+    @NeedJsonSchema
+    public static class HostPhysicalGpuStatusAbnormalData {
+        private String hostUuid;
+        private String pcideviceAddress;
+        private String status;
+
+        public String getHostUuid() {
+            return hostUuid;
+        }
+
+        public void setHostUuid(String hostUuid) {
+            this.hostUuid = hostUuid;
+        }
+
+        public String getPcideviceAddress() {
+            return pcideviceAddress;
+        }
+
+        public void setPcideviceAddress(String pcideviceAddress) {
+            this.pcideviceAddress = pcideviceAddress;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+    }
+
     @NeedJsonSchema
     public static class HostPhysicalCpuStatusAbnormalData {
         private String hostUuid;
