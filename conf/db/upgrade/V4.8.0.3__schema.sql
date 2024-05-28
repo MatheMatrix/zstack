@@ -85,3 +85,13 @@ CREATE TABLE IF NOT EXISTS `zstack`.`EthernetVfPciDeviceVO` (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 ALTER TABLE `zstack`.`HostNetworkInterfaceVO` ADD COLUMN `virtStatus` VARCHAR(32) DEFAULT NULL AFTER `offloadStatus`;
+
+CREATE TABLE IF NOT EXISTS `zstack`.`SchedulerJobGroupZoneRefVO` (
+    `id` bigint unsigned NOT NULL UNIQUE AUTO_INCREMENT,
+    `schedulerJobGroupUuid` varchar(32) NOT NULL COMMENT 'uuid of schedulerJobGroupUuid',
+    `zoneUuid` varchar(32) NOT NULL COMMENT 'uuid of zone',
+    `lastOpDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
+    `createDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+    CONSTRAINT `fkSchedulerJobGroupZoneRefVOSchedulerJobGroupVO` FOREIGN KEY (`schedulerJobGroupUuid`) REFERENCES SchedulerJobGroupVO (`uuid`) ON DELETE CASCADE,
+    PRIMARY KEY  (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
