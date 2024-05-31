@@ -12,7 +12,7 @@
         <name>configure.firewall.with.iptables</name>
         <description>use iptables directly instead of Vyos firewall configuration</description>
         <type>java.lang.Boolean</type>
-        <defaultValue>false</defaultValue>
+        <defaultValue>true</defaultValue>
     </config>
     <config>
         <category>vyos</category>
