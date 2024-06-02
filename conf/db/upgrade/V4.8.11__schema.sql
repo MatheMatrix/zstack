@@ -1,0 +1,1 @@
+UPDATE `zstack`.`GlobalConfigVO` SET `value`='none', `defaultValue`='none' WHERE `category`='sharedblock' AND `name`='qcow2.allocation';
