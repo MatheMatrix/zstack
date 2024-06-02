@@ -538,6 +538,8 @@ public class SourceClassMap {
 			put("org.zstack.resourceconfig.APIGetResourceBindableConfigReply$ResourceBindableConfigStruct", "org.zstack.sdk.ResourceBindableConfigStruct");
 			put("org.zstack.resourceconfig.ResourceConfigInventory", "org.zstack.sdk.ResourceConfigInventory");
 			put("org.zstack.resourceconfig.ResourceConfigStruct", "org.zstack.sdk.ResourceConfigStruct");
+			put("org.zstack.sdk.BareMetal2ChassisGpuDeviceInventory", "org.zstack.sdk.BareMetal2ChassisGpuDeviceInventory");
+			put("org.zstack.sdk.BareMetal2ChassisPciDeviceInventory", "org.zstack.sdk.BareMetal2ChassisPciDeviceInventory");
 			put("org.zstack.sdnController.header.HardwareL2VxlanNetworkPoolInventory", "org.zstack.sdk.HardwareL2VxlanNetworkPoolInventory");
 			put("org.zstack.sdnController.header.SdnControllerInventory", "org.zstack.sdk.SdnControllerInventory");
 			put("org.zstack.sdnController.header.SdnVniRange", "org.zstack.sdk.SdnVniRange");
@@ -796,10 +798,12 @@ public class SourceClassMap {
 			put("org.zstack.sdk.BareMetal2BondingNicRefInventory", "org.zstack.baremetal2.chassis.BareMetal2BondingNicRefInventory");
 			put("org.zstack.sdk.BareMetal2ChassisDiskInventory", "org.zstack.baremetal2.chassis.BareMetal2ChassisDiskInventory");
 			put("org.zstack.sdk.BareMetal2ChassisGpuDeviceInventory", "org.zstack.baremetal2.chassis.BareMetal2ChassisGpuDeviceInventory");
+			put("org.zstack.sdk.BareMetal2ChassisGpuDeviceInventory", "org.zstack.sdk.BareMetal2ChassisGpuDeviceInventory");
 			put("org.zstack.sdk.BareMetal2ChassisInventory", "org.zstack.baremetal2.chassis.BareMetal2ChassisInventory");
 			put("org.zstack.sdk.BareMetal2ChassisNicInventory", "org.zstack.baremetal2.chassis.BareMetal2ChassisNicInventory");
 			put("org.zstack.sdk.BareMetal2ChassisOfferingInventory", "org.zstack.baremetal2.configuration.BareMetal2ChassisOfferingInventory");
 			put("org.zstack.sdk.BareMetal2ChassisPciDeviceInventory", "org.zstack.baremetal2.chassis.BareMetal2ChassisPciDeviceInventory");
+			put("org.zstack.sdk.BareMetal2ChassisPciDeviceInventory", "org.zstack.sdk.BareMetal2ChassisPciDeviceInventory");
 			put("org.zstack.sdk.BareMetal2GatewayInventory", "org.zstack.baremetal2.gateway.BareMetal2GatewayInventory");
 			put("org.zstack.sdk.BareMetal2GatewayProvisionNicInventory", "org.zstack.baremetal2.gateway.BareMetal2GatewayProvisionNicInventory");
 			put("org.zstack.sdk.BareMetal2InstanceInventory", "org.zstack.baremetal2.instance.BareMetal2InstanceInventory");
