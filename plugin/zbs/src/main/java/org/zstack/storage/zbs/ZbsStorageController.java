@@ -413,28 +413,89 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     @Override
     public void cloneVolume(String srcInstallPath, CreateVolumeSpec dst, ReturnValueCompletion<VolumeStats> comp) {
-        CloneVolumeCmd cmd = new CloneVolumeCmd();
-        cmd.setLogicalPoolName(getLogicalPoolNameFromPath(srcInstallPath));
-        cmd.setLunName(getLunNameFromPath(srcInstallPath));
-        cmd.setSnapshotName(getSnapshotNameFromPath(srcInstallPath));
-        cmd.setDstLunName(dst.getName());
+        VolumeStats stats = new VolumeStats();
 
-        httpCall(CLONE_VOLUME_PATH, cmd, CloneVolumeRsp.class, new ReturnValueCompletion<CloneVolumeRsp>(comp) {
+        FlowChain chain = FlowChainBuilder.newShareFlowChain();
+        chain.setName(String.format("clone-volume-%s", dst.getName()));
+        chain.then(new ShareFlow() {
             @Override
-            public void success(CloneVolumeRsp returnValue) {
-                VolumeStats stats = new VolumeStats();
-                stats.setInstallPath(returnValue.installPath);
-                stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
-                stats.setSize(returnValue.getSize());
-                stats.setActualSize(returnValue.getSize());
-                comp.success(stats);
-            }
+            public void setup() {
+                flow(new NoRollbackFlow() {
+                    String __name__ = "clone-volume";
 
-            @Override
-            public void fail(ErrorCode errorCode) {
-                comp.fail(errorCode);
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        CloneVolumeCmd cmd = new CloneVolumeCmd();
+                        cmd.setLogicalPoolName(getLogicalPoolNameFromPath(srcInstallPath));
+                        cmd.setLunName(getLunNameFromPath(srcInstallPath));
+                        cmd.setSnapshotName(getSnapshotNameFromPath(srcInstallPath));
+                        cmd.setDstLunName(dst.getName());
+
+                        httpCall(CLONE_VOLUME_PATH, cmd, CloneVolumeRsp.class, new ReturnValueCompletion<CloneVolumeRsp>(trigger) {
+                            @Override
+                            public void success(CloneVolumeRsp returnValue) {
+                                stats.setInstallPath(returnValue.installPath);
+                                stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
+                                stats.setSize(returnValue.getSize());
+                                stats.setActualSize(returnValue.getSize());
+                                trigger.next();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.fail(errorCode);
+                            }
+                        });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "resize-volume";
+
+                    @Override
+                    public boolean skip(Map data) {
+                        return stats.getSize() >= dst.getSize();
+                    }
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        ExpandVolumeCmd cmd = new ExpandVolumeCmd();
+                        cmd.setLogicalPoolName(getLogicalPoolNameFromPath(stats.getInstallPath()));
+                        cmd.setLunName(getLunNameFromPath(stats.getInstallPath()));
+                        cmd.setSize(dst.getSize() / (1L << 30));
+
+                        httpCall(EXPAND_VOLUME_PATH, cmd, ExpandVolumeRsp.class, new ReturnValueCompletion<ExpandVolumeRsp>(trigger) {
+                            @Override
+                            public void success(ExpandVolumeRsp returnValue) {
+                                VolumeStats stats = new VolumeStats();
+                                stats.setInstallPath(stats.getInstallPath());
+                                stats.setSize(returnValue.getSize());
+                                trigger.next();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.fail(errorCode);
+                            }
+                        });
+                    }
+                });
+
+                done(new FlowDoneHandler(comp) {
+                    @Override
+                    public void handle(Map data) {
+                        comp.success(stats);
+                    }
+                });
+
+                error(new FlowErrorHandler(comp) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        comp.fail(errCode);
+                    }
+                });
             }
-        });
+        }).start();
     }
 
     @Override
