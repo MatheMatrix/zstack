@@ -22,6 +22,7 @@ import org.zstack.header.image.ImageInventory;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.vm.*;
+import org.zstack.header.vm.APICreateVmInstanceMsg.DiskAO;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
@@ -32,8 +33,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.zstack.core.progress.ProgressReportService.taskProgress;
 
@@ -123,11 +122,23 @@ public class VmAllocateHostFlow implements Flow {
         }
         msg.setAllowNoL3Networks(true);
 
-        if (!CollectionUtils.isEmpty(spec.getDiskAOs())) {
-            msg.getRequiredPrimaryStorageUuids().addAll(spec.getDiskAOs().stream()
-                    .map(APICreateVmInstanceMsg.DiskAO::getPrimaryStorageUuid).filter(Objects::nonNull).collect(Collectors.toList()));
-        }
+        setRequiredPrimaryStorageUuidsFromDiskAO(msg, spec);
         return msg;
+    }
+
+    private void setRequiredPrimaryStorageUuidsFromDiskAO(DesignatedAllocateHostMsg msg, VmInstanceSpec spec) {
+        if (CollectionUtils.isEmpty(spec.getDiskAOs())) {
+            return;
+        }
+        DiskAO rootDiskAO = spec.getDiskAOs().stream().filter(APICreateVmInstanceMsg.DiskAO::isBoot).findFirst().orElse(null);
+        if (rootDiskAO == null) {
+            return;
+        }
+        if (rootDiskAO.getPrimaryStorageUuid() == null) {
+            return;
+        }
+        msg.setRequiredPrimaryStorageUuids(new HashSet<>());
+        msg.getRequiredPrimaryStorageUuids().add(rootDiskAO.getPrimaryStorageUuid());
     }
 
     @Override
