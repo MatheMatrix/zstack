@@ -22,6 +22,7 @@ import org.zstack.header.image.ImageInventory;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.vm.*;
+import org.zstack.header.vm.APICreateVmInstanceMsg.DiskAO;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
@@ -123,10 +124,20 @@ public class VmAllocateHostFlow implements Flow {
         }
         msg.setAllowNoL3Networks(true);
 
-        if (!CollectionUtils.isEmpty(spec.getDiskAOs())) {
-            msg.getRequiredPrimaryStorageUuids().addAll(spec.getDiskAOs().stream()
-                    .map(APICreateVmInstanceMsg.DiskAO::getPrimaryStorageUuid).filter(Objects::nonNull).collect(Collectors.toList()));
+        DiskAO rootDiskAO = spec.getDiskAOs().stream().filter(APICreateVmInstanceMsg.DiskAO::isBoot).findFirst().orElse(null);
+        if (rootDiskAO != null) {
+            if (rootDiskAO.getPrimaryStorageUuid() != null) {
+                msg.addRequiredPrimaryStorageUuid(rootDiskAO.getPrimaryStorageUuid());
+                msg.setRequiredPrimaryStorageUuids(new HashSet<>());
+                msg.getRequiredPrimaryStorageUuids().add(rootDiskAO.getPrimaryStorageUuid());
+            }
+        } else {
+            if (!CollectionUtils.isEmpty(spec.getDiskAOs())) {
+                msg.getRequiredPrimaryStorageUuids().addAll(spec.getDiskAOs().stream()
+                        .map(APICreateVmInstanceMsg.DiskAO::getPrimaryStorageUuid).filter(Objects::nonNull).collect(Collectors.toList()));
+            }
         }
+
         return msg;
     }
 
