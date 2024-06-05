@@ -178,7 +178,7 @@ public class L3NetworkInventory implements Serializable {
         inv.setCategory(vo.getCategory().toString());
         inv.setHostRoute(L3NetworkHostRouteInventory.valueOf(vo.getHostRoutes()));
         inv.setIpVersion(vo.getIpVersion());
-        inv.setEnableIPAM(vo.getEnableIPAM());
+        inv.setEnableIPAM(vo.enableIpAddressAllocation());
         inv.setIsolated(vo.getIsolated());
         inv.setReservedIpRanges(ReservedIpRangeInventory.valueOf(vo.getReservedIpRanges()));
         return inv;

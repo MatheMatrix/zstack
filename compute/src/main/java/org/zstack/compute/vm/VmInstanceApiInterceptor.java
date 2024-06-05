@@ -229,7 +229,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         }
 
         L3NetworkVO l3NetworkVO = dbf.findByUuid(msg.getDestL3NetworkUuid(), L3NetworkVO.class);
-        if (l3NetworkVO.getEnableIPAM() && l3NetworkVO.getIpRanges().isEmpty()) {
+        if (l3NetworkVO.enableIpAddressAllocation() && l3NetworkVO.getIpRanges().isEmpty()) {
             throw new ApiMessageInterceptionException(operr("unable to change to L3 network. The L3 network[uuid:%s] doesn't has have ip range",
                     msg.getDestL3NetworkUuid()));
         }
@@ -301,7 +301,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 }
             }
 
-            if (!l3NetworkVO.getEnableIPAM()) {
+            if (!l3NetworkVO.enableIpAddressAllocation()) {
                 found = true;
             }
 
@@ -344,7 +344,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     }
                 }
 
-                if (!l3NetworkVO.getEnableIPAM()) {
+                if (!l3NetworkVO.enableIpAddressAllocation()) {
                     found = true;
                 }
 
@@ -579,7 +579,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     throw new ApiMessageInterceptionException(argerr("ip address [%s] already set to vmNic [uuid:%s]",
                             ip, vmNicVO.getUuid()));
                 }
-                if (!l3NetworkVO.getEnableIPAM()) {
+                if (!l3NetworkVO.enableIpAddressAllocation()) {
                     continue;
                 }
                 // check if the ip is in the ip range when ipam is enabled
@@ -607,7 +607,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     throw new ApiMessageInterceptionException(argerr("ip address [%s] already set to vmNic [uuid:%s]",
                             ip, vmNicVO.getUuid()));
                 }
-                if (!l3NetworkVO.getEnableIPAM()) {
+                if (!l3NetworkVO.enableIpAddressAllocation()) {
                     continue;
                 }
                 NormalIpRangeVO rangeVO = dbf.findByUuid(ipVo.getIpRangeUuid(), NormalIpRangeVO.class);
@@ -622,7 +622,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
     private void validate(APISetVmStaticIpMsg msg) {
         L3NetworkVO l3NetworkVO = Q.New(L3NetworkVO.class).eq(L3NetworkVO_.uuid, msg.getL3NetworkUuid()).find();
         if (msg.getIp() == null && msg.getIp6() == null) {
-            if(l3NetworkVO.getEnableIPAM()) {
+            if(l3NetworkVO.enableIpAddressAllocation()) {
                 throw new ApiMessageInterceptionException(argerr("could not set ip address, due to no ip address is specified"));
             }
         }
@@ -647,7 +647,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 msg.setIp6(ip6);
             }
         }
-        if (msg.getIp() != null && !l3NetworkVO.getEnableIPAM()) {
+        if (msg.getIp() != null && !l3NetworkVO.enableIpAddressAllocation()) {
             l3Found = true;
             if (msg.getNetmask() == null) {
                 throw new ApiMessageInterceptionException(argerr("ipv4 address need a netmask"));
@@ -659,7 +659,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 throw new ApiMessageInterceptionException(argerr("ip address [%s] already set to vmNic", msg.getIp()));
             }
         }
-        if (msg.getIp6() != null && !l3NetworkVO.getEnableIPAM()) {
+        if (msg.getIp6() != null && !l3NetworkVO.enableIpAddressAllocation()) {
             l3Found = true;
             if (msg.getIpv6Prefix() == null) {
                 throw new ApiMessageInterceptionException(argerr("ipv6 address need a prefix"));
@@ -846,7 +846,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         }
 
         L3NetworkVO l3NetworkVO = dbf.findByUuid(msg.getL3NetworkUuid(), L3NetworkVO.class);
-        if (l3NetworkVO.getIpRanges().isEmpty() && l3NetworkVO.getEnableIPAM()) {
+        if (l3NetworkVO.getIpRanges().isEmpty() && l3NetworkVO.enableIpAddressAllocation()) {
             throw new ApiMessageInterceptionException(operr("unable to attach a L3 network. The L3 network[uuid:%s] doesn't has have ip range",
                     msg.getL3NetworkUuid()));
         }
@@ -922,7 +922,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 }
             }
 
-            if (!l3NetworkVO.getEnableIPAM()) {
+            if (!l3NetworkVO.enableIpAddressAllocation()) {
                 found = true;
             }
 
@@ -965,7 +965,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     }
                 }
 
-                if (!l3NetworkVO.getEnableIPAM()) {
+                if (!l3NetworkVO.enableIpAddressAllocation()) {
                     found = true;
                 }
 
