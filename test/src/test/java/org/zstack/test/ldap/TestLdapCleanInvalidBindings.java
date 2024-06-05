@@ -16,6 +16,15 @@ import org.zstack.header.identity.AccountInventory;
 import org.zstack.header.identity.SessionInventory;
 import org.zstack.header.query.QueryCondition;
 import org.zstack.ldap.*;
+import org.zstack.ldap.api.APIAddLdapServerEvent;
+import org.zstack.ldap.api.APIAddLdapServerMsg;
+import org.zstack.ldap.api.APICreateLdapBindingEvent;
+import org.zstack.ldap.api.APICreateLdapBindingMsg;
+import org.zstack.ldap.api.APIQueryLdapServerMsg;
+import org.zstack.ldap.api.APIQueryLdapServerReply;
+import org.zstack.ldap.api.APIUpdateLdapServerEvent;
+import org.zstack.ldap.api.APIUpdateLdapServerMsg;
+import org.zstack.ldap.entity.LdapServerInventory;
 import org.zstack.test.Api;
 import org.zstack.test.ApiSender;
 import org.zstack.test.ApiSenderException;
@@ -107,7 +116,7 @@ public class TestLdapCleanInvalidBindings {
         msg2.setLdapUid("sclaus");
         msg2.setSession(session);
         APICreateLdapBindingEvent evt2 = sender.send(msg2, APICreateLdapBindingEvent.class);
-        logger.debug(evt2.getInventory().getUuid());
+        logger.debug("" + evt2.getInventory().getId());
 
         // bind account
         APICreateLdapBindingMsg msg21 = new APICreateLdapBindingMsg();
@@ -115,7 +124,7 @@ public class TestLdapCleanInvalidBindings {
         msg21.setLdapUid("jsteinbeck");
         msg21.setSession(session);
         APICreateLdapBindingEvent evt21 = sender.send(msg21, APICreateLdapBindingEvent.class);
-        logger.debug(evt21.getInventory().getUuid());
+        logger.debug("" + evt21.getInventory().getId());
 
         // update ldap server
         APIUpdateLdapServerMsg updateMsg1 = new APIUpdateLdapServerMsg();
