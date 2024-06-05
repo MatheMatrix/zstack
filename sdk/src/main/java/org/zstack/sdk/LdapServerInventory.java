@@ -20,6 +20,14 @@ public class LdapServerInventory  {
         return this.name;
     }
 
+    public java.lang.String type;
+    public void setType(java.lang.String type) {
+        this.type = type;
+    }
+    public java.lang.String getType() {
+        return this.type;
+    }
+
     public java.lang.String description;
     public void setDescription(java.lang.String description) {
         this.description = description;
@@ -52,12 +60,12 @@ public class LdapServerInventory  {
         return this.username;
     }
 
-    public java.lang.String scope;
-    public void setScope(java.lang.String scope) {
-        this.scope = scope;
+    public java.lang.String serverType;
+    public void setServerType(java.lang.String serverType) {
+        this.serverType = serverType;
     }
-    public java.lang.String getScope() {
-        return this.scope;
+    public java.lang.String getServerType() {
+        return this.serverType;
     }
 
     public java.lang.String encryption;

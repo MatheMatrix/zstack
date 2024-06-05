@@ -55,7 +55,7 @@ class LdapExceptionCase extends SubCase {
         }
     }
 
-    LDAPInterface getLdapConn(){
+    static LDAPInterface getLdapConn(){
         try{
             return embeddedLdapRule.ldapConnection()
         }catch (Exception e){

@@ -5,6 +5,7 @@ import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.ldap.filter.AndFilter;
 import org.springframework.ldap.filter.HardcodedFilter;
+import org.springframework.ldap.filter.NotFilter;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.Platform;
 import org.zstack.core.asyncbatch.While;
@@ -16,8 +17,12 @@ import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQLBatch;
 import org.zstack.core.db.SimpleQuery;
+import org.zstack.core.thread.ChainTask;
+import org.zstack.core.thread.SyncTaskChain;
+import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.workflow.SimpleFlowChain;
 import org.zstack.header.AbstractService;
+import org.zstack.header.core.Completion;
 import org.zstack.header.core.NoErrorCompletion;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
@@ -32,6 +37,19 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
 import org.zstack.identity.AccountManager;
+import org.zstack.identity.imports.AccountImportsConstant;
+import org.zstack.identity.imports.entity.ImportAccountBatch;
+import org.zstack.identity.imports.entity.ImportAccountRefVO;
+import org.zstack.identity.imports.entity.ImportAccountRefInventory;
+import org.zstack.identity.imports.entity.ImportAccountRefVO_;
+import org.zstack.identity.imports.message.ImportThirdPartyAccountMsg;
+import org.zstack.ldap.api.*;
+import org.zstack.ldap.entity.LdapServerInventory;
+import org.zstack.ldap.entity.LdapServerType;
+import org.zstack.ldap.entity.LdapServerVO;
+import org.zstack.ldap.entity.LdapServerVO_;
+import org.zstack.ldap.message.SyncAccountsFromLdapServerMsg;
+import org.zstack.ldap.message.SyncAccountsFromLdapServerReply;
 import org.zstack.tag.PatternedSystemTag;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.tag.SystemTagUtils;
@@ -58,6 +76,7 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
 
     private static final LdapEffectiveScope scope = new LdapEffectiveScope(AccountConstant.LOGIN_TYPE);
     private static final LoginType loginType = new LoginType(LdapConstant.LOGIN_TYPE);
+    private static boolean loadingOrganizationsFromDB = false;
 
     @Autowired
     private DatabaseFacade dbf;
@@ -67,6 +86,8 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
     private TagManager tagMgr;
     @Autowired
     private CloudBus bus;
+    @Autowired
+    private ThreadFacade threads;
     @Autowired
     private PluginRegistry pluginRgty;
     @Autowired
@@ -82,6 +103,9 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
     }
 
     private void handleLocalMessage(Message msg) {
+        if (msg instanceof SyncAccountsFromLdapServerMsg) {
+            handle((SyncAccountsFromLdapServerMsg) msg);
+        }
         bus.dealWithUnknownMessage(msg);
     }
 
@@ -104,20 +128,22 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
             handle((APIUpdateLdapServerMsg) msg);
         } else if (msg instanceof APICleanInvalidLdapBindingMsg) {
             handle((APICleanInvalidLdapBindingMsg) msg);
+        } else if (msg instanceof APISyncAccountsFromLdapServerMsg) {
+            handle((APISyncAccountsFromLdapServerMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
     }
 
     @Transactional
-    private LdapAccountRefInventory bindLdapAccount(String accountUuid, String ldapUid) {
-        LdapAccountRefVO ref = new LdapAccountRefVO();
+    private ImportAccountRefInventory bindLdapAccount(String accountUuid, String ldapUid) {
+        ImportAccountRefVO ref = new ImportAccountRefVO();
         ref.setUuid(Platform.getUuid());
         ref.setAccountUuid(accountUuid);
-        ref.setLdapServerUuid(ldapUtil.getLdapServer().getUuid());
-        ref.setLdapUid(ldapUid);
+        ref.setImportSourceUuid(ldapUtil.getLdapServer().getUuid());
+        ref.setKeyFromImportSource(ldapUid);
         ref = dbf.persistAndRefresh(ref);
-        return LdapAccountRefInventory.valueOf(ref);
+        return ImportAccountRefInventory.valueOf(ref);
     }
 
 
@@ -177,9 +203,7 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
     private void handle(APIAddLdapServerMsg msg) {
         APIAddLdapServerEvent evt = new APIAddLdapServerEvent(msg.getId());
 
-        if (Q.New(LdapServerVO.class)
-                .eq(LdapServerVO_.scope, msg.getScope())
-                .count() == 1) {
+        if (Q.New(LdapServerVO.class).count() == 1) {
             evt.setError(err(LdapErrors.MORE_THAN_ONE_LDAP_SERVER,
                     "There has been a LDAP/AD server record. " +
                             "You'd better remove it before adding a new one!"));
@@ -189,14 +213,15 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
 
         LdapServerVO ldapServerVO = new LdapServerVO();
         ldapServerVO.setUuid(Platform.getUuid());
-        ldapServerVO.setName(msg.getName());
+        ldapServerVO.setResourceName(msg.getName());
         ldapServerVO.setDescription(msg.getDescription());
+        ldapServerVO.setType(LdapConstant.LOGIN_TYPE);
         ldapServerVO.setUrl(msg.getUrl());
         ldapServerVO.setBase(msg.getBase());
         ldapServerVO.setUsername(msg.getUsername());
         ldapServerVO.setPassword(msg.getPassword());
         ldapServerVO.setEncryption(msg.getEncryption());
-        ldapServerVO.setScope(msg.getScope());
+        ldapServerVO.setServerType(LdapServerType.Unknown);
 
         ldapServerVO = dbf.persistAndRefresh(ldapServerVO);
         LdapServerInventory inv = LdapServerInventory.valueOf(ldapServerVO);
@@ -361,8 +386,8 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
         AndFilter andFilter = new AndFilter();
         andFilter.and(new HardcodedFilter(msg.getLdapFilter()));
 
-        List<String> boundLdapEntryList = Q.New(LdapAccountRefVO.class)
-                .select(LdapAccountRefVO_.ldapUid)
+        List<String> boundLdapEntryList = Q.New(ImportAccountRefVO.class)
+                .select(ImportAccountRefVO_.keyFromImportSource)
                 .listValues();
 
         List<Object> result = ldapUtil.searchLdapEntry(andFilter.toString(), msg.getLimit(), new ResultFilter() {
@@ -391,8 +416,6 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
             return;
         }
 
-        String ldapUseAsLoginName = ldapUtil.getLdapUseAsLoginName();
-
         // bind op
         LdapTemplateContextSource ldapTemplateContextSource = ldapUtil.readLdapServerConfiguration();
         String fullDn = msg.getLdapUid();
@@ -404,7 +427,7 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
         }
         try {
             evt.setInventory(bindLdapAccount(msg.getAccountUuid(), fullDn));
-            logger.info(String.format("create ldap binding[ldapUid=%s, ldapUseAsLoginName=%s] success", fullDn, ldapUseAsLoginName));
+            logger.info(String.format("create ldap binding[ldapUid=%s, account=%s] success", fullDn, msg.getAccountUuid()));
         } catch (PersistenceException e) {
             if (ExceptionDSL.isCausedBy(e, SQLIntegrityConstraintViolationException.class)) {
                 evt.setError(err(LdapErrors.BIND_SAME_LDAP_UID_TO_MULTI_ACCOUNT,
@@ -419,7 +442,7 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
     private void handle(APIDeleteLdapBindingMsg msg) {
         APIDeleteLdapBindingEvent evt = new APIDeleteLdapBindingEvent(msg.getId());
 
-        dbf.removeByPrimaryKey(msg.getUuid(), LdapAccountRefVO.class);
+        dbf.removeByPrimaryKey(msg.getUuid(), ImportAccountRefVO.class);
 
         bus.publish(evt);
     }
@@ -428,8 +451,8 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
     private void handle(APICleanInvalidLdapBindingMsg msg) {
         APICleanInvalidLdapBindingEvent evt = new APICleanInvalidLdapBindingEvent(msg.getId());
 
-        SimpleQuery<LdapAccountRefVO> sq = dbf.createQuery(LdapAccountRefVO.class);
-        List<LdapAccountRefVO> refList = sq.list();
+        SimpleQuery<ImportAccountRefVO> sq = dbf.createQuery(ImportAccountRefVO.class);
+        List<ImportAccountRefVO> refList = sq.list();
         if(refList == null || refList.isEmpty()){
             bus.publish(evt);
             return;
@@ -439,9 +462,9 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
         ArrayList<String> ldapAccountRefUuidList = new ArrayList<>();
         LdapTemplateContextSource ldapTemplateContextSource = ldapUtil.readLdapServerConfiguration();
 
-        for (LdapAccountRefVO ldapAccRefVO : refList) {
+        for (ImportAccountRefVO ldapAccRefVO : refList) {
             // no data in ldap
-            String ldapDn = ldapAccRefVO.getLdapUid();
+            String ldapDn = ldapAccRefVO.getKeyFromImportSource();
             if(!ldapUtil.validateDnExist(ldapTemplateContextSource, ldapDn)){
                 accountUuidList.add(ldapAccRefVO.getAccountUuid());
                 ldapAccountRefUuidList.add(ldapAccRefVO.getUuid());
@@ -449,7 +472,7 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
             }
 
             // filter
-            String filter = LdapSystemTags.LDAP_CLEAN_BINDING_FILTER.getTokenByResourceUuid(ldapAccRefVO.getLdapServerUuid(), LdapSystemTags.LDAP_CLEAN_BINDING_FILTER_TOKEN);
+            String filter = LdapSystemTags.LDAP_CLEAN_BINDING_FILTER.getTokenByResourceUuid(ldapAccRefVO.getImportSourceUuid(), LdapSystemTags.LDAP_CLEAN_BINDING_FILTER_TOKEN);
             if(StringUtils.isNotEmpty(filter)){
                 HardcodedFilter hardcodedFilter = new HardcodedFilter(filter);
                 if(ldapUtil.validateDnExist(ldapTemplateContextSource, ldapDn, hardcodedFilter)){
@@ -458,7 +481,7 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
                 }
             }
             // allow list filter
-            String allowListFilter = LdapSystemTags.LDAP_ALLOW_LIST_FILTER.getTokenByResourceUuid(ldapAccRefVO.getLdapServerUuid(), LdapSystemTags.LDAP_ALLOW_LIST_FILTER_TOKEN);
+            String allowListFilter = LdapSystemTags.LDAP_ALLOW_LIST_FILTER.getTokenByResourceUuid(ldapAccRefVO.getImportSourceUuid(), LdapSystemTags.LDAP_ALLOW_LIST_FILTER_TOKEN);
             if(StringUtils.isNotEmpty(allowListFilter)){
                 HardcodedFilter hardcodedAllowListFilter = new HardcodedFilter(allowListFilter);
                 if(!ldapUtil.validateDnExist(ldapTemplateContextSource, ldapDn, hardcodedAllowListFilter)){
@@ -470,7 +493,7 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
 
         if (!accountUuidList.isEmpty()) {
             // remove ldap bindings
-            dbf.removeByPrimaryKeys(ldapAccountRefUuidList, LdapAccountRefVO.class);
+            dbf.removeByPrimaryKeys(ldapAccountRefUuidList, ImportAccountRefVO.class);
             // return accounts of which ldap bindings had been removed
             SimpleQuery<AccountVO> sq1 = dbf.createQuery(AccountVO.class);
             sq1.add(AccountVO_.uuid, SimpleQuery.Op.IN, accountUuidList);
@@ -494,7 +517,7 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
 
         //
         if (msg.getName() != null) {
-            ldapServerVO.setName(msg.getName());
+            ldapServerVO.setResourceName(msg.getName());
         }
         if (msg.getDescription() != null) {
             ldapServerVO.setDescription(msg.getDescription());
@@ -529,6 +552,158 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
         bus.publish(evt);
     }
 
+    private void handle(APISyncAccountsFromLdapServerMsg msg) {
+        SyncAccountsFromLdapServerMsg innerMsg = new SyncAccountsFromLdapServerMsg();
+        innerMsg.setUuid(msg.getUuid());
+        bus.makeTargetServiceIdByResourceUuid(innerMsg, getId(), msg.getUuid());
+        bus.send(innerMsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply reply) {
+                APISyncAccountsFromLdapServerEvent event = new APISyncAccountsFromLdapServerEvent(msg.getId());
+                if (!reply.isSuccess()) {
+                    event.setError(reply.getError());
+                }
+                bus.publish(event);
+            }
+        });
+    }
+
+    private void handle(SyncAccountsFromLdapServerMsg msg) {
+        SyncAccountsFromLdapServerReply reply = new SyncAccountsFromLdapServerReply();
+        threads.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return String.format("sync-ldap-server-%s", msg.getUuid());
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                if (loadingOrganizationsFromDB) {
+                    reply.setError(operr("ZStack is loading ldap organizations from DB now, can not execute sync operation"));
+                    bus.reply(msg, reply);
+                    chain.next();
+                    return;
+                }
+
+                doSyncLdapServer(msg.getUuid(), new Completion(chain) {
+                    @Override
+                    public void success() {
+                        bus.reply(msg, reply);
+                        chain.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        reply.setError(errorCode);
+                        bus.reply(msg, reply);
+                        chain.next();
+                    }
+                });
+            }
+
+            @Override
+            public String getName() {
+                return getSyncSignature();
+            }
+        });
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private void doSyncLdapServer(String ldapServerUuid, Completion completion) {
+        final ImportAccountBatch batch = new ImportAccountBatch();
+        batch.sourceUuid = ldapServerUuid;
+        batch.sourceType = LdapConstant.LOGIN_TYPE;
+
+        FlowChain chain = new SimpleFlowChain();
+        chain.setName(String.format("sync-ldap-server-%s", ldapServerUuid));
+        chain.then(new NoRollbackFlow() {
+            String __name__ = "sync-uid";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                Set<String> returnAttributeSet = new HashSet<>(Arrays.asList(LdapConstant.QUERY_LDAP_ENTRY_MUST_RETURN_ATTRIBUTES));
+                returnAttributeSet.add(ldapUtil.getGlobalUuidKey());
+                String[] returnAttributes = returnAttributeSet.toArray(new String[0]);
+
+                AndFilter userFilter = new AndFilter();
+                // filter
+                String filter = LdapSystemTags.LDAP_CLEAN_BINDING_FILTER.getTokenByResourceUuid(ldapServerUuid, LdapSystemTags.LDAP_CLEAN_BINDING_FILTER_TOKEN);
+                if(StringUtils.isNotEmpty(filter)){
+                    userFilter.and(new NotFilter(new HardcodedFilter(filter)));
+                }
+                // allow list filter
+                String allowListFilter = LdapSystemTags.LDAP_ALLOW_LIST_FILTER.getTokenByResourceUuid(ldapServerUuid, LdapSystemTags.LDAP_ALLOW_LIST_FILTER_TOKEN);
+                if(StringUtils.isNotEmpty(allowListFilter)){
+                    userFilter.and(new HardcodedFilter(allowListFilter));
+                }
+
+                logger.debug("user filter is " + userFilter.toString());
+                final int maximumSyncUsers = 10000; // TODO from global config
+                String globalUuidKey = ldapUtil.getGlobalUuidKey();
+
+                List<Object> results = ldapUtil.searchLdapEntry(userFilter.toString(), maximumSyncUsers, returnAttributes, null, false);
+                for (Object ldapEntry : results) {
+                    try {
+                        batch.accountList.add(generateAccountSpec(globalUuidKey, ldapEntry));
+                    } catch (Exception e) {
+                        logger.warn("failed to sync ldap entry[], ignore this account", e);
+                    }
+                }
+                trigger.next();
+            }
+
+            private ImportAccountBatch.AccountSpec generateAccountSpec(String globalUuidKey, Object ldapEntry) {
+                ImportAccountBatch.AccountSpec spec = new ImportAccountBatch.AccountSpec();
+                Map<String, Object> map = (Map<String, Object>) ldapEntry;
+
+                String dn = (String) map.get(LdapConstant.LDAP_DN_KEY); // entryDN
+                spec.keyFromSource = dn;
+                spec.accountType = AccountType.Normal;
+                spec.username = dn; // TODO
+                spec.password = Platform.getUuid() + Platform.getUuid();
+                return spec;
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "import-accounts";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                ImportThirdPartyAccountMsg msg = new ImportThirdPartyAccountMsg();
+                msg.setBatch(batch);
+                bus.makeTargetServiceIdByResourceUuid(msg, AccountImportsConstant.SERVICE_ID, msg.getSourceUuid());
+                bus.send(msg, new CloudBusCallBack(trigger) {
+                    @Override
+                    public void run(MessageReply reply) {
+                        if (!reply.isSuccess()) {
+                            trigger.fail(reply.getError());
+                            return;
+                        }
+                        trigger.next();
+                    }
+                });
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "clean-stale-ldap-entry";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+//                doCleanInvalidLdapIAM2VirtualIDBindings();
+//                doCleanupInvalidLdapIAM2OrganizationRefs();
+                trigger.next();
+            }
+        }).error(new FlowErrorHandler(completion) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                completion.fail(errCode);
+            }
+        }).done(new FlowDoneHandler(completion) {
+            @Override
+            public void handle(Map data) {
+                completion.success();
+            }
+        }).start();
+    }
+
     @Override
     public LoginType getLoginType() {
         return loginType;
@@ -545,7 +720,7 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
 
         LdapTemplateContextSource ldapTemplateContextSource = ldapUtil.readLdapServerConfiguration();
         String dn = ldapUtil.getFullUserDn(ldapTemplateContextSource.getLdapTemplate(), ldapUtil.getLdapUseAsLoginName(), ldapLoginName);
-        LdapAccountRefVO vo = ldapUtil.findLdapAccountRefVO(dn);
+        ImportAccountRefVO vo = ldapUtil.findLdapAccountRefVO(dn);
 
         if (vo == null) {
             completion.fail(err(IdentityErrors.AUTHENTICATION_ERROR,

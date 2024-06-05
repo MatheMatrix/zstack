@@ -1,13 +1,11 @@
 package org.zstack.sdk;
 
-import org.zstack.sdk.LdapAccountRefInventory;
-
 public class CreateLdapBindingResult {
-    public LdapAccountRefInventory inventory;
-    public void setInventory(LdapAccountRefInventory inventory) {
+    public ImportAccountRefInventory inventory;
+    public void setInventory(ImportAccountRefInventory inventory) {
         this.inventory = inventory;
     }
-    public LdapAccountRefInventory getInventory() {
+    public ImportAccountRefInventory getInventory() {
         return this.inventory;
     }
 
