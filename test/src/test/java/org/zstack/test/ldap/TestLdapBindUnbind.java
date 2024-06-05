@@ -12,10 +12,21 @@ import org.zapodot.junit.ldap.EmbeddedLdapRule;
 import org.zapodot.junit.ldap.EmbeddedLdapRuleBuilder;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.componentloader.ComponentLoader;
+import org.zstack.header.identity.APILogInReply;
 import org.zstack.header.identity.AccountInventory;
 import org.zstack.header.identity.SessionInventory;
+import org.zstack.header.identity.login.APILogInMsg;
 import org.zstack.header.query.QueryCondition;
 import org.zstack.ldap.*;
+import org.zstack.ldap.api.APIAddLdapServerEvent;
+import org.zstack.ldap.api.APIAddLdapServerMsg;
+import org.zstack.ldap.api.APICreateLdapBindingEvent;
+import org.zstack.ldap.api.APICreateLdapBindingMsg;
+import org.zstack.ldap.api.APIDeleteLdapBindingEvent;
+import org.zstack.ldap.api.APIDeleteLdapBindingMsg;
+import org.zstack.ldap.api.APIQueryLdapServerMsg;
+import org.zstack.ldap.api.APIQueryLdapServerReply;
+import org.zstack.ldap.entity.LdapServerInventory;
 import org.zstack.test.Api;
 import org.zstack.test.ApiSender;
 import org.zstack.test.ApiSenderException;
@@ -139,36 +150,36 @@ public class TestLdapBindUnbind {
 
 
         // login with right ldap uid and right ldap password
-        APILogInByLdapMsg msg3 = new APILogInByLdapMsg();
-        msg3.setUid("sclaus");
+        APILogInMsg msg3 = new APILogInMsg();
+        msg3.setUsername("sclaus");
         msg3.setPassword("password");
+        msg3.setLoginType(LdapConstant.LOGIN_TYPE);
         msg3.setServiceId(bus.makeLocalServiceId(LdapConstant.SERVICE_ID));
-        APILogInByLdapReply reply3 = sender.call(msg3, APILogInByLdapReply.class);
+        APILogInReply reply3 = sender.call(msg3, APILogInReply.class);
         logger.debug(reply3.getInventory().getAccountUuid());
-        logger.debug(reply3.getAccountInventory().getName());
 
         // login with right ldap uid and wrong ldap password
         try {
-            APILogInByLdapMsg msg31 = new APILogInByLdapMsg();
-            msg31.setUid("sclaus");
+            APILogInMsg msg31 = new APILogInMsg();
+            msg31.setUsername("sclaus");
             msg31.setPassword("wrong password");
+            msg31.setLoginType(LdapConstant.LOGIN_TYPE);
             msg31.setServiceId(bus.makeLocalServiceId(LdapConstant.SERVICE_ID));
-            APILogInByLdapReply reply31 = sender.call(msg31, APILogInByLdapReply.class);
+            APILogInReply reply31 = sender.call(msg31, APILogInReply.class);
             logger.debug(reply31.getInventory().getAccountUuid());
-            logger.debug(reply31.getAccountInventory().getName());
         } catch (Exception e) {
 
         }
 
         // login with wrong ldap uid
         try {
-            APILogInByLdapMsg msg31 = new APILogInByLdapMsg();
-            msg31.setUid("wrong ldap uid");
+            APILogInMsg msg31 = new APILogInMsg();
+            msg31.setUsername("wrong ldap uid");
             msg31.setPassword("wrong password");
+            msg31.setLoginType(LdapConstant.LOGIN_TYPE);
             msg31.setServiceId(bus.makeLocalServiceId(LdapConstant.SERVICE_ID));
-            APILogInByLdapReply reply31 = sender.call(msg31, APILogInByLdapReply.class);
+            APILogInReply reply31 = sender.call(msg31, APILogInReply.class);
             logger.debug(reply31.getInventory().getAccountUuid());
-            logger.debug(reply31.getAccountInventory().getName());
         } catch (Exception e) {
 
         }
