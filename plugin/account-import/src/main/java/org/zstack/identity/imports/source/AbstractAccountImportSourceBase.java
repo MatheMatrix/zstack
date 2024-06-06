@@ -10,6 +10,7 @@ import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.cloudbus.MessageSafe;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
+import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
 import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.SyncTaskChain;
@@ -164,35 +165,47 @@ public abstract class AbstractAccountImportSourceBase {
                     final AccountImportChunk chunk = new AccountImportChunk().withSpec(spec);
                     chunks.add(chunk);
 
-                    if (!spec.createIfNotExist && spec.accountUuid == null) {
-                        chunk.errorForCreatingAccount = operr("invalid account spec: accountUuid is null");
-                        whileCompletion.done();
-                        return;
-                    }
+                    ImportAccountRefVO existRef = Q.New(ImportAccountRefVO.class)
+                            .eq(ImportAccountRefVO_.importSourceUuid, self.getUuid())
+                            .eq(ImportAccountRefVO_.keyFromImportSource, spec.keyFromSource)
+                            .find();
+                    AccountVO existsAccount;
 
-                    String accountUuid = spec.accountUuid == null ? Platform.getUuid() : spec.accountUuid;
+                    if (existRef == null) {
+                        if (!spec.createIfNotExist) {
+                            chunk.errorForCreatingAccount = operr("invalid account spec: account not exists");
+                            whileCompletion.done();
+                            return;
+                        }
+                        spec.accountUuid = spec.accountUuid == null ? Platform.getUuid() : spec.accountUuid;
+                        existsAccount = null;
+                    } else {
+                        if (!Objects.equals(spec.accountUuid, existRef.getAccountUuid())) {
+                            chunk.errorForCreatingAccount =
+                                    operr("invalid account spec: account[key=%s] already exist, and its uuid is %s",
+                                            spec.keyFromSource, existRef.getAccountUuid());
+                            whileCompletion.done();
+                            return;
+                        }
+                        spec.accountUuid = existRef.getAccountUuid();
+                        existsAccount = databases.findByUuid(spec.accountUuid, AccountVO.class);
+                        chunk.withAlreadyExistsAccount(AccountInventory.valueOf(existsAccount));
+                    }
 
                     ImportAccountRefVO ref = new ImportAccountRefVO();
                     ref.setUuid(Platform.getUuid());
                     ref.setKeyFromImportSource(spec.keyFromSource);
                     ref.setImportSourceUuid(batch.sourceUuid);
-                    ref.setAccountUuid(accountUuid);
+                    ref.setAccountUuid(spec.accountUuid);
                     chunk.withRef(ref);
 
-                    if (!spec.createIfNotExist) {
-                        final AccountVO account = databases.findByUuid(spec.accountUuid, AccountVO.class);
-                        if (account == null) {
-                            chunk.errorForCreatingAccount = operr("invalid account spec: failed to find account[uuid=%s]",
-                                    spec.accountUuid);
-                        } else {
-                            chunk.withAccount(AccountInventory.valueOf(account));
-                        }
+                    if (existsAccount != null) {
                         whileCompletion.done();
                         return;
                     }
 
                     CreateAccountMsg message = new CreateAccountMsg();
-                    message.setUuid(accountUuid);
+                    message.setUuid(spec.accountUuid);
                     message.setName(spec.username);
                     message.setPassword(spec.password);
                     message.setType(spec.accountType.toString());
@@ -219,7 +232,7 @@ public abstract class AbstractAccountImportSourceBase {
             @Override
             public void rollback(FlowRollback trigger, Map data) {
                 new While<>(chunks).each((chunk, whileCompletion) -> {
-                    if (chunk.errorForCreatingAccount != null) {
+                    if (chunk.errorForCreatingAccount != null || chunk.accountAlreadyExists) {
                         whileCompletion.done();
                         return;
                     }
@@ -243,6 +256,17 @@ public abstract class AbstractAccountImportSourceBase {
                         trigger.rollback();
                     }
                 });
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "update-attributes-for-exists-account";
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                logger.info("skip update attributes methods utils IAM1-account-attributes feature start");
+
+                final List<AccountImportChunk> accountChunks = filter(chunks, chunk -> chunk.accountAlreadyExists);
+                logger.info("count of accounts needed update attributes: " + accountChunks.size());
+
+                trigger.next();
             }
         }).then(new NoRollbackFlow() {
             String __name__ = "bind-accounts-with-import-source";

@@ -8,12 +8,19 @@ import org.zstack.header.identity.AccountInventory;
  */
 public class AccountImportChunk {
     public AccountInventory account;
-    public ImportAccountBatch.AccountSpec spec;
+    public transient ImportAccountBatch.AccountSpec spec;
     public ImportAccountRefVO ref;
     public ErrorCode errorForCreatingAccount;
+    public boolean accountAlreadyExists;
 
     public AccountImportChunk withAccount(AccountInventory account) {
         this.account = account;
+        return this;
+    }
+
+    public AccountImportChunk withAlreadyExistsAccount(AccountInventory account) {
+        this.account = account;
+        this.accountAlreadyExists = true;
         return this;
     }
 

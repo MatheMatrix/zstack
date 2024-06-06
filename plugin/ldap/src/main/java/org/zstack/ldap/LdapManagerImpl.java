@@ -5,7 +5,6 @@ import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.ldap.filter.AndFilter;
 import org.springframework.ldap.filter.HardcodedFilter;
-import org.springframework.ldap.filter.NotFilter;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.Platform;
 import org.zstack.core.asyncbatch.While;
@@ -37,19 +36,22 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
 import org.zstack.identity.AccountManager;
-import org.zstack.identity.imports.AccountImportsConstant;
-import org.zstack.identity.imports.entity.ImportAccountBatch;
 import org.zstack.identity.imports.entity.ImportAccountRefVO;
 import org.zstack.identity.imports.entity.ImportAccountRefInventory;
 import org.zstack.identity.imports.entity.ImportAccountRefVO_;
-import org.zstack.identity.imports.message.ImportThirdPartyAccountMsg;
+import org.zstack.identity.imports.entity.SyncNewcomersStrategy;
+import org.zstack.identity.imports.entity.SyncRetireesStrategy;
 import org.zstack.ldap.api.*;
+import org.zstack.ldap.entity.LdapFilterRuleVO;
+import org.zstack.ldap.entity.LdapFilterRuleVO_;
 import org.zstack.ldap.entity.LdapServerInventory;
 import org.zstack.ldap.entity.LdapServerType;
 import org.zstack.ldap.entity.LdapServerVO;
 import org.zstack.ldap.entity.LdapServerVO_;
 import org.zstack.ldap.message.SyncAccountsFromLdapServerMsg;
 import org.zstack.ldap.message.SyncAccountsFromLdapServerReply;
+import org.zstack.ldap.sync.LdapSyncAccountSpec;
+import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.tag.PatternedSystemTag;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.tag.SystemTagUtils;
@@ -66,6 +68,8 @@ import java.util.*;
 
 import static org.zstack.core.Platform.err;
 import static org.zstack.core.Platform.operr;
+import static org.zstack.identity.imports.AccountImportsGlobalConfig.SYNC_NEWCOMERS_STRATEGY;
+import static org.zstack.identity.imports.AccountImportsGlobalConfig.SYNC_RETIREES_STRATEGY;
 import static org.zstack.utils.CollectionDSL.map;
 
 /**
@@ -92,6 +96,8 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
     private PluginRegistry pluginRgty;
     @Autowired
     private Captcha captcha;
+    @Autowired
+    private ResourceConfigFacade resourceConfigs;
 
     @MessageSafe
     public void handleMessage(Message msg) {
@@ -585,7 +591,18 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
                     return;
                 }
 
-                doSyncLdapServer(msg.getUuid(), new Completion(chain) {
+                SyncNewcomersStrategy forNewcomer = SyncNewcomersStrategy.valueOf(
+                        resourceConfigs.getResourceConfigValue(SYNC_NEWCOMERS_STRATEGY, msg.getUuid(), String.class));
+                SyncRetireesStrategy forRetirees = SyncRetireesStrategy.valueOf(
+                        resourceConfigs.getResourceConfigValue(SYNC_RETIREES_STRATEGY, msg.getUuid(), String.class));
+
+                new LdapSyncAccountSpec()
+                        .withAccountImportSource(msg.getUuid(), LdapConstant.LOGIN_TYPE)
+                        .withNewcomersStrategy(forNewcomer)
+                        .withRetireesStrategy(forRetirees)
+                        .withFilterRules(Q.New(LdapFilterRuleVO.class).eq(LdapFilterRuleVO_.ldapServerUuid, msg.getUuid()).list())
+                        .createBackend()
+                        .run(new Completion(chain) {
                     @Override
                     public void success() {
                         bus.reply(msg, reply);
@@ -606,102 +623,6 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
                 return getSyncSignature();
             }
         });
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private void doSyncLdapServer(String ldapServerUuid, Completion completion) {
-        final ImportAccountBatch batch = new ImportAccountBatch();
-        batch.sourceUuid = ldapServerUuid;
-        batch.sourceType = LdapConstant.LOGIN_TYPE;
-
-        FlowChain chain = new SimpleFlowChain();
-        chain.setName(String.format("sync-ldap-server-%s", ldapServerUuid));
-        chain.then(new NoRollbackFlow() {
-            String __name__ = "sync-uid";
-
-            @Override
-            public void run(FlowTrigger trigger, Map data) {
-                Set<String> returnAttributeSet = new HashSet<>(Arrays.asList(LdapConstant.QUERY_LDAP_ENTRY_MUST_RETURN_ATTRIBUTES));
-                returnAttributeSet.add(ldapUtil.getGlobalUuidKey());
-                String[] returnAttributes = returnAttributeSet.toArray(new String[0]);
-
-                AndFilter userFilter = new AndFilter();
-                // filter
-                String filter = LdapSystemTags.LDAP_CLEAN_BINDING_FILTER.getTokenByResourceUuid(ldapServerUuid, LdapSystemTags.LDAP_CLEAN_BINDING_FILTER_TOKEN);
-                if(StringUtils.isNotEmpty(filter)){
-                    userFilter.and(new NotFilter(new HardcodedFilter(filter)));
-                }
-                // allow list filter
-                String allowListFilter = LdapSystemTags.LDAP_ALLOW_LIST_FILTER.getTokenByResourceUuid(ldapServerUuid, LdapSystemTags.LDAP_ALLOW_LIST_FILTER_TOKEN);
-                if(StringUtils.isNotEmpty(allowListFilter)){
-                    userFilter.and(new HardcodedFilter(allowListFilter));
-                }
-
-                logger.debug("user filter is " + userFilter.toString());
-                final int maximumSyncUsers = 10000; // TODO from global config
-                String globalUuidKey = ldapUtil.getGlobalUuidKey();
-
-                List<Object> results = ldapUtil.searchLdapEntry(userFilter.toString(), maximumSyncUsers, returnAttributes, null, false);
-                for (Object ldapEntry : results) {
-                    try {
-                        batch.accountList.add(generateAccountSpec(globalUuidKey, ldapEntry));
-                    } catch (Exception e) {
-                        logger.warn("failed to sync ldap entry[], ignore this account", e);
-                    }
-                }
-                trigger.next();
-            }
-
-            private ImportAccountBatch.AccountSpec generateAccountSpec(String globalUuidKey, Object ldapEntry) {
-                ImportAccountBatch.AccountSpec spec = new ImportAccountBatch.AccountSpec();
-                Map<String, Object> map = (Map<String, Object>) ldapEntry;
-
-                String dn = (String) map.get(LdapConstant.LDAP_DN_KEY); // entryDN
-                spec.keyFromSource = dn;
-                spec.accountType = AccountType.Normal;
-                spec.username = dn; // TODO
-                spec.password = Platform.getUuid() + Platform.getUuid();
-                return spec;
-            }
-        }).then(new NoRollbackFlow() {
-            String __name__ = "import-accounts";
-
-            @Override
-            public void run(FlowTrigger trigger, Map data) {
-                ImportThirdPartyAccountMsg msg = new ImportThirdPartyAccountMsg();
-                msg.setBatch(batch);
-                bus.makeTargetServiceIdByResourceUuid(msg, AccountImportsConstant.SERVICE_ID, msg.getSourceUuid());
-                bus.send(msg, new CloudBusCallBack(trigger) {
-                    @Override
-                    public void run(MessageReply reply) {
-                        if (!reply.isSuccess()) {
-                            trigger.fail(reply.getError());
-                            return;
-                        }
-                        trigger.next();
-                    }
-                });
-            }
-        }).then(new NoRollbackFlow() {
-            String __name__ = "clean-stale-ldap-entry";
-
-            @Override
-            public void run(FlowTrigger trigger, Map data) {
-//                doCleanInvalidLdapIAM2VirtualIDBindings();
-//                doCleanupInvalidLdapIAM2OrganizationRefs();
-                trigger.next();
-            }
-        }).error(new FlowErrorHandler(completion) {
-            @Override
-            public void handle(ErrorCode errCode, Map data) {
-                completion.fail(errCode);
-            }
-        }).done(new FlowDoneHandler(completion) {
-            @Override
-            public void handle(Map data) {
-                completion.success();
-            }
-        }).start();
     }
 
     @Override

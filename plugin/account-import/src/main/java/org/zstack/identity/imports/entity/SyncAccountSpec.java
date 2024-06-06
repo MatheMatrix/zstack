@@ -22,4 +22,14 @@ public class SyncAccountSpec {
         this.forRetirees = message.getForRetirees();
         return this;
     }
+
+    public SyncAccountSpec withNewcomersStrategy(SyncNewcomersStrategy strategy) {
+        this.forNewcomers = strategy;
+        return this;
+    }
+
+    public SyncAccountSpec withRetireesStrategy(SyncRetireesStrategy strategy) {
+        this.forRetirees = strategy;
+        return this;
+    }
 }
