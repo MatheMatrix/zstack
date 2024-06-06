@@ -17,17 +17,17 @@ import java.sql.Timestamp;
 @Entity
 @Table
 @AutoDeleteTag
-public class ImportAccountRefVO {
+public class AccountSourceRefVO {
     @Id
     @Column
     private String uuid;
 
     @Column
-    private String keyFromImportSource;
+    private String credentials;
 
     @Column
-    @ForeignKey(parentEntityClass = AccountImportSourceVO.class, parentKey = "uuid", onDeleteAction = ForeignKey.ReferenceOption.CASCADE)
-    private String importSourceUuid;
+    @ForeignKey(parentEntityClass = ThirdPartyAccountSourceVO.class, parentKey = "uuid", onDeleteAction = ForeignKey.ReferenceOption.CASCADE)
+    private String accountSourceUuid;
 
     @Column
     @ForeignKey(parentEntityClass = AccountVO.class, parentKey = "uuid", onDeleteAction = ForeignKey.ReferenceOption.CASCADE)
@@ -52,20 +52,20 @@ public class ImportAccountRefVO {
         this.uuid = uuid;
     }
 
-    public String getKeyFromImportSource() {
-        return keyFromImportSource;
+    public String getCredentials() {
+        return credentials;
     }
 
-    public void setKeyFromImportSource(String keyFromImportSource) {
-        this.keyFromImportSource = keyFromImportSource;
+    public void setCredentials(String credentials) {
+        this.credentials = credentials;
     }
 
-    public String getImportSourceUuid() {
-        return importSourceUuid;
+    public String getAccountSourceUuid() {
+        return accountSourceUuid;
     }
 
-    public void setImportSourceUuid(String importSourceUuid) {
-        this.importSourceUuid = importSourceUuid;
+    public void setAccountSourceUuid(String accountSourceUuid) {
+        this.accountSourceUuid = accountSourceUuid;
     }
 
     public String getAccountUuid() {

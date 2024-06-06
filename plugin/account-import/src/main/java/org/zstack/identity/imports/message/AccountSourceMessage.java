@@ -1,5 +1,5 @@
 package org.zstack.identity.imports.message;
 
-public interface ImportSourceMessage {
+public interface AccountSourceMessage {
     String getSourceUuid();
 }

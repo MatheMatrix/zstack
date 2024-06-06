@@ -5,10 +5,10 @@ import org.zstack.header.message.NeedReplyMessage;
 /**
  * Created by Wenhao.Zhang on 2024/06/03
  */
-public class BindThirdPartyAccountMsg extends NeedReplyMessage implements ImportSourceMessage {
+public class BindThirdPartyAccountMsg extends NeedReplyMessage implements AccountSourceMessage {
     private String accountUuid;
     private String sourceUuid;
-    private String keyFromSource;
+    private String credentials;
 
     public String getAccountUuid() {
         return accountUuid;
@@ -27,11 +27,11 @@ public class BindThirdPartyAccountMsg extends NeedReplyMessage implements Import
         this.sourceUuid = sourceUuid;
     }
 
-    public String getKeyFromSource() {
-        return keyFromSource;
+    public String getCredentials() {
+        return credentials;
     }
 
-    public void setKeyFromSource(String keyFromSource) {
-        this.keyFromSource = keyFromSource;
+    public void setCredentials(String credentials) {
+        this.credentials = credentials;
     }
 }

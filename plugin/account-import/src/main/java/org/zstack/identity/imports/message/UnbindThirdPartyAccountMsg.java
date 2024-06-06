@@ -5,7 +5,7 @@ import org.zstack.header.message.NeedReplyMessage;
 /**
  * Created by Wenhao.Zhang on 2024/06/03
  */
-public class UnbindThirdPartyAccountMsg extends NeedReplyMessage implements ImportSourceMessage {
+public class UnbindThirdPartyAccountMsg extends NeedReplyMessage implements AccountSourceMessage {
     private String accountUuid;
     private String sourceUuid;
 

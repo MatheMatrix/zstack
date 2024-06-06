@@ -1,18 +1,18 @@
 package org.zstack.identity.imports.message;
 
 import org.zstack.header.message.NeedReplyMessage;
-import org.zstack.identity.imports.entity.SyncNewcomersStrategy;
-import org.zstack.identity.imports.entity.SyncRetireesStrategy;
+import org.zstack.identity.imports.entity.SyncCreatedAccountStrategy;
+import org.zstack.identity.imports.entity.SyncDeletedAccountStrategy;
 
 /**
  * AccountThirdPartySyncMsg will call {@link ImportThirdPartyAccountMsg}
  *
  * Created by Wenhao.Zhang on 2024/06/05
  */
-public class SyncThirdPartyAccountMsg extends NeedReplyMessage implements ImportSourceMessage {
+public class SyncThirdPartyAccountMsg extends NeedReplyMessage implements AccountSourceMessage {
     private String sourceUuid;
-    private SyncNewcomersStrategy forNewcomers;
-    private SyncRetireesStrategy forRetirees;
+    private SyncCreatedAccountStrategy createAccountStrategy;
+    private SyncDeletedAccountStrategy deleteAccountStrategy;
 
     @Override
     public String getSourceUuid() {
@@ -23,19 +23,19 @@ public class SyncThirdPartyAccountMsg extends NeedReplyMessage implements Import
         this.sourceUuid = sourceUuid;
     }
 
-    public SyncNewcomersStrategy getForNewcomers() {
-        return forNewcomers;
+    public SyncCreatedAccountStrategy getCreateAccountStrategy() {
+        return createAccountStrategy;
     }
 
-    public void setForNewcomers(SyncNewcomersStrategy forNewcomers) {
-        this.forNewcomers = forNewcomers;
+    public void setCreateAccountStrategy(SyncCreatedAccountStrategy createAccountStrategy) {
+        this.createAccountStrategy = createAccountStrategy;
     }
 
-    public SyncRetireesStrategy getForRetirees() {
-        return forRetirees;
+    public SyncDeletedAccountStrategy getDeleteAccountStrategy() {
+        return deleteAccountStrategy;
     }
 
-    public void setForRetirees(SyncRetireesStrategy forRetirees) {
-        this.forRetirees = forRetirees;
+    public void setDeleteAccountStrategy(SyncDeletedAccountStrategy deleteAccountStrategy) {
+        this.deleteAccountStrategy = deleteAccountStrategy;
     }
 }

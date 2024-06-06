@@ -5,6 +5,8 @@ import org.zstack.header.vo.ResourceVO;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.PreUpdate;
 import javax.persistence.Table;
 import java.sql.Timestamp;
@@ -17,7 +19,7 @@ import java.sql.Timestamp;
 @Entity
 @Table
 @AutoDeleteTag
-public class AccountImportSourceVO extends ResourceVO {
+public class ThirdPartyAccountSourceVO extends ResourceVO {
     @Column
     private String description;
 
@@ -26,6 +28,14 @@ public class AccountImportSourceVO extends ResourceVO {
      */
     @Column
     private String type;
+
+    @Column
+    @Enumerated(value = EnumType.STRING)
+    private SyncCreatedAccountStrategy createAccountStrategy;
+
+    @Column
+    @Enumerated(value = EnumType.STRING)
+    private SyncDeletedAccountStrategy deleteAccountStrategy;
 
     @Column
     private Timestamp createDate;
@@ -52,6 +62,22 @@ public class AccountImportSourceVO extends ResourceVO {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public SyncCreatedAccountStrategy getCreateAccountStrategy() {
+        return createAccountStrategy;
+    }
+
+    public void setCreateAccountStrategy(SyncCreatedAccountStrategy createAccountStrategy) {
+        this.createAccountStrategy = createAccountStrategy;
+    }
+
+    public SyncDeletedAccountStrategy getDeleteAccountStrategy() {
+        return deleteAccountStrategy;
+    }
+
+    public void setDeleteAccountStrategy(SyncDeletedAccountStrategy deleteAccountStrategy) {
+        this.deleteAccountStrategy = deleteAccountStrategy;
     }
 
     public Timestamp getCreateDate() {

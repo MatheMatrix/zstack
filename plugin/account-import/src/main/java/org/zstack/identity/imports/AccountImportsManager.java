@@ -2,15 +2,20 @@ package org.zstack.identity.imports;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.cloudbus.CloudBus;
+import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.Q;
+import org.zstack.core.thread.ChainTask;
+import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.header.AbstractService;
 import org.zstack.header.errorcode.ErrorableValue;
 import org.zstack.header.message.Message;
-import org.zstack.identity.imports.entity.AccountImportSourceVO;
-import org.zstack.identity.imports.entity.AccountImportSourceVO_;
-import org.zstack.identity.imports.message.ImportSourceMessage;
-import org.zstack.identity.imports.source.AccountImportSourceFactory;
+import org.zstack.identity.imports.entity.ThirdPartyAccountSourceVO;
+import org.zstack.identity.imports.entity.ThirdPartyAccountSourceVO_;
+import org.zstack.identity.imports.message.CreateThirdPartyAccountSourceMsg;
+import org.zstack.identity.imports.message.CreateThirdPartyAccountSourceReply;
+import org.zstack.identity.imports.message.AccountSourceMessage;
+import org.zstack.identity.imports.source.AccountSourceFactory;
 
 import java.util.List;
 import java.util.Objects;
@@ -25,13 +30,20 @@ public class AccountImportsManager extends AbstractService {
     @Autowired
     private CloudBus bus;
     @Autowired
-    private ThreadFacade threads;
+    private ThreadFacade threadFacade;
     @Autowired
-    private List<AccountImportSourceFactory> factories;
+    private PluginRegistry pluginRegistry;
+
+    private List<AccountSourceFactory> factories;
 
     @Override
     public boolean start() {
+        buildAccountSourceFactoryList();
         return true;
+    }
+
+    private void buildAccountSourceFactoryList() {
+        this.factories = pluginRegistry.getExtensionList(AccountSourceFactory.class);
     }
 
     @Override
@@ -41,8 +53,10 @@ public class AccountImportsManager extends AbstractService {
 
     @Override
     public void handleMessage(Message msg) {
-        if (msg instanceof ImportSourceMessage) {
-            passThrough(((ImportSourceMessage) msg));
+        if (msg instanceof AccountSourceMessage) {
+            passThrough(((AccountSourceMessage) msg));
+        } else if (msg instanceof CreateThirdPartyAccountSourceMsg) {
+            handle(((CreateThirdPartyAccountSourceMsg) msg));
         } else {
             bus.dealWithUnknownMessage(msg);
         }
@@ -53,8 +67,8 @@ public class AccountImportsManager extends AbstractService {
         return SERVICE_ID;
     }
 
-    private ErrorableValue<AccountImportSourceFactory> findFactoryByType(String type) {
-        for (AccountImportSourceFactory factory : factories) {
+    private ErrorableValue<AccountSourceFactory> findFactoryByType(String type) {
+        for (AccountSourceFactory factory : factories) {
             if (Objects.equals(type, factory.type())) {
                 return ErrorableValue.of(factory);
             }
@@ -62,17 +76,50 @@ public class AccountImportsManager extends AbstractService {
         return ErrorableValue.ofErrorCode(operr("failed to find account import source by type[%s]", type));
     }
 
-    public static String importSourceQueueSyncSignature(String sourceUuid) {
-        return AccountImportSourceVO.class.getSimpleName() + "-" + sourceUuid;
+    public static String userSourceQueueSyncSignature(String sourceUuid) {
+        return ThirdPartyAccountSourceVO.class.getSimpleName() + "-" + sourceUuid;
     }
 
-    private void passThrough(ImportSourceMessage msg) {
-        final String type = Q.New(AccountImportSourceVO.class)
-                .select(AccountImportSourceVO_.type)
-                .eq(AccountImportSourceVO_.uuid, msg.getSourceUuid())
+    private void handle(CreateThirdPartyAccountSourceMsg message) {
+        CreateThirdPartyAccountSourceReply reply = new CreateThirdPartyAccountSourceReply();
+
+        final ErrorableValue<AccountSourceFactory> errorableValue = findFactoryByType(message.getType());
+        if (!errorableValue.isSuccess()) {
+            reply.setError(errorableValue.error);
+            bus.reply(message, reply);
+            return;
+        }
+
+        final AccountSourceFactory factory = errorableValue.result;
+        threadFacade.chainSubmit(new ChainTask(message) {
+            @Override
+            public void run(SyncTaskChain chain) {
+                final ErrorableValue<ThirdPartyAccountSourceVO> vo = factory.createAccountSource(message.getSpec());
+                if (!vo.isSuccess()) {
+                    reply.setError(vo.error);
+                }
+                bus.reply(message, reply);
+            }
+
+            @Override
+            public String getSyncSignature() {
+                return userSourceQueueSyncSignature(message.getSpec().uuid);
+            }
+
+            @Override
+            public String getName() {
+                return "create-import-source-" + message.getSpec().uuid;
+            }
+        });
+    }
+
+    private void passThrough(AccountSourceMessage msg) {
+        final String type = Q.New(ThirdPartyAccountSourceVO.class)
+                .select(ThirdPartyAccountSourceVO_.type)
+                .eq(ThirdPartyAccountSourceVO_.uuid, msg.getSourceUuid())
                 .findValue();
 
-        final ErrorableValue<AccountImportSourceFactory> factory = findFactoryByType(type);
+        final ErrorableValue<AccountSourceFactory> factory = findFactoryByType(type);
         if (!factory.isSuccess()) {
             bus.replyErrorByMessageType((Message) msg, factory.error);
             return;

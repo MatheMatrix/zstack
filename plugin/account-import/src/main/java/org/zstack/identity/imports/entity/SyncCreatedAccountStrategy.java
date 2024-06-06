@@ -6,10 +6,9 @@ import org.zstack.identity.imports.message.SyncThirdPartyAccountMsg;
  * <p>When third party source syncing, how to deal with the newly created users
  *
  * <p>This enum is used by:
- * <li>{@link org.zstack.identity.imports.AccountImportsGlobalConfig#SYNC_NEWCOMERS_STRATEGY}
- * <li>{@link SyncThirdPartyAccountMsg#getForNewcomers()}
+ * <li>{@link SyncThirdPartyAccountMsg#getCreateAccountStrategy()}
  */
-public enum SyncNewcomersStrategy {
+public enum SyncCreatedAccountStrategy {
     /**
      * Do not create AccountVO.
      */

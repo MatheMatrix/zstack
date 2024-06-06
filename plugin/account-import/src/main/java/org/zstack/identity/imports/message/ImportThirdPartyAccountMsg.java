@@ -1,24 +1,24 @@
 package org.zstack.identity.imports.message;
 
 import org.zstack.header.message.NeedReplyMessage;
-import org.zstack.identity.imports.entity.ImportAccountBatch;
+import org.zstack.identity.imports.entity.ImportAccountSpec;
 
 /**
  * Created by Wenhao.Zhang on 2024/05/31
  */
-public class ImportThirdPartyAccountMsg extends NeedReplyMessage implements ImportSourceMessage {
-    private ImportAccountBatch batch;
+public class ImportThirdPartyAccountMsg extends NeedReplyMessage implements AccountSourceMessage {
+    private ImportAccountSpec spec;
 
-    public ImportAccountBatch getBatch() {
-        return batch;
+    public ImportAccountSpec getSpec() {
+        return spec;
     }
 
-    public void setBatch(ImportAccountBatch batch) {
-        this.batch = batch;
+    public void setSpec(ImportAccountSpec spec) {
+        this.spec = spec;
     }
 
     @Override
     public String getSourceUuid() {
-        return batch.sourceUuid;
+        return spec.getSourceUuid();
     }
 }

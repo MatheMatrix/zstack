@@ -5,7 +5,7 @@ import org.zstack.core.Platform;
 /**
  * Created by Wenhao.Zhang on 2024/05/31
  */
-public abstract class AbstractImportSourceSpec {
+public abstract class AbstractAccountSourceSpec {
     public String uuid = Platform.getUuid();
     public String type;
     public String description;
