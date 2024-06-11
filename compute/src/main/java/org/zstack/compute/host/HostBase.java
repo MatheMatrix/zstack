@@ -51,6 +51,8 @@ import org.zstack.utils.*;
 import org.zstack.utils.data.Pair;
 import org.zstack.utils.function.ForEachFunction;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.utils.ssh.Ssh;
+import org.zstack.utils.ssh.SshResult;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
