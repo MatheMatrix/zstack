@@ -615,6 +615,10 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             cdata.setEnclosureId(cmd.enclosure_device_id);
             cdata.setSlotNumber(cmd.slot_number);
             evf.fire(HostCanonicalEvents.HOST_PHYSICAL_DISK_INSERT_TRIGGERED, cdata);
+
+            HostCanonicalEvents.HostRefreshLocalRaidData cdata2 = new HostCanonicalEvents.HostRefreshLocalRaidData();
+            cdata2.setHostUuid(cmd.host);
+            evf.fire(HostCanonicalEvents.HOST_REFRESH_LOCAL_RAID, cdata2);
             return null;
         });
 
@@ -625,6 +629,10 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             cdata.setEnclosureId(cmd.enclosure_device_id);
             cdata.setSlotNumber(cmd.slot_number);
             evf.fire(HostCanonicalEvents.HOST_PHYSICAL_DISK_REMOVE_TRIGGERED, cdata);
+
+            HostCanonicalEvents.HostRefreshLocalRaidData cdata2 = new HostCanonicalEvents.HostRefreshLocalRaidData();
+            cdata2.setHostUuid(cmd.host);
+            evf.fire(HostCanonicalEvents.HOST_REFRESH_LOCAL_RAID, cdata2);
             return null;
         });
 

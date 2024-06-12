@@ -31,7 +31,20 @@ public class HostCanonicalEvents {
     public static final String HOST_PHYSICAL_GPU_STATUS_ABNORMAL = "/host/physicalGpu/status/abnormal";
     public static final String HOST_PHYSICAL_VGPU_STATUS_ABNORMAL = "/host/physicalVGpu/status/abnormal";
     public static final String HOST_PHYSICAL_RAID_STATUS_ABNORMAL = "/host/physicalRaid/status/abnormal";
+    public static final String HOST_REFRESH_LOCAL_RAID = "/host/refresh/local/raid";
 
+    @NeedJsonSchema
+    public static class HostRefreshLocalRaidData {
+        private String hostUuid;
+
+        public String getHostUuid() {
+            return hostUuid;
+        }
+
+        public void setHostUuid(String hostUuid) {
+            this.hostUuid = hostUuid;
+        }
+    }
 
     @NeedJsonSchema
     public static class HostPhysicalGpuRemoveTriggeredData {
