@@ -592,6 +592,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             NbdRemoteTarget target = new NbdRemoteTarget();
             target.setIp("127.0.0.1");
             target.setPort(6666);
+            target.setSize(1L);
             comp.success(target);
             return;
         }
@@ -609,6 +610,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 NbdRemoteTarget target = new NbdRemoteTarget();
                 target.setIp(returnValue.getIp());
                 target.setPort(returnValue.getPort());
+                target.setSize(returnValue.getSize());
                 comp.success(target);
             }
 
@@ -959,6 +961,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     public static class CbdToNbdRsp extends AgentResponse {
         private String ip;
         private int port;
+        private long size;
 
         public String getIp() {
             return ip;
@@ -974,6 +977,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
         public void setPort(int port) {
             this.port = port;
+        }
+
+        public long getSize() {
+            return size;
+        }
+
+        public void setSize(long size) {
+            this.size = size;
         }
     }
 
