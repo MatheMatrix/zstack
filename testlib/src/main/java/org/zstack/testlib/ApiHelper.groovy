@@ -4424,20 +4424,20 @@ abstract class ApiHelper {
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
         c()
-
+        
 
         if (System.getProperty("apipath") != null) {
             if (a.apiId == null) {
                 a.apiId = Platform.uuid
             }
-
+    
             def tracker = new ApiPathTracker(a.apiId)
             def out = errorOut(a.call())
             def path = tracker.getApiPath()
             if (!path.isEmpty()) {
                 Test.apiPaths[a.class.name] = path.join(" --->\n")
             }
-
+        
             return out
         } else {
             return errorOut(a.call())
@@ -4451,20 +4451,20 @@ abstract class ApiHelper {
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
         c()
-
+        
 
         if (System.getProperty("apipath") != null) {
             if (a.apiId == null) {
                 a.apiId = Platform.uuid
             }
-
+    
             def tracker = new ApiPathTracker(a.apiId)
             def out = errorOut(a.call())
             def path = tracker.getApiPath()
             if (!path.isEmpty()) {
                 Test.apiPaths[a.class.name] = path.join(" --->\n")
             }
-
+        
             return out
         } else {
             return errorOut(a.call())
@@ -19916,6 +19916,33 @@ abstract class ApiHelper {
     }
 
 
+    def getHostMultipathTopology(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetHostMultipathTopologyAction.class) Closure c) {
+        def a = new org.zstack.sdk.GetHostMultipathTopologyAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def getHostNUMATopology(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetHostNUMATopologyAction.class) Closure c) {
         def a = new org.zstack.sdk.GetHostNUMATopologyAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -21995,33 +22022,6 @@ abstract class ApiHelper {
     }
 
 
-    def getHostMultipathTopology(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetHostMultipathTopologyAction.class) Closure c) {
-        def a = new org.zstack.sdk.GetHostMultipathTopologyAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-
     def getSignatureServerEncryptPublicKey(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetSignatureServerEncryptPublicKeyAction.class) Closure c) {
         def a = new org.zstack.sdk.GetSignatureServerEncryptPublicKeyAction()
         
@@ -23293,6 +23293,33 @@ abstract class ApiHelper {
 
     def getVmTask(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetVmTaskAction.class) Closure c) {
         def a = new org.zstack.sdk.GetVmTaskAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def getVmUptime(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetVmUptimeAction.class) Closure c) {
+        def a = new org.zstack.sdk.GetVmUptimeAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
