@@ -20990,7 +20990,7 @@
   {
     "raw": "service provider type mismatching. The load balancer[uuid:%s] is provided by the service provider[type:%s], but new service provider is [type: %s]",
     "en_US": "service provider type mismatching. The load balancer[uuid:{0}] is provided by the service provider[type:{1}], but new service provider is [type: {2}]",
-    "zh_CN": "服务提供商类型不匹配。负载平衡器[uuid：{0}]由服务提供程序[类型：{1}]提供，但新服务提供程序为[类型：{2}]",
+    "zh_CN": "服务提供商类型不匹配。负载均衡器[uuid：{0}]由服务提供程序[类型：{1}]提供，但新服务提供程序为[类型：{2}]",
     "arguments": [
       "self.getUuid()",
       "self.getProviderType()",

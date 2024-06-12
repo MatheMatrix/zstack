@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globalConfig xmlns="http://zstack.org/schema/zstack">
+    <config>
+        <name>locale</name>
+        <description>set the language for ZStack i18n, valid values: zh_CN, en_US</description>
+        <category>core</category>
+        <defaultValue>zh_CN</defaultValue>
+    </config>
+</globalConfig>

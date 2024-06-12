@@ -584,7 +584,7 @@ public class Platform {
     }
 
     private static void initMessageSource() {
-        locale = LocaleUtils.toLocale(CoreGlobalProperty.LOCALE);
+        locale = LocaleUtils.toLocale(CoreGlobalConfig.LOCALE.value());
         logger.debug(String.format("using locale[%s] for i18n logging messages", locale.toString()));
 
         if (loader == null) {
