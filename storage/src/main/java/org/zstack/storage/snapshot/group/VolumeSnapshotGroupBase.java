@@ -28,15 +28,15 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.message.NeedReplyMessage;
 import org.zstack.header.storage.snapshot.DeleteVolumeSnapshotMsg;
 import org.zstack.header.storage.snapshot.VolumeSnapshotConstant;
+import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.storage.snapshot.group.*;
 import org.zstack.header.vm.RestoreVmInstanceMsg;
 import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.devices.VmInstanceDeviceAddressArchiveVO;
 import org.zstack.header.vm.devices.VmInstanceDeviceManager;
-import org.zstack.header.volume.VolumeType;
-import org.zstack.header.volume.VolumeVO;
-import org.zstack.header.volume.VolumeVO_;
+import org.zstack.header.volume.*;
+import org.zstack.storage.primary.PrimaryStorageGlobalConfig;
 import org.zstack.storage.snapshot.VolumeSnapshotGlobalConfig;
 import org.zstack.utils.TimeUtils;
 import org.zstack.utils.Utils;
@@ -47,6 +47,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.core.progress.ProgressReportService.reportProgress;
 import static org.zstack.storage.snapshot.VolumeSnapshotMessageRouter.getResourceIdToRouteMsg;
 
 /**
@@ -93,6 +94,8 @@ public class VolumeSnapshotGroupBase implements VolumeSnapshotGroup {
     private void handleLocalMessage(Message msg) {
         if (msg instanceof DeleteVolumeSnapshotGroupInnerMsg) {
             handle((DeleteVolumeSnapshotGroupInnerMsg) msg);
+        } else if (msg instanceof DeleteVolumeSnapshotGroupMsg) {
+            handle((DeleteVolumeSnapshotGroupMsg) msg);
         } else if (msg instanceof RevertVmFromSnapshotGroupInnerMsg) {
             handle((RevertVmFromSnapshotGroupInnerMsg) msg);
         } else {
@@ -224,6 +227,33 @@ public class VolumeSnapshotGroupBase implements VolumeSnapshotGroup {
                 @Override
                 public void run(MessageReply r) {
                     reply.addResult(new DeleteSnapshotGroupResult(rmsg.getSnapshotUuid(), rmsg.getVolumeUuid(), r.getError()));
+                    compl.done();
+                }
+            });
+        }).run(new WhileDoneCompletion(msg) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    private void handle(DeleteVolumeSnapshotGroupMsg msg) {
+        DeleteVolumeSnapshotGroupInnerReply reply = new DeleteVolumeSnapshotGroupInnerReply();
+        List<VolumeSnapshotVO> snapshots = getEffectiveSnapshots();
+        if (snapshots.size() < self.getSnapshotCount()) {
+            logger.debug(String.format("skip snapshots not belong to origin vm[uuid:%s]", self.getVmInstanceUuid()));
+        }
+
+        new While<>(snapshots).all((snapshot, compl) -> {
+            UndoSnapshotCreationMsg cmsg = new UndoSnapshotCreationMsg();
+            cmsg.setVolumeUuid(snapshot.getVolumeUuid());
+            cmsg.setSnapShot(VolumeSnapshotInventory.valueOf(snapshot));
+            bus.makeTargetServiceIdByResourceUuid(cmsg, VolumeConstant.SERVICE_ID, snapshot.getVolumeUuid());
+            bus.send(cmsg, new CloudBusCallBack(compl) {
+                @Override
+                public void run(MessageReply r) {
+                    reply.addResult(new DeleteSnapshotGroupResult(snapshot.getUuid(), snapshot.getVolumeUuid(), r.getError()));
                     compl.done();
                 }
             });

@@ -5,7 +5,6 @@ import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
-import org.zstack.core.db.SQL;
 import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.errorcode.ErrorFacade;
@@ -16,7 +15,6 @@ import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.storage.snapshot.group.*;
-import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmInstanceVO_;
@@ -74,6 +72,8 @@ public class VolumeSnapshotApiInterceptor implements ApiMessageInterceptor {
             validate((APIBatchDeleteVolumeSnapshotMsg) msg);
         } else if (msg instanceof APIRevertVmFromSnapshotGroupMsg) {
             validate((APIRevertVmFromSnapshotGroupMsg) msg);
+        } else if (msg instanceof APIBatchDeleteVolumeSnapshotGroupMsg) {
+            validate((APIBatchDeleteVolumeSnapshotGroupMsg) msg);
         }
 
         setServiceId(msg);
@@ -214,6 +214,21 @@ public class VolumeSnapshotApiInterceptor implements ApiMessageInterceptor {
             }
         }
         if (msg.getVolumeUuid() == null) {
+            throw new ApiMessageInterceptionException(operr("can not find volume uuid for snapshosts[uuid: %s]", msg.getUuids()));
+        }
+    }
+
+    private void validate(APIBatchDeleteVolumeSnapshotGroupMsg msg) {
+        List<VolumeSnapshotGroupVO> volumeSnapshotGroupVOs = Q.New(VolumeSnapshotGroupVO.class)
+                .in(VolumeSnapshotGroupVO_.uuid, msg.getUuids()).list();
+        if (volumeSnapshotGroupVOs.isEmpty()) {
+            throw new ApiMessageInterceptionException(operr("can not find volume uuid for snapshosts[uuid: %s]", msg.getUuids()));
+        }
+
+        msg.setVolumeSnapshotGroups(volumeSnapshotGroupVOs);
+        // 删除的是同一vm的快照组
+        List<String> vmUuid = volumeSnapshotGroupVOs.stream().map(VolumeSnapshotGroupVO::getVmInstanceUuid).distinct().collect(Collectors.toList());
+        if (vmUuid.size() != 1) {
             throw new ApiMessageInterceptionException(operr("can not find volume uuid for snapshosts[uuid: %s]", msg.getUuids()));
         }
     }
