@@ -1,0 +1,32 @@
+package org.zstack.ldap.api
+
+import org.zstack.ldap.entity.LdapFilterRuleInventory
+import org.zstack.header.errorcode.ErrorCode
+
+doc {
+
+	title "更新LDAP用户同步过滤规则结果"
+
+	ref {
+		name "inventory"
+		path "org.zstack.ldap.api.APIUpdateLdapFilterRuleEvent.inventory"
+		desc "LDAP用户同步过滤规则"
+		type "LdapFilterRuleInventory"
+		since "zsv 4.3.0"
+		clz LdapFilterRuleInventory.class
+	}
+	field {
+		name "success"
+		desc "API是否成功"
+		type "boolean"
+		since "zsv 4.3.0"
+	}
+	ref {
+		name "error"
+		path "org.zstack.ldap.api.APISyncAccountsFromLdapServerEvent.error"
+		desc "错误码，若不为null，则表示操作失败, 操作成功时该字段为null",false
+		type "ErrorCode"
+		since "zsv 4.3.0"
+		clz ErrorCode.class
+	}
+}

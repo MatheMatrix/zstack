@@ -14,10 +14,25 @@ import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.ApiMessageInterceptor;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.message.APIMessage;
+import org.zstack.ldap.api.APIAddLdapServerMsg;
+import org.zstack.ldap.api.APICreateLdapBindingMsg;
+import org.zstack.ldap.api.APIGetCandidateLdapEntryForBindingMsg;
+import org.zstack.ldap.api.APIGetLdapEntryMsg;
+import org.zstack.ldap.api.APIRemoveLdapFilterRuleMsg;
+import org.zstack.ldap.api.APIUpdateLdapFilterRuleMsg;
+import org.zstack.ldap.api.APIUpdateLdapServerMsg;
+import org.zstack.ldap.entity.LdapFilterRuleVO;
+import org.zstack.ldap.entity.LdapFilterRuleVO_;
+import org.zstack.ldap.entity.LdapServerInventory;
+import org.zstack.ldap.entity.LdapServerVO;
+import org.zstack.ldap.entity.LdapServerVO_;
 import org.zstack.tag.SystemTagUtils;
+import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
+import javax.persistence.Tuple;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +70,10 @@ public class LdapApiInterceptor implements ApiMessageInterceptor {
             validate((APIGetLdapEntryMsg) msg);
         } else if(msg instanceof APIGetCandidateLdapEntryForBindingMsg){
             validate((APIGetCandidateLdapEntryForBindingMsg) msg);
+        } else if (msg instanceof APIUpdateLdapFilterRuleMsg){
+            validate((APIUpdateLdapFilterRuleMsg) msg);
+        } else if (msg instanceof APIRemoveLdapFilterRuleMsg){
+            validate((APIRemoveLdapFilterRuleMsg) msg);
         }
 
         setServiceId(msg);
@@ -63,10 +82,6 @@ public class LdapApiInterceptor implements ApiMessageInterceptor {
     }
 
     private void validate(APIAddLdapServerMsg msg) {
-        if (!LdapEffectiveScope.hasScope(msg.getScope())) {
-            throw new ApiMessageInterceptionException(argerr("unsupported LDAP/AD server scope"));
-        }
-
         LdapServerInventory inv = new LdapServerInventory();
         inv.setName(msg.getName());
         inv.setDescription(msg.getDescription());
@@ -135,6 +150,40 @@ public class LdapApiInterceptor implements ApiMessageInterceptor {
             throw new ApiMessageInterceptionException(argerr("There is no LDAP/AD server in the system, Please add a LDAP/AD server first."));
         }
     }
+
+    private void validate(APIUpdateLdapFilterRuleMsg msg) {
+        final String ldapServerUuid = Q.New(LdapFilterRuleVO.class)
+                .select(LdapFilterRuleVO_.ldapServerUuid)
+                .eq(LdapFilterRuleVO_.uuid, msg.getUuid())
+                .findValue();
+        if (ldapServerUuid == null) {
+            throw new ApiMessageInterceptionException(argerr("invalid filterRule[uuid=%s]", msg.getUuid()));
+        }
+        msg.setLdapServerUuid(ldapServerUuid);
+    }
+
+    private void validate(APIRemoveLdapFilterRuleMsg msg) {
+        final List<Tuple> tuples = Q.New(LdapFilterRuleVO.class)
+                .select(LdapFilterRuleVO_.uuid, LdapFilterRuleVO_.ldapServerUuid)
+                .in(LdapFilterRuleVO_.uuid, msg.getUuidList())
+                .listTuple();
+        Map<String, String> ruleUuidLdapServerUuidMap =
+                CollectionUtils.toMap(tuples, tuple -> tuple.get(0, String.class), tuple -> tuple.get(1, String.class));
+        List<String> invalidRuleUuidList = new ArrayList<>();
+
+        for (String ruleUuid : msg.getUuidList()) {
+            String ldapServerUuid = ruleUuidLdapServerUuidMap.get(ruleUuid);
+            if (ldapServerUuid == null) {
+                invalidRuleUuidList.add(ruleUuid);
+            }
+        }
+
+        if (!invalidRuleUuidList.isEmpty()) {
+            throw new ApiMessageInterceptionException(argerr("invalid filterRule[uuid=%s]", invalidRuleUuidList));
+        }
+        msg.setRuleUuidLdapServerUuidMap(ruleUuidLdapServerUuidMap);
+    }
+
 
     public ErrorCode testAddLdapServerConnection(LdapServerInventory inv) {
         Map<String, Object> properties = new HashMap<>();
