@@ -60,4 +60,20 @@ public class DatabaseBackupStruct  {
         return this.createdTime;
     }
 
+    public java.lang.String managementIp;
+    public void setManagementIp(java.lang.String managementIp) {
+        this.managementIp = managementIp;
+    }
+    public java.lang.String getManagementIp() {
+        return this.managementIp;
+    }
+
+    public java.lang.String managementNodeUuid;
+    public void setManagementNodeUuid(java.lang.String managementNodeUuid) {
+        this.managementNodeUuid = managementNodeUuid;
+    }
+    public java.lang.String getManagementNodeUuid() {
+        return this.managementNodeUuid;
+    }
+
 }
