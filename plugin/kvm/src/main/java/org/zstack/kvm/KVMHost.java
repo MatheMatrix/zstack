@@ -3529,6 +3529,7 @@ public class KVMHost extends HostBase implements Host {
         cmd.setType(msg.getType());
         cmd.setTimeout(120);
         cmd.setVmNics(vminv.getVmNics());
+        cmd.setDebug(true);
 
         try {
             extEmitter.beforeStopVmOnKvm(KVMHostInventory.valueOf(getSelf()), vminv, cmd);

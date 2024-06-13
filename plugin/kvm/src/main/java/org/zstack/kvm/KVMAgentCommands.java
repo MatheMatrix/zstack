@@ -3048,6 +3048,8 @@ public class KVMAgentCommands {
         private String type;
         @GrayVersion(value = "5.0.0")
         private long timeout;
+        @GrayVersion(value = "5.0.0")
+        private boolean debug;
         private List<VmNicInventory> vmNics;
 
         public String getUuid() {
@@ -3080,6 +3082,14 @@ public class KVMAgentCommands {
 
         public void setVmNics(List<VmNicInventory> vmNics) {
             this.vmNics = vmNics;
+        }
+
+        public boolean isDebug() {
+            return debug;
+        }
+
+        public void setDebug(boolean debug) {
+            this.debug = debug;
         }
     }
 

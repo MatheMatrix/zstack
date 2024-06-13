@@ -7680,6 +7680,10 @@ public class VmInstanceBase extends AbstractVmInstance {
         final VmInstanceSpec spec = buildSpecFromInventory(inv, VmOperation.Reboot);
         spec.setDestHost(HostInventory.valueOf(dbf.findByUuid(self.getHostUuid(), HostVO.class)));
 
+        if (msg instanceof RebootVmInstanceMsg) {
+            spec.setDebug(((RebootVmInstanceMsg) msg).isDebug());
+        }
+
         final VmInstanceState originState = self.getState();
         changeVmStateInDb(VmInstanceStateEvent.rebooting);
 
@@ -7840,6 +7844,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         spec.setMessage(msg);
         if (msg instanceof StopVmInstanceMsg) {
             spec.setGcOnStopFailure(((StopVmInstanceMsg) msg).isGcOnFailure());
+            spec.setDebug(((StopVmInstanceMsg) msg).isDebug());
         }
 
         if (msg instanceof ReleaseResourceMessage) {
