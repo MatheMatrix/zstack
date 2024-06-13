@@ -29,7 +29,12 @@ public class LdapSystemTags {
      * Application scenario：ZStackAccount-LdapUser(Group) binding，Ldap-User Login authentication
      *
      */
+    public static String LDAP_USERNAME_PROPERTY_TOKEN = "usernameProperty";
+    public static PatternedSystemTag LDAP_USERNAME_PROPERTY = new PatternedSystemTag(String.format("usernameProperty::{%s}", LDAP_USERNAME_PROPERTY_TOKEN), LdapServerVO.class);
+
+    @Deprecated
     public static String LDAP_USE_AS_LOGIN_NAME_TOKEN = "ldapUseAsLoginName";
+    @Deprecated
     public static PatternedSystemTag LDAP_USE_AS_LOGIN_NAME = new PatternedSystemTag(String.format("ldapUseAsLoginName::{%s}", LDAP_USE_AS_LOGIN_NAME_TOKEN), LdapServerVO.class);
 
     public static String LDAP_URLS_TOKEN = "ldapUrls";

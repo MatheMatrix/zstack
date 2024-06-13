@@ -4,6 +4,8 @@ import org.zstack.core.config.GlobalConfig;
 import org.zstack.core.config.GlobalConfigDef;
 import org.zstack.core.config.GlobalConfigDefinition;
 import org.zstack.core.config.GlobalConfigValidation;
+import org.zstack.ldap.entity.LdapServerVO;
+import org.zstack.resourceconfig.BindResourceConfig;
 
 /**
  * Created by lining on 2017/11/03.
@@ -28,4 +30,13 @@ public class LdapGlobalConfig {
     @GlobalConfigDef(defaultValue = "AUTO", description = "set ldap preferred search mode")
     public static GlobalConfig LDAP_ENTRY_SEARCH_MODE = new GlobalConfig(CATEGORY, "ldap.entry.search.mode");
 
+    @GlobalConfigValidation
+    @GlobalConfigDef(defaultValue = "(objectClass=person)", description = "if not specific user sync filter is given default filter")
+    @BindResourceConfig({LdapServerVO.class})
+    public static GlobalConfig LDAP_USER_SYNC_FILTER = new GlobalConfig(CATEGORY, "ldap.user.sync.filter");
+
+    @GlobalConfigValidation(numberGreaterThan = 1)
+    @GlobalConfigDef(type = Integer.class, defaultValue = "10000", description = "maximum users sync from ldap server")
+    @BindResourceConfig({LdapServerVO.class})
+    public static GlobalConfig LDAP_MAXIMUM_SYNC_USERS = new GlobalConfig(CATEGORY, "ldap.maximum.sync.users");
 }
