@@ -387,6 +387,7 @@ public class VxlanNetwork extends L2NoVlanNetwork implements ReportQuotaExtensio
                 changeL2NetworkVni(msg, new Completion(chain) {
                     @Override
                     public void success() {
+                        extpEmitter.beforeUpdate(getSelfInventory());
                         changeL2NetworkVniInDb(msg);
                         extpEmitter.afterUpdate(getSelfInventory());
                         event.setInventory(getSelfInventory());
