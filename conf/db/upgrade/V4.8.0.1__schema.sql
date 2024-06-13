@@ -167,3 +167,8 @@ CREATE TABLE IF NOT EXISTS `zstack`.`HostNetworkInterfaceLldpRefVO` (
 
 INSERT IGNORE INTO `zstack`.`HostNetworkInterfaceLldpVO` (`uuid`, `interfaceUuid`, `mode`, `createDate`, `lastOpDate`)
 SELECT REPLACE(UUID(),'-',''), t.uuid, 'rx_only', CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP() FROM `zstack`.`HostNetworkInterfaceVO` t;
+
+ALTER TABLE `zstack`.`HostNetworkInterfaceVO` ADD COLUMN `deviceName` VARCHAR(64) DEFAULT NULL AFTER `deviceId`;
+ALTER TABLE `zstack`.`HostNetworkInterfaceVO` ADD COLUMN `vendorName` VARCHAR(64) DEFAULT NULL AFTER `deviceName`;
+ALTER TABLE `zstack`.`HostNetworkInterfaceVO` ADD COLUMN `subvendorName` VARCHAR(64) DEFAULT NULL AFTER `subdeviceId`;
+
