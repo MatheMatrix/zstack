@@ -984,6 +984,8 @@ public class NfsPrimaryStorageKVMBackendCommands {
         @GrayVersion(value = "5.0.0")
         public List<String> filtPaths;
         @GrayVersion(value = "5.0.0")
+        public List<String> dependentFiles;
+        @GrayVersion(value = "5.0.0")
         public String independentPath;
         @GrayVersion(value = "5.0.0")
         public boolean isMounted = false;
@@ -1012,7 +1014,7 @@ public class NfsPrimaryStorageKVMBackendCommands {
         @GrayVersion(value = "5.0.0")
         public String dstVolumeFolderPath;
         @GrayVersion(value = "5.0.0")
-        public String dstImageCacheTemplateFolderPath;
+        public List<String> dstImageCacheTemplateFoldersPath;
     }
 
     public static class NfsRebaseVolumeBackingFileRsp extends NfsPrimaryStorageAgentResponse {

@@ -3,6 +3,8 @@ package org.zstack.storage.primary.nfs;
 import org.zstack.header.message.NeedReplyMessage;
 import org.zstack.header.storage.primary.PrimaryStorageMessage;
 
+import java.util.List;
+
 /**
  * Created by GuoYi on 12/1/17.
  */
@@ -11,7 +13,7 @@ public class NfsRebaseVolumeBackingFileMsg extends NeedReplyMessage implements P
     private String srcPsUuid;
     private String dstPsUuid;
     private String dstVolumeFolderPath;
-    private String dstImageCacheTemplateFolderPath;
+    private List<String> dstImageCacheTemplateFoldersPath;
     private String primaryStorageUuid;
 
     public String getHostUuid() {
@@ -55,11 +57,11 @@ public class NfsRebaseVolumeBackingFileMsg extends NeedReplyMessage implements P
         this.primaryStorageUuid = primaryStorageUuid;
     }
 
-    public String getDstImageCacheTemplateFolderPath() {
-        return dstImageCacheTemplateFolderPath;
+    public List<String> getDstImageCacheTemplateFoldersPath() {
+        return dstImageCacheTemplateFoldersPath;
     }
 
-    public void setDstImageCacheTemplateFolderPath(String dstImageCacheTemplateFolderPath) {
-        this.dstImageCacheTemplateFolderPath = dstImageCacheTemplateFolderPath;
+    public void setDstImageCacheTemplateFoldersPath(List<String> dstImageCacheTemplateFoldersPath) {
+        this.dstImageCacheTemplateFoldersPath = dstImageCacheTemplateFoldersPath;
     }
 }

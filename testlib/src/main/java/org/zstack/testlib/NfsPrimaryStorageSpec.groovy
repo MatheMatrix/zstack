@@ -25,6 +25,8 @@ import org.zstack.utils.Utils
 import org.zstack.utils.gson.JSONObjectUtil
 import org.zstack.utils.logging.CLogger
 
+import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 /**
@@ -460,6 +462,7 @@ class NfsPrimaryStorageSpec extends PrimaryStorageSpec {
                 def cmd = JSONObjectUtil.toObject(e.body, NfsPrimaryStorageKVMBackendCommands.NfsToNfsMigrateBitsCmd.class)
                 VFS srcVfs = vfs(cmd.srcPrimaryStorageUuid, spec)
 
+                PrimaryStorageVO srcNFS = Q.New(PrimaryStorageVO.class).eq(PrimaryStorageVO_.uuid, cmd.srcPrimaryStorageUuid).find()
                 PrimaryStorageVO dstNFS = Q.New(PrimaryStorageVO.class).eq(PrimaryStorageVO_.url, cmd.url).find()
                 assert dstNFS : "cannot find NFS primary storage[url: ${cmd.url}]"
 
@@ -468,6 +471,11 @@ class NfsPrimaryStorageSpec extends PrimaryStorageSpec {
                     if (f.pathString().contains(cmd.srcFolderPath)) {
                         String newPath = f.pathString().replace(cmd.srcFolderPath, cmd.dstFolderPath)
                         dstVfs.createFileFrom(Paths.get(newPath), f)
+                    } else if (cmd.dependentFiles != null && cmd.dependentFiles.contains(f.pathString())) {
+                        String newPath = f.pathString().replace(srcNFS.mountPath, dstNFS.mountPath)
+                        if (!dstVfs.exists(newPath)) {
+                            dstVfs.createFileFrom(Paths.get(newPath), f)
+                        }
                     }
                 }
 
@@ -515,33 +523,25 @@ class NfsPrimaryStorageSpec extends PrimaryStorageSpec {
 
             VFS.vfsHook(NfsPrimaryStorageKVMBackend.NFS_REBASE_VOLUME_BACKING_FILE_PATH, xspec) { rsp, HttpEntity<String> e, EnvSpec spec ->
                 def cmd = JSONObjectUtil.toObject(e.body, NfsPrimaryStorageKVMBackendCommands.NfsRebaseVolumeBackingFileCmd.class)
-//                String dstPrimaryStorageUuid = getPrimaryStorageFromPath(cmd.dstPsMountPath)
-//                VFS dstVfs = vfs(dstPrimaryStorageUuid, spec)
-                //TODO: for guoyi
-//                List<Qcow2> fileList = new ArrayList<>()
-//                if (cmd.dstImageCacheTemplateFolderPath == null) {
-//                    dstVfs.walkFileSystem { f ->
-//                        if (f.pathString().contains(cmd.dstVolumeFolderPath)) {
-//                            fileList.add(f)
-//                        }
-//                    }
-//                } else {
-//                    dstVfs.walkFileSystem { f ->
-//                        if (f.pathString().contains(cmd.dstVolumeFolderPath)
-//                                || f.pathString().contains(cmd.dstImageCacheTemplateFolderPath)) {
-//                            fileList.add(f)
-//                        }
-//                    }
-//                }
-//
-//                fileList.each { file ->
-//                    if (file.backingFile == null) {
-//                        return
-//                    }
-//
-//                    file.backingFile = Paths.get(file.backingFile.toAbsolutePath().toString().replace(cmd.srcPsMountPath, cmd.dstPsMountPath))
-//                    dstVfs.write(file.path, file.asJSONString())
-//                }
+                VFS dstVfs = vfs(cmd.primaryStorageUuid, spec)
+
+                List<VFSFile> fileList = new ArrayList<>()
+                dstVfs.walkFileSystem { f ->
+                    if (f.pathString().startsWith(cmd.dstVolumeFolderPath)
+                            || (cmd.dstImageCacheTemplateFoldersPath != null && cmd.dstImageCacheTemplateFoldersPath
+                            .any {f.pathString().startsWith(it)})) {
+                        fileList.add(f)
+                    }
+                }
+
+                fileList.each { file ->
+                    if (!file instanceof Qcow2) {
+                        return
+                    }
+                    Qcow2 qcow2 = file as Qcow2
+                    qcow2.backingFile = Paths.get(qcow2.backingFile.toAbsolutePath().toString().replace(cmd.srcPsMountPath, cmd.dstPsMountPath))
+                    dstVfs.write(qcow2.path, qcow2.asJSONString())
+                }
 
                 return rsp
             }
