@@ -1,6 +1,7 @@
 package org.zstack.ldap;
 
 import org.zstack.header.tag.TagDefinition;
+import org.zstack.ldap.entity.LdapServerVO;
 import org.zstack.tag.PatternedSystemTag;
 
 /**
