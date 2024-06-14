@@ -38,10 +38,17 @@ import org.zstack.identity.imports.entity.SyncCreatedAccountStrategy;
 import org.zstack.identity.imports.entity.SyncDeletedAccountStrategy;
 import org.zstack.identity.imports.message.SyncThirdPartyAccountMsg;
 import org.zstack.ldap.api.*;
+import org.zstack.ldap.entity.LdapFilterRulePolicy;
+import org.zstack.ldap.entity.LdapFilterRuleTarget;
 import org.zstack.ldap.entity.LdapServerInventory;
 import org.zstack.ldap.entity.LdapServerType;
 import org.zstack.ldap.entity.LdapServerVO;
 import org.zstack.ldap.entity.LdapServerVO_;
+import org.zstack.ldap.message.AddLdapFilterRuleMsg;
+import org.zstack.ldap.message.AddLdapFilterRuleReply;
+import org.zstack.ldap.message.RemoveLdapFilterRuleMsg;
+import org.zstack.ldap.message.UpdateLdapFilterRuleMsg;
+import org.zstack.ldap.message.UpdateLdapFilterRuleReply;
 import org.zstack.tag.PatternedSystemTag;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.tag.SystemTagUtils;
@@ -51,13 +58,12 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.PersistenceException;
-import javax.persistence.Query;
-import java.sql.Timestamp;
 import java.util.*;
 
 import static org.zstack.core.Platform.err;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.CollectionDSL.map;
+import static org.zstack.utils.CollectionUtils.*;
 
 /**
  * Created by miao on 16-9-6.
@@ -65,7 +71,6 @@ import static org.zstack.utils.CollectionDSL.map;
 public class LdapManagerImpl extends AbstractService implements LdapManager, LoginBackend {
     private static final CLogger logger = Utils.getLogger(LdapManagerImpl.class);
 
-    private static final LdapEffectiveScope scope = new LdapEffectiveScope(AccountConstant.LOGIN_TYPE);
     private static final LoginType loginType = new LoginType(LdapConstant.LOGIN_TYPE);
 
     @Autowired
@@ -105,6 +110,12 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
             handle((APIDeleteLdapBindingMsg) msg);
         } else if (msg instanceof APIUpdateLdapServerMsg) {
             handle((APIUpdateLdapServerMsg) msg);
+        } else if (msg instanceof APIAddLdapFilterRuleMsg) {
+            handle((APIAddLdapFilterRuleMsg) msg);
+        } else if (msg instanceof APIUpdateLdapFilterRuleMsg) {
+            handle((APIUpdateLdapFilterRuleMsg) msg);
+        } else if (msg instanceof APIRemoveLdapFilterRuleMsg) {
+            handle((APIRemoveLdapFilterRuleMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
@@ -125,12 +136,6 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
         return bus.makeLocalServiceId(LdapConstant.SERVICE_ID);
     }
 
-    @Transactional(readOnly = true)
-    private Timestamp getCurrentSqlDate() {
-        Query query = dbf.getEntityManager().createNativeQuery("select current_timestamp()");
-        return (Timestamp) query.getSingleResult();
-    }
-
     public boolean start() {
         return true;
     }
@@ -142,6 +147,88 @@ public class LdapManagerImpl extends AbstractService implements LdapManager, Log
     @Override
     public boolean isValid(String uid, String password) {
         return ldapUtil.isValid(uid, password);
+    }
+
+    private void handle(APIAddLdapFilterRuleMsg msg) {
+        AddLdapFilterRuleMsg innerMsg = new AddLdapFilterRuleMsg();
+        innerMsg.setLdapServerUuid(msg.getLdapServerUuid());
+        innerMsg.setRules(msg.getRules());
+        innerMsg.setPolicy(LdapFilterRulePolicy.valueOf(msg.getPolicy()));
+        innerMsg.setTarget(LdapFilterRuleTarget.valueOf(msg.getTarget()));
+        bus.makeTargetServiceIdByResourceUuid(innerMsg, AccountImportsConstant.SERVICE_ID, msg.getLdapServerUuid());
+        bus.send(innerMsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply reply) {
+                APIAddLdapFilterRuleEvent event = new APIAddLdapFilterRuleEvent(msg.getId());
+                if (reply.isSuccess()) {
+                    event.setInventories(((AddLdapFilterRuleReply) reply).getInventories());
+                } else {
+                    event.setError(reply.getError());
+                }
+                bus.publish(event);
+            }
+        });
+    }
+
+    private void handle(APIUpdateLdapFilterRuleMsg msg) {
+        UpdateLdapFilterRuleMsg innerMsg = new UpdateLdapFilterRuleMsg();
+        innerMsg.setLdapServerUuid(msg.getLdapServerUuid());
+        innerMsg.setRuleUuid(msg.getUuid());
+        innerMsg.setRule(msg.getRule());
+        innerMsg.setPolicy(msg.getPolicy() == null ? null : LdapFilterRulePolicy.valueOf(msg.getPolicy()));
+        innerMsg.setTarget(msg.getTarget() == null ? null : LdapFilterRuleTarget.valueOf(msg.getTarget()));
+        bus.makeTargetServiceIdByResourceUuid(innerMsg, AccountImportsConstant.SERVICE_ID, msg.getLdapServerUuid());
+        bus.send(innerMsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply reply) {
+                APIUpdateLdapFilterRuleEvent event = new APIUpdateLdapFilterRuleEvent(msg.getId());
+                if (reply.isSuccess()) {
+                    event.setInventory(((UpdateLdapFilterRuleReply) reply).getInventory());
+                } else {
+                    event.setError(reply.getError());
+                }
+                bus.publish(event);
+            }
+        });
+    }
+
+    private void handle(APIRemoveLdapFilterRuleMsg msg) {
+        final Map<String, String> ruleUuidLdapServerUuidMap = msg.getRuleUuidLdapServerUuidMap();
+        final HashSet<String> ldapServerSet = new HashSet<>(ruleUuidLdapServerUuidMap.values());
+        final APIRemoveLdapFilterRuleEvent event = new APIRemoveLdapFilterRuleEvent(msg.getId());
+        event.setLdapServerUuidList(new ArrayList<>(ldapServerSet));
+
+        new While<>(ldapServerSet).step((ldapServerUuid, whileCompletion) -> {
+            RemoveLdapFilterRuleMsg innerMsg = new RemoveLdapFilterRuleMsg();
+            innerMsg.setLdapServerUuid(ldapServerUuid);
+
+            final List<Map.Entry<String, String>> filterEntries =
+                    filter(ruleUuidLdapServerUuidMap.entrySet(), entry -> entry.getValue().equals(ldapServerUuid));
+            innerMsg.setRuleUuidList(transform(filterEntries, Map.Entry::getKey));
+
+            bus.makeTargetServiceIdByResourceUuid(innerMsg, AccountImportsConstant.SERVICE_ID, ldapServerUuid);
+            bus.send(innerMsg, new CloudBusCallBack(whileCompletion) {
+                @Override
+                public void run(MessageReply reply) {
+                    if (!reply.isSuccess()) {
+                        whileCompletion.addError(operr(
+                                reply.getError(),
+                                "failed to remove ldap filter rule[uuid=%s] in ldap server[uuid=%s]",
+                                innerMsg.getRuleUuidList(), ldapServerUuid));
+                    }
+                    whileCompletion.done();
+                }
+            });
+        }, 3).run(new WhileDoneCompletion(msg) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                if (!errorCodeList.getCauses().isEmpty()) {
+                    event.setError(errorCodeList);
+                }
+                bus.publish(event);
+            }
+        });
+
     }
 
     private void handle(APIAddLdapServerMsg msg) {

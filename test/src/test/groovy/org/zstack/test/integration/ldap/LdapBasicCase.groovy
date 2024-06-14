@@ -9,7 +9,6 @@ import org.zapodot.junit.ldap.EmbeddedLdapRuleBuilder
 import org.zstack.header.identity.IdentityErrors
 import org.zstack.identity.IdentityGlobalConfig
 import org.zstack.ldap.LdapConstant
-import org.zstack.ldap.LdapSystemTags
 import org.zstack.sdk.identity.ldap.api.AddLdapServerAction
 import org.zstack.sdk.identity.ldap.api.AddLdapServerResult
 import org.zstack.sdk.ApiResult
@@ -267,10 +266,16 @@ class LdapBasicCase extends SubCase {
             username = ""
             password = ""
             encryption = "None"
-            systemTags = [LdapSystemTags.LDAP_SERVER_TYPE.instantiateTag([(LdapSystemTags.LDAP_SERVER_TYPE_TOKEN): LdapConstant.OpenLdap.TYPE]),
-                          LdapSystemTags.LDAP_CLEAN_BINDING_FILTER.instantiateTag([(LdapSystemTags.LDAP_CLEAN_BINDING_FILTER_TOKEN): "(cn=Micha Kops)"])]
-            sessionId = Test.currentEnvSpec.session.uuid
+            serverType = "OpenLdap"
         } as LdapServerInventory
+
+        addLdapFilterRule {
+            delegate.ldapServerUuid = result.uuid
+            delegate.rules = ["(cn=Micha Kops)"]
+            delegate.policy = "DENY"
+            delegate.target = "AddNew"
+        }
+
         LdapUuid = result.uuid
 
         AddLdapServerAction addLdapServerAction = new AddLdapServerAction(

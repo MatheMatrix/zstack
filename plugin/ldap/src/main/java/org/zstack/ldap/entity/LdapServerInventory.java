@@ -30,6 +30,8 @@ public class LdapServerInventory implements Serializable {
     private Timestamp createDate;
     private Timestamp lastOpDate;
 
+    private List<LdapFilterRuleInventory> filterRules;
+
     public static LdapServerInventory valueOf(LdapServerVO vo) {
         LdapServerInventory inv = new LdapServerInventory();
         inv.setUuid(vo.getUuid());
@@ -44,6 +46,7 @@ public class LdapServerInventory implements Serializable {
         inv.setLastOpDate(vo.getLastOpDate());
         inv.setType(vo.getType());
         inv.setServerType(vo.getServerType().toString());
+        inv.setFilterRules(LdapFilterRuleInventory.valueOf(vo.getFilterRules()));
         return inv;
     }
 
@@ -149,5 +152,13 @@ public class LdapServerInventory implements Serializable {
 
     public void setServerType(String serverType) {
         this.serverType = serverType;
+    }
+
+    public List<LdapFilterRuleInventory> getFilterRules() {
+        return filterRules;
+    }
+
+    public void setFilterRules(List<LdapFilterRuleInventory> filterRules) {
+        this.filterRules = filterRules;
     }
 }

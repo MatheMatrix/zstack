@@ -92,4 +92,12 @@ public class LdapServerInventory  {
         return this.lastOpDate;
     }
 
+    public java.util.List filterRules;
+    public void setFilterRules(java.util.List filterRules) {
+        this.filterRules = filterRules;
+    }
+    public java.util.List getFilterRules() {
+        return this.filterRules;
+    }
+
 }
