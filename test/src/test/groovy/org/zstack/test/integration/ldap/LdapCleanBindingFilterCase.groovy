@@ -3,7 +3,7 @@ package org.zstack.test.integration.ldap
 import org.junit.ClassRule
 import org.zapodot.junit.ldap.EmbeddedLdapRule
 import org.zapodot.junit.ldap.EmbeddedLdapRuleBuilder
-import org.zstack.ldap.LdapSystemTags
+import org.zstack.sdk.identity.ldap.entity.LdapFilterRuleInventory
 import org.zstack.sdk.identity.ldap.entity.LdapServerInventory
 import org.zstack.test.integration.ZStackTest
 import org.zstack.testlib.EnvSpec
@@ -41,7 +41,6 @@ class LdapCleanBindingFilterCase extends SubCase {
         env.create {
             prepare()
             testUpdateFiler()
-            testAddLdapWithFilter()
         }
     }
 
@@ -61,54 +60,78 @@ class LdapCleanBindingFilterCase extends SubCase {
             encryption = "None"
         } as LdapServerInventory
 
-        assert null == LdapSystemTags.LDAP_ALLOW_LIST_FILTER.getTag(ldapServer.uuid)
-        assert null == LdapSystemTags.LDAP_CLEAN_BINDING_FILTER.getTag(ldapServer.uuid)
+        assert ldapServer.filterRules.isEmpty()
     }
 
     void testUpdateFiler(){
         String filter = "(age=3)"
 
-        updateLdapServer {
-            ldapServerUuid = ldapServer.uuid
-            systemTags = [LdapSystemTags.LDAP_ALLOW_LIST_FILTER.instantiateTag([(LdapSystemTags.LDAP_ALLOW_LIST_FILTER_TOKEN): filter])]
+        logger.info("Test 1: add ldap filter rule")
+        addLdapFilterRule {
+            delegate.ldapServerUuid = ldapServer.uuid
+            delegate.rules = [filter]
+            delegate.policy = "ACCEPT"
+            delegate.target = "AddNew"
         }
 
-        assert filter == LdapSystemTags.LDAP_ALLOW_LIST_FILTER.getTokenByResourceUuid(ldapServer.uuid, LdapSystemTags.LDAP_ALLOW_LIST_FILTER_TOKEN)
+        def ldapList = queryLdapServer {
+            delegate.conditions = ["uuid=${ldapServer.uuid}"]
+        } as List<LdapServerInventory>
+        assert ldapList.size() == 1
+        assert ldapList[0].filterRules.size() == 1
 
-        updateLdapServer {
-            ldapServerUuid = ldapServer.uuid
-            systemTags = [LdapSystemTags.LDAP_CLEAN_BINDING_FILTER.instantiateTag([(LdapSystemTags.LDAP_CLEAN_BINDING_FILTER_TOKEN): filter])]
+        def acceptRule = ldapList[0].filterRules[0] as LdapFilterRuleInventory
+        assert acceptRule.policy == "ACCEPT"
+        assert filter == acceptRule.rule
+
+        addLdapFilterRule {
+            delegate.ldapServerUuid = ldapServer.uuid
+            delegate.rules = [filter]
+            delegate.policy = "DENY"
+            delegate.target = "AddNew"
         }
 
-        assert filter == LdapSystemTags.LDAP_CLEAN_BINDING_FILTER.getTokenByResourceUuid(ldapServer.uuid, LdapSystemTags.LDAP_CLEAN_BINDING_FILTER_TOKEN)
+        ldapList = queryLdapServer {
+            delegate.conditions = ["uuid=${ldapServer.uuid}"]
+        } as List<LdapServerInventory>
+        assert ldapList.size() == 1
+        assert ldapList[0].filterRules.size() == 2
 
-        deleteLdapServer {
-            uuid = ldapServer.uuid
+        assert ((ldapList[0].filterRules as List<LdapFilterRuleInventory>).count { it ->
+            it.policy == "DENY" && it.rule == filter
+        }) == 1
+        assert ((ldapList[0].filterRules as List<LdapFilterRuleInventory>).count { it ->
+            it.policy == "ACCEPT" && it.rule == filter && it.uuid == acceptRule.uuid
+        }) == 1
+
+        def denyRule = (ldapList[0].filterRules as List<LdapFilterRuleInventory>).find { it -> it.policy == "DENY" }
+
+        logger.info("Test 2: update ldap filter rule")
+        updateLdapFilterRule {
+            delegate.uuid = acceptRule.uuid
+            delegate.rule = "(age=6)"
         }
 
-        assert null == LdapSystemTags.LDAP_ALLOW_LIST_FILTER.getTag(ldapServer.uuid)
-        assert null == LdapSystemTags.LDAP_CLEAN_BINDING_FILTER.getTag(ldapServer.uuid)
-    }
+        ldapList = queryLdapServer {
+            delegate.conditions = ["uuid=${ldapServer.uuid}"]
+        } as List<LdapServerInventory>
+        assert ldapList.size() == 1
+        assert ldapList[0].filterRules.size() == 2
+        assert ((ldapList[0].filterRules as List<LdapFilterRuleInventory>).count { it ->
+            it.policy == "ACCEPT" && it.rule == "(age=6)" && it.uuid == acceptRule.uuid
+        }) == 1
 
-    void testAddLdapWithFilter(){
-        String filter = "(cn=Micha Kops)"
-        String filter2 = "(name=zstack)"
+        logger.info("Test 3: remove ldap filter rule")
+        removeLdapFilterRule {
+            delegate.uuidList = [denyRule.uuid]
+        }
 
-        def newLdapServerInventory = addLdapServer {
-            name = "ldap1"
-            description = "test-ldap0"
-            base = DOMAIN_DSN
-            url = "ldap://localhost:1888"
-            username = ""
-            password = ""
-            encryption = "None"
-            systemTags = [
-                LdapSystemTags.LDAP_ALLOW_LIST_FILTER.instantiateTag([(LdapSystemTags.LDAP_ALLOW_LIST_FILTER_TOKEN): filter]),
-                LdapSystemTags.LDAP_CLEAN_BINDING_FILTER.instantiateTag([(LdapSystemTags.LDAP_CLEAN_BINDING_FILTER_TOKEN): filter2])
-            ]
-        } as LdapServerInventory
-
-        assert filter == LdapSystemTags.LDAP_ALLOW_LIST_FILTER.getTokenByResourceUuid(newLdapServerInventory.uuid, LdapSystemTags.LDAP_ALLOW_LIST_FILTER_TOKEN)
-        assert filter2 == LdapSystemTags.LDAP_CLEAN_BINDING_FILTER.getTokenByResourceUuid(newLdapServerInventory.uuid, LdapSystemTags.LDAP_CLEAN_BINDING_FILTER_TOKEN)
+        ldapList = queryLdapServer {
+            delegate.conditions = ["uuid=${ldapServer.uuid}"]
+        } as List<LdapServerInventory>
+        assert ldapList.size() == 1
+        assert ldapList[0].filterRules.size() == 1
+        assert ((ldapList[0].filterRules as List<LdapFilterRuleInventory>).count { it -> it.uuid == acceptRule.uuid }) == 1
+        assert ((ldapList[0].filterRules as List<LdapFilterRuleInventory>).count { it -> it.uuid == denyRule.uuid }) == 0
     }
 }

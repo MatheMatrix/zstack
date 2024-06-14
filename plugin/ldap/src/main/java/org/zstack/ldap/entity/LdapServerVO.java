@@ -4,6 +4,8 @@ import org.zstack.header.tag.AutoDeleteTag;
 import org.zstack.identity.imports.entity.ThirdPartyAccountSourceVO;
 
 import javax.persistence.*;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table
@@ -27,6 +29,10 @@ public class LdapServerVO extends ThirdPartyAccountSourceVO {
     @Column
     @Enumerated(EnumType.STRING)
     private LdapServerType serverType;
+
+    @OneToMany(fetch = FetchType.EAGER)
+    @JoinColumn(name = "ldapServerUuid", insertable = false, updatable = false)
+    private Set<LdapFilterRuleVO> filterRules = new HashSet<>();
 
     public String getUrl() {
         return url;
@@ -74,5 +80,13 @@ public class LdapServerVO extends ThirdPartyAccountSourceVO {
 
     public void setServerType(LdapServerType serverType) {
         this.serverType = serverType;
+    }
+
+    public Set<LdapFilterRuleVO> getFilterRules() {
+        return filterRules;
+    }
+
+    public void setFilterRules(Set<LdapFilterRuleVO> filterRules) {
+        this.filterRules = filterRules;
     }
 }

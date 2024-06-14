@@ -1,5 +1,6 @@
 package org.zstack.ldap.entity;
 
+import org.zstack.header.vo.EntityGraph;
 import org.zstack.header.vo.ForeignKey;
 import org.zstack.header.vo.Index;
 
@@ -17,6 +18,11 @@ import java.sql.Timestamp;
  */
 @Entity
 @Table
+@EntityGraph(
+    parents = {
+        @EntityGraph.Neighbour(type = LdapServerVO.class, myField = "ldapServerUuid", targetField = "uuid")
+    }
+)
 public class LdapFilterRuleVO {
     @Id
     @Column
