@@ -2078,6 +2078,15 @@ public class KVMAgentCommands {
         // TODO: only for test
         private boolean useColoBinary;
         private String vmCpuVendorId;
+        private boolean qemu64BitPciMmioSetup;
+
+        public boolean isQemu64BitPciMmioSetup() {
+            return qemu64BitPciMmioSetup;
+        }
+
+        public void setQemu64BitPciMmioSetup(boolean qemu64BitPciMmioSetup) {
+            this.qemu64BitPciMmioSetup = qemu64BitPciMmioSetup;
+        }
 
         public long getVmCpuQuota() {
             return vmCpuQuota;
