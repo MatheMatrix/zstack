@@ -12,6 +12,7 @@ import org.zstack.core.asyncbatch.While;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
+import org.zstack.header.HasThreadContext;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
@@ -64,6 +65,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     public static final String GET_FACTS_PATH = "/zbs/primarystorage/facts";
     public static final String GET_CAPACITY_PATH = "/zbs/primarystorage/capacity";
+    public static final String COPY_PATH = "/zbs/primarystorage/copy";
     public static final String CREATE_VOLUME_PATH = "/zbs/primarystorage/volume/create";
     public static final String DELETE_VOLUME_PATH = "/zbs/primarystorage/volume/delete";
     public static final String CLONE_VOLUME_PATH = "/zbs/primarystorage/volume/clone";
@@ -74,7 +76,6 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     public static final String CREATE_SNAPSHOT_PATH = "/zbs/primarystorage/snapshot/create";
     public static final String DELETE_SNAPSHOT_PATH = "/zbs/primarystorage/snapshot/delete";
     public static final String ROLLBACK_SNAPSHOT_PATH = "/zbs/primarystorage/snapshot/rollback";
-    public static final String COPY_SNAPSHOT_PATH = "/zbs/primarystorage/snapshot/copy";
 
     private static final String ZBS_CBD_LUN_PATH_FORMAT = "cbd:%s/%s/%s";
 
@@ -503,7 +504,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     @Override
     public void copyVolume(String srcInstallPath, CreateVolumeSpec dst, ReturnValueCompletion<VolumeStats> comp) {
-        CopySnapshotCmd cmd = new CopySnapshotCmd();
+        CopyCmd cmd = new CopyCmd();
         cmd.setPhysicalPoolName(getPhysicalPoolNameFromPath(srcInstallPath));
         cmd.setLogicalPoolName(getLogicalPoolNameFromPath(srcInstallPath));
         cmd.setLunName(getLunNameFromPath(srcInstallPath));
@@ -511,7 +512,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         cmd.setDstLunName(dst.getName());
         cmd.setDstLunSize(dst.getSize() / (1L << 30));
 
-        httpCall(COPY_SNAPSHOT_PATH, cmd, CopySnapshotRsp.class, new ReturnValueCompletion<CopySnapshotRsp>(comp) {
+        httpCall(COPY_PATH, cmd, CopySnapshotRsp.class, new ReturnValueCompletion<CopySnapshotRsp>(comp) {
             @Override
             public void success(CopySnapshotRsp returnValue) {
                 VolumeStats stats = new VolumeStats();
@@ -1161,7 +1162,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         }
     }
 
-    public static class CopySnapshotCmd extends AgentCommand {
+    public static class CopyCmd extends AgentCommand implements HasThreadContext {
         private String physicalPoolName;
         private String logicalPoolName;
         private String lunName;

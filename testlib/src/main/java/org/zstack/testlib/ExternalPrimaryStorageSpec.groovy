@@ -134,8 +134,8 @@ class ExternalPrimaryStorageSpec extends PrimaryStorageSpec {
                 return rsp
             }
 
-            simulator(ZbsStorageController.COPY_SNAPSHOT_PATH) { HttpEntity<String> e, EnvSpec spec ->
-                ZbsStorageController.CopySnapshotCmd cmd = JSONObjectUtil.toObject(e.body, ZbsStorageController.CopySnapshotCmd.class)
+            simulator(ZbsStorageController.COPY_PATH) { HttpEntity<String> e, EnvSpec spec ->
+                ZbsStorageController.CopyCmd cmd = JSONObjectUtil.toObject(e.body, ZbsStorageController.CopyCmd.class)
                 ExternalPrimaryStorageSpec zspec = spec.specByUuid(cmd.uuid)
                 assert zspec != null: "cannot found zbs primary storage[uuid:${cmd.uuid}], check your environment()."
 
