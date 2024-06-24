@@ -395,7 +395,7 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
                 long valueLong = SizeUtils.sizeStringToBytes(value);
                 long _1t = SizeUtils.sizeStringToBytes("1T");
                 if (valueLong > _1t || valueLong < 0) {
-                    throw new GlobalConfigException(String.format("Value %s  cannot be greater than the 1TB" + " but got %s",
+                    throw new GlobalConfigException(String.format("Value %s cannot be greater than the 1TB" + " but got %s",
                             KVMGlobalConfig.RESERVED_MEMORY_CAPACITY.getCanonicalName(), value));
                 }
             }
