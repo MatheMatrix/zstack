@@ -132,7 +132,7 @@ public class BlockDevicesParser {
     public static String getBlockDevicesCommand() {
         String blockDevicesCommand = "lsblk -p -b -o NAME,TYPE,SIZE,PHY-SEC,LOG-SEC,MOUNTPOINT -J";
         String partitionTableInfoCommand = "for disk in $(lsblk -d -p -n -o NAME); do echo -n \"$disk:\"; " +
-                "parted $disk print 2>/dev/null | awk '/Partition Table/ {print $3}'; done";
+                "parted -s $disk print 2>/dev/null | awk '/Partition Table/ {print $3}'; done";
         return String.format("%s ; echo === ; %s", blockDevicesCommand, partitionTableInfoCommand);
     }
 }
