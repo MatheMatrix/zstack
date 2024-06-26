@@ -36,3 +36,5 @@ ALTER TABLE `zstack`.`LdapServerVO` ADD COLUMN `filter` varchar(2048) DEFAULT NU
 ALTER TABLE `zstack`.`LdapServerVO` ADD COLUMN `usernameProperty` varchar(255) NOT NULL default 'cn';
 DROP TABLE `zstack`.`LdapAccountRefVO`;
 DROP TABLE `zstack`.`LdapResourceRefVO`;
+
+ALTER TABLE `zstack`.`AccountVO` ADD COLUMN `state` varchar(128) NOT NULL default 'Enabled';
