@@ -1,0 +1,1 @@
+CALL ADD_CONSTRAINT('AgentVersionVO', 'fkAgentVersionVOResourceVO', 'uuid', 'ResourceVO', 'uuid', 'CASCADE');
