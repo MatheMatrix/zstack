@@ -33,6 +33,7 @@ public class HostCanonicalEvents {
     public static final String HOST_PROCESS_PHYSICAL_MEMORY_USAGE_ABNORMAL = "/host/process/physicalMemory/usage/abnormal";
     public static final String HOST_PING_SKIP = "/host/ping/skip";
     public static final String HOST_PING_CANCEL_SKIP = "/host/ping/cancel/skip";
+    public static final String HOST_MULTIPATH_CONFIG_OVERWRITTEN = "/host/multipathConfig/overwritten";
 
     @NeedJsonSchema
     public static class HostPhysicalHbaPortStateAbnormalData {
@@ -661,6 +662,18 @@ public class HostCanonicalEvents {
 
         public void setInterfaceStatus(String interfaceStatus) {
             this.interfaceStatus = interfaceStatus;
+        }
+    }
+
+    public static class MultipathConfigOverwrittenData {
+        private String hostUuid;
+
+        public String getHostUuid() {
+            return hostUuid;
+        }
+
+        public void setHostUuid(String hostUuid) {
+            this.hostUuid = hostUuid;
         }
     }
 
