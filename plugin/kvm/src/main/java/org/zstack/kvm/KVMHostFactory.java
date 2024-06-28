@@ -604,10 +604,10 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
         restf.registerSyncHttpCallHandler(KVMConstant.HOST_PHYSICAL_DISK_INSERT_ALARM_EVENT, HostPhysicalDiskInsertAlarmEventCmd.class, cmd -> {
             HostCanonicalEvents.HostPhysicalDiskData cdata = new HostCanonicalEvents.HostPhysicalDiskData();
             cdata.setHostUuid(cmd.host);
-            cdata.setSerialNumber(cmd.serial_number);
-            cdata.setEnclosureId(cmd.enclosure_device_id);
-            cdata.setSlotNumber(cmd.slot_number);
-            cdata.setName(cmd.name);
+            cdata.setSerialNumber(cmd.additionalProperties.get(KVMConstant.DEVICE_SERIAL_NUMBER).toString());
+            cdata.setEnclosureId(cmd.additionalProperties.get(KVMConstant.ENCLOSURE_DEVICE_ID).toString());
+            cdata.setSlotNumber(cmd.additionalProperties.get(KVMConstant.SLOT_NUMBER).toString());
+            cdata.setName(cmd.additionalProperties.get(KVMConstant.DEVICE_NAME).toString());
             evf.fire(HostCanonicalEvents.HOST_PHYSICAL_DISK_INSERT_TRIGGERED, cdata);
             return null;
         });
@@ -615,10 +615,10 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
         restf.registerSyncHttpCallHandler(KVMConstant.HOST_PHYSICAL_DISK_REMOVE_ALARM_EVENT, HostPhysicalDiskRemoveAlarmEventCmd.class, cmd -> {
             HostCanonicalEvents.HostPhysicalDiskData cdata = new HostCanonicalEvents.HostPhysicalDiskData();
             cdata.setHostUuid(cmd.host);
-            cdata.setSerialNumber(cmd.serial_number);
-            cdata.setEnclosureId(cmd.enclosure_device_id);
-            cdata.setSlotNumber(cmd.slot_number);
-            cdata.setName(cmd.name);
+            cdata.setSerialNumber(cmd.additionalProperties.get(KVMConstant.DEVICE_SERIAL_NUMBER).toString());
+            cdata.setEnclosureId(cmd.additionalProperties.get(KVMConstant.ENCLOSURE_DEVICE_ID).toString());
+            cdata.setSlotNumber(cmd.additionalProperties.get(KVMConstant.SLOT_NUMBER).toString());
+            cdata.setName(cmd.additionalProperties.get(KVMConstant.DEVICE_NAME).toString());
             evf.fire(HostCanonicalEvents.HOST_PHYSICAL_DISK_REMOVE_TRIGGERED, cdata);
             return null;
         });
