@@ -10,6 +10,7 @@ import org.zstack.core.config.GlobalConfigException;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.header.Component;
 import org.zstack.header.Constants;
+import org.zstack.header.cluster.APIUpdateClusterOSMsg;
 import org.zstack.header.console.APIRequestConsoleAccessMsg;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.exception.CloudRuntimeException;
@@ -75,11 +76,21 @@ public class UpgradeChecker implements Component {
         predefinedApiClassSet.add(APIRequestConsoleAccessMsg.class.getSimpleName());
         predefinedApiClassSet.add(APIMigrateVmMsg.class.getSimpleName());
         predefinedApiClassSet.add(APIReconnectHostMsg.class.getSimpleName());
+        predefinedApiClassSet.add(APIUpdateClusterOSMsg.class.getSimpleName());
     }
 
     private void populateGlobalConfigForGrayscaleUpgrade() {
         initPredefinedApiClassSet();
         grayScaleApiWhiteList.addAll(predefinedApiClassSet);
+        List<String> predefinedClasses;
+        try {
+            predefinedClasses = Arrays.asList(UpgradeGlobalConfig.ALLOWED_API_LIST_GRAYSCALE_UPGRADING.value().split(","));
+        } catch (PatternSyntaxException exception) {
+            throw new CloudRuntimeException(String.format("Failed to split config value by ','," +
+                    ", because %s. Please input a string separate api by ','", exception));
+        }
+        grayScaleApiWhiteList.addAll(predefinedClasses);
+
         UpgradeGlobalConfig.ALLOWED_API_LIST_GRAYSCALE_UPGRADING
                 .installValidateExtension((category, name, oldValue, newValue) -> {
                     List<String> apiClassNames;
