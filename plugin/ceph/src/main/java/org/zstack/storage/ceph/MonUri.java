@@ -72,10 +72,15 @@ public class MonUri {
                         " in format of %s", url, MON_URL_FORMAT)));
             }
 
-            String rest = url.substring(at+1, url.length());
-            String[] ssh = userInfo.split(":");
-            sshUsername = ssh[0];
-            sshPassword = ssh[1];
+            String rest = url.substring(at+1);
+            int colon = url.indexOf(":");
+            if (colon == -1 || colon == url.length() - 1) {
+                throw new OperationFailureException(errorCode(String.format("invalid monUrl[%s], the sshUsername:sshPassword part is invalid. A valid monUrl is" +
+                        " in format of %s", url, MON_URL_FORMAT)));
+            }
+
+            sshUsername = url.substring(0, colon);
+            sshPassword = url.substring(colon+1);
 
             URI uri = new URI(String.format("ssh://%s", rest));
             hostname = uri.getHost();
