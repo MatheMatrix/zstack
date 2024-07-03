@@ -387,6 +387,9 @@ public class SourceClassMap {
 			put("org.zstack.iam2.entity.StateEvent", "org.zstack.sdk.iam2.entity.StateEvent");
 			put("org.zstack.iam2.project.template.Template", "org.zstack.sdk.iam2.project.template.Template");
 			put("org.zstack.identity.imports.entity.AccountThirdPartyAccountSourceRefInventory", "org.zstack.sdk.identity.imports.entity.AccountThirdPartyAccountSourceRefInventory");
+			put("org.zstack.identity.imports.header.SyncTaskResult", "org.zstack.sdk.identity.imports.header.SyncTaskResult");
+			put("org.zstack.identity.imports.header.SyncTaskResult$CleanStage", "org.zstack.sdk.identity.imports.header.CleanStage");
+			put("org.zstack.identity.imports.header.SyncTaskResult$ImportStage", "org.zstack.sdk.identity.imports.header.ImportStage");
 			put("org.zstack.imagereplicator.ImageReplicationGroupBackupStorageRefInventory", "org.zstack.sdk.ImageReplicationGroupBackupStorageRefInventory");
 			put("org.zstack.imagereplicator.ImageReplicationGroupInventory", "org.zstack.sdk.ImageReplicationGroupInventory");
 			put("org.zstack.imagereplicator.ReplicationGroupState", "org.zstack.sdk.ReplicationGroupState");
@@ -1343,6 +1346,9 @@ public class SourceClassMap {
 			put("org.zstack.sdk.iam2.entity.StateEvent", "org.zstack.iam2.entity.StateEvent");
 			put("org.zstack.sdk.iam2.project.template.Template", "org.zstack.iam2.project.template.Template");
 			put("org.zstack.sdk.identity.imports.entity.AccountThirdPartyAccountSourceRefInventory", "org.zstack.identity.imports.entity.AccountThirdPartyAccountSourceRefInventory");
+			put("org.zstack.sdk.identity.imports.header.CleanStage", "org.zstack.identity.imports.header.SyncTaskResult$CleanStage");
+			put("org.zstack.sdk.identity.imports.header.ImportStage", "org.zstack.identity.imports.header.SyncTaskResult$ImportStage");
+			put("org.zstack.sdk.identity.imports.header.SyncTaskResult", "org.zstack.identity.imports.header.SyncTaskResult");
 			put("org.zstack.sdk.identity.ldap.entity.LdapEntryAttributeInventory", "org.zstack.ldap.entity.LdapEntryAttributeInventory");
 			put("org.zstack.sdk.identity.ldap.entity.LdapEntryInventory", "org.zstack.ldap.entity.LdapEntryInventory");
 			put("org.zstack.sdk.identity.ldap.entity.LdapServerInventory", "org.zstack.ldap.entity.LdapServerInventory");
