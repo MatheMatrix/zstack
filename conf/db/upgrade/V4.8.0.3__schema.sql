@@ -92,3 +92,14 @@ ALTER TABLE `zstack`.`SchedulerJobGroupJobRefVO` ADD COLUMN `priority` int DEFAU
 
 ALTER TABLE `zstack`.`SchedulerJobGroupVO` ADD COLUMN `managementNodeUuid` VARCHAR(32) DEFAULT NULL;
 ALTER TABLE `zstack`.`SchedulerJobGroupVO` ADD CONSTRAINT `fkSchedulerJobGroupVOManagementNodeVO` FOREIGN KEY (`managementNodeUuid`) REFERENCES `ManagementNodeVO` (`uuid`) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS `zstack`.`VolumeBackupGroupVO` (
+    `uuid` VARCHAR(32) NOT NULL UNIQUE,
+    `name` VARCHAR(255) NOT NULL,
+    `description` VARCHAR(2048) DEFAULT NULL,
+    `vmInstanceUuid` VARCHAR(32) NOT NULL,
+    `count` int unsigned NOT NULL,
+    `lastOpDate` timestamp ON UPDATE CURRENT_TIMESTAMP,
+    `createDate` timestamp,
+    PRIMARY KEY (`uuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
