@@ -14,6 +14,11 @@ public class SyncThirdPartyAccountMsg extends NeedReplyMessage implements Accoun
     private SyncCreatedAccountStrategy createAccountStrategy;
     private SyncDeletedAccountStrategy deleteAccountStrategy;
 
+    /**
+     * used for reporting progress
+     */
+    private String SyncTrackPath;
+
     @Override
     public String getSourceUuid() {
         return sourceUuid;
@@ -37,5 +42,13 @@ public class SyncThirdPartyAccountMsg extends NeedReplyMessage implements Accoun
 
     public void setDeleteAccountStrategy(SyncDeletedAccountStrategy deleteAccountStrategy) {
         this.deleteAccountStrategy = deleteAccountStrategy;
+    }
+
+    public String getSyncTrackPath() {
+        return SyncTrackPath;
+    }
+
+    public void setSyncTrackPath(String syncTrackPath) {
+        SyncTrackPath = syncTrackPath;
     }
 }

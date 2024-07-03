@@ -17,6 +17,7 @@ public class LdapSyncTaskSpec extends SyncTaskSpec {
         this.setSourceType(spec.getSourceType());
         this.setCreateAccountStrategy(spec.getCreateAccountStrategy());
         this.setDeleteAccountStrategy(spec.getDeleteAccountStrategy());
+        this.setTrackPath(spec.getTrackPath());
     }
 
     public String getFilter() {

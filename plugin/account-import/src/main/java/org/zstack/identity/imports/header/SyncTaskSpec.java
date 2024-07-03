@@ -12,6 +12,7 @@ public class SyncTaskSpec {
     public String sourceType;
     public SyncCreatedAccountStrategy createAccountStrategy;
     public SyncDeletedAccountStrategy deleteAccountStrategy;
+    public String trackPath;
 
     public String getSourceUuid() {
         return sourceUuid;
@@ -43,5 +44,13 @@ public class SyncTaskSpec {
 
     public void setDeleteAccountStrategy(SyncDeletedAccountStrategy deleteAccountStrategy) {
         this.deleteAccountStrategy = deleteAccountStrategy;
+    }
+
+    public String getTrackPath() {
+        return trackPath;
+    }
+
+    public void setTrackPath(String trackPath) {
+        this.trackPath = trackPath;
     }
 }
