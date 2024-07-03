@@ -7,12 +7,14 @@ import org.springframework.ldap.filter.AndFilter;
 import org.springframework.ldap.filter.HardcodedFilter;
 import org.zstack.core.Platform;
 import org.zstack.core.asyncbatch.While;
+import org.zstack.core.cloudbus.CanonicalEventEmitter;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
+import org.zstack.core.progress.ProgressReportService;
 import org.zstack.core.workflow.SimpleFlowChain;
-import org.zstack.header.core.Completion;
+import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.core.workflow.FlowChain;
 import org.zstack.header.core.workflow.FlowDoneHandler;
@@ -30,16 +32,22 @@ import org.zstack.identity.imports.entity.SyncCreatedAccountStrategy;
 import org.zstack.identity.imports.entity.SyncDeletedAccountStrategy;
 import org.zstack.identity.imports.entity.SyncUpdateAccountStateStrategy;
 import org.zstack.identity.imports.header.ImportAccountItem;
+import org.zstack.identity.imports.header.ImportAccountResult;
 import org.zstack.identity.imports.header.ImportAccountSpec;
+import org.zstack.identity.imports.header.SyncTaskResult;
+import org.zstack.identity.imports.header.UnbindThirdPartyAccountResult;
 import org.zstack.identity.imports.header.UnbindThirdPartyAccountsSpec;
 import org.zstack.identity.imports.message.ImportThirdPartyAccountMsg;
+import org.zstack.identity.imports.message.ImportThirdPartyAccountReply;
 import org.zstack.identity.imports.message.UnbindThirdPartyAccountMsg;
+import org.zstack.identity.imports.message.UnbindThirdPartyAccountReply;
 import org.zstack.ldap.LdapConstant;
 import org.zstack.ldap.driver.LdapSearchSpec;
 import org.zstack.ldap.driver.LdapUtil;
 import org.zstack.ldap.entity.LdapEntryAttributeInventory;
 import org.zstack.ldap.entity.LdapEntryInventory;
 import org.zstack.ldap.header.LdapSyncTaskSpec;
+import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
@@ -56,6 +64,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.zstack.core.Platform.err;
+import static org.zstack.identity.imports.AccountImportsConstant.SYNC_TRACE_PATH;
 import static org.zstack.ldap.LdapConstant.DEFAULT_PERSON_FILTER;
 import static org.zstack.ldap.LdapErrors.LDAP_SYNC_ERROR;
 import static org.zstack.utils.CollectionDSL.list;
@@ -71,6 +80,8 @@ public class LdapSyncHelper {
     private LdapSyncTaskSpec taskSpec;
     private final ImportAccountSpec importSpec;
     private LdapUtil ldapUtil;
+    private LdapSyncTaskResult progress;
+    private CanonicalEventEmitter eventEmitter;
 
     public LdapSyncHelper(LdapSyncTaskSpec spec) {
         this.taskSpec = Objects.requireNonNull(spec);
@@ -84,10 +95,16 @@ public class LdapSyncHelper {
                 taskSpec.getCreateAccountStrategy() != SyncCreatedAccountStrategy.NoAction);
 
         ldapUtil = Platform.New(LdapUtil::new);
+
+        progress = new LdapSyncTaskResult()
+                .withLdapServer(importSpec.getSourceUuid())
+                .withExistingRecordCount(Q.New(AccountThirdPartyAccountSourceRefVO.class)
+                        .eq(AccountThirdPartyAccountSourceRefVO_.accountSourceUuid, importSpec.getSourceUuid())
+                        .count());
     }
 
     @SuppressWarnings({"rawtypes"})
-    public void run(Completion completion) {
+    public void run(ReturnValueCompletion<SyncTaskResult> completion) {
         FlowChain chain = new SimpleFlowChain();
         chain.setName(String.format("sync-ldap-server-%s", importSpec.getSourceUuid()));
         chain.then(new NoRollbackFlow() {
@@ -95,6 +112,7 @@ public class LdapSyncHelper {
 
             @Override
             public void run(FlowTrigger trigger, Map data) {
+                reportProgress(progress.withStage(__name__));
                 String userFilter = buildFilter();
                 logger.debug("user filter is " + userFilter);
 
@@ -113,6 +131,7 @@ public class LdapSyncHelper {
                         logger.warn("failed to sync ldap entry[], ignore this account", e);
                     }
                 }
+                reportProgress(progress.withSearchRecordCount(importSpec.accountList.size()));
                 trigger.next();
             }
         }).then(new NoRollbackFlow() {
@@ -120,11 +139,13 @@ public class LdapSyncHelper {
 
             @Override
             public boolean skip(Map data) {
-                return taskSpec.getCreateAccountStrategy() == SyncCreatedAccountStrategy.NoAction;
+                return taskSpec.getCreateAccountStrategy() == SyncCreatedAccountStrategy.NoAction ||
+                        progress.getImportStage().getTotal() == 0;
             }
 
             @Override
             public void run(FlowTrigger trigger, Map data) {
+                reportProgress(progress.withStage(__name__));
                 AtomicBoolean anySuccess = new AtomicBoolean(false);
 
                 new While<>(splitMessageFromImportSpec()).each((msg, whileCompletion) -> {
@@ -132,6 +153,7 @@ public class LdapSyncHelper {
                     bus.send(msg, new CloudBusCallBack(whileCompletion) {
                         @Override
                         public void run(MessageReply reply) {
+                            recordImportReplyAndReportProgress(msg, reply);
                             if (reply.isSuccess()) {
                                 anySuccess.set(true);
                             } else {
@@ -191,7 +213,8 @@ public class LdapSyncHelper {
 
             @Override
             public boolean skip(Map data) {
-                return taskSpec.getDeleteAccountStrategy() == SyncDeletedAccountStrategy.NoAction;
+                return taskSpec.getDeleteAccountStrategy() == SyncDeletedAccountStrategy.NoAction ||
+                        progress.getCleanStage().getTotal() == 0;
             }
 
             @Override
@@ -219,6 +242,7 @@ public class LdapSyncHelper {
                 final Set<String> credentials =
                         transformToSet(importSpec.accountList, ImportAccountItem::getCredentials);
                 credentials.forEach(credentialsAccountMap::remove);
+                reportProgress(progress.withStage(__name__).appendSkipCountInCleanStage(credentials.size()));
 
                 if (credentialsAccountMap.isEmpty()) {
                     trigger.next();
@@ -232,6 +256,7 @@ public class LdapSyncHelper {
                     bus.send(msg, new CloudBusCallBack(whileCompletion) {
                         @Override
                         public void run(MessageReply reply) {
+                            recordUnbindReplyAndReportProgress(msg, reply);
                             if (reply.isSuccess()) {
                                 anySuccess.set(true);
                             } else {
@@ -314,7 +339,7 @@ public class LdapSyncHelper {
         }).done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map data) {
-                completion.success();
+                completion.success(progress);
             }
         }).start();
     }
@@ -364,5 +389,61 @@ public class LdapSyncHelper {
         case WindowsAD: default:
             return LdapConstant.WindowsAD.GLOBAL_UUID_KEY;
         }
+    }
+
+    private void reportProgress(LdapSyncTaskResult progress) {
+        if (eventEmitter == null) {
+            eventEmitter = new CanonicalEventEmitter();
+        }
+        ProgressReportService.reportProgress(Integer.toString((int) progress.progress()));
+        eventEmitter.fire(SYNC_TRACE_PATH, progress);
+    }
+
+    private void recordImportReplyAndReportProgress(ImportThirdPartyAccountMsg message, MessageReply rawReply) {
+        int totalRecordExpect = message.getSpec().accountList.size();
+        if (!rawReply.isSuccess() && !(rawReply instanceof ImportThirdPartyAccountReply)) {
+            reportProgress(progress.appendFailCountInImportStage(totalRecordExpect));
+            return;
+        }
+
+        ImportThirdPartyAccountReply reply = rawReply.castReply();
+        if (CollectionUtils.isEmpty(reply.getResults())) {
+            reportProgress(progress.appendFailCountInImportStage(totalRecordExpect));
+            return;
+        }
+
+        final List<ImportAccountResult> successResults =
+                filter(reply.getResults(), result -> result.getError() == null && result.getRef() != null);
+        if (successResults.size() >= totalRecordExpect) {
+            progress.appendSuccessCountInImportStage(totalRecordExpect);
+        } else {
+            progress.appendSuccessCountInImportStage(successResults.size());
+            progress.appendFailCountInImportStage(totalRecordExpect - successResults.size());
+        }
+        reportProgress(progress);
+    }
+
+    private void recordUnbindReplyAndReportProgress(UnbindThirdPartyAccountMsg message, MessageReply rawReply) {
+        int totalRecordExpect = message.getSpec().getAccountUuidList().size();
+        if (!rawReply.isSuccess() && !(rawReply instanceof UnbindThirdPartyAccountReply)) {
+            reportProgress(progress.appendFailCountInCleanStage(totalRecordExpect));
+            return;
+        }
+
+        UnbindThirdPartyAccountReply reply = rawReply.castReply();
+        if (CollectionUtils.isEmpty(reply.getResults())) {
+            reportProgress(progress.appendFailCountInCleanStage(totalRecordExpect));
+            return;
+        }
+
+        final List<UnbindThirdPartyAccountResult> successResults =
+                filter(reply.getResults(), result -> result.getError() == null);
+        if (successResults.size() >= totalRecordExpect) {
+            progress.appendSuccessCountInCleanStage(totalRecordExpect);
+        } else {
+            progress.appendSuccessCountInCleanStage(successResults.size());
+            progress.appendFailCountInCleanStage(totalRecordExpect - successResults.size());
+        }
+        reportProgress(progress);
     }
 }
