@@ -25,6 +25,14 @@ public class IsoOperator {
        return isoUuids;
     }
 
+    public static List<String> getIsoInstallPathByVmUuid(String vmUuid) {
+        return Q.New(VmCdRomVO.class)
+                .select(VmCdRomVO_.isoInstallPath)
+                .eq(VmCdRomVO_.vmInstanceUuid, vmUuid)
+                .notNull(VmCdRomVO_.isoInstallPath)
+                .listValues();
+    }
+
     public static List<String> getVmUuidByIsoUuid(String isoUuid) {
         List<String> result = Q.New(VmCdRomVO.class)
                 .select(VmCdRomVO_.vmInstanceUuid)
