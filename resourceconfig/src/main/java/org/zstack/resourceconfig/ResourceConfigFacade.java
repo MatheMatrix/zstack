@@ -12,6 +12,10 @@ public interface ResourceConfigFacade {
 
     <T> T getResourceConfigValue(GlobalConfig gc, String resourceUuid, Class<T> clz);
 
+    default String getResourceConfigValue(GlobalConfig gc, String resourceUuid) {
+        return getResourceConfigValue(gc, resourceUuid, String.class);
+    }
+
     /**
      * <p>This method will get the resource configuration from the specified type.
      *
