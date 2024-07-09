@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.CollectionDSL.e;
 import static org.zstack.utils.CollectionDSL.map;
+import static org.zstack.utils.CollectionUtils.filter;
+import static org.zstack.utils.CollectionUtils.transformToSet;
 import static org.zstack.utils.StringDSL.s;
 import static org.zstack.resourceconfig.ResourceConfigCanonicalEvents.*;
 
@@ -284,8 +286,9 @@ public class ResourceConfig {
             return valuesByResourceUuids;
         }
 
-        resourceUuids.removeAll(resourceTypeUuidPairs.stream().map(it -> it.get(1, String.class)).collect(Collectors.toSet()));
-        resourceUuids.forEach(it -> valuesByResourceUuids.put(it, globalConfig.value()));
+        Set<String> resourceTypes = transformToSet(resourceTypeUuidPairs, it -> it.get(1, String.class));
+        List<String> filtered = filter(resourceUuids, it -> !resourceTypes.contains(it));
+        filtered.forEach(it -> valuesByResourceUuids.put(it, globalConfig.value()));
 
         Map<String, List<String>> typeByResourceUuids = groupResourceUuidsByType(resourceTypeUuidPairs);
 
