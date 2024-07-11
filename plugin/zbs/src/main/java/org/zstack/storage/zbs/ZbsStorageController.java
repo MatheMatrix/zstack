@@ -149,7 +149,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         reloadDbInfo();
 
         CreateVolumeCmd cmd = new CreateVolumeCmd();
-        cmd.setLogicalPoolName(config.getLogicalPoolName());
+        cmd.setLogicalPoolName(config.getLogicalPoolNames().get(0));
         cmd.setLunName(ZbsHelper.zbsHeartbeatVolumeName);
         cmd.setSkipIfExisting(true);
 
@@ -189,8 +189,10 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         changeStatus(PrimaryStorageStatus.Connecting);
 
         reloadDbInfo();
-        if (config.getLogicalPoolName().contains("/")) {
-            throw new CloudRuntimeException(String.format("invalid logical pool name[%s]", config.getLogicalPoolName()));
+        for (String logicalPoolName : config.getLogicalPoolNames()) {
+            if (logicalPoolName.contains("/")) {
+                throw new CloudRuntimeException(String.format("invalid logical pool name[%s]", logicalPoolName));
+            }
         }
 
         List<MdsInfo> mdsInfos = new ArrayList<>();
@@ -331,7 +333,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         reloadDbInfo();
 
         GetCapacityCmd cmd = new GetCapacityCmd();
-        cmd.setLogicalPoolName(config.getLogicalPoolName());
+        cmd.setLogicalPoolNames(config.getLogicalPoolNames());
 
         httpCall(GET_CAPACITY_PATH, cmd, GetCapacityRsp.class, new ReturnValueCompletion<GetCapacityRsp>(comp) {
             @Override
@@ -1498,14 +1500,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     }
 
     public static class GetCapacityCmd extends AgentCommand {
-        private String logicalPoolName;
+        private List<String> logicalPoolNames;
 
-        public String getLogicalPoolName() {
-            return logicalPoolName;
+        public List<String> getLogicalPoolNames() {
+            return logicalPoolNames;
         }
 
-        public void setLogicalPoolName(String logicalPoolName) {
-            this.logicalPoolName = logicalPoolName;
+        public void setLogicalPoolNames(List<String> logicalPoolNames) {
+            this.logicalPoolNames = logicalPoolNames;
         }
     }
 
