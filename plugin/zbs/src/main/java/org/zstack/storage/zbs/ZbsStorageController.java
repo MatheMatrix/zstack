@@ -33,6 +33,7 @@ import org.zstack.header.volume.VolumeConstant;
 import org.zstack.header.volume.VolumeProtocol;
 import org.zstack.header.volume.VolumeStats;
 import org.zstack.utils.CollectionUtils;
+import org.zstack.utils.TagUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.data.SizeUnit;
 import org.zstack.utils.gson.JSONObjectUtil;
@@ -146,10 +147,8 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     @Override
     public synchronized void activateHeartbeatVolume(HostInventory h, ReturnValueCompletion<HeartbeatVolumeTO> comp) {
-        reloadDbInfo();
-
         CreateVolumeCmd cmd = new CreateVolumeCmd();
-        cmd.setLogicalPoolName(config.getLogicalPoolName());
+        cmd.setLogicalPoolName(allocateFreeLogicalPool(SizeUnit.GIGABYTE.toByte(1), "").getLogicalPoolName());
         cmd.setLunName(ZbsHelper.zbsHeartbeatVolumeName);
         cmd.setSkipIfExisting(true);
 
@@ -189,8 +188,10 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         changeStatus(PrimaryStorageStatus.Connecting);
 
         reloadDbInfo();
-        if (config.getLogicalPoolName().contains("/")) {
-            throw new CloudRuntimeException(String.format("invalid logical pool name[%s]", config.getLogicalPoolName()));
+        for (String logicalPoolName : config.getLogicalPoolNames()) {
+            if (logicalPoolName.contains("/")) {
+                throw new CloudRuntimeException(String.format("invalid logical pool name[%s]", logicalPoolName));
+            }
         }
 
         List<MdsInfo> mdsInfos = new ArrayList<>();
@@ -299,8 +300,31 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                                     trigger.fail(errors.get(0));
                                     return;
                                 }
-
+                                addonInfo = info;
                                 trigger.next();
+                            }
+                        });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "get-logical-pool-info";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        GetCapacityCmd cmd = new GetCapacityCmd();
+                        cmd.setLogicalPoolNames(config.getLogicalPoolNames());
+
+                        httpCall(GET_CAPACITY_PATH, cmd, GetCapacityRsp.class, new ReturnValueCompletion<GetCapacityRsp>(trigger) {
+                            @Override
+                            public void success(GetCapacityRsp returnValue) {
+                                info.setLogicalPoolInfos(returnValue.getLogicalPoolInfos());
+                                trigger.next();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.fail(errorCode);
                             }
                         });
                     }
@@ -331,17 +355,15 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         reloadDbInfo();
 
         GetCapacityCmd cmd = new GetCapacityCmd();
-        cmd.setLogicalPoolName(config.getLogicalPoolName());
+        cmd.setLogicalPoolNames(config.getLogicalPoolNames());
 
         httpCall(GET_CAPACITY_PATH, cmd, GetCapacityRsp.class, new ReturnValueCompletion<GetCapacityRsp>(comp) {
             @Override
             public void success(GetCapacityRsp returnValue) {
                 StorageCapacity cap = new StorageCapacity();
-                long total = returnValue.capacity;
-                long avail = total != 0 ? total - returnValue.storedSize : 0;
                 cap.setHealthy(StorageHealthy.Ok);
-                cap.setTotalCapacity(total);
-                cap.setAvailableCapacity(avail);
+                cap.setTotalCapacity(returnValue.getLogicalPoolInfos().stream().mapToLong(LogicalPoolInfo::getTotalCapacity).sum());
+                cap.setAvailableCapacity(returnValue.getLogicalPoolInfos().stream().mapToLong(LogicalPoolInfo::getAvailableCapacity).sum());
                 comp.success(cap);
             }
 
@@ -376,17 +398,46 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     @Override
     public String allocateSpace(AllocateSpaceSpec aspec) {
-        reloadDbInfo();
+        return buildVolumePath("", allocateFreeLogicalPool(aspec.getSize(), getTargetLogicalPoolNameFromSystemTags(aspec.getSystemTags())).getLogicalPoolName(), "");
+    }
 
-        return buildVolumePath("", config.getLogicalPoolName(), "");
+    private String getTargetLogicalPoolNameFromSystemTags(List<String> systemTags) {
+        if (systemTags == null || systemTags.isEmpty()) {
+            return null;
+        }
+
+        return systemTags.stream().filter(tag -> TagUtils.isMatch(ZbsSystemTags.USE_ZBS_PRIMARY_STORAGE_POOL.getTagFormat(), tag))
+                .map(tag -> TagUtils.parse(ZbsSystemTags.USE_ZBS_PRIMARY_STORAGE_POOL.getTagFormat(), tag).get(ZbsSystemTags.USE_ZBS_PRIMARY_STORAGE_POOL_TOKEN))
+                .findFirst().orElse(null);
+    }
+
+    private LogicalPoolInfo allocateFreeLogicalPool(long size, String targetLogicalPoolName) {
+        reloadDbInfo();
+        List<LogicalPoolInfo> pools = addonInfo.getLogicalPoolInfos();
+
+        LogicalPoolInfo targetLogicalPoolInfo = pools.stream()
+                .filter(it -> it.getLogicalPoolName().equals(targetLogicalPoolName))
+                .findFirst()
+                .orElse(null);
+
+        if (targetLogicalPoolInfo != null && targetLogicalPoolInfo.getAvailableCapacity() > size) {
+            return targetLogicalPoolInfo;
+        }
+
+        LogicalPoolInfo logicalPoolInfo = pools.stream().filter(it -> it.getAvailableCapacity() > size)
+                .max(Comparator.comparingLong(LogicalPoolInfo::getAvailableCapacity))
+                .orElse(null);
+        if (logicalPoolInfo == null) {
+            throw new OperationFailureException(operr("no available pool with enough space[%d] and healthy status", size));
+        }
+
+        return logicalPoolInfo;
     }
 
     @Override
     public void createVolume(CreateVolumeSpec v, ReturnValueCompletion<VolumeStats> comp) {
-        reloadDbInfo();
-
         CreateVolumeCmd cmd = new CreateVolumeCmd();
-        cmd.setLogicalPoolName(config.getLogicalPoolName());
+        cmd.setLogicalPoolName(allocateFreeLogicalPool(v.getSize(), "").getLogicalPoolName());
         cmd.setLunName(v.getName());
         cmd.setSize((long)Math.ceil(SizeUnit.BYTE.toGigaByte((double)v.getSize())));
         cmd.setSkipIfExisting(true);
@@ -1114,23 +1165,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     }
 
     public static class GetCapacityRsp extends AgentResponse {
-        private long capacity;
-        private long storedSize;
+        private List<LogicalPoolInfo> logicalPoolInfos;
 
-        public long getCapacity() {
-            return capacity;
+        public List<LogicalPoolInfo> getLogicalPoolInfos() {
+            return logicalPoolInfos;
         }
 
-        public void setCapacity(long capacity) {
-            this.capacity = capacity;
-        }
-
-        public long getStoredSize() {
-            return storedSize;
-        }
-
-        public void setStoredSize(long storedSize) {
-            this.storedSize = storedSize;
+        public void setLogicalPoolInfos(List<LogicalPoolInfo> logicalPoolInfos) {
+            this.logicalPoolInfos = logicalPoolInfos;
         }
     }
 
@@ -1498,14 +1540,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     }
 
     public static class GetCapacityCmd extends AgentCommand {
-        private String logicalPoolName;
+        private List<String> logicalPoolNames;
 
-        public String getLogicalPoolName() {
-            return logicalPoolName;
+        public List<String> getLogicalPoolNames() {
+            return logicalPoolNames;
         }
 
-        public void setLogicalPoolName(String logicalPoolName) {
-            this.logicalPoolName = logicalPoolName;
+        public void setLogicalPoolNames(List<String> logicalPoolNames) {
+            this.logicalPoolNames = logicalPoolNames;
         }
     }
 

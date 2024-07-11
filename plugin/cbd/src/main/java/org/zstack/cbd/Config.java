@@ -8,7 +8,7 @@ import java.util.List;
  */
 public class Config {
     private List<String> mdsUrls;
-    private String logicalPoolName;
+    private List<String> logicalPoolNames;
 
     public List<String> getMdsUrls() {
         return mdsUrls;
@@ -18,11 +18,11 @@ public class Config {
         this.mdsUrls = mdsUrls;
     }
 
-    public String getLogicalPoolName() {
-        return logicalPoolName;
+    public List<String> getLogicalPoolNames() {
+        return logicalPoolNames;
     }
 
-    public void setLogicalPoolName(String logicalPoolName) {
-        this.logicalPoolName = logicalPoolName;
+    public void setLogicalPoolNames(List<String> logicalPoolNames) {
+        this.logicalPoolNames = logicalPoolNames;
     }
 }

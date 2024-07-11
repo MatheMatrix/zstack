@@ -168,6 +168,7 @@ public class ExternalPrimaryStorageFactory implements PrimaryStorageFactory, Com
         aspec.setDryRun(true);
         aspec.setSize(msg.getSize());
         aspec.setRequiredUrl(msg.getRequiredInstallUri());
+        aspec.setSystemTags(msg.getSystemTags());
         return controller.allocateSpace(aspec);
     }
 
