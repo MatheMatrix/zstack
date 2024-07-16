@@ -1070,16 +1070,15 @@ public class VmInstanceManagerImpl extends AbstractService implements
     }
 
     private List<ErrorCode> extEmitterHandleSystemTag(final CreateVmInstanceMsg msg, final APICreateMessage cmsg, VmInstanceVO finalVo) {
-        List<ErrorCode> result = Collections.emptyList();
         if (msg == null) {
-            result.add(operr("CreateVmInstanceMsg cannot be null"));
-            return result;
-        } else if (cmsg != null && cmsg.getSystemTags() != null && !cmsg.getSystemTags().isEmpty()) {
+            return list(operr("CreateVmInstanceMsg cannot be null"));
+        } else if (cmsg != null && cmsg.getSystemTags() != null) {
             return extEmitter.handleSystemTag(finalVo.getUuid(), cmsg.getSystemTags());
-        } else if (cmsg == null && msg.getSystemTags() != null && !msg.getSystemTags().isEmpty()) {
+        } else if (cmsg == null && msg.getSystemTags() != null) {
             return extEmitter.handleSystemTag(finalVo.getUuid(), msg.getSystemTags());
+        } else {
+            return extEmitter.handleSystemTag(finalVo.getUuid(), new ArrayList<>());
         }
-        return result;
     }
 
     private List<ErrorCode> extEmitterHandleSshKeyPair(final CreateVmInstanceMsg msg, final APICreateMessage cmsg, VmInstanceVO finalVo) {
