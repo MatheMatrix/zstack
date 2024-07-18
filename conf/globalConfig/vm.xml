@@ -315,6 +315,6 @@
 		<name>uniqueVmName</name>
 		<description>enable vm name unique</description>
 		<type>java.lang.Boolean</type>
-		<defaultValue>false</defaultValue>
+		<defaultValue>true</defaultValue>
 	</config>
 </globalConfig>
