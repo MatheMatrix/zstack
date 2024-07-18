@@ -8,6 +8,7 @@ import java.util.List;
  */
 public class AddonInfo {
     public List<MdsInfo> mdsInfos;
+    public List<LogicalPoolInfo> logicalPoolInfos;
 
     public List<MdsInfo> getMdsInfos() {
         return mdsInfos;
@@ -15,5 +16,13 @@ public class AddonInfo {
 
     public void setMdsInfos(List<MdsInfo> mdsInfos) {
         this.mdsInfos = mdsInfos;
+    }
+
+    public List<LogicalPoolInfo> getLogicalPoolInfos() {
+        return logicalPoolInfos;
+    }
+
+    public void setLogicalPoolInfos(List<LogicalPoolInfo> logicalPoolInfos) {
+        this.logicalPoolInfos = logicalPoolInfos;
     }
 }

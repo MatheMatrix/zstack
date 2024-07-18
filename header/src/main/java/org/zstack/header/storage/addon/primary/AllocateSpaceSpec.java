@@ -2,10 +2,13 @@ package org.zstack.header.storage.addon.primary;
 
 import org.zstack.header.storage.primary.PrimaryStorageAllocationPurpose;
 
+import java.util.List;
+
 public class AllocateSpaceSpec {
     private long size;
     private boolean dryRun;
     private String requiredUrl;
+    private List<String> systemTags;
 
     private PrimaryStorageAllocationPurpose purpose;
 
@@ -39,5 +42,13 @@ public class AllocateSpaceSpec {
 
     public void setPurpose(PrimaryStorageAllocationPurpose purpose) {
         this.purpose = purpose;
+    }
+
+    public List<String> getSystemTags() {
+        return systemTags;
+    }
+
+    public void setSystemTags(List<String> systemTags) {
+        this.systemTags = systemTags;
     }
 }
