@@ -95,8 +95,12 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
         }
 
         //TODO: UI for ovs and macVlan has not use l2ProviderType yet, set to value of vSwitchType
-        if (msg.getL2ProviderType() == null && !L2NetworkConstant.VSWITCH_TYPE_LINUX_BRIDGE.equals(l2.getvSwitchType())) {
+        if (msg.getL2ProviderType() == null) {
             msg.setL2ProviderType(l2.getvSwitchType());
+        }
+
+        if (!L2ProviderType.hasType(msg.getL2ProviderType())) {
+            throw new ApiMessageInterceptionException(argerr("unsupported l2Network provider type[%s]", msg.getL2ProviderType()));
         }
 
         if (!StringUtils.isEmpty(msg.getHostParams())) {
@@ -137,8 +141,9 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
             throw new ApiMessageInterceptionException(operr("l2Network[uuid:%s] has not attached to cluster of host[uuid:%s]", msg.getL2NetworkUuid(), msg.getHostUuid()));
         }
 
-        if (L2NetworkHostUtils.checkIfL2NetworkHostRefNotExist(msg.getL2NetworkUuid(), msg.getHostUuid())) {
-            throw new ApiMessageInterceptionException(operr("l2Network[uuid:%s] does not supported to attach to host[uuid:%s]", msg.getL2NetworkUuid(), msg.getHostUuid()));
+        String l2Type = Q.New(L2NetworkVO.class).eq(L2NetworkVO_.uuid, msg.getL2NetworkUuid()).select(L2NetworkVO_.type).findValue();
+        if (L2NetworkType.valueOf(l2Type).isAttachToAllHosts()) {
+            throw new ApiMessageInterceptionException(operr("type[%s] should be attached to all host", l2Type));
         }
 
         HostVO host = dbf.findByUuid(msg.getHostUuid(), HostVO.class);
