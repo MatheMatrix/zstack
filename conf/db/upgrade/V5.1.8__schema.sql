@@ -280,7 +280,7 @@ CREATE TABLE IF NOT EXISTS `zstack`.`XmlHookVO` (
     `type` varchar(32) NOT NULL,
     `hookScript` text NOT NULL,
     `libvirtVersion` varchar(32) DEFAULT NULL,
-    `lastOpDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
+    `lastOpDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `createDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
     PRIMARY KEY  (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -289,7 +289,7 @@ CREATE TABLE IF NOT EXISTS `zstack`.`XmlHookVmInstanceRefVO` (
     `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
     `xmlHookUuid` varchar(32) NOT NULL,
     `vmInstanceUuid` varchar(32) NOT NULL,
-    `lastOpDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
+    `lastOpDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `createDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
     PRIMARY KEY (`id`),
     UNIQUE KEY `id` (`id`),
@@ -321,10 +321,10 @@ BEGIN
             SET hookUuid = (REPLACE(UUID(), '-', ''));
 
             INSERT zstack.ResourceVO(uuid, resourceName, resourceType, concreteResourceType)
-            VALUES (hookUuid, '自定义hook', 'XmlHookVO', 'org.zstack.header.tag.XmlHookVO');
+            VALUES (hookUuid, 'xml-hook', 'XmlHookVO', 'org.zstack.header.tag.XmlHookVO');
 
             INSERT zstack.XmlHookVO (uuid, name, description, type, hookScript, lastOpDate, createDate)
-            VALUES(hookUuid, concat('自定义hook-', hookUuid), '自定义hook', 'Customization', hookValue, NOW(), NOW());
+            VALUES(hookUuid, concat('xml-hook', hookUuid), 'xml-hook', 'Customization', hookValue, NOW(), NOW());
 
             INSERT zstack.XmlHookVmInstanceRefVO(xmlHookUuid, vmInstanceUuid, lastOpDate, createDate)
             VALUES (hookUuid, vmUuid, NOW(), NOW());
