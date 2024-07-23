@@ -3,7 +3,7 @@ package org.zstack.header.errorcode;
 /**
  */
 public enum SysErrors {
-    INTERNAL(1000),
+    INTERNAL(1111),
     TIMEOUT(1001),
     CREATE_RESOURCE_ERROR(1002),
     RESOURCE_NOT_FOUND(1003),
