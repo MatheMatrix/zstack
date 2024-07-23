@@ -420,6 +420,7 @@ class CephPrimaryStorageSpec extends PrimaryStorageSpec {
                 Long size = Q.New(VolumeVO.class).select(VolumeVO_.size).eq(VolumeVO_.uuid, cmd.volumeUuid).findValue()
                 rsp.actualSize = null
                 rsp.size = size
+                rsp.withInternalSnapshot = true
                 return rsp
             }
 

@@ -280,10 +280,12 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
     public static class GetVolumeSizeRsp extends AgentResponse {
         public Long size;
         public Long actualSize;
+        public boolean withInternalSnapshot;
     }
 
     public static class GetBatchVolumeSizeRsp extends AgentResponse {
-        public Map<String, Long> actualSizes;
+        public Map<String, Long> actualSizes = new HashMap<>();
+        public Map<String, Boolean> withInternalSnapshots = new HashMap<>();
     }
 
     public static class GetVolumeSnapshotSizeRsp extends AgentResponse {
@@ -3247,7 +3249,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                         .findValue();
                 reply.setActualSize(asize);
                 reply.setSize(rsp.size);
-                reply.setWithInternalSnapshot(true);
+                reply.setWithInternalSnapshot(rsp.withInternalSnapshot);
                 bus.reply(msg, reply);
             }
 
@@ -3328,6 +3330,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                 }
 
                 reply.setActualSizes(rsp.actualSizes);
+                reply.setWithInternalSnapshots(rsp.withInternalSnapshots);
                 bus.reply(msg, reply);
                 completion.done();
             }

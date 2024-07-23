@@ -7,6 +7,7 @@ import java.util.Map;
 
 public class BatchSyncVolumeSizeOnPrimaryStorageReply extends MessageReply {
     private Map<String, Long> actualSizes = new HashMap<>();
+    private Map<String, Boolean> withInternalSnapshots = new HashMap<>();
 
     public void setActualSizes(Map<String, Long> actualSizes) {
         this.actualSizes = actualSizes;
@@ -14,5 +15,13 @@ public class BatchSyncVolumeSizeOnPrimaryStorageReply extends MessageReply {
 
     public Map<String, Long> getActualSizes() {
         return actualSizes;
+    }
+
+    public Map<String, Boolean> getWithInternalSnapshots() {
+        return withInternalSnapshots;
+    }
+
+    public void setWithInternalSnapshots(Map<String, Boolean> withInternalSnapshots) {
+        this.withInternalSnapshots = withInternalSnapshots;
     }
 }

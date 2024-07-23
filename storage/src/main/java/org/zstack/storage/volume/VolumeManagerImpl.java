@@ -69,6 +69,7 @@ import java.util.stream.Collectors;
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.header.host.HostStatus.Connected;
+import static org.zstack.utils.CollectionUtils.toMap;
 
 public class VolumeManagerImpl extends AbstractService implements VolumeManager, ManagementNodeReadyExtensionPoint,
         ResourceOwnerAfterChangeExtensionPoint, VmStateChangedExtensionPoint, VmDetachVolumeExtensionPoint,
@@ -772,11 +773,12 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
                     if (r.isSuccess()) {
                         BatchSyncVolumeSizeOnPrimaryStorageReply br = r.castReply();
                         Map<String, Long> actualSizes = br.getActualSizes();
+                        Map<String, Boolean> withInternalSnapshots = br.getWithInternalSnapshots();
 
                         reply.addSuccessCount(actualSizes.size());
                         reply.addFailCount(e.getValue().size() - actualSizes.size());
 
-                        refreshVolume(actualSizes);
+                        refreshVolume(actualSizes, withInternalSnapshots);
                     } else {
                         reply.addFailCount(e.getValue().size());
                     }
@@ -786,26 +788,46 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
 
                 @Transactional(readOnly = true)
                 private Map<String, Long> calculateSnapshotSize(Collection<String> volumeUuids) {
-                    String sql = "select sp.uuid, sum(sp.size) from VolumeSnapshotVO sp where sp.volumeUuid in :uuids group by sp.uuid";
-                    TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
-                    q.setParameter("uuids", volumeUuids);
-                    List<Tuple> results = q.getResultList();
-                    return results.stream().collect(Collectors.toMap(
-                            tuple -> tuple.get(0, String.class), tuple -> tuple.get(1, Long.class)));
+                    if (CollectionUtils.isEmpty(volumeUuids)) {
+                        return new HashMap<>();
+                    }
+
+                    Map<String, Long> snapshotSizesByVolumeUuid = new HashMap<>();
+                    List<Tuple> tuples = Q.New(VolumeSnapshotVO.class).select(VolumeSnapshotVO_.volumeUuid, VolumeSnapshotVO_.size)
+                            .in(VolumeSnapshotVO_.volumeUuid, volumeUuids).listTuple();
+
+                    tuples.forEach(tuple -> {
+                        String volumeUuid = tuple.get(0, String.class);
+                        Long snapshotSize = tuple.get(1, Long.class);
+                        snapshotSizesByVolumeUuid.putIfAbsent(volumeUuid, 0L);
+                        snapshotSizesByVolumeUuid.put(volumeUuid, snapshotSizesByVolumeUuid.get(volumeUuid) + snapshotSize);
+                    });
+
+                    return snapshotSizesByVolumeUuid;
                 }
 
                 @Transactional
-                private void refreshVolume(Map<String, Long> actualSizes) {
+                private void refreshVolume(Map<String, Long> actualSizes, Map<String, Boolean> withInternalSnapshots) {
                     actualSizes.entrySet().removeIf(actualSize -> actualSize.getValue() == null);
-                    Map<String, Long> uuidSnapshotSizes = calculateSnapshotSize(actualSizes.keySet());
+                    Map<String, Long> snapshotSizesByVolumeUuid = calculateSnapshotSize(actualSizes.keySet());
 
+                    List<VolumeVO> volumes = Q.New(VolumeVO.class).in(VolumeVO_.uuid, actualSizes.keySet()).list();
+                    Map<String, VolumeVO> volumesMap = toMap(volumes, VolumeVO::getUuid, java.util.function.Function.identity());
                     for (Map.Entry<String, Long> entry : actualSizes.entrySet()) {
                         // the actual size = volume actual size + all snapshot size
-                        long volActualSize = entry.getValue() + uuidSnapshotSizes.getOrDefault(entry.getKey(), 0L);
-                        SQL.New(VolumeVO.class).eq(VolumeVO_.uuid, entry.getKey())
-                                .set(VolumeVO_.actualSize, volActualSize)
-                                .update();
+                        if (withInternalSnapshots == null || withInternalSnapshots.isEmpty() || withInternalSnapshots.get(entry.getKey()) == null) {
+                            long volActualSize = entry.getValue() + snapshotSizesByVolumeUuid.getOrDefault(entry.getKey(), 0L);
+                            volumesMap.get(entry.getKey()).setActualSize(volActualSize);
+                            continue;
+                        }
+                        if (!withInternalSnapshots.get(entry.getKey())) {
+                            long volActualSize = entry.getValue() + snapshotSizesByVolumeUuid.getOrDefault(entry.getKey(), 0L);
+                            volumesMap.get(entry.getKey()).setActualSize(volActualSize);
+                        } else {
+                            volumesMap.get(entry.getKey()).setActualSize(entry.getValue());
+                        }
                     }
+                    dbf.updateCollection(volumesMap.values());
                 }
             });
         }).run(new WhileDoneCompletion(msg) {
