@@ -10,9 +10,11 @@ import org.zstack.cbd.kvm.CbdVolumeTo;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.db.DatabaseFacade;
+import org.zstack.core.db.Q;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.HasThreadContext;
+import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
@@ -35,6 +37,7 @@ import org.zstack.header.volume.VolumeStats;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.data.SizeUnit;
+import org.zstack.utils.function.Function;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
@@ -44,6 +47,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.operr;
 
 /**
@@ -754,7 +758,34 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     @Override
     public void validateConfig(String config) {
+        checkExistingPrimaryStorage(config);
+    }
 
+    private void checkExistingPrimaryStorage(String configuration) {
+        Config config = JSONObjectUtil.toObject(configuration, Config.class);
+        List<String> hostnames = CollectionUtils.transformToList(config.getMdsUrls(), new Function<String, String>() {
+            @Override
+            public String call(String url) {
+                MdsUri uri = new MdsUri(url);
+                return uri.getHostname();
+            }
+        });
+
+        List<ExternalPrimaryStorageVO> externalPrimaryStorageVOS = Q.New(ExternalPrimaryStorageVO.class)
+                .eq(ExternalPrimaryStorageVO_.identity, ZbsConstants.IDENTITY)
+                .list();
+
+        if (externalPrimaryStorageVOS == null) {
+            return;
+        }
+
+        boolean existingHostnameFound = externalPrimaryStorageVOS.stream()
+                .map(ExternalPrimaryStorageVO::getAddonInfo)
+                .anyMatch(addonInfo -> hostnames.stream().anyMatch(addonInfo::contains));
+
+        if (existingHostnameFound) {
+            throw new ApiMessageInterceptionException(argerr("Cannot add ZBS primary storage. There has been some ZBS primary storage using MDS with hostnames: %s", hostnames));
+        }
     }
 
     @Override

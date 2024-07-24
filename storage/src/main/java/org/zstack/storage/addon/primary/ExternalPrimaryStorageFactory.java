@@ -207,6 +207,10 @@ public class ExternalPrimaryStorageFactory implements PrimaryStorageFactory, Com
             );
         }
 
+        controllers.values().stream()
+                .filter(c -> identity.equals(c.getIdentity()))
+                .findFirst().ifPresent(controller -> controller.validateConfig(amsg.getConfig()));
+
         final ExternalPrimaryStorageVO lvo = new ExternalPrimaryStorageVO(vo);
         lvo.setIdentity(identity);
         lvo.setDefaultProtocol(amsg.getDefaultOutputProtocol());
