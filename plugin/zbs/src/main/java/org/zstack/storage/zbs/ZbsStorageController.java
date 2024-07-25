@@ -10,6 +10,7 @@ import org.zstack.cbd.kvm.CbdVolumeTo;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.db.DatabaseFacade;
+import org.zstack.core.db.SQL;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.HasThreadContext;
@@ -23,6 +24,7 @@ import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.HostInventory;
+import org.zstack.header.image.ImageConstant;
 import org.zstack.header.rest.RESTFacade;
 import org.zstack.header.storage.addon.*;
 import org.zstack.header.storage.addon.primary.*;
@@ -90,7 +92,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         capabilities.setSupportCloneFromVolume(false);
         capabilities.setSupportStorageQos(false);
         capabilities.setSupportLiveExpandVolume(false);
-        capabilities.setSupportedImageFormats(Collections.singletonList("raw"));
+        capabilities.setSupportedImageFormats(Collections.singletonList(ImageConstant.RAW_FORMAT_STRING));
         capabilities.setDefaultIsoActiveProtocol(VolumeProtocol.CBD);
         capabilities.setDefaultImageExportProtocol(VolumeProtocol.NBD);
     }
@@ -324,6 +326,37 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 });
             }
         }).start();
+    }
+
+    @Override
+    public void ping(Completion completion) {
+        reloadDbInfo();
+
+        final List<ZbsPrimaryStorageMdsBase> mds = CollectionUtils.transformToList(addonInfo.getMdsInfos(), ZbsPrimaryStorageMdsBase::new);
+
+        new While<>(mds).each((m, comp) -> {
+            m.ping(new Completion(comp) {
+                @Override
+                public void success() {
+                    m.getSelf().setMdsStatus(MdsStatus.Connected);
+                    comp.done();
+                }
+
+                @Override
+                public void fail(ErrorCode errorCode) {
+                    m.getSelf().setMdsStatus(MdsStatus.Disconnected);
+                    comp.done();
+                }
+            });
+        }).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                SQL.New(ExternalPrimaryStorageVO.class).eq(ExternalPrimaryStorageVO_.uuid, self.getUuid())
+                        .set(ExternalPrimaryStorageVO_.addonInfo, addonInfo)
+                        .update();
+                completion.success();
+            }
+        });
     }
 
     @Override
