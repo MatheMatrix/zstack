@@ -7,4 +7,5 @@ public interface ClusterUpdateOSExtensionPoint {
     String preUpdateClusterOS(ClusterVO cls);
     void beforeUpdateClusterOS(ClusterVO cls);
     void afterUpdateClusterOS(ClusterVO cls);
+    String preUpdateClusterOSCheck(ClusterVO cls, String updatePackages, Boolean force);
 }

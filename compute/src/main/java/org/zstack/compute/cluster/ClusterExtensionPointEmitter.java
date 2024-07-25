@@ -114,6 +114,20 @@ class ClusterExtensionPointEmitter implements Component {
         return null;
     }
 
+    ErrorCode preUpdateOSCheck(final ClusterVO cls, String updatePackages, Boolean force) {
+        if (updateOSExts == null || updateOSExts.isEmpty()) {
+            return null;
+        }
+
+        for (ClusterUpdateOSExtensionPoint ext : updateOSExts) {
+            String error = ext.preUpdateClusterOSCheck(cls, updatePackages, force);
+            if (error != null) {
+                return operr(error);
+            }
+        }
+        return null;
+    }
+
     void beforeUpdateOS(final ClusterVO cls) {
         CollectionUtils.safeForEach(updateOSExts, new ForEachFunction<ClusterUpdateOSExtensionPoint>() {
             @Override

@@ -120,8 +120,8 @@ public class ClusterBase extends AbstractCluster {
         excludePackages = msg.getExcludePackages() == null ? "" :String.join(",", msg.getExcludePackages());
         updatePackages = msg.getUpdatePackages() == null ? "" :String.join(",", msg.getUpdatePackages());
         releaseVersion = msg.getReleaseVersion() == null ? "" :msg.getReleaseVersion();
-        jobData = String.format("{'uuid':'%s', 'excludePackages':'%s', 'updatePackages':'%s', 'releaseVersion':'%s'}",
-                    msg.getUuid(), excludePackages, updatePackages, releaseVersion);
+        jobData = String.format("{'uuid':'%s', 'excludePackages':'%s', 'updatePackages':'%s', 'releaseVersion':'%s', 'force':%s}",
+                msg.getUuid(), excludePackages, updatePackages, releaseVersion, msg.isForce());
 
         SubmitLongJobMsg smsg = new SubmitLongJobMsg();
         smsg.setJobName(APIUpdateClusterOSMsg.class.getSimpleName());
@@ -300,6 +300,15 @@ public class ClusterBase extends AbstractCluster {
             reply.setError(error);
             bus.reply(msg, reply);
             return;
+        }
+
+        if (msg.getUpdatePackages() != null) {
+            ErrorCode errorCode = extpEmitter.preUpdateOSCheck(self, msg.getUpdatePackages(), msg.isForce());
+            if (errorCode != null) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+                return;
+            }
         }
 
         thdf.chainSubmit(new ChainTask(msg) {

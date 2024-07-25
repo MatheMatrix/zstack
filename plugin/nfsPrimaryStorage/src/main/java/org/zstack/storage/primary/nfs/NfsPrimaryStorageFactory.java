@@ -774,6 +774,11 @@ public class NfsPrimaryStorageFactory implements NfsPrimaryStorageManager, Prima
     }
 
     @Override
+    public String preUpdateClusterOSCheck(ClusterVO cls, String updatePackages, Boolean force) {
+        return null;
+    }
+
+    @Override
     public void afterInstantiateVolume(InstantiateVolumeOnPrimaryStorageMsg msg) {
         if (msg instanceof InstantiateMemoryVolumeOnPrimaryStorageMsg) {
             return;
