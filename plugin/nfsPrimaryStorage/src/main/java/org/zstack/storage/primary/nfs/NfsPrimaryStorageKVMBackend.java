@@ -1322,10 +1322,10 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
 
 
     @Override
-    public void resetRootVolumeFromImage(final VolumeInventory vol, final HostInventory host, final ReturnValueCompletion<String> completion) {
+    public void resetRootVolumeFromImage(final VolumeInventory vol, final HostInventory host,  String imagePath, final ReturnValueCompletion<String> completion) {
         ReInitImageCmd cmd = new ReInitImageCmd();
         PrimaryStorageInventory psInv = PrimaryStorageInventory.valueOf(dbf.findByUuid(vol.getPrimaryStorageUuid(), PrimaryStorageVO.class));
-        cmd.setImagePath(NfsPrimaryStorageKvmHelper.makeCachedImageInstallUrlFromImageUuidForTemplate(psInv, vol.getRootImageUuid()));
+        cmd.setImagePath(imagePath);
         cmd.setVolumePath(NfsPrimaryStorageKvmHelper.makeRootVolumeInstallUrl(psInv, vol));
         cmd.setUuid(vol.getPrimaryStorageUuid());
 
