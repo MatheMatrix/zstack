@@ -26,3 +26,7 @@ CREATE TABLE IF NOT EXISTS `zstack`.`SSOUrlTemplateVO` (
     PRIMARY KEY (`uuid`),
     CONSTRAINT `fkSSOUrlTemplateVOThirdPartyAccountSourceVO` FOREIGN KEY (`clientUuid`) REFERENCES `ThirdPartyAccountSourceVO` (`uuid`) ON UPDATE RESTRICT ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `SSOTokenVO` DROP FOREIGN KEY fkSSOTokenVOClientVO;
+ALTER TABLE `SSOTokenVO` ADD CONSTRAINT fkSSOTokenVOThirdPartyAccountSourceVO FOREIGN KEY (clientUuid) REFERENCES ThirdPartyAccountSourceVO (uuid) ON DELETE CASCADE;
+
