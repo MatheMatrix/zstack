@@ -26,3 +26,6 @@ create table if not exists `zstack`.`SSOUrlTemplateVO` (
     primary key (`uuid`),
     constraint `fkSSOUrlTemplateVOThirdPartyAccountSourceVO` foreign key (`clientUuid`) references `ThirdPartyAccountSourceVO` (`uuid`) on update restrict on delete cascade
 ) ENGINE=InnoDB default CHARSET=utf8;
+
+alter table `SSOTokenVO` drop foreign key fkSSOTokenVOClientVO;
+alter table `SSOTokenVO` add constraint fkSSOTokenVOThirdPartyAccountSourceVO foreign key (clientUuid) references ThirdPartyAccountSourceVO (uuid) on delete cascade;
