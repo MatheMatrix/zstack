@@ -1,0 +1,13 @@
+<error>
+    <prefix>SSO</prefix>
+    <code>
+        <id>1001</id>
+        <description>invalid SSO token</description>
+    </code>
+
+    <code>
+        <id>2000</id>
+        <description>SSO account first logging in</description>
+    </code>
+</error>
+
