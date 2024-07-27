@@ -20726,6 +20726,33 @@ abstract class ApiHelper {
     }
 
 
+    def getPhysicalMachineBlockDevices(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetPhysicalMachineBlockDevicesAction.class) Closure c) {
+        def a = new org.zstack.sdk.GetPhysicalMachineBlockDevicesAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def getPlatformTimeZone(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetPlatformTimeZoneAction.class) Closure c) {
         def a = new org.zstack.sdk.GetPlatformTimeZoneAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -21232,32 +21259,6 @@ abstract class ApiHelper {
                 Test.apiPaths[a.class.name] = path.join(" --->\n")
             }
         
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-    def getPhysicalMachineBlockDevices(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetPhysicalMachineBlockDevicesAction.class) Closure c) {
-        def a = new org.zstack.sdk.GetPhysicalMachineBlockDevicesAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-
             return out
         } else {
             return errorOut(a.call())
@@ -23911,8 +23912,8 @@ abstract class ApiHelper {
     }
 
 
-    def mountVmInstanceRecoveryPoint(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.MountVmInstanceRecoveryPointAction.class) Closure c) {
-        def a = new org.zstack.sdk.MountVmInstanceRecoveryPointAction()
+    def mountBlockDevice(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.MountBlockDeviceAction.class) Closure c) {
+        def a = new org.zstack.sdk.MountBlockDeviceAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -23938,26 +23939,26 @@ abstract class ApiHelper {
     }
 
 
-    def mountBlockDevice(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.MountBlockDeviceAction.class) Closure c) {
-        def a = new org.zstack.sdk.MountBlockDeviceAction()
+    def mountVmInstanceRecoveryPoint(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.MountVmInstanceRecoveryPointAction.class) Closure c) {
+        def a = new org.zstack.sdk.MountVmInstanceRecoveryPointAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
         c()
-
+        
 
         if (System.getProperty("apipath") != null) {
             if (a.apiId == null) {
                 a.apiId = Platform.uuid
             }
-
+    
             def tracker = new ApiPathTracker(a.apiId)
             def out = errorOut(a.call())
             def path = tracker.getApiPath()
             if (!path.isEmpty()) {
                 Test.apiPaths[a.class.name] = path.join(" --->\n")
             }
-
+        
             return out
         } else {
             return errorOut(a.call())

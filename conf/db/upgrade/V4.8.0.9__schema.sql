@@ -30,3 +30,16 @@ CREATE TABLE IF NOT EXISTS `zstack`.`SSOUrlTemplateVO` (
 ALTER TABLE `SSOTokenVO` DROP FOREIGN KEY fkSSOTokenVOClientVO;
 ALTER TABLE `SSOTokenVO` ADD CONSTRAINT fkSSOTokenVOThirdPartyAccountSourceVO FOREIGN KEY (clientUuid) REFERENCES ThirdPartyAccountSourceVO (uuid) ON DELETE CASCADE;
 
+CREATE TABLE IF NOT EXISTS `zstack`.`CasAccountClientVO` (
+    `uuid` char(32) not null unique,
+    `loginMNUrl` varchar(255) not null,
+    `redirectUrl` varchar(255) default null,
+    `casServerLoginUrl` varchar(255) not null,
+    `casServerUrlPrefix` varchar(255) not null,
+    `serverName` varchar(255) not null,
+    `state` varchar(64) not null,
+    `usernameProperty` varchar(255) not null,
+    PRIMARY KEY (`uuid`),
+    CONSTRAINT `fkCasAccountClientVOThirdPartyAccountSourceVO` FOREIGN KEY (`uuid`) REFERENCES `ThirdPartyAccountSourceVO` (`uuid`) ON UPDATE RESTRICT ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+

@@ -1,13 +1,13 @@
 package org.zstack.sdk;
 
-import org.zstack.sdk.CasClientInventory;
+import org.zstack.sdk.CasAccountClientInventory;
 
 public class UpdateCasClientResult {
-    public CasClientInventory inventory;
-    public void setInventory(CasClientInventory inventory) {
+    public CasAccountClientInventory inventory;
+    public void setInventory(CasAccountClientInventory inventory) {
         this.inventory = inventory;
     }
-    public CasClientInventory getInventory() {
+    public CasAccountClientInventory getInventory() {
         return this.inventory;
     }
 
