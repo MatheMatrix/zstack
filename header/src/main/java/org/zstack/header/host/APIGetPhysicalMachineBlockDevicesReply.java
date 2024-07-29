@@ -169,7 +169,17 @@ public class APIGetPhysicalMachineBlockDevicesReply extends APIReply {
 
     public static APIGetPhysicalMachineBlockDevicesReply __example__() {
         APIGetPhysicalMachineBlockDevicesReply reply = new APIGetPhysicalMachineBlockDevicesReply();
-        BlockDevices blockDevices = BlockDevices.valueOf(BlockDevicesParser.parse(blockDevicesExample));
+        BlockDevices blockDevices = new BlockDevices();
+        BlockDevices.BlockDevice blockDevice = new BlockDevices.BlockDevice();
+        blockDevice.setName("sda");
+        blockDevice.setType("disk");
+        blockDevice.setSize(10737418240L);
+        blockDevice.setPhysicalSector(512L);
+        blockDevice.setLogicalSector(512L);
+        blockDevice.setMountPoint("/data");
+        blockDevice.setPartitionTable("gpt");
+        blockDevices.unusedBlockDevices.add(blockDevice);
+        blockDevices.unusedBlockDevices = new ArrayList<>();
         blockDevices.filter(Collections.singletonList("rom"));
         reply.setBlockDevices(blockDevices);
         return reply;
