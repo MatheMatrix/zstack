@@ -45,6 +45,7 @@ public interface PrimaryStorageControllerSvc {
     void deleteSnapshot(String installPath, Completion comp);
     void expungeSnapshot(String installPath, Completion comp);
     void revertVolumeSnapshot(String snapshotInstallPath, ReturnValueCompletion<VolumeStats> comp);
+    void syncVolumeSnapshotSize(String snapshotInstallPath, ReturnValueCompletion<VolumeStats> comp);
 
     void validateConfig(String config);
 

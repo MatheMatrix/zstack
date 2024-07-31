@@ -76,6 +76,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     public static final String CREATE_SNAPSHOT_PATH = "/zbs/primarystorage/snapshot/create";
     public static final String DELETE_SNAPSHOT_PATH = "/zbs/primarystorage/snapshot/delete";
     public static final String ROLLBACK_SNAPSHOT_PATH = "/zbs/primarystorage/snapshot/rollback";
+    public static final String QUERY_SNAPSHOT_PATH = "/zbs/primarystorage/snapshot/query";
 
     private static final String ZBS_CBD_LUN_PATH_FORMAT = "cbd:%s/%s/%s";
 
@@ -750,6 +751,11 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 comp.fail(errorCode);
             }
         });
+    }
+
+    @Override
+    public void syncVolumeSnapshotSize(String snapshotInstallPath, ReturnValueCompletion<VolumeStats> comp) {
+
     }
 
     @Override

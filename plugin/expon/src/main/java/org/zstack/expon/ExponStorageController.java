@@ -1268,6 +1268,11 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     }
 
     @Override
+    public void syncVolumeSnapshotSize(String snapshotInstallPath, ReturnValueCompletion<VolumeStats> comp) {
+
+    }
+
+    @Override
     public void validateConfig(String config) {
 
     }

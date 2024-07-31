@@ -1823,6 +1823,24 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    protected void handle(SyncVolumeSnapshotSizeOnPrimaryStorageMsg msg) {
+        SyncVolumeSnapshotSizeOnPrimaryStorageReply reply = new SyncVolumeSnapshotSizeOnPrimaryStorageReply();
+        controller.syncVolumeSnapshotSize(msg.getInstallPath(), new ReturnValueCompletion<VolumeStats>(msg) {
+            @Override
+            public void success(VolumeStats stats) {
+                reply.setUsedSize(stats.getSize());
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
     private void directDeleteBits(String installPath, Completion completion) {
         controller.deleteVolume(installPath, completion);
     }
