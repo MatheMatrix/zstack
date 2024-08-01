@@ -5,11 +5,17 @@ import org.zstack.header.vo.ResourceVO;
 
 public class RBACInfo implements RBACDescription {
     @Override
+    public String permissionName() {
+        return "tag";
+    }
+
+    @Override
     public void permissions() {
         permissionBuilder()
-                .normalAPIs("org.zstack.header.tag.**")
-                .name("tag")
                 .targetResources(ResourceVO.class)
+                .communityAvailable()
+                .zsvBasicAvailable()
+                .zsvProAvailable()
                 .build();
     }
 
@@ -17,17 +23,7 @@ public class RBACInfo implements RBACDescription {
     public void contributeToRoles() {
         roleContributorBuilder()
                 .roleName("other")
-                .actionsByPermissionName("tag")
+                .actionsByPermissionName(permissionName())
                 .build();
-    }
-
-    @Override
-    public void roles() {
-
-    }
-
-    @Override
-    public void globalReadableResources() {
-
     }
 }

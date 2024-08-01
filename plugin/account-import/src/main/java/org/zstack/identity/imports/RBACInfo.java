@@ -1,28 +1,30 @@
 package org.zstack.identity.imports;
 
 import org.zstack.header.identity.rbac.RBACDescription;
+import org.zstack.header.rest.SDKPackage;
+import org.zstack.identity.imports.api.APIQueryThirdPartyAccountSourceBindingMsg;
 
+@SDKPackage(packageName = "org.zstack.sdk.identity.imports")
 public class RBACInfo implements RBACDescription {
+    @Override
+    public String permissionName() {
+        return "account-imports";
+    }
+
     @Override
     public void permissions() {
         permissionBuilder()
-                .name("account-imports")
-                .adminOnlyAPIs("org.zstack.identity.imports.**")
+                .normalAPIs(APIQueryThirdPartyAccountSourceBindingMsg.class)
+                .communityAvailable()
+                .zsvProAvailable()
                 .build();
     }
 
     @Override
     public void contributeToRoles() {
-
-    }
-
-    @Override
-    public void roles() {
-
-    }
-
-    @Override
-    public void globalReadableResources() {
-
+        roleContributorBuilder()
+                .roleName("identity")
+                .actionsByPermissionName(permissionName())
+                .build();
     }
 }
