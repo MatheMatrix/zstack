@@ -2,7 +2,7 @@ package org.zstack.sdk;
 
 
 
-public class FlkSecSecretResourcePoolInventory extends org.zstack.sdk.SecretResourcePoolInventory {
+public class FlkSecSecretResourcePoolInventory extends org.zstack.sdk.crypto.securitymachine.SecretResourcePoolInventory {
 
     public java.lang.String encryptResult;
     public void setEncryptResult(java.lang.String encryptResult) {

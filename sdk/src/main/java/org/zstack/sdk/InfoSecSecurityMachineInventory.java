@@ -2,7 +2,7 @@ package org.zstack.sdk;
 
 
 
-public class InfoSecSecurityMachineInventory extends org.zstack.sdk.SecurityMachineInventory {
+public class InfoSecSecurityMachineInventory extends org.zstack.sdk.crypto.securitymachine.SecurityMachineInventory {
 
     public java.lang.Integer port;
     public void setPort(java.lang.Integer port) {

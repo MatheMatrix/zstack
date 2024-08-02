@@ -1,6 +1,6 @@
 package org.zstack.testlib.identity
 
-import org.zstack.sdk.identity.role.RoleInventory
+import org.zstack.sdk.RoleInventory
 import org.zstack.testlib.*
 
 class RoleSpec extends Spec implements HasSession {

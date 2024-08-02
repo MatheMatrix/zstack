@@ -32,8 +32,6 @@ import org.zstack.image.ImageGlobalConfig
 import org.zstack.sdk.*
 import org.zstack.sdk.identity.ldap.api.AddLdapServerAction
 import org.zstack.sdk.identity.ldap.api.DeleteLdapServerAction
-import org.zstack.sdk.identity.role.api.CreateRoleAction
-import org.zstack.sdk.identity.role.api.DeleteRoleAction
 import org.zstack.sdk.sns.CreateSNSTopicAction
 import org.zstack.sdk.sns.DeleteSNSApplicationEndpointAction
 import org.zstack.sdk.sns.DeleteSNSApplicationPlatformAction

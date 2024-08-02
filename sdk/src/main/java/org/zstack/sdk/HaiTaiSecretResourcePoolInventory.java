@@ -2,7 +2,7 @@ package org.zstack.sdk;
 
 
 
-public class HaiTaiSecretResourcePoolInventory extends org.zstack.sdk.SecretResourcePoolInventory {
+public class HaiTaiSecretResourcePoolInventory extends org.zstack.sdk.crypto.securitymachine.SecretResourcePoolInventory {
 
     public java.lang.String managementIp;
     public void setManagementIp(java.lang.String managementIp) {

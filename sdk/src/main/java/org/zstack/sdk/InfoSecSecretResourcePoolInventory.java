@@ -2,7 +2,7 @@ package org.zstack.sdk;
 
 
 
-public class InfoSecSecretResourcePoolInventory extends org.zstack.sdk.SecretResourcePoolInventory {
+public class InfoSecSecretResourcePoolInventory extends org.zstack.sdk.crypto.securitymachine.SecretResourcePoolInventory {
 
     public java.lang.Integer connectionMode;
     public void setConnectionMode(java.lang.Integer connectionMode) {

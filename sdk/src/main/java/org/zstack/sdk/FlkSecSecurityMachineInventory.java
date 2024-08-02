@@ -2,7 +2,7 @@ package org.zstack.sdk;
 
 
 
-public class FlkSecSecurityMachineInventory extends org.zstack.sdk.SecurityMachineInventory {
+public class FlkSecSecurityMachineInventory extends org.zstack.sdk.crypto.securitymachine.SecurityMachineInventory {
 
     public java.lang.Integer port;
     public void setPort(java.lang.Integer port) {

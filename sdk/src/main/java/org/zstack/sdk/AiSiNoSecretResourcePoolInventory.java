@@ -2,7 +2,7 @@ package org.zstack.sdk;
 
 
 
-public class AiSiNoSecretResourcePoolInventory extends org.zstack.sdk.SecretResourcePoolInventory {
+public class AiSiNoSecretResourcePoolInventory extends org.zstack.sdk.crypto.securitymachine.SecretResourcePoolInventory {
 
     public java.lang.String managementIp;
     public void setManagementIp(java.lang.String managementIp) {
