@@ -385,6 +385,38 @@ public class VolumeTree {
         return getAliveChainSnapshotInventory().stream().map(VolumeSnapshotInventory::getPrimaryStorageInstallPath).collect(Collectors.toList());
     }
 
+
+    private List<VolumeSnapshotInventory> getSnapshotChainSnapshotInventory(String snapshotUuid) {
+        VolumeSnapshotInventory snapshot;
+        snapshot = getAllSnapshotLeafs().stream().map(VolumeSnapshotLeaf::getInventory)
+                    .filter(it -> Objects.equals(it.getUuid(), snapshotUuid)).findFirst().orElse(null);
+        if (snapshot == null) {
+            return new ArrayList<>();
+        }
+
+        VolumeSnapshotLeaf latestLeaf = findSnapshot(new Function<Boolean, VolumeSnapshotInventory>() {
+            @Override
+            public Boolean call(VolumeSnapshotInventory arg) {
+                return arg.getUuid().equals(snapshot.getUuid());
+            }
+        });
+        return latestLeaf.getAncestors();
+    }
+
+    public List<String> getSnapshotChainSnapshotUuids() {
+        if (getAliveChainSnapshotInventory().isEmpty()) {
+            return new ArrayList<>();
+        }
+        return getAliveChainSnapshotInventory().stream().map(VolumeSnapshotInventory::getUuid).collect(Collectors.toList());
+    }
+
+    public List<String> getSnapshotChainSnapshotInstallPaths() {
+        if (getAliveChainSnapshotInventory().isEmpty()) {
+            return new ArrayList<>();
+        }
+        return getAliveChainSnapshotInventory().stream().map(VolumeSnapshotInventory::getPrimaryStorageInstallPath).collect(Collectors.toList());
+    }
+
     public List<VolumeSnapshotLeaf> getSiblingLeaves(VolumeSnapshotLeaf leaf) {
         if (leaf.getParent() == null || leaf.getParent().getChildren().size() <= 1) {
             return new ArrayList<>();

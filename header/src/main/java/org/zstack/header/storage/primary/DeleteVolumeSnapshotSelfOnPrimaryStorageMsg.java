@@ -18,6 +18,7 @@ public class DeleteVolumeSnapshotSelfOnPrimaryStorageMsg extends NeedReplyMessag
     private String dstPath;
     private String primaryStorageUuid;
     private List<String> aliveChainInstallPathInDb;
+    private List<String> snapshotChainInstallPathInDb;
 
     public VolumeSnapshotInventory getSnapshot() {
         return snapshot;
@@ -74,5 +75,13 @@ public class DeleteVolumeSnapshotSelfOnPrimaryStorageMsg extends NeedReplyMessag
 
     public void setAliveChainInstallPathInDb(List<String> aliveChainInstallPathInDb) {
         this.aliveChainInstallPathInDb = aliveChainInstallPathInDb;
+    }
+
+    public List<String> getSnapshotChainInstallPathInDb() {
+        return snapshotChainInstallPathInDb;
+    }
+
+    public void setSnapshotChainInstallPathInDb(List<String> snapshotChainInstallPathInDb) {
+        this.snapshotChainInstallPathInDb = snapshotChainInstallPathInDb;
     }
 }

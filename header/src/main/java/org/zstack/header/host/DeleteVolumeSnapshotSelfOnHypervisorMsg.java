@@ -11,6 +11,7 @@ public class DeleteVolumeSnapshotSelfOnHypervisorMsg extends NeedReplyMessage im
     private VolumeInventory volume;
     private String srcPath;
     private String dstPath;
+    private String volumeSnapshotPath;
     private List<String> aliveChainInstallPathInDb;
 
     public VolumeInventory getVolume() {
@@ -36,6 +37,14 @@ public class DeleteVolumeSnapshotSelfOnHypervisorMsg extends NeedReplyMessage im
 
     public void setVmUuid(String vmUuid) {
         this.vmUuid = vmUuid;
+    }
+
+    public String getVolumeSnapshotPath() {
+        return volumeSnapshotPath;
+    }
+
+    public void setVolumeSnapshotPath(String volumeSnapshotPath) {
+        this.volumeSnapshotPath = volumeSnapshotPath;
     }
 
     public String getSrcPath() {

@@ -778,15 +778,14 @@ public class VolumeSnapshotTreeBase {
                         return arg.getUuid().equals(currentSnapshotVO.getUuid());
                     }
                 });
-        VolumeTree.VolumeSnapshotLeaf currentParentSnapshotLeaf = currentSnapshotLeaf.getParent();
 
         chain.setName(String.format("delete-volume-snapshot-%s-by-commit", currentSnapshotVO.getUuid()));
         chain.then(new ShareFlow() {
             VolumeSnapshotInventory srcSnapshotInv;
             VolumeSnapshotInventory dstSnapshotInv;
             String newInstallPath;
-            String newLatestSnapshotUuid;
             long newInstallPathSize;
+            String newLatestSnapshotUuid;
             long requiredExtraSize;
             boolean dbOnly = false;
             boolean srcSnapshotInvIsVolume = false;
@@ -795,10 +794,26 @@ public class VolumeSnapshotTreeBase {
                 int childrenSize = currentSnapshotLeaf.getChildren().size();
                 if (childrenSize == 0) {
                     setupDirectDeleteSnapshotBitsFlows(VolumeSnapshotInventory.valueOf(currentSnapshotVO));
-                    buildDeleteSnapshotFromParentFlows();
+                    buildDeleteSnapshotFromParentFlows(currentSnapshotLeaf.getParent());
                     return;
                 }
                 if (childrenSize == 1) {
+                    List<VolumeSnapshotInventory> allDeletedParentSnapshotWithOnlyChildren = new ArrayList<>();
+                    getAllDeletedParentSnapshotWithOnlyChildren(allDeletedParentSnapshotWithOnlyChildren, currentSnapshotLeaf.getParent());
+                    if (!allDeletedParentSnapshotWithOnlyChildren.isEmpty()) {
+                        srcSnapshotInv = currentSnapshotLeaf.getChildren().get(0).getInventory();
+                        dstSnapshotInv = allDeletedParentSnapshotWithOnlyChildren.get(allDeletedParentSnapshotWithOnlyChildren.size() - 1);
+                        if (Objects.equals(srcSnapshotInv.getStatus(), VolumeSnapshotStatus.Ready.toString()) &&
+                                currentSnapshotLeaf.getInventory().isLatest()) {
+                            newLatestSnapshotUuid = srcSnapshotInv.getUuid();
+                        }
+                        srcSnapshotInvIsVolume = srcSnapshotInv.getUuid().equals(volume.getUuid());
+                        setupDeleteSnapshotOnlySelfFlows();
+                        setupDirectDeleteSnapshotBitsFlows(VolumeSnapshotInventory.valueOf(currentSnapshotVO));
+                        allDeletedParentSnapshotWithOnlyChildren.subList(0, allDeletedParentSnapshotWithOnlyChildren.size() - 1).forEach(this::setupDirectDeleteSnapshotBitsFlows);
+                        return;
+                    }
+
                     srcSnapshotInv = currentSnapshotLeaf.getChildren().get(0).getInventory();
                     dstSnapshotInv = currentSnapshotLeaf.getInventory();
                     if (Objects.equals(srcSnapshotInv.getStatus(), VolumeSnapshotStatus.Ready.toString()) &&
@@ -812,19 +827,36 @@ public class VolumeSnapshotTreeBase {
                 setupDeleteDbOnlyFlows(currentSnapshotVO.getUuid());
             }
 
-            private void buildDeleteSnapshotFromParentFlows() {
-                if (currentParentSnapshotLeaf == null) {
+            private void getAllDeletedParentSnapshotWithOnlyChildren(List<VolumeSnapshotInventory> volumeSnapshotInventories,
+                                                                     VolumeTree.VolumeSnapshotLeaf parentSnapshotLeaf) {
+                if (parentSnapshotLeaf == null) {
+                    return;
+                }
+                if (parentSnapshotLeaf.getChildren().size() != 1) {
+                    return;
+                }
+                if (!Objects.equals(parentSnapshotLeaf.getInventory().getStatus(), VolumeSnapshotStatus.Deleted.toString())) {
+                    return;
+                }
+                if (parentSnapshotLeaf.getChildren().size() == 1) {
+                    volumeSnapshotInventories.add(parentSnapshotLeaf.getInventory());
+                    getAllDeletedParentSnapshotWithOnlyChildren(volumeSnapshotInventories, parentSnapshotLeaf.getParent());
+                }
+            }
+
+            private void buildDeleteSnapshotFromParentFlows(VolumeTree.VolumeSnapshotLeaf parentSnapshotLeaf) {
+                if (parentSnapshotLeaf == null) {
                     return;
                 }
 
                 if (currentSnapshotVO.isLatest() && !treeIsCurrent) {
-                    newLatestSnapshotUuid = currentParentSnapshotLeaf.getInventory().getUuid();
+                    newLatestSnapshotUuid = parentSnapshotLeaf.getInventory().getUuid();
                 }
 
-                if (Objects.equals(currentParentSnapshotLeaf.getInventory().getStatus(), VolumeSnapshotStatus.Deleted.toString()) &&
-                        currentParentSnapshotLeaf.getChildren().size() == 2) {
+                if (Objects.equals(parentSnapshotLeaf.getInventory().getStatus(), VolumeSnapshotStatus.Deleted.toString()) &&
+                        parentSnapshotLeaf.getChildren().size() == 2) {
                     srcSnapshotInv = currentVolumeTree.getSiblingLeaves(currentSnapshotLeaf).get(0).getInventory();
-                    dstSnapshotInv = currentParentSnapshotLeaf.getInventory();
+                    dstSnapshotInv = parentSnapshotLeaf.getInventory();
                     if (currentSnapshotVO.isLatest()) {
                         newLatestSnapshotUuid = srcSnapshotInv.getUuid();
                     }
@@ -994,10 +1026,14 @@ public class VolumeSnapshotTreeBase {
                         bmsg.setSnapshot(dstSnapshotInv);
                         bmsg.setVolume(VolumeInventory.valueOf(volume));
                         bmsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
-                        bmsg.setAliveChainInstallPathInDb(inAliveChain() ? currentVolumeTree.getAliveChainSnapshotInstallPaths() : new ArrayList<>());
                         if (onlineDelete()) {
                             bmsg.setVmUuid(volume.getVmInstanceUuid());
+                            bmsg.setAliveChainInstallPathInDb(inAliveChain() ? currentVolumeTree.getAliveChainSnapshotInstallPaths() : new ArrayList<>());
                         }
+                        if (!onlineDelete()) {
+                            bmsg.set
+                        }
+
                         bus.makeTargetServiceIdByResourceUuid(bmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
                         bus.send(bmsg, new CloudBusCallBack(trigger) {
                             @Override
