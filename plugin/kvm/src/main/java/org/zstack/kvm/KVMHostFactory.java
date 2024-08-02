@@ -88,6 +88,7 @@ import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.operr;
+import static org.zstack.kvm.KVMAgentCommands.*;
 import static org.zstack.kvm.KVMConstant.CPU_MODE_NONE;
 
 public class KVMHostFactory extends AbstractService implements HypervisorFactory, Component,
@@ -352,6 +353,64 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
         asf.deployModule(KVMConstant.ANSIBLE_MODULE_PATH, KVMConstant.ANSIBLE_PLAYBOOK_NAME);
     }
 
+    void physicalCpuStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalCpuStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalCpuStatusAbnormalData();
+        cdata.setCpuName(cmd.getAdditionalProperties().get(KVMConstant.CPU_NAME).toString());
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.PHSICAL_DEVICE_STATUS_NAME).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_CPU_STATUS_ABNORMAL, cdata);
+    }
+
+    void physicalMemoryStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalMemoryStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalMemoryStatusAbnormalData();
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setLocator(cmd.getAdditionalProperties().get(KVMConstant.MEMORY_LOCATOR_NAME).toString());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.PHSICAL_DEVICE_STATUS_NAME).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_MEMORY_STATUS_ABNORMAL, cdata);
+    }
+
+    void physicalGpuStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalGpuStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalGpuStatusAbnormalData();
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setPcideviceAddress(cmd.getAdditionalProperties().get(KVMConstant.PCI_DEVICE_ADDRESS).toString());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.PHSICAL_DEVICE_STATUS_NAME).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_GPU_STATUS_ABNORMAL, cdata);
+    }
+
+    void physicalPowerSupplyStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalPowerSupplyStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalPowerSupplyStatusAbnormalData();
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.PHSICAL_DEVICE_STATUS_NAME).toString());
+        cdata.setName(cmd.getAdditionalProperties().get(KVMConstant.DEVICE_NAME).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_POWER_SUPPLY_STATUS_ABNORMAL, cdata);
+    }
+
+    void physicalFanStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalFanStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalFanStatusAbnormalData();
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setFanName(cmd.getAdditionalProperties().get(KVMConstant.DEVICE_NAME).toString());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.PHSICAL_DEVICE_STATUS_NAME).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_FAN_STATUS_ABNORMAL, cdata);
+    }
+
+    void physicalDiskStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalDiskStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalDiskStatusAbnormalData();
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setSerialNumber(cmd.getAdditionalProperties().get(KVMConstant.DEVICE_SERIAL_NUMBER).toString());
+        cdata.setEnclosureId(cmd.getAdditionalProperties().get(KVMConstant.ENCLOSURE_DEVICE_ID).toString());
+        cdata.setSlotNumber(cmd.getAdditionalProperties().get(KVMConstant.SLOT_NUMBER).toString());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.DRIVE_STATE).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_DISK_STATUS_ABNORMAL, cdata);
+    }
+
+    void physicalRaidStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalRaidStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalRaidStatusAbnormalData();
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.PHSICAL_DEVICE_STATUS_NAME).toString());
+        cdata.setTargetId(cmd.getAdditionalProperties().get(KVMConstant.TARGET_ID).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_RAID_STATUS_ABNORMAL, cdata);
+    }
+
     @Override
     public boolean start() {
         deployAnsibleModule();
@@ -450,13 +509,13 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             }
         });
 
-        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_REBOOT_EVENT, KVMAgentCommands.ReportVmRebootEventCmd.class, cmd -> {
+        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_REBOOT_EVENT, ReportVmRebootEventCmd.class, cmd -> {
             evf.fire(VmCanonicalEvents.VM_LIBVIRT_REPORT_REBOOT, cmd.vmUuid);
 
             return null;
         });
 
-        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_SHUTDOWN_EVENT, KVMAgentCommands.ReportVmShutdownEventCmd.class, cmd -> {
+        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_SHUTDOWN_EVENT, ReportVmShutdownEventCmd.class, cmd -> {
             KvmReportVmShutdownEventMsg msg = new KvmReportVmShutdownEventMsg();
             msg.setVmInstanceUuid(cmd.vmUuid);
             msg.setDetail(cmd.detail);
@@ -466,12 +525,12 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             return null;
         });
 
-        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_START_EVENT, KVMAgentCommands.ReportVmStartEventCmd.class, cmd -> {
+        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_START_EVENT, ReportVmStartEventCmd.class, cmd -> {
             evf.fire(VmCanonicalEvents.VM_LIBVIRT_REPORT_START, cmd.vmUuid);
             return null;
         });
 
-        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_CRASH_EVENT, KVMAgentCommands.ReportVmCrashEventCmd.class, cmd -> {
+        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_CRASH_EVENT, ReportVmCrashEventCmd.class, cmd -> {
             if (!CrashStrategy.valueOf(rcf.getResourceConfigValue(VmGlobalConfig.VM_CRASH_STRATEGY, cmd.vmUuid, String.class)).isCrashStrategyEnable()) {
                 return null;
             }
@@ -482,7 +541,7 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             return null;
         });
 
-        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_HOST_STOP_EVENT, KVMAgentCommands.ReportHostStopEventCmd.class, cmd -> {
+        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_HOST_STOP_EVENT, ReportHostStopEventCmd.class, cmd -> {
             ChangeHostStatusMsg cmsg = new ChangeHostStatusMsg();
             HostVO hostVO = Q.New(HostVO.class).eq(HostVO_.managementIp, cmd.hostIp).find();
 
@@ -497,7 +556,7 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
         });
 
 
-        restf.registerSyncHttpCallHandler(KVMConstant.KVM_HOST_PHYSICAL_NIC_ALARM_EVENT, KVMAgentCommands.PhysicalNicAlarmEventCmd.class, cmd -> {
+        restf.registerSyncHttpCallHandler(KVMConstant.KVM_HOST_PHYSICAL_NIC_ALARM_EVENT, PhysicalNicAlarmEventCmd.class, cmd -> {
             HostCanonicalEvents.HostPhysicalNicStatusData cData = new HostCanonicalEvents.HostPhysicalNicStatusData();
             cData.setHostUuid(cmd.host);
             cData.setInterfaceName(cmd.nic);
