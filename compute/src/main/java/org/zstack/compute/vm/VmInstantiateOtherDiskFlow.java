@@ -340,6 +340,7 @@ public class VmInstantiateOtherDiskFlow implements Flow {
                                 String volumeUuid = inv.getUuid();
                                 VolumeVO vo = dbf.findByUuid(volumeUuid, VolumeVO.class);
                                 vo.setVmInstanceUuid(vmUuid);
+                                vo.setLastVmInstanceUuid(vmUuid);
                                 vo.setActualSize(vo.getActualSize() == null ? 0L : vo.getActualSize());
                                 vo = dbf.updateAndRefresh(vo);
                                 volumeInventory = VolumeInventory.valueOf(vo);
