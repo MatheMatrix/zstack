@@ -584,6 +584,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
         vo.setSize(msg.getSize());
         vo.setActualSize(msg.getActualSize());
         vo.setVmInstanceUuid(msg.getVmInstanceUuid());
+        vo.setLastVmInstanceUuid(msg.getVmInstanceUuid());
         vo.setFormat(msg.getFormat());
         vo.setStatus(VolumeStatus.NotInstantiated);
         vo.setType(VolumeType.valueOf(msg.getVolumeType()));
@@ -1335,6 +1336,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
     public void preAttachVolume(VmInstanceInventory vm, VolumeInventory volume) {
         SQL.New(VolumeVO.class).eq(VolumeVO_.uuid, volume.getUuid())
                 .set(VolumeVO_.vmInstanceUuid, vm.getUuid())
+                .set(VolumeVO_.lastVmInstanceUuid, vm.getUuid())
                 .update();
     }
 
@@ -1358,6 +1360,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
         String format = Q.New(VolumeVO.class).eq(VolumeVO_.uuid, volume.getUuid()).select(VolumeVO_.format).findValue();
         SQL.New(VolumeVO.class).eq(VolumeVO_.uuid, volume.getUuid())
                 .set(VolumeVO_.vmInstanceUuid, volume.isShareable() ? null : vm.getUuid())
+                .set(VolumeVO_.lastVmInstanceUuid, volume.isShareable() ? null : vm.getUuid())
                 .set(VolumeVO_.format, format != null ? format :
                         VolumeFormat.getVolumeFormatByMasterHypervisorType(vm.getHypervisorType()))
                 .set(VolumeVO_.lastAttachDate, Timestamp.valueOf(LocalDateTime.now()))

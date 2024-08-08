@@ -20,3 +20,5 @@ delete from `ResourceVO` where `resourceType` = 'UserGroupVO';
 alter table `HybridAccountVO` drop foreign key `fkHybridAccountVOUserVO`;
 drop table if exists `UserVO`;
 delete from `ResourceVO` where `resourceType` = 'UserVO';
+
+update VolumeVO set lastVmInstanceUuid = vmInstanceUuid where isShareable = 0 and lastVmInstanceUuid is null;

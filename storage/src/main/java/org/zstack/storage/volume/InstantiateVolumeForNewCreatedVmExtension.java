@@ -146,6 +146,7 @@ public class InstantiateVolumeForNewCreatedVmExtension implements PreVmInstantia
                 VolumeVO vo = dbf.findByUuid(volumeUuid, VolumeVO.class);
                 if (vo.getType() == VolumeType.Data) {
                     vo.setVmInstanceUuid(vo.isShareable() ? null : spec.getVmInventory().getUuid());
+                    vo.setLastVmInstanceUuid(vo.getVmInstanceUuid());
                     vo.setDeviceId(getNextDeviceId(volumeUuid, imageUuid));
                     vo.setActualSize(vo.getActualSize() == null ? 0L : vo.getActualSize());
                 } else if (spec.getImageSpec().getInventory() != null) {
