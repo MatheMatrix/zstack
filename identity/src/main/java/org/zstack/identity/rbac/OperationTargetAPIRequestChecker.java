@@ -8,7 +8,9 @@ import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.identity.*;
 import org.zstack.header.identity.rbac.*;
 import org.zstack.header.message.APIMessage;
+import org.zstack.header.message.APIResourceScope;
 import org.zstack.header.message.APISyncCallMessage;
+import org.zstack.header.message.ResourceValidation;
 import org.zstack.header.tag.SystemTagVO;
 import org.zstack.header.tag.SystemTagVO_;
 import org.zstack.identity.APIRequestChecker;
@@ -98,8 +100,8 @@ public class OperationTargetAPIRequestChecker implements APIRequestChecker {
             }
 
             private void checkOperationTarget(APIMessage.FieldParam param) {
-                Class resourceType = param.param.resourceType();
-                if (resourceType == Object.class)  {
+                Class<?>[] resourceTypes = param.resourceTypes();
+                if (resourceTypes.length == 0)  {
                     return;
                 }
 
@@ -112,9 +114,10 @@ public class OperationTargetAPIRequestChecker implements APIRequestChecker {
                     return;
                 }
 
+                Class<?> resourceType = resourceTypes[0];
                 try {
                     if (resourceType.equals(AccountVO.class)) {
-                        checkIfTheAccountOperationItSelf(param);
+                        checkAccountAPIParam(param);
                     } else if (info.getTargetResources().stream().anyMatch( it -> resourceType.isAssignableFrom(it))) {
                         checkIfTheAccountOwnTheResource(param);
                     } else if (resourceType.equals(SystemTagVO.class)) {
@@ -129,17 +132,17 @@ public class OperationTargetAPIRequestChecker implements APIRequestChecker {
                 }
             }
 
-            private void checkIfTheAccountOperationItSelf(APIMessage.FieldParam param) throws IllegalAccessException {
+            private void checkAccountAPIParam(APIMessage.FieldParam param) throws IllegalAccessException {
+                APIResourceScope scope = apiResourceScope(param);
+                if (scope != APIResourceScope.MustOwner) {
+                    return;
+                }
                 List<String> uuids = getResourceUuids(param);
-
-                Class resourceType = param.param.resourceType();
-
-                String accountUuid = rbacEntity.getApiMessage().getSession().getAccountUuid();
-
-                if (uuids.isEmpty()) {
+                String currentAccountUuid = rbacEntity.getApiMessage().getSession().getAccountUuid();
+                if (uuids.stream().anyMatch(uuid -> !Objects.equals(uuid, currentAccountUuid))) {
+                    String parameterName = param.field.getName();
                     throw new OperationFailureException(err(RESOURCE_NOT_ACCESSIBLE,
-                            "permission denied, the account[uuid:%s] is not the owner of the resource[uuid:%s, type:%s]",
-                            accountUuid, accountUuid, resourceType.getSimpleName()));
+                            "permission denied: parameter[%s] must be yourself", parameterName));
                 }
             }
 
@@ -226,30 +229,51 @@ public class OperationTargetAPIRequestChecker implements APIRequestChecker {
             }
 
             private void checkIfTheAccountCanAccessTheResource(APIMessage.FieldParam param) throws IllegalAccessException {
-                Class resourceType = param.param.resourceType();
-
-                if (RBAC.isResourceGlobalReadable(resourceType)) {
-                    return;
-                }
-                if (!OwnedByAccount.class.isAssignableFrom(resourceType)){
-                    return;
-                }
-
                 List<String> uuids = getResourceUuids(param);
-                if (uuids.isEmpty()) {
-                    return;
-                }
 
                 final String accountUuid = rbacEntity.getApiMessage().getSession().getAccountUuid();
-                List<String> resourceWithNoAccess = AccessibleResourceChecker.forAccount(accountUuid)
-                        .findOutAllInaccessibleResources(uuids);
-                if (!resourceWithNoAccess.isEmpty()) {
+                AccessibleResourceChecker checker = AccessibleResourceChecker.forAccount(accountUuid)
+                        .withScope(apiResourceScope(param));
+
+                final Class<?>[] resourceTypes = param.resourceTypes();
+                if (resourceTypes.length == 1) {
+                    checker.withResourceType(resourceTypes[0]);
+                }
+
+                List<String> inaccessibleResources = checker.findOutAllInaccessibleResources(uuids);
+                if (!inaccessibleResources.isEmpty()) {
                     throw new OperationFailureException(err(RESOURCE_NOT_ACCESSIBLE,
                             "the account[uuid:%s] has no access to the resources[uuid:%s, type:%s]",
-                            accountUuid, resourceWithNoAccess, resourceType.getSimpleName()));
+                            accountUuid, inaccessibleResources,
+                            Arrays.stream(resourceTypes).map(Class::getSimpleName).collect(Collectors.toList())));
                 }
 
             }
         }.execute();
+    }
+
+    public static APIResourceScope apiResourceScope(APIMessage.FieldParam param) {
+        String scope = param.validation.scope();
+
+        if (ResourceValidation.SCOPE_NONE.equals(scope)) {
+            if (param.param.noOwnerCheck()) {
+                return APIResourceScope.AllowedAll;
+            }
+
+            if (param.param.checkAccount() || param.param.operationTarget()) {
+                return APIResourceScope.AllowedSharing;
+            }
+
+            scope = ResourceValidation.SCOPE_AUTO;
+        }
+
+        if (!ResourceValidation.SCOPE_AUTO.equals(scope)) {
+            return APIResourceScope.valueOf(scope);
+        }
+
+        Class<?> resourceType = param.resourceTypes()[0];
+        return RBAC.isResourceGlobalReadable(resourceType) ?
+                APIResourceScope.AllowedAll :
+                APIResourceScope.AllowedSharing;
     }
 }

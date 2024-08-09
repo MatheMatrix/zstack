@@ -36,6 +36,18 @@ public abstract class APIMessage extends NeedReplyMessage implements Configurabl
     public static class FieldParam {
         public Field field;
         public APIParam param;
+        public ResourceValidation validation;
+
+        public Class<?>[] resourceTypes() {
+            Class<?>[] classes = validation.value();
+            if (classes.length > 0) {
+                return classes;
+            }
+
+            // for compatibility
+            final Class<?> resourceType = param.resourceType();
+            return (resourceType == Object.class) ? new Class<?>[0] : new Class<?>[] { resourceType };
+        }
     }
 
     @NoJsonSchema
@@ -95,10 +107,16 @@ public abstract class APIMessage extends NeedReplyMessage implements Configurabl
     }
 
     private static void collectApiParams() {
-        class Nothing { @APIParam(required = false) public String nothing;}
+        class Nothing {
+            @APIParam(required = false)
+            @ResourceValidation(value = {}, scope = ResourceValidation.SCOPE_NONE)
+            public String nothing;
+        }
         APIParam defaultAnnotation;
+        ResourceValidation defaultValidation;
         try {
             defaultAnnotation = Nothing.class.getField("nothing").getAnnotation(APIParam.class);
+            defaultValidation = Nothing.class.getField("nothing").getAnnotation(ResourceValidation.class);
         } catch (NoSuchFieldException e) {
             throw new CloudRuntimeException(e);
         }
@@ -126,10 +144,16 @@ public abstract class APIMessage extends NeedReplyMessage implements Configurabl
                     at = defaultAnnotation;
                 }
 
+                ResourceValidation validation = f.getAnnotation(ResourceValidation.class);
+                if (validation == null) {
+                    validation = defaultValidation;
+                }
+
                 f.setAccessible(true);
                 FieldParam fp = new FieldParam();
                 fp.field = f;
                 fp.param = at;
+                fp.validation = validation;
                 fmap.put(f.getName(), fp);
             }
 
@@ -142,10 +166,19 @@ public abstract class APIMessage extends NeedReplyMessage implements Configurabl
                                 atp.field(), clz));
                     }
 
-                    FieldParam fp = new FieldParam();
-                    fp.field = f;
-                    fp.param = atp.param();
-                    fmap.put(atp.field(), fp);
+                    FieldParam param = fmap.get(atp.field());
+                    param.param = atp.param();
+                }
+
+                for (OverriddenResourceValidation atp : at.validations()) {
+                    Field f = FieldUtils.getField(atp.field(), clz);
+                    if (f == null) {
+                        throw new CloudRuntimeException(String.format("cannot find the field[%s] specified in @OverriddenApiParam of class[%s]",
+                                atp.field(), clz));
+                    }
+
+                    FieldParam param = fmap.get(atp.field());
+                    param.validation = atp.validation();
                 }
             }
 

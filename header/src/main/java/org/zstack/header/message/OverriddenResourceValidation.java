@@ -5,11 +5,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Created by frank on 8/6/2015.
+ * Created by Wenhao.Zhang on 2024/08/09
  */
 @Target({java.lang.annotation.ElementType.FIELD, ElementType.TYPE})
 @Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
-public @interface OverriddenApiParams {
-    OverriddenApiParam[] value();
-    OverriddenResourceValidation[] validations() default {};
+public @interface OverriddenResourceValidation {
+    String field();
+
+    ResourceValidation validation();
 }

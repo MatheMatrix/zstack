@@ -6,6 +6,10 @@ import java.lang.annotation.Target;
 @Target(java.lang.annotation.ElementType.FIELD)
 @Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
 public @interface APIParam {
+    /**
+     * use {@link ResourceValidation#scope()}
+     */
+    @Deprecated
     boolean operationTarget() default false;
 
     boolean required() default true;
@@ -20,6 +24,10 @@ public @interface APIParam {
 
     String validRegexValues() default "";
 
+    /**
+     * use {@link ResourceValidation#value()}
+     */
+    @Deprecated
     Class resourceType() default Object.class;
 
     int maxLength() default Integer.MIN_VALUE;
@@ -36,12 +44,24 @@ public @interface APIParam {
 
     String[] numberRangeUnit() default {};
 
+    /**
+     * use {@link ResourceValidation#scope()}
+     */
+    @Deprecated
     boolean checkAccount() default false;
 
+    /**
+     * use {@link ResourceValidation#scope()}
+     */
+    @Deprecated
     boolean noOwnerCheck() default false;
 
     boolean noTrim() default false;
 
+    /**
+     * use {@link ResourceValidation#successIfResourceNotExisting()}
+     */
+    @Deprecated
     boolean successIfResourceNotExisting() default false;
 
     /**
