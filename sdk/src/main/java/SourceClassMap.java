@@ -15,8 +15,6 @@ public class SourceClassMap {
 			put("org.zstack.aliyun.nas.message.AliyunNasFileSystemProperty", "org.zstack.sdk.AliyunNasFileSystemProperty");
 			put("org.zstack.aliyun.nas.message.AliyunNasMountTargetProperty", "org.zstack.sdk.AliyunNasMountTargetProperty");
 			put("org.zstack.aliyun.pangu.AliyunPanguPartitionInventory", "org.zstack.sdk.AliyunPanguPartitionInventory");
-			put("org.zstack.aliyunproxy.vpc.AliyunProxyVSwitchInventory", "org.zstack.sdk.AliyunProxyVSwitchInventory");
-			put("org.zstack.aliyunproxy.vpc.AliyunProxyVpcInventory", "org.zstack.sdk.AliyunProxyVpcInventory");
 			put("org.zstack.appliancevm.ApplianceVmInventory", "org.zstack.sdk.ApplianceVmInventory");
 			put("org.zstack.autoscaling.group.AutoScalingGroupInventory", "org.zstack.sdk.AutoScalingGroupInventory");
 			put("org.zstack.autoscaling.group.activity.AutoScalingGroupActivityInventory", "org.zstack.sdk.AutoScalingGroupActivityInventory");
@@ -729,8 +727,6 @@ public class SourceClassMap {
 			put("org.zstack.sdk.AliyunNasMountTargetProperty", "org.zstack.aliyun.nas.message.AliyunNasMountTargetProperty");
 			put("org.zstack.sdk.AliyunOssException", "org.zstack.header.aliyun.AliyunOssException");
 			put("org.zstack.sdk.AliyunPanguPartitionInventory", "org.zstack.aliyun.pangu.AliyunPanguPartitionInventory");
-			put("org.zstack.sdk.AliyunProxyVSwitchInventory", "org.zstack.aliyunproxy.vpc.AliyunProxyVSwitchInventory");
-			put("org.zstack.sdk.AliyunProxyVpcInventory", "org.zstack.aliyunproxy.vpc.AliyunProxyVpcInventory");
 			put("org.zstack.sdk.AliyunRouterInterfaceInventory", "org.zstack.header.aliyun.network.connection.AliyunRouterInterfaceInventory");
 			put("org.zstack.sdk.AliyunSnapshotInventory", "org.zstack.header.aliyun.storage.snapshot.AliyunSnapshotInventory");
 			put("org.zstack.sdk.ApplianceVmInventory", "org.zstack.appliancevm.ApplianceVmInventory");

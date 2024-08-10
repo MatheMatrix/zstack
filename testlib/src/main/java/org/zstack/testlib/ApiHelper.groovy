@@ -6713,60 +6713,6 @@ abstract class ApiHelper {
     }
 
 
-    def createAliyunProxyVSwitch(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.CreateAliyunProxyVSwitchAction.class) Closure c) {
-        def a = new org.zstack.sdk.CreateAliyunProxyVSwitchAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-        
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-    
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-        
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-
-    def createAliyunProxyVpc(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.CreateAliyunProxyVpcAction.class) Closure c) {
-        def a = new org.zstack.sdk.CreateAliyunProxyVpcAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-        
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-    
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-        
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-
     def createAliyunRouterInterfaceRemote(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.CreateAliyunRouterInterfaceRemoteAction.class) Closure c) {
         def a = new org.zstack.sdk.CreateAliyunRouterInterfaceRemoteAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -10900,60 +10846,6 @@ abstract class ApiHelper {
 
     def deleteAliyunPanguPartition(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.DeleteAliyunPanguPartitionAction.class) Closure c) {
         def a = new org.zstack.sdk.DeleteAliyunPanguPartitionAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-        
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-    
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-        
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-
-    def deleteAliyunProxyVSwitch(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.DeleteAliyunProxyVSwitchAction.class) Closure c) {
-        def a = new org.zstack.sdk.DeleteAliyunProxyVSwitchAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-        
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-    
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-        
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-
-    def deleteAliyunProxyVpc(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.DeleteAliyunProxyVpcAction.class) Closure c) {
-        def a = new org.zstack.sdk.DeleteAliyunProxyVpcAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -24644,64 +24536,6 @@ abstract class ApiHelper {
     }
 
 
-    def queryAliyunProxyVSwitch(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryAliyunProxyVSwitchAction.class) Closure c) {
-        def a = new org.zstack.sdk.QueryAliyunProxyVSwitchAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-        
-        a.conditions = a.conditions.collect { it.toString() }
-
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-    
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-        
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-
-    def queryAliyunProxyVpc(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryAliyunProxyVpcAction.class) Closure c) {
-        def a = new org.zstack.sdk.QueryAliyunProxyVpcAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-        
-        a.conditions = a.conditions.collect { it.toString() }
-
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-    
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-        
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-
     def queryAliyunRouteEntryFromLocal(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryAliyunRouteEntryFromLocalAction.class) Closure c) {
         def a = new org.zstack.sdk.QueryAliyunRouteEntryFromLocalAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -36479,60 +36313,6 @@ abstract class ApiHelper {
 
     def updateAliyunPanguPartition(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateAliyunPanguPartitionAction.class) Closure c) {
         def a = new org.zstack.sdk.UpdateAliyunPanguPartitionAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-        
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-    
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-        
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-
-    def updateAliyunProxyVSwitch(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateAliyunProxyVSwitchAction.class) Closure c) {
-        def a = new org.zstack.sdk.UpdateAliyunProxyVSwitchAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-        
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-    
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-        
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-
-    def updateAliyunProxyVpc(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateAliyunProxyVpcAction.class) Closure c) {
-        def a = new org.zstack.sdk.UpdateAliyunProxyVpcAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a

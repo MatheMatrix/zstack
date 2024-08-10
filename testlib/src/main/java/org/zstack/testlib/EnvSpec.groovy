@@ -175,8 +175,6 @@ class EnvSpec extends ApiHelper implements Node  {
             [CreateTagAction.metaClass, CreateTagAction.Result.metaClass, DeleteTagAction.class],
             [CreateResourcePriceAction.metaClass, CreateResourcePriceAction.Result.metaClass, DeleteResourcePriceAction.class],
             [CreatePriceTableAction.metaClass, CreatePriceTableAction.Result.metaClass, DeletePriceTableAction.class],
-            [CreateAliyunProxyVpcAction.metaClass, CreateAliyunProxyVpcAction.Result.metaClass, DeleteAliyunProxyVpcAction.class],
-            [CreateAliyunProxyVSwitchAction.metaClass, CreateAliyunProxyVSwitchAction.Result.metaClass, DeleteAliyunProxyVSwitchAction.class],
             [CreateMonitorGroupAction.metaClass, CreateMonitorGroupAction.Result.metaClass, DeleteMonitorGroupAction.class],
             [CreateMonitorTemplateAction.metaClass, CreateMonitorTemplateAction.Result.metaClass, DeleteMonitorTemplateAction.class],
             [CreateDirectoryAction.metaClass, CreateDirectoryAction.Result.metaClass, DeleteDirectoryAction.class],
