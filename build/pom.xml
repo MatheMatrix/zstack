@@ -265,11 +265,6 @@
                 </dependency>
                 <dependency>
                     <groupId>org.zstack</groupId>
-                    <artifactId>hybrid</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-		<dependency>
-                    <groupId>org.zstack</groupId>
                     <artifactId>zwatch</artifactId>
                     <version>${project.version}</version>
                 </dependency>
@@ -326,11 +321,6 @@
                 <dependency>
                     <groupId>org.zstack</groupId>
                     <artifactId>xdragon</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>aliyun-storage</artifactId>
                     <version>${project.version}</version>
                 </dependency>
                 <dependency>
@@ -422,11 +412,6 @@
                 <dependency>
                     <groupId>org.zstack</groupId>
                     <artifactId>vpcFirewall</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>sns-aliyun-sms</artifactId>
                     <version>${project.version}</version>
                 </dependency>
                 <dependency>
