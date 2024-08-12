@@ -2006,6 +2006,19 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
 
     @Override
     void handle(final DeleteVolumeSnapshotSelfOnPrimaryStorageMsg msg, final String hostUuid, final ReturnValueCompletion<DeleteVolumeSnapshotSelfOnPrimaryStorageReply> completion) {
+        if (msg.getVolume().getVmInstanceUuid() != null){
+            VmInstanceState state = Q.New(VmInstanceVO.class)
+                    .select(VmInstanceVO_.state)
+                    .eq(VmInstanceVO_.uuid, msg.getVolume().getVmInstanceUuid())
+                    .findValue();
+
+            if (state != VmInstanceState.Running && state != VmInstanceState.Paused && state != VmInstanceState.Stopped){
+                completion.fail(operr("vm[uuid:%s] is not Running, Paused or Stopped, current state[%s]",
+                        msg.getVolume().getVmInstanceUuid(), state));
+                return;
+            }
+        }
+
         DeleteVolumeSnapshotSelfOnHypervisorMsg hmsg = new DeleteVolumeSnapshotSelfOnHypervisorMsg();
         hmsg.setHostUuid(hostUuid);
         hmsg.setVmUuid(msg.getVmUuid());
@@ -2013,6 +2026,8 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         hmsg.setSrcPath(msg.getSrcPath());
         hmsg.setDstPath(msg.getDstPath());
         hmsg.setAliveChainInstallPathInDb(msg.getAliveChainInstallPathInDb());
+        hmsg.setSrcChildrenInstallPathInDb(msg.getSrcChildrenInstallPathInDb());
+        hmsg.setSrcAncestorsInstallPathInDb(msg.getSrcAncestorsInstallPathInDb());
         bus.makeTargetServiceIdByResourceUuid(hmsg, HostConstant.SERVICE_ID, hostUuid);
         bus.send(hmsg, new CloudBusCallBack(completion) {
             @Override
@@ -2025,7 +2040,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
                 DeleteVolumeSnapshotSelfOnPrimaryStorageReply ret = new DeleteVolumeSnapshotSelfOnPrimaryStorageReply();
                 DeleteVolumeSnapshotSelfOnHypervisorReply treply = reply.castReply();
                 ret.setSize(treply.getSize());
-                ret.setNewVolumeInstallPath(treply.getNewVolumeInstallPath());
+                ret.setNewInstallPath(treply.getNewVolumeInstallPath());
                 completion.success(ret);
             }
         });

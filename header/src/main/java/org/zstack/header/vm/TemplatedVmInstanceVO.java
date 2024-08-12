@@ -15,6 +15,7 @@ import java.sql.Timestamp;
                 @EntityGraph.Neighbour(type = VmInstanceVO.class, myField = "uuid", targetField = "uuid")
         }
 )
+//public class TemplatedVmInstanceVO extends ResourceVO {
 public class TemplatedVmInstanceVO {
     @Id
     @Column

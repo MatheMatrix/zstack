@@ -2931,12 +2931,6 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
 
                     @Override
                     public void rollback(FlowRollback trigger, Map data) {
-                        if (msg instanceof CreateTemplateFromVolumeSnapshotOnPrimaryStorageMsg ||
-                                !PrimaryStorageGlobalConfig.UNDO_TEMP_SNAPSHOT.value(Boolean.class)) {
-                            trigger.rollback();
-                            return;
-                        }
-
                         VolumeSnapshotDeletionMsg dmsg = new VolumeSnapshotDeletionMsg();
                         dmsg.setTreeUuid(snapshot.getTreeUuid());
                         dmsg.setVolumeUuid(snapshot.getVolumeUuid());
@@ -2989,17 +2983,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                 });
 
                 flow(new NoRollbackFlow() {
-                    String __name__ = "undo-temp-snapshot-creation";
-
-                    @Override
-                    public boolean skip(Map data) {
-                        if (msg instanceof CreateTemplateFromVolumeSnapshotOnPrimaryStorageMsg ||
-                                !PrimaryStorageGlobalConfig.UNDO_TEMP_SNAPSHOT.value(Boolean.class)) {
-                            return true;
-                        }
-
-                        return false;
-                    }
+                    String __name__ = "delete-temp-snapshot";
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
@@ -3050,7 +3034,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
 
     private void handle(final DeleteVolumeSnapshotSelfOnPrimaryStorageMsg msg) {
         DeleteVolumeSnapshotSelfOnPrimaryStorageReply reply = new DeleteVolumeSnapshotSelfOnPrimaryStorageReply();
-        reply.setNewVolumeInstallPath(msg.getVolume().getInstallPath());
+        reply.setNewInstallPath(msg.getVolume().getInstallPath());
         reply.setSize(msg.getSnapshot().getSize());
         bus.reply(msg, reply);
     }

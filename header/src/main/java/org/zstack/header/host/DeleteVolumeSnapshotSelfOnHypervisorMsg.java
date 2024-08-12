@@ -11,7 +11,10 @@ public class DeleteVolumeSnapshotSelfOnHypervisorMsg extends NeedReplyMessage im
     private VolumeInventory volume;
     private String srcPath;
     private String dstPath;
+    private long requiredExtraSize;
     private List<String> aliveChainInstallPathInDb;
+    private List<String> srcChildrenInstallPathInDb;
+    private List<String> srcAncestorsInstallPathInDb;
 
     public VolumeInventory getVolume() {
         return volume;
@@ -54,11 +57,35 @@ public class DeleteVolumeSnapshotSelfOnHypervisorMsg extends NeedReplyMessage im
         this.dstPath = dstPath;
     }
 
+    public long getRequiredExtraSize() {
+        return requiredExtraSize;
+    }
+
+    public void setRequiredExtraSize(long requiredExtraSize) {
+        this.requiredExtraSize = requiredExtraSize;
+    }
+
     public List<String> getAliveChainInstallPathInDb() {
         return aliveChainInstallPathInDb;
     }
 
     public void setAliveChainInstallPathInDb(List<String> aliveChainInstallPathInDb) {
         this.aliveChainInstallPathInDb = aliveChainInstallPathInDb;
+    }
+
+    public List<String> getSrcChildrenInstallPathInDb() {
+        return srcChildrenInstallPathInDb;
+    }
+
+    public void setSrcChildrenInstallPathInDb(List<String> srcChildrenInstallPathInDb) {
+        this.srcChildrenInstallPathInDb = srcChildrenInstallPathInDb;
+    }
+
+    public List<String> getSrcAncestorsInstallPathInDb() {
+        return srcAncestorsInstallPathInDb;
+    }
+
+    public void setSrcAncestorsInstallPathInDb(List<String> srcAncestorsInstallPathInDb) {
+        this.srcAncestorsInstallPathInDb = srcAncestorsInstallPathInDb;
     }
 }

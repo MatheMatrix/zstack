@@ -175,6 +175,8 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
         hmsg.setSrcPath(msg.getSrcPath());
         hmsg.setDstPath(msg.getDstPath());
         hmsg.setAliveChainInstallPathInDb(msg.getAliveChainInstallPathInDb());
+        hmsg.setSrcChildrenInstallPathInDb(msg.getSrcChildrenInstallPathInDb());
+        hmsg.setSrcAncestorsInstallPathInDb(msg.getSrcAncestorsInstallPathInDb());
         bus.makeTargetServiceIdByResourceUuid(hmsg, HostConstant.SERVICE_ID, huuid);
         bus.send(hmsg, new CloudBusCallBack(msg) {
             @Override
@@ -188,7 +190,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
 
                 DeleteVolumeSnapshotSelfOnHypervisorReply treply = reply.castReply();
                 ret.setSize(treply.getSize());
-                ret.setNewVolumeInstallPath(treply.getNewVolumeInstallPath());
+                ret.setNewInstallPath(treply.getNewVolumeInstallPath());
                 bus.reply(msg, ret);
             }
         });

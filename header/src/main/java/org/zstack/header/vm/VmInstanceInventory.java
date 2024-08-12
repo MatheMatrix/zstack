@@ -282,6 +282,7 @@ public class VmInstanceInventory implements Serializable, Cloneable {
         this.setHostUuid(vo.getHostUuid());
         this.setLastHostUuid(vo.getLastHostUuid());
         this.setInstanceOfferingUuid(vo.getInstanceOfferingUuid());
+        // 如果当前虚拟机有TemplatedVmInstanceVO，那么就设置Type改为如果当前虚拟机有TemplatedVmInstanceVO
         this.setType(vo.getType());
         this.setHypervisorType(vo.getHypervisorType());
         this.setCreateDate(vo.getCreateDate());

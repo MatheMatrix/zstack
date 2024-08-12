@@ -3571,6 +3571,7 @@ public class KVMAgentCommands {
         private String top;
         private String base;
         private List<String> aliveChainInstallPathInDb;
+        private List<String> topChildrenInstallPathInDb;
 
         public String getVmUuid() {
             return vmUuid;
@@ -3618,6 +3619,14 @@ public class KVMAgentCommands {
 
         public void setAliveChainInstallPathInDb(List<String> aliveChainInstallPathInDb) {
             this.aliveChainInstallPathInDb = aliveChainInstallPathInDb;
+        }
+
+        public List<String> getTopChildrenInstallPathInDb() {
+            return topChildrenInstallPathInDb;
+        }
+
+        public void setTopChildrenInstallPathInDb(List<String> topChildrenInstallPathInDb) {
+            this.topChildrenInstallPathInDb = topChildrenInstallPathInDb;
         }
     }
 

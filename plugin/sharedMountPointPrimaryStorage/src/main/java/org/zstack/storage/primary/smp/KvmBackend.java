@@ -1802,9 +1802,6 @@ public class KvmBackend extends HypervisorBackend {
             hostUuid = connectedHostUuid;
         }
 
-
-        DeleteVolumeSnapshotSelfOnPrimaryStorageReply ret = new DeleteVolumeSnapshotSelfOnPrimaryStorageReply();
-
         DeleteVolumeSnapshotSelfOnHypervisorMsg hmsg = new DeleteVolumeSnapshotSelfOnHypervisorMsg();
         hmsg.setHostUuid(hostUuid);
         hmsg.setVmUuid(msg.getVmUuid());
@@ -1812,6 +1809,8 @@ public class KvmBackend extends HypervisorBackend {
         hmsg.setSrcPath(msg.getSrcPath());
         hmsg.setDstPath(msg.getDstPath());
         hmsg.setAliveChainInstallPathInDb(msg.getAliveChainInstallPathInDb());
+        hmsg.setSrcChildrenInstallPathInDb(msg.getSrcChildrenInstallPathInDb());
+        hmsg.setSrcAncestorsInstallPathInDb(msg.getSrcAncestorsInstallPathInDb());
         bus.makeTargetServiceIdByResourceUuid(hmsg, HostConstant.SERVICE_ID, hostUuid);
         bus.send(hmsg, new CloudBusCallBack(msg) {
             @Override
@@ -1824,7 +1823,7 @@ public class KvmBackend extends HypervisorBackend {
 
                 DeleteVolumeSnapshotSelfOnHypervisorReply treply =  reply.castReply();
                 ret.setSize(treply.getSize());
-                ret.setNewVolumeInstallPath(treply.getNewVolumeInstallPath());
+                ret.setNewInstallPath(treply.getNewVolumeInstallPath());
                 completion.success(ret);
             }
         });

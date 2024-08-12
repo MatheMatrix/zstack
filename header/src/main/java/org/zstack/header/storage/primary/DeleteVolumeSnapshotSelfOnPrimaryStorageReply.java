@@ -3,7 +3,7 @@ package org.zstack.header.storage.primary;
 import org.zstack.header.message.MessageReply;
 
 public class DeleteVolumeSnapshotSelfOnPrimaryStorageReply extends MessageReply {
-    private String newVolumeInstallPath;
+    private String newInstallPath;
     private long size;
 
     public long getSize() {
@@ -14,11 +14,11 @@ public class DeleteVolumeSnapshotSelfOnPrimaryStorageReply extends MessageReply 
         this.size = size;
     }
 
-    public String getNewVolumeInstallPath() {
-        return newVolumeInstallPath;
+    public String getNewInstallPath() {
+        return newInstallPath;
     }
 
-    public void setNewVolumeInstallPath(String newVolumeInstallPath) {
-        this.newVolumeInstallPath = newVolumeInstallPath;
+    public void setNewInstallPath(String newInstallPath) {
+        this.newInstallPath = newInstallPath;
     }
 }
