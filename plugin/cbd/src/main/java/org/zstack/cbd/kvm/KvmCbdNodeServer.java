@@ -67,8 +67,7 @@ public class KvmCbdNodeServer implements Component, KvmSetupSelfFencerExtensionP
 
     @Override
     public String kvmSetupSelfFencerStorageType() {
-//        return PrimaryStorageConstant.EXTERNAL_PRIMARY_STORAGE_CBD_PROTOCOL_TYPE;
-        return PrimaryStorageConstant.EXTERNAL_PRIMARY_STORAGE_TYPE;
+        return PrimaryStorageConstant.EXTERNAL_PRIMARY_STORAGE_CBD_PROTOCOL_TYPE;
     }
 
     @Override
