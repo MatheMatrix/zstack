@@ -2,12 +2,14 @@ package org.zstack.compute.vm.quota;
 
 import org.zstack.compute.vm.VmQuotaConstant;
 import org.zstack.compute.vm.VmQuotaGlobalConfig;
-import org.zstack.core.db.SQL;
 import org.zstack.header.identity.quota.QuotaDefinition;
 import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.vm.VmInstanceVO;
+import org.zstack.header.vm.VmInstanceVO_;
+import org.zstack.identity.ResourceHelper;
 
-import static org.zstack.utils.CollectionDSL.list;
+import javax.persistence.Tuple;
+import java.util.List;
 
 public class VmTotalNumQuotaDefinition implements QuotaDefinition {
     @Override
@@ -22,21 +24,24 @@ public class VmTotalNumQuotaDefinition implements QuotaDefinition {
 
     @Override
     public Long getQuotaUsage(String accountUuid) {
-        String sql = "select count(vm)" +
-                " from VmInstanceVO vm, AccountResourceRefVO ref" +
-                " where vm.uuid = ref.resourceUuid" +
-                " and ref.accountUuid = :auuid" +
-                " and ref.resourceType = :rtype" +
-                " and not (vm.hostUuid is null and vm.lastHostUuid is null and vm.rootVolumeUuid is null)" +
-                " and vm.state not in (:states)" +
-                " and vm.type != :vmtype";
-
-        Long used = SQL.New(sql, Long.class)
-                .param("auuid", accountUuid)
-                .param("rtype", VmInstanceVO.class.getSimpleName())
-                .param("states", list(VmInstanceState.Destroyed))
-                .param("vmtype", "baremetal2")
-                .find();
-        return used == null ? 0L : used;
+        final List<Tuple> tuples = ResourceHelper.findOwnResourceTuples(VmInstanceVO.class, accountUuid,
+                VmInstanceVO_.hostUuid,
+                VmInstanceVO_.lastHostUuid,
+                VmInstanceVO_.rootVolumeUuid,
+                VmInstanceVO_.state,
+                VmInstanceVO_.type);
+        tuples.removeIf(tuple -> {
+            if ("baremetal2".equals(tuple.get(4, String.class))) {
+                return true;
+            }
+            if (VmInstanceState.Destroyed.equals(tuple.get(3, VmInstanceState.class))) {
+                return true;
+            }
+            String hostUuid = tuple.get(2, String.class);
+            String lastHostUuid = tuple.get(1, String.class);
+            String rootVolumeUuid = tuple.get(0, String.class);
+            return (hostUuid == null && lastHostUuid == null && rootVolumeUuid == null);
+        });
+        return (long) tuples.size();
     }
 }

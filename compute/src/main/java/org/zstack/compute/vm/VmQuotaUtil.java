@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SimpleQuery;
+import org.zstack.header.identity.AccessLevel;
 import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmInstanceVO_;
@@ -14,9 +15,12 @@ import org.zstack.header.volume.VolumeStatus;
 import org.zstack.header.volume.VolumeType;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.volume.VolumeVO_;
+import org.zstack.identity.ResourceHelper;
 
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
+
+import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
 
@@ -37,36 +41,23 @@ public class VmQuotaUtil {
 
     @Transactional(readOnly = true)
     public long getUsedDataVolumeCount(String accountUuid) {
-        String sql = "select count(vol)" +
-                " from VolumeVO vol, AccountResourceRefVO ref " +
-                " where vol.type = :vtype" +
-                " and ref.resourceUuid = vol.uuid " +
-                " and ref.accountUuid = :auuid" +
-                " and ref.resourceType = :rtype" +
-                " and vol.status != :status ";
-        TypedQuery<Tuple> volq = dbf.getEntityManager().createQuery(sql, Tuple.class);
-        volq.setParameter("auuid", accountUuid);
-        volq.setParameter("rtype", VolumeVO.class.getSimpleName());
-        volq.setParameter("vtype", VolumeType.Data);
-        volq.setParameter("status", VolumeStatus.Deleted);
-        Long n = volq.getSingleResult().get(0, Long.class);
-        n = n == null ? 0 : n;
-        return n;
+        final List<Tuple> tuples = ResourceHelper.findOwnResourceTuples(VolumeVO.class, accountUuid,
+                VolumeVO_.type, VolumeVO_.status);
+        return tuples.stream()
+                .filter(t -> t.get(0, VolumeType.class) == VolumeType.Data)
+                .filter(t -> t.get(1, VolumeStatus.class) != VolumeStatus.Deleted)
+                .count();
     }
 
     @Transactional(readOnly = true)
     public long getUsedAllVolumeSize(String accountUuid) {
-        String sql = "select sum(vol.size)" +
-                " from VolumeVO vol, AccountResourceRefVO ref" +
-                " where ref.resourceUuid = vol.uuid" +
-                " and ref.accountUuid = :auuid" +
-                " and ref.resourceType = :rtype";
-        TypedQuery<Long> vq = dbf.getEntityManager().createQuery(sql, Long.class);
-        vq.setParameter("auuid", accountUuid);
-        vq.setParameter("rtype", VolumeVO.class.getSimpleName());
-        Long vsize = vq.getSingleResult();
-        vsize = vsize == null ? 0 : vsize;
-        return vsize;
+        final List<Tuple> tuples = ResourceHelper.findOwnResourceTuples(VolumeVO.class, accountUuid,
+                VolumeVO_.uuid, VolumeVO_.size);
+        long size = 0L;
+        for (Tuple tuple : tuples) {
+            size += tuple.get(1, Long.class);
+        }
+        return size;
     }
 
     @Transactional(readOnly = true)
@@ -78,6 +69,7 @@ public class VmQuotaUtil {
                 " where vm.uuid = ref.resourceUuid" +
                 " and ref.accountUuid = :auuid" +
                 " and ref.resourceType = :rtype" +
+                " and ref.type = :type" +
                 " and not (vm.state = :starting and vm.hostUuid is null)" +
                 " and vm.state not in (:states)" +
                 " and vm.type != :vmtype";
@@ -88,6 +80,7 @@ public class VmQuotaUtil {
         TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
         q.setParameter("auuid", accountUUid);
         q.setParameter("rtype", VmInstanceVO.class.getSimpleName());
+        q.setParameter("type", AccessLevel.Own);
         q.setParameter("starting", VmInstanceState.Starting);
         q.setParameter("states", list(VmInstanceState.Stopped, VmInstanceState.Destroying,
                 VmInstanceState.Destroyed, VmInstanceState.Created));
@@ -110,6 +103,7 @@ public class VmQuotaUtil {
                 " where vm.uuid = ref.resourceUuid" +
                 " and ref.accountUuid = :auuid" +
                 " and ref.resourceType = :rtype" +
+                " and ref.type = :type" +
                 // for vm without host and volume info, treat them as new creating vm
                 " and not (vm.hostUuid is null and vm.lastHostUuid is null and vm.rootVolumeUuid is null)" +
                 " and vm.state not in (:states)" +
@@ -117,6 +111,7 @@ public class VmQuotaUtil {
         TypedQuery<Long> q2 = dbf.getEntityManager().createQuery(sql2, Long.class);
         q2.setParameter("auuid", accountUUid);
         q2.setParameter("rtype", VmInstanceVO.class.getSimpleName());
+        q2.setParameter("type", AccessLevel.Own);
         q2.setParameter("states", list(VmInstanceState.Destroyed));
         q2.setParameter("vmtype", "baremetal2");
         Long totalVmNum = q2.getSingleResult();
