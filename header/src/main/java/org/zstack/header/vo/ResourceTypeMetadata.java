@@ -13,6 +13,7 @@ public class ResourceTypeMetadata {
     public static Map<Class, Class> concreteBaseTypeMapping = new HashMap<>();
     public static Set<Class> allResourceTypes = new HashSet<>();
     public static Set<Class> allBaseResourceTypes = new HashSet<>();
+    public static Map<String, Class<?>> nameResourceMap = new HashMap<>();
 
     @StaticInit
     static void staticInit() {
@@ -22,7 +23,10 @@ public class ResourceTypeMetadata {
                 return;
             }
 
-            BeanUtils.reflections.getSubTypesOf(bclz).forEach(cclz -> concreteBaseTypeMapping.put(cclz, bclz));
+            BeanUtils.reflections.getSubTypesOf(bclz).forEach(cclz -> {
+                concreteBaseTypeMapping.put(cclz, bclz);
+                nameResourceMap.put(cclz.getSimpleName(), cclz);
+            });
         });
 
         allResourceTypes.addAll(BeanUtils.reflections.getSubTypesOf(OwnedByAccount.class));
@@ -36,5 +40,9 @@ public class ResourceTypeMetadata {
     public static Class getBaseResourceTypeFromConcreteType(Class clz) {
         Class bclz = concreteBaseTypeMapping.get(clz);
         return bclz == null ? clz : bclz;
+    }
+
+    public static Class<?> resourceTypeForName(String resourceType) {
+        return nameResourceMap.get(resourceType);
     }
 }
