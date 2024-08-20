@@ -857,7 +857,7 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
                         if (snapshot == null && allocatedInstall != null) {
                             ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
                             rmsg.setPrimaryStorageUuid(vol.getPrimaryStorageUuid());
-                            rmsg.setDiskSize(snapshot.getSize());
+                            rmsg.setDiskSize(volumeSize);
                             rmsg.setAllocatedInstallUrl(allocatedInstall);
                             bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, vol.getPrimaryStorageUuid());
                             bus.send(rmsg);

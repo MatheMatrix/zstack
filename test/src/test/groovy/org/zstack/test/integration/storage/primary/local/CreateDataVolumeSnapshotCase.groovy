@@ -2,6 +2,8 @@ package org.zstack.test.integration.storage.primary.local
 
 import org.apache.http.HttpEntity
 import org.zstack.core.db.Q
+import org.zstack.header.storage.primary.PrimaryStorageCapacityVO
+import org.zstack.header.storage.primary.PrimaryStorageCapacityVO_
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO_
 import org.zstack.header.volume.VolumeVO
@@ -199,6 +201,28 @@ class CreateDataVolumeSnapshotCase extends SubCase {
                     .findValue() == "/snapshot/install/path1"
 
             assert Q.New(VolumeVO.class).eq(VolumeVO_.uuid, dataVolume2).select(VolumeVO_.installPath).findValue() == "/new/volume/install/path1"
+
+            env.cleanSimulatorAndMessageHandlers()
+            // test create snapshot rollback release cap
+            env.afterSimulator(KVMConstant.KVM_TAKE_VOLUME_SNAPSHOT_PATH) {
+                throw new Exception("on purpose")
+            }
+
+            long beforeCap = Q.New(PrimaryStorageCapacityVO.class).select(PrimaryStorageCapacityVO_.availableCapacity)
+                    .eq(PrimaryStorageCapacityVO_.uuid, dbFindByUuid(dataVolume2, VolumeVO.class).primaryStorageUuid)
+                    .findValue()
+            expectError {
+                createVolumeSnapshot {
+                    name = "data-volume-snapshot"
+                    volumeUuid = dataVolume2
+                }
+            }
+
+            assert Q.New(PrimaryStorageCapacityVO.class).select(PrimaryStorageCapacityVO_.availableCapacity)
+                    .eq(PrimaryStorageCapacityVO_.uuid, dbFindByUuid(dataVolume2, VolumeVO.class).primaryStorageUuid)
+                    .findValue() == beforeCap
+
+            env.cleanSimulatorAndMessageHandlers()
         }
     }
 
