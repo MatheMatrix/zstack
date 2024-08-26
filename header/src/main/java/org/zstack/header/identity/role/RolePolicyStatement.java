@@ -121,7 +121,7 @@ public class RolePolicyStatement {
                 .collect(Collectors.toList());
     }
 
-    private static String parseAction(String statement) {
+    public static String parseAction(String statement) {
         statement = statement.trim();
 
         if (statement.startsWith("org.zstack.")) {

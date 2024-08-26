@@ -1,8 +1,8 @@
 package org.zstack.test.integration.network.vxlanNetwork
 
 import org.zstack.header.identity.AccountConstant
-import org.zstack.identity.AccountManagerImpl
 import org.zstack.sdk.*
+import org.zstack.sdk.identity.role.RoleInventory
 import org.zstack.test.integration.network.NetworkTest
 import org.zstack.testlib.EnvSpec
 import org.zstack.testlib.SubCase
@@ -14,7 +14,6 @@ import org.zstack.utils.data.SizeUnit
 class VxlanQuotaCase extends SubCase{
     EnvSpec env
     AccountInventory accountInventory
-    AccountManagerImpl acntMgr
 
     @Override
     void setup() {
@@ -103,13 +102,24 @@ class VxlanQuotaCase extends SubCase{
     @Override
     void test() {
         env.create {
-            acntMgr = bean(AccountManagerImpl.class)
-            accountInventory = createAccount {
-                name = "test"
-                password = "password"
-            } as AccountInventory
-
+            prepare()
             testVxlanQuota()
+        }
+    }
+
+    void prepare() {
+        accountInventory = createAccount {
+            name = "test"
+            password = "password"
+        } as AccountInventory
+
+        def roles = queryRole {
+            delegate.conditions = ["name=predefined: networks"]
+        } as List<RoleInventory>
+        assert roles.size() == 1
+        attachRoleToAccount {
+            delegate.roleUuid = roles[0].uuid
+            delegate.accountUuid = accountInventory.uuid
         }
     }
 
