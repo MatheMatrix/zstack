@@ -4,6 +4,7 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.NestedExceptionUtils;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.TransactionSystemException;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -539,7 +540,34 @@ public class DatabaseFacadeImpl implements DatabaseFacade, Component {
     @Override
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     public <T> T findByUuid(String uuid, Class<T> entityClass) {
+        logger.debug("retry findByUuid");
         return this.getEntityManager().find(entityClass, uuid);
+    }
+
+    @Override
+    public <T> T testFindByUuid(String uuid, Class<T> entityClass) throws Exception {
+        return this.findByUuid(uuid, entityClass);
+    }
+
+    @Override
+    public <T> T testFindByUuid2(String uuid, Class<T> entityClass) {
+        throw new TransactionSystemException("on purpose");
+    }
+
+    @Override
+    public <T> T testFindByUuid3(String uuid, Class<T> entityClass) {
+        throw new RuntimeException("on purpose");
+    }
+
+    @Override
+    public <T> T testFindByUuid4(String uuid, Class<T> entityClass) {
+        return this.findByUuid(uuid, entityClass);
+    }
+
+    @Override
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    public <T> T testFindByUuid5(String uuid, Class<T> entityClass) {
+        throw new TransactionSystemException("");
     }
 
     @Override
