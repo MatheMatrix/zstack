@@ -52,6 +52,14 @@ public class NvmeTargetInventory  {
         return this.nvmeLuns;
     }
 
+    public java.lang.String transport;
+    public void setTransport(java.lang.String transport) {
+        this.transport = transport;
+    }
+    public java.lang.String getTransport() {
+        return this.transport;
+    }
+
     public java.sql.Timestamp createDate;
     public void setCreateDate(java.sql.Timestamp createDate) {
         this.createDate = createDate;
