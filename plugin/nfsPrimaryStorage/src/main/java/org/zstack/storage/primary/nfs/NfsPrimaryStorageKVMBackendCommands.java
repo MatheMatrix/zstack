@@ -570,6 +570,7 @@ public class NfsPrimaryStorageKVMBackendCommands {
     public static class ReInitImageRsp extends NfsPrimaryStorageAgentResponse {
         @Validation
         private String newVolumeInstallPath;
+        private long newVolumeSize;
 
         public String getNewVolumeInstallPath() {
             return newVolumeInstallPath;
@@ -577,6 +578,14 @@ public class NfsPrimaryStorageKVMBackendCommands {
 
         public void setNewVolumeInstallPath(String newVolumeInstallPath) {
             this.newVolumeInstallPath = newVolumeInstallPath;
+        }
+
+        public long getNewVolumeSize() {
+            return newVolumeSize;
+        }
+
+        public void setNewVolumeSize(long newVolumeSize) {
+            this.newVolumeSize = newVolumeSize;
         }
     }
 

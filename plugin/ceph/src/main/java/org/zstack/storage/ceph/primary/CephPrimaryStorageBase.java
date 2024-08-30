@@ -5180,6 +5180,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
 
                             @Override
                             public void success(CloneRsp ret) {
+                                reply.setNewVolumeSize(ret.size);
                                 trigger.next();
                             }
                         });

@@ -20,9 +20,10 @@ import org.zstack.core.step.StepRun;
 import org.zstack.core.step.StepRunCondition;
 import org.zstack.core.timeout.ApiTimeoutManager;
 import org.zstack.core.trash.StorageTrash;
-import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.header.core.*;
-import org.zstack.header.core.workflow.*;
+import org.zstack.header.core.workflow.Flow;
+import org.zstack.header.core.workflow.FlowTrigger;
+import org.zstack.header.core.workflow.NoRollbackFlow;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
@@ -62,8 +63,8 @@ import java.io.File;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static java.lang.Integer.min;
@@ -1325,7 +1326,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
 
 
     @Override
-    public void resetRootVolumeFromImage(final VolumeInventory vol, final HostInventory host, final ReturnValueCompletion<String> completion) {
+    public void resetRootVolumeFromImage(final VolumeInventory vol, final HostInventory host, final ReturnValueCompletion<ReInitRootVolumeFromTemplateOnPrimaryStorageReply> completion) {
         ReInitImageCmd cmd = new ReInitImageCmd();
         PrimaryStorageInventory psInv = PrimaryStorageInventory.valueOf(dbf.findByUuid(vol.getPrimaryStorageUuid(), PrimaryStorageVO.class));
         cmd.setImagePath(NfsPrimaryStorageKvmHelper.makeCachedImageInstallUrlFromImageUuidForTemplate(psInv, vol.getRootImageUuid()));
@@ -1351,8 +1352,10 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
                                     vol.getUuid(), vol.getRootImageUuid(), host.getUuid(), host.getManagementIp(), rsp.getError()));
                     return;
                 }
-
-                completion.success(rsp.getNewVolumeInstallPath());
+                ReInitRootVolumeFromTemplateOnPrimaryStorageReply r = new ReInitRootVolumeFromTemplateOnPrimaryStorageReply();
+                r.setNewVolumeInstallPath(rsp.getNewVolumeInstallPath());
+                r.setNewVolumeSize(rsp.getNewVolumeSize());
+                completion.success(r);
             }
         });
     }
