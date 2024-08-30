@@ -42,7 +42,6 @@ import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmInstanceVO_;
 import org.zstack.header.volume.*;
-import org.zstack.identity.AccountManager;
 import org.zstack.kvm.*;
 import org.zstack.storage.primary.*;
 import org.zstack.storage.volume.VolumeErrors;
@@ -57,7 +56,6 @@ import org.zstack.utils.path.PathUtil;
 import javax.persistence.Tuple;
 import java.io.File;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.operr;
@@ -250,6 +248,7 @@ public class KvmBackend extends HypervisorBackend {
     public static class ReInitImageRsp extends AgentRsp {
         @Validation
         public String newVolumeInstallPath;
+        public long newVolumeSize;
     }
 
     public static class RevertVolumeFromSnapshotRsp extends AgentRsp {
@@ -1408,6 +1407,7 @@ public class KvmBackend extends HypervisorBackend {
                 ReInitImageRsp rsp = (ReInitImageRsp) returnValue;
                 ReInitRootVolumeFromTemplateOnPrimaryStorageReply reply = new ReInitRootVolumeFromTemplateOnPrimaryStorageReply();
                 reply.setNewVolumeInstallPath(rsp.newVolumeInstallPath);
+                reply.setNewVolumeSize(rsp.newVolumeSize);
                 completion.success(reply);
             }
 

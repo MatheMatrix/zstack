@@ -519,6 +519,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
     public static class ReinitImageRsp extends AgentResponse {
         @Validation
         private String newVolumeInstallPath;
+        private long newVolumeInstallSize;
 
         public String getNewVolumeInstallPath() {
             return newVolumeInstallPath;
@@ -526,6 +527,14 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
 
         public void setNewVolumeInstallPath(String newVolumeInstallPath) {
             this.newVolumeInstallPath = newVolumeInstallPath;
+        }
+
+        public long getNewVolumeInstallSize() {
+            return newVolumeInstallSize;
+        }
+
+        public void setNewVolumeInstallSize(long newVolumeInstallSize) {
+            this.newVolumeInstallSize = newVolumeInstallSize;
         }
     }
 
@@ -2098,6 +2107,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
                     @Override
                     public void success(ReinitImageRsp rsp) {
                         reply.setNewVolumeInstallPath(rsp.getNewVolumeInstallPath());
+                        reply.setNewVolumeSize(rsp.getNewVolumeInstallSize());
                         trigger.next();
                     }
 

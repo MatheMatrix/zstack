@@ -7,9 +7,9 @@ import org.zstack.header.host.HypervisorType;
 import org.zstack.header.image.ImageInventory;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
-import org.zstack.header.volume.VolumeInfo;
 import org.zstack.header.volume.BatchSyncVolumeSizeOnPrimaryStorageMsg;
 import org.zstack.header.volume.BatchSyncVolumeSizeOnPrimaryStorageReply;
+import org.zstack.header.volume.VolumeInfo;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageMsg;
 import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageReply;
@@ -73,7 +73,7 @@ public interface NfsPrimaryStorageBackend {
 
     void revertVolumeFromSnapshot(VolumeSnapshotInventory sinv, VolumeInventory vol, HostInventory host, ReturnValueCompletion<RevertVolumeFromSnapshotOnPrimaryStorageReply> completion);
 
-    void resetRootVolumeFromImage(VolumeInventory vol, HostInventory host, ReturnValueCompletion<String> completion);
+    void resetRootVolumeFromImage(VolumeInventory vol, HostInventory host, ReturnValueCompletion<ReInitRootVolumeFromTemplateOnPrimaryStorageReply> completion);
 
     void createVolumeFromImageCache(PrimaryStorageInventory primaryStorage, ImageInventory image, ImageCacheInventory imageCache, VolumeInventory volume, ReturnValueCompletion<VolumeInfo> completion);
 
@@ -123,6 +123,11 @@ public interface NfsPrimaryStorageBackend {
             this.installPath = installPath;
             this.size = size;
             this.actualSize = actualSize;
+        }
+
+        BitsInfo(String installPath, long size) {
+            this.installPath = installPath;
+            this.size = size;
         }
     }
 }

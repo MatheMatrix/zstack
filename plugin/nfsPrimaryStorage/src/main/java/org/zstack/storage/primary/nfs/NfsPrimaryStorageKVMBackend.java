@@ -1322,7 +1322,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
 
 
     @Override
-    public void resetRootVolumeFromImage(final VolumeInventory vol, final HostInventory host, final ReturnValueCompletion<String> completion) {
+    public void resetRootVolumeFromImage(final VolumeInventory vol, final HostInventory host, final ReturnValueCompletion<ReInitRootVolumeFromTemplateOnPrimaryStorageReply> completion) {
         ReInitImageCmd cmd = new ReInitImageCmd();
         PrimaryStorageInventory psInv = PrimaryStorageInventory.valueOf(dbf.findByUuid(vol.getPrimaryStorageUuid(), PrimaryStorageVO.class));
         cmd.setImagePath(NfsPrimaryStorageKvmHelper.makeCachedImageInstallUrlFromImageUuidForTemplate(psInv, vol.getRootImageUuid()));
@@ -1348,8 +1348,10 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
                                     vol.getUuid(), vol.getRootImageUuid(), host.getUuid(), host.getManagementIp(), rsp.getError()));
                     return;
                 }
-
-                completion.success(rsp.getNewVolumeInstallPath());
+                ReInitRootVolumeFromTemplateOnPrimaryStorageReply r = new ReInitRootVolumeFromTemplateOnPrimaryStorageReply();
+                r.setNewVolumeInstallPath(rsp.getNewVolumeInstallPath());
+                r.setNewVolumeSize(rsp.getNewVolumeSize());
+                completion.success(r);
             }
         });
     }
