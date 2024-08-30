@@ -5402,7 +5402,14 @@ public class KVMHost extends HostBase implements Host {
                         }
                         if (KVMGlobalConfig.INSTALL_HOST_SHUTDOWN_HOOK.value(Boolean.class)) {
                             deployArguments.setIsInstallHostShutdownHook("true");
-                            runner.setForceRun(true);
+
+                            SshFileExistChecker hostShutdownHookChecker = new SshFileExistChecker();
+                            hostShutdownHookChecker.setUsername(getSelf().getUsername());
+                            hostShutdownHookChecker.setPassword(getSelf().getPassword());
+                            hostShutdownHookChecker.setSshPort(getSelf().getPort());
+                            hostShutdownHookChecker.setTargetIp(getSelf().getManagementIp());
+                            hostShutdownHookChecker.setFilePath(KVMConstant.INSTALL_HOST_SHUTDOWN_HOOK_PATH);
+                            runner.installChecker(hostShutdownHookChecker);
                         }
 
                         String enableKsm = rcf.getResourceConfigValue(KVMGlobalConfig.HOST_KSM, self.getUuid(), String.class);
