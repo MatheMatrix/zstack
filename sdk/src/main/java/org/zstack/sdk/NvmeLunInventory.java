@@ -20,4 +20,12 @@ public class NvmeLunInventory extends org.zstack.sdk.LunInventory {
         return this.nvmeLunHostRefs;
     }
 
+    public java.lang.String transport;
+    public void setTransport(java.lang.String transport) {
+        this.transport = transport;
+    }
+    public java.lang.String getTransport() {
+        return this.transport;
+    }
+
 }
