@@ -1,5 +1,7 @@
 package org.zstack.compute.allocator;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
@@ -27,6 +29,7 @@ import org.zstack.utils.Utils;
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
     private static final CLogger logger = Utils.getLogger(AttachedL2NetworkAllocatorFlow.class);
+    private static final Logger log = LoggerFactory.getLogger(AttachedL2NetworkAllocatorFlow.class);
 
     @Autowired
     private DatabaseFacade dbf;
@@ -115,46 +118,46 @@ public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
     @Override
     public void allocate() {
         if (spec.getL3NetworkUuids().isEmpty()) {
-            if (spec.isAllowNoL3Networks()) {
-                skip();
-                return;
-            } else {
-                spec.setAllowNoL3Networks(true);
+            String sql;
+            Set<String> clusterUuids = new HashSet<>();
+            clusterUuids.add(spec.getVmInstance().getClusterUuid());
+            List<String> hostUuids = null;
+            if (!amITheFirstFlow()) {
+                hostUuids = candidates.stream().map(HostVO::getUuid).collect(Collectors.toList());
+            }
 
-                String sql;
-                Set<String> clusterUuids = new HashSet<>();
-                clusterUuids.add(spec.getVmInstance().getClusterUuid());
-                List<String> hostUuids = null;
-                if (!amITheFirstFlow()) {
-                    hostUuids = candidates.stream().map(HostVO::getUuid).collect(Collectors.toList());
+            if (hostUuids == null || hostUuids.isEmpty()) {
+                TypedQuery<HostVO> hq;
+                if (clusterUuids.isEmpty()) {
+                    sql = "select h from HostVO h";
+                    hq = dbf.getEntityManager().createQuery(sql, HostVO.class);
+                } else {
+                    sql = "select h from HostVO h where h.clusterUuid in (:cuuids)";
+                    hq = dbf.getEntityManager().createQuery(sql, HostVO.class);
+                    hq.setParameter("cuuids", clusterUuids);
                 }
 
-                if (hostUuids == null || hostUuids.isEmpty()) {
-                    sql = "select h from HostVO h where h.clusterUuid in (:cuuids)";
-                    TypedQuery<HostVO> hq = dbf.getEntityManager().createQuery(sql, HostVO.class);
-                    hq.setParameter("cuuids", clusterUuids);
-                    if (usePagination()) {
-                        hq.setFirstResult(paginationInfo.getOffset());
-                        hq.setMaxResults(paginationInfo.getLimit());
-                    }
-                    candidates = hq.getResultList();
-                } else {
-                    sql = "select h from HostVO h where h.clusterUuid in (:cuuids) and h.uuid in (:huuids)";
-                    TypedQuery<HostVO> hq = dbf.getEntityManager().createQuery(sql, HostVO.class);
-                    hq.setParameter("cuuids", clusterUuids);
-                    hq.setParameter("huuids", hostUuids);
+                if (usePagination()) {
+                    hq.setFirstResult(paginationInfo.getOffset());
+                    hq.setMaxResults(paginationInfo.getLimit());
+                }
+                candidates = hq.getResultList();
+            } else {
+                sql = "select h from HostVO h where h.clusterUuid in (:cuuids) and h.uuid in (:huuids)";
+                TypedQuery<HostVO> hq = dbf.getEntityManager().createQuery(sql, HostVO.class);
+                hq.setParameter("cuuids", clusterUuids);
+                hq.setParameter("huuids", hostUuids);
 
-                    if (usePagination()) {
-                        hq.setFirstResult(paginationInfo.getOffset());
-                        hq.setMaxResults(paginationInfo.getLimit());
-                    }
-                    candidates = hq.getResultList();
-               }
-
-                next(candidates);
-                logger.debug(String.format("vm clusteruuid:%s, candidates size:%s", spec.getVmInstance().getClusterUuid(), candidates.size()));
-                return;
+                if (usePagination()) {
+                    hq.setFirstResult(paginationInfo.getOffset());
+                    hq.setMaxResults(paginationInfo.getLimit());
+                }
+                candidates = hq.getResultList();
             }
+
+            next(candidates);
+            logger.debug(String.format("vm clusteruuid:%s, candidates size:%s", spec.getVmInstance().getClusterUuid(), candidates.size()));
+            return;
         }
 
         List<String> l3Uuids = spec.getL3NetworkUuids();
