@@ -551,8 +551,7 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
                 SshResult ret = ssh.command(command).run();
                 ssh.reset();
                 if (ret.getReturnCode() != 0) {
-                    event.setError(operr("failed to execute the command[%s], because [stderr:%s, stdout:%s]",
-                            command, ret.getStderr(), ret.getStdout()));
+                    event.setError(operr("failed to execute the command[%s], because : %s", command, ret.getExitErrorMessage()));
                     event.setSuccess(false);
                     break;
                 }
