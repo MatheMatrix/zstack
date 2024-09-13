@@ -92,6 +92,15 @@ public class RBACInfo implements RBACDescription {
                 )
                 .toOtherRole()
                 .build();
+
+        roleContributorBuilder()
+                .actions(
+                        APICreateVmInstanceMsg.class,
+                        APICreateDataVolumeMsg.class,
+                        APICreateDataVolumeFromVolumeTemplateMsg.class
+                )
+                .roleName("legacy")
+                .build();
     }
 
     @Override
