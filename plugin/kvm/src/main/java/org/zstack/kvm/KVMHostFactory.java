@@ -592,6 +592,48 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
                             "modify virtioSCSI requires the vm state[%s]", vm.getState(), VmInstanceState.Stopped));
                 }
 
+                String rootVolumeUuid = null;
+
+                if (vm != null){
+                    rootVolumeUuid = vm.getVolume(volumeVO -> volumeVO.getType().name().equals(VolumeType.Root.name())).getUuid();
+                } 
+                if (vm != null && !rootVolumeUuid.equals(resourceUuid) && !KVMSystemTags.VOLUME_VIRTIO_SCSI.hasTag(rootVolumeUuid)) {
+                    boolean hasScsiTag = !vm.getAllVolumes(volume -> KVMSystemTags.VOLUME_SCSI.hasTag(volume.getUuid())).isEmpty();
+
+                    if (hasScsiTag) {
+                        throw new OperationFailureException(argerr("The root volume and data volumes must share the same " +
+                                "bus type, either VirtIO-SCSI or SCSI."));
+                    }
+                }
+            }
+        });
+
+        KVMSystemTags.VOLUME_SCSI.installValidator(new SystemTagValidator() {
+            @Override
+            public void validateSystemTag(String resourceUuid, Class resourceType, String systemTag) {
+                VmInstanceVO vm = SQL.New("select vm from VmInstanceVO vm, VolumeVO volume " +
+                                "where vm.uuid = volume.vmInstanceUuid and volume.uuid = :uuid", VmInstanceVO.class)
+                        .param("uuid", resourceUuid)
+                        .find();
+
+                if (vm != null && (vm.getState() == VmInstanceState.Running || vm.getState() == VmInstanceState.Unknown)) {
+                    throw new OperationFailureException(argerr("vm current state[%s], " +
+                            "modify SCSI requires the vm state[%s]", vm.getState(), VmInstanceState.Stopped));
+                }
+
+                String rootVolumeUuid = null;
+
+                if (vm != null){
+                    rootVolumeUuid = vm.getVolume(volumeVO -> volumeVO.getType().name().equals(VolumeType.Root.name())).getUuid();
+                }
+                if (vm != null && !rootVolumeUuid.equals(resourceUuid) && !KVMSystemTags.VOLUME_SCSI.hasTag(rootVolumeUuid)) {
+                    boolean hasScsiTag = !vm.getAllVolumes(volume -> KVMSystemTags.VOLUME_VIRTIO_SCSI.hasTag(volume.getUuid())).isEmpty();
+
+                    if (hasScsiTag) {
+                        throw new OperationFailureException(argerr("The root volume and data volumes must share the same " +
+                                "bus type, either VirtIO-SCSI or SCSI."));
+                    }
+                }
             }
         });
 

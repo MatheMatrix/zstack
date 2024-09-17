@@ -46,6 +46,8 @@ import org.zstack.header.storage.snapshot.VolumeSnapshotTreeVO_;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
 import org.zstack.header.storage.snapshot.group.MemorySnapshotValidatorExtensionPoint;
+import org.zstack.header.tag.SystemTagVO;
+import org.zstack.header.tag.SystemTagVO_;
 import org.zstack.header.vm.APICreateVmInstanceMsg;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.header.vm.VmInstanceState;
@@ -78,6 +80,7 @@ import org.zstack.header.volume.VolumeStatus;
 import org.zstack.header.volume.VolumeType;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.volume.VolumeVO_;
+import org.zstack.tag.SystemTag;
 
 import javax.persistence.Tuple;
 import java.util.ArrayList;
@@ -372,6 +375,27 @@ public class VolumeApiInterceptor implements ApiMessageInterceptor, Component, G
                 error = checkHostAccessible(volumeVO, hostUuid);
                 if (error != null) {
                     throw new ApiMessageInterceptionException(error);
+                }
+
+                List<String> volumeUuids = q(VolumeVO.class).eq(VolumeVO_.vmInstanceUuid,msg.getVmUuid()).select(VolumeVO_.uuid).listValues();
+                volumeUuids.add(msg.getVolumeUuid());
+
+                List<SystemTagVO> systemTags = q(SystemTagVO.class)
+                        .eq(SystemTagVO_.resourceType, VolumeVO.class.getSimpleName())
+                        .in(SystemTagVO_.resourceUuid, volumeUuids)
+                        .list();
+
+                long scsiVolumeCount = systemTags.stream()
+                        .filter(tag -> "capability::scsi".equals(tag.getTag()))
+                        .count();
+
+                long virtioScsiVolumeCount = systemTags.stream()
+                        .filter(tag -> "capability::virtio-scsi".equals(tag.getTag()))
+                        .count();
+
+                if (scsiVolumeCount > 0 && virtioScsiVolumeCount > 0) {
+                    throw new ApiMessageInterceptionException(argerr("The root volume and data volumes must share the same " +
+                            "bus type, either VirtIO-SCSI or SCSI."));
                 }
             }
         }.execute();
