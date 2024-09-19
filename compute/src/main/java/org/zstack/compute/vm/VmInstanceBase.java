@@ -3935,6 +3935,8 @@ public class VmInstanceBase extends AbstractVmInstance {
     }
 
     private void handle(APISetVmBootModeMsg msg) {
+        final boolean[] bootModeChanged = {false};
+
         FlowChain chain = new SimpleFlowChain();
         chain.then(new Flow() {
             String __name__ = "set-vm-boot-mode";
@@ -3943,14 +3945,29 @@ public class VmInstanceBase extends AbstractVmInstance {
 
             @Override
             public void run(FlowTrigger trigger, Map data) {
-                SystemTagCreator creator = VmSystemTags.BOOT_MODE.newSystemTagCreator(self.getUuid());
-                creator.setTagByTokens(map(
-                        e(VmSystemTags.BOOT_MODE_TOKEN, msg.getBootMode())
-                ));
-                creator.recreate = true;
-                creator.create();
+                String bootMode = VmSystemTags.BOOT_MODE
+                        .getTokenByResourceUuid(self.getUuid(),
+                                VmSystemTags.BOOT_MODE_TOKEN);
 
-                originLevel = msg.getBootMode();
+                originLevel = bootMode;
+
+                if (bootMode != null && bootMode.equals(msg.getBootMode())) {
+                    trigger.next();
+                    return;
+                }
+
+                if (msg.getBootMode() == null) {
+                    VmSystemTags.BOOT_MODE.delete(self.getUuid());
+                } else {
+                    SystemTagCreator creator = VmSystemTags.BOOT_MODE.newSystemTagCreator(self.getUuid());
+                    creator.tag = VmSystemTags.BOOT_MODE.instantiateTag(map(
+                            e(VmSystemTags.BOOT_MODE_TOKEN, msg.getBootMode())
+                    ));
+                    creator.recreate = true;
+                    creator.create();
+                }
+
+                bootModeChanged[0] = true;
                 trigger.next();
             }
 
@@ -3987,6 +4004,10 @@ public class VmInstanceBase extends AbstractVmInstance {
             public void handle(Map data) {
                 APISetVmBootModeEvent evt = new APISetVmBootModeEvent(msg.getId());
                 bus.publish(evt);
+
+                if (bootModeChanged[0]) {
+                    vidm.deleteAllDeviceAddressesByVm(self.getUuid());
+                }
             }
         }).start();
     }
@@ -6338,6 +6359,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             @Deferred
             public void run(final SyncTaskChain chain) {
+                self = dbf.reload(self);
                 class SetStaticIp {
                     private boolean isSet = false;
                     Map<String, List<String>> staticIpMap = null;
@@ -7537,6 +7559,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                     smsg.setVmInstanceUuid(self.getUuid());
                     smsg.setGcOnFailure(true);
                     smsg.setType(StopVmType.cold.toString());
+                    smsg.setStopHA(true);
                     stopVm(smsg, new Completion(trigger) {
                         @Override
                         public void success() {
@@ -8122,34 +8145,15 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void handle(final ErrorCode errCode, Map data) {
                 VmInstanceInventory inv = VmInstanceInventory.valueOf(self);
-                extEmitter.failedToStopVm(inv, errCode);
                 if (HostErrors.FAILED_TO_STOP_VM_ON_HYPERVISOR.isEqual(errCode.getCode())) {
                     checkState(originalCopy.getHostUuid(), new NoErrorCompletion(completion) {
                         @Override
                         public void done() {
                             self = dbf.reload(self);
-                            if (self.getState() == VmInstanceState.Running) {
-                                for (DeleteInhibitHASystemTagExtensionPoint ext : pluginRgty.getExtensionList(DeleteInhibitHASystemTagExtensionPoint.class)) {
-                                    ext.deleteInhibitHaSystemTag(self.getUuid());
-                                }
-                            }
-
                             completion.fail(errCode);
                             extEmitter.failedToStopVm(inv, errCode);
                         }
                     });
-                } else if (HostErrors.OPERATION_FAILURE_GC_ELIGIBLE.isEqual(errCode.getCode()) && !spec.isGcOnStopFailure()) {
-                    self.setState(originState);
-                    self = dbf.updateAndRefresh(self);
-
-                    if (self.getState() == VmInstanceState.Running) {
-                        for (DeleteInhibitHASystemTagExtensionPoint ext : pluginRgty.getExtensionList(DeleteInhibitHASystemTagExtensionPoint.class)) {
-                            ext.deleteInhibitHaSystemTag(self.getUuid());
-                        }
-                    }
-
-                    completion.fail(errCode);
-                    extEmitter.failedToStopVm(inv, errCode);
                 } else {
                     self.setState(HostErrors.HOST_IS_DISCONNECTED.isEqual(errCode.getCode()) ? VmInstanceState.Unknown : originState);
                     self = dbf.updateAndRefresh(self);

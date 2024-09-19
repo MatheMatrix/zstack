@@ -325,21 +325,6 @@
                 </dependency>
                 <dependency>
                     <groupId>org.zstack</groupId>
-                    <artifactId>zstack-iam2</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>sanyuan</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>zstack-ticket</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
                     <artifactId>aliyun-storage</artifactId>
                     <version>${project.version}</version>
                 </dependency>
@@ -405,11 +390,6 @@
                 </dependency>
                 <dependency>
                     <groupId>org.zstack</groupId>
-                    <artifactId>iam2-ldap-plugin</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
                     <artifactId>storage-ha-plugin</artifactId>
                     <version>${project.version}</version>
                 </dependency>
@@ -471,16 +451,6 @@
                 </dependency>
                 <dependency>
                     <groupId>org.zstack</groupId>
-                    <artifactId>iam2-script-plugin</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>iam2project-securitygroup-plugin</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
                     <artifactId>zbox</artifactId>
                     <version>${project.version}</version>
                 </dependency>
@@ -517,11 +487,6 @@
                 <dependency>
                     <groupId>org.zstack</groupId>
                     <artifactId>network-plugin</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>cas-plugin</artifactId>
                     <version>${project.version}</version>
                 </dependency>
                 <dependency>

@@ -45,7 +45,6 @@ public class BeanConstructor {
             "<import resource=\"springConfigXml/rest.xml\" />",
             "<import resource=\"springConfigXml/cas.xml\" />"
 
-
     ).toString();
 
     public BeanConstructor() {

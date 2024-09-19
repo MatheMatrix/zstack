@@ -1,6 +1,7 @@
 package org.zstack.header.identity;
 
 import org.springframework.http.HttpMethod;
+import org.zstack.header.core.encrypt.EncryptionParamAllowed;
 import org.zstack.header.log.NoLogging;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -15,6 +16,7 @@ import java.io.Serializable;
         isAction = true,
         responseClass = APIUpdateAccountEvent.class
 )
+@EncryptionParamAllowed(forbiddenFields = {"uuid"})
 public class APIUpdateAccountMsg extends APIMessage implements AccountMessage, Serializable {
     @APIParam(resourceType = AccountVO.class, checkAccount = true, operationTarget = true)
     private String uuid;
@@ -28,6 +30,8 @@ public class APIUpdateAccountMsg extends APIMessage implements AccountMessage, S
     @APIParam(maxLength = 255, required = false)
     @NoLogging
     private String oldPassword;
+    @APIParam(validEnums = {AccountState.class}, required = false)
+    private String state;
 
     public String getPassword() {
         return password;
@@ -72,6 +76,14 @@ public class APIUpdateAccountMsg extends APIMessage implements AccountMessage, S
 
     public void setOldPassword(String oldPassword) {
         this.oldPassword = oldPassword;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
     }
 
     public static APIUpdateAccountMsg __example__() {
