@@ -4403,6 +4403,13 @@ public class KVMAgentCommands {
         public String pcideviceAddress;
     }
 
+    public static class HostStorageDeviceHbaStateEventCmd {
+        public String host;
+        public String portName;
+        public String portState;
+        public String name;
+    }
+
     public static class HostPhysicalDeviceStatusAlarmEventCmd {
         private String host;
         private String type;
