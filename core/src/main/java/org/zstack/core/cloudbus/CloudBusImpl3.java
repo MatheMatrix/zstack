@@ -523,7 +523,8 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
             serviceId = msg instanceof Event ? EVENT_ID : msg.getServiceId();
             String[] ids = serviceId.split(SERVICE_ID_SPLITTER, 2);
             managementNodeId = ids.length == 1 ? Platform.getManagementServerId() : ids[0];
-            localSend = !CloudBusGlobalProperty.HTTP_ALWAYS && managementNodeId.equals(Platform.getManagementServerId());
+            localSend = !CloudBusGlobalProperty.HTTP_ALWAYS && (managementNodeId.equals(Platform.getManagementServerId())
+                || CoreGlobalProperty.UNIT_TEST_ON);
         }
 
         void send() {
