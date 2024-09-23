@@ -165,6 +165,8 @@ public class SourceClassMap {
 			put("org.zstack.header.bootstrap.MiniCandidateHostStruct", "org.zstack.sdk.MiniCandidateHostStruct");
 			put("org.zstack.header.bootstrap.MiniHostInfo", "org.zstack.sdk.MiniHostInfo");
 			put("org.zstack.header.bootstrap.MiniNetworkConfigStruct", "org.zstack.sdk.MiniNetworkConfigStruct");
+			put("org.zstack.header.cbt.CbtTaskInventory", "org.zstack.sdk.CbtTaskInventory");
+			put("org.zstack.header.cbt.CbtTaskStatus", "org.zstack.sdk.CbtTaskStatus");
 			put("org.zstack.header.cloudformation.CloudFormationStackEventInventory", "org.zstack.sdk.CloudFormationStackEventInventory");
 			put("org.zstack.header.cloudformation.PreviewResourceStruct", "org.zstack.sdk.PreviewResourceStruct");
 			put("org.zstack.header.cloudformation.ResourceStackInventory", "org.zstack.sdk.ResourceStackInventory");
@@ -546,6 +548,7 @@ public class SourceClassMap {
 			put("org.zstack.storage.backup.imagestore.ImageStoreGcResult", "org.zstack.sdk.ImageStoreGcResult");
 			put("org.zstack.storage.backup.imagestore.ImageStoreImageStruct", "org.zstack.sdk.ImageStoreImageStruct");
 			put("org.zstack.storage.backup.sftp.SftpBackupStorageInventory", "org.zstack.sdk.SftpBackupStorageInventory");
+			put("org.zstack.storage.cbt.CbtTaskType", "org.zstack.sdk.CbtTaskType");
 			put("org.zstack.storage.ceph.backup.CephBackupStorageInventory", "org.zstack.sdk.CephBackupStorageInventory");
 			put("org.zstack.storage.ceph.backup.CephBackupStorageMonInventory", "org.zstack.sdk.CephBackupStorageMonInventory");
 			put("org.zstack.storage.ceph.primary.CephOsdGroupInventory", "org.zstack.sdk.CephOsdGroupInventory");
@@ -784,6 +787,9 @@ public class SourceClassMap {
 			put("org.zstack.sdk.CCSCertificateInventory", "org.zstack.crypto.ccs.CCSCertificateInventory");
 			put("org.zstack.sdk.CasClientInventory", "org.zstack.sso.header.CasClientInventory");
 			put("org.zstack.sdk.CasState", "org.zstack.sso.header.CasState");
+			put("org.zstack.sdk.CbtTaskInventory", "org.zstack.header.cbt.CbtTaskInventory");
+			put("org.zstack.sdk.CbtTaskStatus", "org.zstack.header.cbt.CbtTaskStatus");
+			put("org.zstack.sdk.CbtTaskType", "org.zstack.storage.cbt.CbtTaskType");
 			put("org.zstack.sdk.CdpPolicyInventory", "org.zstack.header.storage.cdp.CdpPolicyInventory");
 			put("org.zstack.sdk.CdpPolicyState", "org.zstack.header.storage.cdp.CdpPolicyState");
 			put("org.zstack.sdk.CdpTaskInventory", "org.zstack.header.storage.cdp.CdpTaskInventory");
