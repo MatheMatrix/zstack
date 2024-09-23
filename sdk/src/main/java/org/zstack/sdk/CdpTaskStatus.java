@@ -5,6 +5,7 @@ public enum CdpTaskStatus {
 	Starting,
 	Running,
 	Stopped,
+	Stopping,
 	Unknown,
 	Failed,
 	DataMerging,
