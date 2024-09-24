@@ -48,12 +48,12 @@ public class UnitTestBypassHelper {
             for (Function<JoinPoint, Boolean> func : lst) {
                 if (!func.apply(jp)) {
                     logger.debug(String.format("UnitTestBypass judger[%s] says not by pass the function[%s]", func.getClass(), name));
-                    return false;
+                    return true;
                 }
             }
         }
 
-        return true;
+        return false;
     }
 
     static void callConsumer(JoinPoint jp) {
