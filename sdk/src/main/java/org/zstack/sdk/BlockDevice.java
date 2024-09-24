@@ -28,6 +28,22 @@ public class BlockDevice  {
         return this.size;
     }
 
+    public long used;
+    public void setUsed(long used) {
+        this.used = used;
+    }
+    public long getUsed() {
+        return this.used;
+    }
+
+    public long available;
+    public void setAvailable(long available) {
+        this.available = available;
+    }
+    public long getAvailable() {
+        return this.available;
+    }
+
     public long physicalSector;
     public void setPhysicalSector(long physicalSector) {
         this.physicalSector = physicalSector;
@@ -66,6 +82,54 @@ public class BlockDevice  {
     }
     public java.lang.String getPartitionTable() {
         return this.partitionTable;
+    }
+
+    public java.lang.String FSType;
+    public void setFSType(java.lang.String FSType) {
+        this.FSType = FSType;
+    }
+    public java.lang.String getFSType() {
+        return this.FSType;
+    }
+
+    public java.lang.String serialNumber;
+    public void setSerialNumber(java.lang.String serialNumber) {
+        this.serialNumber = serialNumber;
+    }
+    public java.lang.String getSerialNumber() {
+        return this.serialNumber;
+    }
+
+    public java.lang.String model;
+    public void setModel(java.lang.String model) {
+        this.model = model;
+    }
+    public java.lang.String getModel() {
+        return this.model;
+    }
+
+    public java.lang.String mediaType;
+    public void setMediaType(java.lang.String mediaType) {
+        this.mediaType = mediaType;
+    }
+    public java.lang.String getMediaType() {
+        return this.mediaType;
+    }
+
+    public long usedRatio;
+    public void setUsedRatio(long usedRatio) {
+        this.usedRatio = usedRatio;
+    }
+    public long getUsedRatio() {
+        return this.usedRatio;
+    }
+
+    public boolean status;
+    public void setStatus(boolean status) {
+        this.status = status;
+    }
+    public boolean getStatus() {
+        return this.status;
     }
 
 }
