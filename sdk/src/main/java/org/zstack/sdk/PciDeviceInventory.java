@@ -105,6 +105,14 @@ public class PciDeviceInventory  {
         return this.chooser;
     }
 
+    public PciDevicePassThroughState passThroughState;
+    public void setPassThroughState(PciDevicePassThroughState passThroughState) {
+        this.passThroughState = passThroughState;
+    }
+    public PciDevicePassThroughState getPassThroughState() {
+        return this.passThroughState;
+    }
+
     public java.lang.String vendorId;
     public void setVendorId(java.lang.String vendorId) {
         this.vendorId = vendorId;
