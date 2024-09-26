@@ -432,6 +432,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
                 stats.setSize(returnValue.getSize());
                 stats.setActualSize(returnValue.getActualSize());
+                stats.setProtocol(VolumeProtocol.CBD);
                 comp.success(stats);
             }
 

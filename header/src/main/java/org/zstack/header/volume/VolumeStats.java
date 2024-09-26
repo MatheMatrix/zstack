@@ -6,6 +6,7 @@ public class VolumeStats {
     protected String format;
     protected Long size;
     protected String runStatus;
+    protected VolumeProtocol protocol;
 
     public VolumeStats(String installPath, Long actualSize) {
         this.installPath = installPath;
@@ -60,5 +61,13 @@ public class VolumeStats {
 
     public void setRunStatus(String runStatus) {
         this.runStatus = runStatus;
+    }
+
+    public VolumeProtocol getProtocol() {
+        return protocol;
+    }
+
+    public void setProtocol(VolumeProtocol protocol) {
+        this.protocol = protocol;
     }
 }

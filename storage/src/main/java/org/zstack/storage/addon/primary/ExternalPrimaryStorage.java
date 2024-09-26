@@ -370,6 +370,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                 volume.setSize(stats.getSize());
                 volume.setFormat(stats.getFormat());
                 volume.setInstallPath(stats.getInstallPath());
+                volume.setProtocol(stats.getProtocol().toString());
                 if (StringUtils.isEmpty(volume.getProtocol())) {
                     volume.setProtocol(externalVO.getDefaultProtocol());
                 }
