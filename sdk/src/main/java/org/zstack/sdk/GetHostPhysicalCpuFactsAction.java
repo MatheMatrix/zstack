@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class UpdatePciDeviceAction extends AbstractAction {
+public class GetHostPhysicalCpuFactsAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class UpdatePciDeviceAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.UpdatePciDeviceResult value;
+        public org.zstack.sdk.GetHostPhysicalCpuFactsResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -26,22 +26,7 @@ public class UpdatePciDeviceAction extends AbstractAction {
     }
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String uuid;
-
-    @Param(required = false, validValues = {"Enabled","Disabled"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String state;
-
-    @Param(required = false, validValues = {"Enabled","Available"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String passThroughState;
-
-    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String name;
-
-    @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String description;
-
-    @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String metaData;
+    public java.lang.String hostUuid;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -61,12 +46,6 @@ public class UpdatePciDeviceAction extends AbstractAction {
     @Param(required = false)
     public String requestIp;
 
-    @NonAPIParam
-    public long timeout = -1;
-
-    @NonAPIParam
-    public long pollingInterval = -1;
-
 
     private Result makeResult(ApiResult res) {
         Result ret = new Result();
@@ -75,8 +54,8 @@ public class UpdatePciDeviceAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.UpdatePciDeviceResult value = res.getResult(org.zstack.sdk.UpdatePciDeviceResult.class);
-        ret.value = value == null ? new org.zstack.sdk.UpdatePciDeviceResult() : value; 
+        org.zstack.sdk.GetHostPhysicalCpuFactsResult value = res.getResult(org.zstack.sdk.GetHostPhysicalCpuFactsResult.class);
+        ret.value = value == null ? new org.zstack.sdk.GetHostPhysicalCpuFactsResult() : value; 
 
         return ret;
     }
@@ -105,11 +84,11 @@ public class UpdatePciDeviceAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "PUT";
-        info.path = "/pci-device/pci-devices/{uuid}/actions";
+        info.httpMethod = "GET";
+        info.path = "/hosts/physical-cpu-facts/{hostUuid}";
         info.needSession = true;
-        info.needPoll = true;
-        info.parameterName = "updatePciDevice";
+        info.needPoll = false;
+        info.parameterName = "";
         return info;
     }
 
