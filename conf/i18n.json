@@ -6381,14 +6381,13 @@
     "fileName": "src/main/java/org/zstack/compute/host/MevocoHostBase.java"
   },
   {
-    "raw": "failed to allocate pci device for l3[uuid:%s] on host[uuid:%s]",
-    "en_US": "failed to allocate pci device for l3[uuid:{0}] on host[uuid:{1}]",
-    "zh_CN": "无法为物理机[uuid：{1}]上的L3[uuid：{0}]分配PCI设备",
+    "raw": "failed to allocate pci device on host[uuid:%s], because there are not enough pci devices available",
+    "en_US": "failed to allocate pci device on host[uuid:{0}], because there are not enough pci devices available",
+    "zh_CN": "无法为物理机[uuid：{0}]分配PCI设备，因为可用PCI设备不足",
     "arguments": [
-      "l3Uuid",
       "msg.getHostUuid()"
     ],
-    "line": 370,
+    "line": 405,
     "fileName": "src/main/java/org/zstack/compute/host/MevocoHostBase.java"
   },
   {
