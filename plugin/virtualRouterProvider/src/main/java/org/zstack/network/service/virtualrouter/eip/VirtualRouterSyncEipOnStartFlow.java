@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.db.DatabaseFacade;
+import org.zstack.core.db.Q;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.core.timeout.ApiTimeoutManager;
 import org.zstack.header.core.workflow.Flow;
@@ -15,9 +16,8 @@ import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.message.MessageReply;
-import org.zstack.header.vm.VmInstanceConstant;
-import org.zstack.header.vm.VmInstanceState;
-import org.zstack.header.vm.VmNicInventory;
+import org.zstack.header.network.l3.UsedIpVO;
+import org.zstack.header.vm.*;
 import org.zstack.network.service.eip.EipConstant;
 import org.zstack.network.service.eip.EipGlobalConfig;
 import org.zstack.network.service.eip.EipVO;
@@ -30,13 +30,11 @@ import org.zstack.utils.DebugUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.utils.network.IPv6NetworkUtils;
 
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
@@ -63,7 +61,7 @@ public class VirtualRouterSyncEipOnStartFlow implements Flow {
 
     @Transactional(readOnly = true)
     private List<EipTO> findEipOnThisRouter(VirtualRouterVmInventory vr, List<String> eipUuids) {
-        String sql = "select vip.ip, nic.l3NetworkUuid, nic.ip, vip.l3NetworkUuid from EipVO eip, VipVO vip, VmNicVO nic " +
+        String sql = "select vip.ip, nic.l3NetworkUuid, nic.uuid, vip.l3NetworkUuid from EipVO eip, VipVO vip, VmNicVO nic " +
                 " where eip.vipUuid = vip.uuid and vip.serviceProvider in (:providers) "+
                 " and eip.vmNicUuid = nic.uuid and eip.uuid in (:euuids)";
         TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
@@ -75,7 +73,7 @@ public class VirtualRouterSyncEipOnStartFlow implements Flow {
         for (Tuple t : tuples) {
             String vipIp = t.get(0, String.class);
             final String l3Uuid = t.get(1, String.class);
-            String guestIp = t.get(2, String.class);
+            String guestNicUuid = t.get(2, String.class);
             final String pubL3Uuid = t.get(3, String.class);
             String privMac = CollectionUtils.find(vr.getVmNics(), new Function<String, VmNicInventory>() {
                 @Override
@@ -96,15 +94,17 @@ public class VirtualRouterSyncEipOnStartFlow implements Flow {
                     return null;
                 }
             });
-
+            VmNicVO guestNicVo = Q.New(VmNicVO.class).eq(VmNicVO_.uuid, guestNicUuid).find();
+            Set<UsedIpVO> usedIps = guestNicVo.getUsedIps();
             DebugUtils.Assert(privMac!=null, String.format("cannot find private nic[l3NetworkUuid:%s] on virtual router[uuid:%s]",
                     l3Uuid, vr.getUuid()));
             EipTO to = new EipTO();
             to.setVipIp(vipIp);
             to.setPublicMac(publicMac);
-            to.setGuestIp(guestIp);
             to.setPrivateMac(privMac);
             to.setSnatInboundTraffic(EipGlobalConfig.SNAT_INBOUND_TRAFFIC.value(Boolean.class));
+            to.setIpVersion(IPv6NetworkUtils.getIpVersion(to.getVipIp()));
+            to.setGuestIp(IPv6NetworkUtils.getIpByIpVersion(to.getIpVersion(), usedIps.stream().map(UsedIpVO::getIp).collect(Collectors.toList())));
             ret.add(to);
         }
 

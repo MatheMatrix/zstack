@@ -9,6 +9,7 @@ import org.zstack.utils.logging.CLogger;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.List;
 
 public class IPv6NetworkUtils {
     private final static CLogger logger = Utils.getLogger(IPv6NetworkUtils.class);
@@ -17,6 +18,9 @@ public class IPv6NetworkUtils {
     private static String ipv4Regex = "^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
     // MAC 地址正则表达式
     private static String macRegex = "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$";
+
+    private static String IP_VERSION_4 = "ipv4";
+    private static String IP_VERSION_6 = "ipv6";
 
     private static boolean isConsecutiveRange(BigInteger[] allocatedIps) {
         BigInteger first = allocatedIps[0];
@@ -470,5 +474,26 @@ public class IPv6NetworkUtils {
         }
 
         return 0;
+    }
+
+    public static String getIpVersion(String ip) {
+        if (isValidIpv4(ip)) {
+            return IP_VERSION_4;
+        } else if (isValidIpv6(ip)) {
+            return IP_VERSION_6;
+        }
+        throw new IllegalArgumentException("Invalid IP address: " + ip);
+    }
+
+    public static String getIpByIpVersion(String ipVersion, List<String> ipList) {
+        if (ipList == null || ipList.isEmpty()) {
+            throw new IllegalArgumentException("The provided IP list cannot be null or empty.");
+        }
+        for (String ip : ipList) {
+            if (getIpVersion(ip).equals(ipVersion)) {
+                return ip;
+            }
+        }
+        throw new IllegalArgumentException("No IP address in the list matches the provided IP version: " + ipVersion);
     }
 }
