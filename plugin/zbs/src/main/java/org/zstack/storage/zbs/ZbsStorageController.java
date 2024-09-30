@@ -195,16 +195,16 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             throw new CloudRuntimeException(String.format("invalid logical pool name[%s]", config.getLogicalPoolName()));
         }
 
-        List<MdsInfo> mdsInfos = new ArrayList<>();
+        List<Mds> mdsInfos = new ArrayList<>();
         for (String mdsUrl : config.getMdsUrls()) {
             MdsUri uri = new MdsUri(mdsUrl);
-            MdsInfo mdsInfo = new MdsInfo();
-            mdsInfo.setSshUsername(uri.getSshUsername());
-            mdsInfo.setSshPassword(uri.getSshPassword());
-            mdsInfo.setSshPort(uri.getSshPort());
-            mdsInfo.setMdsAddr(uri.getHostname());
-            mdsInfo.setMdsPort(uri.getMdsPort());
-            mdsInfos.add(mdsInfo);
+            Mds mds = new Mds();
+            mds.setUsername(uri.getUsername());
+            mds.setPassword(uri.getPassword());
+            mds.setSshPort(uri.getSshPort());
+            mds.setAddr(uri.getHostname());
+            mds.setMdsPort(uri.getMdsPort());
+            mdsInfos.add(mds);
         }
 
         AddonInfo info = new AddonInfo();
@@ -274,17 +274,19 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        String mdsListenAddr = mds.stream().map(m -> m.getSelf().getMdsAddr() + ":" + m.getSelf().getMdsPort()).collect(Collectors.joining(","));
+                        String listenAddr = mds.stream().map(m -> m.getSelf().getAddr() + ":" + m.getSelf().getMdsPort()).collect(Collectors.joining(","));
                         List<ErrorCode> errors = new ArrayList<>();
                         new While<>(mds).each((m, comp) -> {
                             GetFactsCmd cmd = new GetFactsCmd();
                             cmd.setUuid(self.getUuid());
-                            cmd.setMdsAddr(m.getSelf().getMdsAddr());
-                            cmd.setMdsListenAddr(mdsListenAddr);
+                            cmd.setAddr(m.getSelf().getAddr());
+                            cmd.setMdsPort(m.getSelf().getMdsPort());
+                            cmd.setListenAddr(listenAddr);
                             m.httpCall(GET_FACTS_PATH, cmd, GetFactsRsp.class, new ReturnValueCompletion<GetFactsRsp>(comp) {
                                 @Override
                                 public void success(GetFactsRsp returnValue) {
-                                    m.getSelf().setMdsVersion(returnValue.version);
+                                    m.getSelf().setExternalAddr(returnValue.getExternalAddr());
+                                    m.getSelf().setVersion(returnValue.getVersion());
                                     comp.done();
                                 }
 
@@ -338,13 +340,13 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             m.ping(new Completion(comp) {
                 @Override
                 public void success() {
-                    m.getSelf().setMdsStatus(MdsStatus.Connected);
+                    m.getSelf().setStatus(MdsStatus.Connected);
                     comp.done();
                 }
 
                 @Override
                 public void fail(ErrorCode errorCode) {
-                    m.getSelf().setMdsStatus(MdsStatus.Disconnected);
+                    m.getSelf().setStatus(MdsStatus.Disconnected);
                     comp.done();
                 }
             });
@@ -871,7 +873,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     public class HttpCaller<T extends AgentResponse> {
         private Iterator<ZbsPrimaryStorageMdsBase> it;
-        private final List<MdsInfo> mdsInfos;
+        private final List<Mds> mdsInfos;
         private final ErrorCodeList errorCodes = new ErrorCodeList();
 
         private final String path;
@@ -894,7 +896,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             this.callback = callback;
             this.unit = unit;
             this.timeout = timeout;
-            this.mdsInfos = prepareMds();
+            this.mdsInfos = prepareMdsInfos();
         }
 
         public void call() {
@@ -906,7 +908,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         HttpCaller<T> setTargetMds(String mdsAddr) {
             logger.debug(String.format("target mds[ip:%s]", mdsAddr));
 
-            mdsInfos.removeIf(it -> !it.getMdsAddr().equals(mdsAddr));
+            mdsInfos.removeIf(it -> !it.getAddr().equals(mdsAddr));
             if (mdsInfos.isEmpty()) {
                 throw new OperationFailureException(operr(
                         "not found mds[ip:%s] of zbs primary storage[uuid:%s] node", mdsAddr, self.getUuid())
@@ -920,19 +922,19 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             cmd.setUuid(self.getUuid());
         }
 
-        private List<MdsInfo> prepareMds() {
-            final List<MdsInfo> mds = new ArrayList<>(addonInfo.getMdsInfos());
+        private List<Mds> prepareMdsInfos() {
+            final List<Mds> mdsInfos = new ArrayList<>(addonInfo.getMdsInfos());
 
-            Collections.shuffle(mds);
+            Collections.shuffle(mdsInfos);
 
-            mds.removeIf(it -> it.getMdsStatus() != MdsStatus.Connected);
-            if (mds.isEmpty()) {
+            mdsInfos.removeIf(it -> it.getStatus() != MdsStatus.Connected);
+            if (mdsInfos.isEmpty()) {
                 throw new OperationFailureException(operr(
                         "all zbs mds of primary storage[uuid:%s] are not in Connected state", self.getUuid())
                 );
             }
 
-            return mds;
+            return mdsInfos;
         }
 
         private void prepareMdsIterator() {
@@ -946,7 +948,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             }
 
             ZbsPrimaryStorageMdsBase base = it.next();
-            cmd.setMdsAddr(base.getSelf().getMdsAddr());
+            cmd.setAddr(base.getSelf().getAddr());
 
             ReturnValueCompletion<T> completion = new ReturnValueCompletion<T>(callback) {
                 @Override
@@ -958,7 +960,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 public void fail(ErrorCode errorCode) {
                     if (!errorCode.isError(SysErrors.OPERATION_ERROR) && !errorCode.isError(SysErrors.TIMEOUT)) {
                         logger.warn(String.format("mds[addr:%s] failed to execute http call[%s], error is: %s",
-                                base.getSelf().getMdsAddr(), path, JSONObjectUtil.toJsonString(errorCode)));
+                                base.getSelf().getAddr(), path, JSONObjectUtil.toJsonString(errorCode)));
                         errorCodes.getCauses().add(errorCode);
                         doCall();
                         return;
@@ -1213,7 +1215,16 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     }
 
     public static class GetFactsRsp extends AgentResponse {
+        private String externalAddr;
         private String version;
+
+        public String getExternalAddr() {
+            return externalAddr;
+        }
+
+        public void setExternalAddr(String externalAddr) {
+            this.externalAddr = externalAddr;
+        }
 
         public String getVersion() {
             return version;
@@ -1585,14 +1596,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     }
 
     public static class GetFactsCmd extends AgentCommand {
-        private String mdsListenAddr;
+        private String listenAddr;
 
-        public String getMdsListenAddr() {
-            return mdsListenAddr;
+        public String getListenAddr() {
+            return listenAddr;
         }
 
-        public void setMdsListenAddr(String mdsListenAddr) {
-            this.mdsListenAddr = mdsListenAddr;
+        public void setListenAddr(String listenAddr) {
+            this.listenAddr = listenAddr;
         }
     }
 
