@@ -1,6 +1,6 @@
 package org.zstack.cbd.kvm;
 
-import org.zstack.cbd.MdsInfo;
+import org.zstack.cbd.Mds;
 import org.zstack.kvm.KVMAgentCommands;
 
 import java.util.List;
@@ -19,13 +19,13 @@ public class KvmCbdCommands {
     }
 
     public static class KvmUpdateClientConfCmd extends AgentCmd {
-        public List<MdsInfo> mdsInfos;
+        private List<Mds> mdsInfos;
 
-        public List<MdsInfo> getMdsInfos() {
+        public List<Mds> getMdsInfos() {
             return mdsInfos;
         }
 
-        public void setMdsInfos(List<MdsInfo> mdsInfos) {
+        public void setMdsInfos(List<Mds> mdsInfos) {
             this.mdsInfos = mdsInfos;
         }
     }

@@ -3,14 +3,12 @@ package org.zstack.cbd.kvm;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.cbd.AddonInfo;
-import org.zstack.cbd.CbdConstants;
-import org.zstack.cbd.MdsInfo;
+import org.zstack.cbd.Mds;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
-import org.zstack.externalStorage.primary.ExternalStorageConstant;
 import org.zstack.header.Component;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.ReturnValueCompletion;
@@ -96,12 +94,12 @@ public class KvmCbdNodeServer implements Component, KvmSetupSelfFencerExtensionP
 
                         KvmUpdateClientConfCmd cmd = new KvmUpdateClientConfCmd();
                         AddonInfo addonInfo = StringUtils.isEmpty(vo.getAddonInfo()) ? new AddonInfo() : JSONObjectUtil.toObject(vo.getAddonInfo(), AddonInfo.class);
-                        List<MdsInfo> mdsInfos = new ArrayList<>();
-                        for (MdsInfo mdsInfo : addonInfo.getMdsInfos()) {
-                            MdsInfo info = new MdsInfo();
-                            info.mdsAddr = mdsInfo.mdsAddr;
-                            info.mdsPort = mdsInfo.mdsPort;
-                            mdsInfos.add(info);
+                        List<Mds> mdsInfos = new ArrayList<>();
+                        for (Mds m : addonInfo.getMdsInfos()) {
+                            Mds mds = new Mds();
+                            mds.setAddr(m.getAddr());
+                            mds.setMdsPort(m.getMdsPort());
+                            mdsInfos.add(mds);
                         }
                         cmd.setMdsInfos(mdsInfos);
 

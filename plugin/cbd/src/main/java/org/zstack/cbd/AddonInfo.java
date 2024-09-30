@@ -7,13 +7,13 @@ import java.util.List;
  * @date 2024/4/1 18:12
  */
 public class AddonInfo {
-    public List<MdsInfo> mdsInfos;
+    private List<Mds> mdsInfos;
 
-    public List<MdsInfo> getMdsInfos() {
+    public List<Mds> getMdsInfos() {
         return mdsInfos;
     }
 
-    public void setMdsInfos(List<MdsInfo> mdsInfos) {
+    public void setMdsInfos(List<Mds> mdsInfos) {
         this.mdsInfos = mdsInfos;
     }
 }

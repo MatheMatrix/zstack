@@ -3,7 +3,7 @@ package org.zstack.storage.zbs;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
-import org.zstack.cbd.MdsInfo;
+import org.zstack.cbd.Mds;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.ReturnValueCompletion;
@@ -25,18 +25,18 @@ import static org.zstack.core.Platform.operr;
  */
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE, dependencyCheck = true)
 public abstract class ZbsMdsBase {
-    private MdsInfo self;
+    private Mds self;
 
     @Autowired
     private DatabaseFacade dbf;
     @Autowired
     protected RESTFacade restf;
 
-    public ZbsMdsBase(MdsInfo self) {
+    public ZbsMdsBase(Mds self) {
         this.self = self;
     }
 
-    public MdsInfo getSelf() {
+    public Mds getSelf() {
         return self;
     }
 
@@ -47,7 +47,7 @@ public abstract class ZbsMdsBase {
     protected void checkTools() {
         Ssh ssh = new Ssh();
         try {
-            ssh.setHostname(self.getMdsAddr()).setUsername(self.getSshUsername()).setPassword(self.getSshPassword()).setPort(self.getSshPort())
+            ssh.setHostname(self.getAddr()).setUsername(self.getUsername()).setPassword(self.getPassword()).setPort(self.getSshPort())
                     .checkTool("zbs").setTimeout(60).runErrorByExceptionAndClose();
         } catch (SshException e) {
             throw new OperationFailureException(operr("The problem may be caused by zbs-tool is missing on mds node."));
@@ -58,7 +58,7 @@ public abstract class ZbsMdsBase {
         Ssh ssh = new Ssh();
         SshResult ret = null;
         try {
-            ret = ssh.setHostname(self.getMdsAddr()).setUsername(self.getSshUsername()).setPassword(self.getSshPassword()).setPort(self.getSshPort())
+            ret = ssh.setHostname(self.getAddr()).setUsername(self.getUsername()).setPassword(self.getPassword()).setPort(self.getSshPort())
                     .shell("zbs status mds --format json").setTimeout(60).runAndClose();
         } catch (SshException e) {
             throw new OperationFailureException(operr("The problem may be caused by zbs storage health issue."));
@@ -103,9 +103,9 @@ public abstract class ZbsMdsBase {
         };
 
         if (unit == null) {
-            restf.asyncJsonPost(makeHttpPath(self.getMdsAddr(), path), cmd, callback);
+            restf.asyncJsonPost(makeHttpPath(self.getAddr(), path), cmd, callback);
         } else {
-            restf.asyncJsonPost(makeHttpPath(self.getMdsAddr(), path), cmd, callback, unit, timeout);
+            restf.asyncJsonPost(makeHttpPath(self.getAddr(), path), cmd, callback, unit, timeout);
         }
     }
 
@@ -142,7 +142,8 @@ public abstract class ZbsMdsBase {
 
     public static class AgentCommand {
         private String uuid;
-        private String mdsAddr;
+        private String addr;
+        private int mdsPort;
 
         public String getUuid() {
             return uuid;
@@ -152,12 +153,20 @@ public abstract class ZbsMdsBase {
             this.uuid = uuid;
         }
 
-        public String getMdsAddr() {
-            return mdsAddr;
+        public String getAddr() {
+            return addr;
         }
 
-        public void setMdsAddr(String mdsAddr) {
-            this.mdsAddr = mdsAddr;
+        public void setAddr(String addr) {
+            this.addr = addr;
+        }
+
+        public int getMdsPort() {
+            return mdsPort;
+        }
+
+        public void setMdsPort(int mdsPort) {
+            this.mdsPort = mdsPort;
         }
     }
 }
