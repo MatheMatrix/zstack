@@ -278,17 +278,21 @@ class CreateDataVolumeTemplateCase extends SubCase {
             stateEvent = BackupStorageStateEvent.disable.toString()
         }
 
-        GetPrimaryStorageCapacityResult originPsCapacity = getPrimaryStorageCapacity {
+        GetPrimaryStorageCapacityResult psCapacity = getPrimaryStorageCapacity {
             primaryStorageUuids = [ps.uuid]
         } as GetPrimaryStorageCapacityResult
 
-        createVolumeTemplateFailAndCheckCapacity(originPsCapacity, ps.uuid, kvm.uuid, image.uuid)
+        createVolumeTemplateAndCheckCapacity(psCapacity, ps.uuid, kvm.uuid, image.uuid)
 
         // pretend allocate PS failed and check capacity
         changeBackupStorageState {
             uuid = bs.uuid
             stateEvent = BackupStorageStateEvent.enable.toString()
         }
+
+        GetPrimaryStorageCapacityResult originPsCapacity = getPrimaryStorageCapacity {
+            primaryStorageUuids = [ps.uuid]
+        } as GetPrimaryStorageCapacityResult
 
         env.message(AllocatePrimaryStorageSpaceMsg.class) { AllocatePrimaryStorageSpaceMsg msg, CloudBus bus ->
             bus.replyErrorByMessageType(msg, "on purpose")
@@ -374,6 +378,23 @@ class CreateDataVolumeTemplateCase extends SubCase {
 
         expungeImage {
             imageUuid = image.uuid
+        }
+    }
+
+    void createVolumeTemplateAndCheckCapacity(GetPrimaryStorageCapacityResult old, String psUuid, String hostUuid, String imageUuid) {
+        createDataVolumeFromVolumeTemplate {
+            primaryStorageUuid = psUuid
+            delegate.imageUuid = imageUuid
+            delegate.hostUuid = hostUuid
+            name = "test-failure"
+        }
+
+        retryInSecs {
+            GetPrimaryStorageCapacityResult currentPsCapacity = getPrimaryStorageCapacity {
+                primaryStorageUuids = [psUuid]
+            } as GetPrimaryStorageCapacityResult
+
+            assert old.availableCapacity > currentPsCapacity.availableCapacity
         }
     }
 
