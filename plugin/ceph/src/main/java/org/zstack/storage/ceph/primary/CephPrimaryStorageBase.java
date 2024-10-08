@@ -368,6 +368,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         long size;
         boolean shareable;
         boolean skipIfExisting;
+        List<String> systemTags;
 
         public boolean isShareable() {
             return shareable;
@@ -1696,6 +1697,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         cmd.size = msg.getVolume().getSize();
         cmd.setShareable(msg.getVolume().isShareable());
         cmd.skipIfExisting = msg.isSkipIfExisting();
+        cmd.systemTags = msg.getSystemTags();
 
         final InstantiateVolumeOnPrimaryStorageReply reply = new InstantiateVolumeOnPrimaryStorageReply();
         
