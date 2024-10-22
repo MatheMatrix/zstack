@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class GetPciDeviceCandidatesForAttachingVmAction extends AbstractAction {
+public class GetHostSensorsAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class GetPciDeviceCandidatesForAttachingVmAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.GetPciDeviceCandidatesForAttachingVmResult value;
+        public org.zstack.sdk.GetHostSensorsResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,14 +25,8 @@ public class GetPciDeviceCandidatesForAttachingVmAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String vmInstanceUuid;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List types;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List pciSpecUuids;
+    @Param(required = true, nonempty = true, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String uuid;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -60,8 +54,8 @@ public class GetPciDeviceCandidatesForAttachingVmAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.GetPciDeviceCandidatesForAttachingVmResult value = res.getResult(org.zstack.sdk.GetPciDeviceCandidatesForAttachingVmResult.class);
-        ret.value = value == null ? new org.zstack.sdk.GetPciDeviceCandidatesForAttachingVmResult() : value; 
+        org.zstack.sdk.GetHostSensorsResult value = res.getResult(org.zstack.sdk.GetHostSensorsResult.class);
+        ret.value = value == null ? new org.zstack.sdk.GetHostSensorsResult() : value; 
 
         return ret;
     }
@@ -91,7 +85,7 @@ public class GetPciDeviceCandidatesForAttachingVmAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "GET";
-        info.path = "/vm-instances/{vmInstanceUuid}/candidate-pci-devices";
+        info.path = "/hosts/{uuid}/get-sensors";
         info.needSession = true;
         info.needPoll = false;
         info.parameterName = "";

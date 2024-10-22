@@ -147,6 +147,42 @@ public class HostInventory implements Serializable {
             joinColumn = @JoinColumn(name = "uuid", referencedColumnName = "ipmiPowerStatus"))
     private String ipmiPowerStatus;
 
+    @Queryable(mappingClass = HostHwMonitorStatusInventory.class,
+            joinColumn = @JoinColumn(name = "uuid", referencedColumnName = "cpuStatus"))
+    private HwMonitorStatus cpuStatus;
+
+    @Queryable(mappingClass = HostHwMonitorStatusInventory.class,
+            joinColumn = @JoinColumn(name = "uuid", referencedColumnName = "memoryStatus"))
+    private HwMonitorStatus memoryStatus;
+
+    @Queryable(mappingClass = HostHwMonitorStatusInventory.class,
+            joinColumn = @JoinColumn(name = "uuid", referencedColumnName = "diskStatus"))
+    private HwMonitorStatus diskStatus;
+
+    @Queryable(mappingClass = HostHwMonitorStatusInventory.class,
+            joinColumn = @JoinColumn(name = "uuid", referencedColumnName = "nicStatus"))
+    private HwMonitorStatus nicStatus;
+
+    @Queryable(mappingClass = HostHwMonitorStatusInventory.class,
+            joinColumn = @JoinColumn(name = "uuid", referencedColumnName = "gpuStatus"))
+    private HwMonitorStatus gpuStatus;
+
+    @Queryable(mappingClass = HostHwMonitorStatusInventory.class,
+            joinColumn = @JoinColumn(name = "uuid", referencedColumnName = "powerSupplyStatus"))
+    private HwMonitorStatus powerSupplyStatus;
+
+    @Queryable(mappingClass = HostHwMonitorStatusInventory.class,
+            joinColumn = @JoinColumn(name = "uuid", referencedColumnName = "fanStatus"))
+    private HwMonitorStatus fanStatus;
+
+    @Queryable(mappingClass = HostHwMonitorStatusInventory.class,
+            joinColumn = @JoinColumn(name = "uuid", referencedColumnName = "raidStatus"))
+    private HwMonitorStatus raidStatus;
+
+    @Queryable(mappingClass = HostHwMonitorStatusInventory.class,
+            joinColumn = @JoinColumn(name = "uuid", referencedColumnName = "temperatureStatus"))
+    private HwMonitorStatus temperatureStatus;
+
     private String architecture;
 
     /**
@@ -184,6 +220,18 @@ public class HostInventory implements Serializable {
             this.setIpmiPort(vo.getIpmi().getIpmiPort());
             this.setIpmiUsername(vo.getIpmi().getIpmiUsername());
             this.setIpmiPowerStatus(vo.getIpmi().getIpmiPowerStatus().toString());
+        }
+
+        if (vo.getHwMonitorStatus() != null) {
+            this.setCpuStatus(vo.getHwMonitorStatus().getCpuStatus());
+            this.setMemoryStatus(vo.getHwMonitorStatus().getMemoryStatus());
+            this.setDiskStatus(vo.getHwMonitorStatus().getMemoryStatus());
+            this.setFanStatus(vo.getHwMonitorStatus().getFanStatus());
+            this.setPowerSupplyStatus(vo.getHwMonitorStatus().getPowerSupplyStatus());
+            this.setRaidStatus(vo.getHwMonitorStatus().getRaidStatus());
+            this.setNicStatus(vo.getHwMonitorStatus().getNicStatus());
+            this.setGpuStatus(vo.getHwMonitorStatus().getGpuStatus());
+            this.setTemperatureStatus(vo.getHwMonitorStatus().getTemperatureStatus());
         }
 
     }
@@ -377,5 +425,77 @@ public class HostInventory implements Serializable {
 
     public void setIpmiPowerStatus(String ipmiPowerStatus) {
         this.ipmiPowerStatus = ipmiPowerStatus;
+    }
+
+    public HwMonitorStatus getCpuStatus() {
+        return cpuStatus;
+    }
+
+    public void setCpuStatus(HwMonitorStatus cpuStatus) {
+        this.cpuStatus = cpuStatus;
+    }
+
+    public HwMonitorStatus getMemoryStatus() {
+        return memoryStatus;
+    }
+
+    public void setMemoryStatus(HwMonitorStatus memoryStatus) {
+        this.memoryStatus = memoryStatus;
+    }
+
+    public HwMonitorStatus getDiskStatus() {
+        return diskStatus;
+    }
+
+    public void setDiskStatus(HwMonitorStatus diskStatus) {
+        this.diskStatus = diskStatus;
+    }
+
+    public HwMonitorStatus getNicStatus() {
+        return nicStatus;
+    }
+
+    public void setNicStatus(HwMonitorStatus nicStatus) {
+        this.nicStatus = nicStatus;
+    }
+
+    public HwMonitorStatus getGpuStatus() {
+        return gpuStatus;
+    }
+
+    public void setGpuStatus(HwMonitorStatus gpuStatus) {
+        this.gpuStatus = gpuStatus;
+    }
+
+    public HwMonitorStatus getPowerSupplyStatus() {
+        return powerSupplyStatus;
+    }
+
+    public void setPowerSupplyStatus(HwMonitorStatus powerSupplyStatus) {
+        this.powerSupplyStatus = powerSupplyStatus;
+    }
+
+    public HwMonitorStatus getFanStatus() {
+        return fanStatus;
+    }
+
+    public void setFanStatus(HwMonitorStatus fanStatus) {
+        this.fanStatus = fanStatus;
+    }
+
+    public HwMonitorStatus getRaidStatus() {
+        return raidStatus;
+    }
+
+    public void setRaidStatus(HwMonitorStatus raidStatus) {
+        this.raidStatus = raidStatus;
+    }
+
+    public HwMonitorStatus getTemperatureStatus() {
+        return temperatureStatus;
+    }
+
+    public void setTemperatureStatus(HwMonitorStatus temperatureStatus) {
+        this.temperatureStatus = temperatureStatus;
     }
 }

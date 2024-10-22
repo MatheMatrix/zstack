@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class GetPciDeviceCandidatesForAttachingVmAction extends AbstractAction {
+public class QueryGpuDeviceAction extends QueryAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class GetPciDeviceCandidatesForAttachingVmAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.GetPciDeviceCandidatesForAttachingVmResult value;
+        public org.zstack.sdk.QueryGpuDeviceResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,32 +25,6 @@ public class GetPciDeviceCandidatesForAttachingVmAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String vmInstanceUuid;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List types;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List pciSpecUuids;
-
-    @Param(required = false)
-    public java.util.List systemTags;
-
-    @Param(required = false)
-    public java.util.List userTags;
-
-    @Param(required = false)
-    public String sessionId;
-
-    @Param(required = false)
-    public String accessKeyId;
-
-    @Param(required = false)
-    public String accessKeySecret;
-
-    @Param(required = false)
-    public String requestIp;
 
 
     private Result makeResult(ApiResult res) {
@@ -60,8 +34,8 @@ public class GetPciDeviceCandidatesForAttachingVmAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.GetPciDeviceCandidatesForAttachingVmResult value = res.getResult(org.zstack.sdk.GetPciDeviceCandidatesForAttachingVmResult.class);
-        ret.value = value == null ? new org.zstack.sdk.GetPciDeviceCandidatesForAttachingVmResult() : value; 
+        org.zstack.sdk.QueryGpuDeviceResult value = res.getResult(org.zstack.sdk.QueryGpuDeviceResult.class);
+        ret.value = value == null ? new org.zstack.sdk.QueryGpuDeviceResult() : value; 
 
         return ret;
     }
@@ -91,7 +65,7 @@ public class GetPciDeviceCandidatesForAttachingVmAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "GET";
-        info.path = "/vm-instances/{vmInstanceUuid}/candidate-pci-devices";
+        info.path = "/gpu-device/gpu-devices";
         info.needSession = true;
         info.needPoll = false;
         info.parameterName = "";
