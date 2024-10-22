@@ -19,9 +19,9 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIRemoveCertificateFromLoadBalancerListenerEvent.class
 )
 public class APIRemoveCertificateFromLoadBalancerListenerMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
-    @APIParam(resourceType = CertificateVO.class, checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = CertificateVO.class, nonempty = true)
     private String certificateUuid;
-    @APIParam(resourceType = LoadBalancerListenerVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerListenerVO.class)
     private String listenerUuid;
     @APINoSee
     private String loadBalancerUuid;

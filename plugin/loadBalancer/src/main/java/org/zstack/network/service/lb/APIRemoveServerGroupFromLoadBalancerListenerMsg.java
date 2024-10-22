@@ -16,9 +16,9 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIRemoveServerGroupFromLoadBalancerListenerEvent.class
 )
 public class APIRemoveServerGroupFromLoadBalancerListenerMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
-    @APIParam(resourceType = LoadBalancerServerGroupVO.class, checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = LoadBalancerServerGroupVO.class, nonempty = true)
     private String serverGroupUuid;
-    @APIParam(resourceType = LoadBalancerListenerVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerListenerVO.class)
     private String listenerUuid;
     @APINoSee
     private String loadBalancerUuid;

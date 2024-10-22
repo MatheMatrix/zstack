@@ -15,7 +15,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIGetCandidateVmNicForSecurityGroupReply.class
 )
 public class APIGetCandidateVmNicForSecurityGroupMsg extends APISyncCallMessage {
-    @APIParam(resourceType = SecurityGroupVO.class, checkAccount = true)
+    @APIParam(resourceType = SecurityGroupVO.class)
     private String securityGroupUuid;
 
     public String getSecurityGroupUuid() {

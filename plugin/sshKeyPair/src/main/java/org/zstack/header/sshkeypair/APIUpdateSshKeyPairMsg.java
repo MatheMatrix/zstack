@@ -15,7 +15,7 @@ import org.zstack.sshkeypair.SshKeyPairConstant;
         isAction = true
 )
 public class APIUpdateSshKeyPairMsg extends APIMessage implements SshKeyPairMessage, APIAuditor {
-    @APIParam(resourceType = SshKeyPairVO.class, maxLength = 32, operationTarget = true, checkAccount = true)
+    @APIParam(resourceType = SshKeyPairVO.class, maxLength = 32)
     private String uuid;
 
     @APIParam(maxLength = 255, required = false, validRegexValues = SshKeyPairConstant.SSH_KEY_PAIR_NAME_REGEX)

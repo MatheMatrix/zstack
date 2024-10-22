@@ -22,7 +22,7 @@ import java.util.Map;
         isAction = true
 )
 public class APIChangeLoadBalancerBackendServerMsg extends APIMessage implements LoadBalancerMessage , APIAuditor{
-    @APIParam(resourceType = LoadBalancerServerGroupVO.class, checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = LoadBalancerServerGroupVO.class, nonempty = true)
     private String serverGroupUuid;
     @APIParam(required = false)
     private List<Map<String,String>> vmNics;

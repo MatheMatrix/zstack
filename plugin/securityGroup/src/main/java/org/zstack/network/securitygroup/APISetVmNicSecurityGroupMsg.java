@@ -18,7 +18,7 @@ import static java.util.Arrays.asList;
         isAction = true
 )
 public class APISetVmNicSecurityGroupMsg extends APIMessage implements VmNicSecurityGroupMessage {
-    @APIParam(resourceType = VmNicVO.class, nonempty = true, checkAccount = true, operationTarget = true, required = true)
+    @APIParam(resourceType = VmNicVO.class, nonempty = true, required = true)
     private String vmNicUuid;
 
     @APIParam(required = true)

@@ -20,7 +20,7 @@ import org.zstack.header.rest.RestRequest;
 )
 public class APIUpdateVirtualRouterOfferingMsg extends APIUpdateInstanceOfferingMsg {
     private Boolean isDefault;
-    @APIParam(resourceType = ImageVO.class, checkAccount = true, required = false)
+    @APIParam(resourceType = ImageVO.class, required = false)
     private String imageUuid;
 
     public String getImageUuid() {

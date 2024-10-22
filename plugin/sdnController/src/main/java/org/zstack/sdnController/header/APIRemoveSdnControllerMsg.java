@@ -13,7 +13,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIRemoveSdnControllerEvent.class
 )
 public class APIRemoveSdnControllerMsg extends APIDeleteMessage {
-    @APIParam(checkAccount = true, operationTarget = true, successIfResourceNotExisting = true, resourceType = SdnControllerVO.class)
+    @APIParam(successIfResourceNotExisting = true, resourceType = SdnControllerVO.class)
     private String uuid;
 
     public String getUuid() {

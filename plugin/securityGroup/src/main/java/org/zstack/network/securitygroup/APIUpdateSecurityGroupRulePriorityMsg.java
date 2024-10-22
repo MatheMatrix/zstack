@@ -19,7 +19,7 @@ import static java.util.Arrays.asList;
  
 public class APIUpdateSecurityGroupRulePriorityMsg extends APIMessage implements SecurityGroupMessage {
     public static class SecurityGroupRulePriorityAO {
-        @APIParam(resourceType = SecurityGroupRuleVO.class, checkAccount = true, operationTarget = true, nonempty = true, required = true)
+        @APIParam(resourceType = SecurityGroupRuleVO.class, nonempty = true, required = true)
         private String ruleUuid;
         @APIParam(required = true, nonempty = true)
         private Integer priority;
@@ -41,7 +41,7 @@ public class APIUpdateSecurityGroupRulePriorityMsg extends APIMessage implements
         }
     }
 
-    @APIParam(resourceType = SecurityGroupVO.class, checkAccount = true, operationTarget = true, nonempty = true, required = true)
+    @APIParam(resourceType = SecurityGroupVO.class, nonempty = true, required = true)
     private String securityGroupUuid;
 
     @APIParam(required = true, validValues = {"Ingress", "Egress"}, nonempty = true)

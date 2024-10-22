@@ -24,11 +24,11 @@ import org.zstack.header.zone.ZoneVO;
 public class APICreateVirtualRouterOfferingMsg extends APICreateInstanceOfferingMsg {
 	@APIParam(resourceType = ZoneVO.class)
 	private String zoneUuid;
-	@APIParam(resourceType = L3NetworkVO.class, checkAccount = true)
+	@APIParam(resourceType = L3NetworkVO.class)
 	private String managementNetworkUuid;
-	@APIParam(resourceType = ImageVO.class, checkAccount = true)
+	@APIParam(resourceType = ImageVO.class)
 	private String imageUuid;
-    @APIParam(required = false, resourceType = L3NetworkVO.class, checkAccount = true)
+    @APIParam(required = false, resourceType = L3NetworkVO.class)
 	private String publicNetworkUuid;
 	private Boolean isDefault;
 

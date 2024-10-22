@@ -18,7 +18,7 @@ import org.zstack.ldap.entity.LdapServerVO;
         responseClass = APISyncAccountsFromLdapServerEvent.class
 )
 public class APISyncAccountsFromLdapServerMsg extends APIMessage {
-    @APIParam(resourceType = LdapServerVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LdapServerVO.class)
     private String uuid;
     @APIParam(validEnums = {SyncCreatedAccountStrategy.class}, required = false)
     private String createAccountStrategy;

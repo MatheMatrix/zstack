@@ -17,7 +17,7 @@ import org.zstack.header.vm.VmInstanceMessage;
         isAction = true
 )
 public class APIProvisionVirtualRouterConfigMsg extends APIMessage implements VmInstanceMessage {
-    @APIParam(resourceType = VirtualRouterVmVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VirtualRouterVmVO.class)
     private String vmInstanceUuid;
 
     @Override

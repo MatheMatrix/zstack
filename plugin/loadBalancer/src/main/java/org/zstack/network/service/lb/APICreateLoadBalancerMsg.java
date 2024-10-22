@@ -27,7 +27,7 @@ public class APICreateLoadBalancerMsg extends APICreateMessage implements APIAud
     private String name;
     @APIParam(maxLength = 2048, required = false)
     private String description;
-    @APIParam(resourceType = VipVO.class, checkAccount = true)
+    @APIParam(resourceType = VipVO.class)
     private String vipUuid;
 
     private String type;

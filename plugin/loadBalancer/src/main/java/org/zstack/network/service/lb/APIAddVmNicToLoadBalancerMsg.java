@@ -28,9 +28,9 @@ import java.util.List;
         responseClass = APIAddVmNicToLoadBalancerEvent.class
 )
 public class APIAddVmNicToLoadBalancerMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
-    @APIParam(resourceType = VmNicVO.class, checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = VmNicVO.class, nonempty = true)
     private List<String> vmNicUuids;
-    @APIParam(resourceType = LoadBalancerListenerVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerListenerVO.class)
     private String listenerUuid;
     @APINoSee
     private String loadBalancerUuid;

@@ -25,7 +25,7 @@ import java.util.List;
         parameterName = "params"
 )
 public class APICreateLoadBalancerListenerMsg extends APICreateMessage implements LoadBalancerMessage, APIAuditor {
-    @APIParam(resourceType = LoadBalancerVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerVO.class)
     private String loadBalancerUuid;
     @APIParam(maxLength = 255)
     private String name;

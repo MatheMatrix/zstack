@@ -62,12 +62,12 @@ public class APIAttachPortForwardingRuleMsg extends APIMessage {
     /**
      * @desc rule uuid
      */
-    @APIParam(resourceType = PortForwardingRuleVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = PortForwardingRuleVO.class)
     private String ruleUuid;
     /**
      * @desc vm nic uuid the rule attaches to. see :ref:`VmNicInventory`
      */
-    @APIParam(resourceType = VmNicVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VmNicVO.class)
     private String vmNicUuid;
 
     public String getRuleUuid() {

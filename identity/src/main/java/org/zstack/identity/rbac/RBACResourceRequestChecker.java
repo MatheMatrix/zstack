@@ -256,10 +256,6 @@ public class RBACResourceRequestChecker implements APIRequestChecker {
 
         Class<?> resourceType = param.param.resourceType()[0];
 
-        if (param.param.checkAccount() || param.param.operationTarget()) {
-            return APIResourceScope.AllowedSharing;
-        }
-
         return RBAC.isResourceGlobalReadable(resourceType) ?
                 APIResourceScope.AllowedAll :
                 APIResourceScope.AllowedSharing;

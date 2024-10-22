@@ -23,7 +23,7 @@ import java.util.Map;
         responseClass = APIAddBackendServerToServerGroupEvent.class
 )
 public class APIAddBackendServerToServerGroupMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
-    @APIParam(resourceType = LoadBalancerServerGroupVO.class, checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = LoadBalancerServerGroupVO.class, nonempty = true)
     private String serverGroupUuid;
     @APIParam(required = false)
     private List<Map<String,String>> vmNics;

@@ -1,7 +1,6 @@
 package org.zstack.network.l2.vxlan.vxlanNetworkPool;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -21,8 +20,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIDeleteVniRangeEvent.class
 )
 public class APIDeleteVniRangeMsg extends APIDeleteMessage implements L2NetworkMessage, APIAuditor {
-    @APIParam(resourceType = VniRangeVO.class, successIfResourceNotExisting = true,
-            checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VniRangeVO.class, successIfResourceNotExisting = true)
     private String uuid;
 
     @APINoSee

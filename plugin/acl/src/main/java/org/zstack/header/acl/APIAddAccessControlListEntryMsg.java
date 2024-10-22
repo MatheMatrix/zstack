@@ -21,7 +21,7 @@ import org.zstack.header.rest.RestRequest;
         parameterName = "params"
 )
 public class APIAddAccessControlListEntryMsg extends APICreateMessage implements APIAuditor {
-    @APIParam(resourceType = AccessControlListVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = AccessControlListVO.class)
     private String aclUuid;
     @APIParam(maxLength = 2048)
     private String entries;

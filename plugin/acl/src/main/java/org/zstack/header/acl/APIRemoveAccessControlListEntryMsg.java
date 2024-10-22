@@ -20,9 +20,9 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIRemoveAccessControlListEntryEvent.class
 )
 public class APIRemoveAccessControlListEntryMsg extends APIDeleteMessage implements APIAuditor{
-    @APIParam(resourceType = AccessControlListVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = AccessControlListVO.class)
     private String aclUuid;
-    @APIParam(resourceType = AccessControlListEntryVO.class, operationTarget = true, successIfResourceNotExisting = true)
+    @APIParam(resourceType = AccessControlListEntryVO.class, successIfResourceNotExisting = true)
     private String uuid;
 
     public  String getAclUuid() {

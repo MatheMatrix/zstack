@@ -55,7 +55,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 public class APIChangeSecurityGroupStateMsg extends APIMessage {
-    @APIParam(resourceType = SecurityGroupVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = SecurityGroupVO.class)
     private String uuid;
     @APIParam(validValues = {"enable", "disable"})
     private String stateEvent;

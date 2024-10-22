@@ -22,7 +22,7 @@ import org.zstack.header.rest.RestRequest;
 )
 @Action(category = VxlanNetworkPoolConstant.ACTION_CATEGORY)
 public class APIUpdateVniRangeMsg extends APIMessage implements L2NetworkMessage, APIAuditor {
-    @APIParam(resourceType = VniRangeVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VniRangeVO.class)
     private String uuid;
 
     @APIParam(maxLength = 255)

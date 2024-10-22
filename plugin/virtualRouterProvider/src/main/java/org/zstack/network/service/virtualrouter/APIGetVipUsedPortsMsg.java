@@ -16,7 +16,7 @@ import org.zstack.network.service.vip.VipVO;
         responseClass = APIGetVipUsedPortsReply.class
 )
 public class APIGetVipUsedPortsMsg extends APISyncCallMessage {
-    @APIParam(resourceType = VipVO.class, checkAccount = true)
+    @APIParam(resourceType = VipVO.class)
     private String uuid;
 
     @APIParam(validValues = {"TCP", "UDP"})

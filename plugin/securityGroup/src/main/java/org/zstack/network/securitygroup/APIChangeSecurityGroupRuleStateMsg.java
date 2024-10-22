@@ -18,10 +18,10 @@ import static java.util.Arrays.asList;
         isAction = true
 )
 public class APIChangeSecurityGroupRuleStateMsg extends APIMessage implements SecurityGroupMessage {
-    @APIParam(required = true, nonempty = true, checkAccount = true, operationTarget = true)
+    @APIParam(required = true, nonempty = true)
     private String securityGroupUuid;
 
-    @APIParam(required = true, nonempty = true, checkAccount = true, operationTarget = true)
+    @APIParam(required = true, nonempty = true)
     private List<String> ruleUuids;
 
 	@APIParam(required = true, validValues = {"Enabled", "Disabled"})

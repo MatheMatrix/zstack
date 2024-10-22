@@ -18,7 +18,7 @@ public class APIGetResourceConfigMsg extends APISyncCallMessage implements Resou
     private String category;
     @APIParam
     private String name;
-    @APIParam(resourceType = ResourceVO.class, checkAccount = true)
+    @APIParam(resourceType = ResourceVO.class)
     private String resourceUuid;
 
     @Override

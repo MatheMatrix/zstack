@@ -6,10 +6,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
-import org.zstack.header.vm.APIUpdateVmInstanceEvent;
-import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmInstanceMessage;
-import org.zstack.header.vm.VmInstanceVO;
 
 /**
  * Created by shixin.ruan 2020/02/12.
@@ -22,7 +19,7 @@ import org.zstack.header.vm.VmInstanceVO;
         responseClass = APIUpdateVirtualRouterEvent.class
 )
 public class APIUpdateVirtualRouterMsg extends APIMessage implements VmInstanceMessage {
-    @APIParam(resourceType = VirtualRouterVmVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VirtualRouterVmVO.class)
     private String vmInstanceUuid;
     @APIParam(resourceType = L3NetworkVO.class, required = false)
     private String defaultRouteL3NetworkUuid;

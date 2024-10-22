@@ -15,7 +15,7 @@ import org.zstack.header.vm.VmNicVO;
         isAction = true
 )
 public class APIChangeVmNicSecurityPolicyMsg extends APIMessage implements VmNicSecurityGroupMessage {
-    @APIParam(resourceType = VmNicVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VmNicVO.class)
     private String vmNicUuid;
 
     @APIParam(required = false, validValues = {"DENY", "ALLOW"})

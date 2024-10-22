@@ -3,8 +3,6 @@ package org.zstack.network.service.eip;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
-import org.zstack.header.message.APIEvent;
-import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
@@ -56,7 +54,7 @@ public class APIDeleteEipMsg extends APIDeleteMessage implements EipMessage {
     /**
      * @desc eip uuid
      */
-    @APIParam(checkAccount = true, operationTarget = true, successIfResourceNotExisting = true, resourceType = EipVO.class)
+    @APIParam(successIfResourceNotExisting = true, resourceType = EipVO.class)
     private String uuid;
 
     public String getUuid() {

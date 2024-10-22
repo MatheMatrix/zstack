@@ -13,10 +13,10 @@ import org.zstack.header.vm.VmInstanceVO;
         parameterName = "params"
 )
 public class APIAttachSshKeyPairToVmInstanceMsg extends APIMessage implements SshKeyPairMessage {
-    @APIParam(resourceType = VmInstanceVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;
 
-    @APIParam(resourceType = SshKeyPairVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = SshKeyPairVO.class)
     private String sshKeyPairUuid;
 
     public String getVmInstanceUuid() {
