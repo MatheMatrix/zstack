@@ -12,7 +12,10 @@ public class RBACInfo implements RBACDescription {
     public void permissions() {
         permissionBuilder()
                 .adminOnlyForAll()
-                .normalAPIs(APIRequestConsoleAccessMsg.class)
+                .normalAPIs(
+                    APIRequestConsoleAccessMsg.class,
+                    APIQueryConsoleProxyAgentMsg.class
+                )
                 .communityAvailable()
                 .zsvBasicAvailable()
                 .zsvProAvailable()
