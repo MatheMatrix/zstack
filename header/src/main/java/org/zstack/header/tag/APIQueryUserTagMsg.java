@@ -1,7 +1,6 @@
 package org.zstack.header.tag;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.query.APIQueryMessage;
 import org.zstack.header.query.AutoQuery;
 import org.zstack.header.rest.RestRequest;
@@ -13,7 +12,6 @@ import static java.util.Arrays.asList;
 /**
  */
 @AutoQuery(replyClass = APIQueryUserTagReply.class, inventoryClass = UserTagInventory.class)
-@Action(category = TagConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/user-tags",
         optionalPaths = {"/user-tags/{uuid}"},

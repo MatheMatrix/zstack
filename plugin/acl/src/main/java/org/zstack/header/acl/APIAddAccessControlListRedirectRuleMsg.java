@@ -2,7 +2,6 @@ package org.zstack.header.acl;
 
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.log.NoLogging;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIEvent;
@@ -14,7 +13,6 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 
 @TagResourceType(AccessControlListVO.class)
-@Action(category = AccessControlListConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/access-control-lists/{aclUuid}/redirectRules",
         method = HttpMethod.POST,

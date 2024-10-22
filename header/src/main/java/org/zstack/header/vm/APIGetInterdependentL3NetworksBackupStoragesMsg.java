@@ -1,7 +1,6 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.network.l3.L3NetworkVO;
@@ -14,7 +13,6 @@ import java.util.List;
 /**
  * Created by Qi Le on 2022/3/9
  */
-@Action(category = VmInstanceConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/backupStorage-l3networks/dependencies",
         method = HttpMethod.GET,

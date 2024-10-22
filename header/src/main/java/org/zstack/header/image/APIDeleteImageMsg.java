@@ -1,10 +1,7 @@
 package org.zstack.header.image;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
-import org.zstack.header.message.APIEvent;
-import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.backup.BackupStorageVO;
@@ -14,7 +11,6 @@ import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
 
-@Action(category = ImageConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/images/{uuid}",
         method = HttpMethod.DELETE,

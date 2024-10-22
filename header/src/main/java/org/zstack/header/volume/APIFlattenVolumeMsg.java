@@ -1,7 +1,6 @@
 package org.zstack.header.volume;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -11,7 +10,6 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.concurrent.TimeUnit;
 
-@Action(category = VolumeConstant.ACTION_CATEGORY)
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 36)
 @RestRequest(
         path = "/volumes/{uuid}/actions",

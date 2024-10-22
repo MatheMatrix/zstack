@@ -1,7 +1,6 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
@@ -10,7 +9,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by camile on 5/19/2017.
  */
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/load-balancers/listeners/{uuid}",
         method = HttpMethod.PUT,

@@ -5,7 +5,6 @@ package org.zstack.header.storage.snapshot.group;
  */
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -14,12 +13,10 @@ import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.snapshot.SnapshotBackendOperation;
-import org.zstack.header.storage.snapshot.VolumeSnapshotConstant;
 import org.zstack.header.vm.VmInstanceVO;
 
 import java.util.concurrent.TimeUnit;
 
-@Action(category = VolumeSnapshotConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volume-snapshots/group/{uuid}/actions",
         isAction = true,

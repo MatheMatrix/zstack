@@ -1,8 +1,6 @@
 package org.zstack.network.securitygroup;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -47,7 +45,6 @@ import org.zstack.header.rest.RestRequest;
  * @result
  * see :ref:`APIChangeSecurityGroupStateEvent`
  */
-@Action(category = SecurityGroupConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/security-groups/{uuid}/actions",
         method = HttpMethod.PUT,

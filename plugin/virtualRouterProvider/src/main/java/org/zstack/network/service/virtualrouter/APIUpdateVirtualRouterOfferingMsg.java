@@ -3,7 +3,6 @@ package org.zstack.network.service.virtualrouter;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.configuration.APIUpdateInstanceOfferingEvent;
 import org.zstack.header.configuration.APIUpdateInstanceOfferingMsg;
-import org.zstack.header.identity.Action;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -11,7 +10,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by frank on 7/31/2015.
  */
-@Action(category = VirtualRouterConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/instance-offerings/virtual-routers/{uuid}/actions",
         responseClass = APIUpdateInstanceOfferingEvent.class,

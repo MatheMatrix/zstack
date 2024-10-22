@@ -1,7 +1,6 @@
 package org.zstack.header.identity;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.Constants;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
@@ -19,7 +18,6 @@ import static org.zstack.utils.CollectionDSL.list;
         method = HttpMethod.GET,
         responseClass = APIGetResourceAccountReply.class
 )
-@Action(category = Constants.CATEGORY_RESOURCE, names = {"read"})
 public class APIGetResourceAccountMsg extends APISyncCallMessage {
     @APIParam(nonempty = true)
     private List<String> resourceUuids;

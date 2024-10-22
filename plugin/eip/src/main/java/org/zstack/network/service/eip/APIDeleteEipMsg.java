@@ -1,7 +1,6 @@
 package org.zstack.network.service.eip;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -44,7 +43,6 @@ import org.zstack.header.rest.RestRequest;
  * @result
  * see :ref:`APIDetachEipEvent`
  */
-@Action(category = EipConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/eips/{uuid}",
         method = HttpMethod.DELETE,

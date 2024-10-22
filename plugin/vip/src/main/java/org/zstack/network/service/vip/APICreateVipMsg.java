@@ -1,7 +1,6 @@
 package org.zstack.network.service.vip;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -50,7 +49,6 @@ import org.zstack.header.rest.RestRequest;
  *
  * see :ref:`APICreateVipEvent`
  */
-@Action(category = VipConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vips",
         method = HttpMethod.POST,

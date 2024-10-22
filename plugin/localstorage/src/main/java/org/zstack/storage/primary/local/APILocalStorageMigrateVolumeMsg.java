@@ -2,7 +2,6 @@ package org.zstack.storage.primary.local;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.host.HostVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -12,7 +11,6 @@ import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.PrimaryStorageMessage;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
-import org.zstack.header.volume.VolumeConstant;
 import org.zstack.header.volume.VolumeVO;
 
 import java.util.concurrent.TimeUnit;
@@ -20,7 +18,6 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by frank on 11/16/2015.
  */
-@Action(category = VolumeConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/primary-storage/local-storage/volumes/{volumeUuid}/actions",
         method = HttpMethod.PUT,

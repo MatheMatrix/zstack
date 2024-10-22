@@ -1,7 +1,6 @@
 package org.zstack.header.storage.snapshot;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.DefaultTimeout;
@@ -14,7 +13,6 @@ import java.util.concurrent.TimeUnit;
  * @ Author : yh.w
  * @ Date   : Created in 13:24 2020/7/28
  */
-@Action(category = VolumeSnapshotConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volume-snapshots/shrink/{uuid}/actions",
         method = HttpMethod.PUT,

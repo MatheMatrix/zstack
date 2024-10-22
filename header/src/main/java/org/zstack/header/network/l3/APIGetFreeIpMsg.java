@@ -1,7 +1,6 @@
 package org.zstack.header.network.l3;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
@@ -10,7 +9,6 @@ import org.zstack.header.rest.SDK;
 /**
  * Created by frank on 6/15/2015.
  */
-@Action(category = L3NetworkConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "null",
         optionalPaths = {

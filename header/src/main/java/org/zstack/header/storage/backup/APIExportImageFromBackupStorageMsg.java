@@ -1,8 +1,6 @@
 package org.zstack.header.storage.backup;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.image.ImageConstant;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -13,7 +11,6 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.concurrent.TimeUnit;
 
-@Action(category = ImageConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/backup-storage/{backupStorageUuid}/actions",
         isAction = true,

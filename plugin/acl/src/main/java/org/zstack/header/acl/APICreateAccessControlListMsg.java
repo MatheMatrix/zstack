@@ -1,7 +1,6 @@
 package org.zstack.header.acl;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -15,7 +14,6 @@ import org.zstack.header.tag.TagResourceType;
  * @date: 2020-03-09
  **/
 @TagResourceType(AccessControlListVO.class)
-@Action(category = AccessControlListConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/access-control-lists",
         method = HttpMethod.POST,

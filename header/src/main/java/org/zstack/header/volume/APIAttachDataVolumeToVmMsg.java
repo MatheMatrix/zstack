@@ -1,7 +1,6 @@
 package org.zstack.header.volume;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -34,7 +33,6 @@ import org.zstack.header.vm.VmInstanceVO;
  * @result See :ref:`APIAttachVolumeToVmEvent`
  * @since 0.1.0
  */
-@Action(category = VolumeConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volumes/{volumeUuid}/vm-instances/{vmInstanceUuid}",
         method = HttpMethod.POST,

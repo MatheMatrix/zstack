@@ -1,7 +1,6 @@
 package org.zstack.header.image;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -14,7 +13,6 @@ import org.zstack.header.storage.backup.ImageHashAlgorithm;
  * @ Author : yh.w
  * @ Date   : Created in 13:35 2023/11/10
  */
-@Action(category = ImageConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/images/{uuid}/actions",
         isAction = true,

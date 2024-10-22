@@ -2,7 +2,6 @@ package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.acl.AccessControlListVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -13,7 +12,6 @@ import org.zstack.header.rest.RestRequest;
 import java.util.Arrays;
 import java.util.List;
 
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/load-balancers/listener/acl/{aclUuid}/servergroup/actions",
         method = HttpMethod.PUT,

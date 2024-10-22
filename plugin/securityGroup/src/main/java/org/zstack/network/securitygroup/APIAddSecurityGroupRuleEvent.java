@@ -1,6 +1,5 @@
 package org.zstack.network.securitygroup;
 
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.rest.RestResponse;
 

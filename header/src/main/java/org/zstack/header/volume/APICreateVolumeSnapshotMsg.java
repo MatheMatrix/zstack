@@ -1,11 +1,9 @@
 package org.zstack.header.volume;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.*;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
-import org.zstack.header.storage.snapshot.VolumeSnapshotConstant;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 
 import java.util.concurrent.TimeUnit;
@@ -40,7 +38,6 @@ import java.util.concurrent.TimeUnit;
  * @result see :ref:`APICreateVolumeSnapshotEvent`
  * @since 0.1.0
  */
-@Action(category = VolumeSnapshotConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volumes/{volumeUuid}/volume-snapshots",
         method = HttpMethod.POST,

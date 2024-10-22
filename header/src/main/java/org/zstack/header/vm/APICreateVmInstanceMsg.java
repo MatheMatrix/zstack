@@ -7,7 +7,6 @@ import org.zstack.header.configuration.InstanceOfferingVO;
 import org.zstack.header.configuration.PythonClassInventory;
 import org.zstack.header.host.CpuArchitecture;
 import org.zstack.header.host.HostVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.*;
 import org.zstack.header.network.l3.L3NetworkVO;
@@ -73,7 +72,6 @@ import static java.util.Arrays.asList;
  * @summary 创建云主机
  */
 @TagResourceType(VmInstanceVO.class)
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances",
         method = HttpMethod.POST,

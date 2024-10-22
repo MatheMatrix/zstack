@@ -1,7 +1,6 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
@@ -14,7 +13,6 @@ import java.util.List;
 /**
  * Created by xing5 on 2016/8/23.
  */
-@Action(category = VmInstanceConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/images-l3networks/dependencies",
         method = HttpMethod.GET,

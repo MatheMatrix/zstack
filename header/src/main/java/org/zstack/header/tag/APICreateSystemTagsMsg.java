@@ -1,6 +1,5 @@
 package org.zstack.header.tag;
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.log.NoLogging;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -9,7 +8,6 @@ import org.zstack.header.vo.ResourceVO;
 
 import java.util.List;
 
-@Action(category = TagConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/system-tags/{resourceUuid}/tags",
         method = HttpMethod.POST,

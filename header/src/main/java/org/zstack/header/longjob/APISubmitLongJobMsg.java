@@ -1,10 +1,8 @@
 package org.zstack.header.longjob;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIEvent;
-import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.other.APILongJobAuditor;
@@ -18,7 +16,6 @@ import org.zstack.utils.DebugUtils;
  * Created by GuoYi on 11/13/17.
  */
 @TagResourceType(LongJobVO.class)
-@Action(category = LongJobConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/longjobs",
         method = HttpMethod.POST,

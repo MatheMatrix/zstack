@@ -9,7 +9,6 @@ import org.zstack.header.rest.RestRequest;
 
 import java.io.Serializable;
 
-@Action(category = AccountConstant.ACTION_CATEGORY, accountOnly = true)
 @RestRequest(
         path = "/accounts/{uuid}",
         method = HttpMethod.PUT,

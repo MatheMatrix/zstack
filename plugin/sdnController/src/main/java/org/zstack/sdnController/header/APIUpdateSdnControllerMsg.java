@@ -1,7 +1,6 @@
 package org.zstack.sdnController.header;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l2.L2NetworkMessage;
@@ -16,7 +15,6 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateSdnControllerEvent.class,
         isAction = true
 )
-@Action(category = SdnControllerConstant.ACTION_CATEGORY)
 public class APIUpdateSdnControllerMsg extends APIMessage implements L2NetworkMessage {
     @APIParam(resourceType = SdnControllerVO.class)
     private String uuid;

@@ -1,8 +1,6 @@
 package org.zstack.header.longjob;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -10,7 +8,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by GuoYi on 11/13/17.
  */
-@Action(category = LongJobConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/longjobs/{uuid}/actions",
         isAction = true,

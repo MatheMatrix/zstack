@@ -1,7 +1,6 @@
 package org.zstack.network.service.virtualrouter;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l3.L3NetworkVO;
@@ -11,7 +10,6 @@ import org.zstack.header.vm.VmInstanceMessage;
 /**
  * Created by shixin.ruan 2020/02/12.
  */
-@Action(category = VirtualRouterConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances/appliances/virtual-routers/{vmInstanceUuid}/actions",
         method = HttpMethod.PUT,

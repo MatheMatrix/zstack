@@ -1,7 +1,6 @@
 package org.zstack.network.service.eip;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APIGetMessage;
 import org.zstack.header.rest.RestRequest;
@@ -9,7 +8,6 @@ import org.zstack.network.service.vip.VipVO;
 
 /**
  */
-@Action(category = EipConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/eips/{eipUuid}/vm-instances/candidate-nics",
         method = HttpMethod.GET,

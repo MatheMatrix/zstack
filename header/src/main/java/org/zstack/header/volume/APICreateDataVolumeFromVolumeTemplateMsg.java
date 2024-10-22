@@ -2,7 +2,6 @@ package org.zstack.header.volume;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.host.HostVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.*;
 import org.zstack.header.other.APIAuditor;
@@ -14,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 
 /**
  */
-@Action(category = VolumeConstant.ACTION_CATEGORY)
 @TagResourceType(VolumeVO.class)
 @RestRequest(
         path = "/volumes/data/from/data-volume-templates/{imageUuid}",
