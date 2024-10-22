@@ -16,7 +16,7 @@ public class APIUpdateResourceConfigMsg extends APIMessage implements ResourceCo
     private String category;
     @APIParam
     private String name;
-    @APIParam(checkAccount = true, resourceType = ResourceVO.class, operationTarget = true)
+    @APIParam(resourceType = ResourceVO.class)
     private String resourceUuid;
     @APIParam
     private String value;

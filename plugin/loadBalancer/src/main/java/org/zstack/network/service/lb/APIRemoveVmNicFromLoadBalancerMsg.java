@@ -1,7 +1,6 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.core.db.Q;
 import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -9,9 +8,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
-import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmNicVO;
-import org.zstack.header.vm.VmNicVO_;
 
 import java.util.Arrays;
 import java.util.List;
@@ -26,11 +23,11 @@ import java.util.List;
         responseClass = APIRemoveVmNicFromLoadBalancerEvent.class
 )
 public class APIRemoveVmNicFromLoadBalancerMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
-    @APIParam(resourceType = VmNicVO.class, checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = VmNicVO.class, nonempty = true)
     private List<String> vmNicUuids;
     @APINoSee
     private String loadBalancerUuid;
-    @APIParam(resourceType = LoadBalancerListenerVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerListenerVO.class)
     private String listenerUuid;
 
     public List<String> getVmNicUuids() {

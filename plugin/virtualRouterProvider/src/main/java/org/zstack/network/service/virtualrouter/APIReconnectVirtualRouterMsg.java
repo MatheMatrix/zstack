@@ -2,12 +2,10 @@ package org.zstack.network.service.virtualrouter;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vm.VmInstanceMessage;
-import org.zstack.header.vm.VmInstanceVO;
 
 /**
  */
@@ -19,7 +17,7 @@ import org.zstack.header.vm.VmInstanceVO;
         isAction = true
 )
 public class APIReconnectVirtualRouterMsg extends APIMessage implements VmInstanceMessage {
-    @APIParam(resourceType = VirtualRouterVmVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VirtualRouterVmVO.class)
     private String vmInstanceUuid;
 
     @Override

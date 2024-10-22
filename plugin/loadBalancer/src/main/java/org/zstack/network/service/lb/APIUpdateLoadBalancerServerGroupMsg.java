@@ -15,7 +15,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 public class APIUpdateLoadBalancerServerGroupMsg extends APIMessage implements LoadBalancerMessage{
-    @APIParam(resourceType = LoadBalancerServerGroupVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerServerGroupVO.class)
     private String uuid;
     @APIParam(maxLength = 255, required = false)
     private String name;

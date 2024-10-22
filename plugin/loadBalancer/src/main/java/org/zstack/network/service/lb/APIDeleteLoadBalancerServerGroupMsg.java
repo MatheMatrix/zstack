@@ -2,7 +2,6 @@ package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -17,7 +16,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIDeleteLoadBalancerServerGroupEvent.class
 )
 public class APIDeleteLoadBalancerServerGroupMsg extends APIMessage implements LoadBalancerMessage, APIAuditor{
-    @APIParam(resourceType = LoadBalancerServerGroupVO.class, successIfResourceNotExisting = true, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerServerGroupVO.class, successIfResourceNotExisting = true)
     private String uuid;
 
     @APINoSee

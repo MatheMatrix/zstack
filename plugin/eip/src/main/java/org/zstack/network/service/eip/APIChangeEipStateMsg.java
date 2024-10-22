@@ -16,7 +16,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 public class APIChangeEipStateMsg extends APIMessage implements EipMessage {
-    @APIParam(resourceType = EipVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = EipVO.class)
     private String uuid;
     @APIParam(validValues = {"enable", "disable"})
     private String stateEvent;

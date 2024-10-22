@@ -20,7 +20,7 @@ import java.util.List;
         responseClass = APIRemoveBackendServerFromServerGroupEvent.class
 )
 public class APIRemoveBackendServerFromServerGroupMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
-    @APIParam(resourceType = LoadBalancerServerGroupVO.class,checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = LoadBalancerServerGroupVO.class, nonempty = true)
     private String serverGroupUuid;
     @APIParam(resourceType = VmNicVO.class, required = false)
     private List<String> vmNicUuids;

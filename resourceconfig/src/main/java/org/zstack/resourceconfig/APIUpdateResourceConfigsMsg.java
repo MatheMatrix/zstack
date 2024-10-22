@@ -51,7 +51,7 @@ public class APIUpdateResourceConfigsMsg extends APIMessage {
         }
     }
 
-    @APIParam(resourceType = ResourceVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = ResourceVO.class)
     private String resourceUuid;
 
     @APIParam(nonempty = true)

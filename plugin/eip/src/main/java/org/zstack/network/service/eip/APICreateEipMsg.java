@@ -77,19 +77,19 @@ public class APICreateEipMsg extends APICreateMessage implements APIAuditor {
     /**
      * @desc vip uuid. See :ref:`VipInventory`
      */
-    @APIParam(resourceType = VipVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VipVO.class)
     private String vipUuid;
     /**
      * @desc vm nic uuid, see :ref:`VmNicInventory`. If omitted, the eip is created without attaching to any vm nic
      * @optional
      */
-    @APIParam(required = false, resourceType = VmNicVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(required = false, resourceType = VmNicVO.class)
     private String vmNicUuid;
 
     /**
      * @desc vm nic ip. See :ref:`UsedIpInventory`
      */
-    @APIParam(required = false, resourceType = UsedIpVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(required = false, resourceType = UsedIpVO.class)
     private String usedIpUuid;
 
     public String getVipUuid() {

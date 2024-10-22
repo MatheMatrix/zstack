@@ -17,7 +17,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIChangePortForwardingRuleStateEvent.class
 )
 public class APIChangePortForwardingRuleStateMsg extends APIMessage {
-    @APIParam(resourceType = PortForwardingRuleVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = PortForwardingRuleVO.class)
     private String uuid;
     @APIParam(validValues = {"enable", "disable"})
     private String stateEvent;

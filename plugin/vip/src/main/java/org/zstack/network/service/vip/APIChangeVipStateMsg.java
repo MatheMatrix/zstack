@@ -17,7 +17,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 public class APIChangeVipStateMsg extends APIMessage implements VipMessage {
-    @APIParam(resourceType = VipVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VipVO.class)
     private String uuid;
     @APIParam(validValues = {"enable", "disable"})
     private String stateEvent;

@@ -25,13 +25,13 @@ import java.util.List;
         responseClass = APIAddAccessControlListToLoadBalancerEvent.class
 )
 public class APIAddAccessControlListToLoadBalancerMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
-    @APIParam(resourceType = AccessControlListVO.class, checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = AccessControlListVO.class, nonempty = true)
     private List<String> aclUuids;
     @APIParam(validValues = {"white","black","redirect"})
     private String aclType;
-    @APIParam(resourceType = LoadBalancerListenerVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerListenerVO.class)
     private String listenerUuid;
-    @APIParam(resourceType = LoadBalancerServerGroupVO.class, checkAccount = true, operationTarget = true, required = false)
+    @APIParam(resourceType = LoadBalancerServerGroupVO.class, required = false)
     private List<String> serverGroupUuids;
     @APINoSee
     private String loadBalancerUuid;

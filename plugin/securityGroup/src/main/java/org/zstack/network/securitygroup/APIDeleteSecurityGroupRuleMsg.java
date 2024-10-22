@@ -64,7 +64,7 @@ public class APIDeleteSecurityGroupRuleMsg extends APIMessage implements APIAudi
     /**
      * @desc a list of rule uuid
      */
-    @APIParam(nonempty = true, checkAccount = true, operationTarget = true)
+    @APIParam(nonempty = true)
     private List<String> ruleUuids;
 
     public List<String> getRuleUuids() {

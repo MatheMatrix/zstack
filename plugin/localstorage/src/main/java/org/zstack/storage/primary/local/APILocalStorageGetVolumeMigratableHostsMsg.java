@@ -20,7 +20,7 @@ import org.zstack.header.volume.VolumeVO;
         responseClass = APILocalStorageGetVolumeMigratableReply.class
 )
 public class APILocalStorageGetVolumeMigratableHostsMsg extends APISyncCallMessage implements PrimaryStorageMessage {
-    @APIParam(resourceType = VolumeVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeVO.class)
     private String volumeUuid;
     @APINoSee
     private String primaryStorageUuid;

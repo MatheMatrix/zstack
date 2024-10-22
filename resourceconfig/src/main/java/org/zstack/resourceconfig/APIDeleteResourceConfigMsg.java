@@ -15,7 +15,7 @@ public class APIDeleteResourceConfigMsg extends APIDeleteMessage implements Reso
     private String category;
     @APIParam
     private String name;
-    @APIParam(checkAccount = true, successIfResourceNotExisting = true, resourceType = ResourceVO.class)
+    @APIParam(successIfResourceNotExisting = true, resourceType = ResourceVO.class)
     private String resourceUuid;
 
     @Override

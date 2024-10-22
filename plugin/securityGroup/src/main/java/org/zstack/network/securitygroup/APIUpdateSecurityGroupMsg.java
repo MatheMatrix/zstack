@@ -2,7 +2,6 @@ package org.zstack.network.securitygroup;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -19,7 +18,7 @@ import org.zstack.header.rest.RestRequest;
 )
 public class APIUpdateSecurityGroupMsg extends APIMessage implements SecurityGroupMessage {
     
-    @APIParam(resourceType = SecurityGroupVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = SecurityGroupVO.class)
     private String uuid;
     @APIParam(maxLength = 255, required = false)
     private String name;

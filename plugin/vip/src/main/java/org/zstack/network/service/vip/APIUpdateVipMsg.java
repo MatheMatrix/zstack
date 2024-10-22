@@ -2,7 +2,6 @@ package org.zstack.network.service.vip;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -18,7 +17,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 public class APIUpdateVipMsg extends APIMessage implements VipMessage {
-    @APIParam(resourceType = VipVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VipVO.class)
     private String uuid;
     @APIParam(maxLength = 255, required = false)
     private String name;

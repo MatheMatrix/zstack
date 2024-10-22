@@ -24,14 +24,14 @@ import java.util.List;
         responseClass = APIRemoveAccessControlListFromLoadBalancerEvent.class
 )
 public class APIRemoveAccessControlListFromLoadBalancerMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
-    @APIParam(resourceType = AccessControlListVO.class, checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = AccessControlListVO.class, nonempty = true)
     private List<String> aclUuids;
     @APINoSee
     private String loadBalancerUuid;
-    @APIParam(resourceType = LoadBalancerListenerVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerListenerVO.class)
     private String listenerUuid;
 
-    @APIParam(required = false, resourceType = LoadBalancerServerGroupVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(required = false, resourceType = LoadBalancerServerGroupVO.class)
     private List<String> serverGroupUuids;
 
     public List<String> getAclUuids() {

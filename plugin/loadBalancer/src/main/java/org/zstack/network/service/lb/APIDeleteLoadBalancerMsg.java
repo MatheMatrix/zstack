@@ -3,8 +3,6 @@ package org.zstack.network.service.lb;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
-import org.zstack.header.message.APIEvent;
-import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
@@ -18,7 +16,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIDeleteLoadBalancerEvent.class
 )
 public class APIDeleteLoadBalancerMsg extends APIDeleteMessage implements LoadBalancerMessage {
-    @APIParam(resourceType = LoadBalancerVO.class, successIfResourceNotExisting = true, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerVO.class, successIfResourceNotExisting = true)
     private String uuid;
 
     public String getUuid() {

@@ -54,7 +54,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIAttachSecurityGroupToL3NetworkEvent.class
 )
 public class APIAttachSecurityGroupToL3NetworkMsg extends APIMessage implements SecurityGroupMessage {
-    @APIParam(resourceType=SecurityGroupVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType=SecurityGroupVO.class)
     private String securityGroupUuid;
     @APIParam(resourceType = L3NetworkVO.class)
     private String l3NetworkUuid;

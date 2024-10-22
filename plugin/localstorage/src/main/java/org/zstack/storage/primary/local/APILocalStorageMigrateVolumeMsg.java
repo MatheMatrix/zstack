@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 24)
 public class APILocalStorageMigrateVolumeMsg extends APIMessage implements PrimaryStorageMessage, APIAuditor {
-    @APIParam(resourceType = VolumeVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeVO.class)
     private String volumeUuid;
     @APIParam(resourceType = HostVO.class)
     private String destHostUuid;

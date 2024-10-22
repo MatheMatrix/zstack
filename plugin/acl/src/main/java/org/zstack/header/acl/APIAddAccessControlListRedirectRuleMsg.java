@@ -41,7 +41,7 @@ public class APIAddAccessControlListRedirectRuleMsg extends APICreateMessage imp
     @NoLogging
     private String url;
 
-    @APIParam(resourceType = AccessControlListVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = AccessControlListVO.class)
     private String aclUuid;
 
     public String getName() {

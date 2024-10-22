@@ -17,7 +17,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIDeleteAccessControlListEvent.class
 )
 public class APIDeleteAccessControlListMsg extends APIDeleteMessage {
-    @APIParam(resourceType = AccessControlListVO.class, successIfResourceNotExisting = true, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = AccessControlListVO.class, successIfResourceNotExisting = true)
     private String uuid;
 
     public String getUuid() {

@@ -24,7 +24,7 @@ public class APICreateLoadBalancerServerGroupMsg extends APICreateMessage implem
     private String name;
     @APIParam(maxLength = 2048, required = false)
     private String description;
-    @APIParam(resourceType = LoadBalancerVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerVO.class)
     private String loadBalancerUuid;
 
     public String getName() {

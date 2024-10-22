@@ -3,8 +3,6 @@ package org.zstack.network.service.vip;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
-import org.zstack.header.message.APIEvent;
-import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l3.L3NetworkMessage;
 import org.zstack.header.rest.APINoSee;
@@ -51,7 +49,7 @@ public class APIDeleteVipMsg extends APIDeleteMessage implements L3NetworkMessag
     /**
      * @desc vip uuid
      */
-    @APIParam(checkAccount = true, operationTarget = true, resourceType = VipVO.class, successIfResourceNotExisting = true)
+    @APIParam(resourceType = VipVO.class, successIfResourceNotExisting = true)
     private String uuid;
 
     public String getUuid() {
