@@ -19,10 +19,10 @@ import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.network.l3.L3NetworkVO;
+import org.zstack.header.network.l3.UsedIpInventory;
+import org.zstack.header.network.l3.UsedIpVO;
 import org.zstack.header.network.service.*;
-import org.zstack.header.vm.VmInstanceConstant;
-import org.zstack.header.vm.VmInstanceState;
-import org.zstack.header.vm.VmNicInventory;
+import org.zstack.header.vm.*;
 import org.zstack.network.service.NetworkServiceManager;
 import org.zstack.network.service.eip.*;
 import org.zstack.network.service.virtualrouter.*;
@@ -141,9 +141,10 @@ public class VirtualRouterEipBackend extends AbstractVirtualRouterBackend implem
                         .map(VmNicInventory::getMac)
                         .orElse(null));
                 to.setVipIp(struct.getVip().getIp());
-                to.setGuestIp(struct.getNic().getIp());
                 to.setSnatInboundTraffic(struct.isSnatInboundTraffic());
                 to.setIpVersion(IPv6NetworkUtils.getIpVersion(to.getVipIp()));
+                to.setGuestIp(IPv6NetworkUtils.getIpByIpVersion(to.getIpVersion(),
+                        struct.getNic().getUsedIps().stream().map(UsedIpInventory::getIp).collect(Collectors.toList())));
 
                 VirtualRouterCommands.CreateEipCmd cmd = new VirtualRouterCommands.CreateEipCmd();
                 cmd.setEip(to);
@@ -294,13 +295,14 @@ public class VirtualRouterEipBackend extends AbstractVirtualRouterBackend implem
                 to.setPrivateMac(priMac);
                 to.setSnatInboundTraffic(struct.isSnatInboundTraffic());
                 to.setVipIp(struct.getVip().getIp());
-                to.setGuestIp(struct.getNic().getIp());
                 to.setNeedCleanGuestIp(!Q.New(EipVO.class)
                         .eq(EipVO_.guestIp, struct.getEip().getGuestIp())
                         .eq(EipVO_.vmNicUuid, struct.getEip().getVmNicUuid())
                         .notEq(EipVO_.vipIp, struct.getEip().getVipIp())
                         .isExists());
                 to.setIpVersion(IPv6NetworkUtils.getIpVersion(to.getVipIp()));
+                to.setGuestIp(IPv6NetworkUtils.getIpByIpVersion(to.getIpVersion(),
+                        struct.getNic().getUsedIps().stream().map(UsedIpInventory::getIp).collect(Collectors.toList())));
                 cmd.setEip(to);
 
                 VirtualRouterAsyncHttpCallMsg msg = new VirtualRouterAsyncHttpCallMsg();
