@@ -1,7 +1,6 @@
 package org.zstack.network.service.eip;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -56,7 +55,6 @@ import org.zstack.network.service.vip.VipVO;
  *
  * see :ref:`APICreateEipEvent`
  */
-@Action(category = EipConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/eips",
         method = HttpMethod.POST,

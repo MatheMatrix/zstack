@@ -2,7 +2,6 @@ package org.zstack.header.volume;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.configuration.DiskOfferingVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.*;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
@@ -39,7 +38,6 @@ import java.util.concurrent.TimeUnit;
  * @result see :ref:`APICreateDataVolumeEvent`
  * @since 0.1.0
  */
-@Action(category = VolumeConstant.ACTION_CATEGORY)
 @TagResourceType(VolumeVO.class)
 @RestRequest(
         path = "/volumes/data",

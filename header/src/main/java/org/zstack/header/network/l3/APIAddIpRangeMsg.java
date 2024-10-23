@@ -1,7 +1,6 @@
 package org.zstack.header.network.l3;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -49,7 +48,6 @@ import org.zstack.header.tag.TagResourceType;
  * @since 0.1.0
  */
 @TagResourceType(L3NetworkVO.class)
-@Action(category = L3NetworkConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/l3-networks/{l3NetworkUuid}/ip-ranges",
         method = HttpMethod.POST,

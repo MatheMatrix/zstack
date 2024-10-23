@@ -1,18 +1,11 @@
 package org.zstack.network.service.eip;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.core.db.Q;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l3.UsedIpVO;
 import org.zstack.header.rest.RestRequest;
-import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmNicVO;
-import org.zstack.header.vm.VmNicVO_;
-
-import javax.persistence.Tuple;
 
 /**
  * @api
@@ -53,7 +46,6 @@ import javax.persistence.Tuple;
  *
  * see :ref:`APIAttachEipEvent`
  */
-@Action(category = EipConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/eips/{eipUuid}/vm-instances/nics/{vmNicUuid}",
         method = HttpMethod.POST,

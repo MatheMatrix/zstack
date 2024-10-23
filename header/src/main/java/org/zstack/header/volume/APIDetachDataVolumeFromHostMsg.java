@@ -2,12 +2,10 @@ package org.zstack.header.volume;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.host.HostVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
-@Action(category = VolumeConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volumes/{volumeUuid}/hosts",
         method = HttpMethod.DELETE,

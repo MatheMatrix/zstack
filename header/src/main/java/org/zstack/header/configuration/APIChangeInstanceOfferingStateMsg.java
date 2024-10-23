@@ -1,8 +1,6 @@
 package org.zstack.header.configuration;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -13,7 +11,6 @@ import org.zstack.header.rest.RestRequest;
  * Time: 9:02 PM
  * To change this template use File | Settings | File Templates.
  */
-@Action(category = ConfigurationConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/instance-offerings/{uuid}/actions",
         method = HttpMethod.PUT,

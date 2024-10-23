@@ -3,8 +3,6 @@ package org.zstack.header.vm;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.host.HostVO;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -34,7 +32,6 @@ import org.zstack.header.rest.RestRequest;
  * @result See :ref:`APIStartVmInstanceEvent`
  * @since 0.1.0
  */
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances/{uuid}/actions",
         method = HttpMethod.PUT,

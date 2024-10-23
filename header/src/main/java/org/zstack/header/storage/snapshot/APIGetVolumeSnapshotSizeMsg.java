@@ -1,7 +1,6 @@
 package org.zstack.header.storage.snapshot;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
@@ -10,7 +9,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by lining on 2019/5/14.
  */
-@Action(category = VolumeSnapshotConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volume-snapshots/{uuid}/actions",
         method = HttpMethod.PUT,

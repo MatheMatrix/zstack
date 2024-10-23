@@ -1,7 +1,6 @@
 package org.zstack.header.volume;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.vm.VmInstanceVO;
@@ -32,7 +31,6 @@ import org.zstack.header.rest.RestRequest;
  * @result See :ref:`APIDetachDataVolumeEvent`
  * @since 0.1.0
  */
-@Action(category = VolumeConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volumes/{uuid}/vm-instances",
         method = HttpMethod.DELETE,

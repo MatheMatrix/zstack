@@ -1,10 +1,6 @@
 package org.zstack.header.longjob;
 
-import org.hamcrest.StringDescription;
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.longjob.LongJobConstants;
-import org.zstack.header.longjob.LongJobVO;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -12,7 +8,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  *  * Created on 2/3/2020
  *   */
-@Action(category = LongJobConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/longjobs/{uuid}/actions",
         isAction = true,

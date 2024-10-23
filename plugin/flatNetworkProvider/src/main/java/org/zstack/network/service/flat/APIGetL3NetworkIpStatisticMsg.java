@@ -1,10 +1,8 @@
 package org.zstack.network.service.flat;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
-import org.zstack.header.network.l3.L3NetworkConstant;
 import org.zstack.header.network.l3.L3NetworkMessage;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
@@ -14,7 +12,6 @@ import static org.zstack.network.service.flat.IpStatisticConstants.*;
 /**
  * Created by Qi Le on 2019/9/9
  */
-@Action(category = L3NetworkConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/l3-networks/{l3NetworkUuid}/ip-statistic",
         method = HttpMethod.GET,

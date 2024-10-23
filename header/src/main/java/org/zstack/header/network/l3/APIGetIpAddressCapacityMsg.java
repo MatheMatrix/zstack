@@ -1,7 +1,6 @@
 package org.zstack.header.network.l3;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
@@ -12,7 +11,6 @@ import java.util.List;
 
 /**
  */
-@Action(category = L3NetworkConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/ip-capacity",
         method = HttpMethod.GET,

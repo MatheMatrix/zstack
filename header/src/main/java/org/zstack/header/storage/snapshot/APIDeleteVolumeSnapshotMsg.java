@@ -1,7 +1,6 @@
 package org.zstack.header.storage.snapshot;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.*;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
@@ -39,7 +38,6 @@ import static org.zstack.utils.CollectionDSL.list;
  * @result see :ref:`APIDeleteVolumeSnapshotEvent`
  * @since 0.1.0
  */
-@Action(category = VolumeSnapshotConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volume-snapshots/{uuid}",
         method = HttpMethod.DELETE,

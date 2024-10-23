@@ -1,7 +1,6 @@
 package org.zstack.sdnController.header;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.log.NoLogging;
 import org.zstack.header.message.*;
 import org.zstack.header.other.APIAuditor;
@@ -9,7 +8,6 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 
 @TagResourceType(SdnControllerVO.class)
-@Action(category = SdnControllerConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/sdn-controllers",
         method = HttpMethod.POST,

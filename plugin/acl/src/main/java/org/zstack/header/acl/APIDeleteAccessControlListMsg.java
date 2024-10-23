@@ -1,7 +1,6 @@
 package org.zstack.header.acl;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -10,7 +9,6 @@ import org.zstack.header.rest.RestRequest;
  * @author: zhanyong.miao
  * @date: 2020-03-09
  **/
-@Action(category = AccessControlListConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/access-control-lists/{uuid}",
         method = HttpMethod.DELETE,

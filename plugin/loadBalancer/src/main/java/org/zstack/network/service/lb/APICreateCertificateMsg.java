@@ -1,7 +1,6 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -14,7 +13,6 @@ import org.zstack.header.tag.TagResourceType;
  * Created by shixin on 03/22/2018.
  */
 @TagResourceType(CertificateVO.class)
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/certificates",
         method = HttpMethod.POST,

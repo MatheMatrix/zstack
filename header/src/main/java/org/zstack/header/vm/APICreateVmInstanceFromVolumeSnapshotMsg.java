@@ -4,7 +4,6 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.configuration.InstanceOfferingVO;
 import org.zstack.header.host.HostVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.*;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.other.APIAuditor;
@@ -22,7 +21,6 @@ import java.util.concurrent.TimeUnit;
  * Created by MaJin on 2021/3/10.
  */
 @TagResourceType(VmInstanceVO.class)
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances/from/volume-snapshots/{volumeSnapshotUuid}",
         method = HttpMethod.POST,

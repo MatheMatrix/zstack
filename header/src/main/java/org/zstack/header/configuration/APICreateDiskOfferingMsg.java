@@ -1,7 +1,6 @@
 package org.zstack.header.configuration;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -11,7 +10,6 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 
 @TagResourceType(DiskOfferingVO.class)
-@Action(category = ConfigurationConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/disk-offerings",
         method = HttpMethod.POST,

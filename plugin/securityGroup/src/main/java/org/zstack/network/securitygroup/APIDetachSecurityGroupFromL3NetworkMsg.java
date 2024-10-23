@@ -1,7 +1,6 @@
 package org.zstack.network.securitygroup;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l3.L3NetworkVO;
@@ -38,7 +37,6 @@ import org.zstack.header.rest.RestRequest;
  * see :ref:`APIDetachSecurityGroupFromL3NetworkEvent`
  */
 
-@Action(category = SecurityGroupConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/security-groups/{securityGroupUuid}/l3-networks/{l3NetworkUuid}",
         method = HttpMethod.DELETE,

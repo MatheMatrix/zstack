@@ -1,7 +1,6 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -17,7 +16,6 @@ import java.util.List;
  * @author: zhanyong.miao
  * @date: 2020-03-11
  **/
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/load-balancers/listeners/{listenerUuid}/access-control-lists",
         method = HttpMethod.DELETE,

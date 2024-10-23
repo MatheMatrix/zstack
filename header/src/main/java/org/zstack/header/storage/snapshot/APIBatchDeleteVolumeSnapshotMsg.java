@@ -1,7 +1,6 @@
 package org.zstack.header.storage.snapshot;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIBatchRequest;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIEvent;
@@ -19,7 +18,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-@Action(category = VolumeSnapshotConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volume-snapshots/batch-delete",
         method = HttpMethod.PUT,

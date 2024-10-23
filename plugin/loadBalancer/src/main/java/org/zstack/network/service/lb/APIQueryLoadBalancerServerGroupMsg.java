@@ -1,7 +1,6 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.query.APIQueryMessage;
 import org.zstack.header.query.AutoQuery;
 import org.zstack.header.rest.RestRequest;
@@ -10,7 +9,6 @@ import java.util.List;
 
 import static java.util.Arrays.asList;
 @AutoQuery(replyClass = APIQueryLoadBalancerServerGroupReply.class, inventoryClass = LoadBalancerServerGroupInventory.class)
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/load-balancers/servergroups",
         optionalPaths = {"/load-balancers/servergroups/{uuid}"},

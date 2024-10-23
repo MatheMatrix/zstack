@@ -1,8 +1,6 @@
 package org.zstack.header.image;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -13,7 +11,6 @@ import org.zstack.header.rest.RestRequest;
  * Time: 5:31 PM
  * To change this template use File | Settings | File Templates.
  */
-@Action(category = ImageConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/images/{uuid}/actions",
         isAction = true,

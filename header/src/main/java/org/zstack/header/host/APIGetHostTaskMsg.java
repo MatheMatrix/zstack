@@ -2,7 +2,6 @@ package org.zstack.header.host;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.core.APIGetChainTaskReply;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.core.APIGetChainTaskMsg;
@@ -15,7 +14,6 @@ import java.util.function.Function;
  * Created by MaJin on 2019/7/3.
  */
 
-@Action(category = HostConstant.ACTION_CATEGORY, adminOnly = true)
 @RestRequest(
         path = "/hosts/task-details",
         method = HttpMethod.GET,

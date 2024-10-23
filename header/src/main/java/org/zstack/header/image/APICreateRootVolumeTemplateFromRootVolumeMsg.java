@@ -1,7 +1,6 @@
 package org.zstack.header.image;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.*;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
@@ -13,7 +12,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-@Action(category = ImageConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/images/root-volume-templates/from/volumes/{rootVolumeUuid}",
         method = HttpMethod.POST,

@@ -1,6 +1,5 @@
 package org.zstack.header.storage.snapshot;
 
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
@@ -42,7 +41,6 @@ import java.util.List;
  * @result see :ref:`APIDeleteVolumeSnapshotFromBackupStorageEvent`
  * @since 0.1.0
  */
-@Action(category = VolumeSnapshotConstant.ACTION_CATEGORY)
 public class APIDeleteVolumeSnapshotFromBackupStorageMsg extends APIDeleteMessage implements VolumeSnapshotMessage {
     /**
      * @desc volume snapshot uuid

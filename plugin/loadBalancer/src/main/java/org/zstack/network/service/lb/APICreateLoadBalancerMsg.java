@@ -1,7 +1,6 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -15,7 +14,6 @@ import org.zstack.network.service.vip.VipVO;
  * Created by frank on 8/8/2015.
  */
 @TagResourceType(LoadBalancerVO.class)
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/load-balancers",
         method = HttpMethod.POST,

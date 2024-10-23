@@ -1,12 +1,10 @@
 package org.zstack.network.securitygroup;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 
-@Action(category = SecurityGroupConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
     path = "/security-groups/{securityGroupUuid}/rules/validation",
     method = HttpMethod.GET,

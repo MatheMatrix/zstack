@@ -13,7 +13,6 @@ import static org.zstack.utils.CollectionDSL.list;
 /**
  * Created by frank on 7/13/2015.
  */
-@Action(category = AccountConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/accounts/resources/actions",
         method = HttpMethod.PUT,

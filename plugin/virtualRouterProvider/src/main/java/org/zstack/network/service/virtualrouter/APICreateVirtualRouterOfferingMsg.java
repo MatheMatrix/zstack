@@ -4,16 +4,13 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.configuration.APICreateInstanceOfferingEvent;
 import org.zstack.header.configuration.APICreateInstanceOfferingMsg;
 import org.zstack.header.configuration.InstanceOfferingVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
-import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.zone.ZoneVO;
 
-@Action(category = VirtualRouterConstant.ACTION_CATEGORY)
 @TagResourceType(InstanceOfferingVO.class)
 @RestRequest(
 		path = "/instance-offerings/virtual-routers",

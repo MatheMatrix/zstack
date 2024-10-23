@@ -1,7 +1,6 @@
 package org.zstack.network.service.vip;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l3.L3NetworkMessage;
@@ -34,7 +33,6 @@ import org.zstack.header.rest.RestRequest;
  * @result
  * @since 0.1.0
  */
-@Action(category = VipConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vips/{uuid}",
         method = HttpMethod.DELETE,

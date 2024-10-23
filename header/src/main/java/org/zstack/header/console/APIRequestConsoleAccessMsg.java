@@ -1,8 +1,6 @@
 package org.zstack.header.console;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -14,7 +12,6 @@ import org.zstack.header.vm.VmInstanceVO;
  * Time: 11:27 PM
  * To change this template use File | Settings | File Templates.
  */
-@Action(category = ConsoleConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/consoles",
         method = HttpMethod.POST,

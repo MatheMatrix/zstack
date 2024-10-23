@@ -1,7 +1,6 @@
 package org.zstack.network.l2.vxlan.vxlanNetworkPool;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -20,7 +19,6 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateVniRangeEvent.class,
         isAction = true
 )
-@Action(category = VxlanNetworkPoolConstant.ACTION_CATEGORY)
 public class APIUpdateVniRangeMsg extends APIMessage implements L2NetworkMessage, APIAuditor {
     @APIParam(resourceType = VniRangeVO.class)
     private String uuid;

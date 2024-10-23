@@ -1,7 +1,6 @@
 package org.zstack.header.longjob;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.query.APIQueryMessage;
 import org.zstack.header.query.AutoQuery;
 import org.zstack.header.rest.RestRequest;
@@ -13,7 +12,6 @@ import java.util.List;
  * Created by GuoYi on 11/13/17.
  */
 @AutoQuery(replyClass = APIQueryLongJobReply.class, inventoryClass = LongJobInventory.class)
-@Action(category = LongJobConstants.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/longjobs",
         optionalPaths = {"/longjobs/{uuid}"},
