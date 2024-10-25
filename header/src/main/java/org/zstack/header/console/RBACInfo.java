@@ -28,5 +28,10 @@ public class RBACInfo implements RBACDescription {
                 .uuid("6f5a7d6d2da9499da9e4bdb079f65adf")
                 .permissionBaseOnThis()
                 .build();
+
+        roleContributorBuilder()
+                .actions(APIQueryConsoleProxyAgentMsg.class)
+                .toOtherRole()
+                .build();
     }
 }
