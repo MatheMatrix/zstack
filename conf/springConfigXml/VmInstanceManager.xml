@@ -261,4 +261,10 @@
         </zstack:plugin>
     </bean>
 
+    <bean id="ComputeLegacyComponent" class="org.zstack.compute.legacy.ComputeLegacyComponent">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.Component" />
+        </zstack:plugin>
+    </bean>
+
 </beans>
