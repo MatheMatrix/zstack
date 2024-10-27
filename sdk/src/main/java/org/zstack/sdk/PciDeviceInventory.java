@@ -4,6 +4,7 @@ import org.zstack.sdk.PciDeviceType;
 import org.zstack.sdk.PciDeviceState;
 import org.zstack.sdk.PciDeviceStatus;
 import org.zstack.sdk.PciDeviceVirtStatus;
+import org.zstack.sdk.PciDevicePassThroughState;
 import org.zstack.sdk.PciDeviceChooser;
 import org.zstack.sdk.PciDeviceMetaData;
 
@@ -95,6 +96,14 @@ public class PciDeviceInventory  {
     }
     public PciDeviceVirtStatus getVirtStatus() {
         return this.virtStatus;
+    }
+
+    public PciDevicePassThroughState passThroughState;
+    public void setPassThroughState(PciDevicePassThroughState passThroughState) {
+        this.passThroughState = passThroughState;
+    }
+    public PciDevicePassThroughState getPassThroughState() {
+        return this.passThroughState;
     }
 
     public PciDeviceChooser chooser;
