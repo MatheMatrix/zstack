@@ -185,6 +185,7 @@ create table if not exists `zstack`.`AccountGroupResourceRefVO` (
 
 alter table `zstack`.`AccountResourceRefVO` add constraint fkAccountResourceRefAccountPermissionFrom foreign key (accountPermissionFrom) references AccountGroupVO (uuid) on delete cascade;
 alter table `zstack`.`RoleAccountRefVO` add constraint fkRoleAccountRefAccountPermissionFrom foreign key (accountPermissionFrom) references AccountGroupVO (uuid) on delete cascade;
+delete from `zstack`.`AccountResourceRefVO` where resourceType in ('HostNetworkInterfaceVO', 'HostNetworkBondingVO');
 
 -- Others
 

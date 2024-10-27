@@ -107,7 +107,6 @@ class GetLldpInfoCase extends SubCase {
         vo.setMac("ac:1f:6b:93:6c:8e")
         vo.setPciDeviceAddress("0e:00.2")
         vo.setInterfaceType("noMaster")
-        vo.setAccountUuid(currentEnvSpec.session.getAccountUuid())
         vo.setResourceName("test")
         dbf.persist(vo)
 
@@ -156,7 +155,6 @@ class GetLldpInfoCase extends SubCase {
         vo1.setMac("ac:1f:6b:93:6c:8e")
         vo1.setPciDeviceAddress("0e:00.2")
         vo1.setInterfaceType("noMaster")
-        vo1.setAccountUuid(currentEnvSpec.session.getAccountUuid())
         vo1.setResourceName("test")
         dbf.persist(vo1)
 
