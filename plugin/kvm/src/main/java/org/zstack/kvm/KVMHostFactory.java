@@ -728,7 +728,8 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
                 }
 
                 if (vm != null ) {
-                    boolean hasScsiTag = !vm.getAllVolumes(volume -> KVMSystemTags.VOLUME_SCSI.hasTag(volume.getUuid())).isEmpty();
+                    boolean hasScsiTag = !vm.getAllVolumes(volume -> !Objects.equals(volume.getUuid(), resourceUuid)
+                            && KVMSystemTags.VOLUME_SCSI.hasTag(volume.getUuid())).isEmpty();
 
                     if (hasScsiTag) {
                         throw new OperationFailureException(argerr("vm do not support having both SCSI and Virtio-SCSI bus type volumes simultaneously."));
@@ -751,7 +752,8 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
                 }
 
                 if (vm != null ) {
-                    boolean hasVirtioScsiTag = !vm.getAllVolumes(volume -> KVMSystemTags.VOLUME_VIRTIO_SCSI.hasTag(volume.getUuid())).isEmpty();
+                    boolean hasVirtioScsiTag = !vm.getAllVolumes(volume -> !Objects.equals(volume.getUuid(), resourceUuid) &&
+                            KVMSystemTags.VOLUME_VIRTIO_SCSI.hasTag(volume.getUuid())).isEmpty();
 
                     if (hasVirtioScsiTag) {
                         throw new OperationFailureException(argerr("vm do not support having both SCSI and Virtio-SCSI bus type volumes simultaneously."));
