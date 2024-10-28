@@ -1,7 +1,6 @@
 package org.zstack.network.hostNetworkInterface;
 
 import org.zstack.header.host.HostEO;
-import org.zstack.header.identity.OwnedByAccount;
 import org.zstack.header.vo.ForeignKey;
 import org.zstack.header.vo.Index;
 import org.zstack.header.vo.*;
@@ -17,7 +16,7 @@ import java.sql.Timestamp;
 @SoftDeletionCascades({
         @SoftDeletionCascade(parent = HostEO.class, joinColumn = "hostUuid")
 })
-public class HostNetworkInterfaceVO extends ResourceVO implements ToInventory, OwnedByAccount {
+public class HostNetworkInterfaceVO extends ResourceVO implements ToInventory {
     @Index
     @Column
     @ForeignKey(parentEntityClass = HostEO.class, onDeleteAction = ForeignKey.ReferenceOption.CASCADE)
@@ -96,9 +95,6 @@ public class HostNetworkInterfaceVO extends ResourceVO implements ToInventory, O
 
     @Column
     private Timestamp lastOpDate;
-
-    @Transient
-    private String accountUuid;
 
     public String getHostUuid() {
         return hostUuid;
@@ -298,16 +294,6 @@ public class HostNetworkInterfaceVO extends ResourceVO implements ToInventory, O
 
     public void setLastOpDate(Timestamp lastOpDate) {
         this.lastOpDate = lastOpDate;
-    }
-
-    @Override
-    public String getAccountUuid() {
-        return accountUuid;
-    }
-
-    @Override
-    public void setAccountUuid(String accountUuid) {
-        this.accountUuid = accountUuid;
     }
 
     @PreUpdate

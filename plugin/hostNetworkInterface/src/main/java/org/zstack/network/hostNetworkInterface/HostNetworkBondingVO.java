@@ -1,7 +1,6 @@
 package org.zstack.network.hostNetworkInterface;
 
 import org.zstack.header.host.HostEO;
-import org.zstack.header.identity.OwnedByAccount;
 import org.zstack.header.vo.ForeignKey;
 import org.zstack.header.vo.Index;
 import org.zstack.header.vo.*;
@@ -20,7 +19,7 @@ import java.util.Set;
 @SoftDeletionCascades({
         @SoftDeletionCascade(parent = HostEO.class, joinColumn = "hostUuid")
 })
-public class HostNetworkBondingVO extends ResourceVO implements ToInventory, OwnedByAccount {
+public class HostNetworkBondingVO extends ResourceVO implements ToInventory {
     @Index
     @Column
     @ForeignKey(parentEntityClass = HostEO.class, onDeleteAction = ForeignKey.ReferenceOption.CASCADE)
@@ -78,9 +77,6 @@ public class HostNetworkBondingVO extends ResourceVO implements ToInventory, Own
     @JoinColumn(name="bondingUuid", insertable=false, updatable=false)
     @NoView
     private Set<HostNetworkInterfaceVO> slaves = new HashSet<>();
-
-    @Transient
-    private String accountUuid;
 
     public String getHostUuid() {
         return hostUuid;
@@ -224,16 +220,6 @@ public class HostNetworkBondingVO extends ResourceVO implements ToInventory, Own
 
     public void setSlaves(Set<HostNetworkInterfaceVO> slaves) {
         this.slaves = slaves;
-    }
-
-    @Override
-    public String getAccountUuid() {
-        return accountUuid;
-    }
-
-    @Override
-    public void setAccountUuid(String accountUuid) {
-        this.accountUuid = accountUuid;
     }
 
     @PreUpdate
