@@ -69,7 +69,7 @@ doc {
 		since "zsv 4.3.0"
 	}
 	field {
-		name "FSType"
+		name "fsType"
 		desc "文件系统类型"
 		type "String"
 		since "zsv 4.10.0"
@@ -99,9 +99,15 @@ doc {
 		since "zsv 4.10.0"
 	}
 	field {
-		name "status"
-		desc "磁盘状态"
+		name "smartPassed"
+		desc "获取磁盘smart状态"
 		type "Boolean"
+		since "zsv 4.10.0"
+	}
+	field {
+		name "smartMessage"
+		desc "获取磁盘smart状态失败时输出信息"
+		type "String"
 		since "zsv 4.10.0"
 	}
 }

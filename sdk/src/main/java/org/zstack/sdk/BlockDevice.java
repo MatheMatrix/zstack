@@ -84,12 +84,12 @@ public class BlockDevice  {
         return this.partitionTable;
     }
 
-    public java.lang.String FSType;
-    public void setFSType(java.lang.String FSType) {
-        this.FSType = FSType;
+    public java.lang.String fsType;
+    public void setFsType(java.lang.String fsType) {
+        this.fsType = fsType;
     }
-    public java.lang.String getFSType() {
-        return this.FSType;
+    public java.lang.String getFsType() {
+        return this.fsType;
     }
 
     public java.lang.String serialNumber;
@@ -124,12 +124,20 @@ public class BlockDevice  {
         return this.usedRatio;
     }
 
-    public boolean status;
-    public void setStatus(boolean status) {
-        this.status = status;
+    public java.lang.Boolean smartPassed;
+    public void setSmartPassed(java.lang.Boolean smartPassed) {
+        this.smartPassed = smartPassed;
     }
-    public boolean getStatus() {
-        return this.status;
+    public java.lang.Boolean getSmartPassed() {
+        return this.smartPassed;
+    }
+
+    public java.lang.String smartMessage;
+    public void setSmartMessage(java.lang.String smartMessage) {
+        this.smartMessage = smartMessage;
+    }
+    public java.lang.String getSmartMessage() {
+        return this.smartMessage;
     }
 
 }

@@ -55,12 +55,13 @@ public class BlockDevices {
         private String mountPoint;
         private List<BlockDevice> children;
         private String partitionTable;
-        private String FSType;
+        private String fsType;
         private String serialNumber;
         private String model;
         private String mediaType;
         private long usedRatio;
-        private boolean status;
+        private Boolean smartPassed;
+        private String smartMessage;
 
         BlockDevice() {
 
@@ -81,7 +82,7 @@ public class BlockDevices {
                     device.children.add(valueOf(child));
                 }
             }
-            device.FSType = blockDevice.getFstype();
+            device.fsType = blockDevice.getFstype();
             device.serialNumber = blockDevice.getSerial();
             device.model = blockDevice.getModel();
             return device;
@@ -182,12 +183,12 @@ public class BlockDevices {
             this.partitionTable = partitionTable;
         }
 
-        public String getFSType() {
-            return FSType;
+        public String getFsType() {
+            return fsType;
         }
 
-        public void setFSType(String FSType) {
-            this.FSType = FSType;
+        public void setFsType(String fsType) {
+            this.fsType = fsType;
         }
 
         public String getSerialNumber() {
@@ -222,12 +223,20 @@ public class BlockDevices {
             this.usedRatio = usedRatio;
         }
 
-        public boolean isStatus() {
-            return status;
+        public Boolean getSmartPassed() {
+            return smartPassed;
         }
 
-        public void setStatus(boolean status) {
-            this.status = status;
+        public void setSmartPassed(Boolean smartPassed) {
+            this.smartPassed = smartPassed;
+        }
+
+        public String getSmartMessage() {
+            return smartMessage;
+        }
+
+        public void setSmartMessage(String smartMessage) {
+            this.smartMessage = smartMessage;
         }
     }
 }
