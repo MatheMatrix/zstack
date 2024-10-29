@@ -9,6 +9,7 @@ import org.zstack.utils.logging.CLogger;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.List;
 
 public class IPv6NetworkUtils {
     private final static CLogger logger = Utils.getLogger(IPv6NetworkUtils.class);
@@ -482,5 +483,17 @@ public class IPv6NetworkUtils {
             return IP_VERSION_6;
         }
         throw new IllegalArgumentException("Invalid IP address: " + ip);
+    }
+
+    public static String getIpByIpVersion(String ipVersion, List<String> ipList) {
+        if (ipList == null || ipList.isEmpty()) {
+            throw new IllegalArgumentException("The provided IP list cannot be null or empty.");
+        }
+        for (String ip : ipList) {
+            if (getIpVersion(ip).equals(ipVersion)) {
+                return ip;
+            }
+        }
+        throw new IllegalArgumentException("No IP address in the list matches the provided IP version: " + ipVersion);
     }
 }
