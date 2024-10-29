@@ -880,6 +880,10 @@ public class KVMAgentCommands {
         private Boolean isolated;
         @GrayVersion(value = "5.0.0")
         private String pvlan;
+        @GrayVersion(value = "5.3.0")
+        private Integer igmpVersion;
+        @GrayVersion(value = "5.3.0")
+        private Integer mldVersion;
 
         public String getL2NetworkUuid() {
             return l2NetworkUuid;
@@ -935,6 +939,22 @@ public class KVMAgentCommands {
 
         public void setPvlan(String pvlan) {
             this.pvlan = pvlan;
+        }
+
+        public Integer getIgmpVersion() {
+            return igmpVersion;
+        }
+
+        public void setIgmpVersion(Integer igmpVersion) {
+            this.igmpVersion = igmpVersion;
+        }
+
+        public Integer getMldVersion() {
+            return mldVersion;
+        }
+
+        public void setMldVersion(Integer mldVersion) {
+            this.mldVersion = mldVersion;
         }
     }
 

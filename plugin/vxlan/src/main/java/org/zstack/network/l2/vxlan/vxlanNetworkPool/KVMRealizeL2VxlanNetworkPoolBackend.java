@@ -20,6 +20,7 @@ import org.zstack.header.network.l2.*;
 import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.vm.VmNicInventory;
 import org.zstack.kvm.*;
+import org.zstack.network.l2.L2NetworkGlobalConfig;
 import org.zstack.network.l2.vxlan.vtep.CreateVtepMsg;
 import org.zstack.network.l2.vxlan.vtep.VtepVO;
 import org.zstack.network.l2.vxlan.vtep.VtepVO_;
@@ -239,6 +240,8 @@ public class KVMRealizeL2VxlanNetworkPoolBackend implements L2NetworkRealization
                     bridgeCmd.setDstport(dstport);
                     bridgeCmd.setL2NetworkUuid(vo.getUuid());
                     bridgeCmd.setMtu(new MtuGetter().getL2Mtu(L2VxlanNetworkInventory.valueOf(vo)));
+                    bridgeCmd.setIgmpVersion(L2NetworkGlobalConfig.IGMPVersion.value(Integer.class));
+                    bridgeCmd.setMldVersion(L2NetworkGlobalConfig.MLDVersion.value(Integer.class));
                     cmd.getBridgeCmds().add(bridgeCmd);
                 }
 
