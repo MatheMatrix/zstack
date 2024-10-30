@@ -3213,7 +3213,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             }
             q.setParameter("state", ImageState.Enabled);
             q.setParameter("status", ImageStatus.Ready);
-            q.setParameter("system", false);
+            q.setParameter("system", Objects.equals(self.getType(), VmInstanceConstant.APPLIANCE_VM_TYPE));
             q.setParameter("arch", architecture);
             q.setParameter("bsUuids", bsUuids);
             List<ImageInventory> candidates = ImageInventory.valueOf(q.getResultList());
