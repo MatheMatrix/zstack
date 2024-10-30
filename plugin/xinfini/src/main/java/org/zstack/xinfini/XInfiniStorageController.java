@@ -386,6 +386,11 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
     }
 
     @Override
+    public void deployClient(HostInventory h, Completion comp) {
+        comp.success();
+    }
+
+    @Override
     public synchronized void activateHeartbeatVolume(HostInventory h, ReturnValueCompletion<HeartbeatVolumeTO> comp) {
         String clientIqn = IscsiUtils.getHostInitiatorName(h.getUuid());
         if (clientIqn == null) {

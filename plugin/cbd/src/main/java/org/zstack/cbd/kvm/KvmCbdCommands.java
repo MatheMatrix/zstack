@@ -10,7 +10,6 @@ import java.util.List;
  * @date 2024/4/10 15:40
  */
 public class KvmCbdCommands {
-    public static final String CBD_CONFIGURE_CLIENT_PATH = "/cbd/configure/client";
     public static final String CBD_SETUP_SELF_FENCER_PATH = "/ha/cbd/setupselffencer";
 
     public static class AgentRsp {
@@ -19,7 +18,7 @@ public class KvmCbdCommands {
     }
 
     public static class KvmUpdateClientConfCmd extends AgentCmd {
-        public List<MdsInfo> mdsInfos;
+        private List<MdsInfo> mdsInfos;
 
         public List<MdsInfo> getMdsInfos() {
             return mdsInfos;
