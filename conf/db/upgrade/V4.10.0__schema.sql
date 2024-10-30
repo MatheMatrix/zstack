@@ -212,6 +212,7 @@ CREATE TABLE IF NOT EXISTS `zstack`.`GpuDeviceVO` (
 
 CALL ADD_COLUMN('PciDeviceVO', 'vendor', 'VARCHAR(128)', 1, NULL);
 CALL ADD_COLUMN('PciDeviceVO', 'device', 'VARCHAR(128)', 1, NULL);
+CALL ADD_COLUMN('PciDeviceVO', 'passThroughState', 'VARCHAR(32)', 0, 'Disabled');
 CALL ADD_COLUMN('PciDeviceSpecVO', 'vendor', 'VARCHAR(128)', 1, NULL);
 CALL ADD_COLUMN('PciDeviceSpecVO', 'device', 'VARCHAR(128)', 1, NULL);
 CALL ADD_COLUMN('MdevDeviceVO', 'vendor', 'VARCHAR(128)', 1, NULL);
@@ -324,5 +325,3 @@ CREATE TABLE IF NOT EXISTS `zstack`.`HostPhysicalCpuVO` (
     PRIMARY KEY (`uuid`),
     CONSTRAINT `fkHostPhysicalCpuVOHostVO` FOREIGN KEY (`hostUuid`) REFERENCES `zstack`.`HostEO` (`uuid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-ALTER TABLE `zstack`.`PciDeviceVO` ADD COLUMN `passThroughState` varchar(32) NOT NULL;
