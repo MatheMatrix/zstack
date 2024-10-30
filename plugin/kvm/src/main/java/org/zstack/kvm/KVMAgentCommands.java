@@ -4279,7 +4279,7 @@ public class KVMAgentCommands {
         }
     }
 
-    public static class GetSensorsCmd extends AgentCommand {
+    public static class GetSensorsCmd extends AgentCommand implements HasThreadContext {
     }
 
     public static class GetSensorsResponse extends AgentResponse {
