@@ -15,4 +15,10 @@ public class L2NetworkGlobalConfig {
 
     @GlobalConfigValidation
     public static GlobalConfig L2IsolatedWithPhysicalSwitch = new GlobalConfig(CATEGORY, "l2.isolated");
+
+    @GlobalConfigValidation
+    public static GlobalConfig IGMPVersion = new GlobalConfig(CATEGORY, "igmp.version");
+
+    @GlobalConfigValidation
+    public static GlobalConfig MLDVersion = new GlobalConfig(CATEGORY, "mld.version");
 }

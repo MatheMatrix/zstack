@@ -14,4 +14,18 @@
         <category>l2Network</category>
         <type>java.lang.Boolean</type>
     </config>
+    <config>
+        <name>igmp.version</name>
+        <description>igmp version used for linux bridge igmp snooping, 0 means does not change host OS value </description>
+        <defaultValue>0</defaultValue>
+        <category>l2Network</category>
+        <type>java.lang.Integer</type>
+    </config>
+    <config>
+        <name>mld.version</name>
+        <description>mld version used for linux bridge igmp snooping, 0 means does not change host OS value </description>
+        <defaultValue>0</defaultValue>
+        <category>l2Network</category>
+        <type>java.lang.Integer</type>
+    </config>
 </globalConfig>

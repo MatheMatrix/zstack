@@ -1,5 +1,6 @@
 package org.zstack.network.l2.vxlan.vxlanNetworkPool;
 
+import org.zstack.core.upgrade.GrayVersion;
 import org.zstack.core.validation.ConditionalValidation;
 import org.zstack.kvm.KVMAgentCommands;
 
@@ -103,13 +104,24 @@ public class VxlanKvmAgentCommands {
 
 
     public static class CreateVxlanBridgeCmd extends AgentCommand {
+        @GrayVersion(value = "5.3.0")
         private String bridgeName;
+        @GrayVersion(value = "5.3.0")
         private String vtepIp;
+        @GrayVersion(value = "5.3.0")
         private Integer vni;
+        @GrayVersion(value = "5.3.0")
         private Integer dstport;
+        @GrayVersion(value = "5.3.0")
         private String l2NetworkUuid;
+        @GrayVersion(value = "5.3.0")
         private List<String> peers;
+        @GrayVersion(value = "5.3.0")
         private Integer mtu;
+        @GrayVersion(value = "5.3.0")
+        private Integer igmpVersion;
+        @GrayVersion(value = "5.3.0")
+        private Integer mldVersion;
 
         public Integer getDstport() {
             return dstport;
@@ -165,6 +177,22 @@ public class VxlanKvmAgentCommands {
 
         public void setMtu(Integer mtu) {
             this.mtu = mtu;
+        }
+
+        public Integer getIgmpVersion() {
+            return igmpVersion;
+        }
+
+        public void setIgmpVersion(Integer igmpVersion) {
+            this.igmpVersion = igmpVersion;
+        }
+
+        public Integer getMldVersion() {
+            return mldVersion;
+        }
+
+        public void setMldVersion(Integer mldVersion) {
+            this.mldVersion = mldVersion;
         }
     }
 

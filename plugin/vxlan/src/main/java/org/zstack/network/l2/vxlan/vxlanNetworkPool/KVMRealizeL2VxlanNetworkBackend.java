@@ -1,5 +1,6 @@
 package org.zstack.network.l2.vxlan.vxlanNetworkPool;
 
+import org.zstack.network.l2.L2NetworkGlobalConfig;
 import org.zstack.network.l2.vxlan.vtep.RemoteVtepVO;
 import org.zstack.network.l2.vxlan.vtep.RemoteVtepVO_;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -124,6 +125,8 @@ public class KVMRealizeL2VxlanNetworkBackend implements L2NetworkRealizationExte
         cmd.setPeers(peers);
         cmd.setDstport(dstport);
         cmd.setMtu(new MtuGetter().getL2Mtu(l2Network));
+        cmd.setIgmpVersion(L2NetworkGlobalConfig.IGMPVersion.value(Integer.class));
+        cmd.setMldVersion(L2NetworkGlobalConfig.MLDVersion.value(Integer.class));
 
         KVMHostAsyncHttpCallMsg msg = new KVMHostAsyncHttpCallMsg();
         msg.setHostUuid(hostUuid);
