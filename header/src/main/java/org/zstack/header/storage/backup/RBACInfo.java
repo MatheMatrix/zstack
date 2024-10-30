@@ -9,7 +9,6 @@ public class RBACInfo implements RBACDescription {
         permissionBuilder()
                 .adminOnlyAPIs("org.zstack.header.storage.backup.**")
                 .normalAPIs(
-                        APIQueryBackupStorageMsg.class,
                         APIExportImageFromBackupStorageMsg.class,
                         APIDeleteExportedImageFromBackupStorageMsg.class
                 )

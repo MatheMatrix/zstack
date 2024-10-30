@@ -8,6 +8,7 @@ public class RBACInfo implements RBACDescription {
         permissionBuilder()
                 .name("vrouter")
                 .normalAPIs("org.zstack.network.service.virtualrouter.**")
+                .adminOnlyAPIs(APIQueryVirtualRouterOfferingMsg.class)
                 .build();
     }
 

@@ -7,7 +7,6 @@ public class RBACInfo implements RBACDescription {
     public void permissions() {
         permissionBuilder()
                 .adminOnlyAPIs("org.zstack.header.cluster.**")
-                .normalAPIs(APIQueryClusterMsg.class)
                 .build();
     }
 
