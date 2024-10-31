@@ -95,7 +95,7 @@ public class L3BasicNetwork implements L3Network {
         return L3NetworkInventory.valueOf(getSelf());
     }
 
-    private String getSyncId() {
+    protected String getSyncId() {
         return String.format("operate-%s", generateChainName());
     }
 
@@ -1074,6 +1074,7 @@ public class L3BasicNetwork implements L3Network {
             }
         }).start();
     }
+
     private void handle(APIDeleteL3NetworkMsg msg) {
         final APIDeleteL3NetworkEvent evt = new APIDeleteL3NetworkEvent(msg.getId());
 
