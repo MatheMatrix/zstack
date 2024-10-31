@@ -1989,6 +1989,7 @@ ${txt}
             char.class,
             String.class,
             Enum.class,
+            byte[].class
     ]
 
     class ApiResponseDocTemplate {
