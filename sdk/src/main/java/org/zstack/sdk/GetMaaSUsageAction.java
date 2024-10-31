@@ -20,7 +20,7 @@ public class GetMaaSUsageAction extends AbstractAction {
                     String.format("error[code: %s, description: %s, details: %s]", error.code, error.description, error.details)
                 );
             }
-
+            
             return this;
         }
     }
@@ -50,9 +50,9 @@ public class GetMaaSUsageAction extends AbstractAction {
             ret.error = res.error;
             return ret;
         }
-
+        
         org.zstack.sdk.GetMaaSUsageResult value = res.getResult(org.zstack.sdk.GetMaaSUsageResult.class);
-        ret.value = value == null ? new org.zstack.sdk.GetMaaSUsageResult() : value;
+        ret.value = value == null ? new org.zstack.sdk.GetMaaSUsageResult() : value; 
 
         return ret;
     }

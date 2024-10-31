@@ -39,5 +39,6 @@ CREATE TABLE IF NOT EXISTS `zstack`.`ModelCenterCapacityVO` (
     `modelEvaluationUsedCapacity` bigint NULL,
     `installationUsedCapacity` bigint NULL,
     `temporaryUsedCapacity` bigint NULL,
+    `cacheUsedCapacity` bigint NULL,
     PRIMARY KEY (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
