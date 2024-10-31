@@ -20,6 +20,11 @@ public enum PciDeviceType {
 	ISA_Bridge,
 	PCI_Bridge,
 	Host_Bridge,
+	Performance_Counters,
+	Signal_Processing_Controller,
+	Communication_Controller,
+	PIC,
+	SMBus,
 	Generic,
 	Custom,
 }
