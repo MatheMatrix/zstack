@@ -8,6 +8,7 @@ public class RBACInfo implements RBACDescription {
         permissionBuilder()
                 .name("l3")
                 .normalAPIs("org.zstack.header.network.l3.**")
+                .adminOnlyAPIs(APIQueryL3NetworkMsg.class)
                 .targetResources(L3NetworkVO.class)
                 .build();
     }

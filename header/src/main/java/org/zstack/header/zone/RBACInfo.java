@@ -8,7 +8,6 @@ public class RBACInfo implements RBACDescription {
         permissionBuilder()
                 .name("zone")
                 .adminOnlyAPIs("org.zstack.header.zone.**")
-                .normalAPIs(APIQueryZoneMsg.class)
                 .build();
     }
 
