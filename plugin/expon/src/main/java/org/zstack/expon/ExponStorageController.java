@@ -203,7 +203,6 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
 
         // TODO not remove every time
         apiHelper.removeVolumePathFromBlacklist(buildExponVolumeBoundPath(uss, exponVol.getVolumeName()), exponVol.getId(), getSelfPools());
-
         VhostVolumeTO to = new VhostVolumeTO();
         to.setInstallPath(vhost.getPath());
         return to;
