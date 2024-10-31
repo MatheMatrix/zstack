@@ -68,4 +68,12 @@ public class ModelCenterCapacityInventory  {
         return this.temporaryUsedCapacity;
     }
 
+    public long cacheUsedCapacity;
+    public void setCacheUsedCapacity(long cacheUsedCapacity) {
+        this.cacheUsedCapacity = cacheUsedCapacity;
+    }
+    public long getCacheUsedCapacity() {
+        return this.cacheUsedCapacity;
+    }
+
 }
