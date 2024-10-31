@@ -11,6 +11,8 @@ import org.zstack.header.volume.VolumeProtocol;
 
 import java.util.LinkedHashMap;
 
+import static org.zstack.core.Platform.operr;
+
 /**
  * @author Xingwei Yu
  * @date 2024/3/21 11:56
@@ -30,7 +32,7 @@ public class ZbsStorageFactory implements ExternalPrimaryStorageSvcBuilder {
 
     @Override
     public void discover(String url, String config, ReturnValueCompletion<LinkedHashMap> completion) {
-
+        completion.fail(operr("zbs not support discover yet"));
     }
 
     @Override
