@@ -213,6 +213,9 @@ CREATE TABLE IF NOT EXISTS `zstack`.`GpuDeviceVO` (
 CALL ADD_COLUMN('PciDeviceVO', 'vendor', 'VARCHAR(128)', 1, NULL);
 CALL ADD_COLUMN('PciDeviceVO', 'device', 'VARCHAR(128)', 1, NULL);
 CALL ADD_COLUMN('PciDeviceVO', 'passThroughState', 'VARCHAR(32)', 0, 'Disabled');
+UPDATE `PciDeviceVO` set `passThroughState` = 'Available' where type in ('Audio_Controller', 'USB_Controller', 'Serial_Controller', 'Moxa_Device', 'Generic', 'Custom');
+UPDATE `PciDeviceVO` set `passThroughState` = 'Enabled' where type in ('GPU_Video_Controller', 'GPU_Audio_Controller', 'GPU_USB_Controller', 'GPU_Serial_Controller', 'GPU_3D_Controller');
+
 CALL ADD_COLUMN('PciDeviceSpecVO', 'vendor', 'VARCHAR(128)', 1, NULL);
 CALL ADD_COLUMN('PciDeviceSpecVO', 'device', 'VARCHAR(128)', 1, NULL);
 CALL ADD_COLUMN('MdevDeviceVO', 'vendor', 'VARCHAR(128)', 1, NULL);
