@@ -10,6 +10,7 @@ import org.zstack.core.ansible.AnsibleFacade;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.thread.CancelablePeriodicTask;
 import org.zstack.core.thread.ThreadFacade;
+import org.zstack.core.upgrade.UpgradeChecker;
 import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.workflow.NoRollbackFlow;
@@ -47,6 +48,8 @@ public class VyosDeployAgentFlow extends NoRollbackFlow {
     private DatabaseFacade dbf;
     @Autowired
     private ThreadFacade thdf;
+    @Autowired
+    private UpgradeChecker upgradeChecker;
 
 
     private final String REMOTE_USER = "REMOTE_USER";
@@ -82,13 +85,15 @@ public class VyosDeployAgentFlow extends NoRollbackFlow {
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
+        final String vrUuid = (String) data.get(VmInstanceConstant.Params.vmInstanceUuid.toString());
         if (CoreGlobalProperty.UNIT_TEST_ON) {
+            // update vyos agent version when open grayScaleUpgrade
+            upgradeChecker.updateAgentVersion(vrUuid, VirtualRouterConstant.VIRTUAL_ROUTER_PROVIDER_TYPE, new VirtualRouterMetadataOperator().getManagementVersion(), new VirtualRouterMetadataOperator().getManagementVersion());
             trigger.next();
             return;
         }
 
         boolean isReconnect = Boolean.parseBoolean((String) data.get(Params.isReconnect.toString()));
-        final String vrUuid = (String) data.get(VmInstanceConstant.Params.vmInstanceUuid.toString());
         String vrUserTag = VirtualRouterSystemTags.VIRTUAL_ROUTER_LOGIN_USER.getTokenByResourceUuid(
                             vrUuid, VirtualRouterVmVO.class, VirtualRouterSystemTags.VIRTUAL_ROUTER_LOGIN_USER_TOKEN);
         String remoteUser = storeDataToMap(data, REMOTE_USER, vrUserTag != null ? vrUserTag : "vyos"); //old vpc vrouter has no tag, that's vyos.
@@ -189,6 +194,9 @@ public class VyosDeployAgentFlow extends NoRollbackFlow {
                             String.format("%s/mn_zvr_version", remoteZvrDir)
                     ).setPassword(REMOTE_PASS).setUsername(remoteUser).setHostname(mgmtNicIp).setPort(port).runErrorByExceptionAndClose();
                 }
+                
+                // update vyos agent version when open grayScaleUpgrade
+                upgradeChecker.updateAgentVersion(vrUuid, VirtualRouterConstant.VIRTUAL_ROUTER_PROVIDER_TYPE, new VirtualRouterMetadataOperator().getManagementVersion(), new VirtualRouterMetadataOperator().getManagementVersion());
             }
 
             private void rebootAgent(int port, boolean forceReboot) {

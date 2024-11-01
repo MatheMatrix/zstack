@@ -31,6 +31,8 @@ import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.thread.*;
 import org.zstack.core.timeout.ApiTimeoutManager;
+import org.zstack.core.upgrade.UpgradeChecker;
+import org.zstack.core.upgrade.UpgradeGlobalConfig;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.Constants;
@@ -159,6 +161,8 @@ public class KVMHost extends HostBase implements Host {
     private TimeHelper timeHelper;
     @Autowired
     private AccountManager accountMgr;
+    @Autowired
+    private UpgradeChecker upgradeChecker;
 
     private KVMHostContext context;
 
@@ -457,10 +461,12 @@ public class KVMHost extends HostBase implements Host {
         AgentCommand cmd;
         Class<T> responseClass;
         String commandStr;
+        String commandName;
 
-        public Http(String path, String cmd, Class<T> rspClz) {
+        public Http(String path, String cmd, String commandName, Class<T> rspClz) {
             this.path = path;
             this.commandStr = cmd;
+            this.commandName = commandName;
             this.responseClass = rspClz;
         }
 
@@ -468,6 +474,7 @@ public class KVMHost extends HostBase implements Host {
             this.path = path;
             this.cmd = cmd;
             this.responseClass = rspClz;
+            this.commandName = cmd.getClass().getName();
         }
 
         void call(ReturnValueCompletion<T> completion) {
@@ -475,6 +482,12 @@ public class KVMHost extends HostBase implements Host {
         }
 
         void call(String resourceUuid, ReturnValueCompletion<T> completion) {
+            ErrorCode errorCode = upgradeChecker.checkAgentHttpParamChanges(self.getUuid(), commandName, commandStr != null ? commandStr : cmd);
+            if (errorCode != null) {
+                completion.fail(errorCode);
+                return;
+            }
+            
             Map<String, String> header = new HashMap<>();
             header.put(Constants.AGENT_HTTP_HEADER_RESOURCE_UUID, resourceUuid == null ? self.getUuid() : resourceUuid);
             runBeforeAsyncJsonPostExts(header);
@@ -554,7 +567,7 @@ public class KVMHost extends HostBase implements Host {
             }
         }
     }
-
+    
     @Override
     protected void handleApiMessage(APIMessage msg) {
         super.handleApiMessage(msg);
@@ -2330,6 +2343,11 @@ public class KVMHost extends HostBase implements Host {
         if (!msg.isNoStatusCheck()) {
             checkStatus();
         }
+
+        ErrorCode errorCode = upgradeChecker.checkAgentHttpParamChanges(self.getUuid(), msg.getCommandClassName(), msg.getCommand());
+        if (errorCode != null) {
+            throw new OperationFailureException(errorCode);
+        }
         String url = buildUrl(msg.getPath());
         MessageCommandRecorder.record(msg.getCommandClassName());
         Map<String, String> headers = new HashMap<>();
@@ -2377,7 +2395,7 @@ public class KVMHost extends HostBase implements Host {
 
         String url = buildUrl(msg.getPath());
         MessageCommandRecorder.record(msg.getCommandClassName());
-        new Http<>(url, msg.getCommand(), LinkedHashMap.class)
+        new Http<>(url, msg.getCommand(), msg.getCommandClassName(), LinkedHashMap.class)
                 .call(new ReturnValueCompletion<LinkedHashMap>(msg, completion) {
             @Override
             public void success(LinkedHashMap ret) {
@@ -4491,6 +4509,15 @@ public class KVMHost extends HostBase implements Host {
             return;
         }
 
+        if (UpgradeGlobalConfig.GRAYSCALE_UPGRADE.value(Boolean.class)) {
+            if (ret.getVersion() != null) {
+                logger.debug("skip fire host disconnected event and reconnect host during grayscale upgrade");
+                return;
+            }
+
+            logger.debug("still fire host disconnected event when kvmagent report version is null");
+        }
+
         changeConnectionState(HostStatusEvent.disconnected);
         new HostDisconnectedCanonicalEvent(self.getUuid(), argerr(info)).fire();
 
@@ -4557,8 +4584,22 @@ public class KVMHost extends HostBase implements Host {
         });
     }
 
-    boolean needReconnectHost(PingResponse rsp) {
-        return !self.getUuid().equals(rsp.getHostUuid()) || !dbf.getDbVersion().equals(rsp.getVersion());
+    enum ReconnectHostAction {
+        SkipPingExtensionAndReconnect,
+        DoPingExtensionAndReconnect,
+        DoNothing
+    }
+
+    ReconnectHostAction needReconnectHost(PingResponse rsp) {
+        if (!self.getUuid().equals(rsp.getHostUuid())) {
+            return ReconnectHostAction.SkipPingExtensionAndReconnect;
+        }
+
+        if (!dbf.getDbVersion().equals(rsp.getVersion())) {
+            return ReconnectHostAction.DoPingExtensionAndReconnect;
+        }
+
+        return ReconnectHostAction.DoNothing;
     }
 
     boolean inconsistentHostUuid(PingResponse rsp) {
@@ -4611,10 +4652,17 @@ public class KVMHost extends HostBase implements Host {
                                     return;
                                 }
 
-                                if (needReconnectHost(ret)) {
+                                // update host agent version when open grayScaleUpgrade
+                                upgradeChecker.updateAgentVersion(self.getUuid(), AnsibleConstant.KVM_AGENT_NAME, dbf.getDbVersion(), ret.getVersion());
+
+                                ReconnectHostAction action = needReconnectHost(ret);
+                                if (!action.equals(ReconnectHostAction.DoNothing)) {
                                     // reconnect host require many steps which may influence the results
                                     // of extension points, so we skip them here and do it after next ping
-                                    data.put(KVMConstant.KVM_HOST_SKIP_PING_NO_FAILURE_EXTENSIONS, true);
+                                    if (action.equals(ReconnectHostAction.SkipPingExtensionAndReconnect)) {
+                                        data.put(KVMConstant.KVM_HOST_SKIP_PING_NO_FAILURE_EXTENSIONS, true);
+                                    }
+
                                     afterDone.add(() -> doReconnectHostDueToPingResult(ret));
                                 } else if (needUpdateHostConfiguration(ret)) {
                                     afterDone.add(KVMHost.this::doUpdateHostConfiguration);
@@ -5395,6 +5443,10 @@ public class KVMHost extends HostBase implements Host {
                             public void success(Boolean run) {
                                 if (run != null) {
                                     deployed = run;
+                                }
+                                if (deployed) {
+                                    // update host agent version when open grayScaleUpgrade
+                                    upgradeChecker.updateAgentVersion(self.getUuid(), AnsibleConstant.KVM_AGENT_NAME, dbf.getDbVersion(), dbf.getDbVersion());
                                 }
                                 trigger.next();
                             }
