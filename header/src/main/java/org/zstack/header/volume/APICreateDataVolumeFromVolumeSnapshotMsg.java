@@ -1,7 +1,6 @@
 package org.zstack.header.volume;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.*;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
@@ -40,7 +39,6 @@ import java.util.concurrent.TimeUnit;
  * @since 0.1.0
  */
 @TagResourceType(VolumeVO.class)
-@Action(category = VolumeConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volumes/data/from/volume-snapshots/{volumeSnapshotUuid}",
         responseClass = APICreateDataVolumeFromVolumeSnapshotEvent.class,
@@ -62,7 +60,7 @@ public class APICreateDataVolumeFromVolumeSnapshotMsg extends APICreateMessage i
     /**
      * @desc volume snapshot uuid
      */
-    @APIParam(resourceType = VolumeSnapshotVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeSnapshotVO.class)
     private String volumeSnapshotUuid;
     /**
      * @desc uuid of primary storage where the data volume is being created. If omitted,

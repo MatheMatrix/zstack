@@ -1,12 +1,18 @@
 package org.zstack.header;
 
+import org.zstack.header.identity.rbac.RBACDescription;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Deprecated: please use {@link RBACDescription}
+ */
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
+@Deprecated
 public @interface PackageAPIInfo {
     public static String PERMISSION_COMMUNITY_AVAILABLE = "community_available";
     /**
@@ -16,8 +22,12 @@ public @interface PackageAPIInfo {
      * It contains {@link #PERMISSION_ZSV_ADVANCED_AVAILABLE}
      */
     public static String PERMISSION_ZSV_BASIC_AVAILABLE = "zsv_basic_available";
+    public static String PERMISSION_ZSV_PRO_AVAILABLE = "zsv_pro_available";
     public static String PERMISSION_ZSV_ADVANCED_AVAILABLE = "zsv_advanced_available";
 
+    /**
+     * replace by {@link RBACDescription#permissionName()} soon
+     */
     String APICategoryName() default "";
 
     /**

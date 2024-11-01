@@ -1624,339 +1624,6 @@
     "fileName": "src/main/java/org/zstack/apimediator/ApiValidator.java"
   },
   {
-    "raw": "PublishAppVO[uuid: %s] is not existed",
-    "en_US": "PublishAppVO[uuid: {0}] is not existed",
-    "zh_CN": "PublishAppVO[uuid：{0}]不存在",
-    "arguments": [
-      "msg.getAppUuid()"
-    ],
-    "line": 486,
-    "fileName": "src/main/java/org/zstack/appcenter/AppCenterManagerImpl.java"
-  },
-  {
-    "raw": "[appcenter] filterName must be appcenter:true or appcenter:false",
-    "en_US": "[appcenter] filterName must be appcenter:true or appcenter:false",
-    "zh_CN": "[appCenter]FilterName必须为appCenter：true或appCenter：false",
-    "arguments": [],
-    "line": 588,
-    "fileName": "src/main/java/org/zstack/appcenter/AppCenterManagerImpl.java"
-  },
-  {
-    "raw": "%s is in preParameters, but not be set",
-    "en_US": "{0} is in preParameters, but not be set",
-    "zh_CN": "{0}在前参数中，但未设置",
-    "arguments": [
-      "struct.getParamName()"
-    ],
-    "line": 127,
-    "fileName": "src/main/java/org/zstack/appcenter/ZStackAppCenterBase.java"
-  },
-  {
-    "raw": "%s need Number value, but got wrong type",
-    "en_US": "{0} need Number value, but got wrong type",
-    "zh_CN": "{0}需要数值，但类型错误",
-    "arguments": [],
-    "line": 131,
-    "fileName": "src/main/java/org/zstack/appcenter/ZStackAppCenterBase.java"
-  },
-  {
-    "raw": "%s need Boolean value, but got wrong type",
-    "en_US": "{0} need Boolean value, but got wrong type",
-    "zh_CN": "{0}需要布尔值，但类型错误",
-    "arguments": [],
-    "line": 136,
-    "fileName": "src/main/java/org/zstack/appcenter/ZStackAppCenterBase.java"
-  },
-  {
-    "raw": "%s need String value, but got wrong type",
-    "en_US": "{0} need String value, but got wrong type",
-    "zh_CN": "{0}需要字符串值，但获取的类型错误",
-    "arguments": [],
-    "line": 141,
-    "fileName": "src/main/java/org/zstack/appcenter/ZStackAppCenterBase.java"
-  },
-  {
-    "raw": "cannot find build system [%s]",
-    "en_US": "cannot find build system [{0}]",
-    "zh_CN": "找不到生成系统[{0}]",
-    "arguments": [
-      "msg.getBuildSystemUuid()"
-    ],
-    "line": 389,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemImpl.java"
-  },
-  {
-    "raw": "build system[uuid: %s] has been attached to zone[uuid: %s]",
-    "en_US": "build system[uuid: {0}] has been attached to zone[uuid: {1}]",
-    "zh_CN": "生成系统[uuid：{0}]已附加到区域[uuid：{1}]",
-    "arguments": [
-      "msg.getBuildSystemUuid()",
-      "msg.getZoneUuid()"
-    ],
-    "line": 339,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemImpl.java"
-  },
-  {
-    "raw": "build system[uuid: %s] has not been attached to zone[uuid: %s]",
-    "en_US": "build system[uuid: {0}] has not been attached to zone[uuid: {1}]",
-    "zh_CN": "生成系统[uuid：{0}]尚未附加到区域[uuid：{1}]",
-    "arguments": [
-      "msg.getBuildSystemUuid()",
-      "msg.getZoneUuid()"
-    ],
-    "line": 396,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemImpl.java"
-  },
-  {
-    "raw": "cannot find build application: [%s]",
-    "en_US": "cannot find build application: [{0}]",
-    "zh_CN": "找不到生成应用程序：[{0}]",
-    "arguments": [
-      "appUuid"
-    ],
-    "line": 620,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemImpl.java"
-  },
-  {
-    "raw": "imageStore is not Enabled",
-    "en_US": "imageStore is not Enabled",
-    "zh_CN": "未启用ImageStore",
-    "arguments": [],
-    "line": 989,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemImpl.java"
-  },
-  {
-    "raw": "imageStore is not Connected",
-    "en_US": "imageStore is not Connected",
-    "zh_CN": "ImageStore未连接",
-    "arguments": [],
-    "line": 993,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemImpl.java"
-  },
-  {
-    "raw": "cannot find imageUuid for image[%s]",
-    "en_US": "cannot find imageUuid for image[{0}]",
-    "zh_CN": "找不到镜像[{0}]的ImageUuid",
-    "arguments": [
-      "p.getDefaultValue()"
-    ],
-    "line": 1147,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemImpl.java"
-  },
-  {
-    "raw": "cannot find build-app[uuid: %s], or it was in Deleting status",
-    "en_US": "cannot find build-app[uuid: {0}], or it was in Deleting status",
-    "zh_CN": "找不到Build-App[uuid：{0}]，或者它处于删除状态",
-    "arguments": [
-      "msg.getUuid()"
-    ],
-    "line": 1159,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemImpl.java"
-  },
-  {
-    "raw": "build-app[%s] is exported or is exporting, please delete it first",
-    "en_US": "build-app[{0}] is exported or is exporting, please delete it first",
-    "zh_CN": "Build-App[{0}]已导出或正在导出，请先删除它",
-    "arguments": [
-      "msg.getUuid()"
-    ],
-    "line": 50,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemInterceptor.java"
-  },
-  {
-    "raw": "another build system[uuid: %s, name: %s] in this host[%s] used the url[%s]",
-    "en_US": "another build system[uuid: {0}, name: {1}] in this host[{2}] used the url[{3}]",
-    "zh_CN": "此物理机[{2}]中的另一个生成系统[uuid：{0}，名称：{1}]使用了URL[{3}]",
-    "arguments": [
-      "build.getUuid()",
-      "build.getName()",
-      "build.getHostname()",
-      "build.getUrl()"
-    ],
-    "line": 63,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemInterceptor.java"
-  },
-  {
-    "raw": "dataPath must start with \u0027/\u0027, actually got [%s]",
-    "en_US": "dataPath must start with \u0027/\u0027, actually got [{0}]",
-    "zh_CN": "数据路径必须以“/”开头，实际获得[{0}]",
-    "arguments": [
-      "msg.getDataPath()"
-    ],
-    "line": 74,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemInterceptor.java"
-  },
-  {
-    "raw": "both backupStorageUuid and hostname are null",
-    "en_US": "both backupStorageUuid and hostname are null",
-    "zh_CN": "backupStorageUuid和hostname均为空",
-    "arguments": [],
-    "line": 88,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemInterceptor.java"
-  },
-  {
-    "raw": "cannot find imageStore which hostname is :%s",
-    "en_US": "cannot find imageStore which hostname is :{0}",
-    "zh_CN": "找不到物理机名为{0}的ImageStore",
-    "arguments": [
-      "msg.getHostname()"
-    ],
-    "line": 95,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemInterceptor.java"
-  },
-  {
-    "raw": "find more than one imageStore which hostname is: %s, please use backupStorageUuid instead",
-    "en_US": "find more than one imageStore which hostname is: {0}, please use backupStorageUuid instead",
-    "zh_CN": "找到多个物理机名为{0}的ImageStore，请改用BackupStorageUuid",
-    "arguments": [
-      "msg.getHostname()"
-    ],
-    "line": 98,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemInterceptor.java"
-  },
-  {
-    "raw": "both backupStorageUuid and hostname are set, but they are not the same host",
-    "en_US": "both backupStorageUuid and hostname are set, but they are not the same host",
-    "zh_CN": "同时设置了backupStorageuuid和hostname，但它们不是同一物理机",
-    "arguments": [],
-    "line": 102,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemInterceptor.java"
-  },
-  {
-    "raw": "buildAppUuid and exportId cannot both be null",
-    "en_US": "buildAppUuid and exportId cannot both be null",
-    "zh_CN": "BuildAppuuid和ExportId不能同时为空",
-    "arguments": [],
-    "line": 116,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemInterceptor.java"
-  },
-  {
-    "raw": "buildAppUuid and buildSystemUuid cannot both be null",
-    "en_US": "buildAppUuid and buildSystemUuid cannot both be null",
-    "zh_CN": "BuildAppUuid和BuildSystemUuid不能同时为空",
-    "arguments": [],
-    "line": 120,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemInterceptor.java"
-  },
-  {
-    "raw": "no such exportId in build export history",
-    "en_US": "no such exportId in build export history",
-    "zh_CN": "在生成导出历史记录中没有这样的导出ID",
-    "arguments": [],
-    "line": 126,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemInterceptor.java"
-  },
-  {
-    "raw": "both exportId and buildAppUuid are set but they are not equal",
-    "en_US": "both exportId and buildAppUuid are set but they are not equal",
-    "zh_CN": "同时设置了ExportId和BuildAppUuid，但它们不相等",
-    "arguments": [],
-    "line": 130,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/AppBuildSystemInterceptor.java"
-  },
-  {
-    "raw": "unable to do the operation because the build system is in status of %s",
-    "en_US": "unable to do the operation because the build system is in status of {0}",
-    "zh_CN": "无法执行该操作，因为生成系统处于{0}状态",
-    "arguments": [
-      "self.getStatus()"
-    ],
-    "line": 108,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/LocalStorageBuildSystemBase.java"
-  },
-  {
-    "raw": "cannot find the build app by uuid[%s]",
-    "en_US": "cannot find the build app by uuid[{0}]",
-    "zh_CN": "按uuid[{0}]找不到生成应用程序",
-    "arguments": [
-      "msg.getBuildAppUuid()"
-    ],
-    "line": 121,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/LocalStorageBuildSystemBase.java"
-  },
-  {
-    "raw": "build app is in %s status, which can not support the current operation.",
-    "en_US": "build app is in {0} status, which can not support the current operation.",
-    "zh_CN": "生成应用程序处于{0}状态，无法支持当前操作。",
-    "arguments": [
-      "status.toString()"
-    ],
-    "line": 126,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/LocalStorageBuildSystemBase.java"
-  },
-  {
-    "raw": "rest call %s failed, because: %s",
-    "en_US": "rest call {0} failed, because: {1}",
-    "zh_CN": "REST调用{0}失败，因为：{1}",
-    "arguments": [
-      "buildUrl(path)",
-      "rsp.error"
-    ],
-    "line": 156,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/LocalStorageBuildSystemBase.java"
-  },
-  {
-    "raw": "build application is disabled because build system is in \u0027Disabled\u0027 state",
-    "en_US": "build application is disabled because build system is in \u0027Disabled\u0027 state",
-    "zh_CN": "生成应用程序已禁用，因为生成系统处于“禁用”状态",
-    "arguments": [],
-    "line": 353,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/LocalStorageBuildSystemBase.java"
-  },
-  {
-    "raw": "create BuildApp failed, because appId[%s: %s] is duplicated by another BuildApp",
-    "en_US": "create BuildApp failed, because appId[{0}: {1}] is duplicated by another BuildApp",
-    "zh_CN": "创建BuildApp失败，因为AppId[{0}：{1}]与另一个BuildApp重复",
-    "arguments": [
-      "meta.getAppId()",
-      "meta.getVersion().getVersion()"
-    ],
-    "line": 506,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/LocalStorageBuildSystemBase.java"
-  },
-  {
-    "raw": "unable to connect to localstorage build system[url:%s], because %s",
-    "en_US": "unable to connect to localstorage build system[url:{0}], because {1}",
-    "zh_CN": "无法连接到localStorage生成系统[URL：{0}]，因为{1}",
-    "arguments": [
-      "buildUrl(CONNECT_BUILDSYSTEM_PATH)",
-      "errorCode"
-    ],
-    "line": 659,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/LocalStorageBuildSystemBase.java"
-  },
-  {
-    "raw": "add BuildApp failed, because appId[%s:%s] is duplicated by another BuildApp",
-    "en_US": "add BuildApp failed, because appId[{0}:{1}] is duplicated by another BuildApp",
-    "zh_CN": "添加BuildApp失败，因为AppId[{0}：{1}]与另一个BuildApp重复",
-    "arguments": [
-      "struct.getAppId()",
-      "struct.getVersion().getVersion()"
-    ],
-    "line": 762,
-    "fileName": "src/main/java/org/zstack/appcenter/buildsystem/LocalStorageBuildSystemBase.java"
-  },
-  {
-    "raw": "cannot find raw-template json file at: %s",
-    "en_US": "cannot find raw-template json file at: {0}",
-    "zh_CN": "在{0}处找不到原始模板JSON文件",
-    "arguments": [
-      "file"
-    ],
-    "line": 48,
-    "fileName": "src/main/java/org/zstack/appcenter/utils/AppCenterUtils.java"
-  },
-  {
-    "raw": "Unable to create json template",
-    "en_US": "Unable to create json template",
-    "zh_CN": "无法创建JSON模板",
-    "arguments": [
-      "e"
-    ],
-    "line": 61,
-    "fileName": "src/main/java/org/zstack/appcenter/utils/AppCenterUtils.java"
-  },
-  {
     "raw": "there is no available nicType on L2 network [%s]",
     "en_US": "there is no available nicType on L2 network [{0}]",
     "zh_CN": "二层网络[{0}]上没有可用的nicType",
@@ -6714,14 +6381,13 @@
     "fileName": "src/main/java/org/zstack/compute/host/MevocoHostBase.java"
   },
   {
-    "raw": "failed to allocate pci device for l3[uuid:%s] on host[uuid:%s]",
-    "en_US": "failed to allocate pci device for l3[uuid:{0}] on host[uuid:{1}]",
-    "zh_CN": "无法为物理机[uuid：{1}]上的L3[uuid：{0}]分配PCI设备",
+    "raw": "failed to allocate pci device on host[uuid:%s], because there are not enough pci devices available",
+    "en_US": "failed to allocate pci device on host[uuid:{0}], because there are not enough pci devices available",
+    "zh_CN": "无法为物理机[uuid：{0}]分配PCI设备，因为可用PCI设备不足",
     "arguments": [
-      "l3Uuid",
       "msg.getHostUuid()"
     ],
-    "line": 370,
+    "line": 405,
     "fileName": "src/main/java/org/zstack/compute/host/MevocoHostBase.java"
   },
   {
@@ -6831,31 +6497,31 @@
   {
     "raw": "vm nic[uuid:%s] doesn\u0027t exist",
     "en_US": "vm nic[uuid:{0}] doesn\u0027t exist",
-    "zh_CN": "VM NIC[uuid：{0}]不存在",
+    "zh_CN": "云主机网卡[uuid：{0}]不存在",
     "arguments": [
       "msg.getVmNicUuid()"
     ],
-    "line": 136,
+    "line": 154,
     "fileName": "src/main/java/org/zstack/compute/sriov/VmVfNicApiInterceptor.java"
   },
   {
-    "raw": "only %s support sriov",
-    "en_US": "only {0} support sriov",
-    "zh_CN": "仅{0}支持SRIOV",
+    "raw": "only %s support sr-iov",
+    "en_US": "only {0} support sr-iov",
+    "zh_CN": "仅{0}支持SR-IOV",
     "arguments": [
-      "VmVfNicConstant.SRIOVABLE_L2_NETWORK_TYPES"
+      "L2NetworkType.getSriovSupportedTypeName()"
     ],
-    "line": 77,
+    "line": 83,
     "fileName": "src/main/java/org/zstack/compute/sriov/VmVfNicApiInterceptor.java"
   },
   {
-    "raw": "%s don\u0027t support sriov",
-    "en_US": "{0} don\u0027t support sriov",
-    "zh_CN": "{0}不支持SRIOV",
+    "raw": "%s don\u0027t support sr-iov",
+    "en_US": "{0} don\u0027t support sr-iov",
+    "zh_CN": "{0}不支持SR-IOV",
     "arguments": [
       "L2NetworkConstant.VSWITCH_TYPE_OVS_DPDK"
     ],
-    "line": 83,
+    "line": 89,
     "fileName": "src/main/java/org/zstack/compute/sriov/VmVfNicApiInterceptor.java"
   },
   {
@@ -6865,53 +6531,61 @@
     "arguments": [
       "l3Uuid"
     ],
-    "line": 93,
+    "line": 99,
     "fileName": "src/main/java/org/zstack/compute/sriov/VmVfNicApiInterceptor.java"
   },
   {
-    "raw": "related l2 network[uuid:%s] of l3 network[uuid:%s] is not sriov enabled",
-    "en_US": "related l2 network[uuid:{0}] of l3 network[uuid:{1}] is not sriov enabled",
-    "zh_CN": "三层网络[uuid：{1}]的相关二层网络[uuid：{0}]未启用SRIOV",
+    "raw": "related l2 network[uuid:%s] of l3 network[uuid:%s] is not sr-iov enabled",
+    "en_US": "related l2 network[uuid:{0}] of l3 network[uuid:{1}] is not sr-iov enabled",
+    "zh_CN": "三层网络[uuid：{1}]的相关二层网络[uuid：{0}]未启用SR-IOV",
     "arguments": [
       "l2Uuid",
       "l3Uuid"
     ],
-    "line": 97,
+    "line": 103,
     "fileName": "src/main/java/org/zstack/compute/sriov/VmVfNicApiInterceptor.java"
   },
   {
-    "raw": "vm nic[uuid:%s] is already of type %s, no need to change",
-    "en_US": "vm nic[uuid:{0}] is already of type {1}, no need to change",
-    "zh_CN": "VM NIC[uuid：{0}]已属于类型{1}，无需更改",
+    "raw": "can not change vf nic to vnic type",
+    "en_US": "can not change vf nic to vnic type",
+    "zh_CN": "无法将VF网卡更改为VNIC类型",
+    "arguments": [],
+    "line": 255,
+    "fileName": "src/main/java/org/zstack/compute/sriov/VmVfNicApiInterceptor.java"
+  },
+  {
+    "raw": "vm nic type could only be updated when the vm is stopped",
+    "en_US": "vm nic type could only be updated when the vm is stopped",
+    "zh_CN": "只能在云主机停止时修改网卡类型",
+    "arguments": [],
+    "line": 163,
+    "fileName": "src/main/java/org/zstack/compute/sriov/VmVfNicApiInterceptor.java"
+  },
+  {
+    "raw": "could not enable sr-iov for vnic",
+    "en_US": "could not enable sr-iov for vnic",
+    "zh_CN": "无法为VNIC网卡启用SR-IOV",
+    "arguments": [],
+    "line": 261,
+    "fileName": "src/main/java/org/zstack/compute/sriov/VmVfNicApiInterceptor.java"
+  },
+  {
+    "raw": "could not change l3 network of vf nic",
+    "en_US": "could not change l3 network of vf nic",
+    "zh_CN": "无法更改VF网卡所加载的三层网络",
+    "arguments": [],
+    "line": 216,
+    "fileName": "src/main/java/org/zstack/compute/sriov/VmVfNicApiInterceptor.java"
+  },
+  {
+    "raw": "could not change to vf nic of pf[uuid: %s], current vf parent name is [%s]",
+    "en_US": "could not change to vf nic of pf[uuid: {0}], current vf parent name is [{1}]",
+    "zh_CN": "无法修改为PF网卡[uuid: {0}]的VF网卡，当前PF网卡的名称是[{1}]",
     "arguments": [
-      "msg.getVmNicUuid()",
-      "msg.getVmNicType()"
+      "vmNicParam.getVfParentUuid()",
+      "parentName"
     ],
-    "line": 140,
-    "fileName": "src/main/java/org/zstack/compute/sriov/VmVfNicApiInterceptor.java"
-  },
-  {
-    "raw": "change vm nic type only when the vm is stopped",
-    "en_US": "change vm nic type only when the vm is stopped",
-    "zh_CN": "仅在VM停止时更改VM NIC类型",
-    "arguments": [],
-    "line": 146,
-    "fileName": "src/main/java/org/zstack/compute/sriov/VmVfNicApiInterceptor.java"
-  },
-  {
-    "raw": "cant not change vf nic to normal type",
-    "en_US": "cant not change vf nic to normal type",
-    "zh_CN": "无法将VF NIC更改为正常类型",
-    "arguments": [],
-    "line": 190,
-    "fileName": "src/main/java/org/zstack/compute/sriov/VmVfNicApiInterceptor.java"
-  },
-  {
-    "raw": "cant not change nic to vf type",
-    "en_US": "cant not change nic to vf type",
-    "zh_CN": "无法将NIC更改为VF类型",
-    "arguments": [],
-    "line": 197,
+    "line": 240,
     "fileName": "src/main/java/org/zstack/compute/sriov/VmVfNicApiInterceptor.java"
   },
   {
@@ -7440,87 +7114,334 @@
     "fileName": "src/main/java/org/zstack/compute/vm/VmDownloadIsoFlow.java"
   },
   {
-    "raw": "VM[uuid:%s] already has an ISO[uuid:%s] attached",
-    "en_US": "VM[uuid:{0}] already has an ISO[uuid:{1}] attached",
-    "zh_CN": "云主机[uuid:{0}]已经挂载了ISO[uuid:{1}]",
+    "raw": "defaultL3NetworkUuid[uuid:%s] is not in l3NetworkUuids%s",
+    "en_US": "defaultL3NetworkUuid[uuid:{0}] is not in l3NetworkUuids{1}",
+    "zh_CN": "默认的三层网络的uuid是[uuid：{0}]，不在三层网络uuid列表{1}中",
     "arguments": [
-      "msg.getVmInstanceUuid()",
-      "msg.getIsoUuid()"
+      "msg.getDefaultL3NetworkUuid()",
+      "msg.getL3NetworkUuids()"
     ],
-    "line": 713,
+    "line": 1543,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "there are more than one L3 network specified in l3NetworkUuids, but defaultL3NetworkUuid is null",
+    "en_US": "there are more than one L3 network specified in l3NetworkUuids, but defaultL3NetworkUuid is null",
+    "zh_CN": "在三层网络uuid列表中指定了多个三层网络，但是默认的三层网络的uuid为空",
+    "arguments": [],
+    "line": 1539,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "could not create vm, because at least one of field (l3NetworkUuids,zoneUuid,clusterUuid,hostUuid) should be set",
+    "en_US": "could not create vm, because at least one of field (l3NetworkUuids,zoneUuid,clusterUuid,hostUuid) should be set",
+    "zh_CN": "无法创建云主机，因为至少应设置字段（l3NetworkUuids、zoneUuid、clusterUuid、hostUuid）中的一个",
+    "arguments": [],
+    "line": 1186,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "the primary storage[%s] of the root volume and the primary storage[%s] of the data volume are not in the same cluster",
+    "en_US": "the primary storage[{0}] of the root volume and the primary storage[{1}] of the data volume are not in the same cluster",
+    "zh_CN": "根卷的主存储[{0}]和数据云盘的主存储[{1}]不在同一集群中",
+    "arguments": [
+      "msg.getPrimaryStorageUuidForRootVolume()",
+      "primaryStorageUuidForDataVolume"
+    ],
+    "line": 1179,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "Not allowed same mac [%s]",
+    "en_US": "Not allowed same mac [{0}]",
+    "zh_CN": "不允许存在相同的MAC地址[{0}]",
+    "arguments": [
+      "duplicateMac.get()"
+    ],
+    "line": 1435,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "Can\u0027t add same uuid in the l3Network,uuid: %s",
+    "en_US": "Can\u0027t add same uuid in the l3Network,uuid: {0}",
+    "zh_CN": "不能添加相同uuid[{0}]的三层网络",
+    "arguments": [
+      "duplicateElements.get(0)"
+    ],
+    "line": 1462,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "l3Network[uuid:%s] is Disabled, can not create vm on it",
+    "en_US": "l3Network[uuid:{0}] is Disabled, can not create vm on it",
+    "zh_CN": "三层网络[uuid：{0}]没有被启用，不能在这上面创建云主机",
+    "arguments": [
+      "l3Uuid"
+    ],
+    "line": 1473,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "l3Network[uuid:%s] is system network, can not create user vm on it",
+    "en_US": "l3Network[uuid:{0}] is system network, can not create user vm on it",
+    "zh_CN": "三层网络[uuid：{0}]是系统网络，不能在这上面创建云主机",
+    "arguments": [
+      "l3Uuid"
+    ],
+    "line": 1476,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "zone[uuid:%s] is specified but it\u0027s Disabled, can not create vm from it",
+    "en_US": "zone[uuid:{0}] is specified but it\u0027s Disabled, can not create vm from it",
+    "zh_CN": "区域[uuid：{0}]虽然被指定了但是处于未启用状态，不能从这上面创建云主机",
+    "arguments": [
+      "msg.getZoneUuid()"
+    ],
+    "line": 1503,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "cluster[uuid:%s] is specified but it\u0027s Disabled, can not create vm from it",
+    "en_US": "cluster[uuid:{0}] is specified but it\u0027s Disabled, can not create vm from it",
+    "zh_CN": "集群[uuid：{0}]虽然被指定了但是处于未启用状态，不能从这上面创建云主机",
+    "arguments": [
+      "msg.getClusterUuid()"
+    ],
+    "line": 1513,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "host[uuid:%s] is specified but it\u0027s Disabled, can not create vm from it",
+    "en_US": "host[uuid:{0}] is specified but it\u0027s Disabled, can not create vm from it",
+    "zh_CN": "物理机[uuid：{0}]虽然被指定了但是处于未启用状态，不能从这上面创建云主机",
+    "arguments": [
+      "msg.getHostUuid()"
+    ],
+    "line": 1524,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "host[uuid:%s] is specified but it\u0027s connection status is %s, can not create vm from it",
+    "en_US": "host[uuid:{0}] is specified but it\u0027s connection status is {1}, can not create vm from it",
+    "zh_CN": "物理机[uuid：{0}]虽然被指定了但是它的连接状态是{1}，不能从这上面创建云主机",
+    "arguments": [
+      "msg.getHostUuid()",
+      "connectionState"
+    ],
+    "line": 1529,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "instance offering[uuid:%s] is Disabled, can\u0027t create vm from it",
+    "en_US": "instance offering[uuid:{0}] is Disabled, can\u0027t create vm from it",
+    "zh_CN": "计算规格[uuid：{0}]没有被启用，不能根据该规格创建云主机",
+    "arguments": [
+      "instanceOfferingUuid"
+    ],
+    "line": 1216,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "instance offering[uuid:%s, type:%s] is not UserVm type, can\u0027t create vm from it",
+    "en_US": "instance offering[uuid:{0}, type:{1}] is not UserVm type, can\u0027t create vm from it",
+    "zh_CN": "计算规格[uuid：{0}, type：{1}]不是UserVm类型，不能通过它创建云主机",
+    "arguments": [
+      "instanceOfferingUuid",
+      "ivo.getType()"
+    ],
+    "line": 1220,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "image[uuid:%s] is Disabled, can\u0027t create vm from it",
+    "en_US": "image[uuid:{0}] is Disabled, can\u0027t create vm from it",
+    "zh_CN": "镜像[uuid：{0}]没被启用，不能根据该镜像创建云主机",
+    "arguments": [
+      "msg.getImageUuid()"
+    ],
+    "line": 1288,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "image[uuid:%s] is not ready yet, can\u0027t create vm from it",
+    "en_US": "image[uuid:{0}] is not ready yet, can\u0027t create vm from it",
+    "zh_CN": "镜像[uuid：{0}]尚未就绪，无法从中创建云主机",
+    "arguments": [
+      "msg.getImageUuid()"
+    ],
+    "line": 1293,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "image[uuid:%s] is of mediaType: %s, only RootVolumeTemplate and ISO can be used to create vm",
+    "en_US": "image[uuid:{0}] is of mediaType: {1}, only RootVolumeTemplate and ISO can be used to create vm",
+    "zh_CN": "镜像[uuid：{0}]类型为{1}，只能用RootVolumeTemplate和ISO来创建云主机",
+    "arguments": [
+      "msg.getImageUuid()",
+      "imgFormat"
+    ],
+    "line": 1298,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "image[uuid:%s] is system image, can\u0027t be used to create user vm",
+    "en_US": "image[uuid:{0}] is system image, can\u0027t be used to create user vm",
+    "zh_CN": "镜像[uuid：{0}]是系统镜像，不能使用它创建用户云主机",
+    "arguments": [
+      "msg.getImageUuid()"
+    ],
+    "line": 1303,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "disk offerings[uuids:%s] are Disabled, can not create vm from it",
+    "en_US": "disk offerings[uuids:{0}] are Disabled, can not create vm from it",
+    "zh_CN": "云盘规格[uuids：{0}]没有被启用，不能使用它创建云主机",
+    "arguments": [
+      "diskUuids"
+    ],
+    "line": 1346,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "Missing CPU/memory settings",
+    "en_US": "Missing CPU/memory settings",
+    "zh_CN": "缺少CPU/内存设置",
+    "arguments": [],
+    "line": 1195,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "Unexpected CPU/memory settings",
+    "en_US": "Unexpected CPU/memory settings",
+    "zh_CN": "意外的CPU/内存设置",
+    "arguments": [],
+    "line": 1199,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "Nic driver %s not support yet",
+    "en_US": "Nic driver {0} not support yet",
+    "zh_CN": "网卡驱动类型{0}尚不支持",
+    "arguments": [
+      "msg.getDriverType()"
+    ],
+    "line": 430,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "invalid json format, causes: %s",
+    "en_US": "invalid json format, causes: {0}",
+    "zh_CN": "无效的JSON格式，原因：{0}",
+    "arguments": [
+      "e.getMessage()"
+    ],
+    "line": 1450,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "can not take vm pid createTime for vm[uuid:%s] which is not Running",
+    "en_US": "can not take vm pid createTime for vm[uuid:{0}] which is not Running",
+    "zh_CN": "无法为未运行的云主机[uuid：{0}]获取PID创建时间",
+    "arguments": [
+      "msg.getVmInstanceUuid()"
+    ],
+    "line": 177,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "can not take vm console screenshot for vm[uuid:%s] which is not Running",
+    "en_US": "can not take vm console screenshot for vm[uuid:{0}] which is not Running",
+    "zh_CN": "无法为未运行的云主机[uuid：{0}]获取控制台实时小窗",
+    "arguments": [
+      "msg.getVmInstanceUuid()"
+    ],
+    "line": 185,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "either l3NetworkUuids or backupStorageUuid must be set",
     "en_US": "either l3NetworkUuids or backupStorageUuid must be set",
-    "zh_CN": "必须设置L3Networkuuid或BackupStorageuuid",
+    "zh_CN": "必须设置三层网络或镜像服务器",
     "arguments": [],
-    "line": 169,
+    "line": 192,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
-    "raw": "unable to change to L3 network. The vm[uuid: %s] is not Running or Stopped; the current state is %s",
-    "en_US": "unable to change to L3 network. The vm[uuid: {0}] is not Running or Stopped; the current state is {1}",
-    "zh_CN": "无法更改为三层网络。VM[uuid：{0}]未运行或已停止。当前状态为{1}",
+    "raw": "could not change to L3 network, the l2 of l3[uuid:%s, %s] use different vswitch",
+    "en_US": "could not change to L3 network, the l2 of l3[uuid:{0}, {1}] use different vswitch",
+    "zh_CN": "无法更改为三层网络，三层网络[uuid：{0}, {1}]对应的二层网络使用了不同的虚拟交换机类型",
     "arguments": [
-      "msg.getVmInstanceUuid()",
-      "state"
-    ],
-    "line": 205,
-    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
-  },
-  {
-    "raw": "unable to change to L3 network. The L3 network[uuid:%s] doesn\u0027t has have ip range",
-    "en_US": "unable to change to L3 network. The L3 network[uuid:{0}] doesn\u0027t has have ip range",
-    "zh_CN": "无法更改为三层网络。三层网络[uuid：{0}]没有IP范围",
-    "arguments": [
+      "nicVO.getL3NetworkUuid()",
       "msg.getDestL3NetworkUuid()"
     ],
     "line": 211,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
+    "raw": "unable to change to L3 network. The vm[uuid: %s] is not Running or Stopped; the current state is %s",
+    "en_US": "unable to change to L3 network. The vm[uuid: {0}] is not Running or Stopped; the current state is {1}",
+    "zh_CN": "无法更改为三层网络。云主机[uuid：{0}]既不在运行也不在停止状态。当前状态为{1}",
+    "arguments": [
+      "msg.getVmInstanceUuid()",
+      "state"
+    ],
+    "line": 238,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "unable to change to L3 network. The L3 network[uuid:%s] doesn\u0027t has have ip range",
+    "en_US": "unable to change to L3 network. The L3 network[uuid:{0}] doesn\u0027t has have ip range",
+    "zh_CN": "无法更改为三层网络。三层网络[uuid：{0}]没有IP地址段",
+    "arguments": [
+      "msg.getDestL3NetworkUuid()"
+    ],
+    "line": 244,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
     "raw": "unable to change to L3 network. The L3 network[uuid:%s] are belonged to different l2 networks [uuids:%s]",
     "en_US": "unable to change to L3 network. The L3 network[uuid:{0}] are belonged to different l2 networks [uuids:{1}]",
-    "zh_CN": "无法更改为三层网络。三层网络[uuid：{0}]属于不同的二层网络[uuid：{1}]",
+    "zh_CN": "无法更改为三层网络。三层网络[uuid：{0}]属于不同的二层网络[uuids：{1}]",
     "arguments": [
       "newAddedL3Uuids",
       "l2Uuids"
     ],
-    "line": 221,
+    "line": 254,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to change to L3 network. The L3 network[uuid:%s] are belonged to l2 networks [uuids:%s] that have not been attached to any cluster",
     "en_US": "unable to change to L3 network. The L3 network[uuid:{0}] are belonged to l2 networks [uuids:{1}] that have not been attached to any cluster",
-    "zh_CN": "无法更改为三层网络。三层网络[uuid：{0}]属于尚未连接到任何集群的二层网络[uuid：{1}]",
+    "zh_CN": "无法更改为三层网络。三层网络[uuid：{0}]对应的二层网络[uuid：{1}]尚未连接到任何集群",
     "arguments": [
       "newAddedL3Uuids",
       "l2Uuids"
     ],
-    "line": 228,
+    "line": 261,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to change to L3 network. The L3 network[uuid:%s] is already attached to the vm[uuid: %s]",
     "en_US": "unable to change to L3 network. The L3 network[uuid:{0}] is already attached to the vm[uuid: {1}]",
-    "zh_CN": "无法更改为三层网络。三层网络[uuid：{0}]已连接到云主机[uuid：{1}]",
+    "zh_CN": "无法更改为三层网络。三层网络[uuid：{0}]已挂载到云主机[uuid：{1}]",
     "arguments": [
       "attachedL3Uuids",
       "msg.getVmInstanceUuid()"
     ],
-    "line": 240,
+    "line": 273,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to change to a non-guest L3 network. The L3 network[uuid:%s] is already attached to the vm[uuid: %s]",
     "en_US": "unable to change to a non-guest L3 network. The L3 network[uuid:{0}] is already attached to the vm[uuid: {1}]",
-    "zh_CN": "无法更改为非来宾三层网络。三层网络[uuid：{0}]已连接到云主机[uuid：{1}]",
+    "zh_CN": "无法更改为非来宾三层网络。三层网络[uuid：{0}]已挂载到云主机[uuid：{1}]",
     "arguments": [
       "attachedL3Uuids",
       "msg.getVmInstanceUuid()"
     ],
-    "line": 247,
+    "line": 280,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7530,101 +7451,119 @@
     "arguments": [
       "l3Uuid"
     ],
-    "line": 255,
+    "line": 288,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to change to L3 network. The L3 network[uuid:%s] is a system network and vm is a user vm",
     "en_US": "unable to change to L3 network. The L3 network[uuid:{0}] is a system network and vm is a user vm",
-    "zh_CN": "无法更改为三层网络。三层网络[uuid：{0}]是系统网络，VM是用户VM",
+    "zh_CN": "无法更改为三层网络。三层网络[uuid：{0}]是系统网络，但云主机是一个用户云主机",
     "arguments": [
       "l3Uuid"
     ],
-    "line": 258,
+    "line": 291,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "the static IP[%s] is not in any IP range of the L3 network[uuid:%s]",
     "en_US": "the static IP[{0}] is not in any IP range of the L3 network[uuid:{1}]",
-    "zh_CN": "该静态IP[{0}]不在三层网络[uuid:{1}]的任何IP段",
+    "zh_CN": "该静态IP[{0}]不在三层网络[uuid：{1}]的任何IP地址段内",
     "arguments": [
       "staticIp",
       "l3Uuid"
     ],
-    "line": 942,
+    "line": 993,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "the static IP[%s] has been occupied on the L3 network[uuid:%s]",
     "en_US": "the static IP[{0}] has been occupied on the L3 network[uuid:{1}]",
-    "zh_CN": "该静态IP[{0}]已经存在在三层网络[uuid:{1}]中",
+    "zh_CN": "该静态IP[{0}]已经存在于三层网络[uuid：{1}]中",
     "arguments": [
       "staticIp",
       "l3Uuid"
     ],
-    "line": 949,
+    "line": 1000,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "static ip l3 uuid[%s] is not included in nic l3 [%s]",
     "en_US": "static ip l3 uuid[{0}] is not included in nic l3 [{1}]",
-    "zh_CN": "静态IP的三层网络[uuid:{0}]不在网卡的L3列表[uuid:{1}]中",
+    "zh_CN": "静态IP的三层网络[uuid：{0}]不在网卡的三层网络列表[{1}]中",
     "arguments": [
       "e.getKey()",
       "newAddedL3Uuids"
     ],
-    "line": 912,
+    "line": 963,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "the image[name:%s, uuid:%s] is an ISO, rootDiskSize must be set",
     "en_US": "the image[name:{0}, uuid:{1}] is an ISO, rootDiskSize must be set",
-    "zh_CN": "镜像[name:{0}, uuid:{1}]是一个IOS, 必须设置云盘大小",
+    "zh_CN": "镜像[名称：{0}, uuid：{1}]是一个ISO, 必须设置云盘大小",
     "arguments": [
       "image.getName()",
       "image.getUuid()"
     ],
-    "line": 373,
+    "line": 406,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "Can not create CD-ROM for vm[uuid:%s] which is in state[%s] ",
     "en_US": "Can not create CD-ROM for vm[uuid:{0}] which is in state[{1}] ",
-    "zh_CN": "无法为处于状态[{1}]的VM[uuid：{0}]创建CD-ROM",
+    "zh_CN": "无法为处于状态[{1}]的云主机[uuid：{0}]创建CD-ROM",
     "arguments": [
       "msg.getVmInstanceUuid()",
       "vo.getState().toString()"
     ],
-    "line": 383,
+    "line": 416,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "Current platform %s not support update nic driver yet",
     "en_US": "Current platform {0} not support update nic driver yet",
-    "zh_CN": "当前平台{0}尚不支持更新NIC驱动程序",
+    "zh_CN": "当前平台{0}尚不支持更新网卡驱动类型",
     "arguments": [
       "vo.getPlatform()"
     ],
-    "line": 391,
+    "line": 424,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "vm nic driver type can be updated only when the vm is stopped",
+    "en_US": "vm nic driver type can be updated only when the vm is stopped",
+    "zh_CN": "只能在云主机停止状态下更新网卡驱动类型",
+    "arguments": [],
+    "line": 435,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "rootDiskSize is needed when image media type is ISO",
     "en_US": "rootDiskSize is needed when image media type is ISO",
-    "zh_CN": "当镜像类型是ISO时云盘大小需要设置",
+    "zh_CN": "当镜像类型是ISO时需要设置云盘大小",
     "arguments": [],
-    "line": 407,
+    "line": 444,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "the vm[uuid:%s] is already on host[uuid:%s]",
     "en_US": "the vm[uuid:{0}] is already on host[uuid:{1}]",
-    "zh_CN": "云主机[uuid:{0}]已经运行于物理机[uuid:{1}]上",
+    "zh_CN": "云主机[uuid：{0}]已经运行于物理机[uuid：{1}]",
     "arguments": [
       "msg.getVmInstanceUuid()",
       "msg.getHostUuid()"
     ],
-    "line": 419,
+    "line": 456,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "the vm[uuid:%s] is still paused after the last migration, please resume it before migrate.",
+    "en_US": "the vm[uuid:{0}] is still paused after the last migration, please resume it before migrate.",
+    "zh_CN": "云主机[uuid：{0}]上次迁移后仍处于暂停状态，请在迁移前恢复它",
+    "arguments": [
+      "msg.getVmInstanceUuid()"
+    ],
+    "line": 462,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7632,29 +7571,40 @@
     "en_US": "the VM cannot do online cpu/memory update because of disabling Instance Offering Online Modification. Please stop the VM then do the cpu/memory update again",
     "zh_CN": "云主机无法执行在线升级CPU/内存，因为未启用计算规格在线修改。请关闭该云主机再尝试",
     "arguments": [],
-    "line": 436,
+    "line": 478,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "The state of vm[uuid:%s] is %s. Only these state[%s] is allowed to update cpu or memory.",
     "en_US": "The state of vm[uuid:{0}] is {1}. Only these state[{2}] is allowed to update cpu or memory.",
-    "zh_CN": "云主机[uuid:{0}]的状态为{1}。只有这些状态[{2}]允许在线升级CPU/内存",
+    "zh_CN": "云主机[uuid：{0}]的状态为{1}。只有这些状态[{2}]允许在线升级CPU/内存",
     "arguments": [
       "vo.getUuid()",
       "vo.getState()",
       "StringUtils.join(list(VmInstanceState.Running, VmInstanceState.Stopped), \",\")"
     ],
-    "line": 495,
+    "line": 547,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "can\u0027t decrease capacity when vm[uuid:%s] is running",
     "en_US": "can\u0027t decrease capacity when vm[uuid:{0}] is running",
-    "zh_CN": "无法在云主机[uuid:{0}]运行时减少容量",
+    "zh_CN": "无法在云主机[uuid：{0}]运行时减少容量",
     "arguments": [
       "vo.getUuid()"
     ],
-    "line": 452,
+    "line": 494,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "reservedMemorySize[%s] is greater than memorySize[%s]",
+    "en_US": "reservedMemorySize[{0}] is greater than memorySize[{1}]",
+    "zh_CN": "保留内存容量[{0}]大于内存容量[{1}]",
+    "arguments": [
+      "msg.getReservedMemorySize()",
+      "memorySize"
+    ],
+    "line": 511,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7662,7 +7612,7 @@
     "en_US": "the VM cannot do cpu hot plug because of disabling cpu hot plug. Please stop the VM then do the cpu hot plug again",
     "zh_CN": "云主机无法执行在线添加CPU，因为未启用CPU热插拔。请关闭该云主机再尝试",
     "arguments": [],
-    "line": 482,
+    "line": 534,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7670,35 +7620,35 @@
     "en_US": "the VM cannot do memory hot plug because of disabling memory hot plug. Please stop the VM then do the memory hot plug again",
     "zh_CN": "云主机无法执行在线添加内存，因为未启用内存热插拔。请关闭该云主机再尝试",
     "arguments": [],
-    "line": 488,
+    "line": 540,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "can\u0027t decrease cpu of vm[uuid:%s] when it is running",
     "en_US": "can\u0027t decrease cpu of vm[uuid:{0}] when it is running",
-    "zh_CN": "无法在云主机[uuid:{0}]运行时减少CPU数目",
+    "zh_CN": "无法在云主机[uuid：{0}]运行时减少CPU数目",
     "arguments": [
       "vo.getUuid()"
     ],
-    "line": 506,
+    "line": 557,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "can\u0027t decrease memory size of vm[uuid:%s] when it is running",
     "en_US": "can\u0027t decrease memory size of vm[uuid:{0}] when it is running",
-    "zh_CN": "无法在云主机[uuid:{0}]运行时减少容量",
+    "zh_CN": "无法在云主机[uuid：{0}]运行时减少容量",
     "arguments": [
       "vo.getUuid()"
     ],
-    "line": 512,
+    "line": 563,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "either l3NetworkUuids or imageUuid must be set",
     "en_US": "either l3NetworkUuids or imageUuid must be set",
-    "zh_CN": "三层网络的uuid们或者镜像的uuid必须被设置",
+    "zh_CN": "必须设置三层网络的uuid列表或者镜像的uuid",
     "arguments": [],
-    "line": 523,
+    "line": 574,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7708,18 +7658,18 @@
     "arguments": [
       "ip"
     ],
-    "line": 538,
+    "line": 589,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "ip address [%s] already set to vmNic [uuid:%s]",
     "en_US": "ip address [{0}] already set to vmNic [uuid:{1}]",
-    "zh_CN": "IP地址[{0}]已经设置到网卡[uuid:{1}]",
+    "zh_CN": "IP地址[{0}]已经设置到网卡[uuid：{1}]",
     "arguments": [
       "ip",
       "vmNicVO.getUuid()"
     ],
-    "line": 576,
+    "line": 627,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7730,7 +7680,7 @@
       "ip",
       "rangeVO.getNetworkCidr()"
     ],
-    "line": 557,
+    "line": 608,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7740,7 +7690,7 @@
     "arguments": [
       "ip"
     ],
-    "line": 566,
+    "line": 617,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7752,7 +7702,7 @@
       "rangeVO.getStartIp()",
       "rangeVO.getEndIp()"
     ],
-    "line": 584,
+    "line": 635,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7760,7 +7710,7 @@
     "en_US": "could not set ip address, due to no ip address is specified",
     "zh_CN": "无法设置IP地址，因为未指定IP地址",
     "arguments": [],
-    "line": 595,
+    "line": 646,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7770,7 +7720,7 @@
     "arguments": [
       "msg.getIp()"
     ],
-    "line": 610,
+    "line": 661,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7778,17 +7728,17 @@
     "en_US": "ipv4 address need a netmask",
     "zh_CN": "IPv4地址需要网络掩码",
     "arguments": [],
-    "line": 622,
+    "line": 673,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "ip address [%s] already set to vmNic",
     "en_US": "ip address [{0}] already set to vmNic",
-    "zh_CN": "IP地址[{0}]已设置为vmnic",
+    "zh_CN": "IP地址[{0}]已被设置到网卡",
     "arguments": [
       "msg.getIp6()"
     ],
-    "line": 640,
+    "line": 691,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7796,40 +7746,40 @@
     "en_US": "ipv6 address need a prefix",
     "zh_CN": "IPv6地址需要前缀",
     "arguments": [],
-    "line": 634,
+    "line": 685,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "the VM[uuid:%s] has no nic on the L3 network[uuid:%s]",
     "en_US": "the VM[uuid:{0}] has no nic on the L3 network[uuid:{1}]",
-    "zh_CN": "云主机[uuid:{0}]在三层网络[uuid:{1}]上没有任何网卡",
+    "zh_CN": "云主机[uuid：{0}]在三层网络[uuid：{1}]上没有任何网卡",
     "arguments": [
       "msg.getVmInstanceUuid()",
       "msg.getL3NetworkUuid()"
     ],
-    "line": 654,
+    "line": 705,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "could not delete static ip [%s] for vm [uuid:%s] because it doesn\u0027t existed",
     "en_US": "could not delete static ip [{0}] for vm [uuid:{1}] because it doesn\u0027t existed",
-    "zh_CN": "无法删除VM[uuid：{1}]的静态IP[{0}]，因为它不存在",
+    "zh_CN": "无法删除云主机[uuid：{1}]的静态IP[{0}]，因为它不存在",
     "arguments": [
       "msg.getStaticIp()",
       "msg.getVmInstanceUuid()"
     ],
-    "line": 661,
+    "line": 712,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "invalid boot device[%s] in boot order%s",
     "en_US": "invalid boot device[{0}] in boot order{1}",
-    "zh_CN": "在启动列表{1}中的设备[{0}]启动失败",
+    "zh_CN": "启动顺序{1}中的启动设备[{0}]无效",
     "arguments": [
       "o",
       "msg.getBootOrder()"
     ],
-    "line": 673,
+    "line": 724,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7837,18 +7787,18 @@
     "en_US": "boot volume cannot be shareable.",
     "zh_CN": "启动卷无法共享。",
     "arguments": [],
-    "line": 696,
+    "line": 747,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "volume[uuid:%s] must be attached to vm[uuid:%s]",
     "en_US": "volume[uuid:{0}] must be attached to vm[uuid:{1}]",
-    "zh_CN": "卷[uuid：{0}]必须连接到云主机[uuid：{1}]",
+    "zh_CN": "卷[uuid：{0}]必须挂载到云主机[uuid：{1}]",
     "arguments": [
       "msg.getVolumeUuid()",
       "msg.getVmInstanceUuid()"
     ],
-    "line": 700,
+    "line": 751,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7858,7 +7808,7 @@
     "arguments": [
       "msg.getVmInstanceUuid()"
     ],
-    "line": 705,
+    "line": 756,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7868,7 +7818,7 @@
     "arguments": [
       "type"
     ],
-    "line": 718,
+    "line": 769,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -7878,239 +7828,219 @@
     "arguments": [
       "cdRomUuid"
     ],
-    "line": 733,
+    "line": 784,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "VM[uuid:%s] cdRom[uuid:%s] has mounted the ISO",
     "en_US": "VM[uuid:{0}] cdRom[uuid:{1}] has mounted the ISO",
-    "zh_CN": "VM[uuid：{0}]CDROM[uuid：{1}]已装载ISO",
+    "zh_CN": "云主机[uuid：{0}]CDROM[uuid：{1}]已装载ISO",
     "arguments": [
       "msg.getVmInstanceUuid()",
       "cdRomUuid"
     ],
-    "line": 737,
+    "line": 788,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "VM[uuid:%s] has multiple ISOs attached, specify the isoUuid when detaching",
     "en_US": "VM[uuid:{0}] has multiple ISOs attached, specify the isoUuid when detaching",
-    "zh_CN": "云主机[uuid:{0}]已经加载了多个ISO，卸载ISO时需要指定isoUuid",
+    "zh_CN": "云主机[uuid:{0}]已经挂载了多个ISO，卸载ISO时需要指定ISO的uuid",
     "arguments": [
       "msg.getVmInstanceUuid()"
     ],
-    "line": 755,
+    "line": 806,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach a L3 network. The L3 network[uuid:%s] is disabled",
     "en_US": "unable to attach a L3 network. The L3 network[uuid:{0}] is disabled",
-    "zh_CN": "不能挂载三层网络，因为该三层网络[uuid:{0}]处于未启动状态",
+    "zh_CN": "无法挂载三层网络，三层网络[uuid：{0}]已禁用",
     "arguments": [
       "l3Uuid"
     ],
-    "line": 863,
+    "line": 914,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach a L3 network. The vm[uuid: %s] is not Running or Stopped; the current state is %s",
     "en_US": "unable to attach a L3 network. The vm[uuid: {0}] is not Running or Stopped; the current state is {1}",
-    "zh_CN": "无法挂载三层网络。云主机[uuid: {0}]既不处于Running也不处于Stopped状态中，当前状态为{1}",
+    "zh_CN": "无法挂载三层网络。云主机[uuid: {0}]既不在运行也不在停止状态，当前状态为{1}",
     "arguments": [
       "msg.getVmInstanceUuid()",
       "state"
     ],
-    "line": 813,
+    "line": 864,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach a L3 network. The L3 network[uuid:%s] doesn\u0027t has have ip range",
     "en_US": "unable to attach a L3 network. The L3 network[uuid:{0}] doesn\u0027t has have ip range",
-    "zh_CN": "无法连接三层网络。三层网络[uuid：{0}]没有IP范围",
+    "zh_CN": "无法挂载三层网络。三层网络[uuid：{0}]没有IP地址段",
     "arguments": [
       "msg.getL3NetworkUuid()"
     ],
-    "line": 819,
+    "line": 870,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach a L3 network. The L3 network[uuid:%s] are belonged to different l2 networks [uuids:%s]",
     "en_US": "unable to attach a L3 network. The L3 network[uuid:{0}] are belonged to different l2 networks [uuids:{1}]",
-    "zh_CN": "不能挂载三层网络，三层网络[uuid:{0}]属于不同的二层网络",
+    "zh_CN": "无法挂载三层网络，三层网络[uuid：{0}]属于不同的二层网络",
     "arguments": [
       "newAddedL3Uuids",
       "l2Uuids"
     ],
-    "line": 829,
+    "line": 880,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach a L3 network. The L3 network[uuid:%s] are belonged to l2 networks [uuids:%s] that have not been attached to any cluster",
     "en_US": "unable to attach a L3 network. The L3 network[uuid:{0}] are belonged to l2 networks [uuids:{1}] that have not been attached to any cluster",
-    "zh_CN": "无法连接三层网络。三层网络[uuid：{0}]属于尚未连接到任何集群的二层网络[uuid：{1}]",
+    "zh_CN": "无法挂载三层网络。三层网络[uuid：{0}]对应的二层网络[uuid：{1}]尚未连接到任何集群",
     "arguments": [
       "newAddedL3Uuids",
       "l2Uuids"
     ],
-    "line": 836,
+    "line": 887,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach a L3 network. The L3 network[uuid:%s] is already attached to the vm[uuid: %s]",
     "en_US": "unable to attach a L3 network. The L3 network[uuid:{0}] is already attached to the vm[uuid: {1}]",
-    "zh_CN": "不能挂载三层网络，三层网络[uuid:{0}]已经挂载到云主机[uuid: {1}]上了",
+    "zh_CN": "无法挂载三层网络，三层网络[uuid：{0}]已挂载到云主机[uuid: {1}]",
     "arguments": [
       "attachedL3Uuids",
       "msg.getVmInstanceUuid()"
     ],
-    "line": 848,
+    "line": 899,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach a non-guest L3 network. The L3 network[uuid:%s] is already attached to the vm[uuid: %s]",
     "en_US": "unable to attach a non-guest L3 network. The L3 network[uuid:{0}] is already attached to the vm[uuid: {1}]",
-    "zh_CN": "无法连接非来宾三层网络。三层网络[uuid：{0}]已连接到云主机[uuid：{1}]",
+    "zh_CN": "无法挂载非来宾三层网络。三层网络[uuid：{0}]已挂载到云主机[uuid：{1}]",
     "arguments": [
       "attachedL3Uuids",
       "msg.getVmInstanceUuid()"
     ],
-    "line": 855,
+    "line": 906,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach a L3 network. The L3 network[uuid:%s] is a system network and vm is a user vm",
     "en_US": "unable to attach a L3 network. The L3 network[uuid:{0}] is a system network and vm is a user vm",
-    "zh_CN": "不能连接三层网络。这个三层网络[uuid:{0}]是系统网络，但云主机是一个用户云主机",
+    "zh_CN": "无法挂载三层网络。三层网络[uuid：{0}]是系统网络，但云主机是一个用户云主机",
     "arguments": [
       "l3Uuid"
     ],
-    "line": 866,
-    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
-  },
-  {
-    "raw": "invalid json format, causes: %s",
-    "en_US": "invalid json format, causes: {0}",
-    "zh_CN": "无效的JSON格式，原因：{0}",
-    "arguments": [
-      "e.getMessage()"
-    ],
-    "line": 1300,
+    "line": 917,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach the nic. The vm[uuid: %s] is not Running or Stopped; the current state is %s",
     "en_US": "unable to attach the nic. The vm[uuid: {0}] is not Running or Stopped; the current state is {1}",
-    "zh_CN": "无法连接NIC。VM[uuid：{0}]未运行或已停止。当前状态为{1}",
+    "zh_CN": "无法挂载网卡。云主机[uuid: {0}]既不在运行也不在停止状态。当前状态为{1}",
     "arguments": [
       "msg.getVmInstanceUuid()",
       "state"
     ],
-    "line": 986,
+    "line": 1056,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach the nic. The nic has been attached with vm[uuid: %s]",
     "en_US": "unable to attach the nic. The nic has been attached with vm[uuid: {0}]",
-    "zh_CN": "无法连接NIC。已使用VM[uuid：{0}]连接NIC",
+    "zh_CN": "无法挂载网卡。网卡已被挂载到云主机[uuid：{0}]",
     "arguments": [
       "vmNicVO.getVmInstanceUuid()"
     ],
-    "line": 993,
+    "line": 1063,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach the nic. Its L3 network[uuid:%s] is already attached to the vm[uuid: %s]",
     "en_US": "unable to attach the nic. Its L3 network[uuid:{0}] is already attached to the vm[uuid: {1}]",
-    "zh_CN": "无法连接NIC。其三层网络[uuid：{0}]已连接到云主机[uuid：{1}]",
+    "zh_CN": "无法挂载网卡。其三层网络[uuid：{0}]已挂载到云主机[uuid：{1}]",
     "arguments": [
       "vmNicVO.getL3NetworkUuid()",
       "msg.getVmInstanceUuid()"
     ],
-    "line": 1004,
+    "line": 1074,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach the nic with a non-guest L3 network. Its L3 network[uuid:%s] is already attached to the vm[uuid: %s]",
     "en_US": "unable to attach the nic with a non-guest L3 network. Its L3 network[uuid:{0}] is already attached to the vm[uuid: {1}]",
-    "zh_CN": "无法将NIC连接到非来宾三层网络。其三层网络[uuid：{0}]已连接到云主机[uuid：{1}]",
+    "zh_CN": "无法挂载非来宾三层网络对应的网卡。其三层网络[uuid：{0}]已挂载到云主机[uuid：{1}]",
     "arguments": [
       "vmNicVO.getL3NetworkUuid()",
       "msg.getVmInstanceUuid()"
     ],
-    "line": 1009,
+    "line": 1079,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach the nic. Its L3 network[uuid:%s] is disabled",
     "en_US": "unable to attach the nic. Its L3 network[uuid:{0}] is disabled",
-    "zh_CN": "无法连接NIC。其三层网络[uuid：{0}]已禁用",
+    "zh_CN": "无法挂载网卡。其三层网络[uuid：{0}]已禁用",
     "arguments": [
       "l3NetworkVO.getUuid()"
     ],
-    "line": 1018,
+    "line": 1088,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach the nic. Its L3 network[uuid:%s] is a system network and vm is a user vm",
     "en_US": "unable to attach the nic. Its L3 network[uuid:{0}] is a system network and vm is a user vm",
-    "zh_CN": "无法连接NIC。其三层网络[uuid：{0}]是系统网络，VM是用户VM",
+    "zh_CN": "无法挂载网卡。其三层网络[uuid：{0}]是系统网络，但云主机是一个用户云主机",
     "arguments": [
       "l3NetworkVO.getUuid()"
     ],
-    "line": 1021,
+    "line": 1091,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to attach the nic. Its l2 network [uuid:%s] that have not been attached to any cluster",
     "en_US": "unable to attach the nic. Its l2 network [uuid:{0}] that have not been attached to any cluster",
-    "zh_CN": "无法连接NIC。其二层网络[uuid：{0}]尚未连接到任何集群",
+    "zh_CN": "无法挂载网卡。其二层网络[uuid：{0}]尚未挂载到任何集群",
     "arguments": [
       "l3NetworkVO.getL2NetworkUuid()"
     ],
-    "line": 1028,
+    "line": 1098,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "could not update nic[uuid: %s] state, due to nic type[%s] not support",
     "en_US": "could not update nic[uuid: {0}] state, due to nic type[{1}] not support",
-    "zh_CN": "无法更新NIC[uuid：{0}]状态，因为不支持NIC类型[{1}]",
+    "zh_CN": "无法更新网卡[uuid：{0}]状态，因为不支持网卡类型[{1}]",
     "arguments": [
       "msg.getVmNicUuid()",
       "nicVO.getType()"
     ],
-    "line": 1037,
-    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
-  },
-  {
-    "raw": "could not update nic[uuid: %s] state, due to vm not support",
-    "en_US": "could not update nic[uuid: {0}] state, due to vm not support",
-    "zh_CN": "无法更新NIC[uuid：{0}]状态，因为VM不支持",
-    "arguments": [
-      "msg.getVmNicUuid()"
-    ],
-    "line": 1043,
+    "line": 1114,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "unable to detach a L3 network. The vm[uuid: %s] is not Running or Stopped; the current state is %s",
     "en_US": "unable to detach a L3 network. The vm[uuid: {0}] is not Running or Stopped; the current state is {1}",
-    "zh_CN": "不能卸载三层网络，云主机[uuid: {0}]不是运行状态或者暂停状态，状态为{1}",
+    "zh_CN": "不能卸载三层网络，云主机[uuid: {0}]既不在运行也不在停止状态，当前状态为{1}",
     "arguments": [
       "vmUuid",
       "state"
     ],
-    "line": 1060,
+    "line": 1131,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "vm[uuid:%s] can only attach volume when state is Running or Stopped, current state is %s",
     "en_US": "vm[uuid:{0}] can only attach volume when state is Running or Stopped, current state is {1}",
-    "zh_CN": "云主机[uuid:{0}]挂载盘时状态只能是运行或者暂停状态，而现在的状态是{1}",
+    "zh_CN": "云主机[uuid:{0}]只能在运行或者停止状态时挂载盘，当前状态为{1}",
     "arguments": [
       "msg.getVmInstanceUuid()",
       "state"
     ],
-    "line": 1075,
+    "line": 1146,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -8118,7 +8048,7 @@
     "en_US": "image mediaType is ISO but missing root disk settings",
     "zh_CN": "镜像媒体类型为ISO，但缺少根磁盘设置",
     "arguments": [],
-    "line": 1083,
+    "line": 1154,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -8126,89 +8056,128 @@
     "en_US": "Unexpected root disk settings",
     "zh_CN": "意外的根磁盘设置",
     "arguments": [],
-    "line": 1087,
+    "line": 1158,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "reserved memory[%s] is greater than memory size[%s]",
+    "en_US": "reserved memory[{0}] is greater than memory size[{1}]",
+    "zh_CN": "保留内存大小[{0}]大于内存大小[{1}]",
+    "arguments": [
+      "msg.getReservedMemorySize()",
+      "msg.getMemorySize()"
+    ],
+    "line": 1204,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "Unexpected data disk settings. dataDiskSizes need to be greater than 0",
     "en_US": "Unexpected data disk settings. dataDiskSizes need to be greater than 0",
-    "zh_CN": "意外的数据磁盘设置。DataDiskSizes需要大于0",
+    "zh_CN": "意外的数据磁盘设置。数据磁盘大小需要大于0",
     "arguments": [],
-    "line": 1154,
+    "line": 1237,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
-    "raw": "at least one of field platform in msg or image[uuid:%s] should be set",
-    "en_US": "at least one of field platform in msg or image[uuid:{0}] should be set",
-    "zh_CN": "至少应设置消息或镜像[uuid：{0}]中的一个字段平台",
-    "arguments": [
-      "msg.getImageUuid()"
-    ],
-    "line": 1206,
-    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
-  },
-  {
-    "raw": "at least one of field guestOsType in msg or image[uuid:%s] should be set",
-    "en_US": "at least one of field guestOsType in msg or image[uuid:{0}] should be set",
-    "zh_CN": "至少应设置邮件或镜像[uuid：{0}]中的一个字段GuestOsType",
-    "arguments": [
-      "msg.getImageUuid()"
-    ],
-    "line": 1210,
-    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
-  },
-  {
-    "raw": "at least one of field architecture in msg or image[uuid:%s] should be set",
-    "en_US": "at least one of field architecture in msg or image[uuid:{0}] should be set",
-    "zh_CN": "至少应设置消息或镜像[uuid：{0}]中的一个字段体系结构",
-    "arguments": [
-      "msg.getImageUuid()"
-    ],
-    "line": 1214,
-    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
-  },
-  {
-    "raw": "cannot create vm instance from a shareable volume.",
-    "en_US": "cannot create vm instance from a shareable volume.",
-    "zh_CN": "无法从可共享云盘创建VM实例。",
+    "raw": "missing root disk",
+    "en_US": "missing root disk",
+    "zh_CN": "缺少根磁盘设置",
     "arguments": [],
     "line": 1249,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
+    "raw": "at least one of field platform in msg or image[uuid:%s] should be set",
+    "en_US": "at least one of field platform in msg or image[uuid:{0}] should be set",
+    "zh_CN": "至少应在消息或镜像[uuid：{0}]的其中一个里设置平台",
+    "arguments": [
+      "msg.getImageUuid()"
+    ],
+    "line": 1307,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "at least one of field guestOsType in msg or image[uuid:%s] should be set",
+    "en_US": "at least one of field guestOsType in msg or image[uuid:{0}] should be set",
+    "zh_CN": "至少应在消息或镜像[uuid：{0}]的其中一个里设置GuestOsType",
+    "arguments": [
+      "msg.getImageUuid()"
+    ],
+    "line": 1311,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "at least one of field architecture in msg or image[uuid:%s] should be set",
+    "en_US": "at least one of field architecture in msg or image[uuid:{0}] should be set",
+    "zh_CN": "至少应在消息或镜像[uuid：{0}]的其中一个里设置体系结构",
+    "arguments": [
+      "msg.getImageUuid()"
+    ],
+    "line": 1315,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "Cannot set the following properties at the same time: %s",
+    "en_US": "Cannot set the following properties at the same time: {0}",
+    "zh_CN": "无法同时设置以下属性：{0}",
+    "arguments": [
+      "errorMsg"
+    ],
+    "line": 1382,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "Need to set one of the following properties, and can only be one of them: %s",
+    "en_US": "Need to set one of the following properties, and can only be one of them: {0}",
+    "zh_CN": "需要设置以下属性之一，并且只能是其中之一：{0}",
+    "arguments": [
+      "properties"
+    ],
+    "line": 1390,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "cannot create vm instance from a shareable volume.",
+    "en_US": "cannot create vm instance from a shareable volume.",
+    "zh_CN": "无法从可共享云盘创建云主机实例。",
+    "arguments": [],
+    "line": 1399,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
     "raw": "could not create vm instance from a attached volume.",
     "en_US": "could not create vm instance from a attached volume.",
-    "zh_CN": "无法从连接的卷创建VM实例。",
+    "zh_CN": "无法从加载的卷创建云主机实例。",
     "arguments": [],
-    "line": 1253,
+    "line": 1403,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "volume[uuid:%s] could not satisfy conditions[state:Enabled status:Ready]",
     "en_US": "volume[uuid:{0}] could not satisfy conditions[state:Enabled status:Ready]",
-    "zh_CN": "卷[uuid：{0}]无法满足条件[状态：已启用状态：就绪]",
+    "zh_CN": "卷[uuid：{0}]无法满足条件[状态：已启用 状态：就绪]",
     "arguments": [
       "msg.getVolumeUuid()"
     ],
-    "line": 1257,
+    "line": 1407,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
     "raw": "l3NetworkUuids and vmNicInventories mustn\u0027t both be empty or both be set",
     "en_US": "l3NetworkUuids and vmNicInventories mustn\u0027t both be empty or both be set",
-    "zh_CN": "l3NetworkUuids和vmnicinventory不能同时为空或同时设置",
+    "zh_CN": "三层网络uuid列表和网卡清单列表不能同时为空或同时设置",
     "arguments": [],
-    "line": 1293,
+    "line": 1443,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
-    "raw": "The image[uuid\u003d%s] does not exist",
-    "en_US": "The image[uuid\u003d{0}] does not exist",
-    "zh_CN": "镜像[uuid\u003d{0}]不存在",
+    "raw": "The image[uuid:%s] does not exist",
+    "en_US": "The image[uuid:{0}] does not exist",
+    "zh_CN": "镜像[uuid：{0}]不存在",
     "arguments": [
       "cdRomIsoUuid"
     ],
-    "line": 1415,
+    "line": 1574,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -8216,7 +8185,7 @@
     "en_US": "Do not allow to mount duplicate ISO",
     "zh_CN": "不允许装载重复的ISO",
     "arguments": [],
-    "line": 1420,
+    "line": 1579,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -8224,7 +8193,7 @@
     "en_US": "The console password cannot start with \u0027password\u0027 which may trigger a VNC security issue",
     "zh_CN": "控制台密码不能以password开头，这样可能导致一个VNC安全问题",
     "arguments": [],
-    "line": 1435,
+    "line": 1594,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -8232,7 +8201,7 @@
     "en_US": "can not call this api because it\u0027s Deprecated",
     "zh_CN": "无法调用此API，因为它已被弃用",
     "arguments": [],
-    "line": 1440,
+    "line": 1599,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -8242,7 +8211,18 @@
     "arguments": [
       "vmCdRomVO.getUuid()"
     ],
-    "line": 1457,
+    "line": 1616,
+    "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
+  },
+  {
+    "raw": "vm[uuid:%s] can only fstrim when state is Running, current state is %s",
+    "en_US": "vm[uuid:{0}] can only fstrim when state is Running, current state is {1}",
+    "zh_CN": "云主机[uuid：{0}]只能在运行时回收磁盘空间，当前状态为{1}",
+    "arguments": [
+      "msg.getUuid()",
+      "state"
+    ],
+    "line": 1627,
     "fileName": "src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java"
   },
   {
@@ -10793,9 +10773,9 @@
     "fileName": "src/main/java/org/zstack/drs/DRSInterceptor.java"
   },
   {
-    "raw": "advice[%s] has expired",
-    "en_US": "advice[{0}] has expired",
-    "zh_CN": "建议[{0}]已过期",
+    "raw": "advice[uuid:%s] has expired as the scheduling policy has been modified",
+    "en_US": "advice[uuid:{0}] has expired as the scheduling policy has been modified",
+    "zh_CN": "建议[uuid:{0}]已过期,因为调度策略已经发生了变更",
     "arguments": [
       "msg.getAdviceUuid()"
     ],
@@ -12121,27 +12101,24 @@
     "fileName": "src/main/java/org/zstack/ha/HaManagerImpl.java"
   },
   {
-    "raw": "[HA Worker]: the success ratio[%s] below the threshold[%s], the host[uuid:%s] is judged as dead, errors are %s. Start HA all the vms on this host before",
-    "en_US": "[HA Worker]: the success ratio[{0}] below the threshold[{1}], the host[uuid:{2}] is judged as dead, errors are {3}. Start HA all the vms on this host before",
-    "zh_CN": "[HA Worker]：成功率[{0}]低于阈值[{1}]，物理机[uuid：{2}]被判断为死，错误为{3}。之前在此物理机上启动所有云主机的HA",
+    "raw": "the host[uuid:%s] is alive, no HA required. The host will be reconnected soon",
+    "en_US": "the host[uuid:{0}] is alive, no HA required. The host will be reconnected soon",
+    "zh_CN": "UUID为{0}的主机将被重连，其上的虚拟机暂时不触发高可用",
     "arguments": [
-      "ratio",
-      "threshold",
-      "hostUuid",
-      "errors"
+      "hostUuid"
     ],
-    "line": 59,
+    "line": 89,
     "fileName": "src/main/java/org/zstack/ha/HostCheckResult.java"
   },
   {
-    "raw": "[HA worker]: all host checkers are finished and the success ratio is %s that is greater than the threshold[%s]; no HA need for the vms on this host before. Please wait for the host reconnected",
-    "en_US": "[HA worker]: all host checkers are finished and the success ratio is {0} that is greater than the threshold[{1}]; no HA need for the vms on this host before. Please wait for the host reconnected",
-    "zh_CN": "[HA Worker]：所有物理机检查器都已完成，成功率为{0}，大于阈值[{1}]。以前，此物理机上的云主机不需要HA。请等待物理机重新连接",
+    "raw": "the host[uuid:%s] is dead. (%s) The vm on this host start HA",
+    "en_US": "the host[uuid:{0}] is dead. error is {1}. The vm on this host start HA",
+    "zh_CN": "UUID为{0}的主机短时间无法重连上，错误是{1}。现在上面的虚拟机触发高可用",
     "arguments": [
-      "ratio",
-      "threshold"
+      "hostUuid",
+      "errors"
     ],
-    "line": 56,
+    "line": 92,
     "fileName": "src/main/java/org/zstack/ha/HostCheckResult.java"
   },
   {
@@ -16029,159 +16006,6 @@
     "arguments": [],
     "line": 82,
     "fileName": "src/main/java/org/zstack/login/LdapLoginInterceptor.java"
-  },
-  {
-    "raw": "ZStack is loading ldap organizations from DB now, can not execute sync operation",
-    "en_US": "ZStack is loading ldap organizations from DB now, can not execute sync operation",
-    "zh_CN": "ZStack正在从数据库加载LDAP组织，无法执行同步操作",
-    "arguments": [],
-    "line": 228,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "Failed to sync ldap entry[], because %s",
-    "en_US": "Failed to sync ldap entry[], because {0}",
-    "zh_CN": "无法同步LDAP条目[]，因为{0}",
-    "arguments": [
-      "e.getMessage()"
-    ],
-    "line": 390,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "Failed to sync organizations, because %s",
-    "en_US": "Failed to sync organizations, because {0}",
-    "zh_CN": "无法同步组织，因为{0}",
-    "arguments": [
-      "reply.getError().getReadableDetails()"
-    ],
-    "line": 1021,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "Failed to transform ldap entry to organization ndoe",
-    "en_US": "Failed to transform ldap entry to organization ndoe",
-    "zh_CN": "无法将LDAP条目转换为组织ndoe",
-    "arguments": [],
-    "line": 969,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "failed to sync ldap organization",
-    "en_US": "failed to sync ldap organization",
-    "zh_CN": "无法同步LDAP组织",
-    "arguments": [],
-    "line": 958,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "Can not sync LDAP/AD server whose scope is not %s",
-    "en_US": "Can not sync LDAP/AD server whose scope is not {0}",
-    "zh_CN": "无法同步范围不是{0}的LDAP/AD服务器",
-    "arguments": [
-      "scope.toString()"
-    ],
-    "line": 1441,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "Failed to validate uid[%s], maybe it has been deleted",
-    "en_US": "Failed to validate uid[{0}], maybe it has been deleted",
-    "zh_CN": "无法验证UID[{0}]，它可能已被删除",
-    "arguments": [
-      "uid"
-    ],
-    "line": 1575,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "Failed to create iam2 virtual id for uid[%s], because %s",
-    "en_US": "Failed to create iam2 virtual id for uid[{0}], because {1}",
-    "zh_CN": "无法为UID[{0}]创建IAM2虚拟ID，因为{1}",
-    "arguments": [
-      "uid",
-      "reply.getError().getReadableDetails()"
-    ],
-    "line": 1616,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "Failed to validate dn [%s], maybe it has been deleted",
-    "en_US": "Failed to validate dn [{0}], maybe it has been deleted",
-    "zh_CN": "无法验证DN[{0}]，它可能已被删除",
-    "arguments": [
-      "ldapUid"
-    ],
-    "line": 1751,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "invalid json format",
-    "en_US": "invalid json format",
-    "zh_CN": "无效的JSON格式",
-    "arguments": [],
-    "line": 2195,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "name is mandatory field %",
-    "en_US": "name is mandatory field %",
-    "zh_CN": "名称是必填字段%",
-    "arguments": [],
-    "line": 2206,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "attribute is mandatory field %",
-    "en_US": "attribute is mandatory field %",
-    "zh_CN": "属性是强制字段%",
-    "arguments": [],
-    "line": 2210,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "type is mandatory field %",
-    "en_US": "type is mandatory field %",
-    "zh_CN": "类型为必填字段%",
-    "arguments": [],
-    "line": 2214,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "optional is mandatory field %",
-    "en_US": "optional is mandatory field %",
-    "zh_CN": "可选为必填字段%",
-    "arguments": [],
-    "line": 2218,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "name should use values in %s",
-    "en_US": "name should use values in {0}",
-    "zh_CN": "名称应使用{0}中的值",
-    "arguments": [
-      "fieldNames"
-    ],
-    "line": 2222,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "Invalid attribute. Attribute[%s] is required, but found there are some record not matched",
-    "en_US": "Invalid attribute. Attribute[{0}] is required, but found there are some record not matched",
-    "zh_CN": "无效属性。属性[{0}]是必需的，但发现有一些记录不匹配",
-    "arguments": [
-      "rule.getAttribute()"
-    ],
-    "line": 2254,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
-  },
-  {
-    "raw": "strategy is mandatory field %",
-    "en_US": "strategy is mandatory field %",
-    "zh_CN": "策略为必填字段%",
-    "arguments": [],
-    "line": 2199,
-    "fileName": "src/main/java/org/zstack/login/LdapLoginManagerImpl.java"
   },
   {
     "raw": "missing loginPluginName",
@@ -23584,13 +23408,24 @@
     "fileName": "src/main/java/org/zstack/ovf/OvfManagerImpl.java"
   },
   {
+    "raw": "illegal type[%s] for pci device, only %s are legal",
+    "en_US": "illegal type[{0}] for pci device, only {1} are legal",
+    "zh_CN": "PCI设备的类型[{0}]非法，只有{1}是合法的",
+    "arguments": [
+      "type",
+      "PciDeviceType.leagalPciDeviceCandidateTypes"
+    ],
+    "line": 159,
+    "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
+  },
+  {
     "raw": "pci device[uuid:%s] doesn\u0027t exist",
     "en_US": "pci device[uuid:{0}] doesn\u0027t exist",
     "zh_CN": "PCI设备[uuid:{0}]不存在",
     "arguments": [
       "msg.getPciDeviceUuid()"
     ],
-    "line": 417,
+    "line": 422,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23600,7 +23435,7 @@
     "arguments": [
       "pci.getHostUuid()"
     ],
-    "line": 422,
+    "line": 427,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23610,7 +23445,7 @@
     "arguments": [
       "pci.getHostUuid()"
     ],
-    "line": 468,
+    "line": 473,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23620,7 +23455,7 @@
     "arguments": [
       "pci.getHostUuid()"
     ],
-    "line": 473,
+    "line": 478,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23632,7 +23467,7 @@
       "pci.getType()",
       "pci.getHostUuid()"
     ],
-    "line": 487,
+    "line": 492,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23643,7 +23478,7 @@
       "pci.getHostUuid()",
       "pci.getUuid()"
     ],
-    "line": 609,
+    "line": 632,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23653,7 +23488,7 @@
     "arguments": [
       "interfaceVO.getUuid()"
     ],
-    "line": 505,
+    "line": 510,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23663,7 +23498,7 @@
     "arguments": [
       "msg.getPciDeviceUuid()"
     ],
-    "line": 513,
+    "line": 518,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23673,7 +23508,18 @@
     "arguments": [
       "pci.getHostUuid()"
     ],
-    "line": 528,
+    "line": 533,
+    "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
+  },
+  {
+    "raw": "sub-devices of pci device[uuid:%s] are attached to paused VMs[uuids:%s], please detach them first",
+    "en_US": "sub-devices of pci device[uuid:{0}] are attached to paused VMs[uuids:{1}], please detach them first",
+    "zh_CN": "PCI设备[uuid:{0}]的子设备已挂载到暂停的云主机[uuids:{1}]，请先卸载它们",
+    "arguments": [
+      "pci.getUuid()",
+      "pausedVms"
+    ],
+    "line": 559,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23683,7 +23529,7 @@
     "arguments": [
       "msg.getPciDeviceUuid()"
     ],
-    "line": 550,
+    "line": 573,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23694,7 +23540,7 @@
       "msg.getPciDeviceUuid()",
       "msg.getMdevSpecUuid()"
     ],
-    "line": 561,
+    "line": 584,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23704,7 +23550,7 @@
     "arguments": [
       "msg.getPciDeviceUuid()"
     ],
-    "line": 583,
+    "line": 606,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23714,7 +23560,7 @@
     "arguments": [
       "msg.getPciDeviceUuid()"
     ],
-    "line": 600,
+    "line": 623,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23724,7 +23570,7 @@
     "arguments": [
       "VmInstanceUuid"
     ],
-    "line": 624,
+    "line": 647,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23734,7 +23580,7 @@
     "arguments": [
       "VmInstanceUuid"
     ],
-    "line": 628,
+    "line": 651,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -23744,7 +23590,7 @@
     "arguments": [
       "VmInstanceUuid"
     ],
-    "line": 635,
+    "line": 658,
     "fileName": "src/main/java/org/zstack/pciDevice/PciDeviceApiInterceptor.java"
   },
   {
@@ -34279,451 +34125,6 @@
     "fileName": "src/main/java/org/zstack/usbDevice/UsbDeviceManager.java"
   },
   {
-    "raw": "not the time to clean",
-    "en_US": "not the time to clean",
-    "zh_CN": "不是打扫的时候。",
-    "arguments": [],
-    "line": 43,
-    "fileName": "src/main/java/org/zstack/v2v/CleanConversionVolumeCacheGC.java"
-  },
-  {
-    "raw": "conversionHost[uuid:%s, hostUuid:%s] is not Connected",
-    "en_US": "conversionHost[uuid:{0}, hostUuid:{1}] is not Connected",
-    "zh_CN": "ConversionHost[uuid：{0}，Hostuuid：{1}]未连接",
-    "arguments": [
-      "conversionHost.getUuid()",
-      "conversionHost.getHostUuid()"
-    ],
-    "line": 48,
-    "fileName": "src/main/java/org/zstack/v2v/CleanConversionVolumeCacheGC.java"
-  },
-  {
-    "raw": "waiting host[uuid:%s] and primaryStorage[uuid:%s] Connected...",
-    "en_US": "waiting host[uuid:{0}] and primaryStorage[uuid:{1}] Connected...",
-    "zh_CN": "正在等待的物理机[uuid：{0}]和主存储[uuid：{1}]已连接..",
-    "arguments": [
-      "hostUuid",
-      "psUuid"
-    ],
-    "line": 91,
-    "fileName": "src/main/java/org/zstack/v2v/ConvertVmFromForeignHypervisorJob.java"
-  },
-  {
-    "raw": "host[uuid:%s] is not Connected",
-    "en_US": "host[uuid:{0}] is not Connected",
-    "zh_CN": "物理机[uuid：{0}]未连接",
-    "arguments": [
-      "hostUuid"
-    ],
-    "line": 149,
-    "fileName": "src/main/java/org/zstack/v2v/ConvertVmFromForeignHypervisorJob.java"
-  },
-  {
-    "raw": "primaryStorage[uuid%s] is not Connected",
-    "en_US": "primaryStorage[uuid{0}] is not Connected",
-    "zh_CN": "主存储[uuid{0}]未连接",
-    "arguments": [
-      "primaryStorageUuid"
-    ],
-    "line": 153,
-    "fileName": "src/main/java/org/zstack/v2v/ConvertVmFromForeignHypervisorJob.java"
-  },
-  {
-    "raw": "Not allowed same mac [%s]",
-    "en_US": "Not allowed same mac [{0}]",
-    "zh_CN": "不允许存在相同的MAC地址[{0}]",
-    "arguments": [
-      "duplicateMac.get()"
-    ],
-    "line": 186,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "Can\u0027t add same uuid in the l3Network,uuid: %s",
-    "en_US": "Can\u0027t add same uuid in the l3Network,uuid: {0}",
-    "zh_CN": "不能添加相同的uuid{0}在三层网络中",
-    "arguments": [
-      "duplicateElements.get(0)"
-    ],
-    "line": 205,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "l3Network[uuid:%s] is Disabled, can not create vm on it",
-    "en_US": "l3Network[uuid:{0}] is Disabled, can not create vm on it",
-    "zh_CN": "三层网络[uuid:{0}]没有被启用，不能从这个三层网络创建云主机",
-    "arguments": [
-      "l3Uuid"
-    ],
-    "line": 217,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "l3Network[uuid:%s] is system network, can not create user vm on it",
-    "en_US": "l3Network[uuid:{0}] is system network, can not create user vm on it",
-    "zh_CN": "三层网络[uuid:{0}]是系统网络，不能在这上面创建云主机",
-    "arguments": [
-      "l3Uuid"
-    ],
-    "line": 220,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "zone[uuid:%s] is specified but it\u0027s Disabled, can not create vm from it",
-    "en_US": "zone[uuid:{0}] is specified but it\u0027s Disabled, can not create vm from it",
-    "zh_CN": "区域[uuid:{0}]虽然被指定了但是处于未启用状态，不能从这上面创建云主机",
-    "arguments": [
-      "msg.getZoneUuid()"
-    ],
-    "line": 252,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "cluster[uuid:%s] is specified but it\u0027s Disabled, can not create vm from it",
-    "en_US": "cluster[uuid:{0}] is specified but it\u0027s Disabled, can not create vm from it",
-    "zh_CN": "集群[uuid:{0}]虽然被指定了但是处于未启用状态，不能从这上面创建云主机",
-    "arguments": [
-      "msg.getClusterUuid()"
-    ],
-    "line": 262,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "host[uuid:%s] is specified but it\u0027s Disabled, can not create vm from it",
-    "en_US": "host[uuid:{0}] is specified but it\u0027s Disabled, can not create vm from it",
-    "zh_CN": "物理机[uuid:{0}]虽然被指定了但是处于未启用状态，不能从这上面创建云主机",
-    "arguments": [
-      "msg.getHostUuid()"
-    ],
-    "line": 273,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "host[uuid:%s] is specified but it\u0027s connection status is %s, can not create vm from it",
-    "en_US": "host[uuid:{0}] is specified but it\u0027s connection status is {1}, can not create vm from it",
-    "zh_CN": "物理机[uuid:{0}]虽然被指定了但是它的连接状态是{1}，不能从这上面创建云主机",
-    "arguments": [
-      "msg.getHostUuid()",
-      "connectionState"
-    ],
-    "line": 278,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "defaultL3NetworkUuid[uuid:%s] is not in l3NetworkUuids%s",
-    "en_US": "defaultL3NetworkUuid[uuid:{0}] is not in l3NetworkUuids{1}",
-    "zh_CN": "默认三层网络的uuid是[uuid:{0}]，不在三层网络uuid们中{1}",
-    "arguments": [
-      "msg.getDefaultL3NetworkUuid()",
-      "msg.getL3NetworkUuids()"
-    ],
-    "line": 234,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "there are more than one L3 network specified in l3NetworkUuids, but defaultL3NetworkUuid is null",
-    "en_US": "there are more than one L3 network specified in l3NetworkUuids, but defaultL3NetworkUuid is null",
-    "zh_CN": "在三层网络uuid们中有很多三层网络被指定了，但是默认三层网络的uuid是空的",
-    "arguments": [],
-    "line": 230,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "the status of host[uuid:%s] must be Connected",
-    "en_US": "the status of host[uuid:{0}] must be Connected",
-    "zh_CN": "物理机[uuid：{0}]的状态必须为已连接",
-    "arguments": [
-      "msg.getHostUuid()"
-    ],
-    "line": 84,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "v2v conversion host storage path must be absolute path",
-    "en_US": "v2v conversion host storage path must be absolute path",
-    "zh_CN": "V2V转换物理机存储路径必须为绝对路径",
-    "arguments": [],
-    "line": 97,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "invalid v2v url: %s",
-    "en_US": "invalid v2v url: {0}",
-    "zh_CN": "无效的V2V URL：{0}",
-    "arguments": [
-      "msg.getUrl()"
-    ],
-    "line": 120,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "vm instance[uuid:%s] does not exist or is not a vmware vm",
-    "en_US": "vm instance[uuid:{0}] does not exist or is not a vmware vm",
-    "zh_CN": "云主机实例[uuid：{0}]不存在或不是VMware云主机",
-    "arguments": [
-      "srcVmUuid"
-    ],
-    "line": 131,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "conversionHostUuid should not be null",
-    "en_US": "conversionHostUuid should not be null",
-    "zh_CN": "ConversionHostuuid不应为空",
-    "arguments": [],
-    "line": 138,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "underlying host of conversion host[uuid:%s] should be Connected",
-    "en_US": "underlying host of conversion host[uuid:{0}] should be Connected",
-    "zh_CN": "迁移服务器[uuid:{0}]所关联的物理机应处于己连接状态",
-    "arguments": [
-      "msg.getConversionHostUuid()"
-    ],
-    "line": 148,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "conversion host[uuid:%s] cannot connect to primary storage[uuid:%s]",
-    "en_US": "conversion host[uuid:{0}] cannot connect to primary storage[uuid:{1}]",
-    "zh_CN": "转换物理机[uuid：{0}]无法连接到主存储[uuid：{1}]",
-    "arguments": [
-      "msg.getConversionHostUuid()",
-      "msg.getPrimaryStorageUuid()"
-    ],
-    "line": 164,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "Duplicate mac address %s",
-    "en_US": "Duplicate mac address {0}",
-    "zh_CN": "重复的MAC地址{0}",
-    "arguments": [
-      "duplicateMacs"
-    ],
-    "line": 197,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "primary storage[uuid:%s] is not supported for v2v",
-    "en_US": "primary storage[uuid:{0}] is not supported for v2v",
-    "zh_CN": "V2V不支持主存储[uuid：{0}]",
-    "arguments": [
-      "msg.getPrimaryStorageUuid()"
-    ],
-    "line": 289,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "primary storage[uuid:%s] is neither Enabled nor Connected",
-    "en_US": "primary storage[uuid:{0}] is neither Enabled nor Connected",
-    "zh_CN": "主存储[uuid：{0}]既未启用也未连接",
-    "arguments": [
-      "msg.getPrimaryStorageUuid()"
-    ],
-    "line": 292,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "there are some v2v jobs in progress. can not attach volume[%s] to host[%s]",
-    "en_US": "there are some v2v jobs in progress. can not attach volume[{0}] to host[{1}]",
-    "zh_CN": "有一些V2V作业正在进行中。无法将卷[{0}]附加到物理机[{1}]",
-    "arguments": [
-      "msg.getVolumeUuid()",
-      "msg.getHostUuid()"
-    ],
-    "line": 302,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "there are some v2v jobs in progress. can not detach volume[%s] from host[%s]",
-    "en_US": "there are some v2v jobs in progress. can not detach volume[{0}] from host[{1}]",
-    "zh_CN": "有一些V2V作业正在进行中。无法从物理机[{1}]分离卷[{0}]",
-    "arguments": [
-      "msg.getVolumeUuid()",
-      "msg.getHostUuid()"
-    ],
-    "line": 313,
-    "fileName": "src/main/java/org/zstack/v2v/V2VApiInterceptor.java"
-  },
-  {
-    "raw": "cannot reserve %s bytes on the conversion host[uuid:%s], it\u0027s short of available capacity",
-    "en_US": "cannot reserve {0} bytes on the conversion host[uuid:{1}], it\u0027s short of available capacity",
-    "zh_CN": "无法在转换物理机[uuid：{1}]上保留{0}字节，可用容量不足",
-    "arguments": [
-      "reserveSize",
-      "conversionHostVO.getUuid()"
-    ],
-    "line": 98,
-    "fileName": "src/main/java/org/zstack/v2v/V2VConversionHostCapacityUpdater.java"
-  },
-  {
-    "raw": "Unable to find L3Network[uuid:%s] to start the current vm, it may have been deleted, Operation suggestion: delete this vm, recreate a new vm",
-    "en_US": "Unable to find L3Network[uuid:{0}] to start the current vm, it may have been deleted, Operation suggestion: delete this vm, recreate a new vm",
-    "zh_CN": "找不到启动当前云主机的L3Network[uuid：{0}]，该云主机可能已被删除，操作建议：删除该云主机，重新创建新的云主机",
-    "arguments": [
-      "l3Uuid"
-    ],
-    "line": 597,
-    "fileName": "src/main/java/org/zstack/v2v/V2VManagerImpl.java"
-  },
-  {
-    "raw": "invalid network bandwidth[%s], it is not a number",
-    "en_US": "invalid network bandwidth[{0}], it is not a number",
-    "zh_CN": "错误的网络带宽[{0}]，这不是数字",
-    "arguments": [
-      "bandwidth"
-    ],
-    "line": 1207,
-    "fileName": "src/main/java/org/zstack/v2v/V2VManagerImpl.java"
-  },
-  {
-    "raw": "networkInboundBandwidth execeds the max value 32G bps",
-    "en_US": "networkInboundBandwidth execeds the max value 32G bps",
-    "zh_CN": "超过下行网络带宽超过最大值32G bps",
-    "arguments": [],
-    "line": 1204,
-    "fileName": "src/main/java/org/zstack/v2v/V2VManagerImpl.java"
-  },
-  {
-    "raw": "can not find factory for src vm[url:%s, v2vType:%s]",
-    "en_US": "can not find factory for src vm[url:{0}, v2vType:{1}]",
-    "zh_CN": "找不到SRC VM[URL：{0}，v2vType：{1}]的工厂",
-    "arguments": [
-      "msg.getUrl()",
-      "msg.getType()"
-    ],
-    "line": 661,
-    "fileName": "src/main/java/org/zstack/v2v/V2VManagerImpl.java"
-  },
-  {
-    "raw": "there has been a v2v conversion host with hostUuid %s",
-    "en_US": "there has been a v2v conversion host with hostUuid {0}",
-    "zh_CN": "已存在Hostuuid为{0}的V2V转换物理机",
-    "arguments": [
-      "msg.getHostUuid()"
-    ],
-    "line": 921,
-    "fileName": "src/main/java/org/zstack/v2v/V2VManagerImpl.java"
-  },
-  {
-    "raw": "invalid v2v qos systemtag",
-    "en_US": "invalid v2v qos systemtag",
-    "zh_CN": "V2V QoS系统标记无效",
-    "arguments": [],
-    "line": 1196,
-    "fileName": "src/main/java/org/zstack/v2v/V2VManagerImpl.java"
-  },
-  {
-    "raw": "invalid network bandwidth[%s], it must be greater than or equal to 1048576",
-    "en_US": "invalid network bandwidth[{0}], it must be greater than or equal to 1048576",
-    "zh_CN": "网络带宽[{0}]无效，它必须大于或等于1048576",
-    "arguments": [
-      "bandwidth"
-    ],
-    "line": 1202,
-    "fileName": "src/main/java/org/zstack/v2v/V2VManagerImpl.java"
-  },
-  {
-    "raw": "can not find type for src vm[url:%s]",
-    "en_US": "can not find type for src vm[url:{0}]",
-    "zh_CN": "找不到SRC VM[URL：{0}]的类型",
-    "arguments": [
-      "srcVmUrl"
-    ],
-    "line": 118,
-    "fileName": "src/main/java/org/zstack/v2v/V2VMsgTranslator.java"
-  },
-  {
-    "raw": "missing VM uuid in \u0027srcVmUrl\u0027",
-    "en_US": "missing VM uuid in \u0027srcVmUrl\u0027",
-    "zh_CN": "“ srcvmurl ”中缺少VM uuid",
-    "arguments": [],
-    "line": 890,
-    "fileName": "src/main/java/org/zstack/v2v/kvm/KVMV2VBase.java"
-  },
-  {
-    "raw": "No root volume found for VM: %s",
-    "en_US": "No root volume found for VM: {0}",
-    "zh_CN": "找不到VM的根卷：{0}",
-    "arguments": [
-      "srcVmUuid"
-    ],
-    "line": 956,
-    "fileName": "src/main/java/org/zstack/v2v/kvm/KVMV2VBase.java"
-  },
-  {
-    "raw": "there is no available ip found in cidr %s on host %s, try reconnect host to refresh ips",
-    "en_US": "there is no available ip found in cidr {0} on host {1}, try reconnect host to refresh ips",
-    "zh_CN": "在物理机{1}上的CIDR{0}中找不到可用的IP，请尝试重新连接物理机以刷新IP",
-    "arguments": [
-      "cidr",
-      "hostUuid"
-    ],
-    "line": 1575,
-    "fileName": "src/main/java/org/zstack/v2v/vmware/VMwareV2VBase.java"
-  },
-  {
-    "raw": "v2v job[uuid:%s] is running",
-    "en_US": "v2v job[uuid:{0}] is running",
-    "zh_CN": "V2V迁移任务[uuid:{0}]正在运行",
-    "arguments": [
-      "job.getUuid()"
-    ],
-    "line": 190,
-    "fileName": "src/main/java/org/zstack/v2v/vmware/VMwareV2VBase.java"
-  },
-  {
-    "raw": "failed to get virt-v2v uri for %s",
-    "en_US": "failed to get virt-v2v uri for {0}",
-    "zh_CN": "无法获取{0}的virt-v2v URI",
-    "arguments": [
-      "srcVmUrl"
-    ],
-    "line": 808,
-    "fileName": "src/main/java/org/zstack/v2v/vmware/VMwareV2VBase.java"
-  },
-  {
-    "raw": "Failed to parse url %s",
-    "en_US": "Failed to parse url {0}",
-    "zh_CN": "无法分析URL{0}",
-    "arguments": [
-      "urlBuilder.toString()"
-    ],
-    "line": 1007,
-    "fileName": "src/main/java/org/zstack/v2v/vmware/VMwareV2VBase.java"
-  },
-  {
-    "raw": "Target vm name can not contain those characters %s",
-    "en_US": "Target vm name can not contain those characters {0}",
-    "zh_CN": "目标VM名称不能包含这些字符{0}",
-    "arguments": [
-      "NOT_SUPPORTED_SPECIAL_CHARACTER"
-    ],
-    "line": 1288,
-    "fileName": "src/main/java/org/zstack/v2v/vmware/VMwareV2VBase.java"
-  },
-  {
-    "raw": "There is already a long job[uuid:%s] convert vm from %s",
-    "en_US": "There is already a long job[uuid:{0}] convert vm from {1}",
-    "zh_CN": "已有长作业[uuid：{0}]从{1}转换VM",
-    "arguments": [
-      "jobUuid",
-      "msg.getUrl()"
-    ],
-    "line": 120,
-    "fileName": "src/main/java/org/zstack/v2v/vmware/VMwareV2VFactory.java"
-  },
-  {
-    "raw": "Failed to update conversion host dependency",
-    "en_US": "Failed to update conversion host dependency",
-    "zh_CN": "无法更新转换物理机依赖关系",
-    "arguments": [],
-    "line": 145,
-    "fileName": "src/main/java/org/zstack/v2v/vmware/VMwareV2VFactory.java"
-  },
-  {
     "raw": "host is not connected",
     "en_US": "host is not connected",
     "zh_CN": "物理机未连接",
@@ -37642,59 +37043,6 @@
     "fileName": "src/main/java/org/zstack/zwatch/function/SortFunction.java"
   },
   {
-    "raw": "unable to query influxdb, %s",
-    "en_US": "unable to query influxdb, {0}",
-    "zh_CN": "无法查询InfluxDB，{0}",
-    "arguments": [
-      "ret.getError()"
-    ],
-    "line": 62,
-    "fileName": "src/main/java/org/zstack/zwatch/influxdb/InfluxDatabaseCreator.java"
-  },
-  {
-    "raw": "invalid influxdb response: %s, no name found in columns",
-    "en_US": "invalid influxdb response: {0}, no name found in columns",
-    "zh_CN": "InfluxDB响应无效：{0}，在列中找不到名称",
-    "arguments": [
-      "JSONObjectUtil.toJsonString(ret)"
-    ],
-    "line": 106,
-    "fileName": "src/main/java/org/zstack/zwatch/influxdb/InfluxDatabaseCreator.java"
-  },
-  {
-    "raw": "failed to create influxdb retention \u0027%s\u0027, %s",
-    "en_US": "failed to create influxdb retention \u0027{0}\u0027, {1}",
-    "zh_CN": "无法创建InfluxDB保留“{0}”，{1}",
-    "arguments": [
-      "retention",
-      "res.getError()"
-    ],
-    "line": 92,
-    "fileName": "src/main/java/org/zstack/zwatch/influxdb/InfluxDatabaseCreator.java"
-  },
-  {
-    "raw": "failed to alter influxdb retention \u0027%s\u0027, %s",
-    "en_US": "failed to alter influxdb retention \u0027{0}\u0027, {1}",
-    "zh_CN": "无法更改InfluxDB保留“{0}”，{1}",
-    "arguments": [
-      "retention",
-      "res.getError()"
-    ],
-    "line": 85,
-    "fileName": "src/main/java/org/zstack/zwatch/influxdb/InfluxDatabaseCreator.java"
-  },
-  {
-    "raw": "failed to create influxdb default user \u0027%s\u0027, %s",
-    "en_US": "failed to create influxdb default user \u0027{0}\u0027, {1}",
-    "zh_CN": "无法创建InfluxDB默认用户“{0}”，{1}",
-    "arguments": [
-      "defaultUserName",
-      "res.getError()"
-    ],
-    "line": 124,
-    "fileName": "src/main/java/org/zstack/zwatch/influxdb/InfluxDatabaseCreator.java"
-  },
-  {
     "raw": "cannot find EventFamily[name:%s]",
     "en_US": "cannot find EventFamily[name:{0}]",
     "zh_CN": "找不到事件族[name:{0}]",
@@ -37988,5 +37336,15 @@
     "arguments": [],
     "line": 83,
     "fileName": "src/test/java/org/zstack/test/core/asyncbackup/TestSafeCompletion.java"
+  },
+  {
+    "raw": "unable to allocate hosts; due to pagination is enabled, there might be several allocation failures happened before; the error list is %s",
+    "en_US": "unable to allocate hosts,the error list is [{0}]",
+    "zh_CN": "无法分配主机,以下是错误列表[{0}]",
+    "arguments": [
+      "seriesErrorWhenPagination.stream().map(ErrorCode::getDetails).collect(Collectors.toList())"
+    ],
+    "line": 223,
+    "fileName": "src/main/java/org/zstack/compute/allocator/HostAllocatorChain.java"
   }
 ]

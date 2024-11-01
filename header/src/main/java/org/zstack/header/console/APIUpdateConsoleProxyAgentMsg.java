@@ -1,12 +1,10 @@
 package org.zstack.header.console;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
-@Action(adminOnly = true, category = ConsoleConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/consoles/agents/{uuid}/actions",
         isAction = true,

@@ -1,7 +1,6 @@
 package org.zstack.header.longjob;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -9,7 +8,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by wushan on 8/23/21
  **/
-@Action(category = LongJobConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/longjobs/{uuid}/actions",
         isAction = true,
@@ -17,7 +15,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APICleanLongJobEvent.class
 )
 public class APICleanLongJobMsg extends APIMessage implements LongJobMessage {
-    @APIParam(resourceType = LongJobVO.class, checkAccount = true)
+    @APIParam(resourceType = LongJobVO.class, scope = APIParam.SCOPE_MUST_OWNER)
     private String uuid;
 
     public String getUuid() {

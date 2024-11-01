@@ -21,6 +21,8 @@ public interface KVMConstant {
     String KVM_HOST_CHECK_FILE_PATH = "/host/checkfile";
     String KVM_HOST_REPORT_DEVICE_EVENT_PATH = "/host/reportdeviceevent";
     String KVM_HOST_NUMA_PATH = "/numa/topology";
+    String KVM_UPDATE_L2VLAN_NETWORK_PATH = "/network/l2vlan/updatebridge";
+    String KVM_UPDATE_L2VXLAN_NETWORK_PATH = "/network/l2vxlan/updatebridge";
     String KVM_REALIZE_L2NOVLAN_NETWORK_PATH = "/network/l2novlan/createbridge";
     String KVM_CHECK_L2NOVLAN_NETWORK_PATH = "/network/l2novlan/checkbridge";
     String KVM_REALIZE_L2VLAN_NETWORK_PATH = "/network/l2vlan/createbridge";
@@ -58,6 +60,7 @@ public interface KVMConstant {
     String KVM_UPDATE_NIC_PATH = "/vm/updatenic";
     String KVM_VM_CHECK_STATE = "/vm/checkstate";
     String KVM_VM_UPDATE_PRIORITY_PATH = "/vm/priority";
+    String KVM_VM_UPDATE_CPU_QUOTA_PATH = "/vm/cpu/quota";
     String KVM_TAKE_VOLUME_SNAPSHOT_PATH = "/vm/volume/takesnapshot";
     String KVM_CHECK_VOLUME_SNAPSHOT_PATH = "/vm/volume/checksnapshot";
     String KVM_MERGE_SNAPSHOT_PATH = "/vm/volume/mergesnapshot";
@@ -100,6 +103,7 @@ public interface KVMConstant {
     String KVM_REPORT_VM_SHUTDOWN_EVENT = "/kvm/reportvmshutdown";
     String KVM_REPORT_VM_REBOOT_EVENT = "/kvm/reportvmreboot";
     String KVM_REPORT_VM_CRASH_EVENT = "/kvm/reportvmcrash";
+    String KVM_REPORT_VM_START_EVENT = "/kvm/reportvmstart";
     String KVM_REPORT_HOST_STOP_EVENT = "/kvm/reporthoststop";
 
     String KVM_TRANSMIT_VM_OPERATION_TO_MN = "/host/transmitvmoperation";
@@ -109,7 +113,16 @@ public interface KVMConstant {
     String KVM_BLOCK_COMMIT_VOLUME_PATH = "/vm/volume/blockcommit";
     String TAKE_VM_CONSOLE_SCREENSHOT_PATH = "/vm/console/screenshot";
     String GET_VM_UPTIME_PATH = "/vm/getpidcreatetime";
+    String KVM_HOST_GET_BLOCK_DEVICES_PATH = "/host/blockdevices/get";
+    String KVM_HOST_GET_SENSORS_PATH = "/host/sensors/get";
 
+    String SET_HOST_PHYSICAL_MEMORY_MONITOR = "/host/physical/memory/monitor/start";
+
+    String HOST_PHYSICAL_HARD_STATUS_ALARM_EVENT = "/host/physical/hardware/status/alarm";
+    String HOST_PHYSICAL_DISK_INSERT_ALARM_EVENT = "/host/physical/disk/insert/alarm";
+    String HOST_PHYSICAL_DISK_REMOVE_ALARM_EVENT = "/host/physical/disk/remove/alarm";
+    String HOST_PHYSICAL_MEMORY_ECC_ERROR_ALARM_EVENT = "/host/physical/memory/ecc/error/alarm";
+    String HOST_PHYSICAL_GPU_REMOVE_ALARM_EVENT = "/host/physical/gpu/remove/alarm";
     String KVM_AGENT_OWNER = "kvm";
 
     String ALI_REPO = "ali";
@@ -137,9 +150,22 @@ public interface KVMConstant {
 
     String KVM_HOST_SKIP_PING_NO_FAILURE_EXTENSIONS = "kvm.host.skip.ping.no.failure.extensions";
 
+    String MEMORY_LOCATOR_NAME = "locator";
+    String PHSICAL_DEVICE_STATUS_NAME = "status";
+    String CPU_NAME = "cpuName";
+    String PCI_DEVICE_ADDRESS = "pcideviceAddress";
+    String DEVICE_NAME = "name";
+    String DEVICE_SERIAL_NUMBER = "serial_number";
+    String ENCLOSURE_DEVICE_ID = "enclosure_device_id";
+    String SLOT_NUMBER = "slot_number";
+    String DRIVE_STATE = "drive_state";
+    String TARGET_ID = "target_id";
+
     public static final String L2_PROVIDER_TYPE_LINUX_BRIDGE = "LinuxBridge";
     public static final String L2_PROVIDER_TYPE_OVS_DPDK = "OvsDpdk";
     public static final String L2_PROVIDER_TYPE_MACVLAN = "MacVlan";
+
+    public static final String DHCP_BIN_FILE_PATH = "/usr/local/zstack/dnsmasq";
 
     enum KvmVmState {
         NoState,

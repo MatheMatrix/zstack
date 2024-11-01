@@ -1,10 +1,10 @@
 package org.zstack.kvm.hypervisor;
 
-import org.zstack.header.identity.AccountConstant;
 import org.zstack.header.zql.ASTNode;
 import org.zstack.header.zql.MarshalZQLASTTreeExtensionPoint;
 import org.zstack.header.zql.RestrictByExprExtensionPoint;
 import org.zstack.header.zql.ZQLExtensionContext;
+import org.zstack.identity.Account;
 import org.zstack.kvm.hypervisor.datatype.KvmHypervisorInfoInventory;
 import org.zstack.zql.ZQLContext;
 import org.zstack.zql.ast.ZQLMetadata;
@@ -36,14 +36,14 @@ public class KvmHypervisorZQLExtension implements MarshalZQLASTTreeExtensionPoin
     }
 
     protected String filterResourceOwner(ZQLExtensionContext context) {
-        if (AccountConstant.isAdminPermission(context.getAPISession())) {
+        if (Account.isAdminPermission(context.getAPISession())) {
             throw new SkipThisRestrictExprException();
         }
 
         ZQLMetadata.InventoryMetadata src = ZQLMetadata.getInventoryMetadataByName(context.getQueryTargetInventoryName());
         return String.format("%s.uuid in (select info.uuid from KvmHypervisorInfoVO info, AccountResourceRefVO ref" +
                         " where info.uuid = ref.resourceUuid" +
-                        " and ref.accountUuid = '%s')",
+                        " and ref.accountUuid = '%s' and ref.type = 'Own')",
                 src.simpleInventoryName(), context.getAPISession().getAccountUuid());
     }
 }

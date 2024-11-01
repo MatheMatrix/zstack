@@ -3,6 +3,7 @@ package org.zstack.header.allocator;
 import org.zstack.header.configuration.DiskOfferingInventory;
 import org.zstack.header.image.ImageInventory;
 import org.zstack.header.vm.VmInstanceInventory;
+import org.zstack.header.vm.VmNicParam;
 
 import java.util.*;
 
@@ -14,11 +15,13 @@ public class HostAllocatorSpec {
     private long cpuCapacity;
     private long memoryCapacity;
     private List<String> l3NetworkUuids;
+    private List<VmNicParam> vmNicParams = new ArrayList<>();
     private long diskSize;
     private String hypervisorType;
     private String allocatorStrategy;
     private VmInstanceInventory vmInstance;
     private ImageInventory image;
+    private String imageRequiredPrimaryStorageUuid;
     private String vmOperation;
     private List<DiskOfferingInventory> diskOfferings = new ArrayList<>();
     private Map<Object, Object> extraData = new HashMap<>();
@@ -166,6 +169,14 @@ public class HostAllocatorSpec {
         this.l3NetworkUuids = l3NetworkUuids;
     }
 
+    public List<VmNicParam> getVmNicParams() {
+        return vmNicParams;
+    }
+
+    public void setVmNicParams(List<VmNicParam> vmNicParams) {
+        this.vmNicParams = vmNicParams;
+    }
+
     public long getDiskSize() {
         return diskSize;
     }
@@ -214,6 +225,14 @@ public class HostAllocatorSpec {
         this.image = image;
     }
 
+    public String getImageRequiredPrimaryStorageUuid() {
+        return imageRequiredPrimaryStorageUuid;
+    }
+
+    public void setImageRequiredPrimaryStorageUuid(String imageRequiredPrimaryStorageUuid) {
+        this.imageRequiredPrimaryStorageUuid = imageRequiredPrimaryStorageUuid;
+    }
+
     public String getArchitecture() {
         return architecture;
     }
@@ -241,6 +260,7 @@ public class HostAllocatorSpec {
         spec.setMemoryCapacity(msg.getMemoryCapacity());
         spec.setVmInstance(msg.getVmInstance());
         spec.setL3NetworkUuids(msg.getL3NetworkUuids());
+        spec.setVmNicParams(msg.getVmNicParams());
         spec.setImage(msg.getImage());
         spec.setVmOperation(msg.getVmOperation());
         spec.setDiskOfferings(msg.getDiskOfferings());
@@ -253,7 +273,7 @@ public class HostAllocatorSpec {
         if (msg.getSystemTags() != null && !msg.getSystemTags().isEmpty()){
             spec.setSystemTags(new ArrayList<String>(msg.getSystemTags()));
         }
-
+        spec.setImageRequiredPrimaryStorageUuid(msg.getImageRequiredPrimaryStorageUuid());
         return spec;
     }
 

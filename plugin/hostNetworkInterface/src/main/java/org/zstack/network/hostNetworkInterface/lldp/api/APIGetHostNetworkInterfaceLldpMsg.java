@@ -1,14 +1,11 @@
 package org.zstack.network.hostNetworkInterface.lldp.api;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.network.hostNetworkInterface.HostNetworkInterfaceVO;
-import org.zstack.network.hostNetworkInterface.lldp.LldpConstant;
 
-@Action(category = LldpConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/hostNetworkInterface/lldp/{interfaceUuid}/info",
         method = HttpMethod.GET,

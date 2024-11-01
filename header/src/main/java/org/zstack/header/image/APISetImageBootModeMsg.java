@@ -1,12 +1,10 @@
 package org.zstack.header.image;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
-@Action(category = ImageConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/images/{uuid}/actions",
         isAction = true,
@@ -14,7 +12,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APISetImageBootModeEvent.class
 )
 public class APISetImageBootModeMsg extends APIMessage implements ImageMessage {
-    @APIParam(resourceType = ImageVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = ImageVO.class)
     private String uuid;
 
     @APIParam(validValues = {"Legacy", "UEFI", "UEFI_WITH_CSM"})

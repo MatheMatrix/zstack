@@ -13,7 +13,6 @@ import static java.util.Arrays.asList;
  * Created by frank on 2/25/2016.
  */
 @AutoQuery(replyClass = APIQueryAccountResourceRefReply.class, inventoryClass = AccountResourceRefInventory.class)
-@Action(category = AccountConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/accounts/resources/refs",
         method = HttpMethod.GET,

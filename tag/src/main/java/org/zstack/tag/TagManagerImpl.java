@@ -20,12 +20,12 @@ import org.zstack.header.core.NonCloneable;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudRuntimeException;
-import org.zstack.header.identity.AccountConstant;
 import org.zstack.header.identity.SessionInventory;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.tag.*;
+import org.zstack.identity.Account;
 import org.zstack.query.QueryFacade;
 import org.zstack.utils.*;
 import org.zstack.utils.function.Function;
@@ -520,11 +520,14 @@ public class TagManagerImpl extends AbstractService implements TagManager,
     }
 
     @Override
-    public void deleteSystemTag(String tag, String resourceUuid, String resourceType, Boolean inherit) {
-        deleteSystemTag(tag, resourceUuid, resourceType, inherit, false);
+    public boolean deleteSystemTag(String tag, String resourceUuid, String resourceType, Boolean inherit) {
+        return deleteSystemTag(tag, resourceUuid, resourceType, inherit, false);
     }
 
-    private void deleteSystemTag(String tag, String resourceUuid, String resourceType, Boolean inherit, boolean useLike) {
+    /**
+     * @return true if any tags have been deleted
+     */
+    private boolean deleteSystemTag(String tag, String resourceUuid, String resourceType, Boolean inherit, boolean useLike) {
         DebugUtils.Assert(tag != null || resourceUuid != null || resourceType != null,
                 "tag, resourceUuid, resourceType cannot all be null");
         SimpleQuery<SystemTagVO> q = dbf.createQuery(SystemTagVO.class);
@@ -546,23 +549,22 @@ public class TagManagerImpl extends AbstractService implements TagManager,
         }
 
         List<SystemTagVO> vos = q.list();
+        if (vos.isEmpty()) {
+            return false;
+        }
 
-        if (!vos.isEmpty()) {
-            for (SystemTagVO vo : vos) {
-                preTagDeleted(SystemTagInventory.valueOf(vo));
-            }
+        for (SystemTagVO vo : vos) {
+            preTagDeleted(SystemTagInventory.valueOf(vo));
         }
 
         dbf.removeCollection(vos, SystemTagVO.class);
-
-        if (!vos.isEmpty()) {
-            fireTagDeleted(SystemTagInventory.valueOf(vos));
-        }
+        fireTagDeleted(SystemTagInventory.valueOf(vos));
+        return true;
     }
 
     @Override
-    public void deleteSystemTagUseLike(String tag, String resourceUuid, String resourceType, Boolean inherit) {
-        deleteSystemTag(tag, resourceUuid, resourceType, inherit, true);
+    public boolean deleteSystemTagUseLike(String tag, String resourceUuid, String resourceType, Boolean inherit) {
+        return deleteSystemTag(tag, resourceUuid, resourceType, inherit, true);
     }
 
     void fireTagDeleted(List<SystemTagInventory> tags) {
@@ -971,7 +973,7 @@ public class TagManagerImpl extends AbstractService implements TagManager,
     }
 
     private ErrorCode checkPemission(String tag, SessionInventory session){
-        if (session == null || session.getUuid() == null || AccountConstant.isAdminPermission(session.getAccountUuid())) {
+        if (session == null || session.getUuid() == null || Account.isAdminPermission(session.getAccountUuid())) {
             return null;
         }
 

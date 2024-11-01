@@ -1,7 +1,6 @@
 package org.zstack.header.vm.cdrom;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIEvent;
@@ -10,7 +9,6 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
-import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmInstanceMessage;
 import org.zstack.header.vm.VmInstanceVO;
 
@@ -18,7 +16,6 @@ import org.zstack.header.vm.VmInstanceVO;
  * Create by lining at 2018/12/29
  */
 @TagResourceType(VmCdRomVO.class)
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances/cdroms",
         method = HttpMethod.POST,
@@ -29,10 +26,10 @@ public class APICreateVmCdRomMsg extends APICreateMessage implements APIAuditor,
     @APIParam(maxLength = 255)
     private String name;
 
-    @APIParam(resourceType = VmInstanceVO.class, checkAccount = true)
+    @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;
 
-    @APIParam(resourceType = ImageVO.class, checkAccount = true, required = false)
+    @APIParam(resourceType = ImageVO.class, required = false)
     private String isoUuid;
 
     @APIParam(required = false, maxLength = 2048)

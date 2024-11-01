@@ -1,10 +1,7 @@
 package org.zstack.header.network.l3;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APICreateMessage;
-import org.zstack.header.message.APIEvent;
-import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
@@ -13,7 +10,6 @@ import org.zstack.utils.network.IPv6Constants;
 /**
  */
 @TagResourceType(L3NetworkVO.class)
-@Action(category = L3NetworkConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/l3-networks/{l3NetworkUuid}/ipv6-ranges/by-cidr",
         method = HttpMethod.POST,
@@ -25,7 +21,7 @@ public class APIAddIpv6RangeByNetworkCidrMsg extends APICreateMessage implements
     private String name;
     @APIParam(required = false, maxLength = 2048)
     private String description;
-    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = L3NetworkVO.class)
     private String l3NetworkUuid;
     @APIParam
     private String networkCidr;

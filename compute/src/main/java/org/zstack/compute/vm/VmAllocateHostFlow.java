@@ -1,12 +1,12 @@
 package org.zstack.compute.vm;
 
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.db.DatabaseFacade;
-import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.allocator.*;
@@ -15,7 +15,6 @@ import org.zstack.header.configuration.DiskOfferingVO;
 import org.zstack.header.core.workflow.Flow;
 import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
-import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.host.HostVO;
@@ -23,23 +22,17 @@ import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.image.ImageInventory;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l3.L3NetworkInventory;
-import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO;
-import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO_;
 import org.zstack.header.vm.*;
+import org.zstack.header.vm.APICreateVmInstanceMsg.DiskAO;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.zstack.core.Platform.operr;
 import static org.zstack.core.progress.ProgressReportService.taskProgress;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
@@ -94,6 +87,7 @@ public class VmAllocateHostFlow implements Flow {
                 return arg.getUuid();
             }
         }));
+        msg.setVmNicParams(VmNicSpec.getVmNicParamsOfSpec(spec.getL3Networks()));
         msg.setImage(image);
         msg.setVmOperation(spec.getCurrentVmOperation().toString());
 
@@ -131,7 +125,21 @@ public class VmAllocateHostFlow implements Flow {
             msg.getRequiredPrimaryStorageUuids().addAll(spec.getDiskAOs().stream()
                     .map(APICreateVmInstanceMsg.DiskAO::getPrimaryStorageUuid).filter(Objects::nonNull).collect(Collectors.toList()));
         }
+
+        setImageRequiredPrimaryStorageUuidFromDiskAO(msg, spec);
         return msg;
+    }
+
+    private void setImageRequiredPrimaryStorageUuidFromDiskAO(DesignatedAllocateHostMsg msg, VmInstanceSpec spec) {
+        if (CollectionUtils.isEmpty(spec.getDiskAOs())) {
+            return;
+        }
+
+        spec.getDiskAOs().stream().filter(APICreateVmInstanceMsg.DiskAO::isBoot).findFirst().ifPresent(rootDiskAO -> {
+            if (rootDiskAO.getPrimaryStorageUuid() != null) {
+                msg.setImageRequiredPrimaryStorageUuid(rootDiskAO.getPrimaryStorageUuid());
+            }
+        });
     }
 
     @Override
@@ -214,7 +222,7 @@ public class VmAllocateHostFlow implements Flow {
             bus.send(msg);
         }
 
-        extEmitter.cleanUpAfterVmFailedToStart(spec.getVmInventory());
+        extEmitter.cleanUpAfterVmFailedToStart(spec.getVmInventory(), spec.getCurrentVmOperation());
         chain.rollback();
     }
 }

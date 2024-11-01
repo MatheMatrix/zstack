@@ -1,25 +1,17 @@
 package org.zstack.header.message;
 
-import org.springframework.util.StringUtils;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.identity.SessionInventory;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.rest.RestResponse;
 import org.zstack.utils.BeanUtils;
-import org.zstack.utils.DebugUtils;
 import org.zstack.utils.FieldUtils;
-import org.zstack.utils.TypeUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import static java.util.Arrays.asList;
-
 
 public abstract class APIMessage extends NeedReplyMessage implements ConfigurableTimeoutMessage {
     /**
@@ -28,6 +20,10 @@ public abstract class APIMessage extends NeedReplyMessage implements Configurabl
     @NoJsonSchema
     @APINoSee
     private SessionInventory session;
+    @APINoSee
+    private String clientIp;
+    @APINoSee
+    private String clientBrowser;
 
     public SessionInventory getSession() {
         return session;
@@ -35,17 +31,6 @@ public abstract class APIMessage extends NeedReplyMessage implements Configurabl
 
     public void setSession(SessionInventory session) {
         this.session = session;
-    }
-
-    @APINoSee
-    private String clientIp;
-
-    public String getClientIp() {
-        return clientIp;
-    }
-
-    public void setClientIp(String clientIp) {
-        this.clientIp = clientIp;
     }
 
     public static class FieldParam {
@@ -118,7 +103,7 @@ public abstract class APIMessage extends NeedReplyMessage implements Configurabl
             throw new CloudRuntimeException(e);
         }
 
-        for (Class clz : apiMessageClasses) {
+        for (Class<?> clz : apiMessageClasses) {
             List<Field> fields = FieldUtils.getAllFields(clz);
 
             Map<String, FieldParam> fmap = new HashMap<>();
@@ -157,10 +142,8 @@ public abstract class APIMessage extends NeedReplyMessage implements Configurabl
                                 atp.field(), clz));
                     }
 
-                    FieldParam fp = new FieldParam();
-                    fp.field = f;
-                    fp.param = atp.param();
-                    fmap.put(atp.field(), fp);
+                    FieldParam param = fmap.get(atp.field());
+                    param.param = atp.param();
                 }
             }
 
@@ -242,5 +225,21 @@ public abstract class APIMessage extends NeedReplyMessage implements Configurabl
 
     public String getOperator() {
         return null;
+    }
+
+    public String getClientIp() {
+        return clientIp;
+    }
+
+    public void setClientIp(String clientIp) {
+        this.clientIp = clientIp;
+    }
+
+    public String getClientBrowser() {
+        return clientBrowser;
+    }
+
+    public void setClientBrowser(String clientBrowser) {
+        this.clientBrowser = clientBrowser;
     }
 }

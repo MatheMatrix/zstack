@@ -2,6 +2,7 @@ package org.zstack.testlib.identity
 
 import org.zstack.sdk.AccountInventory
 import org.zstack.sdk.SessionInventory
+import org.zstack.sdk.identity.role.RoleInventory
 import org.zstack.testlib.EnvSpec
 import org.zstack.testlib.Spec
 import org.zstack.testlib.SpecID
@@ -24,6 +25,7 @@ class AccountSpec extends Spec {
     }
 
     private List<String> roleNames = []
+    private List<String> predefineRoleName = []
 
     void useRole(String rname) {
         preCreate {
@@ -33,36 +35,16 @@ class AccountSpec extends Spec {
         roleNames.add(rname)
     }
 
-    void policy(@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = PolicySpec.class) Closure c) {
-        def spec = new PolicySpec(envSpec)
-        c.delegate = spec
-        c.resolveStrategy = Closure.DELEGATE_FIRST
-        c()
-        addChild(spec)
-    }
-
-    void user(@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = UserSpec.class) Closure c) {
-        def spec = new UserSpec(envSpec)
-        c.delegate = spec
-        c.resolveStrategy = Closure.DELEGATE_FIRST
-        c()
-        addChild(spec)
-    }
-
-    void group(@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = UserGroupSpec.class) Closure c) {
-        def spec = new UserGroupSpec(envSpec)
-        c.delegate = spec
-        c.resolveStrategy = Closure.DELEGATE_FIRST
-        c()
-        addChild(spec)
-    }
-
     void role(@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = RoleSpec.class) Closure c) {
         def spec = new RoleSpec(envSpec)
         c.delegate = spec
         c.resolveStrategy = Closure.DELEGATE_FIRST
         c()
         addChild(spec)
+    }
+
+    void predefineRole(String roleName) {
+        predefineRoleName << roleName
     }
 
     SpecID create(String uuid, String sessionId) {
@@ -78,10 +60,21 @@ class AccountSpec extends Spec {
             delegate.password = password
         } as SessionInventory
 
+        for (final def roleName in predefineRoleName) {
+            def roles = queryRole {
+                delegate.conditions = ["name=predefined: " + roleName]
+            } as List<RoleInventory>
+            assert roles.size() == 1
+            attachRoleToAccount {
+                delegate.roleUuid = roles[0].uuid
+                delegate.accountUuid = inventory.uuid
+            }
+        }
+
         postCreate {
-            inventory = queryAccount {
+            inventory = (queryAccount {
                 conditions = ["uuid=${inventory.uuid}".toString()]
-            }[0]
+            } as List<AccountInventory>)[0]
 
             roleNames.each { rname ->
                 def inv = findSpec(rname, RoleSpec.class).inventory

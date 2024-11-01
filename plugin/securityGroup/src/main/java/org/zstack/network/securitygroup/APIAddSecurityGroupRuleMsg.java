@@ -2,8 +2,6 @@ package org.zstack.network.securitygroup;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.configuration.PythonClassInventory;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -98,7 +96,6 @@ import static java.util.Arrays.asList;
  *
  * see :ref:`APIAddSecurityGroupRuleEvent`
  */
-@Action(category = SecurityGroupConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/security-groups/{securityGroupUuid}/rules",
         method = HttpMethod.POST,
@@ -322,6 +319,12 @@ public class APIAddSecurityGroupRuleMsg extends APIMessage implements AddSecurit
         }
 
         @Override
+        public int hashCode() {
+            return Objects.hash(type, remoteSecurityGroupUuid,
+                    ipVersion, protocol, srcIpRange, dstIpRange, dstPortRange, action);
+        }
+
+        @Override
         public boolean equals(Object o) {
             if (o == this) {
                 return true;
@@ -337,7 +340,7 @@ public class APIAddSecurityGroupRuleMsg extends APIMessage implements AddSecurit
         }
     }
 
-    @APIParam(resourceType = SecurityGroupVO.class, checkAccount = true, operationTarget = true, nonempty = true, required = true)
+    @APIParam(resourceType = SecurityGroupVO.class, nonempty = true, required = true)
     private String securityGroupUuid;
 
     /**

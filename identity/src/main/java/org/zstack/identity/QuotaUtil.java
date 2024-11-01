@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.transaction.annotation.Transactional;
-import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SimpleQuery;
@@ -57,11 +56,7 @@ public class QuotaUtil {
 
     @Transactional(readOnly = true)
     public String getResourceOwnerAccountUuid(String resourceUuid) {
-        SimpleQuery<AccountResourceRefVO> q;
-        q = dbf.createQuery(AccountResourceRefVO.class);
-        q.select(AccountResourceRefVO_.ownerAccountUuid);
-        q.add(AccountResourceRefVO_.resourceUuid, SimpleQuery.Op.EQ, resourceUuid);
-        String owner = q.findValue();
+        String owner = acntMgr.getOwnerAccountUuidOfResource(resourceUuid);
         if (owner == null || owner.equals("")) {
             throw new CloudRuntimeException(
                     String.format("cannot find owner account uuid for resource[uuid:%s]", resourceUuid));
@@ -122,10 +117,11 @@ public class QuotaUtil {
     }
 
     public String getResourceType(String resourceUuid) {
-        SimpleQuery<AccountResourceRefVO> q = dbf.createQuery(AccountResourceRefVO.class);
-        q.add(AccountResourceRefVO_.resourceUuid, SimpleQuery.Op.EQ, resourceUuid);
-        AccountResourceRefVO accResRefVO = q.find();
-        return accResRefVO.getResourceType();
+        return Q.New(AccountResourceRefVO.class)
+                .eq(AccountResourceRefVO_.resourceUuid, resourceUuid)
+                .eq(AccountResourceRefVO_.type, AccessLevel.Own)
+                .select(AccountResourceRefVO_.resourceType)
+                .findValue();
     }
 
     public ErrorCode buildQuataExceedError(String currentAccountUuid, String quotaName, long quotaValue){
@@ -153,7 +149,7 @@ public class QuotaUtil {
             return;
         }
 
-        if (AccountConstant.isAdminPermission(targetAccountUuid)) {
+        if (Account.isAdminPermission(targetAccountUuid)) {
             return;
         }
 

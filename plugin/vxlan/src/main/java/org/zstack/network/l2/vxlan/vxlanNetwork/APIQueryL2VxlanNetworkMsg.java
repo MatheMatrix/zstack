@@ -1,11 +1,9 @@
 package org.zstack.network.l2.vxlan.vxlanNetwork;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.query.APIQueryMessage;
 import org.zstack.header.query.AutoQuery;
 import org.zstack.header.rest.RestRequest;
-import org.zstack.network.l2.vxlan.vxlanNetworkPool.VxlanNetworkPoolConstant;
 
 import java.util.List;
 
@@ -16,7 +14,6 @@ import static java.util.Arrays.asList;
  */
 
 @AutoQuery(replyClass = APIQueryL2VxlanNetworkReply.class, inventoryClass = L2VxlanNetworkInventory.class)
-@Action(category = VxlanNetworkPoolConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/l2-networks/vxlan",
         optionalPaths = {"/l2-networks/vxlan/{uuid}"},

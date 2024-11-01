@@ -3,8 +3,6 @@ package org.zstack.test.integration.identity.account
 import org.springframework.http.HttpEntity
 import org.zstack.compute.vm.VmQuotaGlobalConfig
 import org.zstack.core.config.GlobalConfig
-import org.zstack.core.db.DatabaseFacade
-import org.zstack.core.Platform
 import org.zstack.core.db.Q
 import org.zstack.header.apimediator.ApiMessageInterceptionException
 import org.zstack.header.identity.AccountConstant
@@ -14,21 +12,15 @@ import org.zstack.header.identity.QuotaVO
 import org.zstack.header.identity.QuotaVO_
 import org.zstack.header.identity.SessionVO
 import org.zstack.header.identity.SessionVO_
-import org.zstack.header.identity.PolicyVO
-import org.zstack.header.identity.PolicyInventory
-import org.zstack.header.identity.UserVO
 import org.zstack.identity.QuotaGlobalConfig
 import org.zstack.kvm.KVMConstant
 import org.zstack.sdk.AccountInventory
-import org.zstack.sdk.CheckResourcePermissionAction
 import org.zstack.sdk.ImageInventory
 import org.zstack.sdk.InstanceOfferingInventory
 import org.zstack.sdk.L3NetworkInventory
 import org.zstack.sdk.SessionInventory
 import org.zstack.sdk.UpdateAccountAction
 import org.zstack.sdk.UpdateGlobalConfigAction
-import org.zstack.sdk.UpdateUserAction
-import org.zstack.sdk.UserInventory
 import org.zstack.test.integration.ZStackTest
 import org.zstack.test.integration.identity.Env
 import org.zstack.testlib.EnvSpec
@@ -36,6 +28,8 @@ import org.zstack.testlib.SubCase
 
 import java.lang.reflect.Field
 import java.lang.reflect.Modifier
+import java.sql.Timestamp
+
 /**
  * Created by AlanJager on 2017/3/23.
  */
@@ -73,17 +67,13 @@ class AccountCase extends SubCase {
             } as AccountInventory
 
             testNormalAccountQueryGlobalConfig()
-            testAdminUser()
             testLoginAsAdminAccountAndChangeSelfPassword()
             testLoginAsNormalAccountAndChangeSelfPassword()
             testNormalAccountCannotDeleteAnyAccount()
             testAdminAccountDeleteSystemAdmin()
             testCreateAccount()
             testQuotaConfig()
-            testUserReadApi()
-            testCheckPermission()
             testAPIOperationRenewSession()
-            testPolicyQuery()
         }
     }
 
@@ -98,16 +88,7 @@ class AccountCase extends SubCase {
         def image = env.inventoryByName("image1" ) as ImageInventory
         def l3 = env.inventoryByName("pubL3") as L3NetworkInventory
 
-        createUser {
-            name = "test1"
-            password = "password1"
-        } as UserInventory
-
-        SessionInventory s2 = logInByUser {
-            accountName = "admin"
-            userName = "test1"
-            password = "password1"
-        } as SessionInventory
+        SessionInventory s2 = loginAsAdmin()
 
         env.afterSimulator(KVMConstant.KVM_START_VM_PATH) { rsp, HttpEntity<String> e ->
             sleep(2000)
@@ -134,53 +115,10 @@ class AccountCase extends SubCase {
 
         def time2 = Q.New(SessionVO.class)
                 .eq(SessionVO_.uuid, s2.uuid)
-                .select(SessionVO_.expiredDate).findValue()
+                .select(SessionVO_.expiredDate)
+                .findValue() as Timestamp
 
         assert time1.before(time2)
-    }
-
-    void testCheckPermission() {
-        def action = new CheckResourcePermissionAction()
-        action.resourceType = "VmInstanceVO"
-        action.sessionId = adminSession()
-        CheckResourcePermissionAction.Result ret = action.call()
-    }
-
-    void testUserReadApi() {
-        def a = createAccount {
-            name = "test user api account"
-            password = "password"
-        }
-
-        def s = logInByAccount {
-            accountName = "test user api account"
-            password = "password"
-        }
-
-        def user = createUser {
-            name = "test user"
-            password = "password"
-            sessionId = s.uuid
-        }
-
-        def s2 = logInByUser {
-            accountName = "test user api account"
-            userName = "test user"
-            password = "password"
-        }
-
-        def list = queryZone {
-            sessionId = s2.uuid
-        }
-
-        assert !list.isEmpty()
-
-        expect(AssertionError.class) {
-            createZone {
-                name = "test"
-                sessionId = s2.uuid
-            }
-        }
     }
 
     void testNormalAccountQueryGlobalConfig() {
@@ -192,66 +130,6 @@ class AccountCase extends SubCase {
         SessionInventory s = logInByAccount {
             accountName = "accountQueryGlobalConfig"
             password = "password"
-        }
-
-        queryGlobalConfig {
-            conditions = []
-            sessionId = s.uuid
-        }
-    }
-
-    void testAdminUser() {
-        UserInventory userInventory = createUser {
-            name = "admin2"
-            password = "password"
-        }
-
-        //change
-        updateUser {
-            uuid = userInventory.uuid
-            password = "password1"
-        }
-
-        UserVO userVO = dbFindByUuid(userInventory.uuid, UserVO.class)
-        assert userVO.password == "password1"
-
-        //changeWithRightOldPassword
-        updateUser {
-            uuid = userInventory.uuid
-            password = "password2"
-            oldPassword = "password1"
-        }
-
-        userVO = dbFindByUuid(userInventory.uuid, UserVO.class)
-        assert userVO.password == "password2"
-
-        //changeWithWrongOldPassword
-        UpdateUserAction updateUserAction = new UpdateUserAction()
-        updateUserAction.uuid = userInventory.uuid
-        updateUserAction.password = "password3"
-        updateUserAction.sessionId = adminSession()
-        updateUserAction.oldPassword = "wrongPassword"
-        UpdateUserAction.Result result = updateUserAction.call()
-        assert result.error != null
-
-        // restore
-        updateUser {
-            uuid = userInventory.uuid
-            password = "password"
-        }
-
-        userVO = dbFindByUuid(userInventory.uuid, UserVO.class)
-        assert userVO.password == "password"
-
-        SessionInventory s = logInByUser {
-            accountName = "admin"
-            userName = "admin2"
-            password = "password"
-        }
-
-        queryZone {
-            conditions = []
-            sessionId = s.uuid
         }
 
         queryGlobalConfig {
@@ -273,6 +151,12 @@ class AccountCase extends SubCase {
             sessionId = sessionInventory.uuid
         }
 
+        // update password will force logout
+        sessionInventory = logInByAccount {
+            delegate.accountName = "admin"
+            delegate.password = "new"
+        } as SessionInventory
+
         AccountVO accountVO = dbFindByUuid(AccountConstant.INITIAL_SYSTEM_ADMIN_UUID, AccountVO.class)
         assert accountVO.password  == "new"
 
@@ -283,6 +167,12 @@ class AccountCase extends SubCase {
             sessionId = sessionInventory.uuid
             oldPassword = "new"
         }
+
+        // update password will force logout
+        sessionInventory = logInByAccount {
+            delegate.accountName = "admin"
+            delegate.password = "new2"
+        } as SessionInventory
 
         accountVO = dbFindByUuid(AccountConstant.INITIAL_SYSTEM_ADMIN_UUID, AccountVO.class)
         assert accountVO.password  == "new2"
@@ -385,6 +275,11 @@ class AccountCase extends SubCase {
     }
 
     void testAdminAccountDeleteSystemAdmin() {
+        env.session = logInByAccount {
+            delegate.accountName = "admin"
+            delegate.password = AccountConstant.INITIAL_SYSTEM_ADMIN_PASSWORD
+        } as SessionInventory
+
         def userpass = "password"
         def newAdmin = createAccount {
             name = "testAdmAccount"
@@ -406,23 +301,23 @@ class AccountCase extends SubCase {
     }
 
     void testCreateAccount(){
-        def acount1 = createAccount {
+        def account1 = createAccount {
             name = "testAccount1"
             password = "password"
         } as AccountInventory
 
         testUpdateQuotaGlobalConfig(VmQuotaGlobalConfig.VM_TOTAL_NUM.getName())
 
-        def acount2 = createAccount {
+        def account2 = createAccount {
             name = "testAccount2"
             password = "password"
         } as AccountInventory
 
         assert Q.New(QuotaVO.class).select(QuotaVO_.value)
-                .eq(QuotaVO_.identityUuid, acount1.uuid).eq(QuotaVO_.name, VmQuotaGlobalConfig.VM_TOTAL_NUM.name)
+                .eq(QuotaVO_.identityUuid, account1.uuid).eq(QuotaVO_.@name, VmQuotaGlobalConfig.VM_TOTAL_NUM.name)
                 .findValue() == VmQuotaGlobalConfig.VM_TOTAL_NUM.defaultValue(Long.class)
         assert Q.New(QuotaVO.class).select(QuotaVO_.value)
-                .eq(QuotaVO_.identityUuid, acount2.uuid).eq(QuotaVO_.name, VmQuotaGlobalConfig.VM_TOTAL_NUM.name)
+                .eq(QuotaVO_.identityUuid, account2.uuid).eq(QuotaVO_.@name, VmQuotaGlobalConfig.VM_TOTAL_NUM.name)
                 .findValue() == 1
     }
 
@@ -434,24 +329,6 @@ class AccountCase extends SubCase {
             }
             testUpdateQuotaGlobalConfig(((GlobalConfig)f.get(null)).name)
         }
-    }
-
-    void testPolicyQuery() {
-        def noData = new PolicyVO(name: "", data: "", accountUuid: AccountConstant.INITIAL_SYSTEM_ADMIN_UUID, uuid: Platform.uuid)
-        def emptyData = new PolicyVO(name: "", data: "[]", accountUuid: AccountConstant.INITIAL_SYSTEM_ADMIN_UUID, uuid: Platform.uuid)
-
-        assert PolicyInventory.valueOf(new PolicyVO(data: "")).statements == null
-        assert PolicyInventory.valueOf(new PolicyVO(data: "[]")).statements.isEmpty()
-
-        def dbf = bean(DatabaseFacade.class)
-        dbf.persist(noData)
-        dbf.persist(emptyData)
-        def results = queryPolicy {} as List<PolicyInventory>
-        assert results.stream().anyMatch({it -> it.uuid == noData.uuid})
-        assert results.stream().anyMatch({it -> it.uuid == emptyData.uuid})
-
-        dbf.remove(noData)
-        dbf.remove(emptyData)
     }
 
     private testUpdateQuotaGlobalConfig(String configName){

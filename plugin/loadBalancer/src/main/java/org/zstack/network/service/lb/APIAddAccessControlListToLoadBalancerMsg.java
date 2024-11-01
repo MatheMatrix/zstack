@@ -1,7 +1,6 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -17,7 +16,6 @@ import java.util.List;
  * @author: zhanyong.miao
  * @date: 2020-03-11
  **/
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/load-balancers/listeners/{listenerUuid}/access-control-lists",
         method = HttpMethod.POST,
@@ -25,13 +23,13 @@ import java.util.List;
         responseClass = APIAddAccessControlListToLoadBalancerEvent.class
 )
 public class APIAddAccessControlListToLoadBalancerMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
-    @APIParam(resourceType = AccessControlListVO.class, checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = AccessControlListVO.class, nonempty = true)
     private List<String> aclUuids;
     @APIParam(validValues = {"white","black","redirect"})
     private String aclType;
-    @APIParam(resourceType = LoadBalancerListenerVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerListenerVO.class)
     private String listenerUuid;
-    @APIParam(resourceType = LoadBalancerServerGroupVO.class, checkAccount = true, operationTarget = true, required = false)
+    @APIParam(resourceType = LoadBalancerServerGroupVO.class, required = false)
     private List<String> serverGroupUuids;
     @APINoSee
     private String loadBalancerUuid;

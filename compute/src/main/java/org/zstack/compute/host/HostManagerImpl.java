@@ -49,6 +49,8 @@ import org.zstack.utils.*;
 import org.zstack.utils.data.Pair;
 import org.zstack.utils.function.ForEachFunction;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.utils.ssh.Ssh;
+import org.zstack.utils.ssh.SshResult;
 
 import javax.persistence.Tuple;
 import java.util.*;
@@ -57,6 +59,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.*;
+import static org.zstack.header.host.APIMountBlockDeviceMsg.mkfsCommd.buildMkfsCommd;
+import static org.zstack.header.host.BlockDevicesParser.*;
 import static org.zstack.longjob.LongJobUtils.noncancelableErr;
 
 public class HostManagerImpl extends AbstractService implements HostManager, ManagementNodeChangeListener,
@@ -110,8 +114,16 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
             handle((APIAddHostMsg) msg);
         } else if (msg instanceof APIGetHypervisorTypesMsg) {
             handle((APIGetHypervisorTypesMsg) msg);
+        } else if (msg instanceof APIGetPhysicalMachineBlockDevicesMsg) {
+            handle((APIGetPhysicalMachineBlockDevicesMsg) msg);
+        } else if (msg instanceof APIMountBlockDeviceMsg) {
+            handle((APIMountBlockDeviceMsg) msg);
         }  else if (msg instanceof APIGetHostWebSshUrlMsg){
             handle((APIGetHostWebSshUrlMsg) msg);
+        }  else if (msg instanceof APIGetHostBlockDevicesMsg){
+            handle((APIGetHostBlockDevicesMsg) msg);
+        }  else if (msg instanceof APIGetHostSensorsMsg){
+            handle((APIGetHostSensorsMsg) msg);
         } else if (msg instanceof HostMessage) {
             HostMessage hmsg = (HostMessage) msg;
             passThrough(hmsg);
@@ -478,6 +490,129 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
             public void fail(ErrorCode errorCode) {
                 evt.setError(errorCode);
                 bus.publish(evt);
+            }
+        });
+    }
+
+    private void handle(final APIGetPhysicalMachineBlockDevicesMsg msg) {
+        APIGetPhysicalMachineBlockDevicesReply reply = new APIGetPhysicalMachineBlockDevicesReply();
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            DebugUtils.Assert(msg.getPassword() != null, "password cannot be null");
+            BlockDevices blockDevices = BlockDevices.valueOf(BlockDevicesParser.parse(blockDevicesExample));
+            blockDevices.filter(msg.getExcludedTypes());
+            reply.setBlockDevices(blockDevices);
+            bus.reply(msg, reply);
+            return;
+        }
+
+        Ssh ssh = new Ssh();
+        ssh.setUsername(msg.getUsername()).setPassword(msg.getPassword()).setPort(msg.getSshPort())
+                .setHostname(msg.getHostName()).setTimeout(20);
+        try {
+            SshResult ret = ssh.command(getBlockDevicesCommand()).run();
+            ssh.reset();
+            if (ret.getReturnCode() != 0) {
+                reply.setError(operr("failed to get disk devices, " +
+                                "because [stderr:%s, stdout:%s, exitErrorMessage:%s]",
+                        ret.getStderr(), ret.getStdout(), ret.getExitErrorMessage()));
+                reply.setSuccess(false);
+            } else {
+                BlockDevices blockDevices = BlockDevices.valueOf(BlockDevicesParser.parse(ret.getStdout()));
+                blockDevices.filter(msg.getExcludedTypes());
+                reply.setBlockDevices(blockDevices);
+            }
+
+            bus.reply(msg, reply);
+        } finally {
+            ssh.close();
+        }
+    }
+
+    private void handle(final APIMountBlockDeviceMsg msg) {
+        APIMountBlockDeviceEvent event = new APIMountBlockDeviceEvent(msg.getId());
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            DebugUtils.Assert(msg.getPassword() != null, "password cannot be null");
+            bus.publish(event);
+            return;
+        }
+
+        List<String> commands = new ArrayList<>();
+        commands.add(String.format("mkdir -p '%s'", msg.getMountPoint()));
+        commands.add(buildMkfsCommd(msg.getFilesystemType(), msg.getPath()));
+        commands.add(String.format("mount | grep -w '%s' | grep -w '%s' || mount '%s' '%s'",
+                msg.getPath(), msg.getMountPoint(), msg.getPath(), msg.getMountPoint()));
+        commands.add(String.format("grep -w '%s' /etc/fstab | grep -w '%s' | grep -w '%s' || echo '%s %s %s defaults 0 0' >> /etc/fstab",
+                msg.getPath(), msg.getMountPoint(), msg.getFilesystemType(), msg.getPath(), msg.getMountPoint(), msg.getFilesystemType()));
+
+        Ssh ssh = new Ssh();
+        ssh.setUsername(msg.getUsername()).setPassword(msg.getPassword()).setPort(msg.getSshPort())
+                .setHostname(msg.getHostName()).setTimeout(20);
+        try {
+            for (String command : commands) {
+                if (command.startsWith("mkfs")) {
+                    long timeout = (msg.getMessageDeadline() - new Date().getTime()) / 1000 - 30;
+                    command = String.format("timeout %d %s", timeout, command);
+                }
+                SshResult ret = ssh.command(command).run();
+                ssh.reset();
+                if (ret.getReturnCode() != 0) {
+                    event.setError(operr("failed to execute the command[%s], " +
+                                    "because [stderr:%s, stdout:%s, exitErrorMessage:%s]",
+                            command, ret.getStderr(), ret.getStdout(), ret.getExitErrorMessage()));
+                    event.setSuccess(false);
+                    break;
+                }
+            }
+            bus.publish(event);
+        } finally {
+            ssh.close();
+        }
+    }
+
+    private void handle(final APIGetHostBlockDevicesMsg msg) {
+        APIGetHostBlockDevicesReply reply = new APIGetHostBlockDevicesReply();
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            bus.reply(msg, reply);
+            return;
+        }
+
+        GetHostBlockDevicesMsg gmsg = new GetHostBlockDevicesMsg();
+        gmsg.setHostUuid(msg.getUuid());
+        bus.makeTargetServiceIdByResourceUuid(gmsg, HostConstant.SERVICE_ID, msg.getUuid());
+        bus.send(gmsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply r) {
+                if (!r.isSuccess()) {
+                    reply.setError(r.getError());
+                } else {
+                    GetHostBlockDevicesReply gr = r.castReply();
+                    reply.setBlockDevices(gr.getBlockDevices());
+                }
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    private void handle(final APIGetHostSensorsMsg msg) {
+        APIGetHostSensorsReply reply = new APIGetHostSensorsReply();
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            bus.reply(msg, reply);
+            return;
+        }
+
+        GetHostSensorsMsg gmsg = new GetHostSensorsMsg();
+        gmsg.setHostUuid(msg.getUuid());
+        bus.makeTargetServiceIdByResourceUuid(gmsg, HostConstant.SERVICE_ID, msg.getUuid());
+        bus.send(gmsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply r) {
+                if (!r.isSuccess()) {
+                    reply.setError(r.getError());
+                } else {
+                    GetHostSensorsReply gr = r.castReply();
+                    reply.setSensors(gr.getSensors());
+                }
+                bus.reply(msg, reply);
             }
         });
     }

@@ -2,15 +2,16 @@ package org.zstack.header.identity;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIDeleteMessage;
-import org.zstack.header.message.APIEvent;
-import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+
+import java.util.List;
+
+import static org.zstack.utils.CollectionDSL.list;
 
 /**
  * Created by frank on 7/15/2015.
  */
-@Action(category = AccountConstant.ACTION_CATEGORY, accountOnly = true)
 @RestRequest(
         path = "/accounts/{uuid}",
         method = HttpMethod.DELETE,
@@ -32,7 +33,12 @@ public class APIDeleteAccountMsg extends APIDeleteMessage implements AccountMess
     public String getAccountUuid() {
         return uuid;
     }
- 
+
+    @Override
+    public List<String> getDeletedResourceUuidList() {
+        return list(getUuid());
+    }
+
     public static APIDeleteAccountMsg __example__() {
         APIDeleteAccountMsg msg = new APIDeleteAccountMsg();
         msg.setUuid(uuid());

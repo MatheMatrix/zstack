@@ -1,26 +1,23 @@
 package org.zstack.storage.primary.local;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.PrimaryStorageMessage;
-import org.zstack.header.volume.VolumeConstant;
 import org.zstack.header.volume.VolumeVO;
 
 /**
  * Created by frank on 11/18/2015.
  */
-@Action(category = VolumeConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/volumes/{volumeUuid}/migration-target-hosts",
         method = HttpMethod.GET,
         responseClass = APILocalStorageGetVolumeMigratableReply.class
 )
 public class APILocalStorageGetVolumeMigratableHostsMsg extends APISyncCallMessage implements PrimaryStorageMessage {
-    @APIParam(resourceType = VolumeVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeVO.class)
     private String volumeUuid;
     @APINoSee
     private String primaryStorageUuid;

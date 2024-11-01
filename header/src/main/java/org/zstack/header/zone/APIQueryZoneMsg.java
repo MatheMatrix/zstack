@@ -1,7 +1,6 @@
 package org.zstack.header.zone;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.query.APIQueryMessage;
 import org.zstack.header.query.AutoQuery;
 import org.zstack.header.rest.RestRequest;
@@ -17,7 +16,6 @@ import static java.util.Arrays.asList;
         responseClass = APIQueryZoneReply.class,
         method = HttpMethod.GET
 )
-@Action(category = "zone", names = {"read"})
 public class APIQueryZoneMsg extends APIQueryMessage {
 
     public static List<String> __example__() {

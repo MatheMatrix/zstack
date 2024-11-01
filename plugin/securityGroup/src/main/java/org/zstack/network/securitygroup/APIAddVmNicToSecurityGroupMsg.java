@@ -1,11 +1,9 @@
 package org.zstack.network.securitygroup;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
-import org.zstack.header.rest.RestResponse;
 import org.zstack.header.vm.VmNicVO;
 
 import java.util.List;
@@ -55,7 +53,6 @@ import static java.util.Arrays.asList;
  *
  * see :ref:`APIAddVmNicToSecurityGroupEvent`
  */
-@Action(category = SecurityGroupConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/security-groups/{securityGroupUuid}/vm-instances/nics",
         method = HttpMethod.POST,
@@ -66,12 +63,12 @@ public class APIAddVmNicToSecurityGroupMsg extends APIMessage {
     /**
      * @desc security group uuid
      */
-    @APIParam(resourceType = SecurityGroupVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = SecurityGroupVO.class)
     private String securityGroupUuid;
     /**
      * @desc a list of vm nic uuid. See :ref:`VmNicInventory`
      */
-    @APIParam(resourceType = VmNicVO.class, nonempty = true, checkAccount = true)
+    @APIParam(resourceType = VmNicVO.class, nonempty = true)
     private List<String> vmNicUuids;
     
     public String getSecurityGroupUuid() {

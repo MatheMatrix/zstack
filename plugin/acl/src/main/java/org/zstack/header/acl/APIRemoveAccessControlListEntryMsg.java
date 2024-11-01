@@ -1,7 +1,6 @@
 package org.zstack.header.acl;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -13,16 +12,15 @@ import org.zstack.header.rest.RestRequest;
  * @author: zhanyong.miao
  * @date: 2020-03-09
  **/
-@Action(category = AccessControlListConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/access-control-lists/{aclUuid}/ipentries/{uuid}",
         method = HttpMethod.DELETE,
         responseClass = APIRemoveAccessControlListEntryEvent.class
 )
 public class APIRemoveAccessControlListEntryMsg extends APIDeleteMessage implements APIAuditor{
-    @APIParam(resourceType = AccessControlListVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = AccessControlListVO.class)
     private String aclUuid;
-    @APIParam(resourceType = AccessControlListEntryVO.class, operationTarget = true, successIfResourceNotExisting = true)
+    @APIParam(resourceType = AccessControlListEntryVO.class, successIfResourceNotExisting = true)
     private String uuid;
 
     public  String getAclUuid() {

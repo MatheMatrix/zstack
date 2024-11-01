@@ -1,8 +1,6 @@
 package org.zstack.header.configuration;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -10,7 +8,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by frank on 6/15/2015.
  */
-@Action(category = ConfigurationConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/disk-offerings/{uuid}/actions",
         isAction = true,
@@ -18,7 +15,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateDiskOfferingEvent.class
 )
 public class APIUpdateDiskOfferingMsg extends APIMessage implements DiskOfferingMessage {
-    @APIParam(resourceType = DiskOfferingVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = DiskOfferingVO.class)
     private String uuid;
     @APIParam(maxLength = 255, required = false)
     private String name;

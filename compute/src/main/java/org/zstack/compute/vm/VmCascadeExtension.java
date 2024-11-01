@@ -42,6 +42,7 @@ import org.zstack.header.volume.GetVmUuidFromShareableVolumeExtensionPoint;
 import org.zstack.header.volume.VolumeType;
 import org.zstack.header.zone.ZoneInventory;
 import org.zstack.header.zone.ZoneVO;
+import org.zstack.identity.ResourceHelper;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
@@ -210,10 +211,10 @@ public class VmCascadeExtension extends AbstractAsyncCascadeExtension {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!vmNicUuids.isEmpty() && deleteFromDb) {
-                    UpdateQuery q = UpdateQuery.New(AccountResourceRefVO.class)
-                            .condAnd(AccountResourceRefVO_.resourceUuid, Op.IN, vmNicUuids)
-                            .condAnd(AccountResourceRefVO_.resourceType, Op.EQ, VmNicVO.class.getSimpleName());
-                    q.delete();
+                    SQL.New(AccountResourceRefVO.class)
+                            .in(AccountResourceRefVO_.resourceUuid, vmNicUuids)
+                            .eq(AccountResourceRefVO_.resourceType, VmNicVO.class.getSimpleName())
+                            .delete();
                 }
 
                 completion.success();
@@ -311,6 +312,13 @@ public class VmCascadeExtension extends AbstractAsyncCascadeExtension {
                 /* both ipv4 and ipv6 has been deleted or deleting, then delete nic */
                 if ((ip4 == null || uuids.contains(ip4.getIpRangeUuid()))
                         && (ip6 == null || uuids.contains(ip6.getIpRangeUuid()))) {
+                    Boolean enableIPAM = Q.New(L3NetworkVO.class).
+                            eq(L3NetworkVO_.uuid, nic.getL3NetworkUuid())
+                            .select(L3NetworkVO_.enableIPAM).findValue();
+                    if (enableIPAM != null && !enableIPAM) {
+                        continue;
+                    }
+
                     DetachNicFromVmMsg msg = new DetachNicFromVmMsg();
                     msg.setVmInstanceUuid(nic.getVmInstanceUuid());
                     msg.setVmNicUuid(nic.getUuid());
@@ -731,23 +739,8 @@ public class VmCascadeExtension extends AbstractAsyncCascadeExtension {
                             return arg.getUuid();
                         }
                     });
-
-            List<VmInstanceVO> vmvos = new Callable<List<VmInstanceVO>>() {
-                @Override
-                @Transactional(readOnly = true)
-                public List<VmInstanceVO> call() {
-                    String sql = "select d from VmInstanceVO d, AccountResourceRefVO r" +
-                            " where d.uuid = r.resourceUuid" +
-                            " and r.resourceType = :rtype" +
-                            " and r.accountUuid in (:auuids)" +
-                            " group by d.uuid";
-                    TypedQuery<VmInstanceVO> q = dbf.getEntityManager().createQuery(sql, VmInstanceVO.class);
-                    q.setParameter("rtype", VmInstanceVO.class.getSimpleName());
-                    q.setParameter("auuids", auuids);
-                    return q.getResultList();
-                }
-            }.call();
-
+            
+            List<VmInstanceVO> vmvos = ResourceHelper.findOwnResources(VmInstanceVO.class, auuids);
             if (!vmvos.isEmpty()) {
                 ret = toVmDeletionStruct(vmvos);
             }

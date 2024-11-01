@@ -7,10 +7,9 @@ import org.zstack.compute.host.HostGlobalConfig;
 import org.zstack.compute.vm.CrashStrategy;
 import org.zstack.compute.vm.VmGlobalConfig;
 import org.zstack.compute.vm.VmNicManager;
-import org.zstack.compute.vm.VmNicManagerImpl;
+import org.zstack.header.agent.ProxyHardwareFactory;
+import org.zstack.header.agent.ProxyHardware;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.network.l2.L2NetworkRealizationExtensionPoint;
-import org.zstack.header.network.l2.VSwitchType;
 import org.zstack.header.tag.SystemTagInventory;
 import org.zstack.header.tag.SystemTagLifeCycleListener;
 import org.zstack.header.tag.SystemTagValidator;
@@ -56,8 +55,6 @@ import org.zstack.header.vm.*;
 import org.zstack.header.volume.*;
 import org.zstack.kvm.KVMAgentCommands.ReconnectMeCmd;
 import org.zstack.kvm.KVMAgentCommands.TransmitVmOperationToMnCmd;
-import org.zstack.resourceconfig.ResourceConfigUpdateExtensionPoint;
-import org.zstack.resourceconfig.ResourceConfigValidatorExtensionPoint;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.IpRangeSet;
 import org.zstack.utils.SizeUtils;
@@ -91,10 +88,11 @@ import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.operr;
+import static org.zstack.kvm.KVMAgentCommands.*;
 import static org.zstack.kvm.KVMConstant.CPU_MODE_NONE;
 
 public class KVMHostFactory extends AbstractService implements HypervisorFactory, Component,
-        ManagementNodeReadyExtensionPoint, MaxDataVolumeNumberExtensionPoint, HypervisorMessageFactory {
+        ManagementNodeReadyExtensionPoint, MaxDataVolumeNumberExtensionPoint, HypervisorMessageFactory, ProxyHardwareFactory {
     private static final CLogger logger = Utils.getLogger(KVMHostFactory.class);
 
     public static final HypervisorType hypervisorType = new HypervisorType(KVMConstant.KVM_HYPERVISOR_TYPE);
@@ -355,6 +353,64 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
         asf.deployModule(KVMConstant.ANSIBLE_MODULE_PATH, KVMConstant.ANSIBLE_PLAYBOOK_NAME);
     }
 
+    void physicalCpuStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalCpuStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalCpuStatusAbnormalData();
+        cdata.setCpuName(cmd.getAdditionalProperties().get(KVMConstant.CPU_NAME).toString());
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.PHSICAL_DEVICE_STATUS_NAME).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_CPU_STATUS_ABNORMAL, cdata);
+    }
+
+    void physicalMemoryStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalMemoryStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalMemoryStatusAbnormalData();
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setLocator(cmd.getAdditionalProperties().get(KVMConstant.MEMORY_LOCATOR_NAME).toString());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.PHSICAL_DEVICE_STATUS_NAME).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_MEMORY_STATUS_ABNORMAL, cdata);
+    }
+
+    void physicalGpuStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalGpuStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalGpuStatusAbnormalData();
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setPcideviceAddress(cmd.getAdditionalProperties().get(KVMConstant.PCI_DEVICE_ADDRESS).toString());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.PHSICAL_DEVICE_STATUS_NAME).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_GPU_STATUS_ABNORMAL, cdata);
+    }
+
+    void physicalPowerSupplyStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalPowerSupplyStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalPowerSupplyStatusAbnormalData();
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.PHSICAL_DEVICE_STATUS_NAME).toString());
+        cdata.setName(cmd.getAdditionalProperties().get(KVMConstant.DEVICE_NAME).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_POWER_SUPPLY_STATUS_ABNORMAL, cdata);
+    }
+
+    void physicalFanStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalFanStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalFanStatusAbnormalData();
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setFanName(cmd.getAdditionalProperties().get(KVMConstant.DEVICE_NAME).toString());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.PHSICAL_DEVICE_STATUS_NAME).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_FAN_STATUS_ABNORMAL, cdata);
+    }
+
+    void physicalDiskStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalDiskStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalDiskStatusAbnormalData();
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setSerialNumber(cmd.getAdditionalProperties().get(KVMConstant.DEVICE_SERIAL_NUMBER).toString());
+        cdata.setEnclosureId(cmd.getAdditionalProperties().get(KVMConstant.ENCLOSURE_DEVICE_ID).toString());
+        cdata.setSlotNumber(cmd.getAdditionalProperties().get(KVMConstant.SLOT_NUMBER).toString());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.DRIVE_STATE).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_DISK_STATUS_ABNORMAL, cdata);
+    }
+
+    void physicalRaidStatusAlarmEvent(HostPhysicalDeviceStatusAlarmEventCmd cmd) {
+        HostCanonicalEvents.HostPhysicalRaidStatusAbnormalData cdata = new HostCanonicalEvents.HostPhysicalRaidStatusAbnormalData();
+        cdata.setHostUuid(cmd.getHost());
+        cdata.setStatus(cmd.getAdditionalProperties().get(KVMConstant.PHSICAL_DEVICE_STATUS_NAME).toString());
+        cdata.setTargetId(cmd.getAdditionalProperties().get(KVMConstant.TARGET_ID).toString());
+        evf.fire(HostCanonicalEvents.HOST_PHYSICAL_RAID_STATUS_ABNORMAL, cdata);
+    }
+
     @Override
     public boolean start() {
         deployAnsibleModule();
@@ -453,16 +509,28 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             }
         });
 
-        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_REBOOT_EVENT, KVMAgentCommands.ReportVmRebootEventCmd.class, new SyncHttpCallHandler<KVMAgentCommands.ReportVmRebootEventCmd>() {
-            @Override
-            public String handleSyncHttpCall(KVMAgentCommands.ReportVmRebootEventCmd cmd) {
-                evf.fire(VmCanonicalEvents.VM_LIBVIRT_REPORT_REBOOT, cmd.vmUuid);
+        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_REBOOT_EVENT, ReportVmRebootEventCmd.class, cmd -> {
+            evf.fire(VmCanonicalEvents.VM_LIBVIRT_REPORT_REBOOT, cmd.vmUuid);
 
-                return null;
-            }
+            return null;
         });
 
-        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_CRASH_EVENT, KVMAgentCommands.ReportVmCrashEventCmd.class, cmd -> {
+        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_SHUTDOWN_EVENT, ReportVmShutdownEventCmd.class, cmd -> {
+            KvmReportVmShutdownEventMsg msg = new KvmReportVmShutdownEventMsg();
+            msg.setVmInstanceUuid(cmd.vmUuid);
+            msg.setDetail(cmd.detail);
+            msg.setOpaque(cmd.opaque);
+            bus.makeTargetServiceIdByResourceUuid(msg, VmInstanceConstant.SERVICE_ID, cmd.vmUuid);
+            bus.send(msg);
+            return null;
+        });
+
+        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_START_EVENT, ReportVmStartEventCmd.class, cmd -> {
+            evf.fire(VmCanonicalEvents.VM_LIBVIRT_REPORT_START, cmd.vmUuid);
+            return null;
+        });
+
+        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_VM_CRASH_EVENT, ReportVmCrashEventCmd.class, cmd -> {
             if (!CrashStrategy.valueOf(rcf.getResourceConfigValue(VmGlobalConfig.VM_CRASH_STRATEGY, cmd.vmUuid, String.class)).isCrashStrategyEnable()) {
                 return null;
             }
@@ -473,7 +541,7 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             return null;
         });
 
-        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_HOST_STOP_EVENT, KVMAgentCommands.ReportHostStopEventCmd.class, cmd -> {
+        restf.registerSyncHttpCallHandler(KVMConstant.KVM_REPORT_HOST_STOP_EVENT, ReportHostStopEventCmd.class, cmd -> {
             ChangeHostStatusMsg cmsg = new ChangeHostStatusMsg();
             HostVO hostVO = Q.New(HostVO.class).eq(HostVO_.managementIp, cmd.hostIp).find();
 
@@ -487,7 +555,6 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             return null;
         });
 
-
         restf.registerSyncHttpCallHandler(KVMConstant.KVM_HOST_PHYSICAL_NIC_ALARM_EVENT, KVMAgentCommands.PhysicalNicAlarmEventCmd.class, cmd -> {
             HostCanonicalEvents.HostPhysicalNicStatusData cData = new HostCanonicalEvents.HostPhysicalNicStatusData();
             cData.setHostUuid(cmd.host);
@@ -500,6 +567,83 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             } else {
                 evf.fire(HostCanonicalEvents.HOST_PHYSICAL_NIC_STATUS_DOWN, cData);
             }
+            return null;
+        });
+
+        restf.registerSyncHttpCallHandler(KVMConstant.HOST_PHYSICAL_HARD_STATUS_ALARM_EVENT, HostPhysicalDeviceStatusAlarmEventCmd.class, cmd -> {
+            switch (HostHardware.fromString(cmd.getType())) {
+                case CPU:
+                    physicalCpuStatusAlarmEvent(cmd);
+                    break;
+                case MEMORY:
+                    physicalMemoryStatusAlarmEvent(cmd);
+                    break;
+                case GPU:
+                    physicalGpuStatusAlarmEvent(cmd);
+                    break;
+                case POWERSUPPLY:
+                    physicalPowerSupplyStatusAlarmEvent(cmd);
+                    break;
+                case FAN:
+                    physicalFanStatusAlarmEvent(cmd);
+                    break;
+                case DISK:
+                    physicalDiskStatusAlarmEvent(cmd);
+                    break;
+                case RAID:
+                    physicalRaidStatusAlarmEvent(cmd);
+                    break;
+
+                default:
+                    logger.debug(String.format("unknown physical device type[%s] in host[uuid:%s]", cmd.getType(), cmd.getHost()));
+
+            }
+            return null;
+        });
+
+        restf.registerSyncHttpCallHandler(KVMConstant.HOST_PHYSICAL_DISK_INSERT_ALARM_EVENT, HostPhysicalDiskInsertAlarmEventCmd.class, cmd -> {
+            HostCanonicalEvents.HostPhysicalDiskData cdata = new HostCanonicalEvents.HostPhysicalDiskData();
+            cdata.setHostUuid(cmd.host);
+            Object serialNumber = cmd.additionalProperties.get(KVMConstant.DEVICE_SERIAL_NUMBER);
+            Object enclosureDeviceId = cmd.additionalProperties.get(KVMConstant.ENCLOSURE_DEVICE_ID);
+            Object slotNumber = cmd.additionalProperties.get(KVMConstant.SLOT_NUMBER);
+            Object name = cmd.additionalProperties.get(KVMConstant.DEVICE_NAME);
+            cdata.setSerialNumber(serialNumber == null ? "" : serialNumber.toString());
+            cdata.setEnclosureId(enclosureDeviceId == null ? "" : enclosureDeviceId.toString());
+            cdata.setSlotNumber(slotNumber == null ? "" : slotNumber.toString());
+            cdata.setName(name == null ? "" : name.toString());
+            evf.fire(HostCanonicalEvents.HOST_PHYSICAL_DISK_INSERT_TRIGGERED, cdata);
+            return null;
+        });
+
+        restf.registerSyncHttpCallHandler(KVMConstant.HOST_PHYSICAL_DISK_REMOVE_ALARM_EVENT, HostPhysicalDiskRemoveAlarmEventCmd.class, cmd -> {
+            HostCanonicalEvents.HostPhysicalDiskData cdata = new HostCanonicalEvents.HostPhysicalDiskData();
+            cdata.setHostUuid(cmd.host);
+            Object serialNumber = cmd.additionalProperties.get(KVMConstant.DEVICE_SERIAL_NUMBER);
+            Object enclosureDeviceId = cmd.additionalProperties.get(KVMConstant.ENCLOSURE_DEVICE_ID);
+            Object slotNumber = cmd.additionalProperties.get(KVMConstant.SLOT_NUMBER);
+            Object name = cmd.additionalProperties.get(KVMConstant.DEVICE_NAME);
+            cdata.setSerialNumber(serialNumber == null ? "" : serialNumber.toString());
+            cdata.setEnclosureId(enclosureDeviceId == null ? "" : enclosureDeviceId.toString());
+            cdata.setSlotNumber(slotNumber == null ? "" : slotNumber.toString());
+            cdata.setName(name == null ? "" : name.toString());
+            evf.fire(HostCanonicalEvents.HOST_PHYSICAL_DISK_REMOVE_TRIGGERED, cdata);
+            return null;
+        });
+
+        restf.registerSyncHttpCallHandler(KVMConstant.HOST_PHYSICAL_MEMORY_ECC_ERROR_ALARM_EVENT, PhysicalMemoryEccErrorAlarmEventCmd.class, cmd -> {
+            HostCanonicalEvents.HostPhysicalMemoryEccErrorData cdata = new HostCanonicalEvents.HostPhysicalMemoryEccErrorData();
+            cdata.setDetail(operr("host[uuid: %s] memory ecc triggered, detail: %s", cmd.host, cmd.detail));
+            cdata.setHostUuid(cmd.host);
+            evf.fire(HostCanonicalEvents.HOST_PHYSICAL_MEMORY_ECC_ERROR_TRIGGERED, cdata);
+            return null;
+        });
+
+        restf.registerSyncHttpCallHandler(KVMConstant.HOST_PHYSICAL_GPU_REMOVE_ALARM_EVENT, PhysicalGpuRemoveAlarmEventCmd.class, cmd -> {
+            HostCanonicalEvents.HostPhysicalGpuRemoveTriggeredData cdata = new HostCanonicalEvents.HostPhysicalGpuRemoveTriggeredData();
+            cdata.setHostUuid(cmd.host);
+            cdata.setPcideviceAddress(cmd.pcideviceAddress);
+            evf.fire(HostCanonicalEvents.HOST_PHYSICAL_GPU_REMOVE_TRIGGERED, cdata);
             return null;
         });
 
@@ -580,9 +724,41 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
 
                 if (vm != null && (vm.getState() == VmInstanceState.Running || vm.getState() == VmInstanceState.Unknown)) {
                     throw new OperationFailureException(argerr("vm current state[%s], " +
-                            "modify virtioSCSI requires the vm state[%s]", vm.getState(), VmInstanceState.Stopped));
+                            "modify bus type requires the vm state[%s]", vm.getState(), VmInstanceState.Stopped));
                 }
 
+                if (vm != null ) {
+                    boolean hasScsiTag = !vm.getAllVolumes(volume -> !Objects.equals(volume.getUuid(), resourceUuid)
+                            && KVMSystemTags.VOLUME_SCSI.hasTag(volume.getUuid())).isEmpty();
+
+                    if (hasScsiTag) {
+                        throw new OperationFailureException(argerr("vm do not support having both SCSI and Virtio-SCSI bus type volumes simultaneously."));
+                    }
+                }
+            }
+        });
+
+        KVMSystemTags.VOLUME_SCSI.installValidator(new SystemTagValidator() {
+            @Override
+            public void validateSystemTag(String resourceUuid, Class resourceType, String systemTag) {
+                VmInstanceVO vm = SQL.New("select vm from VmInstanceVO vm, VolumeVO volume " +
+                                "where vm.uuid = volume.vmInstanceUuid and volume.uuid = :uuid", VmInstanceVO.class)
+                        .param("uuid", resourceUuid)
+                        .find();
+
+                if (vm != null && (vm.getState() == VmInstanceState.Running || vm.getState() == VmInstanceState.Unknown)) {
+                    throw new OperationFailureException(argerr("vm current state[%s], " +
+                            "modify bus type requires the vm state[%s]", vm.getState(), VmInstanceState.Stopped));
+                }
+
+                if (vm != null ) {
+                    boolean hasVirtioScsiTag = !vm.getAllVolumes(volume -> !Objects.equals(volume.getUuid(), resourceUuid) &&
+                            KVMSystemTags.VOLUME_VIRTIO_SCSI.hasTag(volume.getUuid())).isEmpty();
+
+                    if (hasVirtioScsiTag) {
+                        throw new OperationFailureException(argerr("vm do not support having both SCSI and Virtio-SCSI bus type volumes simultaneously."));
+                    }
+                }
             }
         });
 
@@ -947,5 +1123,13 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
     @Override
     public String getId() {
         return bus.makeLocalServiceId(KVMConstant.SERVICE_ID);
+    }
+
+    @Override
+    public ProxyHardware getProxyHardware(String hostName) {
+        String sql = "select kvm from HostVO host, KVMHostVO kvm " +
+                "where host.uuid = kvm.uuid " +
+                "and host.managementIp = :hostname";
+        return SQL.New(sql, KVMHostVO.class).param("hostname", hostName).find();
     }
 }

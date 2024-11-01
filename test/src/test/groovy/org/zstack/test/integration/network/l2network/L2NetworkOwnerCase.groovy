@@ -2,6 +2,7 @@ package org.zstack.test.integration.network.l2network
 
 import org.zstack.core.db.DatabaseFacade
 import org.zstack.core.db.Q
+import org.zstack.header.identity.AccessLevel
 import org.zstack.header.identity.AccountResourceRefVO
 import org.zstack.header.identity.AccountResourceRefVO_
 import org.zstack.sdk.AccountInventory
@@ -42,6 +43,7 @@ class L2NetworkOwnerCase extends SubCase{
             account {
                 name = "normalAccount"
                 password = "password"
+                predefineRole("networks")
             }
 
             sftpBackupStorage {
@@ -140,11 +142,13 @@ class L2NetworkOwnerCase extends SubCase{
 
         AccountResourceRefVO ref = Q.New(AccountResourceRefVO.class)
                 .eq(AccountResourceRefVO_.resourceUuid, l2Vlan.uuid)
+                .eq(AccountResourceRefVO_.type, AccessLevel.Own)
                 .find()
         assert Test.currentEnvSpec?.session?.accountUuid == ref.accountUuid
 
         ref = Q.New(AccountResourceRefVO.class)
                 .eq(AccountResourceRefVO_.resourceUuid, l2NoVlan.uuid)
+                .eq(AccountResourceRefVO_.type, AccessLevel.Own)
                 .find()
         assert Test.currentEnvSpec?.session?.accountUuid == ref.accountUuid
     }
@@ -166,6 +170,7 @@ class L2NetworkOwnerCase extends SubCase{
 
         AccountResourceRefVO ref = Q.New(AccountResourceRefVO.class)
                 .eq(AccountResourceRefVO_.resourceUuid, l2Vlan.uuid)
+                .eq(AccountResourceRefVO_.type, AccessLevel.Own)
                 .find()
         assert account.uuid == ref.accountUuid
 
@@ -184,6 +189,7 @@ class L2NetworkOwnerCase extends SubCase{
 
         ref = Q.New(AccountResourceRefVO.class)
                 .eq(AccountResourceRefVO_.resourceUuid, l2NoVlan.uuid)
+                .eq(AccountResourceRefVO_.type, AccessLevel.Own)
                 .find()
         assert account.uuid == ref.accountUuid
 

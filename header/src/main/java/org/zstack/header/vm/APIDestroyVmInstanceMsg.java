@@ -1,12 +1,13 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
-import org.zstack.header.message.APIEvent;
-import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+
+import java.util.List;
+
+import static org.zstack.utils.CollectionDSL.list;
 
 /**
  * @api destroy a vm instance
@@ -35,7 +36,6 @@ import org.zstack.header.rest.RestRequest;
  * @result
  * @since 0.1.0
  */
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances/{uuid}",
         method = HttpMethod.DELETE,
@@ -45,7 +45,7 @@ public class APIDestroyVmInstanceMsg extends APIDeleteMessage implements VmInsta
     /**
      * @desc vm uuid
      */
-    @APIParam(resourceType = VmInstanceVO.class, checkAccount = true, operationTarget = true, successIfResourceNotExisting = true)
+    @APIParam(resourceType = VmInstanceVO.class, successIfResourceNotExisting = true)
     private String uuid;
 
     public String getUuid() {
@@ -61,7 +61,11 @@ public class APIDestroyVmInstanceMsg extends APIDeleteMessage implements VmInsta
         return getUuid();
     }
 
- 
+    @Override
+    public List<String> getDeletedResourceUuidList() {
+        return list(getUuid());
+    }
+
     public static APIDestroyVmInstanceMsg __example__() {
         APIDestroyVmInstanceMsg msg = new APIDestroyVmInstanceMsg();
         msg.setUuid(uuid());

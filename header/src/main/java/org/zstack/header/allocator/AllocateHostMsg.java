@@ -4,6 +4,7 @@ import org.zstack.header.configuration.DiskOfferingInventory;
 import org.zstack.header.image.ImageInventory;
 import org.zstack.header.message.NeedReplyMessage;
 import org.zstack.header.vm.VmInstanceInventory;
+import org.zstack.header.vm.VmNicParam;
 
 import java.util.*;
 
@@ -15,6 +16,7 @@ public class AllocateHostMsg extends NeedReplyMessage {
     private List<String> avoidHostUuids;
     private List<String> softAvoidHostUuids;
     private List<String> l3NetworkUuids;
+    private List<VmNicParam> vmNicParams = new ArrayList<>();
     private VmInstanceInventory vmInstance;
     private ImageInventory image;
     private String vmOperation;
@@ -25,6 +27,7 @@ public class AllocateHostMsg extends NeedReplyMessage {
     private String requiredBackupStorageUuid;
     // each primary storage in this set is required
     private Set<String> requiredPrimaryStorageUuids = new HashSet<>();
+    private String imageRequiredPrimaryStorageUuid;
     // for each set in the list, the primary storage inside is optional
     private final List<Set<String>> optionalPrimaryStorageUuids = new ArrayList<>();
     private boolean fullAllocate = true;
@@ -60,6 +63,14 @@ public class AllocateHostMsg extends NeedReplyMessage {
 
     public void addRequiredPrimaryStorageUuid(String requiredPrimaryStorageUuid) {
         this.requiredPrimaryStorageUuids.add(requiredPrimaryStorageUuid);
+    }
+
+    public String getImageRequiredPrimaryStorageUuid() {
+        return imageRequiredPrimaryStorageUuid;
+    }
+
+    public void setImageRequiredPrimaryStorageUuid(String imageRequiredPrimaryStorageUuid) {
+        this.imageRequiredPrimaryStorageUuid = imageRequiredPrimaryStorageUuid;
     }
 
     public String getRequiredBackupStorageUuid() {
@@ -178,6 +189,14 @@ public class AllocateHostMsg extends NeedReplyMessage {
 
     public void setL3NetworkUuids(List<String> l3NetworkUuids) {
         this.l3NetworkUuids = l3NetworkUuids;
+    }
+
+    public List<VmNicParam> getVmNicParams() {
+        return vmNicParams;
+    }
+
+    public void setVmNicParams(List<VmNicParam> vmNicParams) {
+        this.vmNicParams = vmNicParams;
     }
 
     public VmInstanceInventory getVmInstance() {

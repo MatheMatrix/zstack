@@ -1,6 +1,6 @@
 package org.zstack.sdk;
 
-import org.zstack.sdk.L2PortGroupVlanMode;
+import org.zstack.sdk.PortGroupVlanMode;
 
 public class L2PortGroupNetworkInventory extends org.zstack.sdk.L2NetworkInventory {
 
@@ -12,11 +12,11 @@ public class L2PortGroupNetworkInventory extends org.zstack.sdk.L2NetworkInvento
         return this.vSwitchUuid;
     }
 
-    public L2PortGroupVlanMode vlanMode;
-    public void setVlanMode(L2PortGroupVlanMode vlanMode) {
+    public PortGroupVlanMode vlanMode;
+    public void setVlanMode(PortGroupVlanMode vlanMode) {
         this.vlanMode = vlanMode;
     }
-    public L2PortGroupVlanMode getVlanMode() {
+    public PortGroupVlanMode getVlanMode() {
         return this.vlanMode;
     }
 

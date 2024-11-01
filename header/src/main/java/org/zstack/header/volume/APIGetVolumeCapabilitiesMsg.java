@@ -1,7 +1,6 @@
 package org.zstack.header.volume;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
@@ -9,14 +8,13 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by xing5 on 2016/5/19.
  */
-@Action(category = VolumeConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/volumes/{uuid}/capabilities",
         method = HttpMethod.GET,
         responseClass = APIGetVolumeCapabilitiesReply.class
 )
 public class APIGetVolumeCapabilitiesMsg extends APISyncCallMessage implements VolumeMessage {
-    @APIParam(resourceType = VolumeVO.class, checkAccount = true)
+    @APIParam(resourceType = VolumeVO.class)
     private String uuid;
 
     public String getUuid() {

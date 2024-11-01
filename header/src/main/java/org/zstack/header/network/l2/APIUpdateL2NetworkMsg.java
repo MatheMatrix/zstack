@@ -1,8 +1,6 @@
 package org.zstack.header.network.l2;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -16,9 +14,8 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateL2NetworkEvent.class,
         isAction = true
 )
-@Action(category = L2NetworkConstant.ACTION_CATEGORY)
 public class APIUpdateL2NetworkMsg extends APIMessage implements L2NetworkMessage {
-    @APIParam(resourceType = L2NetworkVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = L2NetworkVO.class)
     private String uuid;
     @APIParam(maxLength = 255, required = false)
     private String name;

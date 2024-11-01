@@ -1,7 +1,6 @@
 package org.zstack.header.image;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.*;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
@@ -15,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 
 /**
  */
-@Action(category = ImageConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/images/data-volume-templates/from/volume-snapshots/{snapshotUuid}",
         responseClass = APICreateDataVolumeTemplateFromVolumeSnapshotEvent.class,
@@ -25,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 @TagResourceType(ImageVO.class)
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 72)
 public class APICreateDataVolumeTemplateFromVolumeSnapshotMsg extends APICreateMessage implements APIAuditor, CreateDataVolumeTemplateMessage {
-    @APIParam(resourceType = VolumeSnapshotVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeSnapshotVO.class)
     private String snapshotUuid;
     @APIParam(maxLength = 255)
     private String name;

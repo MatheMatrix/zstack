@@ -1,7 +1,6 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -11,7 +10,6 @@ import org.zstack.header.volume.VolumeVO;
  * Created by MaJin on 2021/1/7.
  */
 
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances/{vmInstanceUuid}/actions",
         isAction = true,
@@ -19,9 +17,9 @@ import org.zstack.header.volume.VolumeVO;
         responseClass = APISetVmBootVolumeEvent.class
 )
 public class APISetVmBootVolumeMsg extends APIMessage implements VmInstanceMessage {
-    @APIParam(resourceType = VmInstanceVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;
-    @APIParam(resourceType = VolumeVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeVO.class)
     private String volumeUuid;
 
     @Override

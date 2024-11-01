@@ -16,7 +16,7 @@ public class APIAttachL2NetworkToHostMsg extends APIMessage implements L2Network
     /**
      * @desc l2Network uuid
      */
-    @APIParam(resourceType = L2NetworkVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = L2NetworkVO.class)
     private String l2NetworkUuid;
     /**
      * @desc host uuid. See :ref:`HostInventory`
@@ -26,6 +26,9 @@ public class APIAttachL2NetworkToHostMsg extends APIMessage implements L2Network
 
     @APIParam(required = false, validValues = {L2NetworkConstant.VSWITCH_TYPE_LINUX_BRIDGE})
     private String l2ProviderType;
+
+    @APIParam(required = false)
+    private String hostParam;
 
     @Override
     public String getL2NetworkUuid() {
@@ -50,6 +53,14 @@ public class APIAttachL2NetworkToHostMsg extends APIMessage implements L2Network
 
     public void setL2ProviderType(String l2ProviderType) {
         this.l2ProviderType = l2ProviderType;
+    }
+
+    public String getHostParam() {
+        return hostParam;
+    }
+
+    public void setHostParam(String hostParam) {
+        this.hostParam = hostParam;
     }
 
     public static APIAttachL2NetworkToHostMsg __example__() {

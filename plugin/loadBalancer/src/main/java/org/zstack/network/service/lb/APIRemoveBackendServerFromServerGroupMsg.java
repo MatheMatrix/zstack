@@ -1,7 +1,6 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -12,7 +11,6 @@ import org.zstack.header.vm.VmNicVO;
 
 import java.util.List;
 
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/load-balancers/servergroups/{serverGroupUuid}/backendservers/actions",
         isAction = true,
@@ -20,7 +18,7 @@ import java.util.List;
         responseClass = APIRemoveBackendServerFromServerGroupEvent.class
 )
 public class APIRemoveBackendServerFromServerGroupMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
-    @APIParam(resourceType = LoadBalancerServerGroupVO.class,checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = LoadBalancerServerGroupVO.class, nonempty = true)
     private String serverGroupUuid;
     @APIParam(resourceType = VmNicVO.class, required = false)
     private List<String> vmNicUuids;

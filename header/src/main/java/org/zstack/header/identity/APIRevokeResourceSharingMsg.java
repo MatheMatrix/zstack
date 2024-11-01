@@ -13,15 +13,14 @@ import static org.zstack.utils.CollectionDSL.list;
 /**
  * Created by frank on 7/13/2015.
  */
-@Action(category = AccountConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/accounts/resources/actions",
         method = HttpMethod.PUT,
         isAction = true,
         responseClass = APIRevokeResourceSharingEvent.class
 )
-public class APIRevokeResourceSharingMsg extends APIMessage implements AccountMessage {
-    @APIParam(resourceType = ResourceVO.class, nonempty = true)
+public class APIRevokeResourceSharingMsg extends APIMessage {
+    @APIParam(resourceType = ResourceVO.class, nonempty = true, scope = APIParam.SCOPE_MUST_OWNER)
     private List<String> resourceUuids;
     private boolean toPublic;
     @APIParam(resourceType = AccountVO.class, required = false)
@@ -60,11 +59,6 @@ public class APIRevokeResourceSharingMsg extends APIMessage implements AccountMe
         this.accountUuids = accountUuids;
     }
 
-    @Override
-    public String getAccountUuid() {
-        return getSession().getAccountUuid();
-    }
- 
     public static APIRevokeResourceSharingMsg __example__() {
         APIRevokeResourceSharingMsg msg = new APIRevokeResourceSharingMsg();
         msg.setAccountUuids(list(uuid(), uuid()));

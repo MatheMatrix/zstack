@@ -2,14 +2,12 @@ package org.zstack.header.volume;
 
 import org.springframework.http.HttpMethod;
 
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.*;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.other.APIMultiAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.snapshot.ConsistentType;
-import org.zstack.header.storage.snapshot.VolumeSnapshotConstant;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefInventory;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
@@ -23,7 +21,6 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by MaJin on 2019/7/9.
  */
-@Action(category = VolumeSnapshotConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volume-snapshots/group",
         method = HttpMethod.POST,
@@ -35,7 +32,7 @@ public class APICreateVolumeSnapshotGroupMsg extends APICreateMessage implements
     /**
      * @desc root volume uuid. See :ref:`VolumeInventory`
      */
-    @APIParam(resourceType = VolumeVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeVO.class)
     private String rootVolumeUuid;
     /**
      * @desc snapshot group name. Max length of 255 characters

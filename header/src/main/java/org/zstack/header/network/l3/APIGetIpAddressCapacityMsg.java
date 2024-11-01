@@ -1,7 +1,6 @@
 package org.zstack.header.network.l3;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
@@ -12,7 +11,6 @@ import java.util.List;
 
 /**
  */
-@Action(category = L3NetworkConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/ip-capacity",
         method = HttpMethod.GET,
@@ -21,9 +19,9 @@ import java.util.List;
 public class APIGetIpAddressCapacityMsg extends APISyncCallMessage {
     @APIParam(required = false, resourceType = ZoneVO.class)
     private List<String> zoneUuids;
-    @APIParam(required = false, resourceType = L3NetworkVO.class, checkAccount = true)
+    @APIParam(required = false, resourceType = L3NetworkVO.class)
     private List<String> l3NetworkUuids;
-    @APIParam(required = false, resourceType = IpRangeVO.class, checkAccount = true)
+    @APIParam(required = false, resourceType = IpRangeVO.class)
     private List<String> ipRangeUuids;
     private boolean all;
 

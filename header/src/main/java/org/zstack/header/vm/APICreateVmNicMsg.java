@@ -1,7 +1,6 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -13,7 +12,6 @@ import org.zstack.header.tag.TagResourceType;
 
 
 @TagResourceType(VmNicVO.class)
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/nics",
         method = HttpMethod.POST,
@@ -25,7 +23,7 @@ public class APICreateVmNicMsg extends APICreateMessage implements APIAuditor {
     /**
      * @desc uuid of L3Network where the nic will be created
      */
-    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true)
+    @APIParam(resourceType = L3NetworkVO.class)
     private String l3NetworkUuid;
 
     @APIParam(required = false)

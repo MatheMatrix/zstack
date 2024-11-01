@@ -2,7 +2,6 @@ package org.zstack.utils;
 
 import org.zstack.utils.function.ForEachFunction;
 import org.zstack.utils.function.Function;
-import org.zstack.utils.function.ListFunction;
 import org.zstack.utils.logging.CLogger;
 
 import java.lang.reflect.Method;
@@ -17,19 +16,6 @@ import java.util.stream.Stream;
 public class CollectionUtils {
     private static final CLogger logger = Utils.getLogger(CollectionUtils.class);
 
-    public static <K, V> List<K> transformToList(Collection<V> from, ListFunction<K, V> func) {
-        List<K> ret = new ArrayList<K>();
-        for (V v : from) {
-            List<K> k = func.call(v);
-            if (k == null) {
-                continue;
-            }
-            ret.addAll(k);
-        }
-
-        return ret;
-    }
-
     public static <T> List<T> getDuplicateElementsOfList(List<T> list) {
         List<T> result = new ArrayList<T>();
         Set<T> set = new HashSet<T>();
@@ -41,6 +27,10 @@ public class CollectionUtils {
         return result;
     }
 
+    /**
+     * use {@link #transformAndRemoveNull(Collection, java.util.function.Function)}
+     */
+    @Deprecated
     public static <K, V> List<K> transformToList(Collection<V> from, Function<K, V> func) {
         List<K> ret = new ArrayList<K>();
         for (V v : from) {
@@ -58,6 +48,10 @@ public class CollectionUtils {
         return from.stream().map(mapper).collect(Collectors.toList());
     }
 
+    public static <FROM, TO> List<TO> transformAndRemoveNull(Collection<FROM> from, java.util.function.Function<FROM, TO> mapper) {
+        return from.stream().map(mapper).filter(Objects::nonNull).collect(Collectors.toList());
+    }
+
     public static <T> List<T> filter(Collection<T> from, Predicate<T> tester) {
         return from.stream().filter(tester).collect(Collectors.toList());
     }
@@ -72,19 +66,24 @@ public class CollectionUtils {
         return from.stream().collect(Collectors.toMap(keyMapper, valueMapper));
     }
 
-    public static <K, V> Set<K> transformToSet(Collection<V> from, Function<K, V> func) {
-        Set<K> ret = new HashSet<K>();
-        for (V v : from) {
-            K k = func.call(v);
-            if (k == null) {
-                continue;
-            }
-            ret.add(k);
-        }
-
-        return ret;
+    public static <KEY, VALUE> Map<KEY, List<VALUE>> groupBy(Collection<VALUE> from,
+                                                             java.util.function.Function<VALUE, KEY> keyMapper) {
+        return from.stream().collect(Collectors.groupingBy(keyMapper));
     }
 
+    public static <FROM, TO> Set<TO> transformToSetAndRemoveNull(Collection<FROM> from,
+                                                               java.util.function.Function<FROM, TO> mapper) {
+        return from.stream().map(mapper).filter(Objects::nonNull).collect(Collectors.toSet());
+    }
+
+    public static <FROM, TO> Set<TO> transformToSet(Collection<FROM> from, java.util.function.Function<FROM, TO> mapper) {
+        return from.stream().map(mapper).collect(Collectors.toSet());
+    }
+
+    /**
+     * use {@link #findOneOrNull}
+     */
+    @Deprecated
     public static <K, V> K find(Collection<V> from, Function<K, V> func) {
         for (V v : from) {
             K k = func.call(v);
@@ -107,7 +106,7 @@ public class CollectionUtils {
             try {
                 func.run(c);
             } catch (Throwable t) {
-                logger.warn(String.format("unhandled exception happened"), t);
+                logger.warn("unhandled exception happened", t);
             }
         }
     }

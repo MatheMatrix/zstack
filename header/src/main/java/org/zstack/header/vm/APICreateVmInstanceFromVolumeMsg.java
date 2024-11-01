@@ -4,7 +4,6 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.configuration.InstanceOfferingVO;
 import org.zstack.header.host.HostVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.*;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.other.APIAuditor;
@@ -22,7 +21,6 @@ import java.util.concurrent.TimeUnit;
  * Created by MaJin on 2020/6/29.
  */
 @TagResourceType(VmInstanceVO.class)
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances/from/volume",
         method = HttpMethod.POST,
@@ -43,7 +41,7 @@ public class APICreateVmInstanceFromVolumeMsg extends APICreateMessage implement
     /**
      * @desc uuid of instance offering. See :ref:`InstanceOfferingInventory`
      */
-    @APIParam(resourceType = InstanceOfferingVO.class, checkAccount = true, required = false)
+    @APIParam(resourceType = InstanceOfferingVO.class, required = false)
     private String instanceOfferingUuid;
 
     @APIParam(required = false)
@@ -58,7 +56,7 @@ public class APICreateVmInstanceFromVolumeMsg extends APICreateMessage implement
     /**
      * @desc a list of L3Network uuid the vm will create nic on. See :ref:`L3NetworkInventory`
      */
-    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true, required = false)
+    @APIParam(resourceType = L3NetworkVO.class, required = false)
     private List<String> l3NetworkUuids;
 
     @APIParam(required = false)
@@ -74,7 +72,7 @@ public class APICreateVmInstanceFromVolumeMsg extends APICreateMessage implement
      * @desc root volume. Optional when vm is created from RootVolumeTemplate,
      * mandatory when vm is created from ISO. See 'mediaType' of :ref:`ImageInventory`
      */
-    @APIParam(resourceType = VolumeVO.class, checkAccount = true)
+    @APIParam(resourceType = VolumeVO.class)
     private String volumeUuid;
 
     @APIParam(required = false, validValues = {"Linux", "Windows", "Other", "Paravirtualization", "WindowsVirtio"})

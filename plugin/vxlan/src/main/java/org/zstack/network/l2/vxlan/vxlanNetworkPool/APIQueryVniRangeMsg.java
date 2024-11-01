@@ -1,7 +1,6 @@
 package org.zstack.network.l2.vxlan.vxlanNetworkPool;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.query.APIQueryMessage;
 import org.zstack.header.query.AutoQuery;
 import org.zstack.header.rest.RestRequest;
@@ -14,7 +13,6 @@ import static java.util.Arrays.asList;
  * Created by weiwang on 15/03/2017.
  */
 @AutoQuery(replyClass = APIQueryVniRangeReply.class, inventoryClass = VniRangeInventory.class)
-@Action(category = VxlanNetworkPoolConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/l2-networks/vxlan-pool/vni-range",
         optionalPaths = {"/l2-networks/vxlan-pool/vni-range/{uuid}"},

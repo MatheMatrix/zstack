@@ -21,6 +21,10 @@ public interface VmInstanceConstant {
 
     String TF_VIRTUAL_NIC_TYPE = "TFVNIC";
 
+    String SHUTDOWN_DETAIL_BY_HOST = "by host";
+    String SHUTDOWN_DETAIL_BY_GUEST = "by guest";
+    String SHUTDOWN_DETAIL_FINISHED = "finished";
+
     enum Params {
         VmInstanceSpec,
         AttachingVolumeInventory,
@@ -88,4 +92,7 @@ public interface VmInstanceConstant {
     String NONE_CDROM = "none";
 
     String DETACH_NIC_FAILED_REGEX = ".*NIC device is still attached after.*";
+
+    String VM_CDROM_OCCUPANT_ISO = "ISO";
+    String VM_CDROM_OCCUPANT_GUEST_TOOLS = "GuestTools";
 }

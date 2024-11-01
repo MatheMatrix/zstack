@@ -13,19 +13,22 @@ import static org.zstack.utils.CollectionDSL.list;
 /**
  * Created by frank on 7/13/2015.
  */
-@Action(category = AccountConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/accounts/resources/actions",
         method = HttpMethod.PUT,
         responseClass = APIShareResourceEvent.class,
         isAction = true
 )
-public class APIShareResourceMsg extends APIMessage implements AccountMessage {
-    @APIParam(resourceType = ResourceVO.class, nonempty = true, checkAccount = true, operationTarget = true)
+public class APIShareResourceMsg extends APIMessage {
+    @APIParam(resourceType = ResourceVO.class, nonempty = true, scope = APIParam.SCOPE_MUST_OWNER)
     private List<String> resourceUuids;
     @APIParam(resourceType = AccountVO.class, required = false)
     private List<String> accountUuids;
+    @APIParam(required = false)
     private boolean toPublic;
+    @APIParam(required = false, validEnums = {ShareResourcePermission.class})
+    @Deprecated
+    private String permission;
 
     public List<String> getResourceUuids() {
         return resourceUuids;
@@ -51,11 +54,16 @@ public class APIShareResourceMsg extends APIMessage implements AccountMessage {
         this.toPublic = toPublic;
     }
 
-    @Override
-    public String getAccountUuid() {
-        return getSession().getAccountUuid();
+    @Deprecated
+    public String getPermission() {
+        return permission;
     }
- 
+
+    @Deprecated
+    public void setPermission(String permission) {
+        this.permission = permission;
+    }
+
     public static APIShareResourceMsg __example__() {
         APIShareResourceMsg msg = new APIShareResourceMsg();
         msg.setAccountUuids(list(uuid(), uuid()));

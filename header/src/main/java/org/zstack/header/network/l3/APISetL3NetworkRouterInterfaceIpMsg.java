@@ -1,13 +1,10 @@
 package org.zstack.header.network.l3;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
-@Action(category = L3NetworkConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/l3-networks/{l3NetworkUuid}/router-interface-ip",
         method = HttpMethod.POST,
@@ -15,7 +12,7 @@ import org.zstack.header.rest.RestRequest;
         parameterName = "params"
 )
 public class APISetL3NetworkRouterInterfaceIpMsg extends APIMessage implements L3NetworkMessage {
-    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = L3NetworkVO.class)
     private String l3NetworkUuid;
 
     @APIParam

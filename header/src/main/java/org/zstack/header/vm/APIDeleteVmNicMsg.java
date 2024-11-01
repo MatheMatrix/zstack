@@ -1,12 +1,10 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/nics/{uuid}",
         method = HttpMethod.DELETE,
@@ -14,7 +12,7 @@ import org.zstack.header.rest.RestRequest;
 )
 public class APIDeleteVmNicMsg extends APIDeleteMessage {
 
-    @APIParam(resourceType = VmNicVO.class, checkAccount = true, successIfResourceNotExisting = true)
+    @APIParam(resourceType = VmNicVO.class, successIfResourceNotExisting = true)
     private String uuid;
 
     public String getUuid() {

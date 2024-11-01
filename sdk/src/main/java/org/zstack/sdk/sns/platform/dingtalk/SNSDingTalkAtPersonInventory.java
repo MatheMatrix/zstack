@@ -28,4 +28,28 @@ public class SNSDingTalkAtPersonInventory  {
         return this.endpointUuid;
     }
 
+    public java.sql.Timestamp createDate;
+    public void setCreateDate(java.sql.Timestamp createDate) {
+        this.createDate = createDate;
+    }
+    public java.sql.Timestamp getCreateDate() {
+        return this.createDate;
+    }
+
+    public java.sql.Timestamp lastOpDate;
+    public void setLastOpDate(java.sql.Timestamp lastOpDate) {
+        this.lastOpDate = lastOpDate;
+    }
+    public java.sql.Timestamp getLastOpDate() {
+        return this.lastOpDate;
+    }
+
+    public java.lang.String remark;
+    public void setRemark(java.lang.String remark) {
+        this.remark = remark;
+    }
+    public java.lang.String getRemark() {
+        return this.remark;
+    }
+
 }

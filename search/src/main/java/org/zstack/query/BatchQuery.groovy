@@ -12,9 +12,9 @@ import org.zstack.core.cloudbus.CloudBus
 import org.zstack.header.errorcode.OperationFailureException
 import org.zstack.header.exception.CloudRuntimeException
 import org.zstack.header.identity.AccountConstant
-import org.zstack.header.identity.Action
 import org.zstack.header.identity.SessionInventory
 import org.zstack.header.identity.SuppressCredentialCheck
+import org.zstack.header.identity.rbac.RBAC
 import org.zstack.header.message.APIMessage
 import org.zstack.header.message.APIResponse
 import org.zstack.header.message.APISyncCallMessage
@@ -304,9 +304,12 @@ class BatchQuery {
         startDebug(msg)
 
         msg.setSession(session)
-        if (AccountConstant.INITIAL_SYSTEM_ADMIN_UUID != msg.session.accountUuid && !msgClz.isAnnotationPresent(Action.class)) {
+        def bucket = RBAC.apiBuckets.get(msg.class)
+        def adminOnly = bucket == null ? true : bucket.adminOnly
+
+        // TODO: the better way to check permission is to use class RBACAPIRequestChecker (in identity module)
+        if (AccountConstant.INITIAL_SYSTEM_ADMIN_UUID != msg.session.accountUuid && adminOnly) {
             // the resource is owned by admin and the account is a normal account
-            //TODO: fix hard code check admin query
             return ["total": 0, "result": []]
         }
 

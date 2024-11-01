@@ -4,7 +4,6 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.configuration.InstanceOfferingVO;
 import org.zstack.header.host.HostVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -17,7 +16,6 @@ import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
 import org.zstack.header.tag.TagResourceType;
 import org.zstack.header.zone.ZoneVO;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +24,6 @@ import java.util.Map;
  * Created by MaJin on 2021/3/10.
  */
 @TagResourceType(VmInstanceVO.class)
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances/from/volume-snapshots/group/{volumeSnapshotGroupUuid}",
         method = HttpMethod.POST,
@@ -46,7 +43,7 @@ public class APICreateVmInstanceFromVolumeSnapshotGroupMsg extends APICreateMess
     /**
      * @desc uuid of instance offering. See :ref:`InstanceOfferingInventory`
      */
-    @APIParam(resourceType = InstanceOfferingVO.class, checkAccount = true, required = false)
+    @APIParam(resourceType = InstanceOfferingVO.class, required = false)
     private String instanceOfferingUuid;
 
     @APIParam(required = false)
@@ -61,7 +58,7 @@ public class APICreateVmInstanceFromVolumeSnapshotGroupMsg extends APICreateMess
     /**
      * @desc a list of L3Network uuid the vm will create nic on. See :ref:`L3NetworkInventory`
      */
-    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true, required = false)
+    @APIParam(resourceType = L3NetworkVO.class, required = false)
     private List<String> l3NetworkUuids;
     /**
      * @desc see type of :ref:`VmInstanceInventory`
@@ -74,7 +71,7 @@ public class APICreateVmInstanceFromVolumeSnapshotGroupMsg extends APICreateMess
      * @desc root volume. Optional when vm is created from RootVolumeTemplate,
      * mandatory when vm is created from ISO. See 'mediaType' of :ref:`ImageInventory`
      */
-    @APIParam(resourceType = VolumeSnapshotGroupVO.class, checkAccount = true)
+    @APIParam(resourceType = VolumeSnapshotGroupVO.class)
     private String volumeSnapshotGroupUuid;
 
     @APIParam(required = false, resourceType = ZoneVO.class)

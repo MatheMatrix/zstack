@@ -231,6 +231,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
             @Override
             public void run(MessageReply r) {
                 if (!r.isSuccess()) {
+                    dbf.remove(vo);
                     reply.setError(r.getError());
                     bus.reply(msg, reply);
                     return;
@@ -2027,12 +2028,12 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
         // TODO: move to compute module.
 
         String architecture = spec.getArchitecture();
-        if (architecture == null && spec.getImage() != null) {
-            architecture = spec.getImage().getArchitecture();
-        }
-
         if (architecture == null && spec.getVmInstance() != null) {
             architecture = spec.getVmInstance().getArchitecture();
+        }
+
+        if (architecture == null && spec.getImage() != null) {
+            architecture = spec.getImage().getArchitecture();
         }
 
         if (architecture == null) {

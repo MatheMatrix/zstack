@@ -1,7 +1,6 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
@@ -10,7 +9,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by shixin.ruan on 02/25/2019.
  */
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/load-balancers/listeners/{uuid}/actions",
         method = HttpMethod.PUT,
@@ -18,7 +16,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 public class APIChangeLoadBalancerListenerMsg extends APIMessage implements LoadBalancerListenerMsg , LoadBalancerMessage {
-    @APIParam(resourceType = LoadBalancerListenerVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerListenerVO.class)
     private String uuid;
 
     @APIParam(numberRange = {LoadBalancerConstants.CONNECTION_IDLE_TIMEOUT_MIN, LoadBalancerConstants.CONNECTION_IDLE_TIMEOUT_MAX}, required = false)

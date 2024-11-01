@@ -109,7 +109,6 @@ class ChangeLldpModeCase extends SubCase {
         vo.setMac("ac:1f:6b:93:6c:8e")
         vo.setPciDeviceAddress("0e:00.2")
         vo.setInterfaceType("noMaster")
-        vo.setAccountUuid("36c27e8ff05c4780bf6d2fa65700f22e")
         vo.setResourceName("test")
         dbf.persist(vo)
 
@@ -135,7 +134,6 @@ class ChangeLldpModeCase extends SubCase {
         vo1.setMac("ac:1f:6b:93:6c:8e")
         vo1.setPciDeviceAddress("0e:00.2")
         vo1.setInterfaceType("noMaster")
-        vo1.setAccountUuid("36c27e8ff05c4780bf6d2fa65700f22e")
         vo1.setResourceName("test")
         dbf.persist(vo1)
 
@@ -163,7 +161,6 @@ class ChangeLldpModeCase extends SubCase {
         vo.setMac("ac:1f:6b:93:6c:8e")
         vo.setPciDeviceAddress("0e:00.2")
         vo.setInterfaceType("noMaster")
-        vo.setAccountUuid("36c27e8ff05c4780bf6d2fa65700f22e")
         vo.setResourceName("test")
         dbf.persist(vo)
 

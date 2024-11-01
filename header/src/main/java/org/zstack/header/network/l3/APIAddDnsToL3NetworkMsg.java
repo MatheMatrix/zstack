@@ -1,8 +1,6 @@
 package org.zstack.header.network.l3;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -35,7 +33,6 @@ import org.zstack.header.rest.RestRequest;
  * @result see :ref:`APIAddDnsToL3NetworkEvent`
  * @since 0.1.0
  */
-@Action(category = L3NetworkConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/l3-networks/{l3NetworkUuid}/dns",
         method = HttpMethod.POST,
@@ -46,7 +43,7 @@ public class APIAddDnsToL3NetworkMsg extends APIMessage implements L3NetworkMess
     /**
      * @desc l3Network uuid
      */
-    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = L3NetworkVO.class)
     private String l3NetworkUuid;
     /**
      * @desc dns in IPv4

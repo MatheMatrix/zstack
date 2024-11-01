@@ -1,7 +1,6 @@
 package org.zstack.header.image;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.log.NoLogging;
 import org.zstack.header.message.*;
 import org.zstack.header.other.APIAuditor;
@@ -15,7 +14,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @TagResourceType(ImageVO.class)
-@Action(category = ImageConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/images",
         method = HttpMethod.POST,
@@ -42,7 +40,7 @@ public class APIAddImageMsg extends APICreateMessage implements APIAuditor, AddI
     private String format;
     @APIParam(required = false, validValues = {"Linux", "Windows", "Other", "Paravirtualization", "WindowsVirtio"})
     private String platform;
-    @APIParam(nonempty = true, resourceType = BackupStorageVO.class, noOwnerCheck = true)
+    @APIParam(nonempty = true, resourceType = BackupStorageVO.class)
     private List<String> backupStorageUuids;
     private String type;
     @APIParam(required = false)

@@ -1,7 +1,6 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l3.L3NetworkVO;
@@ -11,7 +10,6 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 import java.util.Map;
 
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances/nics/{vmNicUuid}/l3-networks/{destL3NetworkUuid}",
         parameterName = "params",
@@ -19,11 +17,14 @@ import java.util.Map;
         responseClass = APIChangeVmNicNetworkEvent.class
 )
 public class APIChangeVmNicNetworkMsg extends APIMessage implements VmInstanceMessage{
-    @APIParam(resourceType = VmNicVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VmNicVO.class)
     private String vmNicUuid;
 
-    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true)
+    @APIParam(resourceType = L3NetworkVO.class)
     private String destL3NetworkUuid;
+
+    @APIParam(required = false)
+    private String vmNicParams;
 
     @APINoSee
     private String vmInstanceUuid;
@@ -47,6 +48,14 @@ public class APIChangeVmNicNetworkMsg extends APIMessage implements VmInstanceMe
 
     public void setDestL3NetworkUuid(String destL3NetworkUuid) {
         this.destL3NetworkUuid = destL3NetworkUuid;
+    }
+
+    public String getVmNicParams() {
+        return vmNicParams;
+    }
+
+    public void setVmNicParams(String vmNicParams) {
+        this.vmNicParams = vmNicParams;
     }
 
     public Map<String, List<String>> getRequiredIpMap() {

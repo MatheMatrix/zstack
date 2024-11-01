@@ -1,7 +1,6 @@
 package org.zstack.header.tag;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -9,7 +8,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by frank on 8/17/2015.
  */
-@Action(category = TagConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/system-tags/{uuid}/actions",
         responseClass = APIUpdateSystemTagEvent.class,
@@ -17,7 +15,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT
 )
 public class APIUpdateSystemTagMsg extends APIMessage {
-    @APIParam(resourceType = SystemTagVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = SystemTagVO.class)
     private String uuid;
     @APIParam
     private String tag;

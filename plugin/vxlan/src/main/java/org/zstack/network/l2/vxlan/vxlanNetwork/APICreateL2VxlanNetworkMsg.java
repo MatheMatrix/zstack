@@ -1,17 +1,14 @@
 package org.zstack.network.l2.vxlan.vxlanNetwork;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.OverriddenApiParam;
 import org.zstack.header.message.OverriddenApiParams;
 import org.zstack.header.network.l2.APICreateL2NetworkMsg;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.zone.ZoneVO;
-import org.zstack.network.l2.vxlan.vxlanNetworkPool.VxlanNetworkPoolConstant;
 import org.zstack.network.l2.vxlan.vxlanNetworkPool.VxlanNetworkPoolVO;
 
-@Action(category = VxlanNetworkPoolConstant.ACTION_CATEGORY)
 @OverriddenApiParams({
         @OverriddenApiParam(field = "physicalInterface", param = @APIParam(maxLength = 1024, required = false)),
         @OverriddenApiParam(field = "zoneUuid", param = @APIParam(maxLength = 1024, required = false, resourceType = ZoneVO.class))

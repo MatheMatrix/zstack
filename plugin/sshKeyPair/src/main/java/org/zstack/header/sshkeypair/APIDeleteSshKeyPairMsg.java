@@ -13,7 +13,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIDeleteSshKeyPairEvent.class
 )
 public class APIDeleteSshKeyPairMsg extends APIMessage implements SshKeyPairMessage, APIAuditor {
-    @APIParam(resourceType = SshKeyPairVO.class, operationTarget = true, checkAccount = true)
+    @APIParam(resourceType = SshKeyPairVO.class)
     private String uuid;
 
     public String getUuid() {

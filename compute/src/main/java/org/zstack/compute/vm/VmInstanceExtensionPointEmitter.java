@@ -1,15 +1,20 @@
 package org.zstack.compute.vm;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.zstack.core.asyncbatch.While;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.header.Component;
 import org.zstack.header.core.Completion;
+import org.zstack.header.core.NoErrorCompletion;
+import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.vm.*;
+import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
@@ -176,15 +181,6 @@ public class VmInstanceExtensionPointEmitter implements Component {
         });
     }
 
-    public void afterFailedToStopVm(final VmInstanceInventory inv, final ErrorCode reason) {
-        CollectionUtils.forEach(stopVmExtensions, new ForEachFunction<VmInstanceStopExtensionPoint>() {
-            @Override
-            public void run(VmInstanceStopExtensionPoint arg) {
-                arg.afterFailedToStopVm(inv, reason);
-            }
-        });
-    }
-
     public ErrorCode preRebootVm(final VmInstanceInventory inv) {
         for (VmInstanceRebootExtensionPoint ext : rebootVmExtensions) {
             try {
@@ -328,6 +324,30 @@ public class VmInstanceExtensionPointEmitter implements Component {
         CollectionUtils.safeForEach(migrateVmExtensions, arg -> arg.beforeMigrateVm(inv, dstHostUuid));
     }
 
+    public void postMigrateVm(final VmInstanceInventory inv, final String dstHostUuid, Completion completion) {
+        new While<>(migrateVmExtensions).each((ext, comp) -> ext.postMigrateVm(inv, dstHostUuid, new Completion(comp) {
+            @Override
+            public void success() {
+                comp.done();
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                comp.addError(errorCode);
+                comp.allDone();
+            }
+        })).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                if (!errorCodeList.getCauses().isEmpty()) {
+                    completion.fail(errorCodeList.getCauses().get(0));
+                } else {
+                    completion.success();
+                }
+            }
+        });
+    }
+
     public void afterMigrateVm(final VmInstanceInventory inv, final String srcHostUuid) {
         CollectionUtils.safeForEach(migrateVmExtensions, new ForEachFunction<VmInstanceMigrateExtensionPoint>() {
             @Override
@@ -455,8 +475,8 @@ public class VmInstanceExtensionPointEmitter implements Component {
         });
     }
 
-    public void cleanUpAfterVmFailedToStart(final VmInstanceInventory vm) {
-        CollectionUtils.safeForEach(cleanUpAfterVmFailedToStartExtensionPoints, arg -> arg.cleanUpAfterVmFailedToStart(vm));
+    public void cleanUpAfterVmFailedToStart(final VmInstanceInventory vm, VmOperation op) {
+        CollectionUtils.safeForEach(cleanUpAfterVmFailedToStartExtensionPoints, arg -> arg.cleanUpAfterVmFailedToStart(vm, op));
     }
 
     public void cleanUpAfterVmChangeImage(final VmInstanceInventory vm) {

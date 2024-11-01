@@ -1,7 +1,6 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -12,16 +11,15 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by shixin on 03/26/2018.
  */
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/load-balancers/listeners/{listenerUuid}/certificate",
         method = HttpMethod.DELETE,
         responseClass = APIRemoveCertificateFromLoadBalancerListenerEvent.class
 )
 public class APIRemoveCertificateFromLoadBalancerListenerMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
-    @APIParam(resourceType = CertificateVO.class, checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = CertificateVO.class, nonempty = true)
     private String certificateUuid;
-    @APIParam(resourceType = LoadBalancerListenerVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerListenerVO.class)
     private String listenerUuid;
     @APINoSee
     private String loadBalancerUuid;

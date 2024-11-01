@@ -1,10 +1,6 @@
 package org.zstack.header.longjob;
 
-import org.hamcrest.StringDescription;
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.longjob.LongJobConstants;
-import org.zstack.header.longjob.LongJobVO;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -12,7 +8,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  *  * Created on 2/3/2020
  *   */
-@Action(category = LongJobConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/longjobs/{uuid}/actions",
         isAction = true,
@@ -20,7 +15,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateLongJobEvent.class
 )
 public class APIUpdateLongJobMsg extends APIMessage implements LongJobMessage {
-    @APIParam(resourceType = LongJobVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LongJobVO.class, scope = APIParam.SCOPE_MUST_OWNER)
     private String uuid;
 
     @APIParam(maxLength = 255, required = false)

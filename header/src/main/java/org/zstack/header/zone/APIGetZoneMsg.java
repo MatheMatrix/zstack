@@ -1,11 +1,9 @@
 package org.zstack.header.zone;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 
-@Action(category = ZoneConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/zones/{uuid}/info",
         method = HttpMethod.GET,

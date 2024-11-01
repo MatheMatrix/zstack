@@ -1,8 +1,6 @@
 package org.zstack.network.securitygroup;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -47,7 +45,6 @@ import org.zstack.header.rest.RestRequest;
  * @result
  * see :ref:`APIChangeSecurityGroupStateEvent`
  */
-@Action(category = SecurityGroupConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/security-groups/{uuid}/actions",
         method = HttpMethod.PUT,
@@ -55,7 +52,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 public class APIChangeSecurityGroupStateMsg extends APIMessage {
-    @APIParam(resourceType = SecurityGroupVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = SecurityGroupVO.class)
     private String uuid;
     @APIParam(validValues = {"enable", "disable"})
     private String stateEvent;

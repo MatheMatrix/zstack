@@ -340,13 +340,37 @@ public abstract class HostBase extends AbstractHost {
     }
 
     private void handle(APIUpdateHostMsg msg) {
-        HostVO vo = updateHost(msg);
-        if (vo != null) {
-            self = dbf.updateAndRefresh(vo);
-        }
         APIUpdateHostEvent evt = new APIUpdateHostEvent(msg.getId());
-        evt.setInventory(getSelfInventory());
-        bus.publish(evt);
+        HostInventory oldHost = getSelfInventory();
+        HostVO vo = updateHost(msg);
+        if (vo == null) {
+            evt.setInventory(getSelfInventory());
+            bus.publish(evt);
+            return;
+        }
+
+        FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
+        chain.setName(String.format("after-host-%s-updated", self.getUuid()));
+        chain.allowEmptyFlow();
+
+        for (HostAfterUpdatedExtensionPoint ext : pluginRgty.getExtensionList(HostAfterUpdatedExtensionPoint.class)) {
+            chain.then(ext.afterHostUpdated(oldHost, HostInventory.valueOf(vo)));
+        }
+
+        chain.done(new FlowDoneHandler(msg) {
+            @Override
+            public void handle(Map data) {
+                self = dbf.updateAndRefresh(vo);
+                evt.setInventory(getSelfInventory());
+                bus.publish(evt);
+            }
+        }).error(new FlowErrorHandler(msg) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                evt.setError(errCode);
+                bus.publish(evt);
+            }
+        }).start();
     }
 
     private String getVmHostUuid(String vmUuid) {
@@ -1306,26 +1330,6 @@ public abstract class HostBase extends AbstractHost {
                         });
 
                         flow(new NoRollbackFlow() {
-                            String __name__ = "connect-host";
-
-                            @Override
-                            public void run(final FlowTrigger trigger, Map data) {
-                                changeConnectionState(HostStatusEvent.connecting);
-                                connectHook(ConnectHostInfo.fromConnectHostMsg(msg), new Completion(trigger) {
-                                    @Override
-                                    public void success() {
-                                        trigger.next();
-                                    }
-
-                                    @Override
-                                    public void fail(ErrorCode errorCode) {
-                                        trigger.fail(errorCode);
-                                    }
-                                });
-                            }
-                        });
-
-                        flow(new NoRollbackFlow() {
                             String __name__ = "call-pre-connect-extensions";
 
                             @Override
@@ -1333,11 +1337,8 @@ public abstract class HostBase extends AbstractHost {
                                 FlowChain preConnectChain = FlowChainBuilder.newSimpleFlowChain();
                                 preConnectChain.allowEmptyFlow();
 
-                                self = dbf.reload(self);
-                                HostInventory inv = getSelfInventory();
-
                                 for (PreHostConnectExtensionPoint p : pluginRgty.getExtensionList(PreHostConnectExtensionPoint.class)) {
-                                    Flow flow = p.createPreHostConnectFlow(inv);
+                                    Flow flow = p.createPreHostConnectFlow(msg);
                                     if (flow != null) {
                                         preConnectChain.then(flow);
                                     }
@@ -1354,6 +1355,26 @@ public abstract class HostBase extends AbstractHost {
                                         trigger.fail(errCode);
                                     }
                                 }).start();
+                            }
+                        });
+
+                        flow(new NoRollbackFlow() {
+                            String __name__ = "connect-host";
+
+                            @Override
+                            public void run(final FlowTrigger trigger, Map data) {
+                                changeConnectionState(HostStatusEvent.connecting);
+                                connectHook(ConnectHostInfo.fromConnectHostMsg(msg), new Completion(trigger) {
+                                    @Override
+                                    public void success() {
+                                        trigger.next();
+                                    }
+
+                                    @Override
+                                    public void fail(ErrorCode errorCode) {
+                                        trigger.fail(errorCode);
+                                    }
+                                });
                             }
                         });
 

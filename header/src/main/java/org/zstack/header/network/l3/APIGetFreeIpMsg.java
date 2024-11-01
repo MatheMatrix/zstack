@@ -1,7 +1,6 @@
 package org.zstack.header.network.l3;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
@@ -10,7 +9,6 @@ import org.zstack.header.rest.SDK;
 /**
  * Created by frank on 6/15/2015.
  */
-@Action(category = L3NetworkConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "null",
         optionalPaths = {
@@ -29,9 +27,9 @@ import org.zstack.header.rest.SDK;
         }
 )
 public class APIGetFreeIpMsg extends APISyncCallMessage implements L3NetworkMessage {
-    @APIParam(resourceType = L3NetworkVO.class, required = false, checkAccount = true)
+    @APIParam(resourceType = L3NetworkVO.class, required = false)
     private String l3NetworkUuid;
-    @APIParam(resourceType = IpRangeVO.class, required = false, checkAccount = true)
+    @APIParam(resourceType = IpRangeVO.class, required = false)
     private String ipRangeUuid;
     @APIParam(required = false)
     private String start;

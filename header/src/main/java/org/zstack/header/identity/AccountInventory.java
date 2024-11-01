@@ -9,15 +9,10 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 @Inventory(mappingVOClass = AccountVO.class)
 @ExpandedQueries({
-        @ExpandedQuery(expandedField = "user", inventoryClass = UserInventory.class,
-                foreignKey = "uuid", expandedInventoryKey = "accountUuid"),
-        @ExpandedQuery(expandedField = "group", inventoryClass = UserGroupInventory.class,
-                foreignKey = "uuid", expandedInventoryKey = "accountUuid"),
-        @ExpandedQuery(expandedField = "policy", inventoryClass = PolicyInventory.class,
-                foreignKey = "uuid", expandedInventoryKey = "accountUuid"),
         @ExpandedQuery(expandedField = "quota", inventoryClass = QuotaInventory.class,
                 foreignKey = "uuid", expandedInventoryKey = "identityUuid")
 })
@@ -27,6 +22,7 @@ public class AccountInventory {
     private String name;
     private String description;
     private String type;
+    private String state;
     private Timestamp createDate;
     private Timestamp lastOpDate;
 
@@ -36,6 +32,7 @@ public class AccountInventory {
         inv.setName(vo.getName());
         inv.setDescription(vo.getDescription());
         inv.setType(vo.getType().toString());
+        inv.setState(vo.getState().toString());
         inv.setCreateDate(vo.getCreateDate());
         inv.setLastOpDate(vo.getLastOpDate());
         return inv;
@@ -81,6 +78,14 @@ public class AccountInventory {
         this.name = name;
     }
 
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
     public Timestamp getCreateDate() {
         return createDate;
     }
@@ -95,5 +100,17 @@ public class AccountInventory {
 
     public void setLastOpDate(Timestamp lastOpDate) {
         this.lastOpDate = lastOpDate;
+    }
+
+    public static AccountInventory __example__() {
+        AccountInventory account = new AccountInventory();
+        account.setUuid(UUID.randomUUID().toString().replace("-", ""));
+        account.setName("account1");
+        account.setDescription("account1-description");
+        account.setType(AccountType.Normal.toString());
+        account.setState(AccountState.Enabled.toString());
+        account.setCreateDate(new Timestamp(org.zstack.header.message.DocUtils.date));
+        account.setLastOpDate(new Timestamp(org.zstack.header.message.DocUtils.date));
+        return account;
     }
 }

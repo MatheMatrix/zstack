@@ -8,9 +8,9 @@ import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.MessageSafe;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.*;
-import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.AbstractService;
+import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.exception.CloudRuntimeException;
@@ -29,8 +29,7 @@ import org.zstack.header.vm.VmNicVO;
 import org.zstack.header.vm.VmNicVO_;
 import org.zstack.header.zone.ZoneVO;
 import org.zstack.identity.AccountManager;
-import org.zstack.identity.ResourceSharingExtensionPoint;
-import org.zstack.network.l2.L2NetworkCascadeFilterExtensionPoint;
+import org.zstack.identity.header.ShareResourceContext;
 import org.zstack.network.service.MtuGetter;
 import org.zstack.network.service.NetworkServiceSystemTag;
 import org.zstack.resourceconfig.ResourceConfig;
@@ -53,13 +52,12 @@ import javax.persistence.TypedQuery;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.Callable;
-import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.err;
 import static org.zstack.utils.CollectionDSL.*;
 
 public class L3NetworkManagerImpl extends AbstractService implements L3NetworkManager, ReportQuotaExtensionPoint,
-        ResourceOwnerPreChangeExtensionPoint, PrepareDbInitialValueExtensionPoint, ResourceSharingExtensionPoint {
+        ResourceOwnerPreChangeExtensionPoint, PrepareDbInitialValueExtensionPoint {
     private static final CLogger logger = Utils.getLogger(L3NetworkManagerImpl.class);
 
     @Autowired
@@ -427,11 +425,10 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
     }
 
     private void handle(APICreateL3NetworkMsg msg) {
-        SimpleQuery<L2NetworkVO> query = dbf.createQuery(L2NetworkVO.class);
-        query.select(L2NetworkVO_.zoneUuid);
-        query.add(L2NetworkVO_.uuid, Op.EQ, msg.getL2NetworkUuid());
-        String zoneUuid = query.findValue();
-        assert zoneUuid != null;
+        String zoneUuid = null;
+        if (msg.getL2NetworkUuid() != null) {
+            zoneUuid = Q.New(L2NetworkVO.class).select(L2NetworkVO_.zoneUuid).eq(L2NetworkVO_.uuid, msg.getL2NetworkUuid()).findValue();
+        }
 
         L3NetworkVO vo = new L3NetworkVO();
         if (msg.getResourceUuid() != null) {
@@ -453,37 +450,42 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
         } else {
             vo.setIpVersion(IPv6Constants.IPv4);
         }
-
-        L3NetworkFactory factory = getL3NetworkFactory(L3NetworkType.valueOf(msg.getType()));
-        L3NetworkInventory inv = new SQLBatchWithReturn<L3NetworkInventory>() {
-            @Override
-            protected L3NetworkInventory scripts() {
-                vo.setAccountUuid(msg.getSession().getAccountUuid());
-                L3NetworkInventory inv = factory.createL3Network(vo, msg);
-                tagMgr.createTagsFromAPICreateMessage(msg, vo.getUuid(), L3NetworkVO.class.getSimpleName());
-                return inv;
-            }
-        }.execute();
-
-        if (msg.isSystem()) {
-            L2NetworkVO l2NetworkVO = dbf.findByUuid(msg.getL2NetworkUuid(), L2NetworkVO.class);
-            List<String> clusterUuids = Q.New(L2NetworkClusterRefVO.class).select(L2NetworkClusterRefVO_.clusterUuid)
-                    .eq(L2NetworkClusterRefVO_.l2NetworkUuid, l2NetworkVO.getUuid()).listValues();
-            if (clusterUuids != null && !clusterUuids.isEmpty()) {
-                List<String> hostUuids = Q.New(HostVO.class).select(HostVO_.uuid)
-                        .in(HostVO_.clusterUuid, clusterUuids).listValues();
-                for (ServiceTypeExtensionPoint ext : pluginRgty.getExtensionList(ServiceTypeExtensionPoint.class)) {
-                    syncManagementServiceTypeWhileCreate(ext, l2NetworkVO, hostUuids);
-                }
-            }
-        }
-
-        extpEmitter.afterCreate(inv);
+        vo.setAccountUuid(msg.getSession().getAccountUuid());
 
         APICreateL3NetworkEvent evt = new APICreateL3NetworkEvent(msg.getId());
-        evt.setInventory(inv);
-        logger.debug(String.format("Successfully created L3Network[name:%s, uuid:%s]", inv.getName(), inv.getUuid()));
-        bus.publish(evt);
+        L3NetworkFactory factory = getL3NetworkFactory(L3NetworkType.valueOf(msg.getType()));
+        factory.createL3Network(vo, msg, new ReturnValueCompletion<L3NetworkInventory>(msg) {
+            @Override
+            public void success(L3NetworkInventory returnValue) {
+                tagMgr.createTagsFromAPICreateMessage(msg, returnValue.getUuid(), L3NetworkVO.class.getSimpleName());
+
+                if (msg.isSystem()) {
+                    L2NetworkVO l2NetworkVO = dbf.findByUuid(msg.getL2NetworkUuid(), L2NetworkVO.class);
+                    List<String> clusterUuids = Q.New(L2NetworkClusterRefVO.class).select(L2NetworkClusterRefVO_.clusterUuid)
+                            .eq(L2NetworkClusterRefVO_.l2NetworkUuid, l2NetworkVO.getUuid()).listValues();
+                    if (clusterUuids != null && !clusterUuids.isEmpty()) {
+                        List<String> hostUuids = Q.New(HostVO.class).select(HostVO_.uuid)
+                                .in(HostVO_.clusterUuid, clusterUuids).listValues();
+                        for (ServiceTypeExtensionPoint ext : pluginRgty.getExtensionList(ServiceTypeExtensionPoint.class)) {
+                            syncManagementServiceTypeWhileCreate(ext, l2NetworkVO, hostUuids);
+                        }
+                    }
+                }
+
+                extpEmitter.afterCreate(evt.getInventory());
+
+                evt.setInventory(returnValue);
+                logger.debug(String.format("Successfully created L3Network[name:%s, uuid:%s]",
+                        returnValue.getName(), returnValue.getUuid()));
+                bus.publish(evt);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                evt.setError(errorCode);
+                bus.publish(evt);
+            }
+        });
     }
 
     @Override
@@ -773,20 +775,5 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
         }
 
         return ret;
-    }
-
-    @Override
-    public List<String> beforeResourceSharingExtensionPoint(Map<String, String> uuidType) {
-        List<String> additionUuids = new ArrayList<>();
-        for (String uuid : uuidType.keySet()) {
-            if (L3NetworkVO.class.getSimpleName().equals(uuidType.get(uuid))) {
-                additionUuids.addAll(Q.New(IpRangeVO.class).select(IpRangeVO_.uuid).eq(IpRangeVO_.l3NetworkUuid, uuid).listValues());
-            }
-        }
-        return additionUuids;
-    }
-
-    @Override
-    public void afterResourceSharingExtensionPoint(Map<String, String> uuidType, List<String> accountUuids, boolean isToPublic) {
     }
 }

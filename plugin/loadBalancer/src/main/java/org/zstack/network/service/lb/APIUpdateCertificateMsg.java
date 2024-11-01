@@ -1,17 +1,13 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APICreateMessage;
-import org.zstack.header.message.APIEvent;
-import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
 /**
  * Created by shixin on 04/12/2018.
  */
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/certificates/{uuid}/actions",
         method = HttpMethod.PUT,
@@ -19,7 +15,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 public class APIUpdateCertificateMsg extends APICreateMessage {
-    @APIParam(resourceType = CertificateVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = CertificateVO.class)
     private String uuid;
     @APIParam(maxLength = 255, required = false)
     private String name;

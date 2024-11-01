@@ -1,7 +1,5 @@
 package org.zstack.header.storage.snapshot;
 
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
@@ -34,12 +32,11 @@ import org.zstack.header.storage.backup.BackupStorageVO;
  * @since 0.1.0
  */
 
-@Action(category = VolumeSnapshotConstant.ACTION_CATEGORY)
 public class APIBackupVolumeSnapshotMsg extends APIMessage implements VolumeSnapshotMessage {
     /**
      * @desc volume snapshot uuid
      */
-    @APIParam(resourceType = VolumeSnapshotVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeSnapshotVO.class)
     private String uuid;
     /**
      * @desc uuid of backup storage where the snapshot is being backed up. If omitted, zstack

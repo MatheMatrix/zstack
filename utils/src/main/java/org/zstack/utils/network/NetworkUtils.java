@@ -956,7 +956,7 @@ public class NetworkUtils {
         }
     }
 
-    public static Boolean isValidInternalAddress(String ip) {
+    public static Boolean isInternalAddress(String ip) {
         if (isIpv4Address(ip)) {
             return isAutomaticPrivateIpAddr(ip);
         } else if (IPv6NetworkUtils.isIpv6Address(ip)) {
@@ -964,6 +964,14 @@ public class NetworkUtils {
         } else {
             return Boolean.FALSE;
         }
+    }
+
+    public static Boolean isValidVlan(Integer vlanId) {
+        return vlanId != null && vlanId >= 0 && vlanId <= 4094;
+    }
+
+    public static Boolean isValidVni(Integer vni){
+        return vni != null && vni >= 1 && vni <= 16777214;
     }
 }
 

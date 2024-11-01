@@ -2064,7 +2064,7 @@ ${txt}
             }
 
             if (at.allTo() != "") {
-                fsToAdd[at.allTo()] = responseClass.getDeclaredField(at.allTo())
+                fsToAdd[at.allTo()] = getFieldRecursively(responseClass, at.allTo())
                 supplementFields('success', responseClass, at)
                 supplementFields('error', responseClass, at)
             } else if (at.fieldsTo().length == 1 && at.fieldsTo()[0] == "all") {
@@ -2087,6 +2087,20 @@ ${txt}
 
         }
 
+        static Field getFieldRecursively(Class<?> clazz, String fieldName) {
+            try {
+                return clazz.getDeclaredField(fieldName)
+            } catch (NoSuchFieldException e) {
+                Class<?> superClass = clazz.getSuperclass()
+
+                if (superClass != null && superClass != Object.class) {
+                    return getFieldRecursively(superClass, fieldName)
+                } else {
+                    throw e
+                }
+            }
+        }
+
         void supplementFields(String fieldName, Class clz, RestResponse at){
             if(!at.fieldsTo().contains(fieldName)){
                 fsToAdd.put(fieldName, FieldUtils.getField(fieldName, clz))
@@ -2102,7 +2116,7 @@ ${txt}
 \t\tname "${n}"
 \t\tdesc "${desc == null ? "" : desc}"
 \t\ttype "${type}"
-\t\tsince "${projectVersion != null ? projectVersion : "0.6"}"
+\t\tsince "${projectVersion != null ? projectVersion : "zsv 4.2.0 (please update it)"}"
 \t}"""
         }
 
@@ -2118,7 +2132,7 @@ ${txt}
 \t\tpath "${path}"
 \t\tdesc "${desc}"${overrideDesc != null ? ",${overrideDesc}" : ""}
 \t\ttype "${type}"
-\t\tsince "${projectVersion != null ? projectVersion : "0.6"}"
+\t\tsince "${projectVersion != null ? projectVersion : "zsv 4.2.0 (please update it)"}"
 \t\tclz ${clz.simpleName}.class
 \t}"""
         }
@@ -2301,7 +2315,7 @@ ${fieldStr}
 \t\t\t\t\tlocation "${location}"
 \t\t\t\t\ttype "${af.type.simpleName}"
 \t\t\t\t\toptional ${ap == null ? true : !ap.required()}
-\t\t\t\t\tsince "${projectVersion != null ? projectVersion : "0.6"}"
+\t\t\t\t\tsince "${projectVersion != null ? projectVersion : "zsv 4.2.0 (please update it)"}"
 """)
                 if (values != null) {
                     cols.add("\t\t\t\t\t${values}")

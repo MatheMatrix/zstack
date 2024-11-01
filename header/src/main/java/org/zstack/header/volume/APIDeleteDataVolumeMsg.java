@@ -1,10 +1,13 @@
 package org.zstack.header.volume;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+
+import java.util.List;
+
+import static org.zstack.utils.CollectionDSL.list;
 
 /**
  * @api delete a data volume
@@ -34,7 +37,6 @@ import org.zstack.header.rest.RestRequest;
  * @result see :ref:`APIDeleteDataVolumeEvent`
  * @since 0.1.0
  */
-@Action(category = VolumeConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volumes/{uuid}",
         method = HttpMethod.DELETE,
@@ -58,6 +60,11 @@ public class APIDeleteDataVolumeMsg extends APIDeleteMessage implements VolumeMe
     @Override
     public String getVolumeUuid() {
         return uuid;
+    }
+
+    @Override
+    public List<String> getDeletedResourceUuidList() {
+        return list(getUuid());
     }
  
     public static APIDeleteDataVolumeMsg __example__() {

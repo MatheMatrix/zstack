@@ -1,8 +1,6 @@
 package org.zstack.header.network.l3;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
@@ -11,7 +9,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by frank on 6/16/2015.
  */
-@Action(category = L3NetworkConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/l3-networks/ip-ranges/{uuid}/actions",
         isAction = true,
@@ -19,7 +16,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateIpRangeEvent.class
 )
 public class APIUpdateIpRangeMsg extends APIMessage implements L3NetworkMessage, IpRangeMessage {
-    @APIParam(resourceType = IpRangeVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = IpRangeVO.class)
     private String uuid;
     @APIParam(maxLength = 255, required = false)
     private String name;

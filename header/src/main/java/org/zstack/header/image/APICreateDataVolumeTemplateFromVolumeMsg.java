@@ -1,7 +1,6 @@
 package org.zstack.header.image;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.*;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
@@ -15,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 
 /**
  */
-@Action(category = ImageConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/images/data-volume-templates/from/volumes/{volumeUuid}",
         method = HttpMethod.POST,
@@ -29,7 +27,7 @@ public class APICreateDataVolumeTemplateFromVolumeMsg extends APICreateMessage i
     private String name;
     @APIParam(required = false, maxLength = 2048)
     private String description;
-    @APIParam(resourceType = VolumeVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeVO.class)
     private String volumeUuid;
     @APIParam(required = false, nonempty = true, resourceType = BackupStorageVO.class)
     private List<String> backupStorageUuids;

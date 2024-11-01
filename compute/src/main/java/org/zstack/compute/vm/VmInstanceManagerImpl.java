@@ -62,12 +62,12 @@ import org.zstack.header.tag.SystemTagValidator;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.header.vm.VmInstanceDeletionPolicyManager.VmInstanceDeletionPolicy;
-import org.zstack.header.vm.cdrom.VmCdRomInventory;
 import org.zstack.header.vm.cdrom.VmCdRomVO;
 import org.zstack.header.vm.cdrom.VmCdRomVO_;
 import org.zstack.header.volume.*;
 import org.zstack.header.zone.ZoneInventory;
 import org.zstack.header.zone.ZoneVO;
+import org.zstack.identity.Account;
 import org.zstack.identity.AccountManager;
 import org.zstack.identity.QuotaUtil;
 import org.zstack.network.l3.L3NetworkManager;
@@ -76,6 +76,7 @@ import org.zstack.tag.*;
 import org.zstack.utils.*;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.utils.network.IPv6Constants;
 import org.zstack.utils.network.IPv6NetworkUtils;
 import org.zstack.utils.network.NetworkUtils;
 
@@ -90,13 +91,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static java.lang.Integer.parseInt;
-import static java.lang.Integer.valueOf;
 import static java.util.Arrays.asList;
 import static org.zstack.core.Platform.*;
 import static org.zstack.utils.CollectionDSL.*;
 import static org.zstack.utils.CollectionUtils.merge;
-import static org.zstack.utils.CollectionUtils.transformToList;
 
 public class VmInstanceManagerImpl extends AbstractService implements
         VmInstanceManager,
@@ -174,6 +172,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
     protected EventFacade evtf;
 
     private List<VmInstanceExtensionManager> vmExtensionManagers = new ArrayList<>();
+    private final static VmPortsHelper vmPortsHelper = new VmPortsHelper();
 
     @Override
     public void handleMessage(Message msg) {
@@ -380,7 +379,21 @@ public class VmInstanceManagerImpl extends AbstractService implements
     private void handle(APIGetInterdependentL3NetworksImagesMsg msg) {
         final String accountUuid = msg.getSession().getAccountUuid();
         if (msg.getImageUuid() != null) {
-            getInterdependentL3NetworksByImageUuid(msg, accountUuid);
+            thdf.singleFlightSubmit(new SingleFlightTask(msg)
+                    .setSyncSignature(String.format("get-interdependent-l3-by-image-%s-in-zone-%s",
+                            msg.getImageUuid(),
+                            msg.getZoneUuid()))
+                    .run((completion) -> completion.success(getInterdependentL3NetworksByImageUuid(msg, accountUuid)))
+                    .done(((result) -> {
+                        APIGetInterdependentL3NetworkImageReply reply = new APIGetInterdependentL3NetworkImageReply();
+                        if (!result.isSuccess()) {
+                            reply.setError(result.getErrorCode());
+                        } else {
+                            reply.setInventories((List<L3NetworkInventory>) result.getResult());
+                        }
+
+                        bus.reply(msg, reply);
+                    })));
         } else {
             getInterdependentImagesByL3NetworkUuids(msg);
         }
@@ -474,9 +487,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
     }
 
     @Transactional(readOnly = true)
-    private void getInterdependentL3NetworksByImageUuid(APIGetInterdependentL3NetworksImagesMsg msg, String accountUuid) {
-        APIGetInterdependentL3NetworkImageReply reply = new APIGetInterdependentL3NetworkImageReply();
-
+    private List<L3NetworkInventory> getInterdependentL3NetworksByImageUuid(APIGetInterdependentL3NetworksImagesMsg msg, String accountUuid) {
         String sql = "select bs" +
                 " from BackupStorageVO bs, ImageBackupStorageRefVO ref, BackupStorageZoneRefVO zref" +
                 " where bs.uuid = ref.backupStorageUuid" +
@@ -499,8 +510,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
             l3s = ext.afterFilterByImage(l3s, bsUuids, msg.getImageUuid());
         }
 
-        reply.setInventories(l3s);
-        bus.reply(msg, reply);
+        return l3s;
     }
 
     @Transactional(readOnly = true)
@@ -609,7 +619,13 @@ public class VmInstanceManagerImpl extends AbstractService implements
             }
         }
 
-        List<String> l3UuidListOfCurrentAccount = acntMgr.getResourceUuidsCanAccessByAccount(accountUuid, L3NetworkVO.class);
+        List<String> l3UuidListOfCurrentAccount;
+        if (!Account.isAdminPermission(accountUuid)) {
+            l3UuidListOfCurrentAccount = acntMgr.getResourceUuidsCanAccessByAccount(accountUuid, L3NetworkVO.class);
+        } else {
+            l3UuidListOfCurrentAccount = null;
+        }
+
         if (l3UuidListOfCurrentAccount == null) {
             return L3NetworkInventory.valueOf(l3s);
         }
@@ -1051,13 +1067,14 @@ public class VmInstanceManagerImpl extends AbstractService implements
                     VmInstanceVO.class.getSimpleName(), false);
         }
 
+        if (!msg.hasSystemTag(VmSystemTags.BOOT_MODE::isMatch)) {
         if (msg.getImageUuid() != null) {
             tagMgr.copySystemTag(
                     msg.getImageUuid(),
                     ImageVO.class.getSimpleName(),
                     finalVo.getUuid(),
                     VmInstanceVO.class.getSimpleName(), false);
-        }
+        }}
 
         if (ImageArchitecture.aarch64.toString().equals(finalVo.getArchitecture())) {
             SystemTagCreator creator = VmSystemTags.MACHINE_TYPE.newSystemTagCreator(finalVo.getUuid());
@@ -1066,10 +1083,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
             creator.create();
         }
 
-        SystemTagCreator creator = VmSystemTags.SYNC_PORTS.newSystemTagCreator(finalVo.getUuid());
-        creator.recreate = true;
-        creator.setTagByTokens(map(e(VmSystemTags.SYNC_PORTS_TOKEN, finalVo.getUuid())));
-        creator.create();
+        vmPortsHelper.setVmSyncPorts(finalVo.getUuid());
     }
 
     private List<ErrorCode> extEmitterHandleSystemTag(final CreateVmInstanceMsg msg, final APICreateMessage cmsg, VmInstanceVO finalVo) {
@@ -1097,6 +1111,15 @@ public class VmInstanceManagerImpl extends AbstractService implements
     }
 
     protected void doCreateVmInstance(final CreateVmInstanceMsg msg, final APICreateMessage cmsg, ReturnValueCompletion<VmInstanceInventory> completion) {
+        boolean uniqueVmName = VmGlobalConfig.UNIQUE_VM_NAME.value(Boolean.class);
+        if (uniqueVmName) {
+            boolean exists = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.name, msg.getName()).isExists();
+            if (exists) {
+                throw new ApiMessageInterceptionException(operr("could not create vm, a vm with the name [%s] already exists",
+                        msg.getName()));
+            }
+        }
+
         pluginRgty.getExtensionList(VmInstanceCreateExtensionPoint.class).forEach(extensionPoint -> {
             extensionPoint.preCreateVmInstance(msg);
         });
@@ -1146,35 +1169,14 @@ public class VmInstanceManagerImpl extends AbstractService implements
         chain.then(new ShareFlow() {
             VmInstanceInventory instantiateVm;
             List<APICreateVmInstanceMsg.DiskAO> otherDisks = new ArrayList<>();
-            boolean attachOtherDisk = false;
+            boolean attachOtherDisks = false;
 
             @Override
             public void setup() {
                 if (!CollectionUtils.isEmpty(msg.getDiskAOs())) {
                     otherDisks = msg.getDiskAOs().stream().filter(diskAO -> !diskAO.isBoot()).collect(Collectors.toList());
                     setDiskAOsName(otherDisks);
-                    attachOtherDisk = !otherDisks.isEmpty();
-                }
-
-                if (VmGlobalConfig.UNIQUE_VM_NAME.value(Boolean.class)) {
-                    flow(new Flow() {
-                        String __name__ = String.format("check-unique-name-for-vm-%s", finalVo.getUuid());
-
-                        @Override
-                        public void run(FlowTrigger trigger, Map data) {
-                            boolean exists = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.name, finalVo.getName()).notEq(VmInstanceVO_.uuid, finalVo.getUuid()).isExists();
-                            if (exists) {
-                                trigger.fail(operr("could not create vm, a vm with the name [%s] already exists", msg.getName()));
-                                return;
-                            }
-                            trigger.next();
-                        }
-
-                        @Override
-                        public void rollback(FlowRollback trigger, Map data) {
-                            trigger.rollback();
-                        }
-                    });
+                    attachOtherDisks = !otherDisks.isEmpty();
                 }
 
                 flow(new Flow() {
@@ -1281,7 +1283,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                         smsg.setVmInstanceInventory(VmInstanceInventory.valueOf(finalVo));
                         smsg.setCandidatePrimaryStorageUuidsForDataVolume(msg.getCandidatePrimaryStorageUuidsForDataVolume());
                         smsg.setCandidatePrimaryStorageUuidsForRootVolume(msg.getCandidatePrimaryStorageUuidsForRootVolume());
-                        if (Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString()) && attachOtherDisk) {
+                        if (Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString()) && attachOtherDisks) {
                             smsg.setStrategy(VmCreationStrategy.CreateStopped.toString());
                         } else {
                             smsg.setStrategy(msg.getStrategy());
@@ -1342,11 +1344,11 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 });
 
 
-                if (!CollectionUtils.isEmpty(otherDisks)) {
+                if (!Objects.equals(msg.getStrategy(), VmCreationStrategy.JustCreate.toString()) && attachOtherDisks) {
                     otherDisks.forEach(diskAO -> flow(new VmInstantiateOtherDiskFlow(diskAO)));
                 }
 
-                if (Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString()) && attachOtherDisk) {
+                if (Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString()) && attachOtherDisks) {
                     flow(new NoRollbackFlow() {
                         String __name__ = "start-vm";
 
@@ -1736,47 +1738,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                         String hostname = VmSystemTags.HOSTNAME.getTokenByTag(sysTag, VmSystemTags.HOSTNAME_TOKEN);
 
                         validateHostname(sysTag, hostname);
-                    } else if (VmSystemTags.STATIC_IP.isMatch(sysTag)) {
-                        validateStaticIp(sysTag);
-                    } 
-                }
-            }
-
-            private void validateStaticIp(String sysTag) {
-                Map<String, String> token = TagUtils.parse(VmSystemTags.STATIC_IP.getTagFormat(), sysTag);
-                String l3Uuid = token.get(VmSystemTags.STATIC_IP_L3_UUID_TOKEN);
-                if (!dbf.isExist(l3Uuid, L3NetworkVO.class)) {
-                    throw new ApiMessageInterceptionException(argerr("L3 network[uuid:%s] not found. Please correct your system tag[%s] of static IP",
-                            l3Uuid, sysTag));
-                }
-
-                String ip = token.get(VmSystemTags.STATIC_IP_TOKEN);
-                ip = IPv6NetworkUtils.ipv6TagValueToAddress(ip);
-                if (!NetworkUtils.isIpv4Address(ip) && !IPv6NetworkUtils.isIpv6Address(ip)) {
-                    throw new ApiMessageInterceptionException(argerr("%s is not a valid ip address. Please correct your system tag[%s] of static IP",
-                            ip, sysTag));
-                }
-
-                if (Q.New(L3NetworkVO.class).eq(L3NetworkVO_.uuid, l3Uuid).eq(L3NetworkVO_.enableIPAM, Boolean.FALSE).isExists()) {
-                    if (Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, ip).eq(UsedIpVO_.l3NetworkUuid, l3Uuid).isExists()) {
-                        throw new ApiMessageInterceptionException(argerr("IP[%s] is already used on the L3 network[uuid:%s]. Please correct your system tag[%s] of static IP",
-                                ip, l3Uuid, sysTag));
                     }
-                    return;
-                }
-
-                CheckIpAvailabilityMsg cmsg = new CheckIpAvailabilityMsg();
-                cmsg.setIp(ip);
-                cmsg.setL3NetworkUuid(l3Uuid);
-                bus.makeLocalServiceId(cmsg, L3NetworkConstant.SERVICE_ID);
-                MessageReply r = bus.call(cmsg);
-                if (!r.isSuccess()) {
-                    throw new ApiMessageInterceptionException(inerr(r.getError().getDetails()));
-                }
-
-                CheckIpAvailabilityReply cr = r.castReply();
-                if (!cr.isAvailable()) {
-                    throw new ApiMessageInterceptionException(operr("IP[%s] is not available on the L3 network[uuid:%s] because: %s", ip, l3Uuid, cr.getReason()));
                 }
             }
 
@@ -1815,8 +1777,6 @@ public class VmInstanceManagerImpl extends AbstractService implements
                     q.select(VmInstanceVO_.defaultL3NetworkUuid);
                     q.add(VmInstanceVO_.uuid, Op.EQ, resourceUuid);
                     String defaultL3Uuid = q.findValue();
-                } else if (VmSystemTags.STATIC_IP.isMatch(systemTag)) {
-                    validateStaticIp(systemTag);
                 } else if (VmSystemTags.BOOT_ORDER.isMatch(systemTag)) {
                     validateBootOrder(systemTag);
                 }
@@ -1865,6 +1825,152 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 throw new ApiMessageInterceptionException(argerr("cpuThreads must be an integer"));
             }
         });
+    }
+
+    private void installStaticIpValidator() {
+        class StaticIpValidator implements SystemTagCreateMessageValidator, SystemTagValidator {
+            @Override
+            public void validateSystemTagInCreateMessage(APICreateMessage cmsg) {
+                for (String sysTag : cmsg.getSystemTags()) {
+                    if (VmSystemTags.STATIC_IP.isMatch(sysTag)) {
+                        validateStaticIp(sysTag, true);
+                    } else if (VmSystemTags.IPV4_GATEWAY.isMatch(sysTag)) {
+                        validateIpv4Gateway(sysTag);
+                    } else if (VmSystemTags.IPV6_GATEWAY.isMatch(sysTag)) {
+                        validateIpv6Gateway(sysTag);
+                    } else if (VmSystemTags.IPV4_NETMASK.isMatch(sysTag)) {
+                        validateIpv4NetMask(sysTag);
+                    } else if (VmSystemTags.IPV6_PREFIX.isMatch(sysTag)) {
+                        validateIpv6Prefix(sysTag);
+                    }
+                }
+            }
+
+            @Override
+            public void validateSystemTag(String resourceUuid, Class resourceType, String systemTag) {
+                if (VmSystemTags.STATIC_IP.isMatch(systemTag)) {
+                    validateStaticIp(systemTag, false);
+                } else if (VmSystemTags.IPV4_GATEWAY.isMatch(systemTag)) {
+                    validateIpv4Gateway(systemTag);
+                } else if (VmSystemTags.IPV6_GATEWAY.isMatch(systemTag)) {
+                    validateIpv6Gateway(systemTag);
+                } else if (VmSystemTags.IPV4_NETMASK.isMatch(systemTag)) {
+                    validateIpv4NetMask(systemTag);
+                } else if (VmSystemTags.IPV6_PREFIX.isMatch(systemTag)) {
+                    validateIpv6Prefix(systemTag);
+                }
+            }
+
+            private void validateStaticIp(String sysTag, boolean checkAvailability) {
+                String tagUsage = VmSystemTags.STATIC_IP_TOKEN;
+                Map<String, String> token = TagUtils.parse(VmSystemTags.STATIC_IP.getTagFormat(), sysTag);
+                String l3Uuid = token.get(VmSystemTags.STATIC_IP_L3_UUID_TOKEN);
+                if (!dbf.isExist(l3Uuid, L3NetworkVO.class)) {
+                    throw new ApiMessageInterceptionException(argerr("L3 network[uuid:%s] not found. Please correct your system tag[%s] of %s",
+                            l3Uuid, sysTag, tagUsage));
+                }
+
+                String ip = token.get(VmSystemTags.STATIC_IP_TOKEN);
+                ip = IPv6NetworkUtils.ipv6TagValueToAddress(ip);
+                if (!NetworkUtils.isIpv4Address(ip) && !IPv6NetworkUtils.isIpv6Address(ip)) {
+                    throw new ApiMessageInterceptionException(argerr("%s is not a valid %s. Please correct your system tag[%s] of %s",
+                            ip, tagUsage, sysTag, tagUsage));
+                }
+
+                if (Q.New(L3NetworkVO.class).eq(L3NetworkVO_.uuid, l3Uuid).eq(L3NetworkVO_.enableIPAM, Boolean.FALSE).isExists()) {
+                    if (Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, ip).eq(UsedIpVO_.l3NetworkUuid, l3Uuid).isExists()) {
+                        logger.warn(String.format("IP[%s] is already used on the L3 network[uuid:%s]", ip, l3Uuid));
+                    }
+                    return;
+                }
+
+                if (!checkAvailability) {
+                    return;
+                }
+
+                CheckIpAvailabilityMsg cmsg = new CheckIpAvailabilityMsg();
+                cmsg.setIp(ip);
+                cmsg.setL3NetworkUuid(l3Uuid);
+                bus.makeLocalServiceId(cmsg, L3NetworkConstant.SERVICE_ID);
+                MessageReply r = bus.call(cmsg);
+                if (!r.isSuccess()) {
+                    throw new ApiMessageInterceptionException(inerr(r.getError().getDetails()));
+                }
+
+                CheckIpAvailabilityReply cr = r.castReply();
+                if (!cr.isAvailable()) {
+                    throw new ApiMessageInterceptionException(operr("IP[%s] is not available on the L3 network[uuid:%s] because: %s", ip, l3Uuid, cr.getReason()));
+                }
+            }
+
+            private void validateIpv4Gateway(String sysTag) {
+                String tagUsage = VmSystemTags.IPV4_GATEWAY_TOKEN;
+                Map<String, String> token = TagUtils.parse(VmSystemTags.IPV4_GATEWAY.getTagFormat(), sysTag);
+                String l3Uuid = token.get(VmSystemTags.IPV4_GATEWAY_L3_UUID_TOKEN);
+                if (!dbf.isExist(l3Uuid, L3NetworkVO.class)) {
+                    throw new ApiMessageInterceptionException(argerr("L3 network[uuid:%s] not found. Please correct your system tag[%s] of %s",
+                            l3Uuid, sysTag, tagUsage));
+                }
+
+                String ip = token.get(VmSystemTags.IPV4_GATEWAY_TOKEN);
+                if (!NetworkUtils.isIpv4Address(ip)) {
+                    throw new ApiMessageInterceptionException(argerr("%s is not a valid %s. Please correct your system tag[%s] of %s",
+                            ip, tagUsage, sysTag, tagUsage));
+                }
+            }
+
+            private void validateIpv6Gateway(String sysTag) {
+                String tagUsage = VmSystemTags.IPV6_GATEWAY_TOKEN;
+                Map<String, String> token = TagUtils.parse(VmSystemTags.IPV6_GATEWAY.getTagFormat(), sysTag);
+                String l3Uuid = token.get(VmSystemTags.IPV6_GATEWAY_L3_UUID_TOKEN);
+                if (!dbf.isExist(l3Uuid, L3NetworkVO.class)) {
+                    throw new ApiMessageInterceptionException(argerr("L3 network[uuid:%s] not found. Please correct your system tag[%s] of %s",
+                            l3Uuid, sysTag, tagUsage));
+                }
+
+                String ip = IPv6NetworkUtils.ipv6TagValueToAddress(token.get(VmSystemTags.IPV6_GATEWAY_TOKEN));
+                if (!IPv6NetworkUtils.isIpv6Address(ip)) {
+                    throw new ApiMessageInterceptionException(argerr("%s is not a valid %s. Please correct your system tag[%s] of %s",
+                            ip, tagUsage, sysTag, tagUsage));
+                }
+            }
+
+            private void validateIpv4NetMask(String sysTag) {
+                String tagUsage = VmSystemTags.IPV4_NETMASK_TOKEN;
+                Map<String, String> token = TagUtils.parse(VmSystemTags.IPV4_NETMASK.getTagFormat(), sysTag);
+                String l3Uuid = token.get(VmSystemTags.IPV4_NETMASK_L3_UUID_TOKEN);
+                if (!dbf.isExist(l3Uuid, L3NetworkVO.class)) {
+                    throw new ApiMessageInterceptionException(argerr("L3 network[uuid:%s] not found. Please correct your system tag[%s] of %s",
+                            l3Uuid, sysTag, tagUsage));
+                }
+
+                String netMask = token.get(VmSystemTags.IPV4_NETMASK_TOKEN);
+                if (!NetworkUtils.isNetmask(netMask)) {
+                    throw new ApiMessageInterceptionException(argerr("%s is not a valid %s. Please correct your system tag[%s] of %s",
+                            netMask, tagUsage, sysTag, tagUsage));
+                }
+            }
+
+            private void validateIpv6Prefix(String sysTag) {
+                String tagUsage = VmSystemTags.IPV6_PREFIX_TOKEN;
+                Map<String, String> token = TagUtils.parse(VmSystemTags.IPV6_PREFIX.getTagFormat(), sysTag);
+                String l3Uuid = token.get(VmSystemTags.IPV6_PREFIX_L3_UUID_TOKEN);
+                if (!dbf.isExist(l3Uuid, L3NetworkVO.class)) {
+                    throw new ApiMessageInterceptionException(argerr("L3 network[uuid:%s] not found. Please correct your system tag[%s] of %s",
+                            l3Uuid, sysTag, tagUsage));
+                }
+
+                int prefixLen = Integer.parseInt(token.get(VmSystemTags.IPV6_PREFIX_TOKEN));
+                if (prefixLen > IPv6Constants.IPV6_PREFIX_LEN_MAX || prefixLen < IPv6Constants.IPV6_PREFIX_LEN_MIN) {
+                    throw new ApiMessageInterceptionException(argerr("ip range prefix length[%d] is out of range [%d - %d]. Please correct your system tag[%s] of %s",
+                            prefixLen, IPv6Constants.IPV6_PREFIX_LEN_MIN, IPv6Constants.IPV6_PREFIX_LEN_MAX, sysTag, tagUsage));
+                }
+            }
+        }
+
+        StaticIpValidator staticIpValidator = new StaticIpValidator();
+        tagMgr.installCreateMessageValidator(VmInstanceVO.class.getSimpleName(), staticIpValidator);
+        VmSystemTags.STATIC_IP.installValidator(staticIpValidator);
     }
 
     private void installUserdataValidator() {
@@ -2097,6 +2203,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
 
     private void installSystemTagValidator() {
         installHostnameValidator();
+        installStaticIpValidator();
         installUserdataValidator();
         installBootModeValidator();
         installCleanTrafficValidator();
@@ -2490,53 +2597,48 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 }
 
                 final Timestamp current = dbf.getCurrentSqlTime();
-
-                final List<ExpungeVmMsg> msgs = transformToList(vms, new Function<ExpungeVmMsg, Tuple>() {
-                    @Override
-                    public ExpungeVmMsg call(Tuple t) {
-                        String uuid = t.get(0, String.class);
-                        Timestamp date = t.get(1, Timestamp.class);
-                        long end = date.getTime() + TimeUnit.SECONDS.toMillis(VmGlobalConfig.VM_EXPUNGE_PERIOD.value(Long.class));
-                        if (current.getTime() >= end) {
-                            VmInstanceDeletionPolicy deletionPolicy = deletionPolicyMgr.getDeletionPolicy(uuid);
-
-                            if (deletionPolicy == VmInstanceDeletionPolicy.Never) {
-                                logger.debug(String.format("[VM Expunging Task]: the deletion policy of the vm[uuid:%s] is Never, don't expunge it",
-                                        uuid));
-                                return null;
-                            } else {
-                                ExpungeVmMsg msg = new ExpungeVmMsg();
-                                msg.setVmInstanceUuid(uuid);
-                                bus.makeTargetServiceIdByResourceUuid(msg, VmInstanceConstant.SERVICE_ID, uuid);
-                                return msg;
-                            }
-                        } else {
-                            return null;
-                        }
+                new While<>(vms).step((t, completion) -> {
+                    String uuid = t.get(0, String.class);
+                    Timestamp date = t.get(1, Timestamp.class);
+                    long end = date.getTime() + TimeUnit.SECONDS.toMillis(VmGlobalConfig.VM_EXPUNGE_PERIOD.value(Long.class));
+                    if (current.getTime() < end) {
+                        completion.done();
+                        return;
                     }
-                });
 
-                if (msgs.isEmpty()) {
-                    logger.debug("[VM Expunging Task]: no vm to expunge");
-                    return false;
-                }
+                    VmInstanceDeletionPolicy deletionPolicy = deletionPolicyMgr.getDeletionPolicy(uuid);
+                    if (deletionPolicy == VmInstanceDeletionPolicy.Never) {
+                        logger.debug(String.format(
+                                "[VM Expunging Task]: the deletion policy of the vm[uuid:%s] is Never, don't expunge it",
+                                uuid));
+                        completion.done();
+                        return;
+                    }
 
-                bus.send(msgs, 100, new CloudBusListCallBack(null) {
-                    @Override
-                    public void run(List<MessageReply> replies) {
-                        for (MessageReply r : replies) {
-                            ExpungeVmMsg msg = msgs.get(replies.indexOf(r));
-                            if (!r.isSuccess()) {
-                                logger.warn(String.format("failed to expunge the vm[uuid:%s], %s",
-                                        msg.getVmInstanceUuid(), r.getError()));
-                            } else {
+                    ExpungeVmMsg msg = new ExpungeVmMsg();
+                    msg.setVmInstanceUuid(uuid);
+                    bus.makeTargetServiceIdByResourceUuid(msg, VmInstanceConstant.SERVICE_ID, uuid);
+                    bus.send(msg, new CloudBusCallBack(completion) {
+                        @Override
+                        public void run(MessageReply reply) {
+                            if (reply.isSuccess()) {
                                 logger.debug(String.format("successfully expunged the vm[uuid:%s]",
                                         msg.getVmInstanceUuid()));
+                            } else {
+                                logger.warn(String.format("failed to expunge the vm[uuid:%s], %s",
+                                        msg.getVmInstanceUuid(), reply.getError()));
+                                completion.addError(reply.getError());
                             }
+                            completion.done();
                         }
+                    });
+                }, 3).run(new WhileDoneCompletion(null) {
+                    @Override
+                    public void done(ErrorCodeList errorCodeList) {
+                        logger.debug(String.format("expungeVmTask done, %d/%d failed",
+                                errorCodeList.getCauses().size(), vms.size()));
                     }
                 });
-
                 return false;
             }
 
@@ -2640,9 +2742,10 @@ public class VmInstanceManagerImpl extends AbstractService implements
     }
 
     private void validateAPIChangeResourceOwnerMsg(APIChangeResourceOwnerMsg msg) {
-        SimpleQuery<AccountResourceRefVO> q = dbf.createQuery(AccountResourceRefVO.class);
-        q.add(AccountResourceRefVO_.resourceUuid, Op.EQ, msg.getResourceUuid());
-        AccountResourceRefVO ref = q.find();
+        AccountResourceRefVO ref = Q.New(AccountResourceRefVO.class)
+                .eq(AccountResourceRefVO_.resourceUuid, msg.getResourceUuid())
+                .eq(AccountResourceRefVO_.type, AccessLevel.Own)
+                .find();
 
         if (ref == null || !VolumeVO.class.getSimpleName().equals(ref.getResourceType())) {
             return;
@@ -2705,16 +2808,6 @@ public class VmInstanceManagerImpl extends AbstractService implements
     }
 
     @Override
-    public void preMigrateVm(VmInstanceInventory inv, String destHostUuid) {
-
-    }
-
-    @Override
-    public void beforeMigrateVm(VmInstanceInventory inv, String destHostUuid) {
-
-    }
-
-    @Override
     public void afterMigrateVm(VmInstanceInventory inv, String srcHostUuid) {
         if (!inv.getHypervisorType().equals(VmInstanceConstant.KVM_HYPERVISOR_TYPE)) {
             return;
@@ -2737,11 +2830,6 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 }
             }
         });
-    }
-
-    @Override
-    public void failedToMigrateVm(VmInstanceInventory inv, String destHostUuid, ErrorCode reason) {
-
     }
 
     @Override

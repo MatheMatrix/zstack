@@ -1,12 +1,8 @@
 package org.zstack.network.service.flat;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
-import org.zstack.header.network.l3.L3Network;
-import org.zstack.header.network.l3.L3NetworkConstant;
 import org.zstack.header.network.l3.L3NetworkMessage;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
@@ -14,14 +10,13 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by miao on 16-7-19.
  */
-@Action(category = L3NetworkConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/l3-networks/{l3NetworkUuid}/dhcp-ip",
         method = HttpMethod.GET,
         responseClass = APIGetL3NetworkDhcpIpAddressReply.class
 )
 public class APIGetL3NetworkDhcpIpAddressMsg extends APISyncCallMessage implements L3NetworkMessage {
-    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = L3NetworkVO.class)
     private String l3NetworkUuid;
 
     @Override

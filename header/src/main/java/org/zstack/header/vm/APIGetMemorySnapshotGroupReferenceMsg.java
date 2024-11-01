@@ -1,18 +1,15 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
-import org.zstack.header.storage.snapshot.VolumeSnapshotConstant;
 import org.zstack.header.vo.ResourceVO;
 
 /**
  * Created by LiangHanYu on 2022/7/5 17:44
  */
-@Action(category = VolumeSnapshotConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/memory-snapshots/group/reference",
         method = HttpMethod.GET,

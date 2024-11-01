@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.Platform;
 import org.zstack.compute.VmNicUtils;
-import org.zstack.core.Platform;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.*;
@@ -19,6 +18,7 @@ import org.zstack.header.cluster.ClusterState;
 import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.cluster.ClusterVO_;
 import org.zstack.header.configuration.*;
+import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.host.HostState;
 import org.zstack.header.host.HostStatus;
@@ -27,10 +27,7 @@ import org.zstack.header.host.HostVO_;
 import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.image.*;
 import org.zstack.header.message.APIMessage;
-import org.zstack.header.network.l2.L2NetworkClusterRefVO;
-import org.zstack.header.network.l2.L2NetworkClusterRefVO_;
-import org.zstack.header.network.l2.L2NetworkVO;
-import org.zstack.header.network.l2.L2NetworkVO_;
+import org.zstack.header.network.l2.*;
 import org.zstack.header.network.l3.*;
 import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO;
 import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO_;
@@ -44,6 +41,7 @@ import org.zstack.header.volume.*;
 import org.zstack.header.zone.ZoneState;
 import org.zstack.header.zone.ZoneVO;
 import org.zstack.header.zone.ZoneVO_;
+import org.zstack.network.l2.L2NetworkHostUtils;
 import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.tag.SystemTagUtils;
 import org.zstack.utils.Utils;
@@ -52,17 +50,16 @@ import org.zstack.utils.logging.CLogger;
 import org.zstack.utils.network.IPv6Constants;
 import org.zstack.utils.network.IPv6NetworkUtils;
 import org.zstack.utils.network.NetworkUtils;
-import org.zstack.utils.network.NicIpAddressInfo;
 
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static java.lang.Integer.parseInt;
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.operr;
-import static org.zstack.utils.CollectionDSL.list;
+import static org.zstack.utils.CollectionDSL.*;
+import static org.zstack.utils.CollectionDSL.e;
 import static org.zstack.utils.CollectionUtils.getDuplicateElementsOfList;
 
 /**
@@ -93,6 +90,10 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
 
     @Override
     public APIMessage intercept(APIMessage msg) throws ApiMessageInterceptionException {
+        if (msg instanceof NewVmInstanceMessage2) {
+            validate((NewVmInstanceMessage2) msg);
+        }
+
         if (msg instanceof APIDestroyVmInstanceMsg) {
             validate((APIDestroyVmInstanceMsg) msg);
         } else if (msg instanceof APICreateVmInstanceMsg) {
@@ -167,10 +168,48 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             validate((APITakeVmConsoleScreenshotMsg) msg);
         } else if (msg instanceof APIGetVmUptimeMsg) {
             validate((APIGetVmUptimeMsg) msg);
+        } else if (msg instanceof APIConvertVmInstanceToTemplatedVmInstanceMsg) {
+            validate((APIConvertVmInstanceToTemplatedVmInstanceMsg) msg);
+        } else if (msg instanceof APIConvertTemplatedVmInstanceToVmInstanceMsg) {
+            validate((APIConvertTemplatedVmInstanceToVmInstanceMsg) msg);
+        } else if (msg instanceof APIDeleteTemplatedVmInstanceMsg) {
+            validate((APIDeleteTemplatedVmInstanceMsg) msg);
         }
 
         setServiceId(msg);
         return msg;
+    }
+
+    private void validate(APIDeleteTemplatedVmInstanceMsg msg) {
+        if (!dbf.isExist(msg.getUuid(), TemplatedVmInstanceVO.class)) {
+            APIDeleteTemplatedVmInstanceEvent evt = new APIDeleteTemplatedVmInstanceEvent(msg.getId());
+            bus.publish(evt);
+            throw new StopRoutingException();
+        }
+    }
+
+    private void validate(APIConvertTemplatedVmInstanceToVmInstanceMsg msg) {
+        if (msg.getVmInstanceUuid() == null) {
+            msg.setVmInstanceUuid(msg.getTemplatedVmInstanceUuid());
+        }
+    }
+
+    private void validate(APIConvertVmInstanceToTemplatedVmInstanceMsg msg) {
+        TemplatedVmInstanceVO templatedVm = Q.New(TemplatedVmInstanceVO.class)
+                .eq(TemplatedVmInstanceVO_.uuid, msg.getVmInstanceUuid())
+                .find();
+        if (templatedVm != null) {
+            APIConvertVmInstanceToTemplatedVmInstanceEvent event = new APIConvertVmInstanceToTemplatedVmInstanceEvent(msg.getId());
+            event.setInventory(TemplatedVmInstanceInventory.valueOf(templatedVm));
+            bus.publish(event);
+            throw new StopRoutingException();
+        }
+
+        boolean isTemplatedCache = Q.New(TemplatedVmInstanceCacheVO.class).eq(TemplatedVmInstanceCacheVO_.cacheVmInstanceUuid, msg.getVmInstanceUuid()).isExists();
+        if (isTemplatedCache) {
+            throw new ApiMessageInterceptionException(operr("templated vm cache[uuid:%s] cannot be convert to templated vm",
+                    msg.getVmInstanceUuid()));
+        }
     }
 
     private void validate(APIGetVmUptimeMsg msg) {
@@ -226,14 +265,14 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             throw new ApiMessageInterceptionException(operr(error, msg.getVmNicUuid()));
         }
 
-        String sql = "select vm.uuid, vm.state, vm.type, nic.l3NetworkUuid from VmInstanceVO vm, VmNicVO nic where vm.uuid = nic.vmInstanceUuid and nic.uuid = :uuid";
+        String sql = "select vm.uuid, vm.state, vm.type, vm.hostUuid, vm.lastHostUuid from VmInstanceVO vm, VmNicVO nic where vm.uuid = nic.vmInstanceUuid and nic.uuid = :uuid";
         TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
         q.setParameter("uuid", msg.getVmNicUuid());
         Tuple t = q.getSingleResult();
         String vmUuid = t.get(0, String.class);
         VmInstanceState state = t.get(1, VmInstanceState.class);
         String type = t.get(2, String.class);
-        String srcL3Uuid = t.get(3, String.class);
+        String hostUuid = t.get(3, String.class) != null ? t.get(3, String.class) : t.get(4, String.class);
         msg.setVmInstanceUuid(vmUuid);
 
         if (!VmInstanceState.Stopped.equals(state) && !VmInstanceState.Running.equals(state)) {
@@ -264,7 +303,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     newAddedL3Uuids, l2Uuids));
         }
 
-        sql = "select ip.l3NetworkUuid from UsedIpVO ip, VmNicVO nic where ip.vmNicUuid = nic.uuid and nic.vmInstanceUuid = :vmUuid and ip.l3NetworkUuid in (:l3Uuids)";
+        sql = "select nic.l3NetworkUuid from VmNicVO nic where nic.vmInstanceUuid = :vmUuid and nic.l3NetworkUuid in (:l3Uuids)";
         List<String> attachedL3Uuids = SQL.New(sql, String.class)
                 .param("vmUuid", msg.getVmInstanceUuid())
                 .param("l3Uuids", newAddedL3Uuids)
@@ -295,38 +334,16 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             }
         }
 
-        Map<String, List<String>> staticIps = new StaticIpOperator().getStaticIpbySystemTag(msg.getSystemTags());
-        if (msg.getRequiredIpMap() != null) {
+        Map<String, List<String>> staticIps = new StaticIpOperator().getStaticIpBySystemTag(msg.getSystemTags());
+        if (msg.getStaticIp() != null) {
             staticIps.computeIfAbsent(msg.getDestL3NetworkUuid(), k -> new ArrayList<>()).add(msg.getStaticIp());
-            SimpleQuery<NormalIpRangeVO> iprq = dbf.createQuery(NormalIpRangeVO.class);
-            iprq.add(NormalIpRangeVO_.l3NetworkUuid, Op.EQ, msg.getDestL3NetworkUuid());
-            List<NormalIpRangeVO> iprs = iprq.list();
-
-            boolean found = false;
-            for (NormalIpRangeVO ipr : iprs) {
-                if (!ipr.getIpVersion().equals(NetworkUtils.getIpversion(msg.getStaticIp()))) {
-                    continue;
-                }
-
-                if (NetworkUtils.isInRange(msg.getStaticIp(), ipr.getStartIp(), ipr.getEndIp())) {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!l3NetworkVO.getEnableIPAM()) {
-                found = true;
-            }
-
-            if (!found) {
-                throw new ApiMessageInterceptionException(argerr("the static IP[%s] is not in any IP range of the L3 network[uuid:%s]", msg.getStaticIp(), msg.getDestL3NetworkUuid()));
-            }
-
-            SimpleQuery<UsedIpVO> uq = dbf.createQuery(UsedIpVO.class);
-            uq.add(UsedIpVO_.l3NetworkUuid, Op.EQ, msg.getDestL3NetworkUuid());
-            uq.add(UsedIpVO_.ip, Op.EQ, msg.getStaticIp());
-            if (uq.isExists()) {
-                throw new ApiMessageInterceptionException(operr("the static IP[%s] has been occupied on the L3 network[uuid:%s]", msg.getStaticIp(), msg.getDestL3NetworkUuid()));
+            String staticIpTag = VmSystemTags.STATIC_IP.instantiateTag(map(
+                    e(VmSystemTags.STATIC_IP_L3_UUID_TOKEN, msg.getDestL3NetworkUuid()),
+                    e(VmSystemTags.STATIC_IP_TOKEN, msg.getStaticIp())));
+            if (msg.getSystemTags() == null) {
+                msg.setSystemTags(Collections.singletonList(staticIpTag));
+            } else {
+                msg.getSystemTags().add(staticIpTag);
             }
         }
 
@@ -341,36 +358,9 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             iprq.add(NormalIpRangeVO_.l3NetworkUuid, Op.EQ, l3Uuid);
             List<NormalIpRangeVO> iprs = iprq.list();
 
-            boolean found = false;
             for (String staticIp : ips) {
-                int ipVersion = IPv6Constants.IPv4;
-                if (IPv6NetworkUtils.isIpv6Address(staticIp)) {
-                    ipVersion = IPv6Constants.IPv6;
-                }
-                for (NormalIpRangeVO ipr : iprs) {
-                    if (ipVersion != ipr.getIpVersion()) {
-                        continue;
-                    }
-                    if (NetworkUtils.isInRange(staticIp, ipr.getStartIp(), ipr.getEndIp())) {
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!l3NetworkVO.getEnableIPAM()) {
-                    found = true;
-                }
-
-                if (!found) {
-                    throw new ApiMessageInterceptionException(argerr("the static IP[%s] is not in any IP range of the L3 network[uuid:%s]", staticIp, l3Uuid));
-                }
-
-                SimpleQuery<UsedIpVO> uq = dbf.createQuery(UsedIpVO.class);
-                uq.add(UsedIpVO_.l3NetworkUuid, Op.EQ, msg.getDestL3NetworkUuid());
-                uq.add(UsedIpVO_.ip, Op.EQ, msg.getStaticIp());
-                if (uq.isExists()) {
-                    throw new ApiMessageInterceptionException(operr("the static IP[%s] has been occupied on the L3 network[uuid:%s]", staticIp, l3Uuid));
-                }
+                checkIfIpInRange(staticIp, iprs, l3Uuid, l3NetworkVO.getEnableIPAM());
+                checkIfIpOccupied(staticIp, l3Uuid, l3NetworkVO.getEnableIPAM());
             }
         }
 
@@ -380,15 +370,47 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             msg.getRequiredIpMap().put(e.getKey(), e.getValue());
         }
 
-        final Map<String, NicIpAddressInfo> nicNetworkInfo = new StaticIpOperator().getNicNetworkInfoBySystemTag(msg.getSystemTags());
-        NicIpAddressInfo nicIpAddressInfo = nicNetworkInfo.get(msg.getDestL3NetworkUuid());
-        if (nicIpAddressInfo != null) {
-            if (!nicIpAddressInfo.ipv4Address.isEmpty() && Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, nicIpAddressInfo.ipv4Address).eq(UsedIpVO_.l3NetworkUuid, msg.getDestL3NetworkUuid()).isExists()) {
-                throw new ApiMessageInterceptionException(argerr("the static IP[%s] has been occupied on the L3 network[uuid:%s]", nicIpAddressInfo.ipv4Address, msg.getDestL3NetworkUuid()));
+        L2NetworkType l2Type = L2NetworkType.valueOf(Q.New(L2NetworkVO.class)
+                .eq(L2NetworkVO_.uuid, l2Uuids.get(0))
+                .select(L2NetworkVO_.type).findValue());
+        if (!l2Type.isAttachToAllHosts() && !L2NetworkHostUtils.checkIfL2AttachedToHost(l2Uuids.get(0), hostUuid)) {
+            throw new ApiMessageInterceptionException(operr("unable to change to L3 network[uuid:%s]" +
+                            " whose l2Network is not attached to the host[uuid:%s]", msg.getDestL3NetworkUuid(), hostUuid));
+        }
+    }
+
+    private void checkIfIpInRange(String ip, List<NormalIpRangeVO> ipRanges, String l3Uuid, boolean enableIPAM) {
+        boolean found = false;
+        for (NormalIpRangeVO ipr : ipRanges) {
+            if (!NetworkUtils.getIpversion(ip).equals(ipr.getIpVersion())) {
+                continue;
             }
-            if (!nicIpAddressInfo.ipv6Address.isEmpty() && Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, IPv6NetworkUtils.getIpv6AddressCanonicalString(nicIpAddressInfo.ipv6Address)).eq(UsedIpVO_.l3NetworkUuid, msg.getDestL3NetworkUuid()).isExists()) {
-                throw new ApiMessageInterceptionException(argerr("the static IP[%s] has been occupied on the L3 network[uuid:%s]", nicIpAddressInfo.ipv6Address, msg.getDestL3NetworkUuid()));
+            if (NetworkUtils.isInRange(ip, ipr.getStartIp(), ipr.getEndIp())) {
+                found = true;
+                break;
             }
+        }
+
+        if (!enableIPAM) {
+            found = true;
+        }
+
+        if (!found) {
+            throw new ApiMessageInterceptionException(argerr("the static IP[%s] is not in any IP range of the L3 network[uuid:%s]", ip, l3Uuid));
+        }
+    }
+
+    private void checkIfIpOccupied(String ip, String l3Uuid, boolean enableIPAM) {
+        boolean isIpOccupied = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.l3NetworkUuid, l3Uuid)
+                .eq(UsedIpVO_.ip, ip)
+                .isExists();
+        ErrorCode err = argerr("the static IP[%s] has been occupied on the L3 network[uuid:%s]", ip, l3Uuid);
+        if (isIpOccupied) {
+            if (enableIPAM) {
+                throw new ApiMessageInterceptionException(err);
+            }
+            logger.warn(err.getDetails());
         }
     }
 
@@ -431,6 +453,10 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         if (!supportNicDriverTypes.contains(msg.getDriverType())) {
             throw new ApiMessageInterceptionException(argerr(
                     "Nic driver %s not support yet", msg.getDriverType()));
+        }
+
+        if (vo.getState() != VmInstanceState.Stopped) {
+            throw new ApiMessageInterceptionException(argerr("vm nic driver type can be updated only when the vm is stopped"));
         }
     }
 
@@ -516,12 +542,6 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     return;
                 }
 
-                boolean uniqueVmName = VmGlobalConfig.UNIQUE_VM_NAME.value(Boolean.class);
-                if (uniqueVmName && Q.New(VmInstanceVO.class).eq(VmInstanceVO_.name, msg.getName()).notEq(VmInstanceVO_.uuid, msg.getUuid()).isExists()) {
-                    throw new ApiMessageInterceptionException(operr("could not create vm, a vm with the name [%s] already exists",
-                            msg.getName()));
-                }
-
                 Integer cpuSum = msg.getCpuNum();
                 Long memorySize = msg.getMemorySize();
 
@@ -565,7 +585,6 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             }
         }.execute();
     }
-
 
     private void validate(APIGetInterdependentL3NetworksImagesMsg msg) {
         if (msg.getL3NetworkUuids() == null && msg.getImageUuid() == null) {
@@ -673,9 +692,6 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             if (msg.getGateway() == null) {
                 msg.setGateway("");
             }
-            if (Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, msg.getIp()).eq(UsedIpVO_.l3NetworkUuid, msg.getL3NetworkUuid()).isExists()) {
-                throw new ApiMessageInterceptionException(argerr("ip address [%s] already set to vmNic", msg.getIp()));
-            }
         }
         if (msg.getIp6() != null && !l3NetworkVO.getEnableIPAM()) {
             l3Found = true;
@@ -684,9 +700,6 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             }
             if (msg.getIpv6Gateway() == null) {
                 msg.setIpv6Gateway("");
-            }
-            if (Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, msg.getIp6()).eq(UsedIpVO_.l3NetworkUuid, msg.getL3NetworkUuid()).isExists()) {
-                throw new ApiMessageInterceptionException(argerr("ip address [%s] already set to vmNic", msg.getIp6()));
             }
         }
         if (!l3Found) {
@@ -825,38 +838,19 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             iprq.add(NormalIpRangeVO_.l3NetworkUuid, Op.EQ, msg.getL3NetworkUuid());
             List<NormalIpRangeVO> iprs = iprq.list();
 
-            boolean found = false;
-            for (NormalIpRangeVO ipr : iprs) {
-                if (NetworkUtils.isInRange(msg.getIp(), ipr.getStartIp(), ipr.getEndIp())) {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!t.get(4, Boolean.class)) {
-                found = true;
-            }
-
-            if (!found) {
-                throw new ApiMessageInterceptionException(argerr("the static IP[%s] is not in any IP range of the L3 network[uuid:%s]", msg.getIp(), msg.getL3NetworkUuid()));
-            }
-
-            SimpleQuery<UsedIpVO> uq = dbf.createQuery(UsedIpVO.class);
-            uq.add(UsedIpVO_.l3NetworkUuid, Op.EQ, msg.getL3NetworkUuid());
-            uq.add(UsedIpVO_.ip, Op.EQ, msg.getIp());
-            if (uq.isExists()) {
-                throw new ApiMessageInterceptionException(operr("the static IP[%s] has been occupied on the L3 network[uuid:%s]", msg.getIp(), msg.getL3NetworkUuid()));
-            }
+            checkIfIpInRange(msg.getIp(), iprs, msg.getL3NetworkUuid(), t.get(4, Boolean.class));
+            checkIfIpOccupied(msg.getIp(), msg.getL3NetworkUuid(), t.get(4, Boolean.class));
         }
     }
 
     private void validate(APIAttachL3NetworkToVmMsg msg) {
         SimpleQuery<VmInstanceVO> q = dbf.createQuery(VmInstanceVO.class);
-        q.select(VmInstanceVO_.type, VmInstanceVO_.state);
+        q.select(VmInstanceVO_.type, VmInstanceVO_.state, VmInstanceVO_.hostUuid, VmInstanceVO_.lastHostUuid);
         q.add(VmInstanceVO_.uuid, Op.EQ, msg.getVmInstanceUuid());
         Tuple t = q.findTuple();
         String type = t.get(0, String.class);
         VmInstanceState state = t.get(1, VmInstanceState.class);
+        String hostUuid = t.get(2, String.class) != null ? t.get(2, String.class) : t.get(3, String.class);
 
         if (!VmInstanceState.Running.equals(state) && !VmInstanceState.Stopped.equals(state)) {
             throw new ApiMessageInterceptionException(operr("unable to attach a L3 network. The vm[uuid: %s] is not Running or Stopped; the current state is %s",
@@ -886,7 +880,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     newAddedL3Uuids, l2Uuids));
         }
 
-        String sql = "select ip.l3NetworkUuid from UsedIpVO ip, VmNicVO nic where ip.vmNicUuid = nic.uuid and nic.vmInstanceUuid = :vmUuid and ip.l3NetworkUuid in (:l3Uuids)";
+        String sql = "select nic.l3NetworkUuid from VmNicVO nic where nic.vmInstanceUuid = :vmUuid and nic.l3NetworkUuid in (:l3Uuids)";
         List<String> attachedL3Uuids = SQL.New(sql, String.class)
                 .param("vmUuid", msg.getVmInstanceUuid())
                 .param("l3Uuids", newAddedL3Uuids)
@@ -917,44 +911,22 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             }
         }
 
-        Map<String, List<String>> staticIps = new StaticIpOperator().getStaticIpbySystemTag(msg.getSystemTags());
+        Map<String, List<String>> staticIps = new StaticIpOperator().getStaticIpBySystemTag(msg.getSystemTags());
+        if (msg.getStaticIp() != null) {
+            staticIps.computeIfAbsent(msg.getL3NetworkUuid(), k -> new ArrayList<>()).add(msg.getStaticIp());
+            String staticIpTag = VmSystemTags.STATIC_IP.instantiateTag(map(
+                    e(VmSystemTags.STATIC_IP_L3_UUID_TOKEN, msg.getL3NetworkUuid()),
+                    e(VmSystemTags.STATIC_IP_TOKEN, msg.getStaticIp())));
+            if (msg.getSystemTags() == null) {
+                msg.setSystemTags(Collections.singletonList(staticIpTag));
+            } else {
+                msg.getSystemTags().add(staticIpTag);
+            }
+        }
         msg.setNicNetworkInfo(new StaticIpOperator().getNicNetworkInfoBySystemTag(msg.getSystemTags()).entrySet()
                 .stream()
                 .filter(entry -> Q.New(L3NetworkVO.class).eq(L3NetworkVO_.uuid, entry.getKey()).eq(L3NetworkVO_.enableIPAM, Boolean.FALSE).isExists())
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
-        if (msg.getStaticIp() != null) {
-            staticIps.computeIfAbsent(msg.getL3NetworkUuid(), k -> new ArrayList<>()).add(msg.getStaticIp());
-            SimpleQuery<NormalIpRangeVO> iprq = dbf.createQuery(NormalIpRangeVO.class);
-            iprq.add(NormalIpRangeVO_.l3NetworkUuid, Op.EQ, msg.getL3NetworkUuid());
-            List<NormalIpRangeVO> iprs = iprq.list();
-
-            boolean found = false;
-            for (NormalIpRangeVO ipr : iprs) {
-                if (!ipr.getIpVersion().equals(NetworkUtils.getIpversion(msg.getStaticIp()))) {
-                    continue;
-                }
-
-                if (NetworkUtils.isInRange(msg.getStaticIp(), ipr.getStartIp(), ipr.getEndIp())) {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!l3NetworkVO.getEnableIPAM()) {
-                found = true;
-            }
-
-            if (!found) {
-                throw new ApiMessageInterceptionException(argerr("the static IP[%s] is not in any IP range of the L3 network[uuid:%s]", msg.getStaticIp(), msg.getL3NetworkUuid()));
-            }
-
-            SimpleQuery<UsedIpVO> uq = dbf.createQuery(UsedIpVO.class);
-            uq.add(UsedIpVO_.l3NetworkUuid, Op.EQ, msg.getL3NetworkUuid());
-            uq.add(UsedIpVO_.ip, Op.EQ, msg.getStaticIp());
-            if (uq.isExists()) {
-                throw new ApiMessageInterceptionException(operr("the static IP[%s] has been occupied on the L3 network[uuid:%s]", msg.getStaticIp(), msg.getL3NetworkUuid()));
-            }
-        }
 
         for (Map.Entry<String, List<String>> e : staticIps.entrySet()) {
             if (!newAddedL3Uuids.contains(e.getKey())) {
@@ -967,36 +939,9 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             iprq.add(NormalIpRangeVO_.l3NetworkUuid, Op.EQ, l3Uuid);
             List<NormalIpRangeVO> iprs = iprq.list();
 
-            boolean found = false;
             for (String staticIp : ips) {
-                int ipVersion = IPv6Constants.IPv4;
-                if (IPv6NetworkUtils.isIpv6Address(staticIp)) {
-                    ipVersion = IPv6Constants.IPv6;
-                }
-                for (NormalIpRangeVO ipr : iprs) {
-                    if (ipVersion != ipr.getIpVersion()) {
-                        continue;
-                    }
-                    if (NetworkUtils.isInRange(staticIp, ipr.getStartIp(), ipr.getEndIp())) {
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!l3NetworkVO.getEnableIPAM()) {
-                    found = true;
-                }
-
-                if (!found) {
-                    throw new ApiMessageInterceptionException(argerr("the static IP[%s] is not in any IP range of the L3 network[uuid:%s]", staticIp, l3Uuid));
-                }
-
-                SimpleQuery<UsedIpVO> uq = dbf.createQuery(UsedIpVO.class);
-                uq.add(UsedIpVO_.l3NetworkUuid, Op.EQ, msg.getL3NetworkUuid());
-                uq.add(UsedIpVO_.ip, Op.EQ, staticIp);
-                if (uq.isExists()) {
-                    throw new ApiMessageInterceptionException(operr("the static IP[%s] has been occupied on the L3 network[uuid:%s]", staticIp, l3Uuid));
-                }
+                checkIfIpInRange(staticIp, iprs, l3Uuid, l3NetworkVO.getEnableIPAM());
+                checkIfIpOccupied(staticIp, l3Uuid, l3NetworkVO.getEnableIPAM());
             }
         }
 
@@ -1015,14 +960,42 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         if (!StringUtils.isEmpty(msg.getVmNicParams())) {
             List<String> supportNicDriverTypes = nicManager.getSupportNicDriverTypes();
 
-            VmNicParm vmNicParam;
+            VmNicParam vmNicParam;
             try {
-                vmNicParam = JSONObjectUtil.toObject(msg.getVmNicParams(), VmNicParm.class);
+                vmNicParam = JSONObjectUtil.toObject(msg.getVmNicParams(), VmNicParam.class);
+                if (msg.getDriverType() == null) {
+                    msg.setDriverType(vmNicParam.getDriverType());
+                } else if (vmNicParam.getDriverType() == null) {
+                    vmNicParam.setDriverType(msg.getDriverType());
+                    msg.setVmNicParams(JSONObjectUtil.toJsonString(vmNicParam));
+                }
             } catch (JsonSyntaxException e) {
                 throw new OperationFailureException(operr("invalid json format, causes: %s", e.getMessage()));
             }
 
-            VmNicUtils.validateVmParms(Arrays.asList(vmNicParam), Arrays.asList(msg.getL3NetworkUuid()), supportNicDriverTypes);
+            List<VmNicParam> vmNicParams = new ArrayList<>(Collections.singletonList(vmNicParam));
+            List<VmNicVO> attachedNics = Q.New(VmNicVO.class)
+                    .eq(VmNicVO_.l3NetworkUuid, msg.getL3NetworkUuid())
+                    .eq(VmNicVO_.vmInstanceUuid, msg.getVmInstanceUuid()).list();
+            for (VmNicVO nic : attachedNics) {
+                if (VmNicType.valueOf(nic.getType()).isUseSRIOV()){
+                    VmNicParam attachedNicParam = new VmNicParam();
+                    attachedNicParam.setL3NetworkUuid(msg.getL3NetworkUuid());
+                    attachedNicParam.setDriverType(nic.getDriverType());
+                    vmNicParams.add(attachedNicParam);
+                }
+            }
+
+            VmNicUtils.validateVmParams(vmNicParams, Arrays.asList(msg.getL3NetworkUuid()), supportNicDriverTypes, type);
+        }
+
+        L2NetworkType l2Type = L2NetworkType.valueOf(Q.New(L2NetworkVO.class)
+                .eq(L2NetworkVO_.uuid, l2Uuids.get(0))
+                .select(L2NetworkVO_.type).findValue());
+        if (!l2Type.isAttachToAllHosts() && !L2NetworkHostUtils.checkIfL2AttachedToHost(l2Uuids.get(0), hostUuid)) {
+            throw new ApiMessageInterceptionException(operr("unable to attach L3 network[uuid:%s] to VM[uuid:%s]" +
+                    " whose l2Network is not attached to the host[uuid:%s]",
+                    msg.getL3NetworkUuid(), msg.getVmInstanceUuid(), hostUuid));
         }
     }
 
@@ -1219,8 +1192,6 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
     }
 
     private void validate(APICreateVmInstanceMsg msg) {
-        validate((NewVmInstanceMessage2) msg);
-
         if (CollectionUtils.isNotEmpty(msg.getDiskAOs())) {
             APICreateVmInstanceMsg.DiskAO rootDiskAO = msg.getDiskAOs().stream()
                     .filter(APICreateVmInstanceMsg.DiskAO::isBoot).findFirst().orElse(null);
@@ -1358,7 +1329,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         }
 
         if (count > 1) {
-            throw new ApiMessageInterceptionException(operr("Cannot set the following properties at the same time : " + errorMsg));
+            throw new ApiMessageInterceptionException(operr("Cannot set the following properties at the same time: %s", errorMsg));
         }
 
         if (count == 0) {
@@ -1366,13 +1337,11 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             for (String key : map.keySet()) {
                 properties.add(key);
             }
-            throw new ApiMessageInterceptionException(operr("Need to set one of the following properties, and can only be one of them: " + properties));
+            throw new ApiMessageInterceptionException(operr("Need to set one of the following properties, and can only be one of them: %s", properties));
         }
     }
 
     private void validate(APICreateVmInstanceFromVolumeMsg msg) {
-        validate((NewVmInstanceMessage2) msg);
-
         VolumeVO volume = dbf.findByUuid(msg.getVolumeUuid(), VolumeVO.class);
         if (volume.isShareable()) {
             throw new ApiMessageInterceptionException(operr("cannot create vm instance from a shareable volume."));
@@ -1388,20 +1357,13 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
     }
 
     private void validate(APICreateVmInstanceFromVolumeSnapshotMsg msg) {
-        validate((NewVmInstanceMessage2) msg);
     }
 
     private void validate(APICreateVmInstanceFromVolumeSnapshotGroupMsg msg) {
-        validate((NewVmInstanceMessage2) msg);
     }
 
     private void validate(NewVmInstanceMessage2 msg) {
         validateInstanceSettings(msg);
-        boolean uniqueVmName = VmGlobalConfig.UNIQUE_VM_NAME.value(Boolean.class);
-        if (uniqueVmName && Q.New(VmInstanceVO.class).eq(VmInstanceVO_.name, msg.getName()).isExists()) {
-            throw new ApiMessageInterceptionException(operr("could not create vm, a vm with the name [%s] already exists",
-                    msg.getName()));
-        }
 
         Set<String> macs = new HashSet<>();
         if (null != msg.getSystemTags()) {
@@ -1416,20 +1378,20 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             }
         }
 
-        if (msg.getVmNicParams() != null && !msg.getVmNicParams().isEmpty()) {
+        if (!StringUtils.isEmpty(msg.getVmNicParams())) {
             List<String> supportNicDriverTypes = nicManager.getSupportNicDriverTypes();
-            if (msg.getL3NetworkUuids() == null || msg.getL3NetworkUuids().isEmpty()) {
+            if (CollectionUtils.isEmpty(msg.getL3NetworkUuids())) {
                 throw new ApiMessageInterceptionException(argerr("l3NetworkUuids and vmNicInventories mustn't both be empty or both be set"));
             }
 
-            List<VmNicParm> vmNicInventories;
+            List<VmNicParam> vmNicParams;
             try {
-                vmNicInventories = JSONObjectUtil.toCollection(msg.getVmNicParams(), ArrayList.class, VmNicParm.class);
+                vmNicParams = JSONObjectUtil.toCollection(msg.getVmNicParams(), ArrayList.class, VmNicParam.class);
             } catch (JsonSyntaxException e) {
                 throw new OperationFailureException(operr("invalid json format, causes: %s", e.getMessage()));
             }
 
-            VmNicUtils.validateVmParms(vmNicInventories, msg.getL3NetworkUuids(), supportNicDriverTypes);
+            VmNicUtils.validateVmParams(vmNicParams, msg.getL3NetworkUuids(), supportNicDriverTypes, msg.getType());
         }
 
         if (!CollectionUtils.isEmpty(msg.getL3NetworkUuids())) {
@@ -1437,7 +1399,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             l3q.select(L3NetworkVO_.uuid, L3NetworkVO_.system, L3NetworkVO_.state, L3NetworkVO_.l2NetworkUuid);
             List<String> uuids = new ArrayList<>(msg.getL3NetworkUuids());
             List<String> duplicateElements = getDuplicateElementsOfList(uuids);
-            if (duplicateElements.size() > 0) {
+            if (!VmGlobalConfig.MULTI_VNIC_SUPPORT.value(Boolean.class) && !duplicateElements.isEmpty()) {
                 throw new ApiMessageInterceptionException(operr("Can't add same uuid in the l3Network,uuid: %s", duplicateElements.get(0)));
             }
 
@@ -1550,7 +1512,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         for (String cdRomIsoUuid : cdRoms) {
             ImageVO imageVO = dbf.findByUuid(cdRomIsoUuid, ImageVO.class);
             if (imageVO == null) {
-                throw new ApiMessageInterceptionException(argerr("The image[uuid=%s] does not exist", cdRomIsoUuid));
+                throw new ApiMessageInterceptionException(argerr("The image[uuid:%s] does not exist", cdRomIsoUuid));
             }
         }
 

@@ -1,7 +1,6 @@
 package org.zstack.network.securitygroup;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -10,7 +9,6 @@ import org.zstack.header.vm.VmNicVO;
 import java.util.List;
 import static java.util.Arrays.asList;
 
-@Action(category = SecurityGroupConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/security-groups/nics/{vmNicUuid}/actions",
         method = HttpMethod.PUT,
@@ -18,7 +16,7 @@ import static java.util.Arrays.asList;
         isAction = true
 )
 public class APISetVmNicSecurityGroupMsg extends APIMessage implements VmNicSecurityGroupMessage {
-    @APIParam(resourceType = VmNicVO.class, nonempty = true, checkAccount = true, operationTarget = true, required = true)
+    @APIParam(resourceType = VmNicVO.class, nonempty = true, required = true)
     private String vmNicUuid;
 
     @APIParam(required = true)

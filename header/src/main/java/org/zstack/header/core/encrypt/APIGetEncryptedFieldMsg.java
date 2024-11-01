@@ -1,7 +1,6 @@
 package org.zstack.header.core.encrypt;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
@@ -10,7 +9,6 @@ import org.zstack.header.rest.RestRequest;
  * @author hanyu.liang
  * @date 2023/5/5 16:18
  */
-@Action(category = EncryptConstant.CERTIFICATE_ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/encrypted/fields",
         method = HttpMethod.GET,

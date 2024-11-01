@@ -1,7 +1,6 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -10,7 +9,6 @@ import org.zstack.header.rest.RestRequest;
  * @ Author : yh.w
  * @ Date   : Created in 18:07 2020/2/27
  */
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances/{vmInstanceUuid}/actions",
         method = HttpMethod.PUT,
@@ -18,10 +16,10 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateVmNicDriverEvent.class
 )
 public class APIUpdateVmNicDriverMsg extends APIMessage implements VmInstanceMessage {
-    @APIParam(resourceType = VmInstanceVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;
 
-    @APIParam(resourceType = VmNicVO.class, nonempty = true, checkAccount = true)
+    @APIParam(resourceType = VmNicVO.class, nonempty = true)
     private String vmNicUuid;
 
     @APIParam
@@ -56,7 +54,7 @@ public class APIUpdateVmNicDriverMsg extends APIMessage implements VmInstanceMes
         APIUpdateVmNicDriverMsg msg = new APIUpdateVmNicDriverMsg();
         msg.vmInstanceUuid = uuid();
         msg.vmNicUuid = uuid();
-        msg.driverType = "e1000";
+        msg.driverType = VmNicConstant.NIC_DRIVER_TYPE_E1000;
         return msg;
     }
 }

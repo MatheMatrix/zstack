@@ -1,7 +1,6 @@
 package org.zstack.header.core;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
@@ -9,7 +8,6 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 import java.util.function.Function;
 
-@Action(category = CoreConstant.ACTION_CATEGORY, adminOnly = true)
 @RestRequest(
         path = "/core/task-details",
         method = HttpMethod.GET,

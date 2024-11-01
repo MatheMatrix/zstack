@@ -4,7 +4,7 @@
     <parent>
         <artifactId>zstack</artifactId>
         <groupId>org.zstack</groupId>
-        <version>4.8.0</version>
+        <version>4.10.0</version>
         <relativePath>..</relativePath>
     </parent>
     <artifactId>utils</artifactId>
@@ -129,6 +129,10 @@
             <groupId>com.github.sisyphsu</groupId>
             <artifactId>retree</artifactId>
             <version>1.0.4</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>servlet-api</artifactId>
         </dependency>
     </dependencies>
 

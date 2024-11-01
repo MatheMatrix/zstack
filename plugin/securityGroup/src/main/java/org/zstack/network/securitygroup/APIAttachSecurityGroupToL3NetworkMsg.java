@@ -1,8 +1,6 @@
 package org.zstack.network.securitygroup;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l3.L3NetworkVO;
@@ -46,7 +44,6 @@ import org.zstack.header.rest.RestRequest;
  * @result
  * see :ref:`APIAttachSecurityGroupToL3NetworkEvent`
  */
-@Action(category = SecurityGroupConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/security-groups/{securityGroupUuid}/l3-networks/{l3NetworkUuid}",
         method = HttpMethod.POST,
@@ -54,7 +51,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIAttachSecurityGroupToL3NetworkEvent.class
 )
 public class APIAttachSecurityGroupToL3NetworkMsg extends APIMessage implements SecurityGroupMessage {
-    @APIParam(resourceType=SecurityGroupVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType=SecurityGroupVO.class)
     private String securityGroupUuid;
     @APIParam(resourceType = L3NetworkVO.class)
     private String l3NetworkUuid;

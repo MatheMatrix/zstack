@@ -1,6 +1,9 @@
 package org.zstack.header.storage.primary;
 
 import org.springframework.http.HttpMethod;
+import org.zstack.header.core.trash.TrashCleanupResult;
+import org.zstack.header.message.APIBatchRequest;
+import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -14,8 +17,8 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APICleanUpTrashOnPrimaryStorageEvent.class,
         method = HttpMethod.PUT
 )
-public class APICleanUpTrashOnPrimaryStorageMsg extends APIMessage implements PrimaryStorageMessage {
-    @APIParam(resourceType = PrimaryStorageVO.class, checkAccount = true)
+public class APICleanUpTrashOnPrimaryStorageMsg extends APIMessage implements PrimaryStorageMessage, APIBatchRequest {
+    @APIParam(resourceType = PrimaryStorageVO.class)
     private String uuid;
     @APIParam(required = false)
     private Long trashId;
@@ -46,5 +49,15 @@ public class APICleanUpTrashOnPrimaryStorageMsg extends APIMessage implements Pr
         msg.setUuid(uuid());
 
         return msg;
+    }
+
+    @Override
+    public Result collectResult(APIMessage message, APIEvent rsp) {
+        APICleanUpTrashOnPrimaryStorageEvent evt = (APICleanUpTrashOnPrimaryStorageEvent) rsp;
+        return new Result(evt.getResults().size(),
+                evt.getResults().stream()
+                        .filter(TrashCleanupResult::isSuccess)
+                        .toArray().length
+        );
     }
 }

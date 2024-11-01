@@ -1,7 +1,6 @@
 package org.zstack.network.l2.vxlan.vxlanNetworkPool;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;

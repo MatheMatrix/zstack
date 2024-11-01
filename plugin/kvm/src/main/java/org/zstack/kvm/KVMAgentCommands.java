@@ -1,10 +1,13 @@
 package org.zstack.kvm;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import org.zstack.core.validation.ConditionalValidation;
 import org.zstack.header.HasThreadContext;
 import org.zstack.header.agent.CancelCommand;
 import org.zstack.header.core.validation.Validation;
+import org.zstack.header.host.BlockDevices;
 import org.zstack.header.host.HostNUMANode;
+import org.zstack.header.host.Sensor;
 import org.zstack.header.host.VmNicRedirectConfig;
 import org.zstack.header.log.NoLogging;
 import org.zstack.header.vm.*;
@@ -80,6 +83,30 @@ public class KVMAgentCommands {
     }
 
     public static class UpdateVmPriorityRsp extends AgentResponse {
+    }
+
+    public static class UpdateVmCpuQuotaCmd extends AgentCommand {
+        private String vmUuid;
+        private long vmCpuQuota;
+
+        public String getVmUuid() {
+            return vmUuid;
+        }
+
+        public void setVmUuid(String vmUuid) {
+            this.vmUuid = vmUuid;
+        }
+
+        public long getVmCpuQuota() {
+            return vmCpuQuota;
+        }
+
+        public void setVmCpuQuota(long vmCpuQuota) {
+            this.vmCpuQuota = vmCpuQuota;
+        }
+    }
+
+    public static class UpdateVmCpuQuotaRsp extends AgentResponse {
     }
 
     public static class ChangeVmNicStateCommand extends AgentCommand {
@@ -431,7 +458,10 @@ public class KVMAgentCommands {
         private String cpuArchitecture;
         private String cpuModelName;
         private String cpuGHz;
-        private String cpuProcessorNum;
+        private Integer cpuProcessorNum;
+        private Integer cpuSockets;
+        private Integer cpuCoresPerSocket;
+        private Integer cpuThreadsPerCore;
         private String powerSupplyModelName;
         private String powerSupplyManufacturer;
         private String ipmiAddress;
@@ -534,12 +564,36 @@ public class KVMAgentCommands {
             this.cpuGHz = cpuGHz;
         }
 
-        public String getCpuProcessorNum() {
+        public Integer getCpuProcessorNum() {
             return cpuProcessorNum;
         }
 
-        public void setCpuProcessorNum(String cpuProcessorNum) {
+        public void setCpuProcessorNum(Integer cpuProcessorNum) {
             this.cpuProcessorNum = cpuProcessorNum;
+        }
+
+        public Integer getCpuSockets() {
+            return cpuSockets;
+        }
+
+        public void setCpuSockets(Integer cpuSockets) {
+            this.cpuSockets = cpuSockets;
+        }
+
+        public Integer getCpuCoresPerSocket() {
+            return cpuCoresPerSocket;
+        }
+
+        public void setCpuCoresPerSocket(Integer cpuCoresPerSocket) {
+            this.cpuCoresPerSocket = cpuCoresPerSocket;
+        }
+
+        public Integer getCpuThreadsPerCore() {
+            return cpuThreadsPerCore;
+        }
+
+        public void setCpuThreadsPerCore(Integer cpuThreadsPerCore) {
+            this.cpuThreadsPerCore = cpuThreadsPerCore;
         }
 
         public String getCpuCache() {
@@ -847,6 +901,66 @@ public class KVMAgentCommands {
 
 
     public static class CreateBridgeResponse extends AgentResponse {
+    }
+
+    public static class UpdateBridgeCmd extends AgentCommand {
+        private String physicalInterfaceName;
+        private String bridgeName;
+        private Integer oldVirtualNetworkId;
+        private Integer newVirtualNetworkId;
+        private String l2NetworkUuid;
+        private List<String> peers;
+
+        public String getPhysicalInterfaceName() {
+            return physicalInterfaceName;
+        }
+
+        public void setPhysicalInterfaceName(String physicalInterfaceName) {
+            this.physicalInterfaceName = physicalInterfaceName;
+        }
+
+        public String getBridgeName() {
+            return bridgeName;
+        }
+
+        public void setBridgeName(String bridgeName) {
+            this.bridgeName = bridgeName;
+        }
+
+        public Integer getOldVirtualNetworkId() {
+            return oldVirtualNetworkId;
+        }
+
+        public void setOldVirtualNetworkId(Integer oldVirtualNetworkId) {
+            this.oldVirtualNetworkId = oldVirtualNetworkId;
+        }
+
+        public Integer getNewVirtualNetworkId() {
+            return newVirtualNetworkId;
+        }
+
+        public void setNewVirtualNetworkId(Integer newVirtualNetworkId) {
+            this.newVirtualNetworkId = newVirtualNetworkId;
+        }
+
+        public String getL2NetworkUuid() {
+            return l2NetworkUuid;
+        }
+
+        public void setL2NetworkUuid(String l2NetworkUuid) {
+            this.l2NetworkUuid = l2NetworkUuid;
+        }
+
+        public List<String> getPeers() {
+            return peers;
+        }
+
+        public void setPeers(List<String> peers) {
+            this.peers = peers;
+        }
+    }
+
+    public static class UpdateL2NetworkResponse extends AgentResponse {
     }
 
     public static class DeleteBridgeResponse extends AgentResponse {
@@ -1928,6 +2042,7 @@ public class KVMAgentCommands {
         private boolean vmPortOff;
         private String vmCpuModel;
         private boolean emulateHyperV;
+        private long vmCpuQuota;
 
         // hyperv features
         private boolean hypervClock;
@@ -1963,6 +2078,14 @@ public class KVMAgentCommands {
         // TODO: only for test
         private boolean useColoBinary;
         private String vmCpuVendorId;
+
+        public long getVmCpuQuota() {
+            return vmCpuQuota;
+        }
+
+        public void setVmCpuQuota(long vmCpuQuota) {
+            this.vmCpuQuota = vmCpuQuota;
+        }
 
         public void setSocketNum(Integer socketNum) {
             this.socketNum = socketNum;
@@ -3944,9 +4067,15 @@ public class KVMAgentCommands {
 
     public static class ReportVmShutdownEventCmd {
         public String vmUuid;
+        public String detail;
+        public String opaque;
     }
 
     public static class ReportVmRebootEventCmd {
+        public String vmUuid;
+    }
+
+    public static class ReportVmStartEventCmd {
         public String vmUuid;
     }
 
@@ -4134,6 +4263,37 @@ public class KVMAgentCommands {
 
     public static class VmFstrimRsp extends AgentResponse {
     }
+
+    public static class GetBlockDevicesCmd extends AgentCommand {
+    }
+
+    public static class GetBlockDevicesResponse extends AgentResponse {
+        private List<BlockDevices.BlockDevice> blockDevices;
+
+        public List<BlockDevices.BlockDevice> getBlockDevices() {
+            return blockDevices;
+        }
+
+        public void setBlockDevices(List<BlockDevices.BlockDevice> blockDevices) {
+            this.blockDevices = blockDevices;
+        }
+    }
+
+    public static class GetSensorsCmd extends AgentCommand implements HasThreadContext {
+    }
+
+    public static class GetSensorsResponse extends AgentResponse {
+        private List<Sensor> sensors;
+
+        public List<Sensor> getSensors() {
+            return sensors;
+        }
+
+        public void setSensors(List<Sensor> sensors) {
+            this.sensors = sensors;
+        }
+    }
+
     public static class TakeVmConsoleScreenshotCmd extends AgentCommand {
         private String vmUuid;
 
@@ -4182,4 +4342,95 @@ public class KVMAgentCommands {
         }
     }
 
+    public static class HardwareMonitorCmd extends KVMAgentCommands.AgentCommand {
+    }
+
+    public static class HostPhysicalCpuStatusAlarmEventCmd {
+        public String host;
+        public String cpuName;
+        public String status;
+    }
+
+    public static class HostPhysicalMemoryStatusAlarmEventCmd {
+        public String host;
+        public String locator;
+        public String status;
+    }
+
+    public static class HostPhysicalFanStatusAlarmEventCmd {
+        public String host;
+        public String fan_name;
+        public String status;
+    }
+
+    public static class HostPhysicalPowerSupplyStatusAlarmEventCmd {
+        public String host;
+        public String name;
+        public String status;
+    }
+
+    public static class HostPhysicalDiskStatusAlarmEventCmd {
+        public String host;
+        public String slot_number;
+        public String enclosure_device_id;
+        public String drive_state;
+        public String serial_number;
+    }
+
+    public static class HostPhysicalDiskInsertAlarmEventCmd {
+        public String host;
+        public Map<String, Object> additionalProperties = new HashMap<>();
+    }
+
+    public static class HostPhysicalDiskRemoveAlarmEventCmd {
+        public String host;
+        public Map<String, Object> additionalProperties = new HashMap<>();
+    }
+
+    public static class PhysicalMemoryEccErrorAlarmEventCmd {
+        public String host;
+        public String detail;
+    }
+
+    public static class PhysicalGpuStatusAlarmEventCmd {
+        public String host;
+        public String pcideviceAddress;
+        public String status;
+    }
+
+    public static class PhysicalGpuRemoveAlarmEventCmd {
+        public String host;
+        public String pcideviceAddress;
+    }
+
+    public static class HostPhysicalDeviceStatusAlarmEventCmd {
+        private String host;
+        private String type;
+        private Map<String, Object> additionalProperties = new HashMap<>();
+
+        public String getHost() {
+            return host;
+        }
+
+        public void setHost(String host) {
+            this.host = host;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public Map<String, Object> getAdditionalProperties() {
+            return additionalProperties;
+        }
+
+        @JsonAnySetter
+        public void setAdditionalProperties(Map<String, Object> additionalProperties) {
+            this.additionalProperties = additionalProperties;
+        }
+    }
 }

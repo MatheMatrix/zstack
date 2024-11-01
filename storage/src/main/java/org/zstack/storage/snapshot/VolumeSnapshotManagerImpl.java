@@ -41,8 +41,6 @@ import org.zstack.header.vm.devices.VmInstanceDeviceManager;
 import org.zstack.header.volume.*;
 import org.zstack.identity.AccountManager;
 import org.zstack.identity.QuotaUtil;
-import org.zstack.storage.primary.PrimaryStorageCapacityChecker;
-import org.zstack.storage.primary.PrimaryStorageGlobalConfig;
 import org.zstack.storage.snapshot.group.MemorySnapshotGroupReferenceFactory;
 import org.zstack.storage.snapshot.group.VolumeSnapshotGroupBase;
 import org.zstack.storage.snapshot.group.VolumeSnapshotGroupChecker;
@@ -673,13 +671,16 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
     @Transactional
     private void rollbackSnapshot(String uuid) {
         VolumeSnapshotVO vo = dbf.getEntityManager().find(VolumeSnapshotVO.class, uuid);
+        if (vo == null) {
+            return;
+        }
 
         dbf.getEntityManager().remove(vo);
 
-        String sql = "delete from AccountResourceRefVO where resourceUuid = :vsUuid and resourceType = 'VolumeSnapshotVO'";
-        Query q = dbf.getEntityManager().createQuery(sql);
-        q.setParameter("vsUuid", uuid);
-        q.executeUpdate();
+        SQL.New(AccountResourceRefVO.class)
+                .eq(AccountResourceRefVO_.resourceUuid, uuid)
+                .eq(AccountResourceRefVO_.resourceType, VolumeSnapshotVO.class.getSimpleName())
+                .delete();
 
         if (vo.getParentUuid() != null) {
             VolumeSnapshotVO parent = dbf.getEntityManager().find(VolumeSnapshotVO.class, vo.getParentUuid());
@@ -771,9 +772,10 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
             String volumeNewInstallPath;
             VolumeSnapshotStruct struct;
             long volumeSize;
+            String allocatedInstall;
+            long allocatedSize;
 
             VolumeVO volumeVO = dbf.findByUuid(msg.getVolumeUuid(), VolumeVO.class);
-            PrimaryStorageVO storageVO = dbf.findByUuid(volumeVO.getPrimaryStorageUuid(), PrimaryStorageVO.class);
 
             @Override
             public void setup() {
@@ -818,35 +820,55 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
 
                             });
                         }
-
-                        @Override
-                        public boolean skip(Map data) {
-                            return !PrimaryStorageType.valueOf(storageVO.getType()).isSupportCreateVolumeSnapshotCheckCapacity();
-                        }
                     });
                 }
 
-                flow(new NoRollbackFlow() {
-                    String __name__ = "check-primary-storage-capacity";
-
-                    @Override
-                    public void run(FlowTrigger trigger, Map data) {
-                        boolean capacityChecked = PrimaryStorageCapacityChecker.New(volumeVO.getPrimaryStorageUuid()).checkRequiredSize(volumeSize);
-                        if (!capacityChecked) {
-                            trigger.fail(operr("after subtracting reserved capacity[%s], there is no primary storage having required size[%s bytes], may be the threshold of primary storage physical capacity setting is lower",
-                                    PrimaryStorageGlobalConfig.RESERVED_CAPACITY.value(), volumeSize));
-                            return;
-                        }
-
-                        trigger.next();
-                    }
+                flow(new Flow() {
+                    String __name__ = "pre-allocate-primary-storage-capacity";
 
                     @Override
                     public boolean skip(Map data) {
-                        return !PrimaryStorageType.valueOf(storageVO.getType()).isSupportCreateVolumeSnapshotCheckCapacity();
+                        return volumeSize <= 0;
+                    }
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        AllocatePrimaryStorageSpaceMsg amsg = new AllocatePrimaryStorageSpaceMsg();
+                        amsg.setRequiredPrimaryStorageUuid(vol.getPrimaryStorageUuid());
+                        amsg.setSize(volumeSize);
+                        amsg.setRequiredInstallUri(String.format("volume://%s", msg.getVolumeUuid()));
+                        amsg.setNoOverProvisioning(true);
+
+                        bus.makeTargetServiceIdByResourceUuid(amsg, PrimaryStorageConstant.SERVICE_ID, vol.getPrimaryStorageUuid());
+                        bus.send(amsg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (!reply.isSuccess()) {
+                                    trigger.fail(reply.getError());
+                                    return;
+                                }
+                                allocatedSize = volumeSize;
+                                allocatedInstall = ((AllocatePrimaryStorageSpaceReply) reply).getAllocatedInstallUrl();
+                                trigger.next();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void rollback(FlowRollback trigger, Map data) {
+                        // rollback when no snapshot created
+                        if (snapshot == null && allocatedInstall != null) {
+                            ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
+                            rmsg.setPrimaryStorageUuid(vol.getPrimaryStorageUuid());
+                            rmsg.setDiskSize(allocatedSize);
+                            rmsg.setNoOverProvisioning(true);
+                            rmsg.setAllocatedInstallUrl(allocatedInstall);
+                            bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, vol.getPrimaryStorageUuid());
+                            bus.send(rmsg);
+                        }
+                        trigger.rollback();
                     }
                 });
-
 
                 flow(new NoRollbackFlow() {
                     String __name__ = "take-volume-snapshot";
@@ -902,49 +924,55 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
                     }
                 });
 
-                flow(new Flow() {
-
-                    String __name__ = "reserve-snapshot-size-on-primary-storage";
-
-                    boolean success;
-                    String allocatedInstall;
+                flow(new NoRollbackFlow() {
+                    String __name__ = "adjust-snapshot-capacity-on-primary-storage";
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        AllocatePrimaryStorageSpaceMsg amsg = new AllocatePrimaryStorageSpaceMsg();
-                        amsg.setRequiredPrimaryStorageUuid(vol.getPrimaryStorageUuid());
-                        amsg.setSize(snapshot.getSize());
-                        amsg.setRequiredInstallUri(String.format("volume://%s", snapshot.getVolumeUuid()));
-                        amsg.setForce(true);
-                        amsg.setNoOverProvisioning(true);
+                        if (snapshot.getSize() == volumeSize) {
+                            trigger.next();
+                            return;
+                        }
 
-                        bus.makeTargetServiceIdByResourceUuid(amsg, PrimaryStorageConstant.SERVICE_ID, vol.getPrimaryStorageUuid());
-                        bus.send(amsg, new CloudBusCallBack(trigger) {
-                            @Override
-                            public void run(MessageReply reply) {
-                                if (!reply.isSuccess()) {
+                        if (snapshot.getSize() - volumeSize > 0) {
+                            logger.debug(String.format("reserving primary storage capacity: " +
+                                            "snapshot[uuid:%s, size:%s] is larger than Volume[uuid:%s, size:%s]",
+                                    snapshot.getUuid(), snapshot.getSize(), vol.getUuid(), volumeSize));
+                            AllocatePrimaryStorageSpaceMsg amsg = new AllocatePrimaryStorageSpaceMsg();
+                            amsg.setRequiredPrimaryStorageUuid(vol.getPrimaryStorageUuid());
+                            amsg.setRequiredInstallUri(String.format("volume://%s", snapshot.getVolumeUuid()));
+                            amsg.setSize(snapshot.getSize() - volumeSize);
+                            amsg.setForce(true);
+                            amsg.setNoOverProvisioning(true);
+                            bus.makeTargetServiceIdByResourceUuid(amsg, PrimaryStorageConstant.SERVICE_ID, vol.getPrimaryStorageUuid());
+                            bus.send(amsg, new CloudBusCallBack(trigger) {
+                                @Override
+                                public void run(MessageReply reply) {
+                                    if (!reply.isSuccess()) {
+                                        trigger.next();
+                                        return;
+                                    }
+                                    allocatedSize = snapshot.getSize();
                                     trigger.next();
-                                    return;
                                 }
-                                AllocatePrimaryStorageSpaceReply ar = (AllocatePrimaryStorageSpaceReply) reply;
-                                allocatedInstall = ar.getAllocatedInstallUrl();
-                                success = true;
-                                trigger.next();
-                            }
-                        });
-                    }
+                            });
+                            return;
+                        }
 
-                    @Override
-                    public void rollback(FlowRollback trigger, Map data) {
-                        if (success) {
+                        if (volumeSize - snapshot.getSize() > 0) {
+                            logger.debug(String.format("releasing primary storage capacity: " +
+                                            "snapshot[uuid:%s, size:%s] is smaller than Volume[uuid:%s, size:%s]",
+                                    snapshot.getUuid(), snapshot.getSize(), vol.getUuid(), volumeSize));
                             ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
                             rmsg.setPrimaryStorageUuid(vol.getPrimaryStorageUuid());
-                            rmsg.setDiskSize(snapshot.getSize());
+                            rmsg.setDiskSize(volumeSize - snapshot.getSize());
+                            rmsg.setNoOverProvisioning(true);
                             rmsg.setAllocatedInstallUrl(allocatedInstall);
                             bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, vol.getPrimaryStorageUuid());
                             bus.send(rmsg);
+                            allocatedSize = snapshot.getSize();
+                            trigger.next();
                         }
-                        trigger.rollback();
                     }
                 });
 

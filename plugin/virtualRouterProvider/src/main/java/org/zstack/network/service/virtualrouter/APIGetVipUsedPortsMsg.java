@@ -1,7 +1,6 @@
 package org.zstack.network.service.virtualrouter;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
@@ -9,14 +8,13 @@ import org.zstack.network.service.vip.VipVO;
 
 /**
  */
-@Action(category = VirtualRouterConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/vips/{uuid}/usedports",
         method = HttpMethod.GET,
         responseClass = APIGetVipUsedPortsReply.class
 )
 public class APIGetVipUsedPortsMsg extends APISyncCallMessage {
-    @APIParam(resourceType = VipVO.class, checkAccount = true)
+    @APIParam(resourceType = VipVO.class)
     private String uuid;
 
     @APIParam(validValues = {"TCP", "UDP"})

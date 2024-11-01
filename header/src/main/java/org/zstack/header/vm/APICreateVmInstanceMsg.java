@@ -7,7 +7,6 @@ import org.zstack.header.configuration.InstanceOfferingVO;
 import org.zstack.header.configuration.PythonClassInventory;
 import org.zstack.header.host.CpuArchitecture;
 import org.zstack.header.host.HostVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.*;
 import org.zstack.header.network.l3.L3NetworkVO;
@@ -73,7 +72,6 @@ import static java.util.Arrays.asList;
  * @summary 创建云主机
  */
 @TagResourceType(VmInstanceVO.class)
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances",
         method = HttpMethod.POST,
@@ -90,7 +88,7 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
     /**
      * @desc uuid of instance offering. See :ref:`InstanceOfferingInventory`
      */
-    @APIParam(resourceType = InstanceOfferingVO.class, checkAccount = true, required = false)
+    @APIParam(resourceType = InstanceOfferingVO.class, required = false)
     private String instanceOfferingUuid;
 
     @APIParam(required = false)
@@ -105,12 +103,12 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
     /**
      * @desc uuid of image. See :ref:`ImageInventory`
      */
-    @APIParam(resourceType = ImageVO.class, checkAccount = true, required = false)
+    @APIParam(resourceType = ImageVO.class, required = false, emptyString = false)
     private String imageUuid;
     /**
      * @desc a list of L3Network uuid the vm will create nic on. See :ref:`L3NetworkInventory`
      */
-    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true, required = false)
+    @APIParam(resourceType = L3NetworkVO.class, required = false)
     private List<String> l3NetworkUuids;
 
     @APIParam(required = false)
@@ -127,7 +125,7 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
      * mandatory when vm is created from ISO. See 'mediaType' of :ref:`ImageInventory`
      * @optional
      */
-    @APIParam(required = false, resourceType = DiskOfferingVO.class, checkAccount = true)
+    @APIParam(required = false, resourceType = DiskOfferingVO.class)
     private String rootDiskOfferingUuid;
 
     @APIParam(required = false)
@@ -139,7 +137,7 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
     /**
      * @desc disk offering uuid for data volumes. See :ref:`DiskOfferingInventory`
      */
-    @APIParam(required = false, resourceType = DiskOfferingVO.class, checkAccount = true)
+    @APIParam(required = false, resourceType = DiskOfferingVO.class)
     private List<String> dataDiskOfferingUuids;
     /**
      * @desc when not null, vm will be created in the zone this uuid specified
@@ -176,7 +174,7 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
      * @desc user-defined root password
      * @optional
      */
-//    @APIParam(required = false, maxLength = 32, checkAccount = true, validRegexValues = VmInstanceConstant.USER_VM_REGEX_PASSWORD)
+//    @APIParam(required = false, maxLength = 32, validRegexValues = VmInstanceConstant.USER_VM_REGEX_PASSWORD)
 //    private String rootPassword;
 
     private String defaultL3NetworkUuid;

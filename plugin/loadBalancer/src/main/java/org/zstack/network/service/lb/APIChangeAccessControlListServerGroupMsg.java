@@ -2,7 +2,6 @@ package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.acl.AccessControlListVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -13,7 +12,6 @@ import org.zstack.header.rest.RestRequest;
 import java.util.Arrays;
 import java.util.List;
 
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/load-balancers/listener/acl/{aclUuid}/servergroup/actions",
         method = HttpMethod.PUT,
@@ -21,11 +19,11 @@ import java.util.List;
         isAction = true
 )
 public class APIChangeAccessControlListServerGroupMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
-    @APIParam(resourceType = LoadBalancerServerGroupVO.class, checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = LoadBalancerServerGroupVO.class, nonempty = true)
     private List<String> serverGroupUuids;
-    @APIParam(resourceType = LoadBalancerListenerVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerListenerVO.class)
     private String listenerUuid;
-    @APIParam(resourceType = AccessControlListVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = AccessControlListVO.class)
     private String aclUuid;
 
     @APINoSee

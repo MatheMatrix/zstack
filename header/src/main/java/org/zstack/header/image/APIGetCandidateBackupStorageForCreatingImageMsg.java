@@ -1,7 +1,6 @@
 package org.zstack.header.image;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
@@ -12,7 +11,6 @@ import org.zstack.header.volume.VolumeVO;
 /**
  * Created by xing5 on 2016/8/30.
  */
-@Action(category = ImageConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "null",
         optionalPaths = {

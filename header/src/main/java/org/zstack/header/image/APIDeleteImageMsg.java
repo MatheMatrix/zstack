@@ -1,10 +1,7 @@
 package org.zstack.header.image;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIDeleteMessage;
-import org.zstack.header.message.APIEvent;
-import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.backup.BackupStorageVO;
@@ -12,14 +9,15 @@ import org.zstack.header.storage.backup.BackupStorageVO;
 import java.util.Collections;
 import java.util.List;
 
-@Action(category = ImageConstant.ACTION_CATEGORY)
+import static org.zstack.utils.CollectionDSL.list;
+
 @RestRequest(
         path = "/images/{uuid}",
         method = HttpMethod.DELETE,
         responseClass = APIDeleteImageEvent.class
 )
 public class APIDeleteImageMsg extends APIDeleteMessage implements ImageMessage {
-    @APIParam(resourceType = ImageVO.class, successIfResourceNotExisting = true, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = ImageVO.class, successIfResourceNotExisting = true)
     private String uuid;
     @APIParam(required = false, nonempty = true, resourceType = BackupStorageVO.class)
     private List<String> backupStorageUuids;
@@ -52,6 +50,11 @@ public class APIDeleteImageMsg extends APIDeleteMessage implements ImageMessage 
     @Override
     public String getImageUuid() {
         return uuid;
+    }
+
+    @Override
+    public List<String> getDeletedResourceUuidList() {
+        return list(getUuid());
     }
  
     public static APIDeleteImageMsg __example__() {

@@ -1,19 +1,16 @@
 package org.zstack.network.hostNetworkInterface.lldp.api;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.network.hostNetworkInterface.HostNetworkInterfaceVO;
-import org.zstack.network.hostNetworkInterface.lldp.LldpConstant;
 
 import java.util.Collections;
 import java.util.List;
 
-@Action(category = LldpConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/hostNetworkInterface/lldp/actions",
         method = HttpMethod.PUT,

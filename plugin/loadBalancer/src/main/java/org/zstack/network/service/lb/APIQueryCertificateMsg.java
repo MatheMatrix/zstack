@@ -1,7 +1,6 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.query.APIQueryMessage;
 import org.zstack.header.query.AutoQuery;
 import org.zstack.header.rest.RestRequest;
@@ -14,7 +13,6 @@ import static java.util.Arrays.asList;
  * Created by shixin on 03/22/2018.
  */
 @AutoQuery(replyClass = APIQueryCertificateReply.class, inventoryClass = CertificateInventory.class)
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/certificates",
         optionalPaths = {"/certificates/{uuid}"},

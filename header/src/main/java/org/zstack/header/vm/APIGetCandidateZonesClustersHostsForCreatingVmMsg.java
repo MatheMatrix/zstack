@@ -3,7 +3,6 @@ package org.zstack.header.vm;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.configuration.DiskOfferingVO;
 import org.zstack.header.configuration.InstanceOfferingVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
@@ -17,24 +16,23 @@ import static java.util.Arrays.asList;
 /**
  * Created by xing5 on 2016/8/17.
  */
-@Action(category = VmInstanceConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/vm-instances/candidate-destinations",
         method = HttpMethod.GET,
         responseClass = APIGetCandidateZonesClustersHostsForCreatingVmReply.class
 )
 public class APIGetCandidateZonesClustersHostsForCreatingVmMsg extends APISyncCallMessage {
-    @APIParam(resourceType = InstanceOfferingVO.class, checkAccount = true, required = false)
+    @APIParam(resourceType = InstanceOfferingVO.class, required = false)
     private String instanceOfferingUuid;
-    @APIParam(resourceType = ImageVO.class, checkAccount = true)
+    @APIParam(resourceType = ImageVO.class)
     private String imageUuid;
-    @APIParam(resourceType = L3NetworkVO.class, nonempty = true, checkAccount = true)
+    @APIParam(resourceType = L3NetworkVO.class, nonempty = true)
     private List<String> l3NetworkUuids;
-    @APIParam(required = false, resourceType = DiskOfferingVO.class, checkAccount = true)
+    @APIParam(required = false, resourceType = DiskOfferingVO.class)
     private String rootDiskOfferingUuid;
     @APIParam(numberRange = {1, Long.MAX_VALUE}, numberRangeUnit = {"byte", "bytes"}, required = false)
     private Long rootDiskSize;
-    @APIParam(required = false, nonempty = true, resourceType = DiskOfferingVO.class, checkAccount = true)
+    @APIParam(required = false, nonempty = true, resourceType = DiskOfferingVO.class)
     private List<String> dataDiskOfferingUuids;
     @APIParam(numberRange = {1, 1024}, required = false)
     private Integer cpuNum;

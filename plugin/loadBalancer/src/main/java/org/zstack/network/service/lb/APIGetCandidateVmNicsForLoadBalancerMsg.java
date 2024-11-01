@@ -1,7 +1,6 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.APINoSee;
@@ -10,7 +9,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by xing5 on 2016/11/29.
  */
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/load-balancers/listeners/{listenerUuid}/vm-instances/candidate-nics",
         method = HttpMethod.GET,

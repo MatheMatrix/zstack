@@ -1,8 +1,6 @@
 package org.zstack.kvm.hypervisor.message;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.host.HostConstant;
-import org.zstack.header.identity.Action;
 import org.zstack.header.query.APIQueryMessage;
 import org.zstack.header.query.AutoQuery;
 import org.zstack.header.rest.RestRequest;
@@ -21,7 +19,6 @@ import static java.util.Arrays.asList;
         responseClass = APIQueryKvmHypervisorInfoReply.class,
         method = HttpMethod.GET
 )
-@Action(category = HostConstant.ACTION_CATEGORY, names = {"read"})
 public class APIQueryKvmHypervisorInfoMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return asList("uuid=" + uuid());

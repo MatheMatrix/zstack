@@ -1,13 +1,10 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances/{vmInstanceUuid}/nices/{vmNicUuid}",
         method = HttpMethod.POST,
@@ -16,10 +13,10 @@ import org.zstack.header.rest.RestRequest;
 )
 public class APIAttachVmNicToVmMsg extends APIMessage implements VmInstanceMessage {
 
-    @APIParam(resourceType = VmNicVO.class, checkAccount = true)
+    @APIParam(resourceType = VmNicVO.class)
     private String vmNicUuid;
 
-    @APIParam(resourceType = VmInstanceVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;
 
     public String getVmNicUuid() {

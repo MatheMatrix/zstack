@@ -5,7 +5,6 @@ import org.zstack.core.Platform;
 import org.zstack.core.cloudbus.ResourceDestinationMaker;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
-import org.zstack.header.Component;
 import org.zstack.header.image.ImagePlatform;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.image.ImageVO_;
@@ -72,36 +71,16 @@ public class VmCdRomUpgradeExtension implements ManagementNodeReadyExtensionPoin
         String acntUuid = Account.getAccountUuidOfResource(vmUuid);
         Map<Integer, String> vmDeviceIdIsoMap = getVmIsoMap(vmUuid);
 
-        if (VmSystemTags.V2V_VM_CDROMS.hasTag(vmUuid)) {
-            // mark that this v2v vm cdrom on ZStack only use cdroms from this system tag
-            String cdRomDeviceId = VmSystemTags.V2V_VM_CDROMS.getTokenByResourceUuid(vmUuid, VmSystemTags.V2V_VM_CDROMS_TOKEN);
-            String[] cdRomDeviceIds = cdRomDeviceId.split(",");
-
-            for (int deviceId = 0; deviceId < cdRomDeviceIds.length; deviceId++) {
-                VmCdRomVO cdRomVO = new VmCdRomVO();
-                cdRomVO.setUuid(Platform.getUuid());
-                cdRomVO.setDeviceId(deviceId);
-                cdRomVO.setIsoUuid(vmDeviceIdIsoMap.get(deviceId));
-                cdRomVO.setVmInstanceUuid(vmUuid);
-                cdRomVO.setName(String.format("vm-%s-cdRom", vmUuid));
-                cdRomVO.setAccountUuid(acntUuid);
-                cdRomVOS.add(cdRomVO);
-            }
-        } else {
-            for (int deviceId = 0; deviceId < VmInstanceConstant.MAXIMUM_CDROM_NUMBER; deviceId++) {
-                VmCdRomVO cdRomVO = new VmCdRomVO();
-                cdRomVO.setUuid(Platform.getUuid());
-                cdRomVO.setDeviceId(deviceId);
-                cdRomVO.setIsoUuid(vmDeviceIdIsoMap.get(deviceId));
-                cdRomVO.setVmInstanceUuid(vmUuid);
-                cdRomVO.setName(String.format("vm-%s-cdRom", vmUuid));
-                cdRomVO.setAccountUuid(acntUuid);
-                cdRomVOS.add(cdRomVO);
-            }
-        }
-
-        if (cdRomVOS.isEmpty()) {
-            return;
+        for (int deviceId = 0; deviceId < VmInstanceConstant.MAXIMUM_CDROM_NUMBER; deviceId++) {
+            VmCdRomVO cdRomVO = new VmCdRomVO();
+            cdRomVO.setUuid(Platform.getUuid());
+            cdRomVO.setDeviceId(deviceId);
+            cdRomVO.setIsoUuid(vmDeviceIdIsoMap.get(deviceId));
+            cdRomVO.setOccupant(cdRomVO.getIsoUuid() == null ? null : VmInstanceConstant.VM_CDROM_OCCUPANT_ISO);
+            cdRomVO.setVmInstanceUuid(vmUuid);
+            cdRomVO.setName(String.format("vm-%s-cdRom", vmUuid));
+            cdRomVO.setAccountUuid(acntUuid);
+            cdRomVOS.add(cdRomVO);
         }
 
         dbf.persistCollection(cdRomVOS);
@@ -129,6 +108,7 @@ public class VmCdRomUpgradeExtension implements ManagementNodeReadyExtensionPoin
             cdRomVO.setUuid(Platform.getUuid());
             cdRomVO.setDeviceId(deviceId);
             cdRomVO.setIsoUuid(isoUuid);
+            cdRomVO.setOccupant(isoUuid == null ? null : VmInstanceConstant.VM_CDROM_OCCUPANT_ISO);
             cdRomVO.setVmInstanceUuid(vmUuid);
             cdRomVO.setName(String.format("vm-%s-cdRom", vmUuid));
             cdRomVO.setAccountUuid(acntUuid);

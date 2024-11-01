@@ -1,7 +1,6 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l3.L3NetworkVO;
@@ -40,7 +39,6 @@ import java.util.Map;
  * @result see :ref:`APIAttachNicToVmEvent`
  * @since 0.1.0
  */
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances/{vmInstanceUuid}/l3-networks/{l3NetworkUuid}",
         parameterName = "params",
@@ -51,12 +49,12 @@ public class APIAttachL3NetworkToVmMsg extends APIMessage implements VmInstanceM
     /**
      * @desc vm uuid
      */
-    @APIParam(resourceType = VmInstanceVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;
     /**
      * @desc uuid of L3Network where the nic will be created
      */
-    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true)
+    @APIParam(resourceType = L3NetworkVO.class)
     private String l3NetworkUuid;
 
     private String staticIp;
@@ -168,7 +166,7 @@ public class APIAttachL3NetworkToVmMsg extends APIMessage implements VmInstanceM
         APIAttachL3NetworkToVmMsg msg = new APIAttachL3NetworkToVmMsg();
         msg.vmInstanceUuid = uuid();
         msg.l3NetworkUuid = uuid();
-        msg.driverType = "e1000";
+        msg.driverType = VmNicConstant.NIC_DRIVER_TYPE_E1000;
         return msg;
     }
 }

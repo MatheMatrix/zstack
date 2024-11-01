@@ -1,14 +1,12 @@
 package org.zstack.network.service.eip;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
 /**
  */
-@Action(category = EipConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/eips/{uuid}/actions",
         method = HttpMethod.PUT,
@@ -16,7 +14,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 public class APIChangeEipStateMsg extends APIMessage implements EipMessage {
-    @APIParam(resourceType = EipVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = EipVO.class)
     private String uuid;
     @APIParam(validValues = {"enable", "disable"})
     private String stateEvent;

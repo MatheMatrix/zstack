@@ -1,8 +1,6 @@
 package org.zstack.header.network.l3;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -10,7 +8,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by frank on 6/14/2015.
  */
-@Action(category = L3NetworkConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/l3-networks/{uuid}/actions",
         isAction = true,
@@ -18,7 +15,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateL3NetworkEvent.class
 )
 public class APIUpdateL3NetworkMsg extends APIMessage implements L3NetworkMessage {
-    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = L3NetworkVO.class)
     private String uuid;
     @APIParam(maxLength = 255, required = false)
     private String name;

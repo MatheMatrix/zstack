@@ -1,15 +1,12 @@
 package org.zstack.network.service.vip;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
 /**
  */
-@Action(category = VipConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vips/{uuid}/actions",
         method = HttpMethod.PUT,
@@ -17,7 +14,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 public class APIChangeVipStateMsg extends APIMessage implements VipMessage {
-    @APIParam(resourceType = VipVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VipVO.class)
     private String uuid;
     @APIParam(validValues = {"enable", "disable"})
     private String stateEvent;

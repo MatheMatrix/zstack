@@ -1,14 +1,17 @@
 package org.zstack.identity.rbac;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.zstack.core.Platform;
+import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.MessageSafe;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
+import org.zstack.core.db.Q;
+import org.zstack.core.db.SQL;
 import org.zstack.core.db.SQLBatch;
 import org.zstack.header.AbstractService;
 import org.zstack.header.Component;
+import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.identity.*;
 import org.zstack.header.identity.rbac.PolicyMatcher;
@@ -17,26 +20,31 @@ import org.zstack.header.identity.role.*;
 import org.zstack.header.identity.role.api.APICreateRoleEvent;
 import org.zstack.header.identity.role.api.APICreateRoleMsg;
 import org.zstack.header.identity.role.api.RoleMessage;
+import org.zstack.header.managementnode.PrepareDbInitialValueExtensionPoint;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
-import org.zstack.identity.IdentityResourceGenerateExtensionPoint;
-import org.zstack.utils.BeanUtils;
+import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
-import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class RBACManagerImpl extends AbstractService implements RBACManager, Component, IdentityResourceGenerateExtensionPoint {
+import static org.zstack.core.Platform.err;
+import static org.zstack.utils.CollectionDSL.list;
+import static org.zstack.utils.CollectionUtils.isEmpty;
+
+public class RBACManagerImpl extends AbstractService implements
+        RBACManager, Component, PrepareDbInitialValueExtensionPoint, RolePolicyChecker,
+        AfterCreateAccountExtensionPoint {
     private static final CLogger logger = Utils.getLogger(RBACManagerImpl.class);
 
     private static PolicyMatcher matcher = new PolicyMatcher();
-
-    Map<String, RoleIdentityFactory> roleIdentityFactoryMap = new HashMap<>();
 
     @Autowired
     private CloudBus bus;
@@ -47,15 +55,6 @@ public class RBACManagerImpl extends AbstractService implements RBACManager, Com
 
     @Override
     public boolean start() {
-        for (RoleIdentityFactory factory : pluginRgty.getExtensionList(RoleIdentityFactory.class)) {
-            RoleIdentityFactory old = roleIdentityFactoryMap.get(factory.getIdentity().toString());
-            if (old != null) {
-                throw new CloudRuntimeException(String.format("duplicate RoleIdentityFactory[%s, %s] with the same type[%s]", factory.getClass(), old.getClass(), factory.getIdentity()));
-            }
-
-            roleIdentityFactoryMap.put(factory.getIdentity().toString(), factory);
-        }
-
         return true;
     }
 
@@ -85,19 +84,6 @@ public class RBACManagerImpl extends AbstractService implements RBACManager, Com
         new RoleBase(vo).handleMessage((Message) msg);
     }
 
-    static {
-        BeanUtils.reflections.getSubTypesOf(InternalPolicy.class).forEach(clz -> {
-            try {
-                InternalPolicy p = clz.getConstructor().newInstance();
-                internalPolices.addAll(p.getPolices());
-            } catch (CloudRuntimeException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new CloudRuntimeException(e);
-            }
-        });
-    }
-
     private void handleLocalMessage(Message msg) {
         bus.dealWithUnknownMessage(msg);
     }
@@ -105,89 +91,48 @@ public class RBACManagerImpl extends AbstractService implements RBACManager, Com
     private void handleApiMessage(Message msg) {
         if (msg instanceof APICreateRoleMsg) {
             handle((APICreateRoleMsg) msg);
-        } else if (msg instanceof APICheckResourcePermissionMsg) {
-            handle((APICheckResourcePermissionMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
     }
 
-    private void handle(APICheckResourcePermissionMsg msg) {
-        APICheckResourcePermissionReply reply = new APICheckResourcePermissionReply();
-
-        List<RBAC.Permission> permissions = RBAC.permissions.stream().filter(p -> p.getTargetResources().stream().anyMatch(resource -> resource.getSimpleName().equals(msg.getResourceType()))).collect(Collectors.toList());
-
-        List<PolicyInventory> policies = RBACManager.getPoliciesByAPI(msg);
-        Map<PolicyInventory, List<PolicyStatement>> denyStatements = RBACManager.collectDenyStatements(policies);
-        Map<PolicyInventory, List<PolicyStatement>> allowStatements = RBACManager.collectAllowedStatements(policies);
-
-        List<String> apis = new ArrayList<>();
-        APIMessage.apiMessageClasses.forEach(apiClz -> {
-            boolean deny = denyStatements.values().stream().anyMatch(states -> states.stream().anyMatch(s -> s.getActions().stream().anyMatch(action -> matcher.match(PolicyUtils.apiNamePatternFromAction(action), apiClz.getName()))));
-            boolean allow = allowStatements.values().stream().anyMatch(states -> states.stream().anyMatch(s -> s.getActions().stream().anyMatch(action -> matcher.match(PolicyUtils.apiNamePatternFromAction(action), apiClz.getName()))));
-
-            boolean matched = permissions.stream().anyMatch(p -> p.getNormalAPIs().stream().anyMatch(api -> matcher.match(api, apiClz.getName())));
-
-            if (allow && !deny && matched) {
-                apis.add(apiClz.getSimpleName());
-            }
-        });
-
-        reply.setApis(apis);
-        bus.reply(msg, reply);
-    }
-
     private void handle(APICreateRoleMsg msg) {
-        APICreateRoleEvent evt = new APICreateRoleEvent(msg.getId());
+        final RoleSpec spec = RoleSpec.valueOf(msg);
+
+        RoleVO vo = spec.buildVOWithoutPolicies();
+        RolePolicyUpdater updater = RolePolicyUpdater.pure();
+        for (RolePolicyStatement statement : spec.getPoliciesToCreate()) {
+            updater.add(statement);
+        }
+
+        updater.squeeze();
+        List<RolePolicyVO> policiesNeedCreate = updater.collectAllPolicyIdsNeedCreate();
 
         new SQLBatch() {
             @Override
             protected void scripts() {
-                RoleVO vo = new RoleVO();
-                vo.setUuid(msg.getResourceUuid() == null ? Platform.getUuid() : msg.getResourceUuid());
-                vo.setName(msg.getName());
-                vo.setDescription(msg.getDescription());
-                vo.setType(RoleType.Customized);
-                vo.setIdentity(msg.getIdentity());
-                vo.setAccountUuid(msg.getSession().getAccountUuid());
+                persist(vo);
 
-                if (msg.getIdentity() == null) {
-                    persist(vo);
-                } else {
-                    RoleIdentityFactory factory = roleIdentityFactoryMap.get(msg.getIdentity());
-                    if (factory == null) {
-                        persist(vo);
-                    } else {
-                        vo = factory.createRole(vo, msg.getSession());
+                policiesNeedCreate.forEach(p -> p.setRoleUuid(spec.getUuid()));
+                for (RolePolicyVO policy : policiesNeedCreate) {
+                    Set<RolePolicyResourceRefVO> refs = policy.getResourceRefs();
+
+                    persist(policy);
+                    if (isEmpty(refs)) {
+                        continue;
+                    }
+
+                    reload(policy);
+                    for (RolePolicyResourceRefVO ref : refs) {
+                        ref.setRolePolicyId(policy.getId());
+                        persist(ref);
                     }
                 }
-
-                String roleUuid = vo.getUuid();
-                if (msg.getStatements() != null) {
-                    msg.getStatements().forEach(s -> {
-                        RolePolicyStatementVO pvo = new RolePolicyStatementVO();
-                        pvo.setRoleUuid(roleUuid);
-                        pvo.setUuid(Platform.getUuid());
-                        pvo.setStatement(JSONObjectUtil.toJsonString(s));
-                        persist(pvo);
-                    });
-                }
-
-                if (msg.getPolicyUuids() != null) {
-                    msg.getPolicyUuids().forEach(puuid -> {
-                        RolePolicyRefVO ref = new RolePolicyRefVO();
-                        ref.setPolicyUuid(puuid);
-                        ref.setRoleUuid(roleUuid);
-                        persist(ref);
-                    });
-                }
-
-                vo = reload(vo);
-
-                evt.setInventory(RoleInventory.valueOf(vo));
             }
         }.execute();
 
+        APICreateRoleEvent evt = new APICreateRoleEvent(msg.getId());
+        evt.setInventory(RoleInventory.valueOf(dbf.findByUuid(vo.getUuid(), RoleVO.class)));
         bus.publish(evt);
     }
 
@@ -197,65 +142,125 @@ public class RBACManagerImpl extends AbstractService implements RBACManager, Com
     }
 
     @Override
-    public String getIdentityType() {
-        return AccountConstant.identityType.toString();
+    @Transactional
+    public void prepareDbInitialValue() {
+        Set<String> existsRoles = new HashSet<>(Q.New(RoleVO.class)
+                .eq(RoleVO_.type, RoleType.Predefined)
+                .select(RoleVO_.uuid)
+                .listValues());
+        final List<RBAC.Role> roleList = RBAC.roles.stream()
+                .collect(Collectors.toList());
+
+        List<RoleVO> rolesNeedCreate = new ArrayList<>();
+        List<AccountResourceRefVO> refsNeedCreate = new ArrayList<>();
+        List<RolePolicyVO> policiesNeedCreate = new ArrayList<>();
+        List<RoleAccountRefVO> accountRefsNeedCreate = new ArrayList<>();
+        List<String> policiesNeedClean = new ArrayList<>();
+
+        for (RBAC.Role role : roleList) {
+            if (!existsRoles.contains(role.getUuid())) {
+                RoleVO rvo = new RoleVO();
+                rvo.setUuid(role.getUuid());
+                rvo.setName(String.format("predefined: %s", role.getName()));
+                rvo.setType(RoleType.Predefined);
+                rvo.setAccountUuid(AccountConstant.INITIAL_SYSTEM_ADMIN_UUID);
+                rolesNeedCreate.add(rvo);
+
+                AccountResourceRefVO sh = new AccountResourceRefVO();
+                sh.setResourceType(RoleVO.class.getSimpleName());
+                sh.setResourceUuid(rvo.getUuid());
+                sh.setType(AccessLevel.SharePublic);
+                refsNeedCreate.add(sh);
+
+                policiesNeedCreate.addAll(role.toStatements());
+
+                if (AccountConstant.OTHER_ROLE_UUID.equals(role.getUuid())
+                        || AccountConstant.LEGACY_ROLE_UUID.equals(role.getUuid())) {
+                    List<String> accountUuidList = Q.New(AccountVO.class)
+                            .in(AccountVO_.type, list(AccountType.Normal, AccountType.ThirdParty))
+                            .select(AccountVO_.uuid)
+                            .listValues();
+                    for (String accountUuid : accountUuidList) {
+                        RoleAccountRefVO ref = new RoleAccountRefVO();
+                        ref.setAccountUuid(accountUuid);
+                        ref.setRoleUuid(role.getUuid());
+                        accountRefsNeedCreate.add(ref);
+                    }
+                }
+                continue;
+            }
+
+            Set<String> existsActions = new HashSet<>(Q.New(RolePolicyVO.class)
+                    .eq(RolePolicyVO_.roleUuid, role.getUuid())
+                    .select(RolePolicyVO_.actions)
+                    .listValues());
+            List<RolePolicyVO> expectedPolicies = role.toStatements();
+            Set<String> expectedActions =
+                    CollectionUtils.transformToSet(expectedPolicies, RolePolicyVO::getActions);
+
+            if (expectedActions.size() == existsActions.size()) {
+                existsActions.removeAll(expectedActions);
+
+                if (existsActions.isEmpty()) {
+                    continue;
+                }
+            }
+
+            policiesNeedClean.add(role.getUuid());
+            policiesNeedCreate.addAll(expectedPolicies);
+        }
+
+        if (!rolesNeedCreate.isEmpty()) {
+            dbf.persistCollection(rolesNeedCreate);
+        }
+        if (!refsNeedCreate.isEmpty()) {
+            dbf.persistCollection(refsNeedCreate);
+        }
+        if (!policiesNeedClean.isEmpty()) {
+            SQL.New(RolePolicyVO.class).in(RolePolicyVO_.roleUuid, policiesNeedClean).delete();
+        }
+        if (!accountRefsNeedCreate.isEmpty()) {
+            dbf.persistCollection(accountRefsNeedCreate);
+        }
+        if (!policiesNeedCreate.isEmpty()) {
+            dbf.persistCollection(policiesNeedCreate);
+        }
     }
 
     @Override
-    public void prepareResources() {
-        new SQLBatch() {
-            @Override
-            protected void scripts() {
-                List<NewPredefinedRoleExtensionPoint> exts = pluginRgty.getExtensionList(NewPredefinedRoleExtensionPoint.class);
+    public ErrorCode checkRolePolicies(List<RolePolicyStatement> policies) {
+        Pattern pattern = Pattern.compile("^[a-zA-Z0-9._]+$");
 
-                RBAC.roles.stream().filter(RBAC.Role::isPredefine).forEach(role -> {
-                    if (!q(SystemRoleVO.class).eq(SystemRoleVO_.uuid, role.getUuid()).isExists()) {
-                        SystemRoleVO rvo = new SystemRoleVO();
-                        rvo.setUuid(role.getUuid());
-                        rvo.setName(String.format("predefined: %s", role.getName()));
-                        rvo.setSystemRoleType(role.isAdminOnly() ? SystemRoleType.Admin : SystemRoleType.Normal);
-                        rvo.setType(RoleType.Predefined);
-                        rvo.setAccountUuid(AccountConstant.INITIAL_SYSTEM_ADMIN_UUID);
-                        persist(rvo);
-
-                        SharedResourceVO sh = new SharedResourceVO();
-                        sh.setOwnerAccountUuid(rvo.getAccountUuid());
-                        sh.setResourceType(RoleVO.class.getSimpleName());
-                        sh.setResourceUuid(rvo.getUuid());
-                        sh.setToPublic(true);
-                        persist(sh);
-
-                        role.toStatements().forEach(s -> {
-                            RolePolicyStatementVO rp = new RolePolicyStatementVO();
-                            rp.setRoleUuid(rvo.getUuid());
-                            rp.setUuid(Platform.getUuid());
-                            rp.setStatement(JSONObjectUtil.toJsonString(s));
-                            persist(rp);
-                        });
-
-//                        for (NewPredefinedRoleExtensionPoint ext : exts) {
-//                            ext.predefinedNewRole(reload(rvo));
-//                        }
-                    } else {
-                        role.toStatements().forEach(s -> {
-                            String statementString = JSONObjectUtil.toJsonString(s);
-
-                            if (q(RolePolicyStatementVO.class)
-                                    .eq(RolePolicyStatementVO_.roleUuid, role.getUuid())
-                                    .eq(RolePolicyStatementVO_.statement, statementString).isExists()) {
-                                return;
-                            }
-
-                            String uuid = q(RolePolicyStatementVO.class).select(RolePolicyStatementVO_.uuid)
-                                    .eq(RolePolicyStatementVO_.roleUuid, role.getUuid()).findValue();
-
-                            sql(RolePolicyStatementVO.class).eq(RolePolicyStatementVO_.uuid, uuid)
-                                    .set(RolePolicyStatementVO_.statement, statementString).update();
-                        });
-
-                    }
-                });
+        for (RolePolicyStatement policy : policies) {
+            String action = policy.actions;
+            String path = action.endsWith("**") ? action.substring(0, action.length() - 2) :
+                    action.endsWith("*") ? action.substring(0, action.length() - 1) : action;
+            Matcher m = pattern.matcher(path);
+            if (!m.matches() || path.contains("..")) {
+                return err(IdentityErrors.INVALID_ROLE_POLICY, "invalid role policy actions: %s", action);
             }
-        }.execute();
+
+            // TODO: UI is currently unable to distinguish admin-only APIs,
+            // and this limitation has been temporarily removed for convenience
+
+            if (!action.contains("*")) {
+                String fullPath = action.startsWith(".") ?
+                        AccountConstant.POLICY_BASE_PACKAGE + action.substring(1) :
+                        action;
+                if (!RBAC.isValidAPI(fullPath)/* || RBAC.isAdminOnlyAPI(fullPath)*/) {
+                    return err(IdentityErrors.INVALID_ROLE_POLICY, "invalid role policy actions: %s", action);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    @Override
+    public void afterCreateAccount(AccountInventory account) {
+        RoleAccountRefVO ref = new RoleAccountRefVO();
+        ref.setAccountUuid(account.getUuid());
+        ref.setRoleUuid(AccountConstant.OTHER_ROLE_UUID);
+        dbf.persist(ref);
     }
 }

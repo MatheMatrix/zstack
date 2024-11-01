@@ -11,7 +11,6 @@ import org.zstack.header.rest.RestRequest;
  * Time: 9:38 PM
  * To change this template use File | Settings | File Templates.
  */
-@Action(category = AccountConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/accounts/sessions/{sessionUuid}/renew",
         responseClass = APIRenewSessionEvent.class,

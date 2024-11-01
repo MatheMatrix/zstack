@@ -3,7 +3,6 @@ package org.zstack.identity;
 import org.zstack.header.identity.*;
 import org.zstack.header.identity.quota.QuotaDefinition;
 import org.zstack.header.identity.quota.QuotaMessageHandler;
-import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 
 import java.util.List;
@@ -23,8 +22,6 @@ public interface AccountManager {
     Map<String, QuotaDefinition> getQuotasDefinitions();
 
     AccountResourceRefInventory changeResourceOwner(String resourceUuid, String newOwnerUuid);
-
-    void checkApiMessagePermission(APIMessage msg);
 
     boolean isAdmin(SessionInventory session);
 

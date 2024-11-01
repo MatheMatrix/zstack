@@ -1,14 +1,12 @@
 package org.zstack.header.acl;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 
-@Action(category = AccessControlListConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/access-control-lists/redirectRules/{uuid}/actions",
         method = HttpMethod.PUT,
@@ -16,7 +14,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 public class APIChangeAccessControlListRedirectRuleMsg extends APIMessage implements APIAuditor {
-    @APIParam(resourceType = AccessControlListEntryVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = AccessControlListEntryVO.class)
     private String uuid;
     @APIParam(required = false, maxLength = 255)
     private String name;

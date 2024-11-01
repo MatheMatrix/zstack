@@ -1,5 +1,6 @@
 package org.zstack.network.l2;
 
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
@@ -18,6 +19,7 @@ import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
+import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.NopeCompletion;
@@ -28,8 +30,9 @@ import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.host.*;
-import org.zstack.header.identity.SharedResourceVO;
-import org.zstack.header.identity.SharedResourceVO_;
+import org.zstack.header.identity.AccessLevel;
+import org.zstack.header.identity.AccountResourceRefVO;
+import org.zstack.header.identity.AccountResourceRefVO_;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
@@ -37,17 +40,20 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l2.*;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.network.l3.L3NetworkVO_;
+import org.zstack.identity.ResourceHelper;
 import org.zstack.network.l3.ServiceTypeExtensionPoint;
 import org.zstack.utils.Utils;
+import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.Tuple;
+import javax.transaction.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
-import static org.zstack.core.Platform.argerr;
-import static org.zstack.core.Platform.err;
+import static org.zstack.core.Platform.*;
+import static org.zstack.utils.CollectionDSL.list;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class L2NoVlanNetwork implements L2Network {
@@ -298,11 +304,17 @@ public class L2NoVlanNetwork implements L2Network {
         }
     }
 
-    protected void afterDetachL2NetworkFromCluster(DetachL2NetworkFromClusterMsg msg) {
+    protected void afterDetachL2NetworkFromCluster(final DetachL2NetworkFromClusterMsg msg) {
         SQL.New(L2NetworkClusterRefVO.class)
                 .eq(L2NetworkClusterRefVO_.clusterUuid, msg.getClusterUuid())
                 .eq(L2NetworkClusterRefVO_.l2NetworkUuid, msg.getL2NetworkUuid())
                 .delete();
+
+        if (!L2NetworkType.valueOf(self.getType()).isAttachToAllHosts()) {
+            List<String> hostUuids = Q.New(HostVO.class).select(HostVO_.uuid)
+                    .eq(HostVO_.clusterUuid, msg.getClusterUuid()).listValues();
+            L2NetworkHostUtils.deleteL2NetworkHostRef(msg.getL2NetworkUuid(), hostUuids);
+        }
     }
 
     private void handle(DetachL2NetworkFromClusterMsg msg) {
@@ -330,12 +342,7 @@ public class L2NoVlanNetwork implements L2Network {
                                 }
                             }
 
-                            SQL.New(L2NetworkClusterRefVO.class)
-                                    .eq(L2NetworkClusterRefVO_.clusterUuid, msg.getClusterUuid())
-                                    .eq(L2NetworkClusterRefVO_.l2NetworkUuid, msg.getL2NetworkUuid())
-                                    .delete();
                             afterDetachL2NetworkFromCluster(msg);
-
                             bus.reply(msg, reply);
                         }
 
@@ -358,12 +365,27 @@ public class L2NoVlanNetwork implements L2Network {
         return null;
     }
 
+    protected String getL2ProviderTypeByHostUuid(String hostUuid) {
+        for (L2NetworkHostRefVO ref : self.getAttachedHostRefs()) {
+            if (hostUuid.equals(ref.getHostUuid())) {
+                return ref.getL2ProviderType();
+            }
+        }
+
+        return null;
+    }
+
+    protected void afterDetachL2NetworkFromHost(final DetachL2NetworkFromHostMsg msg) {
+        if (!L2NetworkType.valueOf(self.getType()).isAttachToAllHosts()) {
+            L2NetworkHostUtils.deleteL2NetworkHostRef(msg.getL2NetworkUuid(), msg.getHostUuid());
+        }
+    }
 
     private void handle(DetachL2NetworkFromHostMsg msg) {
         DetachL2NetworkFromHostReply reply = new DetachL2NetworkFromHostReply();
 
         if (!L2NetworkGlobalConfig.DeleteL2BridgePhysically.value(Boolean.class)) {
-            l2NetworkHostHelper.changeL2NetworkToHostRefDetached(msg.getL2NetworkUuid(), msg.getHostUuid());
+            afterDetachL2NetworkFromHost(msg);
             bus.reply(msg, reply);
         } else {
             HostVO host = dbf.findByUuid(msg.getHostUuid(), HostVO.class);
@@ -380,11 +402,13 @@ public class L2NoVlanNetwork implements L2Network {
             ext.delete(getSelfInventory(), host.getUuid(), new Completion(msg) {
                 @Override
                 public void success() {
+                    afterDetachL2NetworkFromHost(msg);
                     bus.reply(msg, reply);
                 }
 
                 @Override
                 public void fail(ErrorCode errorCode) {
+                    afterDetachL2NetworkFromHost(msg);
                     reply.setError(errorCode);
                     bus.reply(msg, reply);
                 }
@@ -470,9 +494,52 @@ public class L2NoVlanNetwork implements L2Network {
             handle((APIDetachL2NetworkFromHostMsg) msg);
         } else if (msg instanceof APIUpdateL2NetworkMsg) {
             handle((APIUpdateL2NetworkMsg) msg);
+        } else if (msg instanceof APIUpdateL2NetworkVirtualNetworkIdMsg) {
+            handle((APIUpdateL2NetworkVirtualNetworkIdMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
+    }
+
+    protected void handle(final APIUpdateL2NetworkVirtualNetworkIdMsg msg){
+        APIUpdateL2NetworkVirtualNetworkIdEvent event = new APIUpdateL2NetworkVirtualNetworkIdEvent(msg.getId());
+        if (Objects.equals(self.getVirtualNetworkId(), msg.getVirtualNetworkId())) {
+            logger.debug("no need to update the virtual network id, as it's the same");
+            event.setInventory(getSelfInventory());
+            bus.publish(event);
+            return;
+        }
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return String.format("update-l2-network-%s-virtual-network-id", msg.getL2NetworkUuid());
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                updateL2NetworkVirtualNetworkId(msg, new Completion(chain) {
+                    @Override
+                    public void success() {
+                        extpEmitter.afterUpdate(getSelfInventory());
+                        event.setInventory(getSelfInventory());
+                        bus.publish(event);
+                        chain.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        event.setError(errorCode);
+                        bus.publish(event);
+                        chain.next();
+                    }
+                });
+            }
+
+            @Override
+            public String getName() {
+                return getSyncSignature();
+            }
+        });
     }
 
     private void handle(APIUpdateL2NetworkMsg msg) {
@@ -546,6 +613,15 @@ public class L2NoVlanNetwork implements L2Network {
         });
     }
 
+    protected void updateNetwork(L2NetworkInventory oldL2Network, L2NetworkInventory newL2Network,
+                                 String hostUuid, String htype, String providerType, Completion completion) {
+        final HypervisorType hvType = HypervisorType.valueOf(htype);
+        final L2NetworkType l2Type = L2NetworkType.valueOf(self.getType());
+
+        L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, hvType, providerType);
+        ext.update(oldL2Network, newL2Network, hostUuid, completion);
+    }
+
     protected void realizeNetwork(String hostUuid, String htype, String providerType, Completion completion) {
         final HypervisorType hvType = HypervisorType.valueOf(htype);
         final L2NetworkType l2Type = L2NetworkType.valueOf(self.getType());
@@ -566,6 +642,10 @@ public class L2NoVlanNetwork implements L2Network {
         }
     }
 
+    protected String getInterfaceNameOfHost(String hostUuid) {
+        return self.getPhysicalInterface();
+    }
+
     protected void checkNetworkPhysicalInterface(final List<HostInventory> hosts, final Completion completion) {
         if (hosts.isEmpty()) {
             completion.success();
@@ -575,7 +655,7 @@ public class L2NoVlanNetwork implements L2Network {
         new While<>(hosts).step((host, wcomp) -> {
             CheckNetworkPhysicalInterfaceMsg cmsg = new CheckNetworkPhysicalInterfaceMsg();
             cmsg.setHostUuid(host.getUuid());
-            cmsg.setPhysicalInterface(self.getPhysicalInterface());
+            cmsg.setPhysicalInterface(getInterfaceNameOfHost(host.getUuid()));
             bus.makeTargetServiceIdByResourceUuid(cmsg, HostConstant.SERVICE_ID, host.getUuid());
             bus.send(cmsg, new CloudBusCallBack(wcomp) {
                 @Override
@@ -598,6 +678,144 @@ public class L2NoVlanNetwork implements L2Network {
                 completion.success();
             }
         }));
+    }
+
+    protected Flow updateL2NetworkVirtualNetworkIdInDb(final APIUpdateL2NetworkVirtualNetworkIdMsg msg) {
+        return new NoRollbackFlow() {
+            String __name__ = "update-l2-network-virtual-network-id-in-db";
+
+            @Transactional
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                String currentType = self.getType();
+                String targetType;
+                if (msg.getVirtualNetworkId() == 0) {
+                    targetType = L2NetworkConstant.L2_NO_VLAN_NETWORK_TYPE;
+                } else {
+                    targetType = L2NetworkConstant.L2_VLAN_NETWORK_TYPE;
+                }
+                int targetVlan = msg.getVirtualNetworkId() == null ? 0 : msg.getVirtualNetworkId();
+
+                if (!currentType.equals(targetType)) {
+                    // change to L2VlanNetwork or L2NoVlanNetwork
+                    L2NetworkVO l2Vo = Q.New(L2NetworkVO.class).eq(L2NetworkVO_.uuid, self.getUuid()).find();
+                    l2Vo.setType(targetType);
+                    l2Vo.setVirtualNetworkId(targetVlan);
+                    self = dbf.updateAndRefresh(l2Vo);
+                    // can not operate L2VlanNetworkVO directly due to it extends from L2NetworkVO
+                    // use native sql to insert or delete
+                    if (L2NetworkConstant.L2_VLAN_NETWORK_TYPE.equals(targetType)) {
+                        // L2VlanNetwork change to L2NoVlanNetwork
+                        dbf.getEntityManager().createNativeQuery(
+                                String.format("insert into L2VlanNetworkVO (uuid, vlan) " +
+                                        "values ('%s', %d)", l2Vo.getUuid(), targetVlan)
+                        ).executeUpdate();
+                    } else if (L2NetworkConstant.L2_NO_VLAN_NETWORK_TYPE.equals(targetType)) {
+                        // L2NoVlanNetwork change to L2VlanNetwork
+                        dbf.getEntityManager().createNativeQuery(
+                                String.format("delete from L2VlanNetworkVO where uuid = '%s'", l2Vo.getUuid())
+                        ).executeUpdate();
+                    }
+                } else if (L2NetworkConstant.L2_VLAN_NETWORK_TYPE.equals(currentType)) {
+                    // update L2VlanNetwork vlan id
+                    L2VlanNetworkVO l2VlanNetworkVO = Q.New(L2VlanNetworkVO.class).eq(L2VlanNetworkVO_.uuid, self.getUuid()).find();
+                    l2VlanNetworkVO.setVirtualNetworkId(targetVlan);
+                    l2VlanNetworkVO.setVlan(targetVlan);
+                    self = dbf.updateAndRefresh(l2VlanNetworkVO);
+                }
+                trigger.next();
+            }
+        };
+    }
+
+    private void updateL2NetworkVirtualNetworkId(final APIUpdateL2NetworkVirtualNetworkIdMsg msg, final Completion completion) {
+        final FlowChain chain = FlowChainBuilder.newShareFlowChain();
+        chain.setName(String.format("update-l2-%s-virtual-network-id-on-hosts", self.getUuid()));
+        chain.then(new ShareFlow() {
+            @Override
+            public void setup() {
+                final List<HostVO> updatedHosts = Collections.synchronizedList(new ArrayList<>());
+                L2NetworkInventory oldInv = self.toInventory();
+                L2NetworkInventory newInv = self.toInventory();
+                if (msg.getVirtualNetworkId() != null) {
+                    newInv.setVirtualNetworkId(msg.getVirtualNetworkId());
+                }
+
+                flow(updateL2NetworkVirtualNetworkIdInDb(msg));
+
+                flow(new Flow() {
+                    String __name__ = "update-l2-network-virtual-network-id";
+
+                    @Override
+                    public void run(final FlowTrigger trigger, Map data) {
+                        new While<>(L2NetworkHostUtils.getHostsByAttachedL2Network(getSelfInventory())).step((host, whileCompletion) -> {
+                            updateNetwork(oldInv, newInv, host.getUuid(), host.getHypervisorType(),
+                                    getL2ProviderTypeByHostUuid(host.getUuid()), new Completion(whileCompletion) {
+                                @Override
+                                public void success() {
+                                    updatedHosts.add(host);
+                                    whileCompletion.done();
+                                }
+
+                                @Override
+                                public void fail(ErrorCode errorCode) {
+                                    logger.error(String.format("update l2 network in host:[%s] failed", host.getUuid()));
+                                    whileCompletion.addError(errorCode);
+                                    whileCompletion.allDone();
+                                }
+                            });
+                        }, 10).run(new WhileDoneCompletion(trigger) {
+                            @Override
+                            public void done(ErrorCodeList errorCodeList) {
+                                if (!errorCodeList.getCauses().isEmpty()) {
+                                    trigger.fail(errorCodeList.getCauses().get(0));
+                                } else {
+                                    trigger.next();
+                                }
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void rollback(FlowRollback trigger, Map data) {
+                        new While<>(updatedHosts).step((host, whileCompletion) -> {
+                            updateNetwork(newInv, oldInv, host.getUuid(), host.getHypervisorType(),
+                                    getL2ProviderTypeByHostUuid(host.getUuid()), new Completion(whileCompletion) {
+                                @Override
+                                public void success() {
+                                    whileCompletion.done();
+                                }
+
+                                @Override
+                                public void fail(ErrorCode errorCode) {
+                                    logger.error(String.format("rollback l2 network in host:[%s] failed", host.getUuid()));
+                                    whileCompletion.done();
+                                }
+                            });
+                        }, updatedHosts.size()).run(new WhileDoneCompletion(trigger) {
+                            @Override
+                            public void done(ErrorCodeList errorCodeList) {
+                                trigger.rollback();
+                            }
+                        });
+                    }
+                });
+
+                done(new FlowDoneHandler(completion) {
+                    @Override
+                    public void handle(Map data) {
+                        completion.success();
+                    }
+                });
+
+                error(new FlowErrorHandler(completion) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        completion.fail(errCode);
+                    }
+                });
+            }
+        }).start();
     }
 
     private void prepareL2NetworkOnHosts(final List<HostInventory> hosts, String providerType, final Completion completion) {
@@ -695,6 +913,7 @@ public class L2NoVlanNetwork implements L2Network {
         amsg.setL2NetworkUuid(msg.getL2NetworkUuid());
         amsg.setClusterUuid(msg.getClusterUuid());
         amsg.setL2ProviderType(msg.getL2ProviderType());
+        amsg.setHostParams(msg.getHostParams());
 
         bus.makeTargetServiceIdByResourceUuid(amsg, L2NetworkConstant.SERVICE_ID, amsg.getL2NetworkUuid());
         bus.send(amsg, new CloudBusCallBack(amsg) {
@@ -754,6 +973,7 @@ public class L2NoVlanNetwork implements L2Network {
         amsg.setL2NetworkUuid(msg.getL2NetworkUuid());
         amsg.setHostUuid(msg.getHostUuid());
         amsg.setL2ProviderType(msg.getL2ProviderType());
+        amsg.setHostParam(msg.getHostParam());
 
         bus.makeTargetServiceIdByResourceUuid(amsg, L2NetworkConstant.SERVICE_ID, amsg.getL2NetworkUuid());
         bus.send(amsg, new CloudBusCallBack(amsg) {
@@ -866,7 +1086,7 @@ public class L2NoVlanNetwork implements L2Network {
             @Override
             public void handle(Map data) {
                 casf.asyncCascadeFull(CascadeConstant.DELETION_CLEANUP_CODE, issuer, ctx, new NopeCompletion());
-                SQL.New(SharedResourceVO.class).eq(SharedResourceVO_.resourceUuid, msg.getL2NetworkUuid()).delete();
+                ResourceHelper.cleanShareRecords(msg.getL2NetworkUuid());
                 bus.publish(evt);
             }
         }).error(new FlowErrorHandler(msg) {
@@ -878,19 +1098,34 @@ public class L2NoVlanNetwork implements L2Network {
         }).start();
     }
 
-    protected List<HostInventory> getAttachableHostsInCluster(String clusterUuid) {
+    protected List<HostInventory> getAttachableHostsInCluster(String clusterUuid, List<HostParam> hostParams) {
         List<HostVO> hosts = Q.New(HostVO.class).eq(HostVO_.clusterUuid, clusterUuid)
                 .notIn(HostVO_.state, asList(HostState.PreMaintenance, HostState.Maintenance))
                 .eq(HostVO_.status, HostStatus.Connected).list();
         return HostInventory.valueOf(hosts);
     }
 
-    protected void beforeAttachL2NetworkToCluster(final AttachL2NetworkToClusterMsg msg) {
+    protected String makeBridgeName() {
+        return null;
+    }
+
+    protected void beforeAttachL2NetworkToCluster(final AttachL2NetworkToClusterMsg msg, final List<HostInventory> hosts) {
+        if (!L2NetworkType.valueOf(self.getType()).isAttachToAllHosts()) {
+            List<String> attachableHosts = hosts.stream().map(HostInventory::getUuid).collect(Collectors.toList());
+            l2NetworkHostHelper.initL2NetworkHostRef(msg.getL2NetworkUuid(), attachableHosts,
+                    msg.getL2ProviderType(), makeBridgeName());
+        }
     }
 
     protected void afterAttachL2NetworkToClusterFailed(final AttachL2NetworkToClusterMsg msg) {
+        if (!L2NetworkType.valueOf(self.getType()).isAttachToAllHosts()) {
+            List<String> hostUuids = Q.New(HostVO.class).select(HostVO_.uuid)
+                    .eq(HostVO_.clusterUuid, msg.getClusterUuid()).listValues();
+            L2NetworkHostUtils.deleteL2NetworkHostRef(msg.getL2NetworkUuid(), hostUuids);
+        }
     }
 
+    @SuppressWarnings("unchecked")
     private void attachL2NetworkToCluster(final AttachL2NetworkToClusterMsg msg, final Completion completion) {
         long count = Q.New(L2NetworkClusterRefVO.class).eq(L2NetworkClusterRefVO_.clusterUuid, msg.getClusterUuid())
                 .eq(L2NetworkClusterRefVO_.l2NetworkUuid, msg.getL2NetworkUuid()).count();
@@ -960,12 +1195,16 @@ public class L2NoVlanNetwork implements L2Network {
             }
         }
 
-        List<HostInventory> invs = getAttachableHostsInCluster(msg.getClusterUuid());
+        List<HostParam> hostParams = new ArrayList<>();
+        if (!StringUtils.isEmpty(msg.getHostParams())) {
+            hostParams.addAll(JSONObjectUtil.toCollection(msg.getHostParams(), ArrayList.class, HostParam.class));
+        }
+        List<HostInventory> invs = getAttachableHostsInCluster(msg.getClusterUuid(), hostParams);
         logger.debug(String.format("%s[uuid:%s, name:%s] get attached hosts[%s]",
                 self.getType(), self.getUuid(), self.getName(),
                 invs.stream().map(HostInventory::getName).collect(Collectors.toList())));
 
-        beforeAttachL2NetworkToCluster(msg);
+        beforeAttachL2NetworkToCluster(msg, invs);
         prepareL2NetworkOnHosts(invs, msg.getL2ProviderType(), new Completion(msg, completion) {
             @Override
             public void success() {
@@ -987,12 +1226,22 @@ public class L2NoVlanNetwork implements L2Network {
         });
     }
 
+    protected void beforeAttachL2NetworkToHost(final AttachL2NetworkToHostMsg msg) {
+        l2NetworkHostHelper.initL2NetworkHostRef(msg.getL2NetworkUuid(), msg.getHostUuid(),
+                msg.getL2ProviderType(), makeBridgeName());
+    }
+
+    protected void afterAttachL2NetworkToHostFailed(final AttachL2NetworkToHostMsg msg) {
+        L2NetworkHostUtils.deleteL2NetworkHostRef(msg.getL2NetworkUuid(), msg.getHostUuid());
+    }
+
     private void attachL2NetworkToHost(final AttachL2NetworkToHostMsg msg, final Completion completion) {
-        if (l2NetworkHostHelper.checkIfL2AttachedToHost(msg.getL2NetworkUuid(), msg.getHostUuid())) {
+        if (L2NetworkHostUtils.checkIfL2AttachedToHost(msg.getL2NetworkUuid(), msg.getHostUuid())) {
             completion.success();
             return;
         }
 
+        beforeAttachL2NetworkToHost(msg);
         HostInventory inv = HostInventory.valueOf(dbf.findByUuid(msg.getHostUuid(), HostVO.class));
         prepareL2NetworkOnHosts(Collections.singletonList(inv), msg.getL2ProviderType(), new Completion(msg, completion) {
             @Override
@@ -1004,6 +1253,7 @@ public class L2NoVlanNetwork implements L2Network {
 
             @Override
             public void fail(ErrorCode errorCode) {
+                afterAttachL2NetworkToHostFailed(msg);
                 completion.fail(errorCode);
             }
         });

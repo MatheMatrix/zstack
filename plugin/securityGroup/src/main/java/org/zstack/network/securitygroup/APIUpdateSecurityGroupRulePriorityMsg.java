@@ -1,7 +1,6 @@
 package org.zstack.network.securitygroup;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -9,7 +8,6 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 import static java.util.Arrays.asList;
 
-@Action(category = SecurityGroupConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/security-groups/{securityGroupUuid}/rules/priority/actions",
         method = HttpMethod.PUT,
@@ -19,7 +17,7 @@ import static java.util.Arrays.asList;
  
 public class APIUpdateSecurityGroupRulePriorityMsg extends APIMessage implements SecurityGroupMessage {
     public static class SecurityGroupRulePriorityAO {
-        @APIParam(resourceType = SecurityGroupRuleVO.class, checkAccount = true, operationTarget = true, nonempty = true, required = true)
+        @APIParam(resourceType = SecurityGroupRuleVO.class, nonempty = true, required = true)
         private String ruleUuid;
         @APIParam(required = true, nonempty = true)
         private Integer priority;
@@ -41,7 +39,7 @@ public class APIUpdateSecurityGroupRulePriorityMsg extends APIMessage implements
         }
     }
 
-    @APIParam(resourceType = SecurityGroupVO.class, checkAccount = true, operationTarget = true, nonempty = true, required = true)
+    @APIParam(resourceType = SecurityGroupVO.class, nonempty = true, required = true)
     private String securityGroupUuid;
 
     @APIParam(required = true, validValues = {"Ingress", "Egress"}, nonempty = true)

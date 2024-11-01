@@ -1,6 +1,14 @@
 package org.zstack.sdk;
 
-
+import org.zstack.sdk.HwMonitorStatus;
+import org.zstack.sdk.HwMonitorStatus;
+import org.zstack.sdk.HwMonitorStatus;
+import org.zstack.sdk.HwMonitorStatus;
+import org.zstack.sdk.HwMonitorStatus;
+import org.zstack.sdk.HwMonitorStatus;
+import org.zstack.sdk.HwMonitorStatus;
+import org.zstack.sdk.HwMonitorStatus;
+import org.zstack.sdk.HwMonitorStatus;
 
 public class HostInventory  {
 
@@ -154,6 +162,78 @@ public class HostInventory  {
     }
     public java.lang.String getIpmiPowerStatus() {
         return this.ipmiPowerStatus;
+    }
+
+    public HwMonitorStatus cpuStatus;
+    public void setCpuStatus(HwMonitorStatus cpuStatus) {
+        this.cpuStatus = cpuStatus;
+    }
+    public HwMonitorStatus getCpuStatus() {
+        return this.cpuStatus;
+    }
+
+    public HwMonitorStatus memoryStatus;
+    public void setMemoryStatus(HwMonitorStatus memoryStatus) {
+        this.memoryStatus = memoryStatus;
+    }
+    public HwMonitorStatus getMemoryStatus() {
+        return this.memoryStatus;
+    }
+
+    public HwMonitorStatus diskStatus;
+    public void setDiskStatus(HwMonitorStatus diskStatus) {
+        this.diskStatus = diskStatus;
+    }
+    public HwMonitorStatus getDiskStatus() {
+        return this.diskStatus;
+    }
+
+    public HwMonitorStatus nicStatus;
+    public void setNicStatus(HwMonitorStatus nicStatus) {
+        this.nicStatus = nicStatus;
+    }
+    public HwMonitorStatus getNicStatus() {
+        return this.nicStatus;
+    }
+
+    public HwMonitorStatus gpuStatus;
+    public void setGpuStatus(HwMonitorStatus gpuStatus) {
+        this.gpuStatus = gpuStatus;
+    }
+    public HwMonitorStatus getGpuStatus() {
+        return this.gpuStatus;
+    }
+
+    public HwMonitorStatus powerSupplyStatus;
+    public void setPowerSupplyStatus(HwMonitorStatus powerSupplyStatus) {
+        this.powerSupplyStatus = powerSupplyStatus;
+    }
+    public HwMonitorStatus getPowerSupplyStatus() {
+        return this.powerSupplyStatus;
+    }
+
+    public HwMonitorStatus fanStatus;
+    public void setFanStatus(HwMonitorStatus fanStatus) {
+        this.fanStatus = fanStatus;
+    }
+    public HwMonitorStatus getFanStatus() {
+        return this.fanStatus;
+    }
+
+    public HwMonitorStatus raidStatus;
+    public void setRaidStatus(HwMonitorStatus raidStatus) {
+        this.raidStatus = raidStatus;
+    }
+    public HwMonitorStatus getRaidStatus() {
+        return this.raidStatus;
+    }
+
+    public HwMonitorStatus temperatureStatus;
+    public void setTemperatureStatus(HwMonitorStatus temperatureStatus) {
+        this.temperatureStatus = temperatureStatus;
+    }
+    public HwMonitorStatus getTemperatureStatus() {
+        return this.temperatureStatus;
     }
 
     public java.lang.String architecture;

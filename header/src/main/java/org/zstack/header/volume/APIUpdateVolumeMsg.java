@@ -1,7 +1,6 @@
 package org.zstack.header.volume;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -9,7 +8,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by frank on 6/14/2015.
  */
-@Action(category = VolumeConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volumes/{uuid}/actions",
         method = HttpMethod.PUT,
@@ -17,7 +15,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 public class APIUpdateVolumeMsg extends APIMessage implements VolumeMessage {
-    @APIParam(resourceType = VolumeVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeVO.class)
     private String uuid;
     @APIParam(maxLength = 255, required = false)
     private String name;

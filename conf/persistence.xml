@@ -74,6 +74,9 @@
         <class>org.zstack.header.network.service.NetworkServiceL3NetworkRefVO</class>
         <class>org.zstack.header.network.service.NetworkServiceProviderL2NetworkRefVO</class>
         <class>org.zstack.header.network.service.NetworkServiceTypeVO</class>
+        <class>org.zstack.header.vm.TemplatedVmInstanceCacheVO</class>
+        <class>org.zstack.header.vm.TemplatedVmInstanceRefVO</class>
+        <class>org.zstack.header.vm.TemplatedVmInstanceVO</class>
         <class>org.zstack.header.vm.VmInstanceVO</class>
         <class>org.zstack.header.vm.VmInstanceEO</class>
         <class>org.zstack.header.vm.VmInstanceSequenceNumberVO</class>
@@ -85,12 +88,6 @@
         <class>org.zstack.header.identity.SessionVO</class>
         <class>org.zstack.header.identity.AccountVO</class>
         <class>org.zstack.header.identity.AccountResourceRefVO</class>
-        <class>org.zstack.header.identity.UserVO</class>
-        <class>org.zstack.header.identity.PolicyVO</class>
-        <class>org.zstack.header.identity.UserPolicyRefVO</class>
-        <class>org.zstack.header.identity.UserGroupVO</class>
-        <class>org.zstack.header.identity.UserGroupPolicyRefVO</class>
-        <class>org.zstack.header.identity.UserGroupUserRefVO</class>
         <class>org.zstack.header.identity.SharedResourceVO</class>
         <class>org.zstack.header.identity.QuotaVO</class>
         <class>org.zstack.header.search.DeleteVO</class>
@@ -155,8 +152,9 @@
         <class>org.zstack.network.service.lb.LoadBalancerListenerCertificateRefVO</class>
         <class>org.zstack.header.console.ConsoleProxyAgentVO</class>
         <class>org.zstack.header.storage.primary.ImageCacheShadowVO</class>
-        <class>org.zstack.ldap.LdapServerVO</class>
-        <class>org.zstack.ldap.LdapAccountRefVO</class>
+        <class>org.zstack.identity.imports.entity.ThirdPartyAccountSourceVO</class>
+        <class>org.zstack.identity.imports.entity.AccountThirdPartyAccountSourceRefVO</class>
+        <class>org.zstack.ldap.entity.LdapServerVO</class>
         <class>org.zstack.core.jsonlabel.JsonLabelVO</class>
         <class>org.zstack.rest.AsyncRestVO</class>
         <class>org.zstack.storage.ceph.primary.CephPrimaryStoragePoolVO</class>
@@ -165,12 +163,9 @@
         <class>org.zstack.header.core.webhooks.WebhookVO</class>
         <class>org.zstack.header.longjob.LongJobVO</class>
         <class>org.zstack.header.identity.role.RoleAccountRefVO</class>
-        <class>org.zstack.header.identity.role.RolePolicyRefVO</class>
-        <class>org.zstack.header.identity.role.RoleUserGroupRefVO</class>
-        <class>org.zstack.header.identity.role.RoleUserRefVO</class>
         <class>org.zstack.header.identity.role.RoleVO</class>
-        <class>org.zstack.header.identity.role.SystemRoleVO</class>
-        <class>org.zstack.header.identity.role.RolePolicyStatementVO</class>
+        <class>org.zstack.header.identity.role.RolePolicyVO</class>
+        <class>org.zstack.header.identity.role.RolePolicyResourceRefVO</class>
         <class>org.zstack.header.core.captcha.CaptchaVO</class>
         <class>org.zstack.header.vm.cdrom.VmCdRomVO</class>
         <class>org.zstack.header.core.trash.InstallPathRecycleVO</class>
@@ -202,5 +197,6 @@
         <class>org.zstack.storage.primary.local.LocalStorageHostHistoricalUsageVO</class>
         <class>org.zstack.network.hostNetworkInterface.lldp.entity.HostNetworkInterfaceLldpVO </class>
         <class>org.zstack.network.hostNetworkInterface.lldp.entity.HostNetworkInterfaceLldpRefVO</class>
+        <class>org.zstack.header.host.HostHwMonitorStatusVO</class>
     </persistence-unit>
 </persistence>

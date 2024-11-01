@@ -1,7 +1,6 @@
 package org.zstack.header.image;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.*;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
@@ -13,7 +12,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-@Action(category = ImageConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/images/root-volume-templates/from/volumes/{rootVolumeUuid}",
         method = HttpMethod.POST,
@@ -30,7 +28,7 @@ public class APICreateRootVolumeTemplateFromRootVolumeMsg extends APICreateMessa
     private String guestOsType;
     @APIParam(required = false, nonempty = true, resourceType = BackupStorageVO.class)
     private List<String> backupStorageUuids;
-    @APIParam(resourceType = VolumeVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeVO.class)
     private String rootVolumeUuid;
     @APIParam(required = false, validValues = {"Linux", "Windows", "Other", "Paravirtualization", "WindowsVirtio"})
     private String platform;

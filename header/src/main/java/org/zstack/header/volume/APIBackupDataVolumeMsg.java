@@ -1,10 +1,7 @@
 package org.zstack.header.volume;
 
-import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
-import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.backup.BackupStorageVO;
 
 /**
@@ -32,13 +29,12 @@ import org.zstack.header.storage.backup.BackupStorageVO;
  * @result See :ref:`APIBackupDataVolumeEvent`
  * @since 0.1.0
  */
-@Action(category = VolumeConstant.ACTION_CATEGORY)
 @Deprecated
 public class APIBackupDataVolumeMsg extends APIMessage implements VolumeMessage {
     /**
      * @desc data volume uuid
      */
-    @APIParam(resourceType = VolumeVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeVO.class)
     private String uuid;
     /**
      * @desc uuid of backup storage where the data volume is being backed up to. If omitted, zstack

@@ -4,6 +4,7 @@ import org.zstack.sdk.PciDeviceType;
 import org.zstack.sdk.PciDeviceState;
 import org.zstack.sdk.PciDeviceStatus;
 import org.zstack.sdk.PciDeviceVirtStatus;
+import org.zstack.sdk.PciDevicePassThroughState;
 import org.zstack.sdk.PciDeviceChooser;
 import org.zstack.sdk.PciDeviceMetaData;
 
@@ -97,6 +98,14 @@ public class PciDeviceInventory  {
         return this.virtStatus;
     }
 
+    public PciDevicePassThroughState passThroughState;
+    public void setPassThroughState(PciDevicePassThroughState passThroughState) {
+        this.passThroughState = passThroughState;
+    }
+    public PciDevicePassThroughState getPassThroughState() {
+        return this.passThroughState;
+    }
+
     public PciDeviceChooser chooser;
     public void setChooser(PciDeviceChooser chooser) {
         this.chooser = chooser;
@@ -113,12 +122,28 @@ public class PciDeviceInventory  {
         return this.vendorId;
     }
 
+    public java.lang.String vendor;
+    public void setVendor(java.lang.String vendor) {
+        this.vendor = vendor;
+    }
+    public java.lang.String getVendor() {
+        return this.vendor;
+    }
+
     public java.lang.String deviceId;
     public void setDeviceId(java.lang.String deviceId) {
         this.deviceId = deviceId;
     }
     public java.lang.String getDeviceId() {
         return this.deviceId;
+    }
+
+    public java.lang.String device;
+    public void setDevice(java.lang.String device) {
+        this.device = device;
+    }
+    public java.lang.String getDevice() {
+        return this.device;
     }
 
     public java.lang.String subvendorId;

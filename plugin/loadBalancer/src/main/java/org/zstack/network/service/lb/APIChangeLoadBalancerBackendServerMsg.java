@@ -1,7 +1,6 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -14,7 +13,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/load-balancers/servergroups/{serverGroupUuid}/backendserver/actions",
         method = HttpMethod.PUT,
@@ -22,7 +20,7 @@ import java.util.Map;
         isAction = true
 )
 public class APIChangeLoadBalancerBackendServerMsg extends APIMessage implements LoadBalancerMessage , APIAuditor{
-    @APIParam(resourceType = LoadBalancerServerGroupVO.class, checkAccount = true, operationTarget = true, nonempty = true)
+    @APIParam(resourceType = LoadBalancerServerGroupVO.class, nonempty = true)
     private String serverGroupUuid;
     @APIParam(required = false)
     private List<Map<String,String>> vmNics;

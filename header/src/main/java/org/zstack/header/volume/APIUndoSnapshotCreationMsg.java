@@ -1,7 +1,6 @@
 package org.zstack.header.volume;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -11,7 +10,6 @@ import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
  * @ Author : yh.w
  * @ Date   : Created in 15:40 2023/8/21
  */
-@Action(category = VolumeConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volumes/{uuid}/actions",
         isAction = true,
@@ -20,9 +18,9 @@ import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 )
 public class APIUndoSnapshotCreationMsg extends APIMessage implements VolumeMessage {
 
-    @APIParam(resourceType = VolumeVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeVO.class)
     private String uuid;
-    @APIParam(resourceType = VolumeSnapshotVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeSnapshotVO.class)
     private String snapShotUuid;
 
     public String getSnapShotUuid() {

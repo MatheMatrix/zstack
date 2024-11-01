@@ -1,13 +1,11 @@
 package org.zstack.network.service.lb;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 
-@Action(category = LoadBalancerConstants.ACTION_CATEGORY)
 @RestRequest(
         path = "/load-balancers/servergroups/{uuid}/actions",
         method = HttpMethod.PUT,
@@ -15,7 +13,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 public class APIUpdateLoadBalancerServerGroupMsg extends APIMessage implements LoadBalancerMessage{
-    @APIParam(resourceType = LoadBalancerServerGroupVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = LoadBalancerServerGroupVO.class)
     private String uuid;
     @APIParam(maxLength = 255, required = false)
     private String name;

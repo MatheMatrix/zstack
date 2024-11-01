@@ -1,5 +1,7 @@
 package org.zstack.network.l2;
 
+import com.google.gson.JsonSyntaxException;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.db.DatabaseFacade;
@@ -11,11 +13,17 @@ import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.ApiMessageInterceptor;
 import org.zstack.header.apimediator.StopRoutingException;
-import org.zstack.header.host.HostState;
-import org.zstack.header.host.HostVO;
+import org.zstack.header.cluster.ClusterVO;
+import org.zstack.header.cluster.ClusterVO_;
+import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.host.*;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.network.l2.*;
+import org.zstack.header.vm.VmInstanceConstant;
+import org.zstack.utils.gson.JSONObjectUtil;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -29,8 +37,6 @@ import static org.zstack.core.Platform.operr;
  * To change this template use File | Settings | File Templates.
  */
 public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
-    private static final L2NetworkHostHelper l2NetworkHostHelper = new L2NetworkHostHelper();
-
     @Autowired
     private CloudBus bus;
     @Autowired
@@ -59,12 +65,15 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
             validate((APIAttachL2NetworkToHostMsg) msg);
         } else if (msg instanceof APIDetachL2NetworkFromHostMsg) {
             validate((APIDetachL2NetworkFromHostMsg) msg);
+        } else if (msg instanceof APIUpdateL2NetworkVirtualNetworkIdMsg) {
+            validate((APIUpdateL2NetworkVirtualNetworkIdMsg) msg);
         }
 
         setServiceId(msg);
         return msg;
     }
 
+    @SuppressWarnings("unchecked")
     private void validate(final APIAttachL2NetworkToClusterMsg msg) {
         SimpleQuery<L2NetworkClusterRefVO> q = dbf.createQuery(L2NetworkClusterRefVO.class);
         q.add(L2NetworkClusterRefVO_.clusterUuid, Op.EQ, msg.getClusterUuid());
@@ -92,6 +101,24 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
         if (msg.getL2ProviderType() == null && !L2NetworkConstant.VSWITCH_TYPE_LINUX_BRIDGE.equals(l2.getvSwitchType())) {
             msg.setL2ProviderType(l2.getvSwitchType());
         }
+
+        if (msg.getL2ProviderType() != null && !L2ProviderType.hasType(msg.getL2ProviderType())) {
+            throw new ApiMessageInterceptionException(argerr("unsupported l2Network provider type[%s]", msg.getL2ProviderType()));
+        }
+
+        if (!StringUtils.isEmpty(msg.getHostParams())) {
+            List<HostParam> hostParams;
+            try {
+                hostParams = JSONObjectUtil.toCollection(msg.getHostParams(), ArrayList.class, HostParam.class);
+            } catch (JsonSyntaxException e) {
+                throw new ApiMessageInterceptionException(operr("invalid json format, causes: %s", e.getMessage()));
+            }
+
+            ErrorCode err = L2NetworkHostUtils.validateHostParams(hostParams, msg.getClusterUuid(), null);
+            if (err != null) {
+                throw new ApiMessageInterceptionException(err);
+            }
+        }
     }
 
     private void validate(APIDetachL2NetworkFromClusterMsg msg) {
@@ -104,7 +131,7 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
     }
 
     private void validate(APIAttachL2NetworkToHostMsg msg) {
-        boolean ifL2AttachedCluster = SQL.New("select l2.uuid from L2VirtualSwitchNetworkVO l2, L2NetworkClusterRefVO ref, HostVO host" +
+        boolean ifL2AttachedCluster = SQL.New("select l2.uuid from L2NetworkVO l2, L2NetworkClusterRefVO ref, HostVO host" +
                         " where l2.uuid = ref.l2NetworkUuid" +
                         " and ref.clusterUuid = host.clusterUuid" +
                         " and l2.uuid = :l2Uuid" +
@@ -117,8 +144,9 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
             throw new ApiMessageInterceptionException(operr("l2Network[uuid:%s] has not attached to cluster of host[uuid:%s]", msg.getL2NetworkUuid(), msg.getHostUuid()));
         }
 
-        if (l2NetworkHostHelper.checkIfL2NetworkHostRefNotExist(msg.getL2NetworkUuid(), msg.getHostUuid())) {
-            throw new ApiMessageInterceptionException(operr("l2Network[uuid:%s] does not supported to attach to host[uuid:%s]", msg.getL2NetworkUuid(), msg.getHostUuid()));
+        String l2Type = Q.New(L2NetworkVO.class).eq(L2NetworkVO_.uuid, msg.getL2NetworkUuid()).select(L2NetworkVO_.type).findValue();
+        if (L2NetworkType.valueOf(l2Type).isAttachToAllHosts()) {
+            throw new ApiMessageInterceptionException(operr("type[%s] should be attached to all host", l2Type));
         }
 
         HostVO host = dbf.findByUuid(msg.getHostUuid(), HostVO.class);
@@ -126,10 +154,25 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
             throw new ApiMessageInterceptionException(operr("could not attach l2Network[uuid:%s] to host[uuid:%s] " +
                     "which is in the premaintenance or maintenance state", msg.getL2NetworkUuid(), msg.getHostUuid()));
         }
+
+        if (!StringUtils.isEmpty(msg.getHostParam())) {
+            HostParam hostParam;
+            try {
+                hostParam = JSONObjectUtil.toObject(msg.getHostParam(), HostParam.class);
+            } catch (JsonSyntaxException e) {
+                throw new ApiMessageInterceptionException(operr("invalid json format, causes: %s", e.getMessage()));
+            }
+
+
+            ErrorCode err = L2NetworkHostUtils.validateHostParams(Collections.singletonList(hostParam), null, msg.getHostUuid());
+            if (err != null) {
+                throw new ApiMessageInterceptionException(err);
+            }
+        }
     }
 
     private void validate(APIDetachL2NetworkFromHostMsg msg) {
-        boolean ifL2AttachedCluster = SQL.New("select l2.uuid from L2VirtualSwitchNetworkVO l2, L2NetworkClusterRefVO ref, HostVO host" +
+        boolean ifL2AttachedCluster = SQL.New("select l2.uuid from L2NetworkVO l2, L2NetworkClusterRefVO ref, HostVO host" +
                         " where l2.uuid = ref.l2NetworkUuid" +
                         " and ref.clusterUuid = host.clusterUuid" +
                         " and l2.uuid = :l2Uuid" +
@@ -142,7 +185,7 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
             throw new ApiMessageInterceptionException(operr("l2Network[uuid:%s] has not attached to cluster of host[uuid:%s]", msg.getL2NetworkUuid(), msg.getHostUuid()));
         }
 
-        if (!l2NetworkHostHelper.checkIfL2AttachedToHost(msg.getL2NetworkUuid(), msg.getHostUuid())) {
+        if (!L2NetworkHostUtils.checkIfL2AttachedToHost(msg.getL2NetworkUuid(), msg.getHostUuid())) {
             throw new ApiMessageInterceptionException(operr("l2Network[uuid:%s] has not attached to host[uuid:%s]", msg.getL2NetworkUuid(), msg.getHostUuid()));
         }
     }
@@ -163,5 +206,21 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
         if (!VSwitchType.hasType(msg.getvSwitchType())) {
             throw new ApiMessageInterceptionException(argerr("unsupported vSwitch type[%s]", msg.getvSwitchType()));
         }
+    }
+
+    private void validate(APIUpdateL2NetworkVirtualNetworkIdMsg msg) {
+        L2NetworkVO l2 = dbf.findByUuid(msg.getL2NetworkUuid(), L2NetworkVO.class);
+        if (L2NetworkConstant.L2_VLAN_NETWORK_TYPE.equals(l2.getType()) ||
+                L2NetworkConstant.L2_NO_VLAN_NETWORK_TYPE.equals(l2.getType())) {
+            throw new ApiMessageInterceptionException(operr("l2 network[type:%s] does not support update virtual network id", l2.getType()));
+        }
+
+        l2.getAttachedClusterRefs().forEach(ref -> {
+            if (!Q.New(ClusterVO.class).eq(ClusterVO_.uuid, ref.getClusterUuid())
+                    .eq(ClusterVO_.hypervisorType, VmInstanceConstant.KVM_HYPERVISOR_TYPE).isExists()) {
+                throw new ApiMessageInterceptionException(operr("cannot update virtual network id for l2Network[uuid:%s]" +
+                        " because it only supports an L2Network that is exclusively attached to a kvm cluster", l2.getUuid()));
+            }
+        });
     }
 }

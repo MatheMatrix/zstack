@@ -294,7 +294,7 @@ public class VmInstanceSpec implements Serializable {
     }
 
     private VmInstanceInventory vmInventory;
-    private List<VmNicSpec> l3Networks;
+    private List<VmNicSpec> l3Networks = new ArrayList<>();
     private List<DiskOfferingInventory> dataDiskOfferings;
     private List<String> dataVolumeTemplateUuids;
     private Map<String, List<String>> dataVolumeFromTemplateSystemTags = new HashMap<>();
@@ -350,6 +350,7 @@ public class VmInstanceSpec implements Serializable {
     private List<String> dataVolumeSystemTags;
     private Map<String, List<String>> dataVolumeSystemTagsOnIndex;
     private boolean skipIpAllocation = false;
+    private VmCreationStrategy strategy;
 
     public List<String> getRequiredClusterUuids() {
         return requiredClusterUuids;
@@ -712,7 +713,7 @@ public class VmInstanceSpec implements Serializable {
         List<String> nsTypes = new ArrayList<>();
         if (getL3Networks() != null) {
             for (VmNicSpec nicSpec : getL3Networks()) {
-                for (L3NetworkInventory l3: nicSpec.l3Invs) {
+                for (L3NetworkInventory l3: nicSpec.getL3Invs()) {
                     nsTypes.addAll(l3.getNetworkServiceTypes());
                 }
             }
@@ -845,6 +846,14 @@ public class VmInstanceSpec implements Serializable {
 
     public void setAllocatedPrimaryStorageUuidForDataVolume(String allocatedPrimaryStorageUuidForDataVolume) {
         this.allocatedPrimaryStorageUuidForDataVolume = allocatedPrimaryStorageUuidForDataVolume;
+    }
+
+    public VmCreationStrategy getStrategy() {
+        return strategy;
+    }
+
+    public void setStrategy(VmCreationStrategy strategy) {
+        this.strategy = strategy;
     }
 
     public String getVolumeFormatFromImage() {

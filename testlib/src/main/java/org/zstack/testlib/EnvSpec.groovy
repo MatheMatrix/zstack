@@ -21,7 +21,6 @@ import org.zstack.header.core.WhileDoneCompletion
 import org.zstack.header.core.progress.TaskProgressVO
 import org.zstack.header.identity.AccountConstant
 import org.zstack.header.identity.SessionVO
-import org.zstack.header.image.GuestOsCategoryVO
 import org.zstack.header.image.ImageDeletionPolicyManager
 import org.zstack.header.message.Message
 import org.zstack.header.rest.RESTConstant
@@ -31,6 +30,8 @@ import org.zstack.header.vo.EO
 import org.zstack.header.volume.VolumeDeletionPolicyManager
 import org.zstack.image.ImageGlobalConfig
 import org.zstack.sdk.*
+import org.zstack.sdk.identity.ldap.api.AddLdapServerAction
+import org.zstack.sdk.identity.ldap.api.DeleteLdapServerAction
 import org.zstack.sdk.identity.role.api.CreateRoleAction
 import org.zstack.sdk.identity.role.api.DeleteRoleAction
 import org.zstack.sdk.sns.CreateSNSTopicAction
@@ -58,6 +59,8 @@ import org.zstack.sdk.zwatch.monitorgroup.api.DeleteMonitorTemplateAction
 import org.zstack.storage.volume.VolumeGlobalConfig
 import org.zstack.testlib.identity.AccountSpec
 import org.zstack.testlib.identity.IdentitySpec
+import org.zstack.testlib.identity.ldap.LdapServerSpec
+import org.zstack.testlib.identity.ldap.LdapVirtualEndpointSpec
 import org.zstack.testlib.vfs.VFS
 import org.zstack.utils.BeanUtils
 import org.zstack.utils.DebugUtils
@@ -124,10 +127,7 @@ class EnvSpec extends ApiHelper implements Node  {
             [CreateDiskOfferingAction.metaClass, CreateDiskOfferingAction.Result.metaClass, DeleteDiskOfferingAction.class],
             [CreateInstanceOfferingAction.metaClass, CreateInstanceOfferingAction.Result.metaClass, DeleteInstanceOfferingAction.class],
             [CreateAccountAction.metaClass, CreateAccountAction.Result.metaClass, DeleteAccountAction.class],
-            [CreatePolicyAction.metaClass, CreatePolicyAction.Result.metaClass, DeletePolicyAction.class],
-            [CreateUserGroupAction.metaClass, CreateUserGroupAction.Result.metaClass, DeleteUserGroupAction.class],
-            [CreateUserAction.metaClass, CreateUserAction.Result.metaClass, DeleteUserAction.class],
-            [CreateRoleAction.metaClass, CreateRoleAction.Result.metaClass, DeleteRoleAction.class],
+            [CreateRoleAction.metaClass, CreateRoleAction.Result.metaClass, { [new DeleteRoleAction(deleteMode: "Enforcing")] }],
             [AddImageAction.metaClass, AddImageAction.Result.metaClass, DeleteImageAction.class],
             [CreateDataVolumeTemplateFromVolumeAction.metaClass, CreateDataVolumeTemplateFromVolumeAction.Result.metaClass, DeleteImageAction.class],
             [CreateRootVolumeTemplateFromRootVolumeAction.metaClass, CreateRootVolumeTemplateFromRootVolumeAction.Result.metaClass, DeleteImageAction.class],
@@ -206,30 +206,28 @@ class EnvSpec extends ApiHelper implements Node  {
             }
 
             resultMeta.delete = {
-                if (delegate.error != null) {
+                if (delegate.error != null || delegate.value.inventory == null) {
                     return false
                 }
+                String uuid = delegate.value.inventory.uuid
 
-
-                List<Class> dclasses = []
-                if (deleteClass instanceof List) {
-                    dclasses.addAll(deleteClass)
+                List<Object> actions = []
+                if (deleteClass instanceof Closure) {
+                    actions.addAll((deleteClass as Closure).call())
+                } else if (deleteClass instanceof List) {
+                    actions.addAll((deleteClass as List<Class>).collect { it.getConstructor().newInstance() })
                 } else {
-                    dclasses.add(deleteClass as Class)
+                    actions.add((deleteClass as Class).getConstructor().newInstance())
                 }
 
-                dclasses.each {
-                    def action = it.getConstructor().newInstance()
-                    if (delegate.value.inventory == null) {
-                        return
-                    }
-
-                    logger.debug("auto-deleting resource by ${it} uuid:${delegate.value.inventory.uuid}")
-                    action.uuid = delegate.value.inventory.uuid
+                actions.each { action ->
+                    logger.debug("auto-deleting resource by ${action.class.name} uuid:${uuid}")
+                    action.uuid = uuid
                     action.sessionId = session.uuid
                     def res = action.call()
                     assert res.error == null: "API failure: ${JSONObjectUtil.toJsonString(res.error)}"
                 }
+                return true
             }
         }
     }
@@ -367,6 +365,24 @@ class EnvSpec extends ApiHelper implements Node  {
 
     DataVolumeSpec volume(@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = DataVolumeSpec.class) Closure c) {
         def i = new DataVolumeSpec(this)
+        c.delegate = i
+        c.resolveStrategy = Closure.DELEGATE_FIRST
+        c()
+        addChild(i)
+        return i
+    }
+
+    LdapServerSpec ldapServer(@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = LdapServerSpec.class) Closure c) {
+        def i = new LdapServerSpec(this)
+        c.delegate = i
+        c.resolveStrategy = Closure.DELEGATE_FIRST
+        c()
+        addChild(i)
+        return i
+    }
+
+    LdapVirtualEndpointSpec ldapEndpoint(@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = LdapVirtualEndpointSpec.class) Closure c) {
+        def i = new LdapVirtualEndpointSpec(this)
         c.delegate = i
         c.resolveStrategy = Closure.DELEGATE_FIRST
         c()
@@ -700,7 +716,7 @@ class EnvSpec extends ApiHelper implements Node  {
                               "TaskProgressVO", "TaskStepVO",
                               "ResourceVO","SecurityGroupSequenceNumberVO", "MediaVO",
                               "CaptchaVO", "LoginAttemptsVO", "SchedulerJobHistoryVO",
-                              "HistoricalPasswordVO", "BuildAppExportHistoryVO", "InstallPathRecycleVO",
+                              "HistoricalPasswordVO", "InstallPathRecycleVO",
                               "PortMirrorSessionSequenceNumberVO", "LicenseHistoryVO", "EventLogVO", "VmSchedHistoryVO",
                               "EventRecordsVO", "AuditsVO", "AlarmRecordsVO", "VmCrashHistoryVO", "EncryptionIntegrityVO", "FileIntegrityVerificationVO",
                               "EncryptEntityMetadataVO", "VmInstanceDeviceAddressGroupVO", "HostOsCategoryVO", "KvmHostHypervisorMetadataVO",

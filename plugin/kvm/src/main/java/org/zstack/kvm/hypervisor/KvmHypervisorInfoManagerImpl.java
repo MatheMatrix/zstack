@@ -2,15 +2,37 @@ package org.zstack.kvm.hypervisor;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
+import org.zstack.compute.host.HostGlobalConfig;
 import org.zstack.core.Platform;
+import org.zstack.core.cloudbus.CloudBus;
+import org.zstack.core.cloudbus.CloudBusCallBack;
+import org.zstack.core.cloudbus.EventCallback;
+import org.zstack.core.cloudbus.EventFacade;
+import org.zstack.core.config.GlobalConfigException;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
+import org.zstack.core.db.SQLBatch;
+import org.zstack.core.thread.ThreadFacade;
+import org.zstack.core.workflow.SimpleFlowChain;
 import org.zstack.header.Component;
+import org.zstack.header.core.Completion;
+import org.zstack.header.core.FutureCompletion;
+import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.errorcode.ErrorCodeList;
+import org.zstack.header.errorcode.OperationFailureException;
+import org.zstack.header.host.GetVirtualizerInfoMsg;
+import org.zstack.header.host.HostConstant;
 import org.zstack.header.host.HostVO;
+import org.zstack.header.message.MessageReply;
+import org.zstack.header.vm.UpdateVmCpuQuotaMsg;
+import org.zstack.header.vm.VmCanonicalEvents;
 import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmInstanceVO_;
+import org.zstack.kvm.KVMConstant;
+import org.zstack.kvm.KVMGlobalConfig;
 import org.zstack.kvm.hypervisor.datatype.*;
+import org.zstack.resourceconfig.*;
 import org.zstack.utils.CollectionDSL;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
@@ -18,10 +40,12 @@ import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.Tuple;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.util.Map.Entry;
+import static org.zstack.core.Platform.operr;
 import static org.zstack.kvm.KVMAgentCommands.GetVirtualizerInfoRsp;
 import static org.zstack.kvm.KVMAgentCommands.VirtualizerInfoTO;
 import static org.zstack.kvm.hypervisor.HypervisorMetadataCollector.HypervisorMetadataDefinition;
@@ -36,6 +60,12 @@ public class KvmHypervisorInfoManagerImpl implements KvmHypervisorInfoManager, C
     private DatabaseFacade db;
     @Autowired
     private HypervisorMetadataCollector collector;
+    @Autowired
+    private EventFacade events;
+    @Autowired
+    private CloudBus bus;
+    @Autowired
+    private ResourceConfigFacade rcf;
 
     @Override
     public void save(GetVirtualizerInfoRsp rsp) {
@@ -219,6 +249,39 @@ public class KvmHypervisorInfoManagerImpl implements KvmHypervisorInfoManager, C
         }
     }
 
+    private void registerRefreshVmHypervisorHooks() {
+        events.on(VmCanonicalEvents.VM_LIBVIRT_REPORT_REBOOT, new EventCallback<Object>() {
+            @Override
+            protected void run(Map<String, String> tokens, Object data) {
+                onVmStart(data.toString());
+            }
+        });
+        events.on(VmCanonicalEvents.VM_LIBVIRT_REPORT_START, new EventCallback<Object>() {
+            @Override
+            protected void run(Map<String, String> tokens, Object data) {
+                onVmStart(data.toString());
+            }
+        });
+    }
+
+    private void onVmStart(String vmUuid) {
+        final String hostUuid = Q.New(VmInstanceVO.class)
+                .eq(VmInstanceVO_.uuid, vmUuid)
+                .eq(VmInstanceVO_.hypervisorType, KVMConstant.KVM_HYPERVISOR_TYPE)
+                .select(VmInstanceVO_.hostUuid)
+                .findValue();
+        if (hostUuid == null) {
+            // This is not a KVM VM (maybe bare-metal)
+            return;
+        }
+
+        final GetVirtualizerInfoMsg message = new GetVirtualizerInfoMsg();
+        message.setHostUuid(hostUuid);
+        message.setVmInstanceUuids(Collections.singletonList(vmUuid));
+        bus.makeTargetServiceIdByResourceUuid(message, HostConstant.SERVICE_ID, hostUuid);
+        bus.send(message); // no need to reply
+    }
+
     private boolean saveMetadataList(List<HypervisorMetadataDefinition> definitions) {
         List<HostOsCategoryVO> categoryVOS = definitions.stream()
                 .map(this::mapToHostOsCategory)
@@ -368,9 +431,56 @@ public class KvmHypervisorInfoManagerImpl implements KvmHypervisorInfoManager, C
         return vo;
     }
 
+    private void installKVMGlobalConfigExtension() {
+        ResourceConfig vmCpuQuotaConfig = rcf.getResourceConfig(KVMGlobalConfig.VM_CPU_QUOTA.getIdentity());
+        vmCpuQuotaConfig.installUpdateExtension(new ResourceConfigUpdateExtensionPoint() {
+            @Override
+            public void updateResourceConfig(ResourceConfig config, String resourceUuid, String resourceType, String oldValue, String newValue) throws GlobalConfigException {
+                FutureCompletion completion = new FutureCompletion(null);
+
+                updateCpuQuota(resourceUuid, newValue, completion);
+                completion.await(TimeUnit.SECONDS.toMillis(60));
+
+                if (!completion.isSuccess()) {
+                    SQL.New(ResourceConfigVO.class).eq(ResourceConfigVO_.category, KVMGlobalConfig.CATEGORY)
+                            .eq(ResourceConfigVO_.name, KVMGlobalConfig.VM_CPU_QUOTA.getName()).eq(ResourceConfigVO_.resourceType, resourceType)
+                            .eq(ResourceConfigVO_.resourceUuid, resourceUuid).set(ResourceConfigVO_.value, oldValue).update();
+                    throw new GlobalConfigException(completion.getErrorCode().getDetails());
+                }
+            }
+        });
+    }
+
+    private void updateCpuQuota(String resourceUuid, String newValue, Completion completion) {
+        VmInstanceVO vm = db.findByUuid(resourceUuid, VmInstanceVO.class);
+        if (vm.getHostUuid() == null) {
+            completion.success();
+            return;
+        }
+
+        UpdateVmCpuQuotaMsg updateVmCpuQuotaMsg = new UpdateVmCpuQuotaMsg();
+        updateVmCpuQuotaMsg.setVmCpuQuota(Long.parseLong(newValue));
+        updateVmCpuQuotaMsg.setVmInstanceUuid(vm.getUuid());
+        updateVmCpuQuotaMsg.setHostUuid(vm.getHostUuid());
+
+        bus.makeTargetServiceIdByResourceUuid(updateVmCpuQuotaMsg, HostConstant.SERVICE_ID, vm.getUuid());
+        bus.send(updateVmCpuQuotaMsg, new CloudBusCallBack(null) {
+            @Override
+            public void run(MessageReply reply) throws GlobalConfigException {
+                if (!reply.isSuccess()) {
+                    completion.fail(reply.getError());
+                    return;
+                }
+                completion.success();
+            }
+        });
+    }
+
     @Override
     public boolean start() {
         refreshMetadata();
+        registerRefreshVmHypervisorHooks();
+        installKVMGlobalConfigExtension();
         return true;
     }
 

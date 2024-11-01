@@ -1,7 +1,6 @@
 package org.zstack.header.storage.snapshot;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
@@ -40,7 +39,6 @@ import java.util.concurrent.TimeUnit;
  * @since 0.1.0
  */
 
-@Action(category = VolumeSnapshotConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/volume-snapshots/{uuid}/actions",
         isAction = true,
@@ -54,7 +52,7 @@ public class APIRevertVolumeFromSnapshotMsg extends APIMessage implements Revert
      * <p>
      * .. note:: volume uuid is retrieved from snapshot
      */
-    @APIParam(resourceType = VolumeSnapshotVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VolumeSnapshotVO.class)
     private String uuid;
 
     /**

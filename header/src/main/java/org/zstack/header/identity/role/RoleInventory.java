@@ -7,31 +7,17 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static java.util.Arrays.asList;
+
 @Inventory(mappingVOClass = RoleVO.class)
 public class RoleInventory {
     private String uuid;
     private String name;
     private String description;
-    private String identity;
-    private RoleType type;
-    private RoleState state;
+    private String type;
     private Timestamp createDate;
     private Timestamp lastOpDate;
-    private List<RolePolicyStatementInventory> statements;
-    private List<RolePolicyRefInventory> policies;
-
-    protected RoleInventory(RoleVO vo) {
-        this.setCreateDate(vo.getCreateDate());
-        this.setDescription(vo.getDescription());
-        this.setLastOpDate(vo.getLastOpDate());
-        this.setType(vo.getType());
-        this.setName(vo.getName());
-        this.setState(vo.getState());
-        this.setUuid(vo.getUuid());
-        this.setIdentity(vo.getIdentity());
-        this.setStatements(RolePolicyStatementInventory.valueOf(vo.getStatements()));
-        this.setPolicies(RolePolicyRefInventory.valueOf(vo.getPolicies()));
-    }
+    private List<String> policies;
 
     public RoleInventory() {
     }
@@ -40,14 +26,11 @@ public class RoleInventory {
         RoleInventory inv = new RoleInventory();
         inv.uuid = vo.getUuid();
         inv.name = vo.getName();
-        inv.type = vo.getType();
-        inv.state = vo.getState();
+        inv.type = vo.getType().toString();
         inv.description = vo.getDescription();
-        inv.identity = vo.getIdentity();
         inv.createDate = vo.getCreateDate();
         inv.lastOpDate = vo.getLastOpDate();
-        inv.statements = RolePolicyStatementInventory.valueOf(vo.getStatements());
-        inv.policies = RolePolicyRefInventory.valueOf(vo.getPolicies());
+        inv.policies = RolePolicyInventory.toStatements(vo.getPolicies());
         return inv;
     }
 
@@ -55,28 +38,20 @@ public class RoleInventory {
         return vos.stream().map(RoleInventory::valueOf).collect(Collectors.toList());
     }
 
-    public RoleState getState() {
-        return state;
-    }
-
-    public void setState(RoleState state) {
-        this.state = state;
-    }
-
-    public RoleType getType() {
+    public String getType() {
         return type;
     }
 
-    public void setType(RoleType type) {
+    public void setType(String type) {
         this.type = type;
     }
 
-    public List<RolePolicyStatementInventory> getStatements() {
-        return statements;
+    public List<String> getPolicies() {
+        return policies;
     }
 
-    public void setStatements(List<RolePolicyStatementInventory> statements) {
-        this.statements = statements;
+    public void setPolicies(List<String> policies) {
+        this.policies = policies;
     }
 
     public String getUuid() {
@@ -119,19 +94,14 @@ public class RoleInventory {
         this.lastOpDate = lastOpDate;
     }
 
-    public List<RolePolicyRefInventory> getPolicies() {
-        return policies;
-    }
-
-    public void setPolicies(List<RolePolicyRefInventory> policies) {
-        this.policies = policies;
-    }
-
-    public String getIdentity() {
-        return identity;
-    }
-
-    public void setIdentity(String identity) {
-        this.identity = identity;
+    public static RoleInventory __example__() {
+        RoleInventory role = new RoleInventory();
+        role.setName("role-1");
+        role.setPolicies(asList(".header.volume.APICreateVolumeSnapshotMsg", ".header.volume.APIQueryVolumeMsg"));
+        role.setDescription("role for test");
+        role.setType(RoleType.Customized.toString());
+        role.setCreateDate(new Timestamp(org.zstack.header.message.DocUtils.date));
+        role.setLastOpDate(new Timestamp(org.zstack.header.message.DocUtils.date));
+        return role;
     }
 }

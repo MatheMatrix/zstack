@@ -86,7 +86,8 @@ public class VxlanNetworkFactory implements L2NetworkFactory, Component, VmInsta
         bus.makeTargetServiceIdByResourceUuid(vniMsg, L2NetworkConstant.SERVICE_ID, amsg.getPoolUuid());
         MessageReply reply = bus.call(vniMsg);
         if (!reply.isSuccess()) {
-            throw new OperationFailureException(reply.getError());
+            completion.fail(reply.getError());
+            return;
         }
         AllocateVniReply r = reply.castReply();
 
@@ -101,7 +102,7 @@ public class VxlanNetworkFactory implements L2NetworkFactory, Component, VmInsta
                 vo.setAccountUuid(msg.getSession().getAccountUuid());
                 vo.setPoolUuid((amsg.getPoolUuid()));
                 if (vo.getPhysicalInterface() == null) {
-                    vo.setPhysicalInterface("");
+                    vo.setPhysicalInterface(L2NetworkConstant.PHYSICAL_INTERFACE_EMPTY);
                 }
                 dbf.getEntityManager().persist(vo);
 
@@ -231,18 +232,6 @@ public class VxlanNetworkFactory implements L2NetworkFactory, Component, VmInsta
             throw new OperationFailureException(operr("cannot configure vxlan network for vm[uuid:%s] on the destination host[uuid:%s]",
                     inv.getUuid(), destHostUuid).causedBy(completion.getErrorCode()));
         }
-    }
-
-    @Override
-    public void  beforeMigrateVm(VmInstanceInventory inv, String destHostUuid) {
-    }
-
-    @Override
-    public void  afterMigrateVm(VmInstanceInventory inv, String srcHostUuid) {
-    }
-
-    @Override
-    public void  failedToMigrateVm(VmInstanceInventory inv, String destHostUuid, ErrorCode reason) {
     }
 
     @Override

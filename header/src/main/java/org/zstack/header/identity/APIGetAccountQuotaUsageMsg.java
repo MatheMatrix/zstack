@@ -8,14 +8,13 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by frank on 2/22/2016.
  */
-@Action(category = AccountConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/accounts/quota/{uuid}/usages",
         method = HttpMethod.GET,
         responseClass = APIGetAccountQuotaUsageReply.class
 )
 public class APIGetAccountQuotaUsageMsg extends APISyncCallMessage implements AccountMessage {
-    @APIParam(resourceType = AccountVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = AccountVO.class)
     private String uuid;
 
     @Override

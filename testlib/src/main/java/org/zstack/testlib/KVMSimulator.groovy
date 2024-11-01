@@ -164,7 +164,10 @@ class KVMSimulator implements Simulator {
             rsp.qemuImgVersion = "2.0.0"
             rsp.libvirtVersion = "1.2.9"
             rsp.cpuModelName = "Broadwell"
-            rsp.cpuProcessorNum = "10"
+            rsp.cpuProcessorNum = 10
+            rsp.cpuThreadsPerCore = 2
+            rsp.cpuCoresPerSocket = 5
+            rsp.cpuSockets = 1
             rsp.cpuGHz = "2.10"
             rsp.hostCpuModelName = "Broadwell @ 2.10GHz"
             rsp.ipmiAddress = "None"
@@ -180,6 +183,10 @@ class KVMSimulator implements Simulator {
             rsp.virtualizerInfo.version = "4.2.0-627.g36ee592.el7"
             rsp.virtualizerInfo.virtualizer = "qemu-kvm"
             return rsp
+        }
+
+        spec.simulator(KVMConstant.KVM_VM_UPDATE_CPU_QUOTA_PATH) {
+            return new KVMAgentCommands.UpdateVmCpuQuotaRsp()
         }
 
         spec.simulator(KVMConstant.KVM_VM_UPDATE_PRIORITY_PATH) {
@@ -377,6 +384,14 @@ class KVMSimulator implements Simulator {
 
         spec.simulator(KVMConstant.KVM_COMPARE_CPU_FUNCTION_PATH) {
             return new KVMAgentCommands.VmCompareCpuFunctionResponse()
+        }
+
+        spec.simulator(KVMConstant.KVM_UPDATE_L2VLAN_NETWORK_PATH) {
+            return new KVMAgentCommands.UpdateL2NetworkResponse()
+        }
+
+        spec.simulator(KVMConstant.KVM_UPDATE_L2VXLAN_NETWORK_PATH) {
+            return new KVMAgentCommands.UpdateL2NetworkResponse()
         }
 
         spec.simulator(KVMConstant.KVM_CHECK_L2NOVLAN_NETWORK_PATH) {

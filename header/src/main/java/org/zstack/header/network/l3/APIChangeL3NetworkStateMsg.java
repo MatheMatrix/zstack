@@ -1,8 +1,6 @@
 package org.zstack.header.network.l3;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -35,7 +33,6 @@ import org.zstack.header.rest.RestRequest;
  * @result see :ref:`APIChangeL3NetworkStateEvent`
  * @since 0.1.0
  */
-@Action(category = L3NetworkConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/l3-networks/{uuid}/actions",
         method = HttpMethod.PUT,
@@ -46,7 +43,7 @@ public class APIChangeL3NetworkStateMsg extends APIMessage implements L3NetworkM
     /**
      * @desc l3Network uuid
      */
-    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = L3NetworkVO.class)
     private String uuid;
     /**
      * @desc - enable: enable l3Network

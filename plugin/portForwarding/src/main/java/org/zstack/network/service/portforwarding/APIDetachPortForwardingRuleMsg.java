@@ -1,18 +1,13 @@
 package org.zstack.network.service.portforwarding;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.core.db.SQL;
-import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
-import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmNicVO;
-
-import javax.persistence.Tuple;
 
 /**
  * @api
@@ -49,7 +44,6 @@ import javax.persistence.Tuple;
  * @result
  * see :ref:`APIDetachPortForwardingRuleEvent`
  */
-@Action(category = PortForwardingConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/port-forwarding/{uuid}/vm-instances/nics",
         method = HttpMethod.DELETE,
@@ -59,7 +53,7 @@ public class APIDetachPortForwardingRuleMsg extends APIMessage implements APIAud
     /**
      * @desc rule uuid
      */
-    @APIParam(resourceType = PortForwardingRuleVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = PortForwardingRuleVO.class)
     private String uuid;
 
     // for audit purpose only

@@ -1,12 +1,8 @@
 package org.zstack.network.service.vip;
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
-import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.message.APIGetMessage;
-import org.zstack.network.service.vip.*;
 
 @RestRequest(
         path = "/vips/{vipUuid}/check-port-availability",

@@ -2,7 +2,6 @@ package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.core.APIGetChainTaskReply;
-import org.zstack.header.identity.Action;
 import org.zstack.header.core.APIGetChainTaskMsg;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -11,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-@Action(category = VmInstanceConstant.ACTION_CATEGORY, adminOnly = true)
 @RestRequest(
         path = "/vm-instances/task-details",
         method = HttpMethod.GET,

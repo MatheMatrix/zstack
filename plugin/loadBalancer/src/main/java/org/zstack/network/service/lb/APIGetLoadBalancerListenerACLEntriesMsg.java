@@ -14,7 +14,7 @@ import java.util.List;
         responseClass = APIGetLoadBalancerListenerACLEntriesReply.class
 )
 public class APIGetLoadBalancerListenerACLEntriesMsg extends APISyncCallMessage {
-    @APIParam(resourceType = LoadBalancerListenerVO.class, checkAccount = true, operationTarget = true, required = false)
+    @APIParam(resourceType = LoadBalancerListenerVO.class, required = false)
     private List<String> listenerUuids;
 
     @APIParam(required = false, validValues = {"RedirectRule", "IpEntry"})

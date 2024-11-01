@@ -1,7 +1,6 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
@@ -12,14 +11,13 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by frank on 10/17/2015.
  */
-@Action(category = VmInstanceConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/vm-instances/{vmInstanceUuid}/iso",
         method = HttpMethod.DELETE,
         responseClass = APIDetachIsoFromVmInstanceEvent.class
 )
 public class APIDetachIsoFromVmInstanceMsg extends APIMessage implements VmInstanceMessage, APIAuditor {
-    @APIParam(resourceType = VmInstanceVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;
 
     // resourceType can not be set to ImageVO.class, because the image may have been deleted

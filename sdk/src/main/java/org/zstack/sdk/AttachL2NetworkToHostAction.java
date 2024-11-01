@@ -34,6 +34,9 @@ public class AttachL2NetworkToHostAction extends AbstractAction {
     @Param(required = false, validValues = {"LinuxBridge"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String l2ProviderType;
 
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String hostParam;
+
     @Param(required = false)
     public java.util.List systemTags;
 

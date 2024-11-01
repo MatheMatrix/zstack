@@ -2,13 +2,11 @@ package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.configuration.DiskOfferingVO;
-import org.zstack.header.identity.Action;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
-import org.zstack.header.storage.backup.BackupStorageVO;
 
 import java.util.List;
 
@@ -17,7 +15,6 @@ import static java.util.Arrays.asList;
 /**
  * Created by MaJin on 2017-08-16.
  */
-@Action(category = VmInstanceConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
         path = "/vm-instances/candidate-storages",
         method = HttpMethod.GET,
@@ -25,15 +22,15 @@ import static java.util.Arrays.asList;
 )
 
 public class APIGetCandidatePrimaryStoragesForCreatingVmMsg extends APISyncCallMessage {
-    @APIParam(resourceType = ImageVO.class, checkAccount = true)
+    @APIParam(resourceType = ImageVO.class)
     private String imageUuid;
-    @APIParam(resourceType = L3NetworkVO.class, nonempty = true, checkAccount = true)
+    @APIParam(resourceType = L3NetworkVO.class, nonempty = true)
     private List<String> l3NetworkUuids;
-    @APIParam(required = false, resourceType = DiskOfferingVO.class, checkAccount = true)
+    @APIParam(required = false, resourceType = DiskOfferingVO.class)
     private String rootDiskOfferingUuid;
     @APIParam(numberRange = {1, Long.MAX_VALUE}, numberRangeUnit = {"byte", "bytes"}, required = false)
     private Long rootDiskSize;
-    @APIParam(required = false, nonempty = true, resourceType = DiskOfferingVO.class, checkAccount = true)
+    @APIParam(required = false, nonempty = true, resourceType = DiskOfferingVO.class)
     private List<String> dataDiskOfferingUuids;
     @APIParam(numberRange = {1, Long.MAX_VALUE}, numberRangeUnit = {"byte", "bytes"}, required = false)
     List<Long> dataDiskSizes;

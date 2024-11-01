@@ -29,16 +29,13 @@ public class CreateRoleAction extends AbstractAction {
     public java.lang.String name;
 
     @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String description;
-
-    @Param(required = false)
-    public java.util.List statements;
+    public java.lang.String description = "";
 
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List policyUuids;
+    public java.util.List policies;
 
-    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String identity;
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String baseOnRole;
 
     @Param(required = false)
     public java.lang.String resourceUuid;

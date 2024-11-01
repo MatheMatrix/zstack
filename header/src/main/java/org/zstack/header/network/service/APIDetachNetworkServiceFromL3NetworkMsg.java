@@ -2,11 +2,8 @@ package org.zstack.header.network.service;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.MapField;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
-import org.zstack.header.network.l3.L3NetworkConstant;
 import org.zstack.header.network.l3.L3NetworkMessage;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
@@ -16,7 +13,6 @@ import java.util.*;
 /**
  * Created by frank on 1/4/2016.
  */
-@Action(category = L3NetworkConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/l3-networks/{l3NetworkUuid}/network-services",
         method = HttpMethod.DELETE,
@@ -26,7 +22,7 @@ public class APIDetachNetworkServiceFromL3NetworkMsg extends APIMessage implemen
     /**
      * @desc l3Network uuid
      */
-    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = L3NetworkVO.class)
     private String l3NetworkUuid;
     /**
      * @desc a map where key is network service provider uuid and value is list of network service types

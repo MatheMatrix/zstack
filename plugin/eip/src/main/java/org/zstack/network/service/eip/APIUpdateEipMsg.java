@@ -1,8 +1,6 @@
 package org.zstack.network.service.eip;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.identity.Action;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -10,7 +8,6 @@ import org.zstack.header.rest.RestRequest;
 /**
  * Created by frank on 6/15/2015.
  */
-@Action(category = EipConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/eips/{uuid}/actions",
         isAction = true,
@@ -18,7 +15,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateEipEvent.class
 )
 public class APIUpdateEipMsg extends APIMessage implements EipMessage {
-    @APIParam(resourceType = EipVO.class, checkAccount = true, operationTarget = true)
+    @APIParam(resourceType = EipVO.class)
     private String uuid;
     @APIParam(maxLength = 255, required = false)
     private String name;

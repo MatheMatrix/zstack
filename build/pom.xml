@@ -4,7 +4,7 @@
     <parent>
         <artifactId>zstack</artifactId>
         <groupId>org.zstack</groupId>
-        <version>4.8.0</version>
+        <version>4.10.0</version>
         <relativePath>..</relativePath>
     </parent>
     <artifactId>build</artifactId>
@@ -250,17 +250,17 @@
                 </dependency>
                 <dependency>
                     <groupId>org.zstack</groupId>
+                    <artifactId>iam1</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.zstack</groupId>
                     <artifactId>simulator2</artifactId>
                     <version>${project.version}</version>
                 </dependency>
                 <dependency>
                     <groupId>org.zstack</groupId>
                     <artifactId>cloudformation</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>appcenter</artifactId>
                     <version>${project.version}</version>
                 </dependency>
                 <dependency>
@@ -330,21 +330,6 @@
                 </dependency>
                 <dependency>
                     <groupId>org.zstack</groupId>
-                    <artifactId>zstack-iam2</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>sanyuan</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>zstack-ticket</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
                     <artifactId>aliyun-storage</artifactId>
                     <version>${project.version}</version>
                 </dependency>
@@ -405,17 +390,7 @@
                 </dependency>
                 <dependency>
                     <groupId>org.zstack</groupId>
-                    <artifactId>v2v</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
                     <artifactId>yunshan</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>iam2-ldap-plugin</artifactId>
                     <version>${project.version}</version>
                 </dependency>
                 <dependency>
@@ -481,16 +456,6 @@
                 </dependency>
                 <dependency>
                     <groupId>org.zstack</groupId>
-                    <artifactId>iam2-script-plugin</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>iam2project-securitygroup-plugin</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
                     <artifactId>zbox</artifactId>
                     <version>${project.version}</version>
                 </dependency>
@@ -527,11 +492,6 @@
                 <dependency>
                     <groupId>org.zstack</groupId>
                     <artifactId>network-plugin</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>cas-plugin</artifactId>
                     <version>${project.version}</version>
                 </dependency>
                 <dependency>

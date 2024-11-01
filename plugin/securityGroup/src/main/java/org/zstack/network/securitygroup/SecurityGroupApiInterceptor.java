@@ -14,7 +14,7 @@ import org.zstack.header.apimediator.ApiMessageInterceptor;
 import org.zstack.header.apimediator.GlobalApiMessageInterceptor;
 import org.zstack.header.apimediator.StopRoutingException;
 import org.zstack.header.errorcode.SysErrors;
-import org.zstack.header.identity.AccountConstant;
+import org.zstack.header.identity.AccessLevel;
 import org.zstack.header.identity.AccountResourceRefVO;
 import org.zstack.header.identity.AccountResourceRefVO_;
 import org.zstack.header.identity.APIChangeResourceOwnerMsg;
@@ -129,7 +129,10 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor, Globa
 
 
     private void validate(APIChangeResourceOwnerMsg msg) {
-        AccountResourceRefVO ref = Q.New(AccountResourceRefVO.class).eq(AccountResourceRefVO_.resourceUuid, msg.getResourceUuid()).find();
+        AccountResourceRefVO ref = Q.New(AccountResourceRefVO.class)
+                .eq(AccountResourceRefVO_.resourceUuid, msg.getResourceUuid())
+                .eq(AccountResourceRefVO_.type, AccessLevel.Own)
+                .find();
         if (ref == null) {
             return;
         }
@@ -324,10 +327,10 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor, Globa
             }
 
             String sgOwnerAccountUuid = new QuotaUtil().getResourceOwnerAccountUuid(ao.getSecurityGroupUuid());
-            if (!AccountConstant.isAdminPermission(sgOwnerAccountUuid) && !AccountConstant.isAdminPermission(vmAccountUuid) && !sgOwnerAccountUuid.equals(vmAccountUuid)) {
+            if (!Account.isAdminPermission(sgOwnerAccountUuid) && !Account.isAdminPermission(vmAccountUuid) && !sgOwnerAccountUuid.equals(vmAccountUuid)) {
                 throw new ApiMessageInterceptionException(argerr("could no set vm nic security group, because security group[uuid:%s] is not owned by account[uuid:%s] or admin", ao.getSecurityGroupUuid(), vmAccountUuid));
             }
-            if (AccountConstant.isAdminPermission(sgOwnerAccountUuid)) {
+            if (Account.isAdminPermission(sgOwnerAccountUuid)) {
                 adminIntegers.add(priority);
             }
         }
@@ -345,7 +348,7 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor, Globa
         }
 
 
-        if (!AccountConstant.isAdminPermission(msg.getSession())) {
+        if (!Account.isAdminPermission(msg.getSession())) {
             List<VmNicSecurityGroupRefVO> userRefs = new ArrayList<>();
             List<VmNicSecurityGroupRefVO> otherRefs = new ArrayList<>();
 
