@@ -10,4 +10,7 @@ import org.zstack.core.GlobalPropertyDefinition;
 public class RestGlobalProperty {
     @GlobalProperty(name="RestServer.maxCachedApiResults", defaultValue = "2000")
     public static int MAX_CACHED_API_RESULTS;
+
+    @GlobalProperty(name="RestServer.rateLimits", defaultValue = "12000")
+    public static int REST_RATE_LIMITS;
 }
