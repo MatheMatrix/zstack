@@ -27,6 +27,8 @@ import java.util.stream.Collectors;
 
 import static org.zstack.storage.zbs.ZbsNameHelper.*;
 
+import static org.zstack.core.Platform.operr;
+
 /**
  * @author Xingwei Yu
  * @date 2024/3/21 11:56
@@ -54,7 +56,7 @@ public class ZbsStorageFactory implements ExternalPrimaryStorageSvcBuilder, Back
 
     @Override
     public void discover(String url, String config, ReturnValueCompletion<LinkedHashMap> completion) {
-
+        completion.fail(operr("zbs not support discover yet"));
     }
 
     public void setPreferBackupStorageTypes(List<String> preferBackupStorageTypes) {
