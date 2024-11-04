@@ -6,6 +6,7 @@ import org.zstack.core.jmx.JmxFacade;
 import org.zstack.header.core.progress.ChainInfo;
 import org.zstack.header.core.progress.SingleFlightChainInfo;
 import org.zstack.header.exception.CloudRuntimeException;
+import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.logging.CLogger;
 import org.zstack.utils.logging.CLoggerImpl;
 
@@ -13,6 +14,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedExecutionHandler, ThreadFacadeMXBean {
     private static final CLogger _logger = CLoggerImpl.getLogger(ThreadFacadeImpl.class);
@@ -133,43 +135,12 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
 
     public void init() {
         int totalThreadNum = ThreadGlobalProperty.MAX_THREAD_NUM;
-
-        List<ThreadPool> poolList = new ArrayList<>();
-        for (ThreadPoolRegisterExtensionPoint ext : pluginRegistry.getExtensionList(ThreadPoolRegisterExtensionPoint.class)) {
-            ThreadPool threadPool = ext.registerThreadPool();
-            if (threadPool == null) {
-                throw new CloudRuntimeException("Empty thread pool registration is not supported");
-            }
-
-            if (threadPool.getSyncSignature() == null) {
-                throw new CloudRuntimeException("Thread pool registration do not allow empty syncSignature");
-            }
-
-            if (poolList.stream().anyMatch(pool -> pool.getSyncSignature().equals(threadPool.getSyncSignature()))) {
-                throw new CloudRuntimeException(String.format("Duplicate sync signature %s", threadPool.getSyncSignature()));
-            }
-            poolList.add(threadPool);
+        if (totalThreadNum < 10) {
+            _logger.warn(String.format("ThreadFacade.maxThreadNum is configured to %s, which is too small for running zstack. Change it to 10", ThreadGlobalProperty.MAX_THREAD_NUM));
+            totalThreadNum = 10;
         }
-
-        int separatedThreadNum = poolList.stream().mapToInt(ThreadPool::getThreadNum).sum();
-        int internalThreadNum = totalThreadNum - separatedThreadNum;
-        if (internalThreadNum < 10) {
-            _logger.warn(String.format("ThreadFacade.maxThreadNum is configured to %s." +
-                    " Remaining thread number for internal pools is %d, which is too" +
-                    " small for running zstack. Change it to 10",
-                    internalThreadNum,
-                    ThreadGlobalProperty.MAX_THREAD_NUM));
-            internalThreadNum = 10;
-            totalThreadNum = separatedThreadNum + internalThreadNum;
-        }
-
-        _logger.debug(String.format("Total thread num: %s, registered thread num %s," +
-                        " internal thread num %s", totalThreadNum,
-                separatedThreadNum,
-                internalThreadNum));
         _pool = new ScheduledThreadPoolExecutorExt(totalThreadNum, this, this);
         _syncpool = new ScheduledThreadPoolExecutorExt(getSyncThreadNum(totalThreadNum), this, this);
-        poolList.forEach(this::initThreadPool);
         _logger.debug(String.format("create ThreadFacade with max thread number:%s", totalThreadNum));
         dpq = new DispatchQueueImpl();
 
@@ -360,13 +331,63 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
 
     @Override
     public boolean start() {
+        int totalThreadNum = ThreadGlobalProperty.MAX_THREAD_NUM;
+
+        List<ThreadPool> poolList = new ArrayList<>();
+        for (ThreadPoolRegisterExtensionPoint ext : pluginRegistry.getExtensionList(ThreadPoolRegisterExtensionPoint.class)) {
+            List<ThreadPool> threadPools = ext.registerThreadPool();
+            if (CollectionUtils.isEmpty(threadPools)) {
+                throw new CloudRuntimeException("Empty thread pool registration is not supported");
+            }
+
+            List<ThreadPool> noSignaturePools = threadPools.stream().filter(pool -> pool.getSyncSignature() == null).collect(Collectors.toList());
+            if (!CollectionUtils.isEmpty(noSignaturePools)) {
+                throw new CloudRuntimeException("Thread pool registration do not allow empty syncSignature");
+            }
+
+            List<String> distinctPoolNames = threadPools.stream().map(ThreadPool::getSyncSignature).distinct().collect(Collectors.toList());
+            if (distinctPoolNames.size() < threadPools.size()) {
+                throw new CloudRuntimeException(String.format("Duplicate thread pool name detected %s", threadPools.stream().map(ThreadPool::getSyncSignature).collect(Collectors.toList())));
+            }
+
+            List<ThreadPool> nameDuplicatePool = poolList.stream().filter(pool -> threadPools.stream().anyMatch(newPool -> pool.getSyncSignature().equals(newPool.getSyncSignature()))).collect(Collectors.toList());
+            if (!CollectionUtils.isEmpty(nameDuplicatePool)) {
+                throw new CloudRuntimeException(String.format("Duplicate thread pool name with existing pool %s", nameDuplicatePool.stream().map(ThreadPool::getSyncSignature).collect(Collectors.toList())));
+            }
+            poolList.addAll(threadPools);
+        }
+
+        _logger.debug(String.format("Load separate thread pool: %d", poolList.size()));
+        int separatedThreadNum = poolList.stream().mapToInt(ThreadPool::getThreadNum).sum();
+        int internalThreadNum = totalThreadNum - separatedThreadNum;
+        if (internalThreadNum < 10) {
+            _logger.warn(String.format("ThreadFacade.maxThreadNum is configured to %s." +
+                            " Remaining thread number for internal pools is %d, which is too" +
+                            " small for running zstack. Change it to 10",
+                    internalThreadNum,
+                    ThreadGlobalProperty.MAX_THREAD_NUM));
+            internalThreadNum = 10;
+            totalThreadNum = separatedThreadNum + internalThreadNum;
+        }
+
+        _logger.debug(String.format("Total thread num: %s, registered thread num %s," +
+                        " internal thread num %s", totalThreadNum,
+                separatedThreadNum,
+                internalThreadNum));
+        poolList.forEach(this::initThreadPool);
+
         return true;
     }
 
     @Override
     public boolean stop() {
         _pool.shutdown();
+        _syncpool.shutdown();
         timerPool.stop();
+        pools.forEach((queueName, pool) -> {
+            _logger.debug(String.format("shutdown thread pool: %s", queueName));
+            pool.shutdown();
+        });
         return true;
     }
 
