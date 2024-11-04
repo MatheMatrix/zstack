@@ -13,6 +13,8 @@ public interface ThreadFacade extends Component {
 
     <T> Future<T> submitSyncPool(Task<T> task);
 
+    <T> Future<T> submitTargetPool(Task<T> task, String signature);
+
     <T> Future<T> syncSubmit(SyncTask<T> task);
     
     Future<Void> chainSubmit(ChainTask task);
@@ -46,5 +48,6 @@ public interface ThreadFacade extends Component {
     Runnable submitTimerTask(TimerTask task, TimeUnit unit, long delay);
 
     int getSyncThreadNum(int totalThreadNum);
+
     void printThreadsAndTasks();
 }

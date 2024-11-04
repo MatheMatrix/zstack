@@ -1,6 +1,7 @@
 package org.zstack.core.thread;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.jmx.JmxFacade;
 import org.zstack.header.core.progress.ChainInfo;
 import org.zstack.header.core.progress.SingleFlightChainInfo;
@@ -21,11 +22,14 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
     private static final AtomicInteger seqNum = new AtomicInteger(0);
     private ScheduledThreadPoolExecutorExt _pool;
     private ScheduledThreadPoolExecutorExt _syncpool;  // for sync tasks
+    private ConcurrentHashMap<String, ScheduledThreadPoolExecutorExt> pools = new ConcurrentHashMap<>();
     private DispatchQueue dpq;
     private final TimerPool timerPool = new TimerPool(5);
 
     @Autowired
     private JmxFacade jmxf;
+    @Autowired
+    private PluginRegistry pluginRegistry;
 
     private static class TimerWrapper extends Timer {
         private int cancelledTimerTaskCount = 0;
@@ -129,21 +133,61 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
 
     public void init() {
         int totalThreadNum = ThreadGlobalProperty.MAX_THREAD_NUM;
-        if (totalThreadNum < 10) {
-            _logger.warn(String.format("ThreadFacade.maxThreadNum is configured to %s, which is too small for running zstack. Change it to 10", ThreadGlobalProperty.MAX_THREAD_NUM));
-            totalThreadNum = 10;
+
+        List<ThreadPool> poolList = new ArrayList<>();
+        for (ThreadPoolRegisterExtensionPoint ext : pluginRegistry.getExtensionList(ThreadPoolRegisterExtensionPoint.class)) {
+            ThreadPool threadPool = ext.registerThreadPool();
+            if (threadPool == null) {
+                throw new CloudRuntimeException("Empty thread pool registration is not supported");
+            }
+
+            if (threadPool.getSyncSignature() == null) {
+                throw new CloudRuntimeException("Thread pool registration do not allow empty syncSignature");
+            }
+
+            if (poolList.stream().anyMatch(pool -> pool.getSyncSignature().equals(threadPool.getSyncSignature()))) {
+                throw new CloudRuntimeException(String.format("Duplicate sync signature %s", threadPool.getSyncSignature()));
+            }
+            poolList.add(threadPool);
         }
+
+        int separatedThreadNum = poolList.stream().mapToInt(ThreadPool::getThreadNum).sum();
+        int internalThreadNum = totalThreadNum - separatedThreadNum;
+        if (internalThreadNum < 10) {
+            _logger.warn(String.format("ThreadFacade.maxThreadNum is configured to %s." +
+                    " Remaining thread number for internal pools is %d, which is too" +
+                    " small for running zstack. Change it to 10",
+                    internalThreadNum,
+                    ThreadGlobalProperty.MAX_THREAD_NUM));
+            internalThreadNum = 10;
+            totalThreadNum = separatedThreadNum + internalThreadNum;
+        }
+
+        _logger.debug(String.format("Total thread num: %s, registered thread num %s," +
+                        " internal thread num %s", totalThreadNum,
+                separatedThreadNum,
+                internalThreadNum));
         _pool = new ScheduledThreadPoolExecutorExt(totalThreadNum, this, this);
         _syncpool = new ScheduledThreadPoolExecutorExt(getSyncThreadNum(totalThreadNum), this, this);
+        poolList.forEach(this::initThreadPool);
         _logger.debug(String.format("create ThreadFacade with max thread number:%s", totalThreadNum));
         dpq = new DispatchQueueImpl();
 
         jmxf.registerBean("ThreadFacade", this);
     }
 
+    private void initThreadPool(ThreadPool pool) {
+        ScheduledThreadPoolExecutorExt threadExt = new ScheduledThreadPoolExecutorExt(pool.getThreadNum(), this, this);
+        pools.put(pool.getSyncSignature(), threadExt);
+    }
+
     public void destroy() {
         _pool.shutdownNow();
         _syncpool.shutdown();
+        pools.forEach((queueName, pool) -> {
+            _logger.debug(String.format("shutdown thread pool: %s", queueName));
+            pool.shutdown();
+        });
     }
 
     @Override
@@ -153,6 +197,12 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
 
     public <T> Future<T> submitSyncPool(Task<T> task) {
         return _syncpool.submit(new Worker<T>(task));
+    }
+
+    @Override
+    public <T> Future<T> submitTargetPool(Task<T> task, String signature) {
+        ScheduledThreadPoolExecutorExt executorExt = pools.getOrDefault(signature, _syncpool);
+        return executorExt.submit(new Worker<>(task));
     }
 
     @Override
