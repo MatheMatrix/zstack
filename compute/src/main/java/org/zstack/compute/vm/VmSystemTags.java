@@ -235,7 +235,6 @@ public class VmSystemTags {
     public static PatternedSystemTag XML_HOOK = new PatternedSystemTag(String.format("xmlHook::{%s}", XML_HOOK_TOKEN), VmInstanceVO.class);
 
     public static final String MARKET_PLACE_TOKEN = "marketplace::true";
-
     public static PatternedSystemTag CREATED_BY_MARKETPLACE = new PatternedSystemTag(
             MARKET_PLACE_TOKEN, VmInstanceVO.class
     );
