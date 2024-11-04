@@ -1,5 +1,7 @@
 package org.zstack.core.thread;
 
+import java.util.List;
+
 public interface ThreadPoolRegisterExtensionPoint {
-    ThreadPool registerThreadPool();
+    List<ThreadPool> registerThreadPool();
 }
