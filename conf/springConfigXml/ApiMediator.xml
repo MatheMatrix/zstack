@@ -15,6 +15,7 @@
     <bean id="ApiMediator" class="org.zstack.portal.apimediator.ApiMediatorImpl">
         <zstack:plugin>
             <zstack:extension interface="org.zstack.header.apimediator.GlobalApiMessageInterceptor" />
+            <zstack:extension interface="org.zstack.core.thread.ThreadPoolRegisterExtensionPoint" />
         </zstack:plugin>
 
         <property name="apiWorkerNum" value="${ApiMediator.apiWorkerNum:5}" />
