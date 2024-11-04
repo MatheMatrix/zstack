@@ -61,8 +61,10 @@ public class QueryPlugin extends AbstractQueryVisitorPlugin {
             if (StringUtils.isNotBlank(queryTarget)) {
                 if (isDistinct(function)) {
                     return queryTarget.concat(",").concat(groupByTarget);
-                } else {
+                } else if (function != null) {
                     return groupByTarget.concat(",").concat(queryTarget);
+                } else {
+                    return queryTarget;
                 }
             } else {
                 return groupByTarget;
