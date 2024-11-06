@@ -5,6 +5,11 @@ import org.zstack.header.storage.backup.BackupStorageVO;
 
 public class RBACInfo implements RBACDescription {
     @Override
+    public String permissionName() {
+        return "external-backup-storage";
+    }
+
+    @Override
     public void permissions() {
         permissionBuilder()
                 .adminOnlyAPIs("org.zstack.header.storage.addon.backup.**")
