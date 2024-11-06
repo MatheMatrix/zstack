@@ -466,6 +466,8 @@ public class KVMAgentCommands {
         @GrayVersion(value = "5.0.0")
         private String libvirtVersion;
         @GrayVersion(value = "5.0.0")
+        private String libvirtPackageVersion;
+        @GrayVersion(value = "5.0.0")
         private String hvmCpuFlag;
         @GrayVersion(value = "5.0.0")
         private String eptFlag;
@@ -760,6 +762,14 @@ public class KVMAgentCommands {
 
         public void setIscsiInitiatorName(String iscsiInitiatorName) {
             this.iscsiInitiatorName = iscsiInitiatorName;
+        }
+
+        public String getLibvirtPackageVersion() {
+            return libvirtPackageVersion;
+        }
+
+        public void setLibvirtPackageVersion(String libvirtPackageVersion) {
+            this.libvirtPackageVersion = libvirtPackageVersion;
         }
     }
 

@@ -5543,7 +5543,6 @@ public class KVMHost extends HostBase implements Host {
                                     runner.setUsername(getSelf().getUsername());
                                     runner.setPassword(getSelf().getPassword());
                                     runner.setSshPort(getSelf().getPort());
-
                                     runner.restartAgent(AnsibleConstant.KVM_AGENT_NAME, new Completion(trigger) {
                                         @Override
                                         public void success() {
@@ -5826,6 +5825,10 @@ public class KVMHost extends HostBase implements Host {
 
             private void saveKvmHostRelatedFacts(HostFactResponse ret) {
                 updateHostOsInformation(ret.getOsDistribution(), ret.getOsRelease(), ret.getOsVersion());
+
+                if (ret.getLibvirtPackageVersion() != null) {
+                    createTagWithoutNonValue(KVMSystemTags.LIBVIRT_PACKAGE_VERSION, KVMSystemTags.LIBVIRT_PACKAGE_VERSION_TOKEN, ret.getLibvirtPackageVersion().trim(), false);
+                }
 
                 createTagWithoutNonValue(KVMSystemTags.QEMU_IMG_VERSION, KVMSystemTags.QEMU_IMG_VERSION_TOKEN, ret.getQemuImgVersion(), false);
                 createTagWithoutNonValue(KVMSystemTags.LIBVIRT_VERSION, KVMSystemTags.LIBVIRT_VERSION_TOKEN, ret.getLibvirtVersion(), false);
