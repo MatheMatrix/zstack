@@ -2660,10 +2660,17 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
             completion.done();
             return;
         }
+        List<NicIpTO> nicIps = new ArrayList<>();
+        for (VmNicInventory nic : inv.getVmNics()) {
+            nicIps.add(NicIpTO.valueOf(nic));
+        }
+
 
         CreateVipCmd cmd = new CreateVipCmd();
-        cmd.setSyncVip(false);
+        cmd.setSyncVip(true);
         cmd.setVips(vips);
+        cmd.setNicIps(nicIps);
+        cmd.setResetQosRules(true);
 
         VirtualRouterAsyncHttpCallMsg msg = new VirtualRouterAsyncHttpCallMsg();
         msg.setVmInstanceUuid(inv.getUuid());
@@ -2705,8 +2712,9 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
 
     private List<VipTO> findVipsOnVirtualRouter(List<VmNicInventory> vfNics, String vrUuid) {
         List<String> vipUuids = SQL.New("select vip.uuid from VipVO vip, VipPeerL3NetworkRefVO ref " +
-                        "where ref.vipUuid = vip.uuid and vip.system = false " +
-                        "and ref.l3NetworkUuid in (:l3NetworkUuids)")
+                        "where ref.vipUuid = vip.uuid " +
+                        "and (ref.l3NetworkUuid in (:l3NetworkUuids) " +
+                        "or vip.l3NetworkUuid in (:l3NetworkUuids))")
                 .param("l3NetworkUuids", vfNics.stream().map(VmNicInventory::getL3NetworkUuid).collect(Collectors.toList()))
                 .list();
 

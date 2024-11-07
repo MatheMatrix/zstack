@@ -1050,6 +1050,8 @@ public class VirtualRouterCommands {
 	    /* sync all vips to virtual router together with nic ips*/
 	    @GrayVersion(value = "5.0.0")
 	    private List<NicIpTO> nicIps;
+		@GrayVersion(value = "5.3.0")
+		private Boolean resetQosRules;
 
 		public Boolean getSyncVip() {
 			return syncVip;
@@ -1073,6 +1075,14 @@ public class VirtualRouterCommands {
 
 		public void setNicIps(List<NicIpTO> nicIps) {
 			this.nicIps = nicIps;
+		}
+
+		public Boolean getResetQosRules() {
+			return resetQosRules;
+		}
+
+		public void setResetQosRules(Boolean resetQosRules) {
+			this.resetQosRules = resetQosRules;
 		}
 	}
 	
