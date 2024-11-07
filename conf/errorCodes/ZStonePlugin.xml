@@ -1,0 +1,13 @@
+<error>
+    <prefix>ZStone</prefix>
+
+    <code>
+        <id>1000</id>
+        <description>ZStone generic error</description>
+    </code>
+
+    <code>
+        <id>1001</id>
+        <description>Failed to connect ZStone storage server</description>
+    </code>
+</error>
