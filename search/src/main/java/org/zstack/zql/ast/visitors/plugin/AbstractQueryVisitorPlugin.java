@@ -28,7 +28,7 @@ public abstract class AbstractQueryVisitorPlugin extends QueryVisitorPlugin {
     public List<String> targetFields() {
         ZQLMetadata.InventoryMetadata inventory = ZQLMetadata.findInventoryMetadata(node.getTarget().getEntity());
         List<String> fieldNames = new ArrayList<>();
-        if (node.getGroupBy() != null) {
+        if (node.getGroupBy() != null && node.getTarget().getFunction() != null) {
             fieldNames.addAll(node.getGroupBy().getFields());
         }
         if (node.getTarget().getFields() != null) {
