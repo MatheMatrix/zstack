@@ -20,6 +20,7 @@ import org.zstack.core.propertyvalidator.ValidatorTool;
 import org.zstack.core.search.SearchGlobalProperty;
 import org.zstack.core.statemachine.StateMachine;
 import org.zstack.core.statemachine.StateMachineImpl;
+import org.zstack.core.thread.ThreadFacade;
 import org.zstack.header.Component;
 import org.zstack.header.core.StaticInit;
 import org.zstack.header.core.encrypt.ENCRYPT;
@@ -663,6 +664,11 @@ public class Platform {
         GlobalConfigFacade gcf = loader.getComponent(GlobalConfigFacade.class);
         if (gcf != null) {
             ((Component)gcf).start();
+        }
+
+        ThreadFacade thdf = loader.getComponent(ThreadFacade.class);
+        if (thdf != null) {
+            thdf.start();
         }
 
         bus = loader.getComponentNoExceptionWhenNotExisting(CloudBus.class);

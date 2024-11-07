@@ -9,12 +9,40 @@ import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.thread.SyncTask;
 import org.zstack.core.thread.ThreadFacade;
+import org.zstack.core.thread.ThreadPool;
+import org.zstack.core.thread.ThreadPoolRegisterExtensionPoint;
 import org.zstack.header.AbstractService;
-import org.zstack.header.apimediator.*;
+import org.zstack.header.apimediator.APIIsReadyToGoMsg;
+import org.zstack.header.apimediator.APIIsReadyToGoReply;
+import org.zstack.header.apimediator.ApiMediatorConstant;
+import org.zstack.header.apimediator.ApiMessageInterceptionException;
+import org.zstack.header.apimediator.GlobalApiMessageInterceptor;
+import org.zstack.header.apimediator.PortalErrors;
+import org.zstack.header.apimediator.StopRoutingException;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.SysErrors;
-import org.zstack.header.managementnode.*;
-import org.zstack.header.message.*;
+import org.zstack.header.managementnode.APIGetCurrentTimeMsg;
+import org.zstack.header.managementnode.APIGetCurrentTimeReply;
+import org.zstack.header.managementnode.APIGetManagementNodeArchMsg;
+import org.zstack.header.managementnode.APIGetManagementNodeArchReply;
+import org.zstack.header.managementnode.APIGetManagementNodeOSMsg;
+import org.zstack.header.managementnode.APIGetManagementNodeOSReply;
+import org.zstack.header.managementnode.APIGetPlatformTimeZoneMsg;
+import org.zstack.header.managementnode.APIGetPlatformTimeZoneReply;
+import org.zstack.header.managementnode.APIGetSupportAPIsMsg;
+import org.zstack.header.managementnode.APIGetSupportAPIsReply;
+import org.zstack.header.managementnode.APIGetVersionMsg;
+import org.zstack.header.managementnode.APIGetVersionReply;
+import org.zstack.header.managementnode.IsManagementNodeReadyMsg;
+import org.zstack.header.managementnode.IsManagementNodeReadyReply;
+import org.zstack.header.managementnode.ManagementNodeConstant;
+import org.zstack.header.message.APICreateMessage;
+import org.zstack.header.message.APIEvent;
+import org.zstack.header.message.APIMessage;
+import org.zstack.header.message.APIReply;
+import org.zstack.header.message.APISyncCallMessage;
+import org.zstack.header.message.Message;
+import org.zstack.header.message.MessageReply;
 import org.zstack.header.rest.RestAPIExtensionPoint;
 import org.zstack.utils.StringDSL;
 import org.zstack.utils.Utils;
@@ -23,6 +51,7 @@ import org.zstack.utils.logging.CLogger;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +61,10 @@ import static org.zstack.utils.CollectionDSL.e;
 import static org.zstack.utils.CollectionDSL.map;
 
 
-public class ApiMediatorImpl extends AbstractService implements ApiMediator, GlobalApiMessageInterceptor {
+public class ApiMediatorImpl extends AbstractService implements
+        ApiMediator,
+        ThreadPoolRegisterExtensionPoint,
+        GlobalApiMessageInterceptor {
     private static final CLogger logger = Utils.getLogger(ApiMediator.class);
 
     @Autowired
@@ -45,6 +77,9 @@ public class ApiMediatorImpl extends AbstractService implements ApiMediator, Glo
     private PluginRegistry pluginRgty;
     private List<RestAPIExtensionPoint> apiExts = new ArrayList<>();
 
+    private final String API_WORKER_SYNC_SIGNATURE = "api.worker";
+
+    private final String ASYNC_API_WORKER_SYNC_SIGNATURE = "async.api.worker";
 
     private ApiMessageProcessor processor;
 
@@ -103,10 +138,41 @@ public class ApiMediatorImpl extends AbstractService implements ApiMediator, Glo
     @Override
     public void handleMessage(final Message msg) {
         apiExts.forEach(e -> e.afterAPIRequest(msg));
+
+        if (msg instanceof APISyncCallMessage) {
+            syncCallMessageHandle(msg);
+        } else {
+            asyncCallMessageHandle(msg);
+        }
+    }
+
+    private void doHandleMessage(final Message msg) {
+        if (msg instanceof APIIsReadyToGoMsg) {
+            handle((APIIsReadyToGoMsg) msg);
+        } else if (msg instanceof APIGetVersionMsg) {
+            handle((APIGetVersionMsg) msg);
+        }else if (msg instanceof APIGetSupportAPIsMsg) {
+            handle((APIGetSupportAPIsMsg) msg);
+        } else if (msg instanceof APIGetCurrentTimeMsg) {
+            handle((APIGetCurrentTimeMsg) msg);
+        } else if (msg instanceof APIGetPlatformTimeZoneMsg) {
+            handle((APIGetPlatformTimeZoneMsg) msg);
+        } else if (msg instanceof APIGetManagementNodeArchMsg) {
+            handle((APIGetManagementNodeArchMsg) msg);
+        } else if (msg instanceof APIGetManagementNodeOSMsg) {
+            handle((APIGetManagementNodeOSMsg) msg);
+        } else if (msg instanceof APIMessage) {
+            dispatchMessage((APIMessage) msg);
+        } else {
+            logger.debug("Not an APIMessage.Message ID is " + msg.getId());
+        }
+    }
+
+    private void asyncCallMessageHandle(final Message msg) {
         thdf.syncSubmit(new SyncTask<Object>() {
             @Override
             public String getSyncSignature() {
-                return "api.worker";
+                return ASYNC_API_WORKER_SYNC_SIGNATURE;
             }
 
             @Override
@@ -116,30 +182,42 @@ public class ApiMediatorImpl extends AbstractService implements ApiMediator, Glo
 
             @Override
             public String getName() {
-                return "api.worker";
+                return ASYNC_API_WORKER_SYNC_SIGNATURE;
             }
 
             @MessageSafe
             void handleMessage(Message msg) {
-                if (msg instanceof APIIsReadyToGoMsg) {
-                    handle((APIIsReadyToGoMsg) msg);
-                } else if (msg instanceof APIGetVersionMsg) {
-                    handle((APIGetVersionMsg) msg);
-                }else if (msg instanceof APIGetSupportAPIsMsg) {
-                    handle((APIGetSupportAPIsMsg) msg);
-                } else if (msg instanceof APIGetCurrentTimeMsg) {
-                    handle((APIGetCurrentTimeMsg) msg);
-                } else if (msg instanceof APIGetPlatformTimeZoneMsg) {
-                    handle((APIGetPlatformTimeZoneMsg) msg);
-                } else if (msg instanceof APIGetManagementNodeArchMsg) {
-                    handle((APIGetManagementNodeArchMsg) msg);
-                } else if (msg instanceof APIGetManagementNodeOSMsg) {
-                    handle((APIGetManagementNodeOSMsg) msg);
-                } else if (msg instanceof APIMessage) {
-                    dispatchMessage((APIMessage) msg);
-                } else {
-                    logger.debug("Not an APIMessage.Message ID is " + msg.getId());
-                }
+                doHandleMessage(msg);
+            }
+
+            @Override
+            public Object call() {
+                handleMessage(msg);
+                return null;
+            }
+        });
+    }
+
+    private void syncCallMessageHandle(final Message msg) {
+        thdf.syncSubmit(new SyncTask<Object>() {
+            @Override
+            public String getSyncSignature() {
+                return API_WORKER_SYNC_SIGNATURE;
+            }
+
+            @Override
+            public int getSyncLevel() {
+                return apiWorkerNum;
+            }
+
+            @Override
+            public String getName() {
+                return API_WORKER_SYNC_SIGNATURE;
+            }
+
+            @MessageSafe
+            void handleMessage(Message msg) {
+                doHandleMessage(msg);
             }
 
             @Override
@@ -285,5 +363,18 @@ public class ApiMediatorImpl extends AbstractService implements ApiMediator, Glo
     @Override
     public ApiMessageProcessor getProcesser() {
         return processor;
+    }
+
+    @Override
+    public List<ThreadPool> registerThreadPool() {
+        ThreadPool pool = new ThreadPool();
+        pool.setSyncSignature(API_WORKER_SYNC_SIGNATURE);
+        pool.setThreadNum(5);
+
+        ThreadPool asyncPool = new ThreadPool();
+        asyncPool.setSyncSignature(ASYNC_API_WORKER_SYNC_SIGNATURE);
+        asyncPool.setThreadNum(5);
+
+        return Arrays.asList(pool, asyncPool);
     }
 }

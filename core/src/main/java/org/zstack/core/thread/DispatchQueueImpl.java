@@ -415,7 +415,7 @@ class DispatchQueueImpl implements DispatchQueue, DebugSignalHandler {
 
             resetPendingQueueThreshold();
             counter.incrementAndGet();
-            _threadFacade.submitSyncPool(new Task<Void>() {
+            _threadFacade.submitTargetPool(new Task<Void>() {
                 @Override
                 public String getName() {
                     return syncSignature;
@@ -446,7 +446,7 @@ class DispatchQueueImpl implements DispatchQueue, DebugSignalHandler {
                     run();
                     return null;
                 }
-            });
+            }, syncSignature);
         }
 
         @Override
