@@ -12,7 +12,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetPlatformTimeZoneReply.class
 )
-public class APIGetPlatformTimeZoneMsg extends APISyncCallMessage {
+public class APIGetPlatformTimeZoneMsg extends APISyncCallMessage implements APIManagementNodeMessage {
     public static APIGetPlatformTimeZoneMsg __example__() {
         APIGetPlatformTimeZoneMsg msg = new APIGetPlatformTimeZoneMsg();
         return msg;

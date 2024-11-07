@@ -15,7 +15,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIGetVersionReply.class,
         method = HttpMethod.PUT
 )
-public class APIGetVersionMsg extends APISyncCallMessage {
+public class APIGetVersionMsg extends APISyncCallMessage implements APIManagementNodeMessage {
  
     public static APIGetVersionMsg __example__() {
         APIGetVersionMsg msg = new APIGetVersionMsg();
