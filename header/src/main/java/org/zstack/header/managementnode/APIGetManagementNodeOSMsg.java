@@ -16,7 +16,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIGetManagementNodeOSReply.class
 )
 @SuppressCredentialCheck
-public class APIGetManagementNodeOSMsg extends APISyncCallMessage {
+public class APIGetManagementNodeOSMsg extends APISyncCallMessage implements APIManagementNodeMessage {
 
     public static APIGetManagementNodeOSMsg __example__() {
         APIGetManagementNodeOSMsg msg = new APIGetManagementNodeOSMsg();
