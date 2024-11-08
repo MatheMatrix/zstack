@@ -170,7 +170,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
                 throw new OperationFailureException(operr("get primaryStorage %s type failed", msg.getPrimaryStorageUuid()));
             }
 
-            if (!PrimaryStorageType.getSupportSharedVolumePSTypeNames().contains(psType)) {
+            if (!PrimaryStorageType.getSupportFeaturesTypes(PrimaryStorageType::isSupportSharedVolume).contains(psType)) {
                 throw new OperationFailureException(operr("primaryStorage type [%s] not support shared volume yet", psType));
             }
         }
@@ -277,6 +277,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
             String primaryStorageInstallPath;
             String prePSInstallPath;
             String volumeFormat;
+            String volumeProtocol;
             String allocatedInstallUrl;
 
             @Override
@@ -347,7 +348,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
                         }
 
                         if (vvo.isShareable()) {
-                            amsg.setPossiblePrimaryStorageTypes(PrimaryStorageType.getSupportSharedVolumePSTypeNames());
+                            amsg.setPossiblePrimaryStorageTypes(PrimaryStorageType.getSupportFeaturesTypes(PrimaryStorageType::isSupportSharedVolume));
                         }
 
                         bus.makeLocalServiceId(amsg, PrimaryStorageConstant.SERVICE_ID);
@@ -434,6 +435,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
                                     DownloadDataVolumeToPrimaryStorageReply r = reply.castReply();
                                     primaryStorageInstallPath = r.getInstallPath();
                                     volumeFormat = r.getFormat();
+                                    volumeProtocol = r.getProtocol();
                                     trigger.next();
                                 }
                             }
@@ -480,6 +482,9 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
                         vo.setStatus(VolumeStatus.Ready);
                         if (volumeFormat != null) {
                             vo.setFormat(volumeFormat);
+                        }
+                        if (volumeProtocol != null) {
+                            vo.setProtocol(volumeProtocol);
                         }
                         dbf.updateAndRefresh(vo);
 
@@ -903,6 +908,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
                     vvo.setStatus(VolumeStatus.Ready);
                     vvo.setPrimaryStorageUuid(inv.getPrimaryStorageUuid());
                     vvo.setFormat(inv.getFormat());
+                    vvo.setProtocol(inv.getProtocol());
                     vvo = dbf.updateAndRefresh(vvo);
 
                     new FireVolumeCanonicalEvent().fireVolumeStatusChangedEvent(VolumeStatus.Creating, VolumeInventory.valueOf(vvo));
