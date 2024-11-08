@@ -16,6 +16,7 @@ import org.zstack.header.apimediator.APIIsReadyToGoMsg;
 import org.zstack.header.apimediator.APIIsReadyToGoReply;
 import org.zstack.header.apimediator.ApiMediatorConstant;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
+import org.zstack.header.apimediator.ApiWorkerThreadPoolStrategy;
 import org.zstack.header.apimediator.GlobalApiMessageInterceptor;
 import org.zstack.header.apimediator.PortalErrors;
 import org.zstack.header.apimediator.StopRoutingException;
@@ -33,6 +34,7 @@ import org.zstack.header.managementnode.APIGetSupportAPIsMsg;
 import org.zstack.header.managementnode.APIGetSupportAPIsReply;
 import org.zstack.header.managementnode.APIGetVersionMsg;
 import org.zstack.header.managementnode.APIGetVersionReply;
+import org.zstack.header.managementnode.APIManagementNodeMessage;
 import org.zstack.header.managementnode.IsManagementNodeReadyMsg;
 import org.zstack.header.managementnode.IsManagementNodeReadyReply;
 import org.zstack.header.managementnode.ManagementNodeConstant;
@@ -81,10 +83,15 @@ public class ApiMediatorImpl extends AbstractService implements
 
     private final String ASYNC_API_WORKER_SYNC_SIGNATURE = "async.api.worker";
 
+    private final String MANAGEMENT_API_WORKER_SYNC_SIGNATURE = "management.api.worker";
+
     private ApiMessageProcessor processor;
 
     private List<String> serviceConfigFolders;
     private int apiWorkerNum = 5;
+    private int asyncApiWorkerNum = 5;
+    private int managementApiWorkerNum = 5;
+    private ApiWorkerThreadPoolStrategy threadPoolStrategy = ApiWorkerThreadPoolStrategy.ISOLATED;
 
     private void dispatchMessage(APIMessage msg) {
         ApiMessageDescriptor desc = processor.getApiMessageDescriptor(msg);
@@ -139,14 +146,58 @@ public class ApiMediatorImpl extends AbstractService implements
     public void handleMessage(final Message msg) {
         apiExts.forEach(e -> e.afterAPIRequest(msg));
 
-        if (msg instanceof APISyncCallMessage) {
-            syncCallMessageHandle(msg);
+        if (threadPoolStrategy == ApiWorkerThreadPoolStrategy.ISOLATED) {
+            if (msg instanceof APIManagementNodeMessage) {
+                managementCallMessageHandle(msg);
+            } else if (msg instanceof APISyncCallMessage) {
+                syncCallMessageHandle(msg);
+            } else {
+                asyncCallMessageHandle(msg);
+            }
         } else {
-            asyncCallMessageHandle(msg);
+            handleMessageInSharedStrategy(msg);
         }
     }
 
-    private void doHandleMessage(final Message msg) {
+    /**
+     * Handle message using legacy shared thread pool strategy.
+     * In shared mode, all API calls (management, sync, async) share the same thread pool,
+     * which is controlled by single parameter 'apiWorkerNum'.
+     * This mode is kept for backwards compatibility.
+     *
+     * @param msg The message to be handled
+     */
+    private void handleMessageInSharedStrategy(final Message msg) {
+        thdf.syncSubmit(new SyncTask<Object>() {
+            @Override
+            public String getSyncSignature() {
+                return API_WORKER_SYNC_SIGNATURE;
+            }
+
+            @Override
+            public int getSyncLevel() {
+                return apiWorkerNum;
+            }
+
+            @Override
+            public String getName() {
+                return API_WORKER_SYNC_SIGNATURE;
+            }
+
+            @MessageSafe
+            void handleMessage(Message msg) {
+                doHandleAllMessages(msg);
+            }
+
+            @Override
+            public Object call() {
+                handleMessage(msg);
+                return null;
+            }
+        });
+    }
+
+    private void doHandleAllMessages(final Message msg) {
         if (msg instanceof APIIsReadyToGoMsg) {
             handle((APIIsReadyToGoMsg) msg);
         } else if (msg instanceof APIGetVersionMsg) {
@@ -168,6 +219,64 @@ public class ApiMediatorImpl extends AbstractService implements
         }
     }
 
+    private void managementCallMessageHandle(final Message msg) {
+        thdf.syncSubmit(new SyncTask<Object>() {
+            @Override
+            public String getSyncSignature() {
+                return MANAGEMENT_API_WORKER_SYNC_SIGNATURE;
+            }
+
+            @Override
+            public int getSyncLevel() {
+                return managementApiWorkerNum;
+            }
+
+            @Override
+            public String getName() {
+                return MANAGEMENT_API_WORKER_SYNC_SIGNATURE;
+            }
+
+            @MessageSafe
+            void handleMessage(Message msg) {
+                doHandleManagementMessage(msg);
+            }
+
+            @Override
+            public Object call() {
+                handleMessage(msg);
+                return null;
+            }
+        });
+    }
+
+    private void doHandleManagementMessage(final Message msg) {
+        if (msg instanceof APIIsReadyToGoMsg) {
+            handle((APIIsReadyToGoMsg) msg);
+        } else if (msg instanceof APIGetVersionMsg) {
+            handle((APIGetVersionMsg) msg);
+        }else if (msg instanceof APIGetSupportAPIsMsg) {
+            handle((APIGetSupportAPIsMsg) msg);
+        } else if (msg instanceof APIGetCurrentTimeMsg) {
+            handle((APIGetCurrentTimeMsg) msg);
+        } else if (msg instanceof APIGetPlatformTimeZoneMsg) {
+            handle((APIGetPlatformTimeZoneMsg) msg);
+        } else if (msg instanceof APIGetManagementNodeArchMsg) {
+            handle((APIGetManagementNodeArchMsg) msg);
+        } else if (msg instanceof APIGetManagementNodeOSMsg) {
+            handle((APIGetManagementNodeOSMsg) msg);
+        } else {
+            logger.debug("Not an APIMessage.Message ID is " + msg.getId());
+        }
+    }
+
+    private void doHandleMessage(final Message msg) {
+        if (msg instanceof APIMessage) {
+            dispatchMessage((APIMessage) msg);
+        } else {
+            logger.debug("Not an APIMessage.Message ID is " + msg.getId());
+        }
+    }
+
     private void asyncCallMessageHandle(final Message msg) {
         thdf.syncSubmit(new SyncTask<Object>() {
             @Override
@@ -177,7 +286,7 @@ public class ApiMediatorImpl extends AbstractService implements
 
             @Override
             public int getSyncLevel() {
-                return apiWorkerNum;
+                return asyncApiWorkerNum;
             }
 
             @Override
@@ -316,7 +425,25 @@ public class ApiMediatorImpl extends AbstractService implements
         bus.registerService(this);
         apiExts = pluginRgty.getExtensionList(RestAPIExtensionPoint.class);
 
+        logThreadPoolConfiguration();
         return true;
+    }
+
+    private void logThreadPoolConfiguration() {
+        if (threadPoolStrategy == ApiWorkerThreadPoolStrategy.SHARED) {
+            logger.info("API Worker running in SHARED thread pool mode:");
+            logger.info("- All API calls share same thread pool");
+            logger.info("- Available parameters:");
+            logger.info(String.format("  * apiWorkerNum: %d (thread pool size for all API calls)", apiWorkerNum));
+        } else {
+            logger.info("API Worker running in ISOLATED thread pool mode:");
+            logger.info("- Using separate thread pools for different API types");
+            logger.info("- Available parameters:");
+            logger.info(String.format("  * managementApiWorkerNum: %d (thread pool size for management APIs)", managementApiWorkerNum));
+            logger.info(String.format("  * apiWorkerNum: %d (thread pool size for sync APIs)", apiWorkerNum));
+            logger.info(String.format("  * asyncApiWorkerNum: %d (thread pool size for async APIs)", asyncApiWorkerNum));
+            logger.info(String.format("  * threadPoolStrategy: %s (SHARED/ISOLATED)", threadPoolStrategy));
+        }
     }
 
     @Override
@@ -331,6 +458,18 @@ public class ApiMediatorImpl extends AbstractService implements
 
     public void setApiWorkerNum(int apiWorkerNum) {
         this.apiWorkerNum = apiWorkerNum;
+    }
+
+    public void setAsyncApiWorkerNum(int asyncApiWorkerNum) {
+        this.asyncApiWorkerNum = asyncApiWorkerNum;
+    }
+
+    public void setManagementApiWorkerNum(int managementApiWorkerNum) {
+        this.managementApiWorkerNum = managementApiWorkerNum;
+    }
+
+    public void setThreadPoolStrategy(ApiWorkerThreadPoolStrategy threadPoolStrategy) {
+        this.threadPoolStrategy = threadPoolStrategy;
     }
 
     @Override
@@ -367,14 +506,22 @@ public class ApiMediatorImpl extends AbstractService implements
 
     @Override
     public List<ThreadPool> registerThreadPool() {
+        if (threadPoolStrategy == ApiWorkerThreadPoolStrategy.SHARED) {
+            return null;
+        }
+
         ThreadPool pool = new ThreadPool();
         pool.setSyncSignature(API_WORKER_SYNC_SIGNATURE);
-        pool.setThreadNum(5);
+        pool.setThreadNum(apiWorkerNum);
 
         ThreadPool asyncPool = new ThreadPool();
         asyncPool.setSyncSignature(ASYNC_API_WORKER_SYNC_SIGNATURE);
-        asyncPool.setThreadNum(5);
+        asyncPool.setThreadNum(asyncApiWorkerNum);
 
-        return Arrays.asList(pool, asyncPool);
+        ThreadPool managementPool = new ThreadPool();
+        managementPool.setSyncSignature(MANAGEMENT_API_WORKER_SYNC_SIGNATURE);
+        managementPool.setThreadNum(managementApiWorkerNum);
+
+        return Arrays.asList(pool, asyncPool, managementPool);
     }
 }
