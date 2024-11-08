@@ -332,6 +332,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                                     return;
                                 }
 
+                                addonInfo = info;
                                 trigger.next();
                             }
                         });
@@ -404,7 +405,6 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                     @Override
                     public void handle(Map data) {
                         changeStatus(PrimaryStorageStatus.Connected);
-                        addonInfo = info;
                         completion.success(JSONObjectUtil.rehashObject(info, LinkedHashMap.class));
                     }
                 });
