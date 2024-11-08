@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class AddZStoneAction extends AbstractAction {
+public class UpdateZStoneClusterConfigAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class AddZStoneAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.zstone.api.AddZStoneResult value;
+        public org.zstack.sdk.zstone.api.UpdateZStoneClusterConfigResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,32 +25,26 @@ public class AddZStoneAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String name;
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String uuid;
 
-    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String username = "admin";
-
-    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String password;
-
-    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String managementIp;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, numberRange = {1L,65535L}, noTrim = false)
-    public int logInPort = 4000;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, numberRange = {1L,65535L}, noTrim = false)
-    public int apiPort = 4010;
+    @Param(required = true, maxLength = 128, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    public java.lang.String clusterName;
 
     @Param(required = false, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String logInUrl = "/sso/v1/accounts/login";
+    public java.lang.String managementIp;
 
-    @Param(required = false)
-    public java.lang.String resourceUuid;
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    public java.lang.String chronyIp;
 
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List tagUuids;
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    public java.lang.String publicNetworkCidr;
+
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    public java.lang.String clusterNetworkCidr;
+
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    public java.lang.String managementNetworkCidr;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -84,8 +78,8 @@ public class AddZStoneAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.zstone.api.AddZStoneResult value = res.getResult(org.zstack.sdk.zstone.api.AddZStoneResult.class);
-        ret.value = value == null ? new org.zstack.sdk.zstone.api.AddZStoneResult() : value; 
+        org.zstack.sdk.zstone.api.UpdateZStoneClusterConfigResult value = res.getResult(org.zstack.sdk.zstone.api.UpdateZStoneClusterConfigResult.class);
+        ret.value = value == null ? new org.zstack.sdk.zstone.api.UpdateZStoneClusterConfigResult() : value; 
 
         return ret;
     }
@@ -114,11 +108,11 @@ public class AddZStoneAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "POST";
-        info.path = "/zstone-plugin";
+        info.httpMethod = "PUT";
+        info.path = "/zstone-plugin/config/cluster";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "params";
+        info.parameterName = "updateZStoneClusterConfig";
         return info;
     }
 

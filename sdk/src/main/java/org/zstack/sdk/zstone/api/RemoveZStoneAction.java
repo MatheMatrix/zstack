@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class AddZStoneAction extends AbstractAction {
+public class RemoveZStoneAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class AddZStoneAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.zstone.api.AddZStoneResult value;
+        public org.zstack.sdk.zstone.api.RemoveZStoneResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,32 +25,11 @@ public class AddZStoneAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String name;
-
-    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String username = "admin";
-
-    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String password;
-
-    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String managementIp;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, numberRange = {1L,65535L}, noTrim = false)
-    public int logInPort = 4000;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, numberRange = {1L,65535L}, noTrim = false)
-    public int apiPort = 4010;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String logInUrl = "/sso/v1/accounts/login";
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String uuid;
 
     @Param(required = false)
-    public java.lang.String resourceUuid;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List tagUuids;
+    public java.lang.String deleteMode = "Permissive";
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -84,8 +63,8 @@ public class AddZStoneAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.zstone.api.AddZStoneResult value = res.getResult(org.zstack.sdk.zstone.api.AddZStoneResult.class);
-        ret.value = value == null ? new org.zstack.sdk.zstone.api.AddZStoneResult() : value; 
+        org.zstack.sdk.zstone.api.RemoveZStoneResult value = res.getResult(org.zstack.sdk.zstone.api.RemoveZStoneResult.class);
+        ret.value = value == null ? new org.zstack.sdk.zstone.api.RemoveZStoneResult() : value; 
 
         return ret;
     }
@@ -114,11 +93,11 @@ public class AddZStoneAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "POST";
-        info.path = "/zstone-plugin";
+        info.httpMethod = "DELETE";
+        info.path = "/zstone-plugin/{uuid}";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "params";
+        info.parameterName = "";
         return info;
     }
 
