@@ -44164,6 +44164,89 @@ abstract class ApiHelper {
     }
 
 
+    def queryZStone(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zstone.api.QueryZStoneAction.class) Closure c) {
+        def a = new org.zstack.sdk.zstone.api.QueryZStoneAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+        a.conditions = a.conditions.collect { it.toString() }
+
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def removeZStone(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zstone.api.RemoveZStoneAction.class) Closure c) {
+        def a = new org.zstack.sdk.zstone.api.RemoveZStoneAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def updateZStoneClusterConfig(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zstone.api.UpdateZStoneClusterConfigAction.class) Closure c) {
+        def a = new org.zstack.sdk.zstone.api.UpdateZStoneClusterConfigAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def zStoneTestConnection(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zstone.api.ZStoneTestConnectionAction.class) Closure c) {
         def a = new org.zstack.sdk.zstone.api.ZStoneTestConnectionAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
