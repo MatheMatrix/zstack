@@ -31,11 +31,8 @@ public class CreateCbtTaskAction extends AbstractAction {
     @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String description;
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String taskType;
-
     @Param(required = true, nonempty = true, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List resourceUuids;
+    public java.lang.String vmInstanceUuid;
 
     @Param(required = false)
     public java.lang.String resourceUuid;
