@@ -16676,6 +16676,33 @@ abstract class ApiHelper {
     }
 
 
+    def exportNbdVolumes(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.ExportNbdVolumesAction.class) Closure c) {
+        def a = new org.zstack.sdk.ExportNbdVolumesAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def exportVmOvaPackage(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.ExportVmOvaPackageAction.class) Closure c) {
         def a = new org.zstack.sdk.ExportVmOvaPackageAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -36101,6 +36128,33 @@ abstract class ApiHelper {
 
     def undoSnapshotCreation(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UndoSnapshotCreationAction.class) Closure c) {
         def a = new org.zstack.sdk.UndoSnapshotCreationAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def unexportNbdVolumes(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UnexportNbdVolumesAction.class) Closure c) {
+        def a = new org.zstack.sdk.UnexportNbdVolumesAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a

@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class EnableCbtTaskAction extends AbstractAction {
+public class ExportNbdVolumesAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class EnableCbtTaskAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.EnableCbtTaskResult value;
+        public org.zstack.sdk.ExportNbdVolumesResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,11 +25,14 @@ public class EnableCbtTaskAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String uuid;
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.util.List volumeUuids;
+
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String vmInstanceUuid;
 
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String bitmapName;
+    public boolean force = false;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -63,8 +66,8 @@ public class EnableCbtTaskAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.EnableCbtTaskResult value = res.getResult(org.zstack.sdk.EnableCbtTaskResult.class);
-        ret.value = value == null ? new org.zstack.sdk.EnableCbtTaskResult() : value; 
+        org.zstack.sdk.ExportNbdVolumesResult value = res.getResult(org.zstack.sdk.ExportNbdVolumesResult.class);
+        ret.value = value == null ? new org.zstack.sdk.ExportNbdVolumesResult() : value; 
 
         return ret;
     }
@@ -94,7 +97,7 @@ public class EnableCbtTaskAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "POST";
-        info.path = "/cbt-task/enable/{uuid}";
+        info.path = "/cbt-task/exportvolume";
         info.needSession = true;
         info.needPoll = true;
         info.parameterName = "params";

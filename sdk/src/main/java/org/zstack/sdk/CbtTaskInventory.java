@@ -1,6 +1,5 @@
 package org.zstack.sdk;
 
-import org.zstack.sdk.CbtTaskType;
 import org.zstack.sdk.CbtTaskStatus;
 
 public class CbtTaskInventory  {
@@ -29,14 +28,6 @@ public class CbtTaskInventory  {
         return this.description;
     }
 
-    public CbtTaskType taskType;
-    public void setTaskType(CbtTaskType taskType) {
-        this.taskType = taskType;
-    }
-    public CbtTaskType getTaskType() {
-        return this.taskType;
-    }
-
     public CbtTaskStatus status;
     public void setStatus(CbtTaskStatus status) {
         this.status = status;
@@ -59,6 +50,14 @@ public class CbtTaskInventory  {
     }
     public java.sql.Timestamp getLastOpDate() {
         return this.lastOpDate;
+    }
+
+    public java.util.List resourceRefs;
+    public void setResourceRefs(java.util.List resourceRefs) {
+        this.resourceRefs = resourceRefs;
+    }
+    public java.util.List getResourceRefs() {
+        return this.resourceRefs;
     }
 
 }

@@ -1,14 +1,14 @@
 package org.zstack.sdk;
 
-import org.zstack.sdk.CbtTaskInventory;
+
 
 public class EnableCbtTaskResult {
-    public CbtTaskInventory inventory;
-    public void setInventory(CbtTaskInventory inventory) {
-        this.inventory = inventory;
+    public java.util.List volumeCbtBackupInfos;
+    public void setVolumeCbtBackupInfos(java.util.List volumeCbtBackupInfos) {
+        this.volumeCbtBackupInfos = volumeCbtBackupInfos;
     }
-    public CbtTaskInventory getInventory() {
-        return this.inventory;
+    public java.util.List getVolumeCbtBackupInfos() {
+        return this.volumeCbtBackupInfos;
     }
 
 }
