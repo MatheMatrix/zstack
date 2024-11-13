@@ -15,4 +15,9 @@
         <id>1002</id>
         <description>Authorization fails in ZStone server</description>
     </code>
+
+    <code>
+        <id>1003</id>
+        <description>ZStone API operation fail</description>
+    </code>
 </error>
