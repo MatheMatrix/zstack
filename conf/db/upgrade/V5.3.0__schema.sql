@@ -49,3 +49,5 @@ INSERT IGNORE INTO `zstack`.`HostNetworkLabelVO` (`uuid`, `serviceType`, `system
     VALUES (REPLACE(UUID(),'-',''),'BackupNetwork', TRUE, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP());
 INSERT IGNORE INTO `zstack`.`HostNetworkLabelVO` (`uuid`, `serviceType`, `system`, `createDate`, `lastOpDate`)
     VALUES (REPLACE(UUID(),'-',''),'MigrationNetwork', TRUE, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP());
+
+CREATE INDEX idx_schedType_createDate ON `zstack`.`VmSchedHistoryVO` (schedType, createDate);
