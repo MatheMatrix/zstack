@@ -20,6 +20,14 @@ public class ModelEvaluationTaskInventory  {
         return this.name;
     }
 
+    public java.lang.String type;
+    public void setType(java.lang.String type) {
+        this.type = type;
+    }
+    public java.lang.String getType() {
+        return this.type;
+    }
+
     public java.lang.String description;
     public void setDescription(java.lang.String description) {
         this.description = description;
