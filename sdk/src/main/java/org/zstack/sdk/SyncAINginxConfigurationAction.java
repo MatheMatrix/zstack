@@ -31,6 +31,9 @@ public class SyncAINginxConfigurationAction extends AbstractAction {
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.Boolean dryRun;
 
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.Boolean syncAll = false;
+
     @Param(required = false)
     public java.util.List systemTags;
 
