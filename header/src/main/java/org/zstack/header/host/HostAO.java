@@ -38,6 +38,9 @@ public class HostAO extends ResourceVO {
     private String architecture;
 
     @Column
+    private String nqn;
+
+    @Column
     @Enumerated(EnumType.STRING)
     private HostState state;
 
@@ -145,5 +148,13 @@ public class HostAO extends ResourceVO {
 
     public void setArchitecture(String architecture) {
         this.architecture = architecture;
+    }
+
+    public String getNqn() {
+        return nqn;
+    }
+
+    public void setNqn(String nqn) {
+        this.nqn = nqn;
     }
 }

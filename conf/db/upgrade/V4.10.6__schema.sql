@@ -21,3 +21,7 @@ CREATE TABLE IF NOT EXISTS `zstack`.`FcHbaDeviceVO` (
     CONSTRAINT fkFcHbaDeviceVO FOREIGN KEY (uuid) REFERENCES HbaDeviceVO (uuid) ON DELETE CASCADE,
     PRIMARY KEY (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CALL INSERT_COLUMN('HostEO', 'nqn', 'varchar(256)', 1, NULL, 'managementIp');
+DROP VIEW IF EXISTS `zstack`.`HostVO`;
+CREATE VIEW `zstack`.`HostVO` AS SELECT uuid, zoneUuid, clusterUuid, name, description, managementIp, hypervisorType, state, status, architecture, nqn, createDate, lastOpDate FROM `zstack`.`HostEO` WHERE deleted IS NULL;
