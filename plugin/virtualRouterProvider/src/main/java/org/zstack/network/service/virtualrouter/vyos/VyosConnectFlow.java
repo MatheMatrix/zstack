@@ -10,6 +10,7 @@ import org.zstack.core.ansible.AnsibleFacade;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
+import org.zstack.core.db.SQL;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
@@ -29,6 +30,7 @@ import org.zstack.network.service.virtualrouter.VirtualRouterCommands.InitRsp;
 import org.zstack.network.service.virtualrouter.lb.VirtualRouterLoadBalancerRefVO;
 import org.zstack.network.service.virtualrouter.lb.VirtualRouterLoadBalancerRefVO_;
 import org.zstack.resourceconfig.ResourceConfigFacade;
+import org.zstack.tag.SystemTagCreator;
 import org.zstack.utils.DebugUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
@@ -43,6 +45,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.CollectionDSL.e;
+import static org.zstack.utils.CollectionDSL.map;
 
 /**
  * Created by xing5 on 2016/10/31.
@@ -206,6 +210,32 @@ public class VyosConnectFlow extends NoRollbackFlow {
                                         versionStruct.setSoftwareName("IPsec");
                                         versionStruct.setCurrentVersion(ret.getIpsecCurrentVersion());
                                         versionStruct.setLatestVersion(ret.getIpsecLatestVersion());
+                                        if (ret.getVyosVersion() != null) {
+                                            String userName = null;
+                                            if (ret.getVyosVersion().equalsIgnoreCase(VirtualRouterConstant.X86_VPC_EULER_GUEST_OS_TYPE)) {
+                                                SQL.New(VirtualRouterVmVO.class).eq(VirtualRouterVmVO_.uuid, vrUuid)
+                                                        .set(VirtualRouterVmVO_.guestOsType, VirtualRouterConstant.X86_VPC_EULER_GUEST_OS_TYPE).update();
+                                                userName = VirtualRouterConstant.X86_VPC_EULER_GUEST_OS_USER;
+                                            } else if (ret.getVyosVersion().equalsIgnoreCase(VirtualRouterConstant.X86_VPC_VYOS_GUEST_OS_TYPE)) {
+                                                SQL.New(VirtualRouterVmVO.class).eq(VirtualRouterVmVO_.uuid, vrUuid)
+                                                        .set(VirtualRouterVmVO_.guestOsType, VirtualRouterConstant.X86_VPC_VYOS_GUEST_OS_TYPE).update();
+                                                userName = VirtualRouterConstant.X86_VPC_VYOS_GUEST_OS_USER;
+                                            }
+                                            if (ret.getVyosVersion().equalsIgnoreCase(VirtualRouterConstant.ARM_VPC_VYOS_GUEST_OS_TYPE)) {
+                                                SQL.New(VirtualRouterVmVO.class).eq(VirtualRouterVmVO_.uuid, vrUuid)
+                                                        .set(VirtualRouterVmVO_.guestOsType, VirtualRouterConstant.ARM_VPC_VYOS_GUEST_OS_TYPE).update();
+                                                userName = VirtualRouterConstant.ARM_VPC_VYOS_GUEST_OS_USER;
+                                            }
+                                            if(userName != null) {
+                                                SystemTagCreator creator = VirtualRouterSystemTags.VIRTUAL_ROUTER_LOGIN_USER.newSystemTagCreator(vrUuid);
+                                                creator.setTagByTokens(map(
+                                                        e(VirtualRouterSystemTags.VIRTUAL_ROUTER_LOGIN_USER_TOKEN, userName)
+                                                ));
+                                                creator.inherent = true;
+                                                creator.recreate = true;
+                                                creator.create();
+                                            }
+                                        }
                                         new VirtualRouterMetadataOperator().updateVirtualRouterMetadata(metadataStruct);
                                         new VirtualRouterSoftwareVersionOperator().updateVirtualRouterSoftwareVersion(versionStruct);
                                         errs.clear();
