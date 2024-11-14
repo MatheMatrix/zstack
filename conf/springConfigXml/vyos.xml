@@ -106,6 +106,7 @@
                 <value>org.zstack.network.service.virtualrouter.vyos.VyosDeployAgentFlow</value>
                 <value>org.zstack.network.service.virtualrouter.vyos.VyosConnectFlow</value>
                 <value>org.zstack.network.service.virtualrouter.vyos.VyosConfigSshFlow</value>
+                <value>org.zstack.network.service.virtualrouter.ha.VirtualRouterHaSyncConfigToBackendFlow</value>
                 <value>org.zstack.network.service.virtualrouter.vyos.VyosChangePrivateL3FirewallDefaultActionFlow</value>
                 <value>org.zstack.network.service.virtualrouter.dns.VirtualRouterSyncDnsOnStartFlow</value>
                 <value>org.zstack.network.service.virtualrouter.vyos.VyosRefreshDchpServerFlow</value>
