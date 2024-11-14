@@ -178,6 +178,7 @@ class KVMSimulator implements Simulator {
             rsp.hvmCpuFlag = ""
             rsp.cpuCache = "64.0,4096.0,16384.0"
             rsp.iscsiInitiatorName = "iqn.2015-01.io.helix:a6e4508d2378"
+            rsp.nqn = "nqn.2014-08.org.nvmexpress:uuid:748d0363-8366-44db-803b-146effb96988"
 
             rsp.virtualizerInfo = new VirtualizerInfoTO()
             rsp.virtualizerInfo.version = "4.2.0-627.g36ee592.el7"

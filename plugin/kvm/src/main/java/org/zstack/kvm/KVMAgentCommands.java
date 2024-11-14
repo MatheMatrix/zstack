@@ -483,6 +483,7 @@ public class KVMAgentCommands {
         private VirtualizerInfoTO virtualizerInfo;
 
         private String iscsiInitiatorName;
+        private String nqn;
 
         public String getOsDistribution() {
             return osDistribution;
@@ -755,6 +756,14 @@ public class KVMAgentCommands {
 
         public void setIscsiInitiatorName(String iscsiInitiatorName) {
             this.iscsiInitiatorName = iscsiInitiatorName;
+        }
+
+        public String getNqn() {
+            return nqn;
+        }
+
+        public void setNqn(String nqn) {
+            this.nqn = nqn;
         }
     }
 

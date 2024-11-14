@@ -226,9 +226,11 @@ class AddHostCase extends SubCase {
     void testInnerAddHostMsg() {
         String distribution = null
         String iscsiInitiatorName = null
+        String nqn = null
         env.afterSimulator(KVM_HOST_FACT_PATH) { HostFactResponse rsp ->
             distribution = rsp.osDistribution
             iscsiInitiatorName = rsp.iscsiInitiatorName
+            nqn = rsp.nqn
             return rsp
         }
 
@@ -257,6 +259,7 @@ class AddHostCase extends SubCase {
 
         assert (reply.inventory as KVMHostInventory).osDistribution == distribution
         assert (reply.inventory as KVMHostInventory).iscsiInitiatorName == iscsiInitiatorName
+        assert (reply.inventory as KVMHostInventory).nqn == nqn
     }
 
     void testGetHypervisorTypes() {

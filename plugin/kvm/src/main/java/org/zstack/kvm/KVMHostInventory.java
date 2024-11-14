@@ -45,6 +45,7 @@ public class KVMHostInventory extends HostInventory {
         this.setOsRelease(vo.getOsRelease());
         this.setOsVersion(vo.getOsVersion());
         this.setIscsiInitiatorName(vo.getIscsiInitiatorName());
+        this.setNqn(vo.getNqn());
     }
 
     public KVMHostInventory() {

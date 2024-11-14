@@ -244,6 +244,14 @@ public class HostInventory  {
         return this.architecture;
     }
 
+    public java.lang.String nqn;
+    public void setNqn(java.lang.String nqn) {
+        this.nqn = nqn;
+    }
+    public java.lang.String getNqn() {
+        return this.nqn;
+    }
+
     public java.sql.Timestamp createDate;
     public void setCreateDate(java.sql.Timestamp createDate) {
         this.createDate = createDate;
