@@ -89,4 +89,11 @@ public interface VirtualRouterConstant {
 		IS_HA_ROUTER,
 		APPLY_TO_VIRTUALROUTER,
     }
+
+	public static final String X86_VPC_EULER_GUEST_OS_TYPE = "openEuler 22.03";
+	public static final String X86_VPC_EULER_GUEST_OS_USER = "zstack";
+	public static final String X86_VPC_VYOS_GUEST_OS_TYPE = "VyOS 1.1.7";
+	public static final String X86_VPC_VYOS_GUEST_OS_USER = "vyos";
+	public static final String ARM_VPC_VYOS_GUEST_OS_TYPE = "VyOS 1.2.0";
+	public static final String ARM_VPC_VYOS_GUEST_OS_USER = "vyos";
 }
