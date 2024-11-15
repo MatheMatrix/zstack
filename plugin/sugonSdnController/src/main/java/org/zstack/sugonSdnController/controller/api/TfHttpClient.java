@@ -11,6 +11,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.MessageCommandRecorder;
 import org.zstack.header.rest.RESTFacade;
+import org.zstack.header.rest.RestHttp;
 import org.zstack.sugonSdnController.controller.SugonSdnControllerConstant;
 import org.zstack.sugonSdnController.controller.SugonSdnControllerGlobalProperty;
 import org.zstack.sugonSdnController.controller.api.types.Domain;
@@ -167,15 +168,16 @@ public class TfHttpClient<T> {
     }
 
     private ResponseEntity<String> execute(String url, HttpMethod method, String body) {
-        HttpHeaders requestHeaders = new HttpHeaders();
-        if (headers != null) {
-            requestHeaders.setAll(headers);
-        }
-        requestHeaders.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<String> req = new HttpEntity<String>(body, requestHeaders);
         ResponseEntity<String> response;
         try {
-            response = restf.syncRawJson(buildUrl(tf_ip, url), req, method, unit, timeout);
+            RestHttp<String> http = restf.http()
+                    .withPath(buildUrl(tf_ip, url))
+                    .withBody(body)
+                    .withTimeoutInMillis(unit.toMillis(timeout));
+            if (headers != null) {
+                headers.forEach(http::withHeader);
+            }
+            response = http.exchange(method);
         } catch (Exception e){
             logger.warn(String.format("Execute http requests:%s failed, reason:%s", url, e.getMessage()));
             return null;

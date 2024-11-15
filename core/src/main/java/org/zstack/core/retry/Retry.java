@@ -1,5 +1,6 @@
 package org.zstack.core.retry;
 
+import org.zstack.header.Confirm;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.exception.CloudRuntimeException;
@@ -10,8 +11,12 @@ import org.zstack.utils.logging.CLogger;
 import static org.zstack.core.Platform.i18n;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+
+import static org.zstack.header.Confirm.*;
 
 /**
  * Created by xing5 on 2016/6/25.
@@ -40,6 +45,7 @@ public abstract class Retry<T> {
 
     protected int times, count = 5;
     protected int interval = 1;
+    protected final List<Function<Throwable, Confirm>> retryConditions = new ArrayList<>();
 
     private static final CLogger logger = Utils.getLogger(Retry.class);
 
@@ -60,14 +66,12 @@ public abstract class Retry<T> {
             throw new CloudRuntimeException(e);
         }
 
-
-        Class[] onExceptions = {};
-
         RetryCondition cond = m.getAnnotation(RetryCondition.class);
         if (cond != null) {
             times = cond.times();
             interval = cond.interval();
-            onExceptions = cond.onExceptions();
+            Class<?>[] onExceptions = cond.onExceptions();
+            retryConditions.add(e -> onExceptions.length != 0 && !TypeUtils.isTypeOf(e, onExceptions) ? No : Yes);
         }
 
         count = times;
@@ -80,7 +84,15 @@ public abstract class Retry<T> {
             try {
                 return call();
             } catch (Throwable t) {
-                if (onExceptions.length != 0 && !TypeUtils.isTypeOf(t, onExceptions)) {
+                Confirm retry = Skip;
+                for (Function<Throwable, Confirm> condition : retryConditions) {
+                    retry = condition.apply(t);
+                    if (retry != Skip) {
+                        break;
+                    }
+                }
+
+                if (retry == No) {
                     throw t;
                 }
 
