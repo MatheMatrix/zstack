@@ -815,7 +815,7 @@ public class AccountManagerImpl extends AbstractService implements AccountManage
             }
         }
 
-        repairAccountQuota();
+        // repairAccountQuota();
     }
 
     private void collectQuotaMessageCheckers(Quota quota) {
