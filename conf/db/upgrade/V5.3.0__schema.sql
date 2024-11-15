@@ -51,3 +51,7 @@ INSERT IGNORE INTO `zstack`.`HostNetworkLabelVO` (`uuid`, `serviceType`, `system
     VALUES (REPLACE(UUID(),'-',''),'MigrationNetwork', TRUE, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP());
 
 CREATE INDEX idx_schedType_createDate ON `zstack`.`VmSchedHistoryVO` (schedType, createDate);
+
+ALTER TABLE `zstack`.`ModelEvaluationTaskVO` ADD taskRequestInJson VARCHAR(8192) DEFAULT NULL;
+ALTER TABLE `zstack`.`ModelEvaluationTaskVO` ADD type VARCHAR(32) DEFAULT NULL;
+ALTER TABLE `zstack`.`ModelEvaluationTaskVO` MODIFY `evaluatedServiceGroupUuid` varchar(32) DEFAULT NULL;
