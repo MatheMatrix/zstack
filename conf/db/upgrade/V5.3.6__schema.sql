@@ -6,3 +6,7 @@ CREATE TABLE IF NOT EXISTS `zstack`.`KoAlSecretResourcePoolVO` (
     PRIMARY KEY  (`uuid`),
     CONSTRAINT fkKoAlSecretResourcePoolVOSecretResourcePoolVO FOREIGN KEY (uuid) REFERENCES SecretResourcePoolVO (uuid) ON UPDATE RESTRICT ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `zstack`.`ModelEvaluationTaskVO` ADD taskRequestInJson VARCHAR(8192) DEFAULT NULL;
+ALTER TABLE `zstack`.`ModelEvaluationTaskVO` ADD type VARCHAR(32) DEFAULT NULL;
+ALTER TABLE `zstack`.`ModelEvaluationTaskVO` MODIFY `evaluatedServiceGroupUuid` varchar(32) DEFAULT NULL;

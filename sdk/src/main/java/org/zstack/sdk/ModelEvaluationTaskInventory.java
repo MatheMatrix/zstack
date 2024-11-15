@@ -100,4 +100,124 @@ public class ModelEvaluationTaskInventory  {
         return this.lastOpDate;
     }
 
+    public java.lang.Integer maxNewTokens;
+    public void setMaxNewTokens(java.lang.Integer maxNewTokens) {
+        this.maxNewTokens = maxNewTokens;
+    }
+    public java.lang.Integer getMaxNewTokens() {
+        return this.maxNewTokens;
+    }
+
+    public java.lang.Integer topK;
+    public void setTopK(java.lang.Integer topK) {
+        this.topK = topK;
+    }
+    public java.lang.Integer getTopK() {
+        return this.topK;
+    }
+
+    public java.lang.Float temperature;
+    public void setTemperature(java.lang.Float temperature) {
+        this.temperature = temperature;
+    }
+    public java.lang.Float getTemperature() {
+        return this.temperature;
+    }
+
+    public java.lang.Float topP;
+    public void setTopP(java.lang.Float topP) {
+        this.topP = topP;
+    }
+    public java.lang.Float getTopP() {
+        return this.topP;
+    }
+
+    public java.lang.String prompt;
+    public void setPrompt(java.lang.String prompt) {
+        this.prompt = prompt;
+    }
+    public java.lang.String getPrompt() {
+        return this.prompt;
+    }
+
+    public java.lang.Float repetitionPenalty;
+    public void setRepetitionPenalty(java.lang.Float repetitionPenalty) {
+        this.repetitionPenalty = repetitionPenalty;
+    }
+    public java.lang.Float getRepetitionPenalty() {
+        return this.repetitionPenalty;
+    }
+
+    public java.lang.Integer maxLength;
+    public void setMaxLength(java.lang.Integer maxLength) {
+        this.maxLength = maxLength;
+    }
+    public java.lang.Integer getMaxLength() {
+        return this.maxLength;
+    }
+
+    public java.lang.String model;
+    public void setModel(java.lang.String model) {
+        this.model = model;
+    }
+    public java.lang.String getModel() {
+        return this.model;
+    }
+
+    public java.lang.String url;
+    public void setUrl(java.lang.String url) {
+        this.url = url;
+    }
+    public java.lang.String getUrl() {
+        return this.url;
+    }
+
+    public java.lang.Integer parallel;
+    public void setParallel(java.lang.Integer parallel) {
+        this.parallel = parallel;
+    }
+    public java.lang.Integer getParallel() {
+        return this.parallel;
+    }
+
+    public java.lang.Integer logEveryQuery;
+    public void setLogEveryQuery(java.lang.Integer logEveryQuery) {
+        this.logEveryQuery = logEveryQuery;
+    }
+    public java.lang.Integer getLogEveryQuery() {
+        return this.logEveryQuery;
+    }
+
+    public java.lang.String api;
+    public void setApi(java.lang.String api) {
+        this.api = api;
+    }
+    public java.lang.String getApi() {
+        return this.api;
+    }
+
+    public java.util.Map requestHeaders;
+    public void setRequestHeaders(java.util.Map requestHeaders) {
+        this.requestHeaders = requestHeaders;
+    }
+    public java.util.Map getRequestHeaders() {
+        return this.requestHeaders;
+    }
+
+    public java.lang.Integer connectTimeout;
+    public void setConnectTimeout(java.lang.Integer connectTimeout) {
+        this.connectTimeout = connectTimeout;
+    }
+    public java.lang.Integer getConnectTimeout() {
+        return this.connectTimeout;
+    }
+
+    public java.lang.Integer readTimeout;
+    public void setReadTimeout(java.lang.Integer readTimeout) {
+        this.readTimeout = readTimeout;
+    }
+    public java.lang.Integer getReadTimeout() {
+        return this.readTimeout;
+    }
+
 }
