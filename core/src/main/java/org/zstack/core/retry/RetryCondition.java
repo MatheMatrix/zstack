@@ -11,6 +11,11 @@ import java.lang.annotation.Target;
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RetryCondition {
+    /**
+     * retry if exception type matched.
+     *
+     * If onExceptions is empty, it will retry on all exceptions. (ALWAYS retry)
+     */
     Class[] onExceptions() default {};
 
     int times() default 5;
