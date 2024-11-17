@@ -1,0 +1,83 @@
+#!/usr/bin/env python
+
+import sys
+import re
+
+#!/usr/bin/env python
+
+foramt_example = """
+<type>[scope]: <description>
+
+# Possible types: fix/feature/test/refactor/chore
+# Possible tags: APIImpact/GlobalConfigImpact/GlobalPropertyImpact/DBImpact/ZQLImpact
+# Possible jira-footers: Resolves/Related
+# Please describe the commit as detailed as possible!
+# 1. Why is this change necessary?
+# 2. How does it address the problem?
+# 3. Are there any side effects?
+
+[body]
+
+[footer(s)]
+
+APIImpact/GlobalConfigImpact/GlobalPropertyImpact/DBImpact/ZQLImpact
+
+Resolves/Related: ZSTAC-XXXX
+
+Change-Id: I7778676171646874706164777869707279776172
+"""
+
+def check_commit_message(commit_message):
+    # pattern match foramt_example
+    title_pattern = r"^<(fix|feature|test|refactor|chore)>\[(.+)\]:\s(.{1,72})$"
+    jira_pattern = r"^(Resolves|Related):\s(ZSTAC|MINI|ZOPS|ZHCI|ZSV|QI)-\d+$"
+    change_id_pattern = r"^Change-Id:\sI[0-9a-f]{40}$"
+
+    # split commit message
+    commit_messages = commit_message.split("\n")
+
+    # Initialize the errors list
+    errors = []
+
+    # Check if the commit message title matches the pattern
+    if not re.match(title_pattern, commit_messages[0]):
+        errors.append("The commit message title does not match the pattern. \n The title should be in the format:\n <type>[scope]: <description> (e.g. fix[scope]: Fix a bug)")
+
+    jira_not_found = True
+    change_id_not_found = True
+    for commit_message in commit_messages:
+        # Check if the jira footer matches the pattern
+        if re.match(jira_pattern, commit_message):
+            jira_not_found = False
+            continue
+
+        # Check if the change-id footer matches the pattern
+        if re.match(change_id_pattern, commit_message):
+            change_id_not_found = False
+            continue
+
+    if jira_not_found:
+        errors.append("No related Jira issue found in the commit message.\n Resolves/Related: ZSTAC-XXXX|MINI-XXXX|ZOPS-XXXX|ZHCI-XXXX|ZSV-XXXX")
+
+    if change_id_not_found:
+        errors.append("The Change-Id footer is missing.")
+
+    # If there are any errors, print them and exit with failure
+    if errors:
+        for error in errors:
+            print(error)
+        sys.exit(1)
+
+    # If the commit message format is valid, exit with success
+    sys.exit(0)
+
+def main():
+    # Read the commit messages from stdin
+    commit_messages = sys.stdin.readlines()
+
+    # Iterate over each commit message and check its format
+    for commit_message in commit_messages:
+        check_commit_message(commit_message.strip())
+
+if __name__ == "__main__":
+    main()
