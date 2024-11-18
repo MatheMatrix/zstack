@@ -4,6 +4,7 @@ create table if not exists `zstack`.`ZStoneVO` (
     `uuid` char(32) not null unique,
     `name` varchar(255) not null,
     `username` varchar(255) not null,
+    `password` varchar(255) default null,
     `managementIp` varchar(255) not null,
     `authorizationServer` varchar(32) not null,
     `logInPort` int(11) not null,
