@@ -6,9 +6,6 @@ import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.core.timeout.ApiTimeoutManager;
 import org.zstack.header.core.Completion;
-import org.zstack.header.core.workflow.Flow;
-import org.zstack.header.core.workflow.FlowTrigger;
-import org.zstack.header.core.workflow.NoRollbackFlow;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.host.*;
 import org.zstack.header.message.MessageReply;
@@ -25,8 +22,6 @@ import org.zstack.utils.logging.CLogger;
 
 import static java.util.Arrays.asList;
 import static org.zstack.core.Platform.operr;
-
-import java.util.Map;
 
 public class KVMSecurityGroupBackend implements SecurityGroupHypervisorBackend, HostAfterConnectedExtensionPoint {
     private static CLogger logger = Utils.getLogger(KVMSecurityGroupBackend.class);
@@ -129,7 +124,7 @@ public class KVMSecurityGroupBackend implements SecurityGroupHypervisorBackend, 
     @Override
     public void checkDefaultRules(String hostUuid, Completion completion) {
         CheckDefaultSecurityGroupCmd cmd = new CheckDefaultSecurityGroupCmd();
-        cmd.skipIpv6 = NetworkGlobalProperty.SKIP_IPV6;
+        cmd.disableIp6Tables = NetworkGlobalProperty.SKIP_IPV6 || NetworkGlobalProperty.BRIDGE_DISABLE_IP6TABLES;
 
         KVMHostAsyncHttpCallMsg msg = new KVMHostAsyncHttpCallMsg();
         msg.setHostUuid(hostUuid);
@@ -193,7 +188,7 @@ public class KVMSecurityGroupBackend implements SecurityGroupHypervisorBackend, 
     @Override
     public void cleanUpUnusedRuleOnHost(String hostUuid, final Completion completion) {
         KVMAgentCommands.CleanupUnusedRulesOnHostCmd cmd = new KVMAgentCommands.CleanupUnusedRulesOnHostCmd();
-        cmd.skipIpv6 = NetworkGlobalProperty.SKIP_IPV6;
+        cmd.disableIp6Tables = NetworkGlobalProperty.SKIP_IPV6 || NetworkGlobalProperty.BRIDGE_DISABLE_IP6TABLES;
         KVMHostAsyncHttpCallMsg msg = new KVMHostAsyncHttpCallMsg();
         msg.setHostUuid(hostUuid);
         msg.setCommand(cmd);
