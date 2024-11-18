@@ -496,4 +496,8 @@ public class IPv6NetworkUtils {
         }
         throw new IllegalArgumentException("No IP address in the list matches the provided IP version: " + ipVersion);
     }
+
+    public static boolean isFullCidr(String cidr) {
+        return cidr.equals("::/0");
+    }
 }
