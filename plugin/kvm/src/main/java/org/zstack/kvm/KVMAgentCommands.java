@@ -14,9 +14,7 @@ import org.zstack.header.vm.devices.DeviceAddress;
 import org.zstack.header.vm.devices.VirtualDeviceInfo;
 import org.zstack.network.securitygroup.RuleTO;
 import org.zstack.network.securitygroup.SecurityGroupMembersTO;
-import org.zstack.network.securitygroup.SecurityGroupRuleTO;
 import org.zstack.network.securitygroup.VmNicSecurityTO;
-import org.zstack.network.service.MtuGetter;
 
 import java.io.Serializable;
 import java.util.*;
@@ -3440,6 +3438,8 @@ public class KVMAgentCommands {
     public static class CheckDefaultSecurityGroupCmd extends AgentCommand {
         @GrayVersion(value = "5.0.0")
         Boolean skipIpv6;
+        @GrayVersion(value = "5.3.0")
+        Boolean disableIp6Tables;
     }
 
     public static class CheckDefaultSecurityGroupResponse extends AgentResponse {
@@ -3465,6 +3465,8 @@ public class KVMAgentCommands {
     public static class CleanupUnusedRulesOnHostCmd extends AgentCommand {
         @GrayVersion(value = "5.0.0")
         Boolean skipIpv6;
+        @GrayVersion(value = "5.3.0")
+        Boolean disableIp6Tables;
     }
 
     public static class CleanupUnusedRulesOnHostResponse extends AgentResponse {
