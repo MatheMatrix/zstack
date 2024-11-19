@@ -32,6 +32,7 @@ import org.zstack.utils.VipUseForList;
 import org.zstack.utils.logging.CLogger;
 import org.zstack.utils.network.IPv6Constants;
 import org.zstack.utils.network.IPv6NetworkUtils;
+import org.zstack.utils.network.NetworkUtils;
 
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
@@ -145,16 +146,6 @@ public class EipApiInterceptor implements ApiMessageInterceptor {
                             msg.getEipUuid(), EipState.Enabled, state));
         }
 
-        if (msg.getUsedIpUuid() == null) {
-            VmNicVO nic = dbf.findByUuid(msg.getVmNicUuid(), VmNicVO.class);
-            msg.setUsedIpUuid(nic.getUsedIpUuid());
-        } else {
-            validateEipGuestIpUuid(msg.getVmNicUuid(), msg.getUsedIpUuid());
-        }
-
-        String vipUuid = t.get(2, String.class);
-        isVipInVmNicSubnet(vipUuid, msg.getUsedIpUuid());
-
         VipVO vip = new Callable<VipVO>() {
             @Override
             @Transactional(readOnly = true)
@@ -168,6 +159,21 @@ public class EipApiInterceptor implements ApiMessageInterceptor {
                 return q.getSingleResult();
             }
         }.call();
+
+        if (msg.getUsedIpUuid() == null) {
+            VmNicVO nic = dbf.findByUuid(msg.getVmNicUuid(), VmNicVO.class);
+            UsedIpVO usedIp = nic.getUsedIps().stream()
+                    .filter(usedIpVO -> usedIpVO.getIpVersion().equals(NetworkUtils.getIpversion(vip.getIp())))
+                    .findFirst()
+                    .orElseThrow(() -> new ApiMessageInterceptionException(argerr("vm nic[uuid:%s] does not have a compatible usedIp for eip[uuid:%s]",
+                            msg.getVmNicUuid(), msg.getEipUuid())));
+            msg.setUsedIpUuid(usedIp.getUuid());
+        } else {
+            validateEipGuestIpUuid(msg.getVmNicUuid(), msg.getUsedIpUuid());
+        }
+
+        String vipUuid = t.get(2, String.class);
+        isVipInVmNicSubnet(vipUuid, msg.getUsedIpUuid());
 
         VmNicVO nic = dbf.findByUuid(msg.getVmNicUuid(), VmNicVO.class);
         if (VmNicHelper.getL3Uuids(nic).contains(vip.getL3NetworkUuid())){

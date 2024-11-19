@@ -143,10 +143,10 @@ class IPv6EipCase extends SubCase {
         assert cmd.eip.vmBridgeName == "br_eth0"
 
         cmd = null
+        // usedIpUuid will detect automatically
         eip6 = attachEip {
             eipUuid = eip6.uuid
             vmNicUuid = nic.uuid
-            usedIpUuid = ipv6.uuid
         }
         assert cmd.eip.vmBridgeName == "br_eth0"
         assert eip6.guestIp == ipv6.ip
