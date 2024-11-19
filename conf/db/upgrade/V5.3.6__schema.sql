@@ -1,0 +1,1 @@
+ALTER TABLE `zstack`.`ModelEvaluationTaskVO` MODIFY datasetUuid VARCHAR(32) DEFAULT NULL;
