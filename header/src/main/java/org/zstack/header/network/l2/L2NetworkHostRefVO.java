@@ -4,10 +4,10 @@ import org.zstack.header.host.HostEO;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.search.SqlTrigger;
 import org.zstack.header.search.TriggerIndex;
-import org.zstack.header.vo.*;
 import org.zstack.header.vo.EntityGraph;
 import org.zstack.header.vo.ForeignKey;
 import org.zstack.header.vo.ForeignKey.ReferenceOption;
+import org.zstack.header.vo.*;
 
 import javax.persistence.*;
 import java.sql.Timestamp;
@@ -46,6 +46,9 @@ public class L2NetworkHostRefVO implements ToInventory {
 
     @Column
     private String bridgeName;
+
+    @Column
+    private boolean skipDeletion;
 
     @Column
     private Timestamp createDate;
@@ -88,6 +91,14 @@ public class L2NetworkHostRefVO implements ToInventory {
 
     public void setBridgeName(String bridgeName) {
         this.bridgeName = bridgeName;
+    }
+
+    public boolean getSkipDeletion() {
+        return skipDeletion;
+    }
+
+    public void setSkipDeletion(boolean skipDeletion) {
+        this.skipDeletion = skipDeletion;
     }
 
     public String getL2NetworkUuid() {

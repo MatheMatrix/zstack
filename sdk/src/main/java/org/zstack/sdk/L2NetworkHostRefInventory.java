@@ -36,6 +36,14 @@ public class L2NetworkHostRefInventory  {
         return this.bridgeName;
     }
 
+    public boolean skipDeletion;
+    public void setSkipDeletion(boolean skipDeletion) {
+        this.skipDeletion = skipDeletion;
+    }
+    public boolean getSkipDeletion() {
+        return this.skipDeletion;
+    }
+
     public java.sql.Timestamp createDate;
     public void setCreateDate(java.sql.Timestamp createDate) {
         this.createDate = createDate;

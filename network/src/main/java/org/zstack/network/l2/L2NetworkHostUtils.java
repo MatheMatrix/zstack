@@ -79,13 +79,21 @@ public class L2NetworkHostUtils {
         return bridgeNameMap;
     }
 
-    public static void changeBridgeNameIfNotEqual(String l2Uuid, String hostUuid, String bridgeName) {
+    public static void updateBridgeNameAndSkipDeletion(String l2Uuid, String hostUuid, String bridgeName, boolean skipDeletion) {
         SQL.New(L2NetworkHostRefVO.class)
                 .eq(L2NetworkHostRefVO_.l2NetworkUuid, l2Uuid)
                 .eq(L2NetworkHostRefVO_.hostUuid, hostUuid)
-                .notEq(L2NetworkHostRefVO_.bridgeName, bridgeName)
                 .set(L2NetworkHostRefVO_.bridgeName, bridgeName)
+                .set(L2NetworkHostRefVO_.skipDeletion, skipDeletion)
                 .update();
+    }
+
+    public static boolean isBridgeDeletionSkippedOnHost(String l2Uuid, String hostUuid) {
+        return Q.New(L2NetworkHostRefVO.class)
+                .select(L2NetworkHostRefVO_.skipDeletion)
+                .eq(L2NetworkHostRefVO_.l2NetworkUuid, l2Uuid)
+                .eq(L2NetworkHostRefVO_.hostUuid, hostUuid)
+                .findValue();
     }
 
     public static boolean checkIfL2AttachedToHost(String l2Uuid, String hostUuid) {
