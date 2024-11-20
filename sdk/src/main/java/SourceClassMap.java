@@ -631,6 +631,7 @@ public class SourceClassMap {
 			put("org.zstack.zbox.ZBoxLocationRefInventory", "org.zstack.sdk.ZBoxLocationRefInventory");
 			put("org.zstack.zbox.ZBoxState", "org.zstack.sdk.ZBoxState");
 			put("org.zstack.zbox.ZBoxStatus", "org.zstack.sdk.ZBoxStatus");
+			put("org.zstack.zcex.entity.ZceXInventory", "org.zstack.sdk.zcex.entity.ZceXInventory");
 			put("org.zstack.zops.ChronyServerInfo", "org.zstack.sdk.ChronyServerInfo");
 			put("org.zstack.zops.ChronyServerInfoPair", "org.zstack.sdk.ChronyServerInfoPair");
 			put("org.zstack.zops.HostConnectedStatus", "org.zstack.sdk.HostConnectedStatus");
@@ -1337,6 +1338,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.sns.platform.snmp.SNSSnmpPlatformInventory", "org.zstack.sns.platform.snmp.SNSSnmpPlatformInventory");
 			put("org.zstack.sdk.sns.platform.wecom.SNSWeComAtPersonInventory", "org.zstack.sns.platform.wecom.SNSWeComAtPersonInventory");
 			put("org.zstack.sdk.sns.platform.wecom.SNSWeComEndpointInventory", "org.zstack.sns.platform.wecom.SNSWeComEndpointInventory");
+			put("org.zstack.sdk.zcex.entity.ZceXInventory", "org.zstack.zcex.entity.ZceXInventory");
 			put("org.zstack.sdk.zstone.entity.ZStoneClusterView", "org.zstack.zstone.entity.ZStoneClusterView");
 			put("org.zstack.sdk.zstone.entity.ZStoneHostSummaryView", "org.zstack.zstone.entity.ZStoneHostSummaryView");
 			put("org.zstack.sdk.zstone.entity.ZStoneInventory", "org.zstack.zstone.entity.ZStoneInventory");

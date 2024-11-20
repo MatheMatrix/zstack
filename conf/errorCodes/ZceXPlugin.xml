@@ -1,0 +1,23 @@
+<error>
+    <prefix>ZCE-X</prefix>
+
+    <code>
+        <id>1000</id>
+        <description>ZCE-X generic error</description>
+    </code>
+
+    <code>
+        <id>1001</id>
+        <description>Failed to connect ZCE-X server</description>
+    </code>
+
+    <code>
+        <id>1002</id>
+        <description>Authorization fails in ZCE-X server</description>
+    </code>
+
+    <code>
+        <id>1003</id>
+        <description>ZCE-X API operation fail</description>
+    </code>
+</error>
