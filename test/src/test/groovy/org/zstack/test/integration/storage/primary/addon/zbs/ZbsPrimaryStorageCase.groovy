@@ -172,6 +172,17 @@ class ZbsPrimaryStorageCase extends SubCase {
                 name = "zbs-2"
                 identity = "zbs"
                 defaultOutputProtocol = "CBD"
+                config = "{\"mdsUrls\":[\"root:password@127.0.1.1\",\"root:password@127.0.1.2\",\"root:password@127.0.1.3\"],\"logicalPoolName\":\"lpool1\"}"
+                url = ""
+            }
+        }
+
+        expect(AssertionError.class) {
+            addExternalPrimaryStorage {
+                zoneUuid = zone.uuid
+                name = "zbs-2"
+                identity = "zbs"
+                defaultOutputProtocol = "CBD"
                 config = "{\"mdsUrls\":[\"root:password@127.0.2.1\",\"root:password@127.0.2.2\",\"root:password@127.0.2.3\"],\"logicalPoolName\":\"lpo/ol1\"}"
                 url = ""
             }

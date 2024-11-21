@@ -12,4 +12,6 @@ public interface ExternalPrimaryStorageSvcBuilder {
     void discover(String url, String config, ReturnValueCompletion<LinkedHashMap> completion);
 
     String getIdentity();
+
+    void validate(String config);
 }

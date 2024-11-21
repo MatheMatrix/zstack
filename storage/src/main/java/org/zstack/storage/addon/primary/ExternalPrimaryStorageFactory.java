@@ -206,6 +206,7 @@ public class ExternalPrimaryStorageFactory implements PrimaryStorageFactory, Com
                     Platform.operr("No primary storage plugin registered with identity: %s", identity)
             );
         }
+        builder.validate(amsg.getConfig());
 
         final ExternalPrimaryStorageVO lvo = new ExternalPrimaryStorageVO(vo);
         lvo.setIdentity(identity);

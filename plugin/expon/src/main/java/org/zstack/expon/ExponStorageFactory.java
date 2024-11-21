@@ -43,6 +43,11 @@ public class ExponStorageFactory implements ExternalPrimaryStorageSvcBuilder, Ba
     }
 
     @Override
+    public void validate(String config) {
+
+    }
+
+    @Override
     public List<String> getPreferBackupStorageTypes() {
         return preferBackupStorageTypes;
     }
