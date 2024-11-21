@@ -12,6 +12,7 @@ public class RBACInfo implements RBACDescription {
     public void permissions() {
         permissionBuilder()
                 .adminOnlyAPIs("org.zstack.header.storage.addon.primary.**")
+                .zsvAdvancedAvailable()
                 .build();
     }
 
