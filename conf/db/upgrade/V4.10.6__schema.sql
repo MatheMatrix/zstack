@@ -14,3 +14,14 @@ create table if not exists `zstack`.`ZStoneVO` (
     `createDate` timestamp,
     primary key (`uuid`)
 ) ENGINE=InnoDB default CHARSET=utf8;
+
+-- Feature: ZCE-X Support | ZSV-7444
+
+create table if not exists `zstack`.`ZceXVO` (
+    `uuid` char(32) not null unique,
+    `name` varchar(255) not null,
+    `managementIp` varchar(255) not null,
+    `lastOpDate` timestamp on update CURRENT_TIMESTAMP,
+    `createDate` timestamp,
+    primary key (`uuid`)
+) ENGINE=InnoDB default CHARSET=utf8;
