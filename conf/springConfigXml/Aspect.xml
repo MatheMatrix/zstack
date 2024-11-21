@@ -20,6 +20,7 @@
     <bean class="org.zstack.core.aspect.BackAspect" factory-method="aspectOf" />
     <bean class="org.zstack.core.aspect.EncryptColumnAspect" factory-method="aspectOf" />
     <bean class="org.zstack.core.aspect.ExceptionSafeAspect" factory-method="aspectOf" />
+    <bean class="org.zstack.core.aspect.DbConnectionPoolAspect" factory-method="aspectOf" />
 
 </beans>
 

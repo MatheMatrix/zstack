@@ -18,6 +18,16 @@ public interface DatabaseFacade {
     
     <T> T findByUuid(String uuid, Class<T> entityClass);
 
+    <T> T testFindByUuid(String uuid, Class<T> entityClass) throws Exception;
+
+    <T> T testFindByUuid2(String uuid, Class<T> entityClass);
+
+    <T> T testFindByUuid3(String uuid, Class<T> entityClass);
+
+    <T> T testFindByUuid4(String uuid, Class<T> entityClass);
+
+    <T> T testFindByUuid5(String uuid, Class<T> entityClass);
+
     <T> T find(Query q);
     
     <T> T persist(T entity);
