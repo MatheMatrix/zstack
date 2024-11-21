@@ -528,6 +528,10 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
 
                 @Override
                 public void rollback(FlowRollback trigger, Map data) {
+                    if (reply.getHost() == null) {
+                        trigger.rollback();
+                        return;
+                    }
                     ReturnHostCapacityMsg rmsg = new ReturnHostCapacityMsg();
                     rmsg.setHostUuid(reply.getHost().getUuid());
                     rmsg.setMemoryCapacity(spec.getMemoryCapacity());
