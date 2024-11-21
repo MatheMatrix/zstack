@@ -9,6 +9,7 @@ public class RBACInfo implements RBACDescription {
                 .adminOnlyAPIs("org.zstack.header.network.service.**")
                 .normalAPIs(
                         APIAttachNetworkServiceToL3NetworkMsg.class,
+                        APIDetachNetworkServiceFromL3NetworkMsg.class,
                         APIQueryNetworkServiceProviderMsg.class
                 ).build();
     }
@@ -17,7 +18,9 @@ public class RBACInfo implements RBACDescription {
     public void contributeToRoles() {
         roleContributorBuilder()
                 .roleName("networks")
-                .actions(APIQueryNetworkServiceProviderMsg.class, APIAttachNetworkServiceToL3NetworkMsg.class)
+                .actions(APIQueryNetworkServiceProviderMsg.class,
+                        APIAttachNetworkServiceToL3NetworkMsg.class,
+                        APIDetachNetworkServiceFromL3NetworkMsg.class)
                 .build();
     }
 
