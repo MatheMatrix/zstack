@@ -2,6 +2,7 @@ package org.zstack.storage.primary.nfs;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
+import org.zstack.compute.vm.ImageBackupStorageSelector;
 import org.zstack.core.asyncbatch.AsyncBatchRunner;
 import org.zstack.core.asyncbatch.LoopAsyncBatch;
 import org.zstack.core.cloudbus.CloudBusCallBack;
@@ -16,6 +17,7 @@ import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
+import org.zstack.core.workflow.SimpleFlowChain;
 import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.cluster.ClusterVO_;
 import org.zstack.header.core.Completion;
@@ -28,8 +30,11 @@ import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.*;
+import org.zstack.header.image.ImageBackupStorageRefInventory;
 import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.image.ImageInventory;
+import org.zstack.header.image.ImageStatus;
+import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.storage.backup.BackupStorageInventory;
@@ -557,22 +562,107 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
             return;
         }
 
-        NfsPrimaryStorageBackend bkd = getBackend(nfsMgr.findHypervisorTypeByImageFormatAndPrimaryStorageUuid(
-                VolumeConstant.VOLUME_FORMAT_QCOW2, self.getUuid())
-        );
-        bkd.resetRootVolumeFromImage(msg.getVolume(), destHost, new ReturnValueCompletion<String>(msg) {
-            @Override
-            public void success(String returnValue) {
-                reply.setNewVolumeInstallPath(returnValue);
-                bus.reply(msg, reply);
-            }
+        String CACHE_INSTALLURL = "cache_installurl";
 
+        FlowChain chain = new SimpleFlowChain();
+        chain.setName("reinit-root-volume-on-primary-storage");
+        chain.then(new NoRollbackFlow() {
+            String __name__ = "download-image-to-cache";
             @Override
-            public void fail(ErrorCode errorCode) {
-                reply.setError(errorCode);
+            public void run(FlowTrigger trigger, Map data) {
+                String imageUuid = msg.getVolume().getRootImageUuid();
+                if (imageUuid == null) {
+                    trigger.fail(operr("root image has been deleted, cannot reimage now"));
+                    return;
+                }
+                String cacheInstallUrl = Q.New(ImageCacheVO.class)
+                        .eq(ImageCacheVO_.imageUuid, imageUuid).
+                        eq(ImageCacheVO_.primaryStorageUuid, msg.getPrimaryStorageUuid())
+                        .select(ImageCacheVO_.installUrl).findValue();
+                if (cacheInstallUrl != null) {
+                    data.put(CACHE_INSTALLURL, cacheInstallUrl);
+                    trigger.next();
+                    return;
+                }
+                ImageVO image = dbf.findByUuid(imageUuid, ImageVO.class);
+                if (image == null) {
+                    trigger.fail(operr("root image has been deleted, cannot reimage now"));
+                    return;
+                }
+                ImageBackupStorageSelector selector = new ImageBackupStorageSelector();
+                selector.setImageUuid(imageUuid);
+                selector.setZoneUuid(getSelfInventory().getZoneUuid());
+                String bsUuid = selector.select();
+                if (bsUuid == null) {
+                    trigger.fail(operr("cannot find backupstorage for download image[uuid:%s]", imageUuid));
+                    return;
+                }
+
+                ImageInventory imageInventory = ImageInventory.valueOf(image);
+                ImageSpec spec = new ImageSpec();
+                spec.setInventory(imageInventory);
+                spec.setSelectedBackupStorage(CollectionUtils.find(imageInventory.getBackupStorageRefs(),
+                        new Function<ImageBackupStorageRefInventory, ImageBackupStorageRefInventory>() {
+                            @Override
+                            public ImageBackupStorageRefInventory call(ImageBackupStorageRefInventory arg) {
+                                return arg.getBackupStorageUuid().equals(bsUuid)
+                                        && ImageStatus.Ready.toString().equals(arg.getStatus())
+                                        ? arg : null;
+                            }
+                        })
+                );
+
+                NfsDownloadImageToCacheJob job = new NfsDownloadImageToCacheJob();
+                job.setPrimaryStorage(getSelfInventory());
+                job.setImage(spec);
+
+                jobf.execute(NfsPrimaryStorageKvmHelper.makeDownloadImageJobName(imageInventory, job.getPrimaryStorage()),
+                        NfsPrimaryStorageKvmHelper.makeJobOwnerName(job.getPrimaryStorage()), job,
+                        new ReturnValueCompletion<ImageCacheInventory>(trigger) {
+
+                            @Override
+                            public void success(ImageCacheInventory cache) {
+                                data.put(CACHE_INSTALLURL, cache.getInstallUrl());
+                                trigger.next();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.fail(errorCode);
+                            }
+                        }, ImageCacheInventory.class);
+            }
+        }).then(new NoRollbackFlow() {
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                NfsPrimaryStorageBackend bkd = getBackend(nfsMgr.findHypervisorTypeByImageFormatAndPrimaryStorageUuid(
+                        VolumeConstant.VOLUME_FORMAT_QCOW2, self.getUuid())
+                );
+                bkd.resetRootVolumeFromImage(msg.getVolume(), destHost, (String) data.get(CACHE_INSTALLURL), new ReturnValueCompletion<String>(trigger) {
+                    @Override
+                    public void success(String returnValue) {
+                        reply.setNewVolumeInstallPath(returnValue);
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        trigger.fail(errorCode);
+                    }
+                });
+            }
+        }).done(new FlowDoneHandler(msg) {
+            @Override
+            public void handle(Map data) {
                 bus.reply(msg, reply);
             }
-        });
+        }).error(new FlowErrorHandler(msg) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                reply.setError(errCode);
+                bus.reply(msg, reply);
+            }
+        }).start();
     }
 
     @Override
