@@ -20,4 +20,11 @@ public class LicenseAddOnInventory extends org.zstack.sdk.LicenseInventory {
         return this.modules;
     }
 
+    public java.lang.Boolean free;
+    public void setFree(java.lang.Boolean free) {
+        this.free = free;
+    }
+    public java.lang.Boolean getFree() {
+        return this.free;
+    }
 }
