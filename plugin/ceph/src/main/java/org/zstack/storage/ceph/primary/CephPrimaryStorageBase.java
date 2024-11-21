@@ -4040,6 +4040,11 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
     }
 
     @Override
+    protected void handle(SyncVolumeSnapshotSizeOnPrimaryStorageMsg msg) {
+
+    }
+
+    @Override
     protected void handle(APIReconnectPrimaryStorageMsg msg) {
         final APIReconnectPrimaryStorageEvent evt = new APIReconnectPrimaryStorageEvent(msg.getId());
 

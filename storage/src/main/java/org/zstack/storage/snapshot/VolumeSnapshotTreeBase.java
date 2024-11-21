@@ -63,6 +63,7 @@ import org.zstack.storage.primary.PrimaryStorageCapacityUpdater;
 import org.zstack.storage.primary.PrimaryStorageGlobalProperty;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
 import org.zstack.storage.volume.FireSnapShotCanonicalEvent;
+import org.zstack.storage.volume.VolumeBase;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.TimeUtils;
@@ -1211,9 +1212,67 @@ public class VolumeSnapshotTreeBase {
             handle((APIGetVolumeSnapshotSizeMsg) msg);
         } else if (msg instanceof APIShrinkVolumeSnapshotMsg) {
             handle((APIShrinkVolumeSnapshotMsg) msg);
+        } else if (msg instanceof APISyncVolumeSnapshotSizeMsg) {
+            handle((APISyncVolumeSnapshotSizeMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
+    }
+
+    private void handle(APISyncVolumeSnapshotSizeMsg msg) {
+        final APISyncVolumeSnapshotSizeEvent evt = new APISyncVolumeSnapshotSizeEvent(msg.getId());
+        VolumeSnapshotVO snapshotVO = dbf.findByUuid(msg.getUuid(), VolumeSnapshotVO.class);
+        if (snapshotVO.getPrimaryStorageUuid() == null) {
+            evt.setInventory(getSelfInventory());
+            bus.publish(evt);
+            return;
+        }
+
+        syncVolumeSnapshotSize(new ReturnValueCompletion<VolumeSnapshotSize>(msg) {
+            @Override
+            public void success(VolumeSnapshotSize ret) {
+                evt.setInventory(getSelfInventory());
+                bus.publish(evt);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                evt.setError(errorCode);
+                bus.publish(evt);
+            }
+        });
+    }
+
+    private void syncVolumeSnapshotSize(final ReturnValueCompletion<VolumeSnapshotSize> completion) {
+        refreshVO();
+        SyncVolumeSnapshotSizeOnPrimaryStorageMsg smsg = new SyncVolumeSnapshotSizeOnPrimaryStorageMsg();
+        smsg.setVolumeSnapshotUuid(currentRoot.getUuid());
+        smsg.setPrimaryStorageUuid(currentRoot.getPrimaryStorageUuid());
+        smsg.setInstallPath(currentRoot.getPrimaryStorageInstallPath());
+        bus.makeTargetServiceIdByResourceUuid(smsg, PrimaryStorageConstant.SERVICE_ID, currentRoot.getPrimaryStorageUuid());
+        bus.send(smsg, new CloudBusCallBack(completion) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    completion.fail(reply.getError());
+                    return;
+                }
+
+                refreshVO();
+                SyncVolumeSnapshotSizeOnPrimaryStorageReply r = reply.castReply();
+                currentRoot.setSize(r.getUsedSize());
+
+                currentRoot = dbf.updateAndRefresh(currentRoot);
+
+                VolumeSnapshotSize size = new VolumeSnapshotSize();
+                size.usedSize = currentRoot.getSize();
+                completion.success(size);
+            }
+        });
+    }
+
+    class VolumeSnapshotSize {
+        long usedSize;
     }
 
     private void handle(APIUpdateVolumeSnapshotMsg msg) {
