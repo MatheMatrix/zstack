@@ -4953,23 +4953,27 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         new While<>(msgs).each((msg, wc) -> bus.send(msg, new CloudBusCallBack(wc) {
             @Override
             public void run(MessageReply reply) {
-                KVMHostAsyncHttpCallReply kr = reply.castReply();
-                CheckHostStorageConnectionRsp rsp = kr.toResponse(CheckHostStorageConnectionRsp.class);
-
                 UpdatePrimaryStorageHostStatusMsg umsg = new UpdatePrimaryStorageHostStatusMsg();
                 umsg.setHostUuid(msg.getHostUuid());
                 umsg.setPrimaryStorageUuid(self.getUuid());
-
-                if (rsp == null) {
-                    wc.addError(operr("operation error, because: failed to get response"));
+                if (!reply.isSuccess()) {
+                    wc.addError(reply.getError());
                     umsg.setStatus(PrimaryStorageHostStatus.Disconnected);
                 } else {
-                    ErrorCode errorCode = rsp.buildErrorCode();
-                    if (errorCode != null) {
-                        wc.addError(operr("operation error, because:%s", errorCode));
+                    KVMHostAsyncHttpCallReply kr = reply.castReply();
+                    CheckHostStorageConnectionRsp rsp = kr.toResponse(CheckHostStorageConnectionRsp.class);
+
+                    if (rsp == null) {
+                        wc.addError(operr("operation error, because: failed to get response"));
                         umsg.setStatus(PrimaryStorageHostStatus.Disconnected);
                     } else {
-                        umsg.setStatus(PrimaryStorageHostStatus.Connected);
+                        ErrorCode errorCode = rsp.buildErrorCode();
+                        if (errorCode != null) {
+                            wc.addError(operr("operation error, because:%s", errorCode));
+                            umsg.setStatus(PrimaryStorageHostStatus.Disconnected);
+                        } else {
+                            umsg.setStatus(PrimaryStorageHostStatus.Connected);
+                        }
                     }
                 }
 
