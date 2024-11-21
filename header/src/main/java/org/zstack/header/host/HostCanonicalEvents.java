@@ -23,6 +23,7 @@ public class HostCanonicalEvents {
     public static final String HOST_PHYSICAL_DISK_STATUS_ABNORMAL = "/host/physicalDisk/status/abnormal";
     public static final String HOST_PHYSICAL_DISK_INSERT_TRIGGERED = "/host/physicalDisk/insert/triggered";
     public static final String HOST_PHYSICAL_DISK_REMOVE_TRIGGERED = "/host/physicalDisk/remove/triggered";
+    public static final String HOST_MULTIPATH_CONFIG_CHANGED = "/host/multipathConfig/changed";
 
     @NeedJsonSchema
     public static class HostPhysicalCpuStatusAbnormalData {
@@ -397,6 +398,18 @@ public class HostCanonicalEvents {
 
         public void setInterfaceStatus(String interfaceStatus) {
             this.interfaceStatus = interfaceStatus;
+        }
+    }
+
+    public static class MultipathConfigChangedData {
+        private String hostUuid;
+
+        public String getHostUuid() {
+            return hostUuid;
+        }
+
+        public void setHostUuid(String hostUuid) {
+            this.hostUuid = hostUuid;
         }
     }
 }
