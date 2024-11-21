@@ -5,6 +5,8 @@ import org.zstack.utils.logging.CLogger;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class Bash {
     private static final CLogger logger = Utils.getLogger(Bash.class);
@@ -119,6 +121,24 @@ public abstract class Bash {
         }
 
         return lastReturnCode;
+    }
+
+    /**
+     * ex: sudoRun("tar", "-xf", path)      => run("tar -xf %s", path)     => tar -xf $your_path
+     * ex: sudoRun("cat", "error code.txt") => run("cat error\\ code.txt") => cat error\ code.txt
+     */
+    protected int sudoRun(String... cmdScripts) {
+        List<String> tos = new ArrayList<>(cmdScripts.length);
+        for (String cmd : cmdScripts) {
+            if (cmd.contains("\\")) {
+                cmd = cmd.replace("\\", "\\\\");
+            }
+            if (cmd.contains(" ")) {
+                cmd = cmd.replace(" ", "\\ ");
+            }
+            tos.add(cmd);
+        }
+        return run(String.join(" ", tos), true, new Object[0]);
     }
 
     protected void errorOnFailure() {
