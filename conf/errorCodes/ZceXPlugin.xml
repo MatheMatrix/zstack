@@ -32,6 +32,16 @@
     </code>
 
     <code>
+        <id>3002</id>
+        <description>ZCE-X Configuration File Not Found In Host</description>
+    </code>
+
+    <code>
+        <id>3003</id>
+        <description>ZCE-X Config Error</description>
+    </code>
+
+    <code>
         <id>4001</id>
         <description>ZCE-X Token Already Exists</description>
     </code>

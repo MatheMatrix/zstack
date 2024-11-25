@@ -28,6 +28,14 @@ public class ZceXInventory  {
         return this.managementIp;
     }
 
+    public int apiPort;
+    public void setApiPort(int apiPort) {
+        this.apiPort = apiPort;
+    }
+    public int getApiPort() {
+        return this.apiPort;
+    }
+
     public java.sql.Timestamp createDate;
     public void setCreateDate(java.sql.Timestamp createDate) {
         this.createDate = createDate;

@@ -28,6 +28,33 @@ public class UpdateZceXClusterConfigAction extends AbstractAction {
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String uuid;
 
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    public java.lang.String managementIp;
+
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    public java.lang.String managementNetworkCidr;
+
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    public java.lang.String publicNetworkCidr;
+
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    public java.lang.String clusterNetworkCidr;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    public java.lang.String gatewayNetworkCidr;
+
+    @Param(required = true, maxLength = 2, minLength = 2, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.util.List otherManagementIp;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.util.List otherStorageIp;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    public java.lang.String username = "admin";
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    public java.lang.String password = "password";
+
     @Param(required = false)
     public java.util.List systemTags;
 
