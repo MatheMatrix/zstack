@@ -28,14 +28,14 @@ public class AddZceXAction extends AbstractAction {
     @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
     public java.lang.String name;
 
+    @Param(required = false, maxLength = 32, minLength = 32, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    public java.lang.String adminToken;
+
     @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String username = "admin";
-
-    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String password;
-
-    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
     public java.lang.String managementIp;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = false, numberRange = {1L,65535L}, noTrim = false)
+    public int apiPort = 8056;
 
     @Param(required = false)
     public java.lang.String resourceUuid;
