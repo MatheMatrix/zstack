@@ -1316,6 +1316,34 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
                     }
                 });
             }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "after-refresh-lb-listeners";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                new While<>(pluginRgty.getExtensionList(VirtualRouterLoadBalancerExtensionPoint.class)).each((ext, whileCompletion) -> {
+                    ext.afterRefreshLoadBalancerListener(vr.getUuid(), new Completion(whileCompletion) {
+                        @Override
+                        public void success() {
+                            whileCompletion.done();
+                        }
+
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            whileCompletion.addError(errorCode);
+                            whileCompletion.allDone();
+                        }
+                    });
+                }).run(new WhileDoneCompletion(trigger) {
+                    @Override
+                    public void done(ErrorCodeList errorCodeList) {
+                        if (!errorCodeList.getCauses().isEmpty()) {
+                            logger.warn(String.format("after refresh load balancer listener failed, because:%s", errorCodeList.getCauses().get(0)));
+                        }
+                        trigger.next();
+                    }
+                });
+            }
         }).done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map data) {

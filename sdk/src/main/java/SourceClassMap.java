@@ -457,6 +457,8 @@ public class SourceClassMap {
 			put("org.zstack.login.entity.LdapResourceRefInventory", "org.zstack.sdk.LdapResourceRefInventory");
 			put("org.zstack.loginControl.entity.AccessControlRuleInventory", "org.zstack.sdk.AccessControlRuleInventory");
 			put("org.zstack.loginControl.entity.ControlStrategy", "org.zstack.sdk.ControlStrategy");
+			put("org.zstack.logserver.LogServerOfferingInventory", "org.zstack.sdk.LogServerOfferingInventory");
+			put("org.zstack.logserver.LogServerVmInventory", "org.zstack.sdk.LogServerVmInventory");
 			put("org.zstack.mevoco.ShareableVolumeVmInstanceRefInventory", "org.zstack.sdk.ShareableVolumeVmInstanceRefInventory");
 			put("org.zstack.monitoring.AlertInventory", "org.zstack.sdk.AlertInventory");
 			put("org.zstack.monitoring.MonitorTriggerInventory", "org.zstack.sdk.MonitorTriggerInventory");
@@ -1064,6 +1066,8 @@ public class SourceClassMap {
 			put("org.zstack.sdk.LoadBalancerServerGroupVmNicRefInventory", "org.zstack.network.service.lb.LoadBalancerServerGroupVmNicRefInventory");
 			put("org.zstack.sdk.LocalStorageResourceRefInventory", "org.zstack.storage.primary.local.LocalStorageResourceRefInventory");
 			put("org.zstack.sdk.LocateStatus", "org.zstack.storage.device.localRaid.LocateStatus");
+			put("org.zstack.sdk.LogServerOfferingInventory", "org.zstack.logserver.LogServerOfferingInventory");
+			put("org.zstack.sdk.LogServerVmInventory", "org.zstack.logserver.LogServerVmInventory");
 			put("org.zstack.sdk.LoginAuthenticationProcedureDesc", "org.zstack.header.identity.login.LoginAuthenticationProcedureDesc");
 			put("org.zstack.sdk.LongJobInventory", "org.zstack.header.longjob.LongJobInventory");
 			put("org.zstack.sdk.LongJobState", "org.zstack.header.longjob.LongJobState");
