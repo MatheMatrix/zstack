@@ -21,6 +21,7 @@ create table if not exists `zstack`.`ZceXVO` (
     `uuid` char(32) not null unique,
     `name` varchar(255) not null,
     `managementIp` varchar(255) not null,
+    `apiPort` int(11) not null,
     `lastOpDate` timestamp on update CURRENT_TIMESTAMP,
     `createDate` timestamp,
     primary key (`uuid`)

@@ -20,4 +20,19 @@
         <id>1003</id>
         <description>ZCE-X API operation fail</description>
     </code>
+
+    <code>
+        <id>1004</id>
+        <description>ZCE-X Token Related Errors</description>
+    </code>
+
+    <code>
+        <id>3001</id>
+        <description>ZCE-X Tools Not Found In Host</description>
+    </code>
+
+    <code>
+        <id>4001</id>
+        <description>ZCE-X Token Already Exists</description>
+    </code>
 </error>
