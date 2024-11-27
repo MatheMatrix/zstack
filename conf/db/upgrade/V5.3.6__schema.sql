@@ -39,3 +39,11 @@ SELECT
     CURRENT_TIMESTAMP()                        -- lastOpDate
 FROM DatasetVO
 WHERE system = true;
+
+-- 重命名表
+RENAME TABLE `zstack`.`ContainerManagementVmVO` TO `zstack`.`ContainerManagementEndpointVO`;
+
+-- 删除列
+ALTER TABLE `zstack`.`ContainerManagementEndpointVO`
+DROP COLUMN `vmInstanceUuid`;
+
