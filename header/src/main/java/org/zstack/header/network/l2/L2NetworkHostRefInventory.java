@@ -22,6 +22,7 @@ public class L2NetworkHostRefInventory {
     private String l2NetworkUuid;
     private String l2ProviderType;
     private String bridgeName;
+    private boolean skipDeletion;
     private Timestamp createDate;
     private Timestamp lastOpDate;
 
@@ -80,6 +81,15 @@ public class L2NetworkHostRefInventory {
     public void setBridgeName(String bridgeName) {
         this.bridgeName = bridgeName;
     }
+
+    public boolean getSkipDeletion() {
+        return skipDeletion;
+    }
+
+    public void setSkipDeletion(boolean skipDeletion) {
+        this.skipDeletion = skipDeletion;
+    }
+
     public Timestamp getCreateDate() {
         return createDate;
     }
