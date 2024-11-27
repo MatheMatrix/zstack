@@ -51,6 +51,36 @@ public abstract class Bash {
         }
     }
 
+    public static class Script {
+        public boolean escape = true;
+        public String cmd;
+
+        @Override
+        public String toString() {
+            if (cmd == null) {
+                return "";
+            }
+            return escape ? escapeCmd(cmd) : cmd;
+        }
+
+        public static String escapeCmd(String cmd) {
+            if (cmd.contains("\\")) {
+                cmd = cmd.replace("\\", "\\\\");
+            }
+            if (cmd.contains(" ")) {
+                cmd = cmd.replace(" ", "\\ ");
+            }
+            return cmd;
+        }
+    }
+
+    protected Script noEscape(String cmd) {
+        Script s = new Script();
+        s.escape = false;
+        s.cmd = cmd;
+        return s;
+    }
+
     /**
      * @return return true if @content is equal to @filePath's content
      */
@@ -127,16 +157,14 @@ public abstract class Bash {
      * ex: sudoRun("tar", "-xf", path)      => run("tar -xf %s", path)     => tar -xf $your_path
      * ex: sudoRun("cat", "error code.txt") => run("cat error\\ code.txt") => cat error\ code.txt
      */
-    protected int sudoRun(String... cmdScripts) {
+    protected int sudoRun(Object... cmdScripts) {
         List<String> tos = new ArrayList<>(cmdScripts.length);
-        for (String cmd : cmdScripts) {
-            if (cmd.contains("\\")) {
-                cmd = cmd.replace("\\", "\\\\");
+        for (Object cmd : cmdScripts) {
+            if (cmd instanceof Script) {
+                tos.add(cmd.toString());
+            } else {
+                tos.add(Script.escapeCmd(cmd.toString()));
             }
-            if (cmd.contains(" ")) {
-                cmd = cmd.replace(" ", "\\ ");
-            }
-            tos.add(cmd);
         }
         return run(String.join(" ", tos), true, new Object[0]);
     }
