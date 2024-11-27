@@ -2,7 +2,7 @@ package org.zstack.sdk;
 
 
 
-public class ContainerManagementVmInventory  {
+public class ContainerManagementEndpointInventory  {
 
     public java.lang.String uuid;
     public void setUuid(java.lang.String uuid) {
@@ -58,14 +58,6 @@ public class ContainerManagementVmInventory  {
     }
     public java.lang.String getVendor() {
         return this.vendor;
-    }
-
-    public java.lang.String vmInstanceUuid;
-    public void setVmInstanceUuid(java.lang.String vmInstanceUuid) {
-        this.vmInstanceUuid = vmInstanceUuid;
-    }
-    public java.lang.String getVmInstanceUuid() {
-        return this.vmInstanceUuid;
     }
 
     public java.sql.Timestamp createDate;

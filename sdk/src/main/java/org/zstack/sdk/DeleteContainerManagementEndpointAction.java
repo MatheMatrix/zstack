@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class DeleteContainerManagementVmAction extends AbstractAction {
+public class DeleteContainerManagementEndpointAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class DeleteContainerManagementVmAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.DeleteContainerManagementVmResult value;
+        public org.zstack.sdk.DeleteContainerManagementEndpointResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -63,8 +63,8 @@ public class DeleteContainerManagementVmAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.DeleteContainerManagementVmResult value = res.getResult(org.zstack.sdk.DeleteContainerManagementVmResult.class);
-        ret.value = value == null ? new org.zstack.sdk.DeleteContainerManagementVmResult() : value; 
+        org.zstack.sdk.DeleteContainerManagementEndpointResult value = res.getResult(org.zstack.sdk.DeleteContainerManagementEndpointResult.class);
+        ret.value = value == null ? new org.zstack.sdk.DeleteContainerManagementEndpointResult() : value; 
 
         return ret;
     }
@@ -94,7 +94,7 @@ public class DeleteContainerManagementVmAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "DELETE";
-        info.path = "/container/management/vm/{uuid}";
+        info.path = "/container/management/endpoint/{uuid}";
         info.needSession = true;
         info.needPoll = true;
         info.parameterName = "";
