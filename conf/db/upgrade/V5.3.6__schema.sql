@@ -47,3 +47,23 @@ RENAME TABLE `zstack`.`ContainerManagementVmVO` TO `zstack`.`ContainerManagement
 ALTER TABLE `zstack`.`ContainerManagementEndpointVO`
 DROP COLUMN `vmInstanceUuid`;
 
+CREATE TABLE `zstack`.`NativeClusterVO` (
+    `uuid` varchar(32) NOT NULL UNIQUE COMMENT 'native cluster uuid',
+    `endpointUuid` varchar(32) NOT NULL COMMENT 'container endpoint uuid',
+    `bizUrl` varchar(255) DEFAULT NULL COMMENT 'business network url',
+    `masterUrl` varchar(255) DEFAULT NULL COMMENT 'management network url',
+    `kubeConfig` text COMMENT 'kubernetes configuration',
+    `id` bigint(20) DEFAULT NULL COMMENT 'kubernetes cluster id',
+    `prometheusURL` varchar(255) DEFAULT NULL COMMENT 'prometheus monitoring url',
+    `version` varchar(64) DEFAULT NULL COMMENT 'kubernetes version',
+    `nodeCount` int DEFAULT NULL COMMENT 'number of nodes',
+    `createType` varchar(32) DEFAULT NULL COMMENT 'cluster creation type',
+    PRIMARY KEY (`uuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+CREATE TABLE `zstack`.`NativeHostVO` (
+    `uuid` varchar(32) NOT NULL UNIQUE COMMENT 'host uuid',
+    `endpointUuid` varchar(32) NOT NULL COMMENT 'container endpoint uuid',
+    PRIMARY KEY  (`uuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
