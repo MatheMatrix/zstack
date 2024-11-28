@@ -51,3 +51,17 @@ INSERT IGNORE INTO `zstack`.`HostNetworkLabelVO` (`uuid`, `serviceType`, `system
     VALUES (REPLACE(UUID(),'-',''),'MigrationNetwork', TRUE, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP());
 
 CREATE INDEX idx_schedType_createDate ON `zstack`.`VmSchedHistoryVO` (schedType, createDate);
+
+CREATE TABLE IF NOT EXISTS `zstack`.`LogServerVO` (
+    `uuid` varchar(32) NOT NULL UNIQUE,
+    `name` varchar(255) NOT NULL,
+    `logCategory` varchar(255) NOT NULL,
+    `type` varchar(255) NOT NULL,
+    `level` varchar(255) NULL,
+    `configuration` varchar(255) NOT NULL,
+    `accountUuid` varchar(255) NOT NULL,
+    `lastOpDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `createDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+    CONSTRAINT fkLogServerVOAccountVO FOREIGN KEY (accountUuid) REFERENCES AccountVO (uuid) ON DELETE CASCADE,
+    PRIMARY KEY  (`uuid`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
