@@ -6400,6 +6400,30 @@ public class VmInstanceBase extends AbstractVmInstance {
                     }
                 }
 
+                class SetL3SecurityGroupSystemTag {
+                    private boolean isSet = false;
+
+                    void set () {
+                        if (msg.getSystemTags() == null) {
+                            return;
+                        }
+
+                        List<String> matchingTags = msg.getSystemTags().stream()
+                                .filter(systemTag -> VmSystemTags.L3_NETWORK_SECURITY_GROUP_UUIDS_REF.isMatch(systemTag))
+                                .collect(Collectors.toList());
+                        if (!matchingTags.isEmpty()) {
+                            tagMgr.createNonInherentSystemTags(matchingTags, self.getUuid(), VmInstanceVO.class.getSimpleName());
+                            isSet = true;
+                        }
+                    }
+
+                    void rollback() {
+                        if (isSet) {
+                            VmSystemTags.L3_NETWORK_SECURITY_GROUP_UUIDS_REF.delete(self.getUuid());
+                        }
+                    }
+                }
+
                 final SetStaticIp setStaticIp = new SetStaticIp();
                 setStaticIp.set();
                 Defer.guard(new Runnable() {
@@ -6408,6 +6432,10 @@ public class VmInstanceBase extends AbstractVmInstance {
                         setStaticIp.rollback();
                     }
                 });
+
+                final SetL3SecurityGroupSystemTag setL3SecurityGroupSystemTag = new SetL3SecurityGroupSystemTag();
+                setL3SecurityGroupSystemTag.set();
+                Defer.guard(setL3SecurityGroupSystemTag::rollback);
 
                 FlowChain flowChain = FlowChainBuilder.newSimpleFlowChain();
                 flowChain.setName(String.format("changeNicNetwork-vm-%s-nic-%s-%s-to-%s", self.getUuid(), nic.getUuid(), nic.getL3NetworkUuid(), destL3.getUuid()));
