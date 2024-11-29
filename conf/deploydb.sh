@@ -27,14 +27,21 @@ mysql_run() {
 }
 
 mysql_run << EOF
+set global log_bin_trust_function_creators=1;
 DROP DATABASE IF EXISTS zstack;
 CREATE DATABASE zstack;
 DROP DATABASE IF EXISTS zstack_rest;
 CREATE DATABASE zstack_rest;
-grant all privileges on zstack.* to root@'%' identified by "$password";
-grant all privileges on zstack_rest.* to root@'%' identified by "$password";
-grant all privileges on zstack.* to root@'localhost' identified by "$password";
-grant all privileges on zstack_rest.* to root@'localhost' identified by "$password";
+
+DROP USER IF EXISTS 'root'@'%';
+DROP USER IF EXISTS 'root'@'127.0.0.1';
+CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY "${password}";
+CREATE USER IF NOT EXISTS 'root'@'127.0.0.1' IDENTIFIED BY "${password}";
+
+grant all privileges on zstack.* to root@'%';
+grant all privileges on zstack_rest.* to root@'%';
+grant all privileges on zstack.* to root@'127.0.0.1';
+grant all privileges on zstack_rest.* to root@'127.0.0.1';
 EOF
 
 rm -rf $flyway_sql
