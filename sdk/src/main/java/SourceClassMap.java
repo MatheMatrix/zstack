@@ -637,6 +637,7 @@ public class SourceClassMap {
 			put("org.zstack.zcex.entity.ZceXLicenseView", "org.zstack.sdk.zcex.entity.ZceXLicenseView");
 			put("org.zstack.zcex.entity.ZceXPlatformLicenseView", "org.zstack.sdk.zcex.entity.ZceXPlatformLicenseView");
 			put("org.zstack.zcex.entity.ZceXPoolSummaryView", "org.zstack.sdk.zcex.entity.ZceXPoolSummaryView");
+			put("org.zstack.zcex.entity.ZceXThirdPartyPlatformAlertRefInventory", "org.zstack.sdk.zcex.entity.ZceXThirdPartyPlatformAlertRefInventory");
 			put("org.zstack.zops.ChronyServerInfo", "org.zstack.sdk.ChronyServerInfo");
 			put("org.zstack.zops.ChronyServerInfoPair", "org.zstack.sdk.ChronyServerInfoPair");
 			put("org.zstack.zops.HostConnectedStatus", "org.zstack.sdk.HostConnectedStatus");
@@ -1349,6 +1350,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.zcex.entity.ZceXLicenseView", "org.zstack.zcex.entity.ZceXLicenseView");
 			put("org.zstack.sdk.zcex.entity.ZceXPlatformLicenseView", "org.zstack.zcex.entity.ZceXPlatformLicenseView");
 			put("org.zstack.sdk.zcex.entity.ZceXPoolSummaryView", "org.zstack.zcex.entity.ZceXPoolSummaryView");
+			put("org.zstack.sdk.zcex.entity.ZceXThirdPartyPlatformAlertRefInventory", "org.zstack.zcex.entity.ZceXThirdPartyPlatformAlertRefInventory");
 			put("org.zstack.sdk.zstone.entity.ZStoneClusterView", "org.zstack.zstone.entity.ZStoneClusterView");
 			put("org.zstack.sdk.zstone.entity.ZStoneHostSummaryView", "org.zstack.zstone.entity.ZStoneHostSummaryView");
 			put("org.zstack.sdk.zstone.entity.ZStoneInventory", "org.zstack.zstone.entity.ZStoneInventory");
