@@ -1,6 +1,7 @@
 package org.zstack.test.integration.storage.primary.addon.zbs
 
 import org.springframework.http.HttpEntity
+import org.zstack.cbd.MdsUri
 import org.zstack.sdk.*
 import org.zstack.storage.zbs.ZbsPrimaryStorageMdsBase
 import org.zstack.storage.zbs.ZbsStorageController
@@ -128,6 +129,7 @@ class ZbsPrimaryStorageCase extends SubCase {
             testDataVolumeLifecycle()
             testZbsStorageNegativeScenario()
             testDataVolumeNegativeScenario()
+            testDecodeMdsUriWithSpecialPassword()
         }
     }
 
@@ -286,6 +288,14 @@ class ZbsPrimaryStorageCase extends SubCase {
             deleteVolume(vol2.uuid)
         }
     }
+
+    static void testDecodeMdsUriWithSpecialPassword() {
+        def specialPassword = "password123-`=[];,./~!@#\$%^&*()_+|{}:<>?"
+        def mdsUri = "root:${specialPassword}@127.0.2.1"
+        MdsUri uri = new MdsUri(mdsUri);
+        assert uri.sshPassword == specialPassword
+    }
+
 
     void deleteVolume(String volUuid) {
         deleteDataVolume {
