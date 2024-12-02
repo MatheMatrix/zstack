@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class AddContainerManagementVmAction extends AbstractAction {
+public class AddContainerManagementEndpointAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class AddContainerManagementVmAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.AddContainerManagementVmResult value;
+        public org.zstack.sdk.AddContainerManagementEndpointResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -24,9 +24,6 @@ public class AddContainerManagementVmAction extends AbstractAction {
             return this;
         }
     }
-
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String uuid;
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String name;
@@ -87,8 +84,8 @@ public class AddContainerManagementVmAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.AddContainerManagementVmResult value = res.getResult(org.zstack.sdk.AddContainerManagementVmResult.class);
-        ret.value = value == null ? new org.zstack.sdk.AddContainerManagementVmResult() : value; 
+        org.zstack.sdk.AddContainerManagementEndpointResult value = res.getResult(org.zstack.sdk.AddContainerManagementEndpointResult.class);
+        ret.value = value == null ? new org.zstack.sdk.AddContainerManagementEndpointResult() : value; 
 
         return ret;
     }
@@ -118,7 +115,7 @@ public class AddContainerManagementVmAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "POST";
-        info.path = "/container/management/vm";
+        info.path = "/container/management/endpoint";
         info.needSession = true;
         info.needPoll = true;
         info.parameterName = "params";

@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class QueryContainerManagementVmAction extends QueryAction {
+public class QueryContainerManagementEndpointAction extends QueryAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -65,7 +65,7 @@ public class QueryContainerManagementVmAction extends QueryAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "GET";
-        info.path = "/container/management/vm";
+        info.path = "/container/management/endpoint";
         info.needSession = true;
         info.needPoll = false;
         info.parameterName = "";

@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class DeleteContainerManagementVmAction extends AbstractAction {
+public class SyncContainerManagementEndpointAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class DeleteContainerManagementVmAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.DeleteContainerManagementVmResult value;
+        public org.zstack.sdk.SyncContainerManagementEndpointResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -27,9 +27,6 @@ public class DeleteContainerManagementVmAction extends AbstractAction {
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String uuid;
-
-    @Param(required = false)
-    public java.lang.String deleteMode = "Permissive";
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -63,8 +60,8 @@ public class DeleteContainerManagementVmAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.DeleteContainerManagementVmResult value = res.getResult(org.zstack.sdk.DeleteContainerManagementVmResult.class);
-        ret.value = value == null ? new org.zstack.sdk.DeleteContainerManagementVmResult() : value; 
+        org.zstack.sdk.SyncContainerManagementEndpointResult value = res.getResult(org.zstack.sdk.SyncContainerManagementEndpointResult.class);
+        ret.value = value == null ? new org.zstack.sdk.SyncContainerManagementEndpointResult() : value; 
 
         return ret;
     }
@@ -93,11 +90,11 @@ public class DeleteContainerManagementVmAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "DELETE";
-        info.path = "/container/management/vm/{uuid}";
+        info.httpMethod = "PUT";
+        info.path = "/container/management/endpoint/{uuid}/actions";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "";
+        info.parameterName = "syncContainerManagementEndpoint";
         return info;
     }
 

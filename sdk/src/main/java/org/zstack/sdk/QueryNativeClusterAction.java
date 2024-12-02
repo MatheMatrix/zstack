@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class UpdateContainerManagementVmAction extends AbstractAction {
+public class QueryNativeClusterAction extends QueryAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class UpdateContainerManagementVmAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.UpdateContainerManagementVmResult value;
+        public org.zstack.sdk.QueryNativeClusterResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,41 +25,6 @@ public class UpdateContainerManagementVmAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String uuid;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String managementIp;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.Integer managementPort;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String vendor;
-
-    @Param(required = false)
-    public java.util.List systemTags;
-
-    @Param(required = false)
-    public java.util.List userTags;
-
-    @Param(required = false)
-    public String sessionId;
-
-    @Param(required = false)
-    public String accessKeyId;
-
-    @Param(required = false)
-    public String accessKeySecret;
-
-    @Param(required = false)
-    public String requestIp;
-
-    @NonAPIParam
-    public long timeout = -1;
-
-    @NonAPIParam
-    public long pollingInterval = -1;
 
 
     private Result makeResult(ApiResult res) {
@@ -69,8 +34,8 @@ public class UpdateContainerManagementVmAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.UpdateContainerManagementVmResult value = res.getResult(org.zstack.sdk.UpdateContainerManagementVmResult.class);
-        ret.value = value == null ? new org.zstack.sdk.UpdateContainerManagementVmResult() : value; 
+        org.zstack.sdk.QueryNativeClusterResult value = res.getResult(org.zstack.sdk.QueryNativeClusterResult.class);
+        ret.value = value == null ? new org.zstack.sdk.QueryNativeClusterResult() : value; 
 
         return ret;
     }
@@ -99,11 +64,11 @@ public class UpdateContainerManagementVmAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "PUT";
-        info.path = "/container/management/vm/{uuid}/actions";
+        info.httpMethod = "GET";
+        info.path = "/container/native/cluster";
         info.needSession = true;
-        info.needPoll = true;
-        info.parameterName = "updateContainerManagementVm";
+        info.needPoll = false;
+        info.parameterName = "";
         return info;
     }
 
