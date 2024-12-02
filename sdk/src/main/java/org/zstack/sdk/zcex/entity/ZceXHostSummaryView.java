@@ -12,4 +12,12 @@ public class ZceXHostSummaryView  {
         return this.count;
     }
 
+    public java.util.List adminIps;
+    public void setAdminIps(java.util.List adminIps) {
+        this.adminIps = adminIps;
+    }
+    public java.util.List getAdminIps() {
+        return this.adminIps;
+    }
+
 }
