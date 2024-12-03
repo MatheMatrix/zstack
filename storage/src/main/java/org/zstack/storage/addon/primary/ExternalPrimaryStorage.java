@@ -433,7 +433,10 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                 .list();
 
         // sort by prefer type
-        availableBs.sort(Comparator.comparingInt(o -> preferBsTypes.indexOf(o.getType())));
+        availableBs.sort(Comparator.comparingInt(o -> {
+            int index = preferBsTypes.indexOf(o.getType());
+            return index == -1 ? Integer.MAX_VALUE : index;
+        }));
         reply.setInventory(BackupStorageInventory.valueOf(availableBs.get(0)));
 
         bus.reply(msg, reply);
