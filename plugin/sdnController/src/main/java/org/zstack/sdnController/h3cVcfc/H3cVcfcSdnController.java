@@ -10,9 +10,6 @@ import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.identity.AccountInventory;
-import org.zstack.header.network.l2.L2NetworkVO;
-import org.zstack.header.network.l3.*;
 import org.zstack.header.rest.RESTFacade;
 import org.zstack.network.l2.vxlan.vxlanNetwork.L2VxlanNetworkInventory;
 import org.zstack.sdnController.SdnController;
@@ -25,6 +22,7 @@ import org.zstack.utils.logging.CLogger;
 import java.util.*;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.sdnController.h3cVcfc.H3cVcfcSdnControllerGlobalProperty.H3C_MGT_IP_IS_LEADER_IP;
 import static org.zstack.utils.CollectionDSL.e;
 import static org.zstack.utils.CollectionDSL.map;
 
@@ -271,10 +269,12 @@ public class H3cVcfcSdnController implements SdnController {
         H3cVcfcCommands.NetworkCmd networkCmd = new H3cVcfcCommands.NetworkCmd();
         networkCmd.name = vxlan.getName();
         networkCmd.tenant_id = tenantUuid;
+        networkCmd.tenant_name = "shixin";
         networkCmd.distributed = true;
         networkCmd.network_type = "VXLAN";
         networkCmd.original_network_type = "VXLAN";
         networkCmd.domain = vdsUuid;
+        networkCmd.vds_name = "shixin";
         networkCmd.segmentation_id = vxlan.getVni();
         networkCmd.external = false;
         networkCmd.force_flat = false;
@@ -434,6 +434,12 @@ public class H3cVcfcSdnController implements SdnController {
     }
 
     private void getH3cControllerLeaderIp(Completion completion) {
+        if (H3C_MGT_IP_IS_LEADER_IP) {
+            leaderIp = self.getIp();
+            completion.success();
+            return;
+        }
+
         H3cVcfcCommands.GetH3cTeamLederIpCmd cmd = new H3cVcfcCommands.GetH3cTeamLederIpCmd();
 
         try {
