@@ -440,11 +440,13 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
         }
 
         List<BackupStorageVO> availableBs = SQL.New("select bs from BackupStorageVO bs, BackupStorageZoneRefVO ref" +
-                " where bs.uuid = ref.backupStorageUuid" +
+                " where bs.type in (:types)" +
+                " and bs.uuid = ref.backupStorageUuid" +
                 " and ref.zoneUuid = :zoneUuid" +
                 " and bs.status = :status" +
                 " and bs.state = :state" +
                 " and bs.availableCapacity > :size", BackupStorageVO.class)
+                .param("types", preferBsTypes)
                 .param("zoneUuid", self.getZoneUuid())
                 .param("status", BackupStorageStatus.Connected)
                 .param("state", BackupStorageState.Enabled)
