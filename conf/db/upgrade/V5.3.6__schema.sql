@@ -40,14 +40,11 @@ SELECT
 FROM DatasetVO
 WHERE system = true;
 
--- 重命名表
-RENAME TABLE `zstack`.`ContainerManagementVmVO` TO `zstack`.`ContainerManagementEndpointVO`;
+CALL RENAME_TABLE('ContainerManagementVmVO', 'ContainerManagementEndpointVO');
 
--- 删除列
-ALTER TABLE `zstack`.`ContainerManagementEndpointVO`
-DROP COLUMN `vmInstanceUuid`;
+CALL DROP_COLUMN('ContainerManagementEndpointVO', 'vmInstanceUuid');
 
-CREATE TABLE `zstack`.`NativeClusterVO` (
+CREATE TABLE IF NOT EXISTS `zstack`.`NativeClusterVO` (
     `uuid` varchar(32) NOT NULL UNIQUE COMMENT 'native cluster uuid',
     `endpointUuid` varchar(32) NOT NULL COMMENT 'container endpoint uuid',
     `bizUrl` varchar(255) DEFAULT NULL COMMENT 'business network url',
@@ -61,9 +58,8 @@ CREATE TABLE `zstack`.`NativeClusterVO` (
     PRIMARY KEY (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-
-CREATE TABLE `zstack`.`NativeHostVO` (
+CREATE TABLE IF NOT EXISTS `zstack`.`NativeHostVO` (
     `uuid` varchar(32) NOT NULL UNIQUE COMMENT 'host uuid',
     `endpointUuid` varchar(32) NOT NULL COMMENT 'container endpoint uuid',
-    PRIMARY KEY  (`uuid`)
+    PRIMARY KEY (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
