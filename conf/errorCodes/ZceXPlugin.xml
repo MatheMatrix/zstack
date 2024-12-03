@@ -27,6 +27,11 @@
     </code>
 
     <code>
+        <id>1005</id>
+        <description>ZCE-X Alert Platform Related Errors</description>
+    </code>
+
+    <code>
         <id>3001</id>
         <description>ZCE-X Tools Not Found In Host</description>
     </code>
@@ -44,5 +49,10 @@
     <code>
         <id>4001</id>
         <description>ZCE-X Token Already Exists</description>
+    </code>
+
+    <code>
+        <id>4002</id>
+        <description>ZCE-X Token Is Missing</description>
     </code>
 </error>

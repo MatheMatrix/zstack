@@ -26,3 +26,13 @@ create table if not exists `zstack`.`ZceXVO` (
     `createDate` timestamp,
     primary key (`uuid`)
 ) ENGINE=InnoDB default CHARSET=utf8;
+
+create table if not exists `zstack`.`ZceXThirdPartyPlatformAlertRefVO` (
+    `id` bigint unsigned not null unique AUTO_INCREMENT,
+    `zceXUuid` char(32) not null,
+    `thirdPartyPlatformUuid` char(32) not null,
+    `createDate` timestamp,
+    primary key (`id`),
+    constraint `fkZceXThirdPartyPlatformAlertRefZceX` foreign key (`zceXUuid`) references `ZceXVO` (`uuid`) on delete cascade,
+    constraint `fkZceXThirdPartyPlatformAlertRefThirdPartyPlatform` foreign key (`thirdPartyPlatformUuid`) references `ThirdpartyPlatformVO` (`uuid`) on delete cascade
+) ENGINE=InnoDB default CHARSET=utf8;
