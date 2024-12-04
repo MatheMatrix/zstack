@@ -4085,11 +4085,8 @@ public class KVMHost extends HostBase implements Host {
         String tagValue = VmSystemTags.CLEAN_TRAFFIC.getTokenByResourceUuid(nic.getVmInstanceUuid(), VmSystemTags.CLEAN_TRAFFIC_TOKEN);
         to.setCleanTraffic(tagValue == null ? Boolean.FALSE : Boolean.parseBoolean(tagValue));
 
-        String nicType = nic.getType();
-        if (!nicType.equals(VmInstanceConstant.VIRTUAL_NIC_TYPE) &&
-            !nicType.equals(VmOvsNicConstant.ACCEL_TYPE_VDPA) &&
-            !nicType.equals(VmOvsNicConstant.ACCEL_TYPE_VHOST_USER_SPACE) &&
-            !nic.getType().equals(VmInstanceConstant.TF_VIRTUAL_NIC_TYPE)) {
+        VmNicType nicType = VmNicType.valueOf(nic.getType());
+        if (!nicType.isHasAddon()) {
             return to;
         }
 

@@ -4,19 +4,14 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.transaction.annotation.Transactional;
-import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.Platform;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
-import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.host.HostVO_;
-import org.zstack.header.network.l2.L2NetworkAttachStatus;
-import org.zstack.header.network.l2.L2NetworkClusterRefVO;
-import org.zstack.header.network.l2.L2NetworkHostRefVO;
-import org.zstack.header.network.l2.L2NetworkHostRefVO_;
+import org.zstack.header.network.l2.*;
 import org.zstack.header.network.l3.L3NetworkInventory;
 
 import javax.persistence.Tuple;
@@ -25,12 +20,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import org.zstack.utils.logging.CLogger;
-import org.zstack.header.host.HostVO;
-import org.zstack.header.host.HostVO_;
-import org.zstack.core.db.Q;
 import org.zstack.utils.Utils;
-import org.zstack.core.db.SimpleQuery;
-import org.zstack.header.host.*;
 
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
@@ -96,6 +86,14 @@ public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
                 .notEq(L2NetworkHostRefVO_.attachStatus, L2NetworkAttachStatus.Attached)
                 .select(L2NetworkHostRefVO_.hostUuid).listValues();
         retHostUuids.removeAll(excludeHostUuids);
+        if (retHostUuids.isEmpty()){
+            return new ArrayList<>();
+        }
+
+        for (AttachedL2NetworkAllocatorExtensionPoint extp : pluginRgty.getExtensionList(AttachedL2NetworkAllocatorExtensionPoint.class)) {
+            retHostUuids = extp.filter(retHostUuids, l2uuids);
+        }
+
         if (retHostUuids.isEmpty()){
             return new ArrayList<>();
         }

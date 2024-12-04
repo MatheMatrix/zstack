@@ -40,6 +40,7 @@ public class HostNetworkInterfaceInventory implements Serializable {
     private String mac;
     private String callBackIp;
     private String pciDeviceAddress;
+    private String driverType;
     private String offloadStatus;
     private String virtStatus;
     private String description;
@@ -247,6 +248,7 @@ public class HostNetworkInterfaceInventory implements Serializable {
         this.interfaceType = vo.getInterfaceType();
         this.mac = vo.getMac();
         this.pciDeviceAddress = vo.getPciDeviceAddress();
+        this.driverType = vo.getDriverType();
         if (vo.getIpAddresses() != null) {
             this.ipAddresses = Arrays.asList(vo.getIpAddresses().split(","));
         }
@@ -268,5 +270,13 @@ public class HostNetworkInterfaceInventory implements Serializable {
 
     public static List<HostNetworkInterfaceInventory> valueOf(Collection<HostNetworkInterfaceVO> vos) {
         return vos.stream().map(HostNetworkInterfaceInventory::valueOf).collect(Collectors.toList());
+    }
+
+    public String getDriverType() {
+        return driverType;
+    }
+
+    public void setDriverType(String driverType) {
+        this.driverType = driverType;
     }
 }

@@ -5,16 +5,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.zstack.core.CoreGlobalProperty;
+import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.identity.AccountInventory;
-import org.zstack.header.network.l2.L2NetworkVO;
-import org.zstack.header.network.l3.*;
+import org.zstack.header.message.Message;
+import org.zstack.header.network.l2.L2NetworkInventory;
 import org.zstack.header.rest.RESTFacade;
 import org.zstack.network.l2.vxlan.vxlanNetwork.L2VxlanNetworkInventory;
+import org.zstack.network.l2.vxlan.vxlanNetwork.VxlanNetworkVO;
 import org.zstack.sdnController.SdnController;
 import org.zstack.sdnController.header.*;
 import org.zstack.sdnController.SdnControllerLog;
@@ -34,7 +35,8 @@ public class H3cVcfcSdnController implements SdnController {
 
     @Autowired
     private DatabaseFacade dbf;
-
+    @Autowired
+    CloudBus bus;
     @Autowired
     protected RESTFacade restf;
 
@@ -216,6 +218,11 @@ public class H3cVcfcSdnController implements SdnController {
     }
 
     @Override
+    public void handleMessage(SdnControllerMessage msg) {
+        bus.dealWithUnknownMessage((Message) msg);
+    }
+
+    @Override
     @SdnControllerLog
     public void preInitSdnController(APIAddSdnControllerMsg msg, Completion completion) {
         completion.success();
@@ -239,7 +246,7 @@ public class H3cVcfcSdnController implements SdnController {
 
     @Override
     @SdnControllerLog
-    public void postInitSdnController(APIAddSdnControllerMsg msg, Completion completion) {
+    public void postInitSdnController(SdnControllerVO vo, Completion completion) {
         completion.success();
     }
 
@@ -249,7 +256,7 @@ public class H3cVcfcSdnController implements SdnController {
         completion.success();
     }
 
-    private void createVxlanNetworkOnController(L2VxlanNetworkInventory vxlan, Completion completion) {
+    private void createVxlanNetworkOnController(L2NetworkInventory vxlan, Completion completion) {
         getH3cControllerLeaderIp(new Completion(completion) {
             @Override
             public void success() {
@@ -264,7 +271,8 @@ public class H3cVcfcSdnController implements SdnController {
     }
 
     /* H3C VCFC backup node can not handle the create command  */
-    private void doCreateVxlanNetworkOnController(L2VxlanNetworkInventory vxlan, Completion completion) {
+    private void doCreateVxlanNetworkOnController(L2NetworkInventory vxlan, Completion completion) {
+        VxlanNetworkVO vo = dbf.findByUuid(vxlan.getUuid(), VxlanNetworkVO.class);
         String tenantUuid = H3cVcfcSdnControllerSystemTags.H3C_TENANT_UUID.getTokenByResourceUuid(self.getUuid(), H3cVcfcSdnControllerSystemTags.H3C_TENANT_UUID_TOKEN);
         String vdsUuid = H3cVcfcSdnControllerSystemTags.H3C_VDS_UUID.getTokenByResourceUuid(self.getUuid(), H3cVcfcSdnControllerSystemTags.H3C_VDS_TOKEN);
         H3cVcfcCommands.CreateH3cNetworksCmd cmd = new H3cVcfcCommands.CreateH3cNetworksCmd();
@@ -275,7 +283,7 @@ public class H3cVcfcSdnController implements SdnController {
         networkCmd.network_type = "VXLAN";
         networkCmd.original_network_type = "VXLAN";
         networkCmd.domain = vdsUuid;
-        networkCmd.segmentation_id = vxlan.getVni();
+        networkCmd.segmentation_id = vo.getVni();
         networkCmd.external = false;
         networkCmd.force_flat = false;
 
@@ -305,12 +313,12 @@ public class H3cVcfcSdnController implements SdnController {
 
     @Override
     @SdnControllerLog
-    public void createVxlanNetwork(L2VxlanNetworkInventory vxlan, List<String> systemTags, Completion completion) {
+    public void createL2Network(L2NetworkInventory inv, List<String> systemTags, Completion completion) {
         /* initSdnController get the token */
         getH3cControllerToken(new Completion(completion) {
             @Override
             public void success() {
-                createVxlanNetworkOnController(vxlan, completion);
+                createVxlanNetworkOnController(inv, completion);
             }
 
             @Override
@@ -357,7 +365,7 @@ public class H3cVcfcSdnController implements SdnController {
         completion.success();
     }
 
-    private void deleteVxlanNetworkOnController(L2VxlanNetworkInventory vxlan, Completion completion) {
+    private void deleteVxlanNetworkOnController(L2NetworkInventory vxlan, Completion completion) {
         getH3cControllerLeaderIp(new Completion(completion) {
             @Override
             public void success() {
@@ -371,7 +379,7 @@ public class H3cVcfcSdnController implements SdnController {
         });
     }
 
-    private void doDeleteVxlanNetworkOnController(L2VxlanNetworkInventory vxlan, Completion completion) {
+    private void doDeleteVxlanNetworkOnController(L2NetworkInventory vxlan, Completion completion) {
         H3cVcfcCommands.DeleteH3cNetworksCmd cmd = new H3cVcfcCommands.DeleteH3cNetworksCmd();
         try {
             String h3cL2NetworkUuid = H3cVcfcSdnControllerSystemTags.H3C_L2_NETWORK_UUID.getTokenByResourceUuid(vxlan.getUuid(), H3cVcfcSdnControllerSystemTags.H3C_L2_NETWORK_UUID_TOKEN);
@@ -389,7 +397,7 @@ public class H3cVcfcSdnController implements SdnController {
 
     @Override
     @SdnControllerLog
-    public void deleteVxlanNetwork(L2VxlanNetworkInventory vxlan, Completion completion) {
+    public void deleteL2Network(L2NetworkInventory vxlan, Completion completion) {
         /* initSdnController get the token */
         getH3cControllerToken(new Completion(completion) {
             @Override

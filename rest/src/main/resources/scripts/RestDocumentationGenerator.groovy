@@ -529,7 +529,7 @@ class RestDocumentationGenerator implements DocumentGenerator {
 
         Set<Class> apiClasses = getRequestRequestApiSet()
         apiClasses.each {
-            println("generating doc template for class ${it}")
+            logger.info("generating doc template for class ${it}")
             def tmp = new ApiRequestDocTemplate(it)
             tmp.generateDocFile(mode)
         }
@@ -550,6 +550,9 @@ class RestDocumentationGenerator implements DocumentGenerator {
 
         String specifiedClasses = System.getProperty("classes")
 
+        apiClasses.forEach {it ->
+            logger.info("apiClasses 1: ${it}".toString())
+        }
         if (specifiedClasses != null) {
             def classes = specifiedClasses.split(",") as List
             apiClasses = apiClasses.findAll {
@@ -561,6 +564,10 @@ class RestDocumentationGenerator implements DocumentGenerator {
             apiClasses = apiClasses.findAll {
                 return !noDocClasses.contains(it.getSimpleName())
             }
+        }
+
+        apiClasses.forEach {it ->
+            logger.info("apiClasses 2: ${it}".toString())
         }
 
         return apiClasses

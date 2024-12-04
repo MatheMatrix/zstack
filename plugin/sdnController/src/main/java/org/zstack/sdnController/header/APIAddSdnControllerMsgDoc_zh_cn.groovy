@@ -63,7 +63,7 @@ doc {
 					desc ""
 					location "body"
 					type "String"
-					optional false
+					optional true
 					since "3.7"
 				}
 				column {
@@ -72,7 +72,7 @@ doc {
 					desc ""
 					location "body"
 					type "String"
-					optional false
+					optional true
 					since "3.7"
 				}
 				column {
@@ -110,6 +110,15 @@ doc {
 					type "List"
 					optional true
 					since "3.7"
+				}
+				column {
+					name "zoneUuid"
+					enclosedIn "params"
+					desc "区域UUID"
+					location "body"
+					type "String"
+					optional true
+					since "5.3.0"
 				}
 			}
         }

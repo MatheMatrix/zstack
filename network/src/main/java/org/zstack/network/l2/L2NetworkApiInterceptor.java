@@ -1,5 +1,7 @@
 package org.zstack.network.l2;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.poi.util.StringUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.db.DatabaseFacade;
@@ -75,16 +77,18 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
 
         /* current ovs only support vlan, vxlan*/
         L2NetworkVO l2 = dbf.findByUuid(msg.getL2NetworkUuid(), L2NetworkVO.class);
-        /* find l2 network with same physical interface, but different vswitch Type */
-        List<String> otherL2s = Q.New(L2NetworkVO.class).select(L2NetworkVO_.uuid)
-                .eq(L2NetworkVO_.physicalInterface, l2.getPhysicalInterface())
-                .notEq(L2NetworkVO_.vSwitchType, l2.getvSwitchType()).listValues();
-        if (!otherL2s.isEmpty()) {
-            if (Q.New(L2NetworkClusterRefVO.class).eq(L2NetworkClusterRefVO_.clusterUuid, msg.getClusterUuid())
-                    .in(L2NetworkClusterRefVO_.l2NetworkUuid, otherL2s).isExists()) {
-                throw new ApiMessageInterceptionException(argerr("could not attach l2 network, because there "+
-                                "is another network [uuid:%s] on physical interface [%s] with different vswitch type",
-                        otherL2s.get(0), l2.getPhysicalInterface()));
+        if (!StringUtils.isEmpty(l2.getPhysicalInterface())) {
+            /* find l2 network with same physical interface, but different vswitch Type */
+            List<String> otherL2s = Q.New(L2NetworkVO.class).select(L2NetworkVO_.uuid)
+                    .eq(L2NetworkVO_.physicalInterface, l2.getPhysicalInterface())
+                    .notEq(L2NetworkVO_.vSwitchType, l2.getvSwitchType()).listValues();
+            if (!otherL2s.isEmpty()) {
+                if (Q.New(L2NetworkClusterRefVO.class).eq(L2NetworkClusterRefVO_.clusterUuid, msg.getClusterUuid())
+                        .in(L2NetworkClusterRefVO_.l2NetworkUuid, otherL2s).isExists()) {
+                    throw new ApiMessageInterceptionException(argerr("could not attach l2 network, because there " +
+                                    "is another network [uuid:%s] on physical interface [%s] with different vswitch type",
+                            otherL2s.get(0), l2.getPhysicalInterface()));
+                }
             }
         }
     }
@@ -111,7 +115,9 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
             throw new ApiMessageInterceptionException(argerr("unsupported l2Network type[%s]", msg.getType()));
         }
 
-        if (!VSwitchType.hasType(msg.getvSwitchType())) {
+        try {
+            VSwitchType.valueOf(msg.getvSwitchType());
+        } catch (Exception e) {
             throw new ApiMessageInterceptionException(argerr("unsupported vSwitch type[%s]", msg.getvSwitchType()));
         }
     }

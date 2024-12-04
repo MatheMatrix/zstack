@@ -16,6 +16,22 @@
     </message>
 
     <message>
+        <name>org.zstack.sdnController.header.APISdnControllerAddHostMsg</name>
+    </message>
+
+    <message>
+        <name>org.zstack.sdnController.header.APISdnControllerChangeHostMsg</name>
+    </message>
+
+    <message>
+        <name>org.zstack.sdnController.header.APISdnControllerRemoveHostMsg</name>
+    </message>
+
+    <message>
+        <name>org.zstack.sdnController.header.APIReconnectSdnControllerMsg</name>
+    </message>
+
+    <message>
         <name>org.zstack.sdnController.header.APIQuerySdnControllerMsg</name>
         <serviceId>query</serviceId>
     </message>

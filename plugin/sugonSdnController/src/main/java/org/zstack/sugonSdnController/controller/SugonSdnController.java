@@ -3,13 +3,17 @@ package org.zstack.sugonSdnController.controller;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.net.util.SubnetUtils;
 import org.springframework.beans.factory.annotation.Autowire;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
+import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.db.Q;
 import org.zstack.header.core.Completion;
 import org.zstack.header.identity.AccountInventory;
 import org.zstack.header.identity.AccountVO;
 import org.zstack.header.identity.AccountVO_;
+import org.zstack.header.message.Message;
 import org.zstack.header.network.l2.APICreateL2NetworkMsg;
+import org.zstack.header.network.l2.L2NetworkInventory;
 import org.zstack.header.network.l2.L2NetworkVO;
 import org.zstack.header.network.l3.*;
 import org.zstack.network.l2.vxlan.vxlanNetwork.L2VxlanNetworkInventory;
@@ -33,13 +37,21 @@ import static org.zstack.utils.network.NetworkUtils.getSubnetInfo;
 public class SugonSdnController implements TfSdnController, SdnController {
     private static final CLogger logger = Utils.getLogger(SugonSdnController.class);
 
-    private SdnControllerVO sdnControllerVO;
+    @Autowired
+    CloudBus bus;
 
+    private SdnControllerVO sdnControllerVO;
     private TfHttpClient client;
+
 
     public SugonSdnController(SdnControllerVO vo) {
         sdnControllerVO = vo;
         client = new TfHttpClient(vo.getIp());
+    }
+
+    @Override
+    public void handleMessage(SdnControllerMessage msg) {
+        bus.dealWithUnknownMessage((Message) msg);
     }
 
     @Override
@@ -93,7 +105,7 @@ public class SugonSdnController implements TfSdnController, SdnController {
     }
 
     @Override
-    public void postInitSdnController(APIAddSdnControllerMsg msg, Completion completion){
+    public void postInitSdnController(SdnControllerVO vo, Completion completion){
         completion.success();
     }
 
@@ -103,7 +115,7 @@ public class SugonSdnController implements TfSdnController, SdnController {
     }
 
     @Override
-    public void createVxlanNetwork(L2VxlanNetworkInventory vxlan, List<String> systemTags, Completion completion) {
+    public void createL2Network(L2NetworkInventory inv, List<String> systemTags, Completion completion) {
         completion.success();
     }
 
@@ -216,7 +228,7 @@ public class SugonSdnController implements TfSdnController, SdnController {
     }
 
     @Override
-    public void deleteVxlanNetwork(L2VxlanNetworkInventory vxlan, Completion completion) {
+    public void deleteL2Network(L2NetworkInventory vxlan, Completion completion) {
         completion.success();
     }
 

@@ -1,23 +1,21 @@
 package org.zstack.header.vm;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class VmNicType {
+    public enum VmNicSubType {
+        NONE,
+        SRIOV,
+        VHOSTUSER,
+    }
     private static Map<String, VmNicType> types = Collections.synchronizedMap(new HashMap<>());
 
     private final String typeName;
+    private boolean hasAddon = false;
     private boolean useSRIOV = false;
 
     public VmNicType(String typeName) {
         this.typeName = typeName;
-        types.put(typeName, this);
-    }
-
-    public VmNicType(String typeName, Boolean useSRIOV) {
-        this.typeName = typeName;
-        this.useSRIOV = useSRIOV;
         types.put(typeName, this);
     }
 
@@ -29,8 +27,20 @@ public class VmNicType {
         return type;
     }
 
+    public boolean isHasAddon() {
+        return hasAddon;
+    }
+
+    public void setHasAddon(boolean hasAddon) {
+        this.hasAddon = hasAddon;
+    }
+
     public boolean isUseSRIOV() {
         return useSRIOV;
+    }
+
+    public void setUseSRIOV(boolean useSRIOV) {
+        this.useSRIOV = useSRIOV;
     }
 
     @Override

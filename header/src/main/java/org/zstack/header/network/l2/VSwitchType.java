@@ -1,35 +1,34 @@
 package org.zstack.header.network.l2;
 
-import org.zstack.header.vm.VmMacVlanNicConstant;
 import org.zstack.header.vm.VmNicType;
-import org.zstack.header.vm.VmOvsNicConstant;
+import org.zstack.utils.Utils;
+import org.zstack.utils.gson.JSONObjectUtil;
+import org.zstack.utils.logging.CLogger;
 
 import java.util.*;
 
 public class VSwitchType {
+    private static final CLogger logger = Utils.getLogger(VSwitchType.class);
     private static Map<String, VSwitchType> types = Collections.synchronizedMap(new HashMap<String, VSwitchType>());
     private final String typeName;
-    private static Map<String, List<VmNicType>> vSwitchSupportNicTypesMap = Collections.synchronizedMap(new HashMap<String, List<VmNicType>>());
     private boolean exposed = true;
-
-    public static boolean hasType(String typeName) {
-        return types.containsKey(typeName);
-    }
+    private boolean attachToCluster = true;
+    private String sdnControllerType = null;
+    private boolean useDpdk = false;
+    private Map<VmNicType.VmNicSubType, VmNicType> nicTypes = Collections.synchronizedMap(new HashMap<>());
 
     public VSwitchType(String typeName) {
         this.typeName = typeName;
-        types.put(typeName, this);
+        if (!types.containsKey(typeName)) {
+            types.put(typeName, this);
+        }
     }
 
     public VSwitchType(String typeName, boolean exposed) {
         this(typeName);
-        this.exposed = exposed;
-    }
-
-    public VSwitchType(String typeName, VmNicType nicType) {
-        this.typeName = typeName;
-        types.put(typeName, this);
-        vSwitchSupportNicTypesMap.computeIfAbsent(typeName, k -> new ArrayList<VmNicType>()).add(nicType);
+        if (!types.containsKey(typeName)) {
+            types.put(typeName, this);
+        }
     }
 
     public boolean isExposed() {
@@ -40,33 +39,61 @@ public class VSwitchType {
         this.exposed = exposed;
     }
 
-    public List<VmNicType> getSupVmNicTypes() {
-        return vSwitchSupportNicTypesMap.get(typeName);
+
+    public boolean isAttachToCluster() {
+        return attachToCluster;
     }
 
-    public VmNicType getVmNicTypeWithCondition(boolean enableSRIOV, boolean enableVhostUser) {
-        List<VmNicType> types = getSupVmNicTypes();
+    public void setAttachToCluster(boolean attachToCluster) {
+        this.attachToCluster = attachToCluster;
+    }
 
-        if (typeName.equals(L2NetworkConstant.VSWITCH_TYPE_OVS_DPDK)) {
-            if (enableVhostUser && types.contains(VmNicType.valueOf(VmOvsNicConstant.ACCEL_TYPE_VHOST_USER_SPACE))) {
-                return VmNicType.valueOf(VmOvsNicConstant.ACCEL_TYPE_VHOST_USER_SPACE);
-            } else if (types.contains(VmNicType.valueOf(VmOvsNicConstant.ACCEL_TYPE_VDPA))){
-                return VmNicType.valueOf(VmOvsNicConstant.ACCEL_TYPE_VDPA);
+    public String getSdnControllerType() {
+        return sdnControllerType;
+    }
+
+    public void setSdnControllerType(String sdnControllerType) {
+        this.sdnControllerType = sdnControllerType;
+    }
+
+    public boolean isUseDpdk() {
+        return useDpdk;
+    }
+
+    public void setUseDpdk(boolean useDpdk) {
+        this.useDpdk = useDpdk;
+    }
+
+    public void addVmNicType(VmNicType.VmNicSubType subType, VmNicType nicType) {
+        VmNicType oldNicType = nicTypes.get(subType);
+        if (oldNicType != null) {
+            if (!oldNicType.toString().equals(nicType.toString())) {
+                throw new IllegalArgumentException("duplicated nic type: " + nicType +
+                        " subtype " + subType + " for vSwitchType " + typeName + " " +
+                        JSONObjectUtil.toJsonString(nicTypes));
+            } else {
+                /* call addVmNicType duplicated */
+                return;
             }
-        } else if (typeName.equals(L2NetworkConstant.VSWITCH_TYPE_LINUX_BRIDGE)){
-            for (VmNicType type : types) {
-                if (type.isUseSRIOV() == enableSRIOV) {
-                    return type;
-                }
-            }
-        } else if (typeName.equals(L2NetworkConstant.VSWITCH_TYPE_MACVLAN)) {
-            if (types.contains(VmNicType.valueOf(VmMacVlanNicConstant.MACVLAN_NIC_TYPE))) {
-                return VmNicType.valueOf(VmMacVlanNicConstant.MACVLAN_NIC_TYPE);
+        }
+        logger.debug("addVmNicType nic type: " + nicType +
+                " subtype " + subType + " for vSwitchType " + typeName);
+        nicTypes.put(subType, nicType);
+    }
+
+    public VmNicType getVmNicType(VmNicType.VmNicSubType subType) {
+        VmNicType nicType = nicTypes.get(subType);
+        if (nicType == null) {
+            /* for case, enableVHostUser is enabled, but vswitch type is linux bridge  */
+            nicType = nicTypes.get(VmNicType.VmNicSubType.NONE);
+            if (nicType == null) {
+                throw new IllegalArgumentException("unsupported nicSubType " + subType + " for vswitch type " + typeName);
             }
         }
 
-        return null;
+        return nicType;
     }
+
 
     public static VSwitchType valueOf(String typeName) {
         VSwitchType type = types.get(typeName);
@@ -83,7 +110,7 @@ public class VSwitchType {
 
     @Override
     public boolean equals(Object t) {
-        if (t == null || !(t instanceof VSwitchType)) {
+        if (!(t instanceof VSwitchType)) {
             return false;
         }
 

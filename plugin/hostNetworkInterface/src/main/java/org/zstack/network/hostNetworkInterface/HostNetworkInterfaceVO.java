@@ -74,6 +74,9 @@ public class HostNetworkInterfaceVO extends ResourceVO implements ToInventory, O
     private String pciDeviceAddress;
 
     @Column
+    private String driverType;
+
+    @Column
     private String offloadStatus;
 
     @Column
@@ -265,6 +268,14 @@ public class HostNetworkInterfaceVO extends ResourceVO implements ToInventory, O
 
     public void setLastOpDate(Timestamp lastOpDate) {
         this.lastOpDate = lastOpDate;
+    }
+
+    public String getDriverType() {
+        return driverType;
+    }
+
+    public void setDriverType(String driverType) {
+        this.driverType = driverType;
     }
 
     @Override

@@ -148,6 +148,14 @@ public class HostNetworkInterfaceInventory  {
         return this.pciDeviceAddress;
     }
 
+    public java.lang.String driverType;
+    public void setDriverType(java.lang.String driverType) {
+        this.driverType = driverType;
+    }
+    public java.lang.String getDriverType() {
+        return this.driverType;
+    }
+
     public java.lang.String offloadStatus;
     public void setOffloadStatus(java.lang.String offloadStatus) {
         this.offloadStatus = offloadStatus;

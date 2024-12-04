@@ -1,77 +1,101 @@
 package org.zstack.network.l2.vxlan.vxlanNetwork
 
 import java.lang.Integer
-import java.sql.Timestamp
+import java.lang.Boolean
 import java.sql.Timestamp
 
 doc {
 
-	title "二层VXLAN网络清单"
+	title "在这里输入结构的名称"
 
 	field {
 		name "vni"
-		desc "Vni号"
+		desc ""
 		type "Integer"
-		since "0.6"
+		since "5.3.0"
 	}
 	field {
 		name "poolUuid"
-		desc "VXLAN资源池UUID"
+		desc ""
 		type "String"
-		since "0.6"
+		since "5.3.0"
 	}
 	field {
 		name "uuid"
 		desc "资源的UUID，唯一标示该资源"
 		type "String"
-		since "0.6"
+		since "5.3.0"
 	}
 	field {
 		name "name"
 		desc "资源名称"
 		type "String"
-		since "0.6"
+		since "5.3.0"
 	}
 	field {
 		name "description"
 		desc "资源的详细描述"
 		type "String"
-		since "0.6"
+		since "5.3.0"
 	}
 	field {
 		name "zoneUuid"
 		desc "区域UUID"
 		type "String"
-		since "0.6"
+		since "5.3.0"
 	}
 	field {
 		name "physicalInterface"
-		desc "物理网卡"
+		desc ""
 		type "String"
-		since "0.6"
+		since "5.3.0"
 	}
 	field {
 		name "type"
-		desc "二层网络类型"
+		desc ""
 		type "String"
-		since "0.6"
+		since "5.3.0"
+	}
+	field {
+		name "vSwitchType"
+		desc ""
+		type "String"
+		since "5.3.0"
+	}
+	field {
+		name "virtualNetworkId"
+		desc ""
+		type "Integer"
+		since "5.3.0"
+	}
+	field {
+		name "isolated"
+		desc ""
+		type "Boolean"
+		since "5.3.0"
+	}
+	field {
+		name "pvlan"
+		desc ""
+		type "String"
+		since "5.3.0"
 	}
 	field {
 		name "createDate"
 		desc "创建时间"
 		type "Timestamp"
-		since "0.6"
+		since "5.3.0"
 	}
 	field {
 		name "lastOpDate"
 		desc "最后一次修改时间"
 		type "Timestamp"
-		since "0.6"
+		since "5.3.0"
 	}
 	field {
 		name "attachedClusterUuids"
-		desc "挂载集群的UUID列表"
+		desc ""
 		type "List"
-		since "0.6"
+		since "5.3.0"
 	}
 }
