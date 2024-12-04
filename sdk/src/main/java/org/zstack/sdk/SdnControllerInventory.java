@@ -1,6 +1,6 @@
 package org.zstack.sdk;
 
-
+import org.zstack.sdk.SdnControllerStatus;
 
 public class SdnControllerInventory  {
 
@@ -60,6 +60,14 @@ public class SdnControllerInventory  {
         return this.password;
     }
 
+    public SdnControllerStatus status;
+    public void setStatus(SdnControllerStatus status) {
+        this.status = status;
+    }
+    public SdnControllerStatus getStatus() {
+        return this.status;
+    }
+
     public java.sql.Timestamp createDate;
     public void setCreateDate(java.sql.Timestamp createDate) {
         this.createDate = createDate;
@@ -90,6 +98,14 @@ public class SdnControllerInventory  {
     }
     public java.util.List getVxlanPools() {
         return this.vxlanPools;
+    }
+
+    public java.util.List hostRefs;
+    public void setHostRefs(java.util.List hostRefs) {
+        this.hostRefs = hostRefs;
+    }
+    public java.util.List getHostRefs() {
+        return this.hostRefs;
     }
 
 }

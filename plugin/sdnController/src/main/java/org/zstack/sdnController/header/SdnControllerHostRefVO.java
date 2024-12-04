@@ -1,0 +1,107 @@
+package org.zstack.sdnController.header;
+
+import org.zstack.header.cluster.ClusterEO;
+import org.zstack.header.cluster.ClusterVO;
+import org.zstack.header.host.HostEO;
+import org.zstack.header.host.HostVO;
+import org.zstack.header.search.SqlTrigger;
+import org.zstack.header.search.TriggerIndex;
+import org.zstack.header.vo.EntityGraph;
+import org.zstack.header.vo.ForeignKey;
+import org.zstack.header.vo.SoftDeletionCascade;
+import org.zstack.header.vo.SoftDeletionCascades;
+
+import javax.persistence.*;
+
+/**
+ * Created by shixin.ruan on 09/30/2019.
+ */
+@Entity
+@Table
+@TriggerIndex
+@SqlTrigger(foreignVOClass = SdnControllerVO.class, foreignVOJoinColumn = "sdnControllerUuid")
+@SoftDeletionCascades({
+        @SoftDeletionCascade(parent = SdnControllerVO.class, joinColumn = "sdnControllerUuid"),
+        @SoftDeletionCascade(parent = HostEO.class, joinColumn = "hostUuid")
+})
+@EntityGraph(
+        friends = {
+                @EntityGraph.Neighbour(type = SdnControllerVO.class, myField = "sdnControllerUuid", targetField = "uuid"),
+                @EntityGraph.Neighbour(type = HostEO.class, myField = "hostUuid", targetField = "uuid"),
+        }
+)
+public class SdnControllerHostRefVO {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column
+    private long id;
+
+    @Column
+    @ForeignKey(parentEntityClass = SdnControllerVO.class, onDeleteAction = ForeignKey.ReferenceOption.RESTRICT)
+    private String sdnControllerUuid;
+
+    @Column
+    @ForeignKey(parentEntityClass = HostEO.class, onDeleteAction = ForeignKey.ReferenceOption.CASCADE)
+    private String hostUuid;
+
+    @Column
+    private String vswitchType;
+
+    @Column
+    private String vtepIp;
+
+    @Column
+    private String physicalNics;
+
+
+    public SdnControllerHostRefVO() {
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public String getSdnControllerUuid() {
+        return sdnControllerUuid;
+    }
+
+    public void setSdnControllerUuid(String sdnControllerUuid) {
+        this.sdnControllerUuid = sdnControllerUuid;
+    }
+
+    public String getHostUuid() {
+        return hostUuid;
+    }
+
+    public void setHostUuid(String hostUuid) {
+        this.hostUuid = hostUuid;
+    }
+
+    public String getVswitchType() {
+        return vswitchType;
+    }
+
+    public void setVswitchType(String vswitchType) {
+        this.vswitchType = vswitchType;
+    }
+
+    public String getVtepIp() {
+        return vtepIp;
+    }
+
+    public void setVtepIp(String vtepIp) {
+        this.vtepIp = vtepIp;
+    }
+
+    public String getPhysicalNics() {
+        return physicalNics;
+    }
+
+    public void setPhysicalNics(String physicalNics) {
+        this.physicalNics = physicalNics;
+    }
+}

@@ -35,6 +35,9 @@ public interface L2NetworkConstant {
     @PythonClass
     public static final String VSWITCH_TYPE_OVS_KERNEL = "OvsKernel";
 
+    @PythonClass
+    public static final String VSWITCH_TYPE_OVN_DPDK = "Ovn-netdev";
+
     public static final String DETACH_L2NETWORK_CODE = "l2Network.detach";
 
     // https://elixir.bootlin.com/linux/v5.6/source/include/uapi/linux/if.h#L33

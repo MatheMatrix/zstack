@@ -2,9 +2,11 @@ package org.zstack.sdnController.header;
 
 import org.zstack.header.identity.OwnedByAccount;
 import org.zstack.header.vo.BaseResource;
+import org.zstack.header.vo.ForeignKey;
 import org.zstack.header.vo.NoView;
 import org.zstack.header.vo.ResourceVO;
 import org.zstack.header.vo.ToInventory;
+import org.zstack.header.zone.ZoneEO;
 
 import javax.persistence.*;
 import java.sql.Timestamp;
@@ -43,6 +45,15 @@ public class SdnControllerVO extends ResourceVO implements OwnedByAccount, ToInv
     @JoinColumn(name="sdnControllerUuid", insertable=false, updatable=false)
     @NoView
     private Set<HardwareL2VxlanNetworkPoolVO> vxlanPools = new HashSet<HardwareL2VxlanNetworkPoolVO>();
+
+    @OneToMany(fetch=FetchType.EAGER)
+    @JoinColumn(name="sdnControllerUuid", insertable=false, updatable=false)
+    @NoView
+    private Set<SdnControllerHostRefVO> hostRefVOS = new HashSet<SdnControllerHostRefVO>();
+
+    @Column
+    @Enumerated(EnumType.STRING)
+    private SdnControllerStatus status;
 
     @Column
     private Timestamp createDate;
@@ -138,5 +149,21 @@ public class SdnControllerVO extends ResourceVO implements OwnedByAccount, ToInv
     @Override
     public void setAccountUuid(String accountUuid) {
         this.accountUuid = accountUuid;
+    }
+
+    public SdnControllerStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(SdnControllerStatus status) {
+        this.status = status;
+    }
+
+    public Set<SdnControllerHostRefVO> getHostRefVOS() {
+        return hostRefVOS;
+    }
+
+    public void setHostRefVOS(Set<SdnControllerHostRefVO> hostRefVOS) {
+        this.hostRefVOS = hostRefVOS;
     }
 }

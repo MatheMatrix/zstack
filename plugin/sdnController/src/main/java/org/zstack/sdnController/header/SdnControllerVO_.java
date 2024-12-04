@@ -14,6 +14,7 @@ public class SdnControllerVO_ extends ResourceVO_ {
     public static volatile SingularAttribute<SdnControllerVO, String> ip;
     public static volatile SingularAttribute<SdnControllerVO, String> username;
     public static volatile SingularAttribute<SdnControllerVO, String> password;
+    public static volatile SingularAttribute<SdnControllerVO, SdnControllerStatus> status;
     public static volatile SingularAttribute<SdnControllerVO, Timestamp> createDate;
     public static volatile SingularAttribute<SdnControllerVO, Timestamp> lastOpDate;
 }

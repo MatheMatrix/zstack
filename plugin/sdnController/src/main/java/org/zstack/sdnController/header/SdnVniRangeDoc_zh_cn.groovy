@@ -1,22 +1,21 @@
 package org.zstack.sdnController.header
 
 import java.lang.Integer
-import java.lang.Integer
 
 doc {
 
-	title "SDN控制Vni范围"
+	title "在这里输入结构的名称"
 
 	field {
 		name "startVni"
 		desc ""
 		type "Integer"
-		since "3.7"
+		since "5.3.0"
 	}
 	field {
 		name "endVni"
 		desc ""
 		type "Integer"
-		since "3.7"
+		since "5.3.0"
 	}
 }

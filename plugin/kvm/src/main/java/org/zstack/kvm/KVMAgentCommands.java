@@ -4684,6 +4684,24 @@ public class KVMAgentCommands {
     public static class SyncIpsetRsp extends AgentResponse {
     }
 
+    public static class InstallOvsPackageCmd extends AgentCommand {
+    }
+
+    public static class InstallOvsPackageRsp extends AgentResponse {
+    }
+
+    public static class StartOvsServiceCmd extends AgentCommand {
+        @GrayVersion(value = "5.4.0")
+        public String vswitchType;
+        @GrayVersion(value = "5.4.0")
+        public List<String> nicList;
+        @GrayVersion(value = "5.4.0")
+        public String vtepIp;
+    }
+
+    public static class StartOvsServiceRsp extends AgentResponse {
+    }
+
     public static class HardwareMonitorCmd extends KVMAgentCommands.AgentCommand {
     }
 

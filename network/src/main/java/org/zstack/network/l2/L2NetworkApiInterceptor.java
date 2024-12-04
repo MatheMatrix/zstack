@@ -111,7 +111,9 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
             throw new ApiMessageInterceptionException(argerr("unsupported l2Network type[%s]", msg.getType()));
         }
 
-        if (!VSwitchType.hasType(msg.getvSwitchType())) {
+        try {
+            VSwitchType.valueOf(msg.getvSwitchType());
+        } catch (Exception e) {
             throw new ApiMessageInterceptionException(argerr("unsupported vSwitch type[%s]", msg.getvSwitchType()));
         }
     }

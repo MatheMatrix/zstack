@@ -93,7 +93,7 @@ public class SugonSdnController implements TfSdnController, SdnController {
     }
 
     @Override
-    public void postInitSdnController(APIAddSdnControllerMsg msg, Completion completion){
+    public void postInitSdnController(SdnControllerVO vo, Completion completion){
         completion.success();
     }
 
