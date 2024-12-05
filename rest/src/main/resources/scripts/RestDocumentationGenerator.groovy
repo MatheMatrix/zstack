@@ -1966,12 +1966,11 @@ ${pythonSdk()}
                 String txt = resolvedRefs[it._clz]
 
                 if (txt == null) {
-                    try {
-                        String path = getDocTemplatePathFromClass(it._clz)
-                    } catch (Exception e) {
-                        logger.warn(e.message, e)
+                    if (it._clz == null) {
+                        throw new CloudRuntimeException("cannot find the class[${it._name}]")
                     }
 
+                    String path = getDocTemplatePathFromClass(it._clz)
                     Doc refDoc = createDoc(path)
                     def dmd = new DataStructMarkDown(it._clz, refDoc)
                     dmd.resolvedRefs = resolvedRefs
