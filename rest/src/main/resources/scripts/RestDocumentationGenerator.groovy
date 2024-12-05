@@ -1242,7 +1242,13 @@ ${category(err)}
     }
 
     Doc createDoc(String docTemplatePath) {
-        Script script = new GroovyShell().parse(new File(docTemplatePath))
+        Script script
+        try {
+            script = new GroovyShell().parse(new File(docTemplatePath))
+        } catch (FileNotFoundException e) {
+            throw new CloudRuntimeException("cannot find doc template file[path:${docTemplatePath}]", e)
+        }
+
         return createDocFromGroobyScript(script)
     }
 
