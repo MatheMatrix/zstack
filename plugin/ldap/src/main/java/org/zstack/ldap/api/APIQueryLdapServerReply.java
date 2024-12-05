@@ -29,7 +29,6 @@ public class APIQueryLdapServerReply extends APIQueryReply {
         inventory.setUrl("ldap://localhost:1888");
         inventory.setBase("dc=example,dc=com");
         inventory.setUsername("");
-        inventory.setPassword("");
         inventory.setEncryption("None");
 
         reply.setInventories(list(inventory));

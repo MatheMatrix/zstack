@@ -33,7 +33,6 @@ public class APIAddLdapServerEvent extends APIEvent {
         inventory.setUrl("ldap://localhost:1888");
         inventory.setBase("dc=example,dc=com");
         inventory.setUsername("");
-        inventory.setPassword("");
         inventory.setEncryption("None");
 
         event.setInventory(inventory);

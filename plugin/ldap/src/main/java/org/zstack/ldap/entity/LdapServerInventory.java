@@ -1,39 +1,23 @@
 package org.zstack.ldap.entity;
 
 import org.zstack.header.configuration.PythonClassInventory;
-import org.zstack.header.log.NoLogging;
-import org.zstack.header.rest.APINoSee;
 import org.zstack.header.search.Inventory;
+import org.zstack.identity.imports.entity.ThirdPartyAccountSourceInventory;
+import org.zstack.utils.CollectionUtils;
 
-import java.io.Serializable;
-import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-@Inventory(mappingVOClass = LdapServerVO.class)
+@Inventory(mappingVOClass = LdapServerVO.class, collectionValueOfMethod = "valueOf1")
 @PythonClassInventory
-public class LdapServerInventory implements Serializable {
-    private String uuid;
-    private String name;
-    private String type;
-    private String description;
+public class LdapServerInventory extends ThirdPartyAccountSourceInventory {
     private String url;
     private String base;
     private String username;
     private String serverType;
-
-    @APINoSee
-    @NoLogging
-    private String password;
     private String encryption;
-    private Timestamp createDate;
-    private Timestamp lastOpDate;
-
     private String filter;
     private String usernameProperty;
-    private String createAccountStrategy;
-    private String deleteAccountStrategy;
 
     public static LdapServerInventory valueOf(LdapServerVO vo) {
         LdapServerInventory inv = new LdapServerInventory();
@@ -43,7 +27,6 @@ public class LdapServerInventory implements Serializable {
         inv.setUrl(vo.getUrl());
         inv.setBase(vo.getBase());
         inv.setUsername(vo.getUsername());
-        inv.setPassword(vo.getPassword());
         inv.setEncryption(vo.getEncryption());
         inv.setCreateDate(vo.getCreateDate());
         inv.setLastOpDate(vo.getLastOpDate());
@@ -56,52 +39,8 @@ public class LdapServerInventory implements Serializable {
         return inv;
     }
 
-    public static List<LdapServerInventory> valueOf(Collection<LdapServerVO> vos) {
-        List<LdapServerInventory> lst = new ArrayList<>(vos.size());
-        for (LdapServerVO vo : vos) {
-            lst.add(LdapServerInventory.valueOf(vo));
-        }
-        return lst;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getUuid() {
-        return uuid;
-    }
-
-    public void setUuid(String uuid) {
-        this.uuid = uuid;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Timestamp getCreateDate() {
-        return createDate;
-    }
-
-    public void setCreateDate(Timestamp createDate) {
-        this.createDate = createDate;
-    }
-
-    public Timestamp getLastOpDate() {
-        return lastOpDate;
-    }
-
-    public void setLastOpDate(Timestamp lastOpDate) {
-        this.lastOpDate = lastOpDate;
+    public static List<LdapServerInventory> valueOf1(Collection<LdapServerVO> vos) {
+        return CollectionUtils.transform(vos, LdapServerInventory::valueOf);
     }
 
     public String getUrl() {
@@ -128,28 +67,12 @@ public class LdapServerInventory implements Serializable {
         this.username = username;
     }
 
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
     public String getEncryption() {
         return encryption;
     }
 
     public void setEncryption(String encryption) {
         this.encryption = encryption;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
     }
 
     public String getServerType() {
@@ -174,21 +97,5 @@ public class LdapServerInventory implements Serializable {
 
     public void setUsernameProperty(String usernameProperty) {
         this.usernameProperty = usernameProperty;
-    }
-
-    public String getCreateAccountStrategy() {
-        return createAccountStrategy;
-    }
-
-    public void setCreateAccountStrategy(String createAccountStrategy) {
-        this.createAccountStrategy = createAccountStrategy;
-    }
-
-    public String getDeleteAccountStrategy() {
-        return deleteAccountStrategy;
-    }
-
-    public void setDeleteAccountStrategy(String deleteAccountStrategy) {
-        this.deleteAccountStrategy = deleteAccountStrategy;
     }
 }
