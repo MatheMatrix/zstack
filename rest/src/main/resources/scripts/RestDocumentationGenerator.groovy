@@ -1608,7 +1608,13 @@ ${table.join("\n")}
 
                 Map allFields = getApiExampleOfTheClass(clz)
 
-                String urlPath = substituteUrl("${RestConstants.API_VERSION}${it}", allFields)
+                String urlPath
+                try {
+                    urlPath = substituteUrl("${RestConstants.API_VERSION}${it}", allFields)
+                } catch (CloudRuntimeException e) {
+                    logger.warn("Failed to substituteUrl for class ${clz.name} url ${it}, ${e.getMessage()}")
+                    throw e
+                }
 
                 if (!queryString) {
                     def apiFields = getRequestBody()
