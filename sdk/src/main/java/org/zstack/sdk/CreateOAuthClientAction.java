@@ -53,16 +53,13 @@ public class CreateOAuthClientAction extends AbstractAction {
     public java.lang.String logoutUrl;
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String loginType;
-
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String grantType;
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String urlTemplate;
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String clientType;
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String usernameProperty = "preferred_username";
 
     @Param(required = false)
     public java.lang.String resourceUuid;
