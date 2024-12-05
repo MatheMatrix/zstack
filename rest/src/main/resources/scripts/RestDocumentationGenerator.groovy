@@ -42,6 +42,7 @@ import javax.xml.bind.JAXBContext
 import javax.xml.bind.JAXBException
 import javax.xml.bind.Unmarshaller
 import java.lang.reflect.Field
+import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.nio.file.Paths
@@ -1242,7 +1243,13 @@ ${category(err)}
     }
 
     Doc createDoc(String docTemplatePath) {
-        Script script = new GroovyShell().parse(new File(docTemplatePath))
+        Script script
+        try {
+            script = new GroovyShell().parse(new File(docTemplatePath))
+        } catch (FileNotFoundException e) {
+            throw new CloudRuntimeException("cannot find doc template file[path:${docTemplatePath}]", e)
+        }
+
         return createDocFromGroobyScript(script)
     }
 
@@ -1543,7 +1550,13 @@ ${table.join("\n")}
                     throw new CloudRuntimeException("__example__() of ${clz.name} must be declared as a static method")
                 }
 
-                def example = m.invoke(null)
+                def example
+                try {
+                    example = m.invoke(null)
+                } catch (InvocationTargetException e) {
+                    throw new CloudRuntimeException("cannot generate the markdown document for the class[${clz.name}], the __example__() method has an error: ${e.getTargetException().printStackTrace()}")
+                }
+
                 DocUtils.removeApiUuidMap(example.class.name)
 
 
@@ -1551,7 +1564,12 @@ ${table.join("\n")}
                     example.validate()
                 }
 
-                LinkedHashMap map = JSONObjectUtil.rehashObject(example, LinkedHashMap.class)
+                LinkedHashMap map
+                try {
+                    map = JSONObjectUtil.rehashObject(example, LinkedHashMap.class)
+                } catch (IllegalStateException e) {
+                    throw new CloudRuntimeException("cannot generate the markdown document for the class[${clz.name}], the __example__() method has an error: ${e.getMessage()}")
+                }
 
                 List<Field> apiFields = getApiFieldsOfClass(clz)
 
@@ -1572,6 +1590,7 @@ ${table.join("\n")}
             } catch (NoSuchMethodException e) {
                 //throw new CloudRuntimeException("class[${clz.name}] doesn't have static __example__ method", e)
                 logger.warn("class[${clz.name}] doesn't have static __example__ method")
+                return null
             }
         }
 
@@ -1601,7 +1620,13 @@ ${table.join("\n")}
 
                 Map allFields = getApiExampleOfTheClass(clz)
 
-                String urlPath = substituteUrl("${RestConstants.API_VERSION}${it}", allFields)
+                String urlPath
+                try {
+                    urlPath = substituteUrl("${RestConstants.API_VERSION}${it}", allFields)
+                } catch (CloudRuntimeException e) {
+                    logger.warn("Failed to substituteUrl for class ${clz.name} url ${it}, ${e.getMessage()}")
+                    throw e
+                }
 
                 if (!queryString) {
                     def apiFields = getRequestBody()
@@ -1679,6 +1704,9 @@ ${examples.join("\n")}
 
             // the API has a body
             Map apiFields = getApiExampleOfTheClass(clz)
+            if (apiFields == null) {
+                throw new CloudRuntimeException("cannot find the example of the class[${clz.name}]")
+            }
             List<String> urlVars = getVarNamesFromUrl(at.path())
             apiFields = apiFields.findAll { k, v -> !urlVars.contains(k) }
             return [(paramName): apiFields]
@@ -1950,6 +1978,10 @@ ${pythonSdk()}
                 String txt = resolvedRefs[it._clz]
 
                 if (txt == null) {
+                    if (it._clz == null) {
+                        throw new CloudRuntimeException("cannot find the class[${it._name}]")
+                    }
+
                     String path = getDocTemplatePathFromClass(it._clz)
                     Doc refDoc = createDoc(path)
                     def dmd = new DataStructMarkDown(it._clz, refDoc)
