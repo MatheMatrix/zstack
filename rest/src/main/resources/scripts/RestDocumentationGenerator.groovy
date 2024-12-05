@@ -1966,7 +1966,12 @@ ${pythonSdk()}
                 String txt = resolvedRefs[it._clz]
 
                 if (txt == null) {
-                    String path = getDocTemplatePathFromClass(it._clz)
+                    try {
+                        String path = getDocTemplatePathFromClass(it._clz)
+                    } catch (Exception e) {
+                        logger.warn(e.message, e)
+                    }
+
                     Doc refDoc = createDoc(path)
                     def dmd = new DataStructMarkDown(it._clz, refDoc)
                     dmd.resolvedRefs = resolvedRefs
