@@ -1572,6 +1572,7 @@ ${table.join("\n")}
             } catch (NoSuchMethodException e) {
                 //throw new CloudRuntimeException("class[${clz.name}] doesn't have static __example__ method", e)
                 logger.warn("class[${clz.name}] doesn't have static __example__ method")
+                return null
             }
         }
 
@@ -1679,6 +1680,9 @@ ${examples.join("\n")}
 
             // the API has a body
             Map apiFields = getApiExampleOfTheClass(clz)
+            if (apiFields == null) {
+                throw new CloudRuntimeException("cannot find the example of the class[${clz.name}]")
+            }
             List<String> urlVars = getVarNamesFromUrl(at.path())
             apiFields = apiFields.findAll { k, v -> !urlVars.contains(k) }
             return [(paramName): apiFields]
