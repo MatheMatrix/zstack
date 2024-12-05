@@ -26,7 +26,7 @@ public class ThirdPartyAccountSourceVO extends ResourceVO {
     private String description;
 
     /**
-     * ex: "LDAP"
+     * ex: "ldap"
      */
     @Column
     private String type;
