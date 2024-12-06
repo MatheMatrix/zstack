@@ -31,6 +31,7 @@ import static org.zstack.storage.snapshot.VolumeSnapshotMessageRouter.getResourc
 import javax.persistence.Tuple;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 
@@ -74,6 +75,8 @@ public class VolumeSnapshotApiInterceptor implements ApiMessageInterceptor {
             validate((APIBatchDeleteVolumeSnapshotMsg) msg);
         } else if (msg instanceof APIRevertVmFromSnapshotGroupMsg) {
             validate((APIRevertVmFromSnapshotGroupMsg) msg);
+        } else if (msg instanceof APIDeleteVolumeSnapshotGroupMsg) {
+            validate((APIDeleteVolumeSnapshotGroupMsg) msg);
         }
 
         setServiceId(msg);
@@ -216,5 +219,39 @@ public class VolumeSnapshotApiInterceptor implements ApiMessageInterceptor {
         if (msg.getVolumeUuid() == null) {
             throw new ApiMessageInterceptionException(operr("can not find volume uuid for snapshosts[uuid: %s]", msg.getUuids()));
         }
+    }
+
+    private void validate(APIDeleteVolumeSnapshotGroupMsg msg) {
+        if (!msg.isOnlySelf()) {
+            return;
+        }
+
+        // 遍历当前vm的快照组，如果有快照组中的快照是 deleted 状态，证明之前的删除不测底。
+        // 需要彻底删除此快照后，才能删除其他快照组
+
+        VolumeSnapshotGroupVO group = Q.New(VolumeSnapshotGroupVO.class)
+                .eq(VolumeSnapshotGroupVO_.uuid, msg.getUuid()).find();
+
+        // 检查当前快照组中 volume 的快照
+        List<VolumeSnapshotGroupVO> groups = Q.New(VolumeSnapshotGroupVO.class)
+                .eq(VolumeSnapshotGroupVO_.uuid, group.getVmInstanceUuid()).list();
+
+        groups.forEach(g -> {
+            List<VolumeSnapshotGroupRefVO> refs = Q.New(VolumeSnapshotGroupRefVO.class)
+                    .eq(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, g.getUuid()).list();
+            if (refs.stream().anyMatch(VolumeSnapshotGroupRefVO::isSnapshotDeleted)) {
+                if (Objects.equals(g.getUuid(), msg.getUuid())) {
+                    return;
+                }
+                throw new ApiMessageInterceptionException(operr("can not delete volume snapshot group, because there are some snapshots in the group are deleted"));
+            }
+
+            if (refs.stream().anyMatch(ref -> VolumeSnapshotStatus.Deleting.toString().equals("Deleting"))) {
+                if (Objects.equals(g.getUuid(), msg.getUuid())) {
+                    return;
+                }
+                throw new ApiMessageInterceptionException(operr("can not delete volume snapshot group, because there are some snapshots in the group are deleted"));
+            }
+        });
     }
 }

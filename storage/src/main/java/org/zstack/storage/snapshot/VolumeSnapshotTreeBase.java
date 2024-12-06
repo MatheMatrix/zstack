@@ -1,5 +1,6 @@
 package org.zstack.storage.snapshot;
 
+import org.apache.lucene.util.CollectionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowire;
@@ -896,6 +897,47 @@ public class VolumeSnapshotTreeBase {
                         bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
                         bus.send(msg);
                         trigger.rollback();
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = String.format("change-volume-snapshot-status-%s", VolumeSnapshotStatus.Deleting);
+
+                    @Override
+                    public boolean skip(Map data) {
+                        return srcSnapshotInv.getStatus().equals(VolumeSnapshotStatus.Deleting.toString());
+                    }
+
+                    public void run(final FlowTrigger trigger, Map data) {
+                        // 一旦触发了删除，api完成以后，volumeSnapshot就不应该存在了。
+                        // 如果后续还有存在，则上一次删除一定是出了什么问题。
+                        // 下一次删除，按照之前的构建的 删除上下文 再删除一遍。
+                        changeStatusOfSnapshots(StatusEvent.delete, Collections.singletonList(srcSnapshotInv), new Completion(trigger) {
+                            @Override
+                            public void success() {
+                                trigger.next();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.fail(errorCode);
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void rollback(final FlowRollback trigger, Map data) {
+                        changeStatusOfSnapshots(StatusEvent.ready, Collections.singletonList(srcSnapshotInv), new Completion(trigger) {
+                            @Override
+                            public void success() {
+                                trigger.rollback();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.rollback();
+                            }
+                        });
                     }
                 });
 
