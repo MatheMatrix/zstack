@@ -281,7 +281,7 @@ public class VolumeSnapshotReferenceUtils {
         }
     }
 
-    public static void updateReferenceAfterMarkSnapshotAsVolume(VolumeSnapshotVO snapshot) {
+    public static void updateReferenceAfterMarkSnapshotAsVolume(VolumeSnapshotInventory snapshot) {
         if (VolumeSnapshotConstant.STORAGE_SNAPSHOT_TYPE.toString().equals(snapshot.getType())) {
             return;
         }

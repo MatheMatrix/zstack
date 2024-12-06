@@ -22,12 +22,23 @@ public class APIDeleteVolumeSnapshotGroupMsg extends APIDeleteMessage implements
     @APIParam(resourceType = VolumeSnapshotGroupVO.class, successIfResourceNotExisting = true)
     private String uuid;
 
+    @APIParam(required = false)
+    private boolean onlySelf = false;
+
     public String getUuid() {
         return uuid;
     }
 
     public void setUuid(String uuid) {
         this.uuid = uuid;
+    }
+
+    public boolean isOnlySelf() {
+        return onlySelf;
+    }
+
+    public void setOnlySelf(boolean onlySelf) {
+        this.onlySelf = onlySelf;
     }
 
     @Override
