@@ -42,6 +42,7 @@ import javax.xml.bind.JAXBContext
 import javax.xml.bind.JAXBException
 import javax.xml.bind.Unmarshaller
 import java.lang.reflect.Field
+import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.nio.file.Paths
@@ -1549,7 +1550,13 @@ ${table.join("\n")}
                     throw new CloudRuntimeException("__example__() of ${clz.name} must be declared as a static method")
                 }
 
-                def example = m.invoke(null)
+                def example
+                try {
+                    example = m.invoke(null)
+                } catch (InvocationTargetException e) {
+                    throw new CloudRuntimeException("cannot generate the markdown document for the class[${clz.name}], the __example__() method has an error: ${e.getTargetException().printStackTrace()}")
+                }
+
                 DocUtils.removeApiUuidMap(example.class.name)
 
 
@@ -1557,7 +1564,12 @@ ${table.join("\n")}
                     example.validate()
                 }
 
-                LinkedHashMap map = JSONObjectUtil.rehashObject(example, LinkedHashMap.class)
+                LinkedHashMap map
+                try {
+                    map = JSONObjectUtil.rehashObject(example, LinkedHashMap.class)
+                } catch (IllegalStateException e) {
+                    throw new CloudRuntimeException("cannot generate the markdown document for the class[${clz.name}], the __example__() method has an error: ${e.getMessage()}")
+                }
 
                 List<Field> apiFields = getApiFieldsOfClass(clz)
 
