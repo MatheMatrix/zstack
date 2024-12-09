@@ -364,6 +364,7 @@ public class SourceClassMap {
 			put("org.zstack.iam1.entity.ensemble.AccountSharingView", "org.zstack.sdk.iam1.ensemble.AccountSharingView");
 			put("org.zstack.iam1.entity.ensemble.ResourceEnsembleInventory", "org.zstack.sdk.iam1.ensemble.ResourceEnsembleInventory");
 			put("org.zstack.identity.imports.entity.AccountThirdPartyAccountSourceRefInventory", "org.zstack.sdk.identity.imports.entity.AccountThirdPartyAccountSourceRefInventory");
+			put("org.zstack.identity.imports.entity.ThirdPartyAccountSourceInventory", "org.zstack.sdk.identity.imports.entity.ThirdPartyAccountSourceInventory");
 			put("org.zstack.identity.imports.header.SyncTaskResult", "org.zstack.sdk.identity.imports.header.SyncTaskResult");
 			put("org.zstack.identity.imports.header.SyncTaskResult$CleanStage", "org.zstack.sdk.identity.imports.header.CleanStage");
 			put("org.zstack.identity.imports.header.SyncTaskResult$ImportStage", "org.zstack.sdk.identity.imports.header.ImportStage");
@@ -535,11 +536,9 @@ public class SourceClassMap {
 			put("org.zstack.sns.platform.wecom.SNSWeComAtPersonInventory", "org.zstack.sdk.sns.platform.wecom.SNSWeComAtPersonInventory");
 			put("org.zstack.sns.platform.wecom.SNSWeComEndpointInventory", "org.zstack.sdk.sns.platform.wecom.SNSWeComEndpointInventory");
 			put("org.zstack.sso.header.CasClientInventory", "org.zstack.sdk.CasClientInventory");
-			put("org.zstack.sso.header.CasState", "org.zstack.sdk.CasState");
 			put("org.zstack.sso.header.OAuth2ClientInventory", "org.zstack.sdk.OAuth2ClientInventory");
 			put("org.zstack.sso.header.OAuth2TokenInventory", "org.zstack.sdk.OAuth2TokenInventory");
 			put("org.zstack.sso.header.RedirectUrlTemplate", "org.zstack.sdk.RedirectUrlTemplate");
-			put("org.zstack.sso.header.SSOClientInventory", "org.zstack.sdk.SSOClientInventory");
 			put("org.zstack.sso.header.SSORedirectTemplateInventory", "org.zstack.sdk.SSORedirectTemplateInventory");
 			put("org.zstack.sso.header.SSOTokenInventory", "org.zstack.sdk.SSOTokenInventory");
 			put("org.zstack.storage.backup.imagestore.ImageStoreBackupStorageInventory", "org.zstack.sdk.ImageStoreBackupStorageInventory");
@@ -783,7 +782,6 @@ public class SourceClassMap {
 			put("org.zstack.sdk.CCSCertificateAccountRefInventory", "org.zstack.crypto.ccs.CCSCertificateAccountRefInventory");
 			put("org.zstack.sdk.CCSCertificateInventory", "org.zstack.crypto.ccs.CCSCertificateInventory");
 			put("org.zstack.sdk.CasClientInventory", "org.zstack.sso.header.CasClientInventory");
-			put("org.zstack.sdk.CasState", "org.zstack.sso.header.CasState");
 			put("org.zstack.sdk.CdpPolicyInventory", "org.zstack.header.storage.cdp.CdpPolicyInventory");
 			put("org.zstack.sdk.CdpPolicyState", "org.zstack.header.storage.cdp.CdpPolicyState");
 			put("org.zstack.sdk.CdpTaskInventory", "org.zstack.header.storage.cdp.CdpTaskInventory");
@@ -1106,7 +1104,6 @@ public class SourceClassMap {
 			put("org.zstack.sdk.RouterAreaInventory", "org.zstack.header.protocol.RouterAreaInventory");
 			put("org.zstack.sdk.RunningState", "org.zstack.storage.device.localRaid.RunningState");
 			put("org.zstack.sdk.RunningTaskInfo", "org.zstack.header.core.progress.RunningTaskInfo");
-			put("org.zstack.sdk.SSOClientInventory", "org.zstack.sso.header.SSOClientInventory");
 			put("org.zstack.sdk.SSORedirectTemplateInventory", "org.zstack.sso.header.SSORedirectTemplateInventory");
 			put("org.zstack.sdk.SSOTokenInventory", "org.zstack.sso.header.SSOTokenInventory");
 			put("org.zstack.sdk.SchedulerJobGroupInventory", "org.zstack.header.scheduler.SchedulerJobGroupInventory");
@@ -1297,6 +1294,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.iam1.ensemble.AccountSharingView", "org.zstack.iam1.entity.ensemble.AccountSharingView");
 			put("org.zstack.sdk.iam1.ensemble.ResourceEnsembleInventory", "org.zstack.iam1.entity.ensemble.ResourceEnsembleInventory");
 			put("org.zstack.sdk.identity.imports.entity.AccountThirdPartyAccountSourceRefInventory", "org.zstack.identity.imports.entity.AccountThirdPartyAccountSourceRefInventory");
+			put("org.zstack.sdk.identity.imports.entity.ThirdPartyAccountSourceInventory", "org.zstack.identity.imports.entity.ThirdPartyAccountSourceInventory");
 			put("org.zstack.sdk.identity.imports.header.CleanStage", "org.zstack.identity.imports.header.SyncTaskResult$CleanStage");
 			put("org.zstack.sdk.identity.imports.header.ImportStage", "org.zstack.identity.imports.header.SyncTaskResult$ImportStage");
 			put("org.zstack.sdk.identity.imports.header.SyncTaskResult", "org.zstack.identity.imports.header.SyncTaskResult");

@@ -275,3 +275,44 @@ BEGIN
 SELECT CURTIME();
 END$$
 DELIMITER ;
+
+DROP PROCEDURE IF EXISTS `RENAME_TABLE`;
+DELIMITER $$
+CREATE PROCEDURE `RENAME_TABLE`(
+    IN old_name VARCHAR(64),
+    IN new_name VARCHAR(64)
+)
+BEGIN
+    DECLARE ALTER_SQL VARCHAR(1000);
+    IF EXISTS (SELECT * FROM information_schema.tables WHERE table_name = old_name AND table_schema = 'zstack') THEN
+        SET @alter_sql = CONCAT('RENAME TABLE zstack.', old_name, ' TO ', new_name);
+        SELECT @alter_sql;
+        PREPARE stmt FROM @alter_sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+    SELECT CURTIME();
+END $$
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS `DROP_FOREIGN_KEY`;
+DELIMITER $$
+CREATE PROCEDURE `DROP_FOREIGN_KEY`(
+    IN tb_name VARCHAR(64),
+    IN fk_name VARCHAR(64)
+)
+BEGIN
+    DECLARE alter_sql VARCHAR(1000);
+    IF EXISTS(SELECT * FROM information_schema.table_constraints
+            WHERE table_name = tb_name
+            AND table_schema = 'zstack'
+            AND constraint_name = fk_name) THEN
+        SET @alter_sql = CONCAT('ALTER TABLE zstack.', tb_name, ' DROP FOREIGN KEY ', fk_name);
+        SELECT @alter_sql;
+        PREPARE stmt FROM @alter_sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+    SELECT CURTIME();
+END $$
+DELIMITER ;

@@ -1,8 +1,24 @@
 package org.zstack.sdk;
 
-import org.zstack.sdk.CasState;
 
-public class CasClientInventory extends org.zstack.sdk.SSOClientInventory {
+
+public class CasClientInventory extends org.zstack.sdk.identity.imports.entity.ThirdPartyAccountSourceInventory {
+
+    public java.lang.String loginMNUrl;
+    public void setLoginMNUrl(java.lang.String loginMNUrl) {
+        this.loginMNUrl = loginMNUrl;
+    }
+    public java.lang.String getLoginMNUrl() {
+        return this.loginMNUrl;
+    }
+
+    public java.lang.String redirectUrl;
+    public void setRedirectUrl(java.lang.String redirectUrl) {
+        this.redirectUrl = redirectUrl;
+    }
+    public java.lang.String getRedirectUrl() {
+        return this.redirectUrl;
+    }
 
     public java.lang.String casServerLoginUrl;
     public void setCasServerLoginUrl(java.lang.String casServerLoginUrl) {
@@ -28,12 +44,20 @@ public class CasClientInventory extends org.zstack.sdk.SSOClientInventory {
         return this.serverName;
     }
 
-    public CasState state;
-    public void setState(CasState state) {
+    public java.lang.String state;
+    public void setState(java.lang.String state) {
         this.state = state;
     }
-    public CasState getState() {
+    public java.lang.String getState() {
         return this.state;
+    }
+
+    public java.lang.String usernameProperty;
+    public void setUsernameProperty(java.lang.String usernameProperty) {
+        this.usernameProperty = usernameProperty;
+    }
+    public java.lang.String getUsernameProperty() {
+        return this.usernameProperty;
     }
 
 }
