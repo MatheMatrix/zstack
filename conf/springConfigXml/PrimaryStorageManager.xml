@@ -176,4 +176,10 @@
             <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint" order="-2"/>
         </zstack:plugin>
     </bean>
+
+    <bean id="DefaultPrimaryStorageTrashLifeCycleExtension" class="org.zstack.storage.primary.DefaultPrimaryStorageTrashLifeCycleExtension" >
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.core.trash.StorageTrashLifeCycleExtensionPoint" order="-1"/>
+        </zstack:plugin>
+    </bean>
 </beans>
