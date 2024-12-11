@@ -34,14 +34,13 @@ import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
 import org.zstack.header.vo.ResourceVO;
 import org.zstack.header.volume.*;
 import org.zstack.utils.CollectionDSL;
+import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.DebugUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static org.zstack.core.Platform.inerr;
@@ -80,10 +79,10 @@ public class StorageRecycleImpl implements StorageTrash, VolumeSnapshotAfterDele
         vo.setStorageUuid(vol.getPrimaryStorageUuid());
         vo.setStorageType(PrimaryStorageVO.class.getSimpleName());
         vo.setTrashType(type.toString());
-        vo.setSize(vol.getSize());
+        vo.setSize(vol.getActualSize());
 
-        for (CreateRecycleExtensionPoint ext : pluginRgty.getExtensionList(CreateRecycleExtensionPoint.class)) {
-            ext.setHostUuid(vo, vol.getPrimaryStorageUuid());
+        for (StorageTrashLifeCycleExtensionPoint ext : pluginRgty.getExtensionList(StorageTrashLifeCycleExtensionPoint.class)) {
+            ext.beforeCreateTrash(vo);
         }
 
         vo = dbf.persistAndRefresh(vo);
@@ -118,8 +117,8 @@ public class StorageRecycleImpl implements StorageTrash, VolumeSnapshotAfterDele
         vo.setTrashType(type.toString());
         vo.setSize(snapshot.getSize());
 
-        for (CreateRecycleExtensionPoint ext : pluginRgty.getExtensionList(CreateRecycleExtensionPoint.class)) {
-            ext.setHostUuid(vo, snapshot.getPrimaryStorageUuid());
+        for (StorageTrashLifeCycleExtensionPoint ext : pluginRgty.getExtensionList(StorageTrashLifeCycleExtensionPoint.class)) {
+            ext.beforeCreateTrash(vo);
         }
 
         vo = dbf.persistAndRefresh(vo);
@@ -137,6 +136,22 @@ public class StorageRecycleImpl implements StorageTrash, VolumeSnapshotAfterDele
         } else {
             throw new OperationFailureException(inerr("non support resourceType to create trash"));
         }
+    }
+
+    public void decreaseCapacityAfterCreateTrash(List<InstallPathRecycleInventory> inventoryList) {
+        List<InstallPathRecycleInventory> trashToProcess = new ArrayList<>(inventoryList);
+        CollectionUtils.safeForEach(pluginRgty.getExtensionList(StorageTrashLifeCycleExtensionPoint.class), ext -> {
+            List<Long> trashList = ext.afterCreateTrash(trashToProcess);
+            trashToProcess.removeIf(t -> trashList.contains(t.getTrashId()));
+        });
+    }
+
+    public void increaseCapacityAfterRemoveTrash(List<InstallPathRecycleInventory> inventoryList) {
+        List<InstallPathRecycleInventory> trashToProcess = new ArrayList<>(inventoryList);
+        CollectionUtils.safeForEach(pluginRgty.getExtensionList(StorageTrashLifeCycleExtensionPoint.class), ext -> {
+            List<Long> trashList = ext.afterRemoveTrash(trashToProcess);
+            trashToProcess.removeIf(t -> trashList.contains(t.getTrashId()));
+        });
     }
 
     @Override

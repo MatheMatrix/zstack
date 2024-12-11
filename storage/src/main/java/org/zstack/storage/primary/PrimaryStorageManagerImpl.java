@@ -772,19 +772,19 @@ public class PrimaryStorageManagerImpl extends AbstractService implements Primar
     @Transactional
     private void releasePrimaryStorageSpaceMsg(ReleasePrimaryStorageSpaceMsg msg, NoErrorCompletion completion) {
         long diskSize = msg.isNoOverProvisioning() ? msg.getDiskSize() : ratioMgr.calculateByRatio(msg.getPrimaryStorageUuid(), msg.getDiskSize());
+        String psType = Q.New(PrimaryStorageVO.class).select(PrimaryStorageVO_.type)
+                .eq(PrimaryStorageVO_.uuid, msg.getPrimaryStorageUuid()).findValue();
+        PSCapacityExtensionPoint PSReserveCapacityExt = pluginRgty.getExtensionFromMap(psType, PSCapacityExtensionPoint.class);
+        if (PSReserveCapacityExt != null) {
+            PSReserveCapacityExt.releaseCapacity(msg.getAllocatedInstallUrl(), diskSize, msg.getPrimaryStorageUuid());
+        }
+
         PrimaryStorageCapacityUpdater updater = new PrimaryStorageCapacityUpdater(msg.getPrimaryStorageUuid());
         if (updater.increaseAvailableCapacity(diskSize)) {
             if (logger.isTraceEnabled()) {
                 logger.trace(String.format("Successfully return %s bytes to primary storage[uuid:%s]",
                         diskSize, msg.getPrimaryStorageUuid()));
             }
-        }
-
-        String psType = Q.New(PrimaryStorageVO.class).select(PrimaryStorageVO_.type)
-                .eq(PrimaryStorageVO_.uuid, msg.getPrimaryStorageUuid()).findValue();
-        PSCapacityExtensionPoint PSReserveCapacityExt = pluginRgty.getExtensionFromMap(psType, PSCapacityExtensionPoint.class);
-        if (PSReserveCapacityExt != null) {
-            PSReserveCapacityExt.releaseCapacity(msg.getAllocatedInstallUrl(), diskSize, msg.getPrimaryStorageUuid());
         }
         completion.done();
     }
