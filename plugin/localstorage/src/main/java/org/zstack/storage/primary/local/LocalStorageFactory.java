@@ -1,9 +1,7 @@
 package org.zstack.storage.primary.local;
 
 import com.google.common.collect.Lists;
-import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.compute.host.MigrateNetworkExtensionPoint;
 import org.zstack.compute.vm.*;
@@ -16,12 +14,10 @@ import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.errorcode.ErrorFacade;
-import org.zstack.core.trash.CreateRecycleExtensionPoint;
 import org.zstack.header.Component;
 import org.zstack.header.allocator.HostAllocatorError;
 import org.zstack.header.configuration.userconfig.DiskOfferingUserConfig;
 import org.zstack.header.core.*;
-import org.zstack.header.core.trash.InstallPathRecycleVO;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
@@ -50,14 +46,12 @@ import org.zstack.kvm.KVMConstant;
 import org.zstack.storage.primary.PrimaryStorageCapacityChecker;
 import org.zstack.storage.snapshot.PostMarkRootVolumeAsSnapshotExtension;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
-import org.zstack.storage.volume.ChangeVolumeInstallPathExtensionPoint;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
 
-import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -78,7 +72,7 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
         RecoverDataVolumeExtensionPoint, RecoverVmExtensionPoint, VmPreMigrationExtensionPoint, CreateTemplateFromVolumeSnapshotExtensionPoint,
         HostAfterConnectedExtensionPoint, InstantiateDataVolumeOnCreationExtensionPoint, PrimaryStorageAttachExtensionPoint,
         PostMarkRootVolumeAsSnapshotExtension, VolumeSnapshotCreationExtensionPoint, VmCapabilitiesExtensionPoint, PrimaryStorageDetachExtensionPoint,
-        CreateRecycleExtensionPoint, AfterInstantiateVolumeExtensionPoint, CreateDataVolumeExtensionPoint, OverwriteVolumeExtensionPoint {
+        AfterInstantiateVolumeExtensionPoint, CreateDataVolumeExtensionPoint, OverwriteVolumeExtensionPoint {
 
     private final static CLogger logger = Utils.getLogger(LocalStorageFactory.class);
     public static PrimaryStorageType type = new PrimaryStorageType(LocalStorageConstants.LOCAL_STORAGE_TYPE) {
@@ -1296,21 +1290,6 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
             LocalStorageSystemTags.LOCALSTORAGE_HOST_INITIALIZED.deleteInherentTag(hostUuid,
                     LocalStorageSystemTags.LOCALSTORAGE_HOST_INITIALIZED.instantiateTag(map(
                     e(LocalStorageSystemTags.LOCALSTORAGE_HOST_INITIALIZED_TOKEN, inventory.getUuid()))));
-        }
-    }
-
-    @Override
-    public void setHostUuid(InstallPathRecycleVO vo, String primaryStorageUuid) {
-        PrimaryStorageVO ps = dbf.findByUuid(primaryStorageUuid, PrimaryStorageVO.class);
-        if (!ps.getType().equals(LocalStorageConstants.LOCAL_STORAGE_TYPE)) {
-            return;
-        }
-        List<String> hostUuids = Q.New(LocalStorageResourceRefVO.class).
-                eq(LocalStorageResourceRefVO_.primaryStorageUuid, primaryStorageUuid).
-                eq(LocalStorageResourceRefVO_.resourceUuid, vo.getResourceUuid()).
-                select(LocalStorageResourceRefVO_.hostUuid).listValues();
-        if (!hostUuids.isEmpty()) {
-            vo.setHostUuid(hostUuids.get(0));
         }
     }
 

@@ -1834,11 +1834,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         chain.done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map data) {
-                IncreasePrimaryStorageCapacityMsg imsg = new IncreasePrimaryStorageCapacityMsg();
-                imsg.setPrimaryStorageUuid(self.getUuid());
-                imsg.setDiskSize(inv.getSize());
-                bus.makeTargetServiceIdByResourceUuid(imsg, PrimaryStorageConstant.SERVICE_ID, self.getUuid());
-                bus.send(imsg);
+                trash.increaseCapacityBeforeRemoveTrash(Collections.singletonList(trashId));
                 logger.info(String.format("Returned space[size:%s] to PS %s after volume migration", inv.getSize(), self.getUuid()));
                 trash.removeFromDb(trashId);
 
@@ -1929,11 +1925,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
             chain.done(new FlowDoneHandler(coml) {
                 @Override
                 public void handle(Map data) {
-                    IncreasePrimaryStorageCapacityMsg imsg = new IncreasePrimaryStorageCapacityMsg();
-                    imsg.setPrimaryStorageUuid(self.getUuid());
-                    imsg.setDiskSize(inv.getSize());
-                    bus.makeTargetServiceIdByResourceUuid(imsg, PrimaryStorageConstant.SERVICE_ID, self.getUuid());
-                    bus.send(imsg);
+                    trash.increaseCapacityBeforeRemoveTrash(Collections.singletonList(inv.getTrashId()));
                     logger.info(String.format("Returned space[size:%s] to PS %s after volume migration", inv.getSize(), self.getUuid()));
 
                     results.add(new TrashCleanupResult(inv.getResourceUuid(), inv.getTrashId(), inv.getSize()));
@@ -3315,7 +3307,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                         .findValue();
                 reply.setActualSize(asize);
                 reply.setSize(rsp.size);
-                reply.setWithInternalSnapshot(true);
+                reply.setSupportInternalSnapshot(true);
                 bus.reply(msg, reply);
             }
 

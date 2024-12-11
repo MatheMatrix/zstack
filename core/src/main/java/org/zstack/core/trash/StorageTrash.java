@@ -20,5 +20,9 @@ public interface StorageTrash {
     List<String> findTrashInstallPath(String installPath, String storageUuid);
     Long getTrashId(String storageUuid, String installPath);
 
+    void decreaseCapacityAfterCreateTrash(List<Long> trashIds);
+
+    void increaseCapacityBeforeRemoveTrash(List<Long> trashIds);
+
     void removeFromDb(Long trashId);
 }

@@ -1054,11 +1054,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
             public void run(MessageReply reply) {
                 if (reply.isSuccess()) {
                     logger.info(String.format("Deleted volume %s in Trash.", inv.getInstallPath()));
-                    IncreasePrimaryStorageCapacityMsg imsg = new IncreasePrimaryStorageCapacityMsg();
-                    imsg.setPrimaryStorageUuid(self.getUuid());
-                    imsg.setDiskSize(inv.getSize());
-                    bus.makeTargetServiceIdByResourceUuid(imsg, PrimaryStorageConstant.SERVICE_ID, self.getUuid());
-                    bus.send(imsg);
+                    trash.increaseCapacityBeforeRemoveTrash(Collections.singletonList(trashId));
                     trash.removeFromDb(trashId);
                     logger.info(String.format("Returned space[size:%s] to PS %s after volume migration", inv.getSize(), self.getUuid()));
                     completion.success(new TrashCleanupResult(inv.getResourceUuid(), inv.getTrashId(), inv.getSize()));

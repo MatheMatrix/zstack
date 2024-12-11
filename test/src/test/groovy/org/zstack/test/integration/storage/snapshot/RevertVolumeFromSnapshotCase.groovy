@@ -12,6 +12,7 @@ import org.zstack.sdk.VolumeInventory
 import org.zstack.sdk.VolumeSnapshotInventory
 import org.zstack.storage.primary.local.LocalStorageResourceRefVO
 import org.zstack.storage.primary.local.LocalStorageResourceRefVO_
+import org.zstack.storage.volume.VolumeUtils
 import org.zstack.test.integration.ldap.Env
 import org.zstack.test.integration.storage.StorageTest
 import org.zstack.testlib.EnvSpec
@@ -67,9 +68,9 @@ STEP:
         root = queryVolume {
             conditions = ["uuid=${vm.rootVolumeUuid}"]
         }[0] as VolumeInventory
+        long snapshotSize = VolumeUtils.calculateSnapshotSizeByVolume(root.uuid)
 
         def installPath = root.installPath
-        def size = root.size
 
         revertVolumeFromSnapshot {
             uuid = s1.uuid
@@ -94,14 +95,13 @@ STEP:
 
         def trash = bean(StorageTrash.class)
         def trashs = trash.getTrashList(root.primaryStorageUuid) as List<InstallPathRecycleInventory>
-
         assert trashs.size() > 0
 
         def trashed = false
         trashs.each { t ->
             if (t.resourceUuid == vm.rootVolumeUuid) {
                 assert t.installPath == installPath
-                assert t.size == size + 1
+                assert t.size == root.actualSize - snapshotSize
                 assert t.trashType == TrashType.RevertVolume.toString()
                 trashed = true
             }
