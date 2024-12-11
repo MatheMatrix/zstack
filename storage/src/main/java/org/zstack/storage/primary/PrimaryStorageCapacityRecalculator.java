@@ -8,6 +8,9 @@ import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.errorcode.ErrorFacade;
+import org.zstack.header.core.trash.InstallPathRecycleInventory;
+import org.zstack.header.core.trash.InstallPathRecycleVO;
+import org.zstack.header.core.trash.InstallPathRecycleVO_;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.volume.VolumeStatus;
@@ -129,6 +132,30 @@ public class PrimaryStorageCapacityRecalculator {
                     for (Tuple t : ts) {
                         if (t.get(0, Long.class) == null) {
                             // no snapshot
+                            continue;
+                        }
+
+                        long cap = t.get(0, Long.class);
+                        String psUuid = t.get(1, String.class);
+                        Long ncap = psCap.get(psUuid);
+                        ncap = ncap == null ? cap : ncap + cap;
+                        psCap.put(psUuid, ncap);
+                    }
+                }
+
+                // calculate all trash size
+                {
+                    String sql = "select sum(trash.size), trash.storageUuid" +
+                            " from InstallPathRecycleVO trash" +
+                            " where trash.storageUuid in (:psUuids)" +
+                            " group by trash.storageUuid";
+                    TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
+                    q.setParameter("psUuids", psUuids);
+                    List<Tuple> ts = q.getResultList();
+
+                    for (Tuple t : ts) {
+                        if (t.get(0, Long.class) == null) {
+                            // no trash
                             continue;
                         }
 

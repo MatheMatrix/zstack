@@ -35,4 +35,10 @@
             <zstack:extension interface="org.zstack.header.storage.snapshot.VolumeSnapshotAfterDeleteExtensionPoint"/>
         </zstack:plugin>
     </bean>
+
+    <bean id="DefaultPrimaryStorageTrashLifeCycleExtension" class="org.zstack.core.trash.DefaultPrimaryStorageTrashLifeCycleExtension" >
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.core.trash.StorageTrashLifeCycleExtensionPoint" order="-1"/>
+        </zstack:plugin>
+    </bean>
 </beans>

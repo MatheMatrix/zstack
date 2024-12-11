@@ -8,6 +8,7 @@ import org.zstack.header.message.MessageReply;
 public class SyncVolumeSizeReply extends MessageReply {
     private long actualSize;
     private long size;
+    private Long independentSnapshotSize;
 
     public long getSize() {
         return size;
@@ -23,5 +24,13 @@ public class SyncVolumeSizeReply extends MessageReply {
 
     public void setActualSize(long actualSize) {
         this.actualSize = actualSize;
+    }
+
+    public Long getIndependentSnapshotSize() {
+        return independentSnapshotSize;
+    }
+
+    public void setIndependentSnapshotSize(Long independentSnapshotSize) {
+        this.independentSnapshotSize = independentSnapshotSize;
     }
 }

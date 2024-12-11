@@ -87,6 +87,29 @@ public class LocalStorageCapacityRecalculator {
             hostCap.put(huuid, ncap);
         }
 
+        // count trash
+        sql = "select sum(trash.size), trash.hostUuid" +
+                " from InstallPathRecycleVO trash" +
+                " where trash.storageUuid = :psUuid" +
+                " and trash.hostUuid in :huuids" +
+                " group by trash.hostUuid";
+        TypedQuery<Tuple> trashTypeQuery = dbf.getEntityManager().createQuery(sql, Tuple.class);
+        trashTypeQuery.setParameter("psUuid", psUuid);
+        trashTypeQuery.setParameter("huuids", huuids);
+        List<Tuple> trashList = trashTypeQuery.getResultList();
+        for (Tuple t : trashList) {
+            if (t.get(0, Long.class) == null) {
+                // no trash
+                continue;
+            }
+
+            long cap = t.get(0, Long.class);
+            String huuid = t.get(1, String.class);
+            Long ncap = hostCap.get(huuid);
+            ncap = ncap == null ? cap : ncap + cap;
+            hostCap.put(huuid, ncap);
+        }
+
         // count imageCache
         for (String huuid : huuids) {
             // note: templates in image cache are physical size
