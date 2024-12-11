@@ -45,6 +45,8 @@ public class H3cVcfcCommands {
         String id;
         String name;
         String tenant_id;
+        String tenant_name;
+        String vds_name;
         Boolean distributed;
         String network_type;
         String original_network_type;
