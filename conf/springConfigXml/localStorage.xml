@@ -36,7 +36,6 @@
             <zstack:extension interface="org.zstack.header.storage.snapshot.AfterTakeLiveSnapshotsOnVolumes"/>
             <zstack:extension interface="org.zstack.compute.vm.VmCapabilitiesExtensionPoint"/>
             <zstack:extension interface="org.zstack.header.storage.primary.PrimaryStorageDetachExtensionPoint"/>
-            <zstack:extension interface="org.zstack.core.trash.CreateRecycleExtensionPoint"/>
             <zstack:extension interface="org.zstack.header.volume.AfterInstantiateVolumeExtensionPoint"/>
         </zstack:plugin>
     </bean>
@@ -141,4 +140,11 @@
             <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint" order="-2"/>
         </zstack:plugin>
     </bean>
+
+    <bean id="LocalPrimaryStorageTrashLifeCycleExtension" class="org.zstack.storage.primary.local.LocalPrimaryStorageTrashLifeCycleExtension">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.core.trash.StorageTrashLifeCycleExtensionPoint"/>
+        </zstack:plugin>
+    </bean>
+
 </beans>
