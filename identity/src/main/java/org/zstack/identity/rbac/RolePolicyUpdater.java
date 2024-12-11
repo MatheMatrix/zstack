@@ -136,7 +136,7 @@ public class RolePolicyUpdater {
 
         public void add(RolePolicyStatement statement) {
             renovate();
-            vos.addAll(statement.toVO());
+            vos.add(statement.toVO());
         }
 
         private void renovate() {

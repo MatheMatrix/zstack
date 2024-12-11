@@ -28,6 +28,7 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -36,6 +37,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.err;
+import static org.zstack.header.identity.AccountConstant.POLICY_RESOURCE_READABLE;
+import static org.zstack.header.identity.AccountConstant.SPECIAL_POLICIES;
 import static org.zstack.utils.CollectionDSL.list;
 import static org.zstack.utils.CollectionUtils.isEmpty;
 
@@ -233,6 +236,10 @@ public class RBACManagerImpl extends AbstractService implements
 
         for (RolePolicyStatement policy : policies) {
             String action = policy.actions;
+            if (SPECIAL_POLICIES.contains(action)) {
+                continue;
+            }
+
             String path = action.endsWith("**") ? action.substring(0, action.length() - 2) :
                     action.endsWith("*") ? action.substring(0, action.length() - 1) : action;
             Matcher m = pattern.matcher(path);

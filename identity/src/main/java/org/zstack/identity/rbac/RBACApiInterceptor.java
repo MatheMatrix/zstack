@@ -6,6 +6,7 @@ import org.zstack.core.db.Q;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.ApiMessageInterceptor;
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.errorcode.ErrorableValue;
 import org.zstack.header.identity.IdentityErrors;
 import org.zstack.header.identity.role.RoleAccountRefVO;
 import org.zstack.header.identity.role.RoleAccountRefVO_;
@@ -19,21 +20,13 @@ import org.zstack.header.identity.role.api.APIDeleteRoleMsg;
 import org.zstack.header.identity.role.api.APIUpdateRoleMsg;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIMessage;
-import org.zstack.header.vo.ResourceVO;
-import org.zstack.header.vo.ResourceVO_;
 
-import javax.persistence.Tuple;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.err;
 import static org.zstack.utils.CollectionDSL.list;
-import static org.zstack.utils.CollectionUtils.findOneOrNull;
-import static org.zstack.utils.CollectionUtils.isEmpty;
 
 public class RBACApiInterceptor implements ApiMessageInterceptor {
     @Autowired
@@ -86,62 +79,20 @@ public class RBACApiInterceptor implements ApiMessageInterceptor {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private List<RolePolicyStatement> transformPolicies(List<Object> policies) {
-        if (isEmpty(policies)) {
-            return Collections.emptyList();
-        }
-
-        List<RolePolicyStatement> results = new ArrayList<>(policies.size());
-        for (Object policy : policies) {
-            if (policy instanceof String) {
-                RolePolicyStatement result = RolePolicyStatement.valueOf((String) policy);
-                if (result == null || result.actions == null) {
-                    throw new ApiMessageInterceptionException(argerr("invalid role policy: " + policy));
-                }
-
-                results.add(result);
-            } else if (policy instanceof Map) {
-                List<RolePolicyStatement> result = RolePolicyStatement.valueOf((Map<String, Object>) policy);
-                if (isEmpty(result) || findOneOrNull(result, s -> s.actions == null) != null) {
-                    throw new ApiMessageInterceptionException(argerr("invalid role policy: " + policy));
-                }
-
-                results.addAll(result);
-            } else {
-                throw new ApiMessageInterceptionException(argerr("invalid role policy: " + policy));
-            }
-        }
-
-        Map<String, List<RolePolicyStatement.Resource>> resourceMap = results.stream()
-                .flatMap(statement -> statement.resources.stream())
-                .collect(Collectors.groupingBy(resource -> resource.uuid));
-        if (!resourceMap.isEmpty()) {
-            List<Tuple> tuples = Q.New(ResourceVO.class)
-                    .select(ResourceVO_.uuid, ResourceVO_.resourceType)
-                    .in(ResourceVO_.uuid, resourceMap.keySet())
-                    .listTuple();
-            if (resourceMap.size() != tuples.size()) {
-                for (Tuple tuple : tuples) {
-                    resourceMap.remove(tuple.get(0, String.class));
-                }
-                throw new ApiMessageInterceptionException(err(IdentityErrors.INVALID_ROLE_POLICY,
-                        "invalid role policy resource: resource[uuid:%s] is not found",
-                        resourceMap.keySet()));
-            }
-
-            for (Tuple tuple : tuples) {
-                resourceMap.get(tuple.get(0, String.class)).forEach(it -> it.resourceType = tuple.get(1, String.class));
-            }
+        final RolePolicyParser parser = new RolePolicyParser();
+        final ErrorableValue<List<RolePolicyStatement>> value = parser.parse(policies);
+        if (!value.isSuccess()) {
+            throw new ApiMessageInterceptionException(value.error);
         }
 
         for (RolePolicyChecker checker : policyCheckers) {
-            final ErrorCode errorCode = checker.checkRolePolicies(results);
+            final ErrorCode errorCode = checker.checkRolePolicies(value.result);
             if (errorCode != null) {
                 throw new ApiMessageInterceptionException(errorCode);
             }
         }
 
-        return results;
+        return value.result;
     }
 }
