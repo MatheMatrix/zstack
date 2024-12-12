@@ -107,10 +107,6 @@ public class RBACResourceRequestChecker implements APIRequestChecker {
                     return;
                 }
 
-                if (info.getTargetResources().isEmpty()) {
-                    return;
-                }
-
                 if (message instanceof APISyncCallMessage) {
                     // no check to read api
                     return;

@@ -11,26 +11,24 @@ import java.util.Set;
 
 public class ResourceTypeMetadata {
     public static Map<Class, Class> concreteBaseTypeMapping = new HashMap<>();
-    public static Set<Class> allResourceTypes = new HashSet<>();
     public static Set<Class> allBaseResourceTypes = new HashSet<>();
     public static Map<String, Class<?>> nameResourceMap = new HashMap<>();
 
     @StaticInit
     static void staticInit() {
-        BeanUtils.reflections.getTypesAnnotatedWith(BaseResource.class).forEach(bclz -> {
-            BaseResource at = bclz.getAnnotation(BaseResource.class);
-            if (at == null) {
-                return;
+        BeanUtils.reflections.getSubTypesOf(ResourceVO.class).forEach(resourceType -> {
+            nameResourceMap.put(resourceType.getSimpleName(), resourceType);
+
+            BaseResource at = resourceType.getAnnotation(BaseResource.class);
+            if (at != null) {
+                BeanUtils.reflections.getSubTypesOf(resourceType)
+                        .forEach(subType -> concreteBaseTypeMapping.put(subType, resourceType));
             }
 
-            BeanUtils.reflections.getSubTypesOf(bclz).forEach(cclz -> {
-                concreteBaseTypeMapping.put(cclz, bclz);
-            });
+            if (OwnedByAccount.class.isAssignableFrom(resourceType)) {
+                allBaseResourceTypes.add(getBaseResourceTypeFromConcreteType(resourceType));
+            }
         });
-
-        allResourceTypes.addAll(BeanUtils.reflections.getSubTypesOf(OwnedByAccount.class));
-        allResourceTypes.forEach(clz-> allBaseResourceTypes.add(getBaseResourceTypeFromConcreteType(clz)));
-        allResourceTypes.forEach(clz -> nameResourceMap.put(clz.getSimpleName(), clz));
     }
 
     public static Set<Class> getAllBaseTypes() {
