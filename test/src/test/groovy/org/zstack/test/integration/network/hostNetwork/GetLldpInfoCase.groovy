@@ -3,11 +3,13 @@ package org.zstack.test.integration.network.hostNetwork
 import org.springframework.http.HttpEntity
 import org.zstack.core.Platform
 import org.zstack.core.db.DatabaseFacade
+import org.zstack.core.db.Q
 import org.zstack.core.db.SQL
 import org.zstack.network.hostNetworkInterface.HostNetworkInterfaceVO
 import org.zstack.network.hostNetworkInterface.lldp.LldpConstant
 import org.zstack.network.hostNetworkInterface.lldp.LldpInfoStruct
 import org.zstack.network.hostNetworkInterface.lldp.LldpKvmAgentCommands
+import org.zstack.network.hostNetworkInterface.lldp.entity.HostNetworkInterfaceLldpRefVO_
 import org.zstack.network.hostNetworkInterface.lldp.entity.HostNetworkInterfaceLldpVO
 import org.zstack.network.hostNetworkInterface.lldp.entity.HostNetworkInterfaceLldpVO_
 import org.zstack.network.hostNetworkInterface.lldp.entity.HostNetworkInterfaceLldpRefVO
@@ -130,7 +132,7 @@ class GetLldpInfoCase extends SubCase {
             reply.lldpInfo.chassisId = "mac 00:1e:08:1d:05:ba"
             reply.lldpInfo.timeToLive = 120
             reply.lldpInfo.managementAddress = "172.25.2.4"
-            reply.lldpInfo.systemName = "BM-MN-3"
+            reply.lldpInfo.systemName = "JBM1-1F-11-34U-DC0FF-CESHI-93180-S01.vivo.xyz"
             reply.lldpInfo.systemDescription = "CentecOS software, E530, Version 7.4.7 Copyright (C) 2004-2021 Centec Networks Inc.  All Rights Reserved."
             reply.lldpInfo.systemCapabilities = "Bridge, on  Router, on"
             reply.lldpInfo.portId = "ifname eth-0-5"
@@ -145,7 +147,10 @@ class GetLldpInfoCase extends SubCase {
             interfaceUuid = TEST_UUID
         } as GetHostNetworkInterfaceLldpResult
 
+        assert ms.lldp.systemName == "JBM1-1F-11-34U-DC0FF-CESHI-93180-S01.vivo.xyz"
         assert ms.lldp.portId == "ifname eth-0-5"
+
+        assert Q.New(HostNetworkInterfaceLldpRefVO.class).eq(HostNetworkInterfaceLldpRefVO_.systemName, "JBM1-1F-11-34U-DC0FF-CESHI-93180-S01.vivo.xyz").isExists()
 
         HostNetworkInterfaceVO vo1 = new HostNetworkInterfaceVO();
         vo1.setUuid(TEST_UUID_2)
