@@ -3,6 +3,10 @@ package org.zstack.header.identity;
 import org.zstack.header.configuration.PythonClass;
 import org.zstack.header.rest.RestAuthenticationType;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 @PythonClass
 public interface AccountConstant {
     String SERVICE_ID = "identity";
@@ -32,6 +36,10 @@ public interface AccountConstant {
     String LOGIN_TYPE = "account";
     String LOGIN_TYPE_AUTHENTICATIONS_KEY = "authentications";
     String POLICY_BASE_PACKAGE = "org.zstack.";
+    String POLICY_RESOURCE_READABLE = "resource.readable";
+    Set<String> SPECIAL_POLICIES = new HashSet<>(Arrays.asList(
+            POLICY_RESOURCE_READABLE
+    ));
 
     String NO_EXIST_ACCOUNT ="no-exist-account:::%s";
 

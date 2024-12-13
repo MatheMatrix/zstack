@@ -2,6 +2,8 @@ package org.zstack.identity.rbac;
 
 import org.zstack.core.Platform;
 import org.zstack.core.db.Q;
+import org.zstack.header.errorcode.ErrorableValue;
+import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.identity.role.RolePolicyStatement;
 import org.zstack.header.identity.role.RolePolicyVO;
 import org.zstack.header.identity.role.RolePolicyVO_;
@@ -12,8 +14,6 @@ import org.zstack.header.identity.role.api.APIUpdateRoleMsg;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.zstack.utils.CollectionUtils.*;
 
 public class RoleSpec {
     private String uuid;
@@ -105,7 +105,13 @@ public class RoleSpec {
             List<RolePolicyVO> basePolicies = Q.New(RolePolicyVO.class)
                     .eq(RolePolicyVO_.roleUuid, message.getBaseOnRole())
                     .list();
-            spec.getPoliciesToCreate().addAll(transform(basePolicies, RolePolicyStatement::valueOf));
+
+            RolePolicyParser parser = new RolePolicyParser();
+            ErrorableValue<List<RolePolicyStatement>> value = parser.parse(new ArrayList<>(basePolicies));
+            if (!value.isSuccess()) {
+                throw new OperationFailureException(value.error);
+            }
+            spec.getPoliciesToCreate().addAll(value.result);
         }
         spec.getPoliciesToCreate().addAll(message.getFormatPolicies());
         return spec;
