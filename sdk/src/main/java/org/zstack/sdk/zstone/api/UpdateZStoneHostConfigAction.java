@@ -28,12 +28,6 @@ public class UpdateZStoneHostConfigAction extends AbstractAction {
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String uuid;
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String hostUsername;
-
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String hostPassword;
-
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public int hostPort = 22;
 
