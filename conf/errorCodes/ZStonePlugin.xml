@@ -20,4 +20,9 @@
         <id>1003</id>
         <description>ZStone API operation fail</description>
     </code>
+
+    <code>
+        <id>3001</id>
+        <description>ZStone configuration error</description>
+    </code>
 </error>
