@@ -488,6 +488,8 @@ public class SourceClassMap {
 			put("org.zstack.network.l2.vxlan.vxlanNetwork.L2VxlanNetworkInventory", "org.zstack.sdk.L2VxlanNetworkInventory");
 			put("org.zstack.network.l2.vxlan.vxlanNetworkPool.L2VxlanNetworkPoolInventory", "org.zstack.sdk.L2VxlanNetworkPoolInventory");
 			put("org.zstack.network.l2.vxlan.vxlanNetworkPool.VniRangeInventory", "org.zstack.sdk.VniRangeInventory");
+			put("org.zstack.network.ovn.OvnControllerVmInstanceInventory", "org.zstack.sdk.OvnControllerVmInstanceInventory");
+			put("org.zstack.network.ovn.OvnControllerVmOfferingInventory", "org.zstack.sdk.OvnControllerVmOfferingInventory");
 			put("org.zstack.network.securitygroup.SecurityGroupIngressRuleTO", "org.zstack.sdk.SecurityGroupIngressRuleTO");
 			put("org.zstack.network.securitygroup.SecurityGroupInventory", "org.zstack.sdk.SecurityGroupInventory");
 			put("org.zstack.network.securitygroup.SecurityGroupRuleInventory", "org.zstack.sdk.SecurityGroupRuleInventory");
@@ -576,7 +578,9 @@ public class SourceClassMap {
 			put("org.zstack.resourceconfig.ResourceConfigInventory", "org.zstack.sdk.ResourceConfigInventory");
 			put("org.zstack.resourceconfig.ResourceConfigStruct", "org.zstack.sdk.ResourceConfigStruct");
 			put("org.zstack.sdnController.header.HardwareL2VxlanNetworkPoolInventory", "org.zstack.sdk.HardwareL2VxlanNetworkPoolInventory");
+			put("org.zstack.sdnController.header.SdnControllerHostRefInventory", "org.zstack.sdk.SdnControllerHostRefInventory");
 			put("org.zstack.sdnController.header.SdnControllerInventory", "org.zstack.sdk.SdnControllerInventory");
+			put("org.zstack.sdnController.header.SdnControllerStatus", "org.zstack.sdk.SdnControllerStatus");
 			put("org.zstack.sdnController.header.SdnVniRange", "org.zstack.sdk.SdnVniRange");
 			put("org.zstack.snmp.agent.SnmpAgentInventory", "org.zstack.sdk.SnmpAgentInventory");
 			put("org.zstack.sns.SNSAliyunSmsEndpointInventory", "org.zstack.sdk.sns.SNSAliyunSmsEndpointInventory");
@@ -1137,6 +1141,8 @@ public class SourceClassMap {
 			put("org.zstack.sdk.OvfOSInfo", "org.zstack.ovf.datatype.OvfOSInfo");
 			put("org.zstack.sdk.OvfSystemInfo", "org.zstack.ovf.datatype.OvfSystemInfo");
 			put("org.zstack.sdk.OvfVolumeInfo", "org.zstack.ovf.datatype.OvfVolumeInfo");
+			put("org.zstack.sdk.OvnControllerVmInstanceInventory", "org.zstack.network.ovn.OvnControllerVmInstanceInventory");
+			put("org.zstack.sdk.OvnControllerVmOfferingInventory", "org.zstack.network.ovn.OvnControllerVmOfferingInventory");
 			put("org.zstack.sdk.PacketsForwardType", "org.zstack.vpcfirewall.entity.PacketsForwardType");
 			put("org.zstack.sdk.Pagination", "org.zstack.billing.Pagination");
 			put("org.zstack.sdk.PciDeviceBillingInventory", "org.zstack.billing.generator.pcidevice.PciDeviceBillingInventory");
@@ -1243,7 +1249,9 @@ public class SourceClassMap {
 			put("org.zstack.sdk.ScsiLunHostRefInventory", "org.zstack.header.storageDevice.ScsiLunHostRefInventory");
 			put("org.zstack.sdk.ScsiLunInventory", "org.zstack.header.storageDevice.ScsiLunInventory");
 			put("org.zstack.sdk.ScsiLunVmInstanceRefInventory", "org.zstack.header.storageDevice.ScsiLunVmInstanceRefInventory");
+			put("org.zstack.sdk.SdnControllerHostRefInventory", "org.zstack.sdnController.header.SdnControllerHostRefInventory");
 			put("org.zstack.sdk.SdnControllerInventory", "org.zstack.sdnController.header.SdnControllerInventory");
+			put("org.zstack.sdk.SdnControllerStatus", "org.zstack.sdnController.header.SdnControllerStatus");
 			put("org.zstack.sdk.SdnVniRange", "org.zstack.sdnController.header.SdnVniRange");
 			put("org.zstack.sdk.SecretResourcePoolInventory", "org.zstack.header.securitymachine.SecretResourcePoolInventory");
 			put("org.zstack.sdk.SecurityGroupIngressRuleTO", "org.zstack.network.securitygroup.SecurityGroupIngressRuleTO");

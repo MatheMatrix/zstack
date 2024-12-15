@@ -1,9 +1,6 @@
 package org.zstack.sdnController;
 
 import org.zstack.header.core.Completion;
-import org.zstack.header.identity.AccountInventory;
-import org.zstack.header.network.l2.L2NetworkVO;
-import org.zstack.header.network.l3.*;
 import org.zstack.network.l2.vxlan.vxlanNetwork.L2VxlanNetworkInventory;
 import org.zstack.sdnController.header.*;
 
@@ -17,7 +14,7 @@ public interface SdnController {
      */
     void preInitSdnController(APIAddSdnControllerMsg msg, Completion completion);
     void initSdnController(APIAddSdnControllerMsg msg, Completion completion);
-    void postInitSdnController(APIAddSdnControllerMsg msg, Completion completion);
+    void postInitSdnController(SdnControllerVO vo, Completion completion);
 
     void preCreateVxlanNetwork(L2VxlanNetworkInventory vxlan, List<String> systemTags, Completion completion);
     void createVxlanNetwork(L2VxlanNetworkInventory vxlan, List<String> systemTags, Completion completion);
@@ -33,4 +30,7 @@ public interface SdnController {
 
     List<SdnVniRange> getVniRange(SdnControllerInventory controller);
     List<SdnVlanRange> getVlanRange(SdnControllerInventory controller);
+
+    default void addHost(APISdnControllerAddHostMsg msg, Completion completion) {completion.success();};
+    default void removeHost(APISdnControllerRemoveHostHostMsg msg, Completion completion) {completion.success();};
 }

@@ -20,6 +20,7 @@ public interface VmInstanceConstant {
 
     String VM_SYNC_SIGNATURE_PREFIX = "Vm-";
 
+    String L2_TF_VSWITCH_TYPE = "TfL2Network";
     String TF_VIRTUAL_NIC_TYPE = "TFVNIC";
 
     enum Params {

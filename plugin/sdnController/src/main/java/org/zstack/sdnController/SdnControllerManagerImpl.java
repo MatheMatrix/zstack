@@ -1,5 +1,6 @@
 package org.zstack.sdnController;
 
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.Platform;
 import org.zstack.core.asyncbatch.While;
@@ -10,6 +11,7 @@ import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
+import org.zstack.core.db.SQL;
 import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
@@ -23,10 +25,12 @@ import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.exception.CloudRuntimeException;
+import org.zstack.header.host.HypervisorType;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l2.*;
+import org.zstack.header.zone.ZoneVO;
 import org.zstack.sdnController.header.*;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.Utils;
@@ -77,7 +81,78 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             handle((APIUpdateSdnControllerMsg) msg);
         } else if (msg instanceof SdnControllerDeletionMsg) {
             handle((SdnControllerDeletionMsg) msg);
+        } else if (msg instanceof APISdnControllerAddHostMsg) {
+            handle((APISdnControllerAddHostMsg) msg);
+        } else if (msg instanceof APISdnControllerRemoveHostHostMsg) {
+            handle((APISdnControllerRemoveHostHostMsg) msg);
         }
+    }
+
+    private void handle(APISdnControllerAddHostMsg msg) {
+        APISdnControllerAddHostEvent event = new APISdnControllerAddHostEvent(msg.getId());
+
+        sdnControllerAddHost(msg, new Completion(msg) {
+            @Override
+            public void success() {
+                SdnControllerHostRefVO ref = new SdnControllerHostRefVO();
+                ref.setSdnControllerUuid(msg.getSdnControllerUuid());
+                ref.setHostUuid(msg.getHostUuid());
+                ref.setVswitchType(msg.getvSwitchType());
+                ref.setPhysicalNics(String.join(",", msg.getNicNames()));
+                if (msg.getVtepIp() != null) {
+                    ref.setVtepIp(msg.getVtepIp());
+                }
+                dbf.persist(ref);
+
+                event.setInventory(SdnControllerInventory.valueOf(dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class)));
+                bus.publish(event);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                event.setError(errorCode);
+                bus.publish(event);
+            }
+        });
+    }
+
+    private void handle(APISdnControllerRemoveHostHostMsg msg) {
+        APISdnControllerRemoveHostHostEvent event = new APISdnControllerRemoveHostHostEvent(msg.getId());
+
+        sdnControllerRemoveHost(msg, new Completion(msg) {
+            @Override
+            public void success() {
+                SQL.New(SdnControllerHostRefVO.class)
+                        .eq(SdnControllerHostRefVO_.sdnControllerUuid, msg.getSdnControllerUuid())
+                        .eq(SdnControllerHostRefVO_.hostUuid, msg.getHostUuid())
+                        .eq(SdnControllerHostRefVO_.vswitchType, msg.getvSwitchType()).delete();
+
+                event.setInventory(SdnControllerInventory.valueOf(dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class)));
+                bus.publish(event);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                event.setError(errorCode);
+                bus.publish(event);
+            }
+        });
+    }
+
+    private void sdnControllerAddHost(APISdnControllerAddHostMsg msg, Completion completion) {
+        SdnControllerVO controllerVO = dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class);
+        SdnControllerFactory factory = getSdnControllerFactory(controllerVO.getVendorType());
+        SdnController controller = factory.getSdnController(controllerVO);
+
+        controller.addHost(msg, completion);
+    }
+
+    private void sdnControllerRemoveHost(APISdnControllerRemoveHostHostMsg msg, Completion completion) {
+        SdnControllerVO controllerVO = dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class);
+        SdnControllerFactory factory = getSdnControllerFactory(controllerVO.getVendorType());
+        SdnController controller = factory.getSdnController(controllerVO);
+
+        controller.removeHost(msg, completion);
     }
 
     private void doDeletionSdnController(SdnControllerDeletionMsg msg, Completion completion) {
@@ -259,7 +334,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        controller.postInitSdnController(msg, new Completion(trigger) {
+                        controller.postInitSdnController(vo, new Completion(trigger) {
                             @Override
                             public void success() {
                                 trigger.next();
@@ -305,6 +380,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         vo.setUsername(msg.getUserName());
         vo.setPassword(msg.getPassword());
         vo.setAccountUuid(msg.getSession().getAccountUuid());
+        vo.setStatus(SdnControllerStatus.Connected);
 
         doCreateSdnController(vo, msg, new Completion(msg) {
             @Override

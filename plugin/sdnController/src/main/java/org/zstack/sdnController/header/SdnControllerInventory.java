@@ -15,10 +15,6 @@ import java.util.List;
 import java.util.Map;
 
 @Inventory(mappingVOClass = SdnControllerVO.class)
-@ExpandedQueries({
-        @ExpandedQuery(expandedField = "vxlanPool", inventoryClass = HardwareL2VxlanNetworkPoolInventory.class,
-                foreignKey = "uuid", expandedInventoryKey = "sdnControllerUuid"),
-})
 @PythonClassInventory
 public class SdnControllerInventory implements Serializable {
     private String uuid;
@@ -29,10 +25,12 @@ public class SdnControllerInventory implements Serializable {
     private String username;
     @NoLogging
     private String password;
+    private SdnControllerStatus status;
     private Timestamp createDate;
     private Timestamp lastOpDate;
     private List<SdnVniRange> vniRanges;
     private List<HardwareL2VxlanNetworkPoolInventory> vxlanPools;
+    private List<SdnControllerHostRefInventory> hostRefs;
 
     public static SdnControllerInventory valueOf(SdnControllerVO vo) {
         SdnControllerInventory inv = new SdnControllerInventory();
@@ -43,6 +41,7 @@ public class SdnControllerInventory implements Serializable {
         inv.setIp(vo.getIp());
         inv.setUsername(vo.getUsername());
         inv.setPassword(vo.getPassword());
+        inv.setStatus(vo.getStatus());
         inv.setCreateDate(vo.getCreateDate());
         inv.setLastOpDate(vo.getLastOpDate());
         inv.vniRanges = new ArrayList<>();
@@ -56,6 +55,7 @@ public class SdnControllerInventory implements Serializable {
             }
         }
         inv.setVxlanPools(HardwareL2VxlanNetworkPoolInventory.valueOf2(vo.getVxlanPools()));
+        inv.setHostRefs(SdnControllerHostRefInventory.valueOf(vo.getHostRefVOS()));
         return inv;
     }
 
@@ -153,5 +153,21 @@ public class SdnControllerInventory implements Serializable {
 
     public void setVxlanPools(List<HardwareL2VxlanNetworkPoolInventory> vxlanPools) {
         this.vxlanPools = vxlanPools;
+    }
+
+    public SdnControllerStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(SdnControllerStatus status) {
+        this.status = status;
+    }
+
+    public List<SdnControllerHostRefInventory> getHostRefs() {
+        return hostRefs;
+    }
+
+    public void setHostRefs(List<SdnControllerHostRefInventory> hostRefs) {
+        this.hostRefs = hostRefs;
     }
 }

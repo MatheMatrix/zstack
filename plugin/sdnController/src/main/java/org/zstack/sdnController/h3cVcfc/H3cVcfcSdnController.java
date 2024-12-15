@@ -239,7 +239,7 @@ public class H3cVcfcSdnController implements SdnController {
 
     @Override
     @SdnControllerLog
-    public void postInitSdnController(APIAddSdnControllerMsg msg, Completion completion) {
+    public void postInitSdnController(SdnControllerVO vo, Completion completion) {
         completion.success();
     }
 

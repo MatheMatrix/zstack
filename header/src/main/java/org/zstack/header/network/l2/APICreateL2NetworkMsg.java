@@ -71,7 +71,7 @@ public abstract class APICreateL2NetworkMsg extends APICreateMessage implements 
     /**
      * @desc vSwitch type
      */
-    @APIParam(required = false, maxLength = 1024, validValues = {"LinuxBridge", "OvsDpdk", "MacVlan"})
+    @APIParam(required = false, maxLength = 1024, validValues = {"LinuxBridge", "OvsDpdk", "MacVlan", "Ovn-netdev"})
     private String vSwitchType = "LinuxBridge";
 
     @APIParam(required = false)

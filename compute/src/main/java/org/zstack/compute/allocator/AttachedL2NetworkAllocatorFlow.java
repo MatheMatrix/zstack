@@ -13,10 +13,7 @@ import org.zstack.header.allocator.AbstractHostAllocatorFlow;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.host.HostVO_;
-import org.zstack.header.network.l2.L2NetworkAttachStatus;
-import org.zstack.header.network.l2.L2NetworkClusterRefVO;
-import org.zstack.header.network.l2.L2NetworkHostRefVO;
-import org.zstack.header.network.l2.L2NetworkHostRefVO_;
+import org.zstack.header.network.l2.*;
 import org.zstack.header.network.l3.L3NetworkInventory;
 
 import javax.persistence.Tuple;
@@ -50,6 +47,51 @@ public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
         List<String> l2uuids = q.getResultList();
         if (l2uuids.isEmpty()) {
             return new ArrayList<>();
+        }
+
+        /* for vswitch type */
+        List<Tuple> tuples = Q.New(L2NetworkVO.class)
+                .select(L2NetworkVO_.uuid, L2NetworkVO_.vSwitchType)
+                .in(L2NetworkVO_.uuid, l2uuids).listTuple();
+        List<String> ovnL2Uuids = new ArrayList<>();
+        l2uuids = new ArrayList<>();
+        for (Tuple t : tuples) {
+            String uuid = t.get(0, String.class);
+            String vsType = t.get(1, String.class);
+            if (vsType.equals(L2NetworkConstant.VSWITCH_TYPE_OVN_DPDK)) {
+                ovnL2Uuids.add(uuid);
+            } else {
+                l2uuids.add(uuid);
+            }
+        }
+
+        if (!ovnL2Uuids.isEmpty()) {
+            List<String> ovnHostUuids = new ArrayList<>();
+            for (GetHostsAttachedToL2Networks extp : pluginRgty.getExtensionList(GetHostsAttachedToL2Networks.class)) {
+                ovnHostUuids.addAll(extp.GetHostsAttachedToL2Networks(L2NetworkConstant.VSWITCH_TYPE_OVN_DPDK, ovnL2Uuids));
+            }
+
+            /* vm only has ovn network */
+            if (l2uuids.isEmpty()) {
+                sql = "select h from HostVO h where h.uuid in (:huuids)";
+                TypedQuery<HostVO> hq = dbf.getEntityManager().createQuery(sql, HostVO.class);
+                hq.setParameter("huuids", ovnHostUuids);
+
+                if (usePagination()) {
+                    hq.setFirstResult(paginationInfo.getOffset());
+                    hq.setMaxResults(paginationInfo.getLimit());
+                }
+
+                return hq.getResultList();
+            }
+
+            if (hostUuids.isEmpty()) {
+                hostUuids = new ArrayList<>(ovnHostUuids);
+            } else {
+                hostUuids = hostUuids.stream()
+                        .filter(ovnHostUuids::contains).distinct()
+                        .collect(Collectors.toList());
+            }
         }
 
         sql = "select ref from L2NetworkClusterRefVO ref where ref.l2NetworkUuid in (:l2uuids)";
