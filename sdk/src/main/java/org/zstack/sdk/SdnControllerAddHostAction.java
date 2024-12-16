@@ -31,8 +31,8 @@ public class SdnControllerAddHostAction extends AbstractAction {
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String hostUuid;
 
-    @Param(required = false, validValues = {"OvsKernel","OvsDpdk","sriov"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String vSwitchType = "OvsDpdk";
+    @Param(required = false, validValues = {"Ovn-netdev","Ovn-system"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String vSwitchType = "Ovn-netdev";
 
     @Param(required = true, nonempty = true, nullElements = false, emptyString = true, noTrim = false)
     public java.util.List nicNames;

@@ -30,15 +30,12 @@ public class APIAddSdnControllerMsg extends APICreateMessage implements APIAudit
     @APIParam(maxLength = 255)
     private String ip;
 
-    @APIParam(maxLength = 255)
+    @APIParam(required = false, maxLength = 255)
     private String userName;
 
-    @APIParam(maxLength = 255)
+    @APIParam(required = false, maxLength = 255)
     @NoLogging
     private String password;
-
-    @APIParam(resourceType = ZoneVO.class, required = false)
-    private String zoneUuid;
 
     public String getVendorType() {
         return vendorType;
@@ -86,14 +83,6 @@ public class APIAddSdnControllerMsg extends APICreateMessage implements APIAudit
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public String getZoneUuid() {
-        return zoneUuid;
-    }
-
-    public void setZoneUuid(String zoneUuid) {
-        this.zoneUuid = zoneUuid;
     }
 
     @Override

@@ -36,8 +36,10 @@ public interface KVMConstant {
     String KVM_DELETE_VDPA_PATH = "/network/ovsdpdk/deletevdpa";
     String KVM_GENERATE_VHOST_USER_CLIENT_PATH = "/network/ovsdpdk/addvhostuserclient";
     String KVM_DELETE_VHOST_USER_CLIENT_PATH = "/network/ovsdpdk/deletevhostuserclient";
-    String KVM_INSTALL_OVS_PACKAGE_PATH = "/network/ovs/install";
-    String KVM_START_OVS_SERVICE_PATH = "/network/ovs/start";
+    String KVM_INSTALL_OVS_PACKAGE_PATH = "/network/ovn/install";
+    String KVM_UNINSTALL_OVS_PACKAGE_PATH = "/network/ovn/uninstall";
+    String KVM_START_OVS_SERVICE_PATH = "/network/ovn/start";
+    String KVM_STOP_OVS_SERVICE_PATH = "/network/ovn/stop";
     String KVM_ATTACH_ISO_PATH = "/vm/iso/attach";
     String KVM_DETACH_ISO_PATH = "/vm/iso/detach";
     String KVM_SYNC_VM_DEVICEINFO_PATH = "/sync/vm/deviceinfo";
