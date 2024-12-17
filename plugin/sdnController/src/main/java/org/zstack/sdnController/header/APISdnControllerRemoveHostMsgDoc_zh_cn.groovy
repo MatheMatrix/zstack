@@ -1,9 +1,11 @@
 package org.zstack.sdnController.header
 
-doc {
-    title "SdnControllerRemoveHostHost"
+import org.zstack.sdnController.header.APISdnControllerRemoveHostEvent
 
-    category "未知类别"
+doc {
+    title "SdnControllerRemoveHost"
+
+    category "SdnController"
 
     desc """在这里填写API描述"""
 
@@ -45,7 +47,7 @@ doc {
 					type "String"
 					optional true
 					since "5.3.0"
-					values ("OvsKernel","OvsDpdk","sriov")
+					values ("Ovn-netdev","Ovn-system")
 				}
 				column {
 					name "systemTags"

@@ -6,6 +6,7 @@ public class VSwitchType {
     private static Map<String, VSwitchType> types = Collections.synchronizedMap(new HashMap<String, VSwitchType>());
     private final String typeName;
     private boolean exposed = true;
+    private boolean attatchTohost = true;
 
     public VSwitchType(String typeName) {
         this.typeName = typeName;
@@ -29,6 +30,14 @@ public class VSwitchType {
         this.exposed = exposed;
     }
 
+
+    public boolean isAttatchTohost() {
+        return attatchTohost;
+    }
+
+    public void setAttatchTohost(boolean attatchTohost) {
+        this.attatchTohost = attatchTohost;
+    }
 
     public static VSwitchType valueOf(String typeName) {
         VSwitchType type = types.get(typeName);

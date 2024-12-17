@@ -37210,8 +37210,8 @@ abstract class ApiHelper {
     }
 
 
-    def sdnControllerRemoveHostHost(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.SdnControllerRemoveHostHostAction.class) Closure c) {
-        def a = new org.zstack.sdk.SdnControllerRemoveHostHostAction()
+    def sdnControllerRemoveHost(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.SdnControllerRemoveHostAction.class) Closure c) {
+        def a = new org.zstack.sdk.SdnControllerRemoveHostAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a

@@ -8,6 +8,7 @@ import org.zstack.header.network.service.NetworkServiceType;
 import org.zstack.header.vm.VmInstanceSpec;
 
 import java.util.List;
+import java.util.Set;
 
 public interface NetworkServiceManager {
     NetworkServiceProviderType getTypeOfNetworkServiceProviderForService(String l3NetworkUuid, NetworkServiceType serviceType);
@@ -21,4 +22,6 @@ public interface NetworkServiceManager {
                               NetworkServiceType nsType, List<String> systemTags, Completion completion);
 
     void disableNetworkService(L3NetworkVO l3VO, NetworkServiceProviderType providerType, NetworkServiceType nsType, Completion completion);
+
+    Set<String> getSupportedVmTypes();
 }

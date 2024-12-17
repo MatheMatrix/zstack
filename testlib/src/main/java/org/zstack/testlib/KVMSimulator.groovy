@@ -442,7 +442,23 @@ class KVMSimulator implements Simulator {
             return new KVMAgentCommands.AgentResponse()
         }
 
+        spec.simulator(KVMConstant.KVM_UNINSTALL_OVS_PACKAGE_PATH) {
+            return new KVMAgentCommands.AgentResponse()
+        }
+
         spec.simulator(KVMConstant.KVM_START_OVS_SERVICE_PATH) {
+            return new KVMAgentCommands.AgentResponse()
+        }
+
+        spec.simulator(KVMConstant.KVM_STOP_OVS_SERVICE_PATH) {
+            return new KVMAgentCommands.AgentResponse()
+        }
+
+        spec.simulator(KVMConstant.KVM_OVS_ADD_PORT_PATH) {
+            return new KVMAgentCommands.AgentResponse()
+        }
+
+        spec.simulator(KVMConstant.KVM_OVS_DEL_PORT_PATH) {
             return new KVMAgentCommands.AgentResponse()
         }
 

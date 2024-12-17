@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class SdnControllerRemoveHostHostAction extends AbstractAction {
+public class SdnControllerRemoveHostAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class SdnControllerRemoveHostHostAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.SdnControllerRemoveHostHostResult value;
+        public org.zstack.sdk.SdnControllerRemoveHostResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -66,8 +66,8 @@ public class SdnControllerRemoveHostHostAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.SdnControllerRemoveHostHostResult value = res.getResult(org.zstack.sdk.SdnControllerRemoveHostHostResult.class);
-        ret.value = value == null ? new org.zstack.sdk.SdnControllerRemoveHostHostResult() : value; 
+        org.zstack.sdk.SdnControllerRemoveHostResult value = res.getResult(org.zstack.sdk.SdnControllerRemoveHostResult.class);
+        ret.value = value == null ? new org.zstack.sdk.SdnControllerRemoveHostResult() : value; 
 
         return ret;
     }

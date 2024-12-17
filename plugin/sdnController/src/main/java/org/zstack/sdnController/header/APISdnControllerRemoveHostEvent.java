@@ -4,13 +4,13 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.rest.RestResponse;
 
 @RestResponse(allTo = "inventory")
-public class APISdnControllerRemoveHostHostEvent extends APIEvent {
+public class APISdnControllerRemoveHostEvent extends APIEvent {
     /**
      * @desc see :ref:`SdnControllerInventory`
      */
     private SdnControllerInventory inventory;
 
-    public APISdnControllerRemoveHostHostEvent(String apiId) {
+    public APISdnControllerRemoveHostEvent(String apiId) {
         super(apiId);
     }
 
@@ -18,7 +18,7 @@ public class APISdnControllerRemoveHostHostEvent extends APIEvent {
         return inventory;
     }
 
-    public APISdnControllerRemoveHostHostEvent() {
+    public APISdnControllerRemoveHostEvent() {
         super(null);
     }
 
@@ -26,8 +26,8 @@ public class APISdnControllerRemoveHostHostEvent extends APIEvent {
         this.inventory = inventory;
     }
 
-    public static APISdnControllerRemoveHostHostEvent __example__() {
-        APISdnControllerRemoveHostHostEvent event = new APISdnControllerRemoveHostHostEvent();
+    public static APISdnControllerRemoveHostEvent __example__() {
+        APISdnControllerRemoveHostEvent event = new APISdnControllerRemoveHostEvent();
         SdnControllerInventory inventory = new SdnControllerInventory();
 
         inventory.setUuid(uuid());
