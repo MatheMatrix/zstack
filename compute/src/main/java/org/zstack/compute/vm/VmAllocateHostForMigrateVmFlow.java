@@ -49,12 +49,12 @@ public class VmAllocateHostForMigrateVmFlow implements Flow {
         msg.setCpuCapacity(spec.getVmInventory().getCpuNum());
         msg.setMemoryCapacity(spec.getVmInventory().getMemorySize());
         msg.setHostUuid(destHostUuid);
-        msg.getAvoidHostUuids().add(spec.getVmInventory().getHostUuid());
+        msg.addLocationSpec(VmLocationSpec.avoidHost(spec.getVmInventory().getHostUuid()));
         msg.setAllocationScene(spec.getAllocationScene());
         if (spec.getMessage() != null && spec.getMessage() instanceof MigrateVmMsg) {
             MigrateVmMsg migrateVmMsg = (MigrateVmMsg) spec.getMessage();
             if (migrateVmMsg.getAvoidHostUuids() != null) {
-                msg.getAvoidHostUuids().addAll(migrateVmMsg.getAvoidHostUuids());
+                msg.addLocationSpec(VmLocationSpec.avoidHost(migrateVmMsg.getAvoidHostUuids()));
             }
         }
         if (spec.getImageSpec() != null && spec.getImageSpec().getInventory() != null) {
