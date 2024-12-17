@@ -2,8 +2,11 @@ package org.zstack.header.network.l2;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
+import org.zstack.header.message.OverriddenApiParam;
+import org.zstack.header.message.OverriddenApiParams;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.zone.ZoneVO;
 
 /**
  * @api create a l2VlanNetwork
@@ -42,6 +45,10 @@ import org.zstack.header.tag.TagResourceType;
  * @since 0.1.0
  */
 @TagResourceType(L2NetworkVO.class)
+@OverriddenApiParams({
+        @OverriddenApiParam(field = "physicalInterface", param = @APIParam(maxLength = 1024, required = false)),
+        @OverriddenApiParam(field = "zoneUuid", param = @APIParam(maxLength = 1024, required = false, resourceType = ZoneVO.class))
+})
 @RestRequest(
         path = "/l2-networks/vlan",
         method = HttpMethod.POST,

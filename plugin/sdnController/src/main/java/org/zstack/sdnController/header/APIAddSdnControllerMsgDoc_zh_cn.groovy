@@ -63,7 +63,7 @@ doc {
 					desc ""
 					location "body"
 					type "String"
-					optional false
+					optional true
 					since "3.7"
 				}
 				column {
@@ -72,7 +72,7 @@ doc {
 					desc ""
 					location "body"
 					type "String"
-					optional false
+					optional true
 					since "3.7"
 				}
 				column {

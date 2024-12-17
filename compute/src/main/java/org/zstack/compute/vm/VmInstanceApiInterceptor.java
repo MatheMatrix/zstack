@@ -26,8 +26,7 @@ import org.zstack.header.host.HostVO_;
 import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.image.*;
 import org.zstack.header.message.APIMessage;
-import org.zstack.header.network.l2.L2NetworkClusterRefVO;
-import org.zstack.header.network.l2.L2NetworkClusterRefVO_;
+import org.zstack.header.network.l2.*;
 import org.zstack.header.network.l3.*;
 import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO;
 import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO_;
@@ -879,11 +878,18 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     newAddedL3Uuids, l2Uuids));
         }
 
-        List<String> clusterUuids = Q.New(L2NetworkClusterRefVO.class).eq(L2NetworkClusterRefVO_.l2NetworkUuid, l2Uuids.get(0))
-                                     .select(L2NetworkClusterRefVO_.clusterUuid).listValues();
-        if (clusterUuids.isEmpty()) {
-            throw new ApiMessageInterceptionException(operr("unable to attach a L3 network. The L3 network[uuid:%s] are belonged to l2 networks [uuids:%s] that have not been attached to any cluster",
-                    newAddedL3Uuids, l2Uuids));
+        List<L2NetworkVO> l2NetworkVOS = Q.New(L2NetworkVO.class).in(L2NetworkVO_.uuid, l2Uuids).list();
+        List<L2NetworkVO> ovnL2Networks = l2NetworkVOS.stream().filter(vo ->
+                vo.getvSwitchType().equals(L2NetworkConstant.VSWITCH_TYPE_OVN_DPDK)).collect(Collectors.toList());
+        l2NetworkVOS = l2NetworkVOS.stream().filter(vo ->
+                !vo.getvSwitchType().equals(L2NetworkConstant.VSWITCH_TYPE_OVN_DPDK)).collect(Collectors.toList());
+        if (!l2NetworkVOS.isEmpty()) {
+            List<String> clusterUuids = Q.New(L2NetworkClusterRefVO.class).eq(L2NetworkClusterRefVO_.l2NetworkUuid, l2Uuids.get(0))
+                    .select(L2NetworkClusterRefVO_.clusterUuid).listValues();
+            if (clusterUuids.isEmpty()) {
+                throw new ApiMessageInterceptionException(operr("unable to attach a L3 network. The L3 network[uuid:%s] are belonged to l2 networks [uuids:%s] that have not been attached to any cluster",
+                        newAddedL3Uuids, l2Uuids));
+            }
         }
 
         String sql = "select nic.l3NetworkUuid from VmNicVO nic where nic.vmInstanceUuid = :vmUuid and nic.l3NetworkUuid in (:l3Uuids)";
