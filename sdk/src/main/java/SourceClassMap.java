@@ -202,6 +202,9 @@ public class SourceClassMap {
 			put("org.zstack.header.buildapp.BuildApplicationInventory", "org.zstack.sdk.BuildApplicationInventory");
 			put("org.zstack.header.buildsystem.AppBuildSystemInventory", "org.zstack.sdk.AppBuildSystemInventory");
 			put("org.zstack.header.buildsystem.AppBuildSystemZoneRefInventory", "org.zstack.sdk.AppBuildSystemZoneRefInventory");
+			put("org.zstack.header.cbt.CbtTaskInventory", "org.zstack.sdk.CbtTaskInventory");
+			put("org.zstack.header.cbt.CbtTaskResourceRefInventory", "org.zstack.sdk.CbtTaskResourceRefInventory");
+			put("org.zstack.header.cbt.CbtTaskStatus", "org.zstack.sdk.CbtTaskStatus");
 			put("org.zstack.header.cloudformation.CloudFormationStackEventInventory", "org.zstack.sdk.CloudFormationStackEventInventory");
 			put("org.zstack.header.cloudformation.PreviewResourceStruct", "org.zstack.sdk.PreviewResourceStruct");
 			put("org.zstack.header.cloudformation.ResourceStackInventory", "org.zstack.sdk.ResourceStackInventory");
@@ -380,6 +383,7 @@ public class SourceClassMap {
 			put("org.zstack.header.vm.VmPriorityLevel", "org.zstack.sdk.VmPriorityLevel");
 			put("org.zstack.header.vm.VmSchedHistoryInventory", "org.zstack.sdk.VmSchedHistoryInventory");
 			put("org.zstack.header.vm.cdrom.VmCdRomInventory", "org.zstack.sdk.VmCdRomInventory");
+			put("org.zstack.header.vm.devices.DeviceAddress", "org.zstack.sdk.DeviceAddress");
 			put("org.zstack.header.vm.devices.VmInstanceDeviceAddressArchiveInventory", "org.zstack.sdk.VmInstanceDeviceAddressArchiveInventory");
 			put("org.zstack.header.vm.devices.VmInstanceDeviceAddressGroupInventory", "org.zstack.sdk.VmInstanceDeviceAddressGroupInventory");
 			put("org.zstack.header.vmscheduling.HostSchedulingRuleGroupInventory", "org.zstack.sdk.HostSchedulingRuleGroupInventory");
@@ -875,6 +879,9 @@ public class SourceClassMap {
 			put("org.zstack.sdk.CSPSecretResourcePoolInventory", "org.zstack.crypto.securitymachine.thirdparty.csp.CSPSecretResourcePoolInventory");
 			put("org.zstack.sdk.CasClientInventory", "org.zstack.sso.header.CasClientInventory");
 			put("org.zstack.sdk.CasState", "org.zstack.sso.header.CasState");
+			put("org.zstack.sdk.CbtTaskInventory", "org.zstack.header.cbt.CbtTaskInventory");
+			put("org.zstack.sdk.CbtTaskResourceRefInventory", "org.zstack.header.cbt.CbtTaskResourceRefInventory");
+			put("org.zstack.sdk.CbtTaskStatus", "org.zstack.header.cbt.CbtTaskStatus");
 			put("org.zstack.sdk.CdpPolicyInventory", "org.zstack.header.storage.cdp.CdpPolicyInventory");
 			put("org.zstack.sdk.CdpPolicyState", "org.zstack.header.storage.cdp.CdpPolicyState");
 			put("org.zstack.sdk.CdpTaskInventory", "org.zstack.header.storage.cdp.CdpTaskInventory");
@@ -1367,6 +1374,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.VniRangeInventory", "org.zstack.network.l2.vxlan.vxlanNetworkPool.VniRangeInventory");
 			put("org.zstack.sdk.VolumeBackupInventory", "org.zstack.header.storage.backup.VolumeBackupInventory");
 			put("org.zstack.sdk.VolumeBackupStorageRefInventory", "org.zstack.header.storage.backup.VolumeBackupStorageRefInventory");
+			put("org.zstack.sdk.VolumeCbtBackupInfo", "org.zstack.header.cbt.VolumeCbtBackupInfo");
 			put("org.zstack.sdk.VolumeExternalBackupInfo", "org.zstack.externalbackup.VolumeExternalBackupInfo");
 			put("org.zstack.sdk.VolumeFormatReplyStruct", "org.zstack.header.volume.APIGetVolumeFormatReply$VolumeFormatReplyStruct");
 			put("org.zstack.sdk.VolumeInventory", "org.zstack.header.volume.VolumeInventory");
