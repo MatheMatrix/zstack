@@ -8,6 +8,10 @@ import java.util.List;
 
 public class DesignatedAllocateHostMsg extends AllocateHostMsg implements VmInstanceMessage {
     private String zoneUuid;
+    /**
+     * OnlyAllowedClusters.
+     * The final selected host must be in these clusters. (if clusterUuids is not empty)
+     */
     private List<String> clusterUuids;
     private String hostUuid;
 

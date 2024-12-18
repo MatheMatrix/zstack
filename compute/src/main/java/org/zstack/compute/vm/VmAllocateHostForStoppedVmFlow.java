@@ -74,9 +74,9 @@ public class VmAllocateHostForStoppedVmFlow implements Flow {
 
         msg.setVmNicParams(VmNicSpec.getVmNicParamsOfSpec(spec.getL3Networks()));
         if (spec.getRequiredClusterUuid() == null) {
-            if (CollectionUtils.isEmpty(spec.getVmInventory().getVmNics())) {
-                msg.setClusterUuid(spec.getVmInventory().getClusterUuid());
-            }
+            // To prevent frequent migration of VM between different clusters (causing performance degradation),
+            // we recommend to start the VM in the original cluster
+            msg.addLocationSpec(VmLocationSpec.recommendCluster(spec.getVmInventory().getClusterUuid()));
         } else {
             msg.setClusterUuid(spec.getRequiredClusterUuid());
         }

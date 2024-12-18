@@ -6,13 +6,14 @@ import org.zstack.header.allocator.AbstractHostAllocatorFlow;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.utils.CollectionUtils;
-import org.zstack.utils.function.Function;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Created by mingjian.deng on 2017/11/8.
+ *
+ * Try to choose a host that the VM starts before
  */
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class LastHostAllocatorFlow extends AbstractHostAllocatorFlow {
@@ -26,15 +27,7 @@ public class LastHostAllocatorFlow extends AbstractHostAllocatorFlow {
         }
 
         final VmInstanceInventory vm = spec.getVmInstance();
-        HostVO vo = CollectionUtils.find(candidates, new Function<HostVO, HostVO>() {
-            @Override
-            public HostVO call(HostVO arg) {
-                if (arg.getUuid().equals(vm.getLastHostUuid())) {
-                    return arg;
-                }
-                return null;
-            }
-        });
+        HostVO vo = CollectionUtils.findOneOrNull(candidates, arg -> arg.getUuid().equals(vm.getLastHostUuid()));
 
         if (vo != null) {
             List<HostVO> vos = new ArrayList<>();

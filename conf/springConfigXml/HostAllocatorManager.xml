@@ -110,6 +110,7 @@
                 <value>org.zstack.compute.allocator.TagAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.ResourceBindingAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.FilterFlow</value>
+                <value>org.zstack.compute.allocator.RecommendedLocationFlow</value>
             </list>
         </property>
         <property name="sortFlowNames">
@@ -144,6 +145,7 @@
                 <value>org.zstack.compute.allocator.TagAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.ResourceBindingAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.FilterFlow</value>
+                <value>org.zstack.compute.allocator.RecommendedLocationFlow</value>
             </list>
         </property>
         <property name="sortFlowNames">
@@ -176,6 +178,7 @@
                 <value>org.zstack.compute.allocator.TagAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.ResourceBindingAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.FilterFlow</value>
+                <value>org.zstack.compute.allocator.RecommendedLocationFlow</value>
             </list>
         </property>
         <property name="sortFlowNames">
@@ -207,6 +210,7 @@
                 <value>org.zstack.compute.allocator.TagAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.ResourceBindingAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.FilterFlow</value>
+                <value>org.zstack.compute.allocator.RecommendedLocationFlow</value>
                 <value>org.zstack.compute.allocator.LastHostAllocatorFlow</value>
             </list>
         </property>
@@ -233,6 +237,7 @@
                 <value>org.zstack.compute.allocator.TagAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.ResourceBindingAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.FilterFlow</value>
+                <value>org.zstack.compute.allocator.RecommendedLocationFlow</value>
                 <value>org.zstack.compute.allocator.LastHostAllocatorFlow</value>
             </list>
         </property>
@@ -259,6 +264,7 @@
                 <value>org.zstack.compute.allocator.TagAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.ResourceBindingAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.FilterFlow</value>
+                <value>org.zstack.compute.allocator.RecommendedLocationFlow</value>
             </list>
         </property>
         <property name="sortFlowNames">
