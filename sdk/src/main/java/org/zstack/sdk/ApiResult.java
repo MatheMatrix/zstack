@@ -115,7 +115,7 @@ public class ApiResult {
                 }
 
                 Object bean = getProperty(ret, path);
-                if (bean.getClass().getName().equals(dst)) {
+                if (bean == null || bean.getClass().getName().equals(dst)) {
                     // not an inherent object
                     continue;
                 }
@@ -128,6 +128,7 @@ public class ApiResult {
 
             return ret;
         } catch (Exception e) {
+            logger.log(Level.WARNING, "Warning: Exception occurred. Details: %s, Stack trace: %s", new Object[]{e.getMessage(), e.getStackTrace()});
             throw new ApiException(e);
         }
     }
