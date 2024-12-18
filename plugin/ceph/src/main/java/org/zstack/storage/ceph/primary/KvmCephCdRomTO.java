@@ -35,17 +35,8 @@ public class KvmCephCdRomTO extends CdRomTO {
         super(other);
     }
 
-    private Integer fsId;
     private List<MonInfo> monInfo;
     private String secretUuid;
-
-    public Integer getFsId() {
-        return fsId;
-    }
-
-    public void setFsId(Integer fsId) {
-        this.fsId = fsId;
-    }
 
     public List<MonInfo> getMonInfo() {
         return monInfo;
