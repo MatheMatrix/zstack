@@ -2,7 +2,7 @@ package org.zstack.sdk;
 
 import org.zstack.sdk.SdnControllerInventory;
 
-public class SdnControllerRemoveHostHostResult {
+public class SdnControllerRemoveHostResult {
     public SdnControllerInventory inventory;
     public void setInventory(SdnControllerInventory inventory) {
         this.inventory = inventory;

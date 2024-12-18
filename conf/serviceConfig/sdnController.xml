@@ -20,7 +20,7 @@
     </message>
 
     <message>
-        <name>org.zstack.sdnController.header.APISdnControllerRemoveHostHostMsg</name>
+        <name>org.zstack.sdnController.header.APISdnControllerRemoveHostMsg</name>
     </message>
 
     <message>

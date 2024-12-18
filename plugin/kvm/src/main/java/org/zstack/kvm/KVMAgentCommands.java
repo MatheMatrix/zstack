@@ -4702,6 +4702,26 @@ public class KVMAgentCommands {
     public static class StartOvsServiceRsp extends AgentResponse {
     }
 
+    public static class OvsAddPortCmd extends AgentCommand {
+        @GrayVersion(value = "5.4.0")
+        public String vswitchType;
+        @GrayVersion(value = "5.4.0")
+        public Map<String, String> nicMap = new HashMap<>();
+    }
+
+    public static class OvsAddPortRsp extends AgentResponse {
+    }
+
+    public static class OvsDelPortCmd extends AgentCommand {
+        @GrayVersion(value = "5.4.0")
+        public String vswitchType;
+        @GrayVersion(value = "5.4.0")
+        public Map<String, String> nicMap = new HashMap<>();
+    }
+
+    public static class OvsDelPortRsp extends AgentResponse {
+    }
+
     public static class HardwareMonitorCmd extends KVMAgentCommands.AgentCommand {
     }
 

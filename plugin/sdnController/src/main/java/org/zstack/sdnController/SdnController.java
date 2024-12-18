@@ -1,10 +1,13 @@
 package org.zstack.sdnController;
 
 import org.zstack.header.core.Completion;
+import org.zstack.header.network.l2.L2NetworkInventory;
+import org.zstack.header.vm.VmNicInventory;
 import org.zstack.network.l2.vxlan.vxlanNetwork.L2VxlanNetworkInventory;
 import org.zstack.sdnController.header.*;
 
 import java.util.List;
+import java.util.Map;
 
 public interface SdnController {
     /*
@@ -32,5 +35,7 @@ public interface SdnController {
     List<SdnVlanRange> getVlanRange(SdnControllerInventory controller);
 
     default void addHost(APISdnControllerAddHostMsg msg, Completion completion) {completion.success();};
-    default void removeHost(APISdnControllerRemoveHostHostMsg msg, Completion completion) {completion.success();};
+    default void removeHost(APISdnControllerRemoveHostMsg msg, Completion completion) {completion.success();};
+    default void addLogicalPort(Map<L2NetworkInventory, List<VmNicInventory>> nicMaps, Completion completion) {completion.success();};
+    default void removeLogicalPort(Map<L2NetworkInventory, List<VmNicInventory>> nicMaps, Completion completion) {completion.success();};
 }

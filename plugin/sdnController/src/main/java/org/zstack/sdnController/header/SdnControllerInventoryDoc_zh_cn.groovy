@@ -1,5 +1,6 @@
 package org.zstack.sdnController.header
 
+import org.zstack.sdnController.header.SdnControllerStatus
 import java.sql.Timestamp
 import org.zstack.sdnController.header.SdnVniRange
 import org.zstack.sdnController.header.HardwareL2VxlanNetworkPoolInventory
@@ -51,11 +52,13 @@ doc {
 		type "String"
 		since "5.3.0"
 	}
-	field {
-		name "zoneUuid"
-		desc "区域UUID"
-		type "String"
+	ref {
+		name "status"
+		path "org.zstack.sdnController.header.SdnControllerInventory.status"
+		desc "null"
+		type "SdnControllerStatus"
 		since "5.3.0"
+		clz SdnControllerStatus.class
 	}
 	field {
 		name "createDate"

@@ -1,6 +1,5 @@
 package org.zstack.sdnController;
 
-import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.Platform;
 import org.zstack.core.asyncbatch.While;
@@ -25,12 +24,10 @@ import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.exception.CloudRuntimeException;
-import org.zstack.header.host.HypervisorType;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l2.*;
-import org.zstack.header.zone.ZoneVO;
 import org.zstack.sdnController.header.*;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.Utils;
@@ -83,8 +80,8 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             handle((SdnControllerDeletionMsg) msg);
         } else if (msg instanceof APISdnControllerAddHostMsg) {
             handle((APISdnControllerAddHostMsg) msg);
-        } else if (msg instanceof APISdnControllerRemoveHostHostMsg) {
-            handle((APISdnControllerRemoveHostHostMsg) msg);
+        } else if (msg instanceof APISdnControllerRemoveHostMsg) {
+            handle((APISdnControllerRemoveHostMsg) msg);
         }
     }
 
@@ -116,8 +113,8 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         });
     }
 
-    private void handle(APISdnControllerRemoveHostHostMsg msg) {
-        APISdnControllerRemoveHostHostEvent event = new APISdnControllerRemoveHostHostEvent(msg.getId());
+    private void handle(APISdnControllerRemoveHostMsg msg) {
+        APISdnControllerRemoveHostEvent event = new APISdnControllerRemoveHostEvent(msg.getId());
 
         sdnControllerRemoveHost(msg, new Completion(msg) {
             @Override
@@ -147,7 +144,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         controller.addHost(msg, completion);
     }
 
-    private void sdnControllerRemoveHost(APISdnControllerRemoveHostHostMsg msg, Completion completion) {
+    private void sdnControllerRemoveHost(APISdnControllerRemoveHostMsg msg, Completion completion) {
         SdnControllerVO controllerVO = dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class);
         SdnControllerFactory factory = getSdnControllerFactory(controllerVO.getVendorType());
         SdnController controller = factory.getSdnController(controllerVO);

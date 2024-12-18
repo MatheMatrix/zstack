@@ -1,7 +1,6 @@
 package org.zstack.sdnController.header;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
@@ -13,9 +12,9 @@ import org.zstack.header.rest.RestRequest;
 @RestRequest(
         path = "/sdn-controllers/{sdnControllerUuid}/hosts/{hostUuid}",
         method = HttpMethod.DELETE,
-        responseClass = APISdnControllerRemoveHostHostEvent.class
+        responseClass = APISdnControllerRemoveHostEvent.class
 )
-public class APISdnControllerRemoveHostHostMsg extends APIMessage {
+public class APISdnControllerRemoveHostMsg extends APIMessage {
     /**
      * @desc l2Network uuid
      */
@@ -57,8 +56,8 @@ public class APISdnControllerRemoveHostHostMsg extends APIMessage {
         this.vSwitchType = vSwitchType;
     }
 
-    public static APISdnControllerRemoveHostHostMsg __example__() {
-        APISdnControllerRemoveHostHostMsg msg = new APISdnControllerRemoveHostHostMsg();
+    public static APISdnControllerRemoveHostMsg __example__() {
+        APISdnControllerRemoveHostMsg msg = new APISdnControllerRemoveHostMsg();
 
         msg.setSdnControllerUuid(uuid());
         msg.setSdnControllerUuid(uuid());
