@@ -9,25 +9,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.abstraction.PluginDriver;
 import org.zstack.abstraction.PluginValidator;
 import org.zstack.core.Platform;
+import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.CloudBus;
+import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.db.DatabaseFacade;
+import org.zstack.core.db.Q;
 import org.zstack.header.AbstractService;
-import org.zstack.header.core.external.plugin.APIRefreshPluginDriversMsg;
-import org.zstack.header.core.external.plugin.APIRefreshPluginDrviersEvent;
-import org.zstack.header.core.external.plugin.PluginDriverVO;
+import org.zstack.header.core.WhileDoneCompletion;
+import org.zstack.header.core.external.plugin.*;
+import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudRuntimeException;
+import org.zstack.header.managementnode.ManagementNodeVO;
+import org.zstack.header.managementnode.ManagementNodeVO_;
 import org.zstack.header.message.Message;
+import org.zstack.header.message.MessageReply;
 import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.zstack.core.Platform.operr;
 
@@ -287,7 +288,48 @@ public class PluginManagerImpl extends AbstractService implements PluginManager 
     public void handleMessage(Message msg) {
         if (msg instanceof APIRefreshPluginDriversMsg) {
             handle((APIRefreshPluginDriversMsg) msg);
+        } else if (msg instanceof APIDeletePluginDriversMsg) {
+            handle((APIDeletePluginDriversMsg) msg);
+        } else if (msg instanceof APIGetPluginOptionTypeListMsg) {
+            handle((APIGetPluginOptionTypeListMsg) msg);
+        } else {
+            handleLocalMessage(msg);
         }
+    }
+
+    private void handleLocalMessage(Message msg) {
+        if (msg instanceof RefreshPluginDriversMsg) {
+            handle((RefreshPluginDriversMsg) msg);
+        } else {
+            bus.dealWithUnknownMessage(msg);
+        }
+    }
+
+    private void handle(RefreshPluginDriversMsg msg) {
+        RefreshPluginDriversReply reply = new RefreshPluginDriversReply();
+        cleanUp();
+        collectPluginProtocolMetadata();
+        collectPluginValidators();
+        loadPluginsFromMetadata();
+        bus.reply(msg, reply);
+    }
+
+    private void handle(APIGetPluginOptionTypeListMsg msg) {
+        APIGetPluginOptionTypeListReply reply = new APIGetPluginOptionTypeListReply();
+        PluginDriver client = getPlugin(msg.getPluginUuid());
+        reply.setOptionTypeList(client.getOptionTypes());
+        bus.reply(msg, reply);
+    }
+
+    private void handle(APIDeletePluginDriversMsg msg) {
+        APIDeletePluginDriversEvent event = new APIDeletePluginDriversEvent(msg.getId());
+        // TODO send msg to local and remote mn to delete plugin driver
+        dbf.removeByPrimaryKey(msg.getUuid(), PluginDriverVO.class);
+        cleanUp();
+        collectPluginProtocolMetadata();
+        collectPluginValidators();
+        loadPluginsFromMetadata();
+        bus.publish(event);
     }
 
     private void cleanUp() {
@@ -298,12 +340,31 @@ public class PluginManagerImpl extends AbstractService implements PluginManager 
     }
 
     private void handle(APIRefreshPluginDriversMsg msg) {
-        APIRefreshPluginDrviersEvent event = new APIRefreshPluginDrviersEvent(msg.getId());
-        cleanUp();
-        collectPluginProtocolMetadata();
-        collectPluginValidators();
-        loadPluginsFromMetadata();
-        bus.publish(event);
+        APIRefreshPluginDriversEvent event = new APIRefreshPluginDriversEvent(msg.getId());
+        new While<>(Q.New(ManagementNodeVO.class).select(ManagementNodeVO_.uuid).listValues()).step((mnUuid, com) -> {
+            RefreshPluginDriversMsg rmsg = new RefreshPluginDriversMsg();
+            bus.makeServiceIdByManagementNodeId(msg, SERVICE_ID, (String) mnUuid);
+            bus.send(rmsg, new CloudBusCallBack(com) {
+                @Override
+                public void run(MessageReply reply) {
+                    if (!reply.isSuccess()) {
+                        com.addError(reply.getError());
+                        com.allDone();
+                    }
+
+                    com.done();
+                }
+            });
+        }, 2).run(new WhileDoneCompletion(msg) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                if (!errorCodeList.getCauses().isEmpty()) {
+                    event.setError(errorCodeList.getCauses().get(0));
+                }
+
+                bus.publish(event);
+            }
+        });
     }
 
     @Override
