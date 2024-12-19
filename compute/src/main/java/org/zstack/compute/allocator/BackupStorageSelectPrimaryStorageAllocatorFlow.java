@@ -10,8 +10,8 @@ import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.errorcode.OperationFailureException;
-import org.zstack.header.host.HostVO;
 import org.zstack.header.storage.backup.BackupStorageType;
 import org.zstack.header.storage.backup.BackupStorageVO;
 import org.zstack.header.storage.backup.BackupStorageVO_;
@@ -43,7 +43,7 @@ public class BackupStorageSelectPrimaryStorageAllocatorFlow extends AbstractHost
         throwExceptionIfIAmTheFirstFlow();
 
         if (spec.getRequiredBackupStorageUuid() == null) {
-            next(candidates);
+            skip();
             return;
         }
 
@@ -54,7 +54,6 @@ public class BackupStorageSelectPrimaryStorageAllocatorFlow extends AbstractHost
         BackupStorageType bsType = BackupStorageType.valueOf(type);
 
         List<String> psUuids = bsType.findRelatedPrimaryStorage(spec.getRequiredBackupStorageUuid());
-        List<HostVO> result;
         if (psUuids == null) {
             List<String> possiblePrimaryStorageTypes = spec.getBackupStoragePrimaryStorageMetrics().get(type);
             if (possiblePrimaryStorageTypes == null) {
@@ -65,23 +64,22 @@ public class BackupStorageSelectPrimaryStorageAllocatorFlow extends AbstractHost
                 ));
             }
 
-            result = findHostsByPrimaryStorageTypes(possiblePrimaryStorageTypes);
-            if (result.isEmpty()) {
-                String name = spec.getImage().getName();
-                throw new OperationFailureException(operr(
-                        "The image[uuid:%s, name:%s] is on the backup storage[uuid:%s, type:%s] that requires to work with primary storage[types:%s]," +
-                                "however, no host found suitable to work with those primary storage", spec.getImage().getUuid(), name,
-                        spec.getRequiredBackupStorageUuid(),spec.getImage().getType(), possiblePrimaryStorageTypes
-                ));
+            List<String> result = findHostsByPrimaryStorageTypes(possiblePrimaryStorageTypes);
+            String rejectReason = String.format("need to attach backup storage with type %s for image[uuid:%s, name:%s]",
+                        possiblePrimaryStorageTypes, spec.getImage().getUuid(), spec.getImage().getName());
+            for (HostCandidate candidate : candidates) {
+                if (!result.contains(candidate.getUuid())) {
+                    reject(candidate, rejectReason);
+                }
             }
         } else if (!psUuids.isEmpty()) {
-            result = findHostsByPrimaryStorageUuids(psUuids);
-            if (result.isEmpty()) {
-                throw new OperationFailureException(operr(
-                        "The image[uuid:%s] is on the backup storage[uuid:%s, type:%s] that requires to work with primary storage[uuids:%s]," +
-                                "however, no host found suitable to work with those primary storage", spec.getImage().getUuid(),
-                        spec.getRequiredBackupStorageUuid(), type, psUuids)
-                );
+            List<String> result = findHostsByPrimaryStorageUuids(psUuids);
+            String rejectReason = String.format("need to attach backup storage%s for image[uuid:%s, name:%s]",
+                        spec.getRequiredBackupStorageUuid(), spec.getImage().getUuid(), spec.getImage().getName());
+            for (HostCandidate candidate : candidates) {
+                if (!result.contains(candidate.getUuid())) {
+                    reject(candidate, rejectReason);
+                }
             }
         } else {
             throw new OperationFailureException(operr("the backup storage[uuid:%s, type:%s] requires bound" +
@@ -89,36 +87,36 @@ public class BackupStorageSelectPrimaryStorageAllocatorFlow extends AbstractHost
         }
 
 
-        next(result);
+        next();
     }
 
     @Transactional(readOnly = true)
-    private List<HostVO> findHostsByPrimaryStorageUuids(List<String> psUuids) {
-        String sql = "select distinct h" +
+    private List<String> findHostsByPrimaryStorageUuids(List<String> psUuids) {
+        String sql = "select distinct h.uuid" +
                 " from HostVO h, PrimaryStorageClusterRefVO ref" +
                 " where ref.clusterUuid = h.clusterUuid" +
                 " and ref.primaryStorageUuid in (:psUuids)" +
                 " and h.uuid in (:huuids)";
 
-        TypedQuery<HostVO> q = dbf.getEntityManager().createQuery(sql, HostVO.class);
+        TypedQuery<String> q = dbf.getEntityManager().createQuery(sql, String.class);
         q.setParameter("psUuids", psUuids);
-        q.setParameter("huuids", getHostUuidsFromCandidates());
+        q.setParameter("huuids", allHostUuidList());
 
         return q.getResultList();
     }
 
     @Transactional(readOnly = true)
-    private List<HostVO> findHostsByPrimaryStorageTypes(List<String> psTypes) {
-        String sql = "select distinct h" +
+    private List<String> findHostsByPrimaryStorageTypes(List<String> psTypes) {
+        String sql = "select distinct h.uuid" +
                 " from HostVO h, PrimaryStorageClusterRefVO ref, PrimaryStorageVO ps" +
                 " where ref.clusterUuid = h.clusterUuid" +
                 " and ref.primaryStorageUuid = ps.uuid" +
                 " and ps.type in (:psTypes)" +
                 " and h.uuid in (:huuids)";
 
-        TypedQuery<HostVO> q = dbf.getEntityManager().createQuery(sql, HostVO.class);
+        TypedQuery<String> q = dbf.getEntityManager().createQuery(sql, String.class);
         q.setParameter("psTypes", psTypes);
-        q.setParameter("huuids", getHostUuidsFromCandidates());
+        q.setParameter("huuids", allHostUuidList());
 
         return q.getResultList();
     }

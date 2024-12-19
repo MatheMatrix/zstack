@@ -9,6 +9,7 @@ import org.zstack.core.Platform;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
 import org.zstack.header.allocator.HostAllocatorConstant;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.host.HostState;
 import org.zstack.header.host.HostStatus;
 import org.zstack.header.host.HostVO;
@@ -16,8 +17,8 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.TypedQuery;
-import java.util.ArrayList;
 import java.util.List;
+
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class DesignatedHostAllocatorFlow extends AbstractHostAllocatorFlow {
     private static final CLogger logger = Utils.getLogger(DesignatedHostAllocatorFlow.class);
@@ -54,24 +55,24 @@ public class DesignatedHostAllocatorFlow extends AbstractHostAllocatorFlow {
     }
     
     
-    private List<HostVO> allocate(List<HostVO> candidates, String zoneUuid,  List<String> clusterUuids, String hostUuid, String hypervisorType) {
-        List<HostVO> ret = new ArrayList<HostVO>(candidates.size());
-        for (HostVO h : candidates) {
-            if (zoneUuid != null && !h.getZoneUuid().equals(zoneUuid)) {
+    private void allocate(List<HostCandidate> candidates, String zoneUuid, List<String> clusterUuids, String hostUuid, String hypervisorType) {
+        for (HostCandidate candidate : candidates) {
+            if (zoneUuid != null && !candidate.host.getZoneUuid().equals(zoneUuid)) {
+                reject(candidate, String.format("not in zone[uuid:%s]", zoneUuid));
                 continue;
             }
-            if (!CollectionUtils.isEmpty(clusterUuids) && !clusterUuids.contains(h.getClusterUuid())) {
+            if (!CollectionUtils.isEmpty(clusterUuids) && !clusterUuids.contains(candidate.host.getClusterUuid())) {
+                reject(candidate, String.format("not in cluster[uuid:%s]", clusterUuids));
                 continue;
             }
-            if (hostUuid != null && !h.getUuid().equals(hostUuid)) {
+            if (hostUuid != null && !candidate.getUuid().equals(hostUuid)) {
+                reject(candidate, String.format("must be host[uuid:%s]", hostUuid));
                 continue;
             }
-            if (hypervisorType != null && !h.getHypervisorType().equals(hypervisorType)) {
-                continue;
+            if (hypervisorType != null && !candidate.host.getHypervisorType().equals(hypervisorType)) {
+                reject(candidate, String.format("not with type[%s]", hypervisorType));
             }
-            ret.add(h);
         }
-        return ret;
     }
 
     @Override
@@ -81,33 +82,44 @@ public class DesignatedHostAllocatorFlow extends AbstractHostAllocatorFlow {
         String hostUuid = (String) spec.getExtraData().get(HostAllocatorConstant.LocationSelector.host);
 
         if (zoneUuid == null && CollectionUtils.isEmpty(clusterUuids) && hostUuid == null && spec.getHypervisorType() == null) {
-            next(candidates);
+            skip();
             return;
         }
 
         if (amITheFirstFlow()) {
-            candidates = allocate(zoneUuid, clusterUuids, hostUuid, spec.getHypervisorType());
-        } else {
-            candidates = allocate(candidates, zoneUuid, clusterUuids, hostUuid, spec.getHypervisorType());
+            List<HostVO> results = allocate(zoneUuid, clusterUuids, hostUuid, spec.getHypervisorType());
+            if (results.isEmpty()) {
+                reportNoHostFound(zoneUuid, clusterUuids, hostUuid);
+                return;
+            }
+
+            accept(results);
+            next();
+            return;
         }
 
-        if (candidates.isEmpty()) {
-            StringBuilder args = new StringBuilder();
-            if (zoneUuid != null) {
-                args.append(String.format("zoneUuid=%s", zoneUuid)).append(" ");
-            }
-            if (!clusterUuids.isEmpty()) {
-                args.append(String.format("clusterUuid in %s", clusterUuids)).append(" ");
-            }
-            if (hostUuid != null) {
-                args.append(String.format("hostUuid=%s", hostUuid)).append(" ");
-            }
-            if (spec.getHypervisorType() != null) {
-                args.append(String.format("hypervisorType=%s", spec.getHypervisorType())).append(" ");
-            }
-            fail(Platform.operr("No host with %s found", args));
-        } else {
-            next(candidates);
+        allocate(candidates, zoneUuid, clusterUuids, hostUuid, spec.getHypervisorType());
+        next();
+    }
+
+    private void reportNoHostFound(String zoneUuid, List<String> clusterUuids, String hostUuid) {
+        StringBuilder args = new StringBuilder();
+        if (zoneUuid != null) {
+            args.append(String.format("zoneUuid=%s", zoneUuid)).append(" ");
         }
+        if (!clusterUuids.isEmpty()) {
+            args.append(String.format("clusterUuid in %s", clusterUuids)).append(" ");
+        }
+        if (hostUuid != null) {
+            args.append(String.format("hostUuid=%s", hostUuid)).append(" ");
+        }
+        if (spec.getHypervisorType() != null) {
+            args.append(String.format("hypervisorType=%s", spec.getHypervisorType())).append(" ");
+        }
+        if (args.length() == 0) {
+            args.append("no conditions");
+        }
+
+        fail(Platform.operr("No host with %s found", args));
     }
 }

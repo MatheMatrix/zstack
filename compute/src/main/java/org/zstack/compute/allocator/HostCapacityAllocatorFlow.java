@@ -3,9 +3,9 @@ package org.zstack.compute.allocator;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
-import org.zstack.core.Platform;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.allocator.HostCapacityOverProvisioningManager;
 import org.zstack.header.allocator.HostCpuOverProvisioningManager;
 import org.zstack.header.host.HostVO;
@@ -13,7 +13,10 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.zstack.utils.CollectionUtils.*;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class HostCapacityAllocatorFlow extends AbstractHostAllocatorFlow {
@@ -38,34 +41,46 @@ public class HostCapacityAllocatorFlow extends AbstractHostAllocatorFlow {
         return ratioMgr.calculateHostAvailableMemoryByRatio(hvo.getUuid(), hvo.getCapacity().getAvailableMemory()) >= vmMemSize;
     }
 
-
-    private List<HostVO> allocate(List<HostVO> vos, long cpu, long memory, long oldMemory) {
-        return vos.parallelStream()
-                .filter(hvo -> (cpu == 0 || hvo.getCapacity().getAvailableCpu() >= cpu)
-                        && (memory == 0 || memoryCheck(memory, oldMemory, hvo))).collect(Collectors.toList());
+    private List<HostCandidate> allocate(long cpu, long memory, long oldMemory) {
+        return candidates.parallelStream()
+                .filter(candidate -> cpu == 0 || enoughCpu(candidate, cpu))
+                .filter(candidate -> memory == 0 || enoughMemory(candidate, memory, oldMemory))
+                .collect(Collectors.toList());
     }
 
-    private boolean isNoCpu(int cpu) {
-        return !candidates.stream().anyMatch(vo -> vo.getCapacity().getCpuNum() >= cpu);
+    private boolean enoughCpu(HostCandidate candidate, long cpu) {
+        boolean result = candidate.host.getCapacity().getAvailableCpu() > cpu;
+        if (!result) {
+            reject(candidate, "no enough CPU");
+        }
+        return result;
     }
 
-    private boolean isNoMemory(long mem) {
-        return !candidates.stream().anyMatch(vo -> ratioMgr.calculateHostAvailableMemoryByRatio(vo.getUuid(), vo.getCapacity().getAvailableMemory()) >= mem);
+    private boolean enoughMemory(HostCandidate candidate, long memory, long oldMemory) {
+        boolean result = memoryCheck(memory, oldMemory, candidate.host);
+        if (!result) {
+            reject(candidate, "no enough memory");
+        }
+        return result;
     }
 
     @Override
     public void allocate() {
         throwExceptionIfIAmTheFirstFlow();
 
-        List<HostVO> ret =
-                allocate(candidates, spec.getCpuCapacity(), spec.getMemoryCapacity(), spec.getOldMemoryCapacity());
-        ret = reserveMgr.filterOutHostsByReservedCapacity(ret, spec.getCpuCapacity(), spec.getMemoryCapacity());
+        List<HostCandidate> ret = allocate(spec.getCpuCapacity(), spec.getMemoryCapacity(), spec.getOldMemoryCapacity());
+        List<HostVO> hosts = reserveMgr.filterOutHostsByReservedCapacity(
+                transform(ret, candidate -> candidate.host),
+                spec.getCpuCapacity(),
+                spec.getMemoryCapacity());
+        Set<String> hostUuidSet = transformToSet(hosts, HostVO::getUuid);
 
-        if (ret.isEmpty()) {
-            fail(Platform.operr("no host having cpu[%s], memory[%s bytes] found",
-                    spec.getCpuCapacity(), spec.getMemoryCapacity()));
-        } else {
-            next(ret);
+        for (HostCandidate candidate : ret) {
+            if (!hostUuidSet.contains(candidate.host.getUuid())) {
+                reject(candidate, "not enough capacity");
+            }
         }
+
+        next();
     }
 }

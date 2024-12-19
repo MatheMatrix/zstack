@@ -4,16 +4,15 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.transaction.annotation.Transactional;
-import org.zstack.core.Platform;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
 import org.zstack.header.allocator.HostAllocatorSpec;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
-import org.zstack.header.vo.ResourceVO;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
@@ -22,6 +21,8 @@ import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.zstack.utils.CollectionUtils.*;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class HostPrimaryStorageAllocatorFlow extends AbstractHostAllocatorFlow {
@@ -138,19 +139,23 @@ public class HostPrimaryStorageAllocatorFlow extends AbstractHostAllocatorFlow {
     }
 
     @Transactional(readOnly = true)
-    private List<HostVO> allocateFromCandidates() {
-        List<String> huuids = getHostUuidsFromCandidates();
+    private void allocateFromCandidates() {
+        List<String> huuids = allHostUuidList();
         Set<String> requiredPsUuids = spec.getRequiredPrimaryStorageUuids();
-        if (!VmOperation.NewCreate.toString().equals(spec.getVmOperation())) {
-            return filterHostHavingAccessiblePrimaryStorage(huuids, spec);
-        } else {
-            huuids = filterHostHavingAccessiblePrimaryStorage(huuids, spec)
-                    .stream().map(ResourceVO::getUuid).collect(Collectors.toList());
+
+        List<HostVO> hosts = filterHostHavingAccessiblePrimaryStorage(huuids, spec);
+        Set<String> uuidSet = transformToSet(hosts, HostVO::getUuid);
+        for (HostCandidate candidate : candidates) {
+            if (!uuidSet.contains(candidate.host.getUuid())) {
+                reject(candidate, "not accessible to the specific primary storage");
+            }
         }
 
-        if (huuids.isEmpty()) {
-            return Collections.emptyList();
+        if (!VmOperation.NewCreate.toString().equals(spec.getVmOperation())) {
+            return;
         }
+
+        huuids = transform(filterHostHavingAccessiblePrimaryStorage(huuids, spec), HostVO::getUuid);
 
         // for new created vm
         String sql = "select ps.uuid" +
@@ -167,7 +172,8 @@ public class HostPrimaryStorageAllocatorFlow extends AbstractHostAllocatorFlow {
         q.setParameter("huuids", huuids);
         List<String> psUuids = q.getResultList();
         if (psUuids.isEmpty()) {
-            return new ArrayList<>();
+            rejectAll("no primary storage available for new-created VM");
+            return;
         }
 
         if (!requiredPsUuids.isEmpty()) {
@@ -186,10 +192,12 @@ public class HostPrimaryStorageAllocatorFlow extends AbstractHostAllocatorFlow {
                         .param("phStatus", PrimaryStorageHostStatus.Connected)
                         .list();
                 if (huuids.isEmpty()) {
-                    return new ArrayList<>();
+                    rejectAll(String.format("primary storage %s required for new-created VM", requiredPsUuids));
+                    return;
                 }
             } else {
-                return new ArrayList<>();
+                rejectAll(String.format("primary storage %s required for new-created VM", requiredPsUuids));
+                return;
             }
         }
 
@@ -236,12 +244,23 @@ public class HostPrimaryStorageAllocatorFlow extends AbstractHostAllocatorFlow {
         }
 
         if (hostCandidates.isEmpty()) {
-            return new ArrayList<>();
+            rejectAll("no capable primary storage for new-created VM");
+            return;
         }
 
-        return candidates.stream()
-                .filter(h -> hostCandidates.contains(h.getUuid()))
-                .collect(Collectors.toList());
+        for (HostCandidate candidate : candidates) {
+            if (!hostCandidates.contains(candidate.getUuid())) {
+                if (spec.getVmOperation().equals(VmOperation.NewCreate.toString())) {
+                    reject(candidate, String.format(
+                            "required primary storage[state: %s, status: %s, available capacity %s bytes]",
+                            PrimaryStorageState.Enabled, PrimaryStorageStatus.Connected, spec.getDiskSize()));
+                } else {
+                    reject(candidate, String.format(
+                            "required primary storage[state: %s or %s, status: %s]",
+                            PrimaryStorageState.Enabled, PrimaryStorageState.Disabled, PrimaryStorageStatus.Connected));
+                }
+            }
+        }
     }
 
     private Boolean psHasImageCache(String psUuid, Map<String, Boolean> psImageCacheDict) {
@@ -279,21 +298,7 @@ public class HostPrimaryStorageAllocatorFlow extends AbstractHostAllocatorFlow {
     public void allocate() {
         throwExceptionIfIAmTheFirstFlow();
 
-        candidates = allocateFromCandidates();
-
-        if (candidates.isEmpty()) {
-            if (spec.getVmOperation().equals(VmOperation.NewCreate.toString())) {
-                fail(Platform.operr("cannot find available primary storage[state: %s, status: %s, available capacity %s bytes]." +
-                        " Check the state/status of primary storage and make sure they have been attached to clusters",
-                        PrimaryStorageState.Enabled, PrimaryStorageStatus.Connected, spec.getDiskSize()));
-            } else {
-                fail(Platform.operr("cannot find available primary storage[state: %s or %s, status: %s]." +
-                        " Check the state/status of primary storage and make sure they have been attached to clusters",
-                        PrimaryStorageState.Enabled, PrimaryStorageState.Disabled, PrimaryStorageStatus.Connected));
-            }
-
-        } else {
-            next(candidates);
-        }
+        allocateFromCandidates();
+        next();
     }
 }

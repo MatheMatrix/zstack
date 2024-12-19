@@ -3,12 +3,9 @@ package org.zstack.compute.allocator;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
-import org.zstack.header.host.HostVO;
-import org.zstack.header.vm.VmInstanceInventory;
-import org.zstack.utils.CollectionUtils;
+import org.zstack.header.allocator.HostCandidate;
 
-import java.util.ArrayList;
-import java.util.List;
+import static org.zstack.utils.CollectionUtils.findOneOrNull;
 
 /**
  * Created by mingjian.deng on 2017/11/8.
@@ -22,19 +19,21 @@ public class LastHostAllocatorFlow extends AbstractHostAllocatorFlow {
         throwExceptionIfIAmTheFirstFlow();
 
         if (spec.isListAllHosts()) {
-            next(candidates);
+            skip();
             return;
         }
 
-        final VmInstanceInventory vm = spec.getVmInstance();
-        HostVO vo = CollectionUtils.findOneOrNull(candidates, arg -> arg.getUuid().equals(vm.getLastHostUuid()));
-
-        if (vo != null) {
-            List<HostVO> vos = new ArrayList<>();
-            vos.add(vo);
-            next(vos);
-        } else {
-            next(candidates);
+        String lastHostUuid = spec.getVmInstance().getLastHostUuid();
+        if (lastHostUuid == null) {
+            next();
+            return;
         }
+
+        HostCandidate candidate = findOneOrNull(candidates, arg -> arg.getUuid().equals(lastHostUuid));
+        if (candidate != null) {
+            recommend(candidate);
+        }
+
+        next();
     }
 }

@@ -4,27 +4,24 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.componentloader.PluginRegistry;
-import org.zstack.core.config.GlobalConfigVO;
-import org.zstack.core.config.GlobalConfigVO_;
-import org.zstack.core.db.Q;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.allocator.*;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.utils.DebugUtils;
-import org.zstack.utils.SizeUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.*;
+import static org.zstack.utils.CollectionUtils.*;
 
 /**
  */
@@ -39,7 +36,8 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     private Iterator<AbstractHostAllocatorFlow> it;
     private ErrorCode errorCode;
 
-    private List<HostVO> result = null;
+    private List<HostCandidate> result = null;
+    private final List<HostCandidate.RejectedCandidate> rejectedList = new ArrayList<>();
     private boolean isDryRun;
     private ReturnValueCompletion<List<HostInventory>> completion;
     private ReturnValueCompletion<List<HostInventory>> dryRunCompletion;
@@ -83,6 +81,12 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
         this.flows = flows;
     }
 
+    public LinkedHashMap<String, Object> buildOpaque() {
+        LinkedHashMap<String, Object> opaque = new LinkedHashMap<>();
+        opaque.put("rejectedCandidates", rejectedList);
+        return opaque;
+    }
+
     private void done() {
         if (result == null) {
             if (isDryRun) {
@@ -110,9 +114,9 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
         }
 
         if (isDryRun) {
-            dryRunCompletion.success(HostInventory.valueOf(result));
+            dryRunCompletion.success(HostInventory.valueOf(transform(result, candidate -> candidate.host)));
         } else {
-            completion.success(HostInventory.valueOf(result));
+            completion.success(HostInventory.valueOf(transform(result, candidate -> candidate.host)));
         }
     }
 
@@ -137,7 +141,7 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
                                 "because of pagination, will start over allocation again; " +
                                 "current pagination info %s; failure details: %s",
                         JSONObjectUtil.toJsonString(paginationInfo), ofe.getErrorCode().getDetails()));
-                seriesErrorWhenPagination.add(ofe.getErrorCode());
+                seriesErrorWhenPagination.add(ofe.getErrorCode().getCause());
                 startOver();
             } else {
                 fail(ofe.getErrorCode());
@@ -175,16 +179,50 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     }
 
     @Override
-    public void next(List<HostVO> candidates) {
-        DebugUtils.Assert(candidates != null, "cannot pass null to next() method");
-        DebugUtils.Assert(!candidates.isEmpty(), "cannot pass empty candidates to next() method");
-        result = candidates;
+    public void next() {
+        boolean anyAllowed = false;
+
+        if (result != null) {
+            for (Iterator<HostCandidate> iterator = result.iterator(); iterator.hasNext(); ) {
+                HostCandidate candidate = iterator.next();
+                if (candidate.reject != null) {
+                    logger.debug(String.format(
+                            "[Host Allocation]: flow[%s] rejected candidate host[uuid:%s, name:%s]: %s",
+                            candidate.rejectBy, candidate.getUuid(), candidate.host.getName(), candidate.reject));
+                    iterator.remove();
+                    rejectedList.add(candidate.toRejectedCandidate());
+                    continue;
+                }
+                anyAllowed = true;
+            }
+        }
+
+        if (!anyAllowed) {
+            ErrorCode errorCode = new ErrorCode();
+            errorCode.setCode(HostAllocatorError.NO_AVAILABLE_HOST.toString());
+            errorCode.setDetails("no host meet the requirements");
+
+            if (paginationInfo != null && !isFirstFlow(lastFlow)) {
+                // in pagination, and a middle flow fails, we can continue
+                ErrorCode upperError = new ErrorCode();
+                upperError.setCode(HostAllocatorConstant.PAGINATION_INTERMEDIATE_ERROR.getCode());
+                upperError.setDetails("no host meet the requirements (in pagination, a middle flow fails)");
+                upperError.setDescription(HostAllocatorConstant.PAGINATION_INTERMEDIATE_ERROR.getDescription());
+                upperError.setCause(errorCode);
+                errorCode = upperError;
+            }
+            // else: no host found, stop allocating
+
+            throw new OperationFailureException(errorCode);
+        }
+
         VmInstanceInventory vm = allocationSpec.getVmInstance();
         logger.debug(String.format("[Host Allocation]: flow[%s] successfully found %s candidate hosts for vm[uuid:%s, name:%s]",
                 lastFlow.getClass().getName(), result.size(), vm.getUuid(), vm.getName()));
         if (logger.isTraceEnabled()) {
             StringBuilder sb = new StringBuilder("[Host Allocation Details]:");
-            for (HostVO vo : result) {
+            for (HostCandidate candidate : result) {
+                HostVO vo = candidate.host;
                 sb.append(String.format("\ncandidate host[name:%s, uuid:%s, zoneUuid:%s, clusterUuid:%s, hypervisorType:%s]",
                         vo.getName(), vo.getUuid(), vo.getZoneUuid(), vo.getClusterUuid(), vo.getHypervisorType()));
             }
@@ -197,6 +235,13 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
         }
 
         done();
+    }
+
+    @Override
+    public void push(List<HostVO> candidates) {
+        DebugUtils.Assert(candidates != null, "cannot pass null to push() method");
+        result = result == null ? new ArrayList<>() : result;
+        result.addAll(transform(candidates, HostCandidate::new));
     }
 
     @Override
@@ -222,15 +267,18 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     @Override
     public void fail(ErrorCode errorCode) {
         result = null;
-        if (seriesErrorWhenPagination.isEmpty()) {
-            logger.debug(String.format("[Host Allocation] flow[%s] failed to allocate host; %s",
-                    lastFlow.getClass().getName(), errorCode.getDetails()));
-            this.errorCode = errorCode;
-        } else {
-            this.errorCode = err(HostAllocatorError.NO_AVAILABLE_HOST, seriesErrorWhenPagination.iterator().next(), "unable to allocate hosts; due to pagination is enabled, " +
-                    "there might be several allocation failures happened before;" +
-                    " the error list is %s", seriesErrorWhenPagination.stream().map(ErrorCode::getDetails).collect(Collectors.toList()));
-            logger.debug(this.errorCode.getDetails());
+        this.errorCode = err(HostAllocatorError.NO_AVAILABLE_HOST, "[Host Allocation] no host meet the requirements");
+        this.errorCode.setOpaque(buildOpaque());
+
+        ErrorCodeList errors = new ErrorCodeList();
+        errors.setDetails("pagination error list in causes fields");
+        this.errorCode.setCause(errors);
+
+        errors.setCauses(new ArrayList<>());
+        errors.getCauses().add(errorCode);
+
+        if (!seriesErrorWhenPagination.isEmpty()) {
+            errors.getCauses().addAll(seriesErrorWhenPagination);
         }
 
         done();

@@ -3,6 +3,7 @@ package org.zstack.compute.allocator;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.compute.vm.VmQuotaOperator;
+import org.zstack.core.db.Q;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
 import org.zstack.identity.Account;
 import org.zstack.identity.QuotaUtil;
@@ -13,8 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.utils.logging.CLogger;
 import org.zstack.header.host.HostVO;
 import org.zstack.utils.Utils;
-import javax.persistence.TypedQuery;
-import java.util.*;
+
+import static org.zstack.utils.CollectionUtils.isEmpty;
 
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
@@ -27,20 +28,11 @@ public class QuotaAllocatorFlow extends AbstractHostAllocatorFlow {
     @Override
     public void allocate() {
         if (CoreGlobalProperty.UNIT_TEST_ON) {
-            if (candidates == null || candidates.isEmpty()) {
-                String sql = "select h from HostVO h where h.clusterUuid in (:cuuids)";
-                Set<String> clusterUuids = new HashSet<>();
-                clusterUuids.add(spec.getVmInstance().getClusterUuid());
-
-                TypedQuery<HostVO> hq = dbf.getEntityManager().createQuery(sql, HostVO.class);
-                hq.setParameter("cuuids", clusterUuids);
-                if (usePagination()) {
-                    hq.setFirstResult(paginationInfo.getOffset());
-                    hq.setMaxResults(paginationInfo.getLimit());
-                }
-                candidates = hq.getResultList();
-                logger.debug(String.format("vm clusteruuid:%s, candidates size:%s", spec.getVmInstance().getClusterUuid(), candidates.size()));
-                next(candidates);
+            if (isEmpty(candidates)) {
+                // all hosts (only in UT)
+                accept(Q.New(HostVO.class).list());
+                next();
+                return;
             }
         }
 
@@ -49,7 +41,7 @@ public class QuotaAllocatorFlow extends AbstractHostAllocatorFlow {
         final String vmInstanceUuid = spec.getVmInstance().getUuid();
         final String accountUuid = Account.getAccountUuidOfResource(vmInstanceUuid);
         if (accountUuid == null || Account.isAdminPermission(accountUuid)) {
-            next(candidates);
+            next();
             return;
         }
 
@@ -60,7 +52,7 @@ public class QuotaAllocatorFlow extends AbstractHostAllocatorFlow {
                     spec.getMemoryCapacity(),
                     new QuotaUtil().makeQuotaPairs(accountUuid));
 
-            next(candidates);
+            next();
             return;
         }
 
@@ -69,6 +61,6 @@ public class QuotaAllocatorFlow extends AbstractHostAllocatorFlow {
                 accountUuid,
                 vmInstanceUuid,
                 new QuotaUtil().makeQuotaPairs(accountUuid));
-        next(candidates);
+        next();
     }
 }
