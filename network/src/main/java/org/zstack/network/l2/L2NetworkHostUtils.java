@@ -132,12 +132,18 @@ public class L2NetworkHostUtils {
             return new ArrayList<>();
         }
 
-        List<String> hostsWithRef = Q.New(L2NetworkHostRefVO.class)
-                .select(L2NetworkHostRefVO_.hostUuid)
+        List<Tuple> tuplesWithRef = Q.New(L2NetworkHostRefVO.class)
+                .select(L2NetworkHostRefVO_.hostUuid, L2NetworkHostRefVO_.l2NetworkUuid)
                 .in(L2NetworkHostRefVO_.l2NetworkUuid, notAttachToAllHostsL2Uuids)
                 .in(L2NetworkHostRefVO_.hostUuid, hostUuids)
-                .listValues();
-        return hostUuids.stream().filter(it -> !hostsWithRef.contains(it)).collect(Collectors.toList());
+                .listTuple();
+        Map<String, Set<String>> hostWithRefMap = new HashMap<>();
+        for (Tuple t : tuplesWithRef) {
+            hostWithRefMap.computeIfAbsent(t.get(0, String.class), k -> new HashSet<>()).add(t.get(1, String.class));
+        }
+        return hostUuids.stream().filter(it ->
+                !hostWithRefMap.getOrDefault(it, new HashSet<>()).containsAll(notAttachToAllHostsL2Uuids))
+                .collect(Collectors.toList());
     }
 
     public static List<String> getExcludeL2Uuids(List<String> l2Uuids, String hostUuid) {
