@@ -4704,7 +4704,7 @@ public class KVMAgentCommands {
 
     public static class OvsAddPortCmd extends AgentCommand {
         @GrayVersion(value = "5.4.0")
-        public String vswitchType;
+        public String vSwitchType;
         @GrayVersion(value = "5.4.0")
         public Map<String, String> nicMap = new HashMap<>();
     }
