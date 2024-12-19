@@ -3,19 +3,17 @@ package org.zstack.storage.primary.local;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
-import org.zstack.core.Platform;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.storage.primary.PrimaryStorageOverProvisioningManager;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
-import org.zstack.header.vo.ResourceVO;
 import org.zstack.header.volume.VolumeInventory;
-import org.zstack.utils.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +37,7 @@ public class AllocatePrimaryStorageForVmMigrationFlow  extends AbstractHostAlloc
         }
 
         String psUuid = spec.getVmInstance().getRootVolume().getPrimaryStorageUuid();
-        List<String> huuids = CollectionUtils.transformAndRemoveNull(candidates, ResourceVO::getUuid);
+        List<String> huuids = allHostUuidList();
 
         long volumeSize = 0;
         List<String> volUuids = new ArrayList<>();
@@ -68,12 +66,12 @@ public class AllocatePrimaryStorageForVmMigrationFlow  extends AbstractHostAlloc
             }
         }
 
-        candidates = CollectionUtils.transformAndRemoveNull(candidates, arg -> hostUuids.contains(arg.getUuid()) ? arg : null);
-
-        if (candidates.isEmpty()) {
-            fail(Platform.operr("no hosts can provide %s bytes for all volumes of the vm[uuid:%s]", volumeSize, spec.getVmInstance().getUuid()));
-        } else {
-            next(candidates);
+        for (HostCandidate candidate : candidates) {
+            if (!hostUuids.contains(candidate.getUuid())) {
+                reject(candidate, "no enough space on host");
+            }
         }
+
+        next();
     }
 }

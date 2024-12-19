@@ -4,17 +4,16 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.transaction.annotation.Transactional;
-import org.zstack.core.Platform;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.host.HostVO_;
 import org.zstack.header.network.l2.*;
 import org.zstack.header.network.l3.L3NetworkInventory;
 
-import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -115,7 +114,7 @@ public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
                 clusterUuids.add(spec.getVmInstance().getClusterUuid());
                 List<String> hostUuids = null;
                 if (!amITheFirstFlow()) {
-                    hostUuids = candidates.stream().map(HostVO::getUuid).collect(Collectors.toList());
+                    hostUuids = candidates.stream().map(HostCandidate::getUuid).collect(Collectors.toList());
                 }
 
                 if (hostUuids == null || hostUuids.isEmpty()) {
@@ -126,7 +125,7 @@ public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
                         hq.setFirstResult(paginationInfo.getOffset());
                         hq.setMaxResults(paginationInfo.getLimit());
                     }
-                    candidates = hq.getResultList();
+                    accept(hq.getResultList());
                 } else {
                     sql = "select h from HostVO h where h.clusterUuid in (:cuuids) and h.uuid in (:huuids)";
                     TypedQuery<HostVO> hq = dbf.getEntityManager().createQuery(sql, HostVO.class);
@@ -137,11 +136,10 @@ public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
                         hq.setFirstResult(paginationInfo.getOffset());
                         hq.setMaxResults(paginationInfo.getLimit());
                     }
-                    candidates = hq.getResultList();
-               }
+                    accept(hq.getResultList());
+                }
 
-                next(candidates);
-                logger.debug(String.format("vm clusteruuid:%s, candidates size:%s", spec.getVmInstance().getClusterUuid(), candidates.size()));
+                next();
                 return;
             }
         }
@@ -157,15 +155,15 @@ public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
 
 
         if (amITheFirstFlow()) {
-            candidates = allocate(l3Uuids, new ArrayList<>());
+            accept(allocate(l3Uuids, new ArrayList<>()));
         } else {
-            candidates = allocate(l3Uuids, getHostUuidsFromCandidates());
+            accept(allocate(l3Uuids, allHostUuidList()));
         }
 
-        if (candidates.isEmpty()) {
-            fail(Platform.operr("no host found in clusters that has attached to L2Networks which have L3Networks%s", spec.getL3NetworkUuids()));
-        } else {
-            next(candidates);
+        if (newcomers.isEmpty()) {
+            logger.warn(String.format("no host found in clusters that has attached to L2Networks which have L3Networks%s", spec.getL3NetworkUuids()));
         }
+
+        next();
     }
 }

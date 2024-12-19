@@ -4,9 +4,6 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.componentloader.PluginRegistry;
-import org.zstack.core.config.GlobalConfigVO;
-import org.zstack.core.config.GlobalConfigVO_;
-import org.zstack.core.db.Q;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.allocator.*;
 import org.zstack.header.core.ReturnValueCompletion;
@@ -16,7 +13,6 @@ import org.zstack.header.host.HostInventory;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.utils.DebugUtils;
-import org.zstack.utils.SizeUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
@@ -25,6 +21,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.*;
+import static org.zstack.utils.CollectionUtils.*;
 
 /**
  */
@@ -39,7 +36,7 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     private Iterator<AbstractHostAllocatorFlow> it;
     private ErrorCode errorCode;
 
-    private List<HostVO> result = null;
+    private List<HostCandidate> result = null;
     private boolean isDryRun;
     private ReturnValueCompletion<List<HostInventory>> completion;
     private ReturnValueCompletion<List<HostInventory>> dryRunCompletion;
@@ -110,9 +107,9 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
         }
 
         if (isDryRun) {
-            dryRunCompletion.success(HostInventory.valueOf(result));
+            dryRunCompletion.success(HostInventory.valueOf(transform(result, candidate -> candidate.host)));
         } else {
-            completion.success(HostInventory.valueOf(result));
+            completion.success(HostInventory.valueOf(transform(result, candidate -> candidate.host)));
         }
     }
 
@@ -175,16 +172,32 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     }
 
     @Override
-    public void next(List<HostVO> candidates) {
-        DebugUtils.Assert(candidates != null, "cannot pass null to next() method");
-        DebugUtils.Assert(!candidates.isEmpty(), "cannot pass empty candidates to next() method");
-        result = candidates;
+    public void next() {
+        boolean anyAllowed = false;
+        for (Iterator<HostCandidate> iterator = result.iterator(); iterator.hasNext(); ) {
+            HostCandidate candidate = iterator.next();
+            if (candidate.reject != null) {
+                logger.debug(String.format(
+                        "[Host Allocation]: flow[%s] rejected candidate host[uuid:%s, name:%s]: %s",
+                        candidate.rejectBy, candidate.getUuid(), candidate.host.getName(), candidate.reject));
+                iterator.remove();
+                continue;
+            }
+            anyAllowed = true;
+        }
+
+        if (!anyAllowed) {
+            fail(operr("no host meet the requirements"));
+            return;
+        }
+
         VmInstanceInventory vm = allocationSpec.getVmInstance();
         logger.debug(String.format("[Host Allocation]: flow[%s] successfully found %s candidate hosts for vm[uuid:%s, name:%s]",
                 lastFlow.getClass().getName(), result.size(), vm.getUuid(), vm.getName()));
         if (logger.isTraceEnabled()) {
             StringBuilder sb = new StringBuilder("[Host Allocation Details]:");
-            for (HostVO vo : result) {
+            for (HostCandidate candidate : result) {
+                HostVO vo = candidate.host;
                 sb.append(String.format("\ncandidate host[name:%s, uuid:%s, zoneUuid:%s, clusterUuid:%s, hypervisorType:%s]",
                         vo.getName(), vo.getUuid(), vo.getZoneUuid(), vo.getClusterUuid(), vo.getHypervisorType()));
             }
@@ -197,6 +210,13 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
         }
 
         done();
+    }
+
+    @Override
+    public void push(List<HostVO> candidates) {
+        DebugUtils.Assert(candidates != null, "cannot pass null to push() method");
+        result = result == null ? new ArrayList<>() : result;
+        result.addAll(transform(candidates, HostCandidate::new));
     }
 
     @Override

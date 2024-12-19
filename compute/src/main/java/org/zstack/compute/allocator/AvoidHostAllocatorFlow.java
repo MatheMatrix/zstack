@@ -2,13 +2,12 @@ package org.zstack.compute.allocator;
 
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Configurable;
-import org.zstack.core.Platform;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.vm.VmLocationSpec;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -21,13 +20,13 @@ public class AvoidHostAllocatorFlow extends AbstractHostAllocatorFlow {
         throwExceptionIfIAmTheFirstFlow();
 
         final Set<String> avoidHostUuids = avoidHostUuids();
-        List<HostVO> ret = filter(candidates, arg -> !avoidHostUuids.contains(arg.getUuid()));
-
-        if (ret.isEmpty()) {
-            fail(Platform.operr("after rule out avoided host%s, there is no host left in candidates", avoidHostUuids));
-        } else {
-            next(ret);
+        for (HostCandidate candidate : candidates) {
+            if (avoidHostUuids.contains(candidate.getUuid())) {
+                reject(candidate, "in avoid host list");
+            }
         }
+
+        next();
     }
 
     private Set<String> avoidHostUuids() {
