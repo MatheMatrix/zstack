@@ -2,9 +2,11 @@ package org.zstack.header.vm;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.zstack.header.allocator.AllocationScene;
+import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.configuration.DiskOfferingInventory;
 import org.zstack.header.host.CpuArchitecture;
 import org.zstack.header.host.HostInventory;
+import org.zstack.header.host.HostVO;
 import org.zstack.header.image.ImageBackupStorageRefInventory;
 import org.zstack.header.image.ImageConstant;
 import org.zstack.header.image.ImageInventory;
@@ -21,6 +23,9 @@ import org.zstack.utils.JsonWrapper;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
+
+import static org.zstack.utils.CollectionUtils.isEmpty;
 
 
 public class VmInstanceSpec implements Serializable {
@@ -304,11 +309,10 @@ public class VmInstanceSpec implements Serializable {
     private Message message;
     private ImageSpec imageSpec = new ImageSpec();
     private List<VolumeSpec> volumeSpecs = new ArrayList<>();
+    // onlyAllowedClusterUuids / recommendClusterUuid / softAvoidHostUuids / avoidHostUuids
+    private List<VmLocationSpec> locationSpecs = new ArrayList<>();
     private String requiredClusterUuid;
-    private List<String> requiredClusterUuids;
     private String requiredHostUuid;
-    private List<String> softAvoidHostUuids;
-    private List<String> avoidHostUuids;
     private String memorySnapshotUuid;
     private String allocatedPrimaryStorageUuidForRootVolume;
     private String allocatedPrimaryStorageUuidForDataVolume;
@@ -351,14 +355,6 @@ public class VmInstanceSpec implements Serializable {
     private Map<String, List<String>> dataVolumeSystemTagsOnIndex;
     private boolean skipIpAllocation = false;
     private VmCreationStrategy strategy;
-
-    public List<String> getRequiredClusterUuids() {
-        return requiredClusterUuids;
-    }
-
-    public void setRequiredClusterUuids(List<String> requiredClusterUuids) {
-        this.requiredClusterUuids = requiredClusterUuids;
-    }
 
     public List<String> getCandidatePrimaryStorageUuidsForRootVolume() {
         return candidatePrimaryStorageUuidsForRootVolume;
@@ -473,22 +469,6 @@ public class VmInstanceSpec implements Serializable {
         this.requiredHostUuid = requiredHostUuid;
     }
 
-    public List<String> getSoftAvoidHostUuids() {
-        return softAvoidHostUuids;
-    }
-
-    public void setSoftAvoidHostUuids(List<String> softAvoidHostUuids) {
-        this.softAvoidHostUuids = softAvoidHostUuids;
-    }
-
-    public List<String> getAvoidHostUuids() {
-        return avoidHostUuids;
-    }
-
-    public void setAvoidHostUuids(List<String> avoidHostUuids) {
-        this.avoidHostUuids = avoidHostUuids;
-    }
-
     public boolean isGcOnStopFailure() {
         return gcOnStopFailure;
     }
@@ -563,6 +543,44 @@ public class VmInstanceSpec implements Serializable {
 
     public void setVolumeSpecs(List<VolumeSpec> volumeSpecs) {
         this.volumeSpecs = volumeSpecs;
+    }
+
+    public List<VmLocationSpec> getLocationSpecs() {
+        return locationSpecs;
+    }
+
+    public void setLocationSpecs(List<VmLocationSpec> locationSpecs) {
+        this.locationSpecs = locationSpecs;
+    }
+
+    public void addLocationSpec(VmLocationSpec locationSpec) {
+        if (!isEmpty(locationSpec.getUuids())) {
+            locationSpecs.add(locationSpec);
+        }
+    }
+
+    public List<String> findNotRecommendHost() {
+        return locationSpecs.stream()
+                .filter(spec -> spec.getResourceType().equals(HostVO.class.getSimpleName()))
+                .filter(VmLocationSpec::notRecommended)
+                .flatMap(spec -> spec.getUuids().stream())
+                .collect(Collectors.toList());
+    }
+
+    public List<String> findAvoidHost() {
+        return locationSpecs.stream()
+                .filter(spec -> spec.getResourceType().equals(HostVO.class.getSimpleName()))
+                .filter(VmLocationSpec::avoid)
+                .flatMap(spec -> spec.getUuids().stream())
+                .collect(Collectors.toList());
+    }
+
+    public List<String> findOnlyAllowedClusters() {
+        return locationSpecs.stream()
+                .filter(spec -> spec.getResourceType().equals(ClusterVO.class.getSimpleName()))
+                .filter(VmLocationSpec::onlyAllowed)
+                .flatMap(spec -> spec.getUuids().stream())
+                .collect(Collectors.toList());
     }
 
     public List<VmNicSpec> getL3Networks() {

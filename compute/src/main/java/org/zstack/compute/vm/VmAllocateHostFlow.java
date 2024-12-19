@@ -1,6 +1,5 @@
 package org.zstack.compute.vm;
 
-import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
@@ -23,11 +22,9 @@ import org.zstack.header.image.ImageInventory;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.vm.*;
-import org.zstack.header.vm.APICreateVmInstanceMsg.DiskAO;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
-import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.*;
@@ -71,22 +68,17 @@ public class VmAllocateHostFlow implements Flow {
         }
         diskSize += getTotalDataDiskSize(spec);
         diskOfferings.addAll(spec.getDataDiskOfferings());
-        msg.setSoftAvoidHostUuids(spec.getSoftAvoidHostUuids());
-        msg.setAvoidHostUuids(spec.getAvoidHostUuids());
+        msg.getLocationSpecs().addAll(spec.getLocationSpecs().stream()
+                .filter(s -> HostVO.class.getSimpleName().equals(s.getResourceType()))
+                .collect(Collectors.toList()));
         msg.setDiskOfferings(diskOfferings);
         msg.setDiskSize(diskSize);
         msg.setCpuCapacity(spec.getVmInventory().getCpuNum());
         msg.setMemoryCapacity(spec.getVmInventory().getMemorySize());
-        msg.setClusterUuids(spec.getRequiredClusterUuids());
+        msg.setClusterUuids(spec.findOnlyAllowedClusters());
         msg.setArchitecture(spec.getArchitecture() == null ? null : spec.getArchitecture().name());
         List<L3NetworkInventory> l3Invs = VmNicSpec.getL3NetworkInventoryOfSpec(spec.getL3Networks());
-        msg.setL3NetworkUuids(CollectionUtils.transformToList(l3Invs,
-                new Function<String, L3NetworkInventory>() {
-            @Override
-            public String call(L3NetworkInventory arg) {
-                return arg.getUuid();
-            }
-        }));
+        msg.setL3NetworkUuids(CollectionUtils.transform(l3Invs, L3NetworkInventory::getUuid));
         msg.setVmNicParams(VmNicSpec.getVmNicParamsOfSpec(spec.getL3Networks()));
         msg.setImage(image);
         msg.setVmOperation(spec.getCurrentVmOperation().toString());

@@ -46,8 +46,6 @@ import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.message.*;
 import org.zstack.header.network.l3.*;
 import org.zstack.header.storage.primary.*;
-import org.zstack.header.tag.SystemTagVO;
-import org.zstack.header.tag.SystemTagVO_;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.ChangeVmMetaDataMsg.AtomicHostUuid;
 import org.zstack.header.vm.ChangeVmMetaDataMsg.AtomicVmState;
@@ -1898,11 +1896,11 @@ public class VmInstanceBase extends AbstractVmInstance {
         final DesignatedAllocateHostMsg amsg = new DesignatedAllocateHostMsg();
         amsg.setCpuCapacity(self.getCpuNum());
         amsg.setMemoryCapacity(self.getMemorySize());
-        amsg.getAvoidHostUuids().add(self.getHostUuid());
+        amsg.addLocationSpec(VmLocationSpec.avoidHost(self.getHostUuid()));
         if (msg instanceof GetVmMigrationTargetHostMsg) {
             GetVmMigrationTargetHostMsg gmsg = (GetVmMigrationTargetHostMsg) msg;
             if (gmsg.getAvoidHostUuids() != null) {
-                amsg.getAvoidHostUuids().addAll(gmsg.getAvoidHostUuids());
+                amsg.addLocationSpec(VmLocationSpec.avoidHost(gmsg.getAvoidHostUuids()));
             }
         } else {
             if (msg instanceof APIMessage) {
@@ -7260,15 +7258,15 @@ public class VmInstanceBase extends AbstractVmInstance {
         }
 
         if (msg instanceof HaStartVmInstanceMsg) {
-            spec.setSoftAvoidHostUuids(((HaStartVmInstanceMsg) msg).getSoftAvoidHostUuids());
+            spec.addLocationSpec(VmLocationSpec.notRecommendHost(((HaStartVmInstanceMsg) msg).getSoftAvoidHostUuids()));
             spec.setAllocationScene(AllocationScene.Auto);
         } else if (msg instanceof StartVmInstanceMsg) {
             spec.setRequiredHostUuid(((StartVmInstanceMsg) msg).getHostUuid());
-            spec.setSoftAvoidHostUuids(((StartVmInstanceMsg) msg).getSoftAvoidHostUuids());
+            spec.addLocationSpec(VmLocationSpec.notRecommendHost(((StartVmInstanceMsg) msg).getSoftAvoidHostUuids()));
+            spec.addLocationSpec(VmLocationSpec.avoidHost(((StartVmInstanceMsg) msg).getAvoidHostUuids()));
             if (((StartVmInstanceMsg) msg).getAllocationScene() != null) {
                 spec.setAllocationScene(((StartVmInstanceMsg) msg).getAllocationScene());
             }
-            spec.setAvoidHostUuids(((StartVmInstanceMsg) msg).getAvoidHostUuids());
             spec.setCreatePaused(((StartVmInstanceMsg) msg).isStartPaused());
             spec.setRequiredClusterUuid(((StartVmInstanceMsg) msg).getClusterUuid());
         } else if (msg instanceof RestoreVmInstanceMsg) {
@@ -7465,13 +7463,8 @@ public class VmInstanceBase extends AbstractVmInstance {
             spec.setCreatePaused(true);
         }
 
-        if (struct.getSoftAvoidHostUuids() != null && !struct.getSoftAvoidHostUuids().isEmpty()) {
-            spec.setSoftAvoidHostUuids(struct.getSoftAvoidHostUuids());
-        }
-
-        if (struct.getAvoidHostUuids() != null && !struct.getAvoidHostUuids().isEmpty()) {
-            spec.setAvoidHostUuids(struct.getAvoidHostUuids());
-        }
+        spec.addLocationSpec(VmLocationSpec.notRecommendHost(struct.getSoftAvoidHostUuids()));
+        spec.addLocationSpec(VmLocationSpec.avoidHost(struct.getAvoidHostUuids()));
 
         for (BuildVmSpecExtensionPoint ext : pluginRgty.getExtensionList(BuildVmSpecExtensionPoint.class)) {
             ext.afterBuildVmSpec(spec);

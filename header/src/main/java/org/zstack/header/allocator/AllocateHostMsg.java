@@ -4,17 +4,20 @@ import org.zstack.header.configuration.DiskOfferingInventory;
 import org.zstack.header.image.ImageInventory;
 import org.zstack.header.message.NeedReplyMessage;
 import org.zstack.header.vm.VmInstanceInventory;
+import org.zstack.header.vm.VmLocationSpec;
 import org.zstack.header.vm.VmNicParam;
 
 import java.util.*;
 
+import static org.zstack.utils.CollectionUtils.isEmpty;
+
 public class AllocateHostMsg extends NeedReplyMessage {
+    // recommendCluster, avoidHostUuids and softAvoidHostUuids
+    private List<VmLocationSpec> locationSpecs = new ArrayList<>();
     private long cpuCapacity;
     private long memoryCapacity;
     private long diskSize;
     private String allocatorStrategy;
-    private List<String> avoidHostUuids;
-    private List<String> softAvoidHostUuids;
     private List<String> l3NetworkUuids;
     private List<VmNicParam> vmNicParams = new ArrayList<>();
     private VmInstanceInventory vmInstance;
@@ -34,6 +37,20 @@ public class AllocateHostMsg extends NeedReplyMessage {
     private long oldMemoryCapacity = 0;
     private AllocationScene allocationScene;
     private String architecture;
+
+    public List<VmLocationSpec> getLocationSpecs() {
+        return locationSpecs;
+    }
+
+    public void setLocationSpecs(List<VmLocationSpec> locationSpecs) {
+        this.locationSpecs = locationSpecs;
+    }
+
+    public void addLocationSpec(VmLocationSpec spec) {
+        if (!isEmpty(spec.getUuids())) {
+            locationSpecs.add(spec);
+        }
+    }
 
     public List<Set<String>> getOptionalPrimaryStorageUuids() {
         return optionalPrimaryStorageUuids;
@@ -159,25 +176,6 @@ public class AllocateHostMsg extends NeedReplyMessage {
 
     public void setAllocatorStrategy(String allocatorStrategy) {
         this.allocatorStrategy = allocatorStrategy;
-    }
-
-    public List<String> getAvoidHostUuids() {
-        if (avoidHostUuids == null) {
-            avoidHostUuids = new ArrayList<String>(0);
-        }
-        return avoidHostUuids;
-    }
-
-    public void setAvoidHostUuids(List<String> avoidHostUuids) {
-        this.avoidHostUuids = avoidHostUuids;
-    }
-
-    public List<String> getSoftAvoidHostUuids() {
-        return softAvoidHostUuids;
-    }
-
-    public void setSoftAvoidHostUuids(List<String> softAvoidHostUuids) {
-        this.softAvoidHostUuids = softAvoidHostUuids;
     }
 
     public List<String> getL3NetworkUuids() {

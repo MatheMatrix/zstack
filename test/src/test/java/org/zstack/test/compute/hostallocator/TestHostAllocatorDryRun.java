@@ -13,6 +13,7 @@ import org.zstack.header.allocator.HostCapacityVO;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.header.vm.VmInstanceInventory;
+import org.zstack.header.vm.VmLocationSpec;
 import org.zstack.header.vm.VmNicInventory;
 import org.zstack.test.Api;
 import org.zstack.test.ApiSenderException;
@@ -50,7 +51,7 @@ public class TestHostAllocatorDryRun {
         DesignatedAllocateHostMsg msg = new DesignatedAllocateHostMsg();
         msg.setCpuCapacity(vm.getCpuNum());
         msg.setMemoryCapacity(vm.getMemorySize());
-        msg.getAvoidHostUuids().add(vm.getHostUuid());
+        msg.addLocationSpec(VmLocationSpec.avoidHost(vm.getHostUuid()));
         msg.setVmInstance(vm);
         msg.setServiceId(bus.makeLocalServiceId(HostAllocatorConstant.SERVICE_ID));
         msg.setAllocatorStrategy(HostAllocatorConstant.MIGRATE_VM_ALLOCATOR_TYPE);

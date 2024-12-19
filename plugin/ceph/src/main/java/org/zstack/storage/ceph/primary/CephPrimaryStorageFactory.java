@@ -1187,12 +1187,8 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
         bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, msg.getPrimaryStorageUuid());
 
         List<String> avoidHostUuids = new ArrayList<>();
-        if (spec.getAvoidHostUuids() != null) {
-            avoidHostUuids.addAll(spec.getAvoidHostUuids());
-        }
-        if (spec.getSoftAvoidHostUuids() != null ) {
-            avoidHostUuids.addAll(spec.getSoftAvoidHostUuids());
-        }
+        avoidHostUuids.addAll(spec.findNotRecommendHost());
+        avoidHostUuids.addAll(spec.findAvoidHost());
 
         if (!avoidHostUuids.isEmpty()) {
             List<String> hostIps = Q.New(HostVO.class)

@@ -20,7 +20,6 @@ import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.vm.*;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.utils.CollectionUtils;
-import org.zstack.utils.function.Function;
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -69,18 +68,15 @@ public class VmAllocateHostForStoppedVmFlow implements Flow {
             msg.setAllowNoL3Networks(true);
         }
 
-        msg.setL3NetworkUuids(CollectionUtils.transformToList(VmNicSpec.getL3NetworkInventoryOfSpec(spec.getL3Networks()),
-                new Function<String, L3NetworkInventory>() {
-            @Override
-            public String call(L3NetworkInventory arg) {
-                return arg.getUuid();
-            }
-        }));
+        msg.setL3NetworkUuids(CollectionUtils.transform(
+                VmNicSpec.getL3NetworkInventoryOfSpec(spec.getL3Networks()),
+                L3NetworkInventory::getUuid));
+
         msg.setVmNicParams(VmNicSpec.getVmNicParamsOfSpec(spec.getL3Networks()));
         if (spec.getRequiredClusterUuid() == null) {
-            if (CollectionUtils.isEmpty(spec.getVmInventory().getVmNics())) {
-                msg.setClusterUuid(spec.getVmInventory().getClusterUuid());
-            }
+            // To prevent frequent migration of VM between different clusters (causing performance degradation),
+            // we recommend to start the VM in the original cluster
+            msg.addLocationSpec(VmLocationSpec.recommendCluster(spec.getVmInventory().getClusterUuid()));
         } else {
             msg.setClusterUuid(spec.getRequiredClusterUuid());
         }
@@ -88,9 +84,10 @@ public class VmAllocateHostForStoppedVmFlow implements Flow {
                 .map(VolumeInventory::getPrimaryStorageUuid)
                 .collect(Collectors.toSet()));
         msg.setServiceId(bus.makeLocalServiceId(HostAllocatorConstant.SERVICE_ID));
-        msg.setSoftAvoidHostUuids(spec.getSoftAvoidHostUuids());
         msg.setAllocationScene(spec.getAllocationScene());
-        msg.setAvoidHostUuids(spec.getAvoidHostUuids());
+        msg.getLocationSpecs().addAll(spec.getLocationSpecs().stream()
+                .filter(s -> HostVO.class.getSimpleName().equals(s.getResourceType()))
+                .collect(Collectors.toList()));
         amsg = msg;
 
         bus.send(amsg, new CloudBusCallBack(chain) {

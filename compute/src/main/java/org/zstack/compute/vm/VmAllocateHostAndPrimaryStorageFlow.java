@@ -85,7 +85,7 @@ public class VmAllocateHostAndPrimaryStorageFlow implements Flow {
         List<String> possibleClusterUuids = getPossibleClusterUuids(spec);
         List<String> possiblePsUuids = getPossiblePrimaryStorageUuids(spec);
 
-        spec.setRequiredClusterUuids(possibleClusterUuids);
+        spec.addLocationSpec(VmLocationSpec.onlyAllowedCluster(possibleClusterUuids));
         // Multiple clusters, and each cluster has a different primary storage
         // Do not automatically allocate the primary storage, specifying primary storage impacts cluster selection
         if (possibleClusterUuids.size() > 1) {

@@ -3,6 +3,7 @@ package org.zstack.header.allocator;
 import org.zstack.header.configuration.DiskOfferingInventory;
 import org.zstack.header.image.ImageInventory;
 import org.zstack.header.vm.VmInstanceInventory;
+import org.zstack.header.vm.VmLocationSpec;
 import org.zstack.header.vm.VmNicParam;
 
 import java.util.*;
@@ -10,8 +11,9 @@ import java.util.*;
 /**
  */
 public class HostAllocatorSpec {
-    private List<String> avoidHostUuids;
-    private List<String> softAvoidHostUuids;
+    // recommendCluster, avoidHostUuids and softAvoidHostUuids
+    private List<VmLocationSpec> locationSpecs = new ArrayList<>();
+
     private long cpuCapacity;
     private long memoryCapacity;
     private List<String> l3NetworkUuids;
@@ -40,6 +42,14 @@ public class HostAllocatorSpec {
     private long oldMemoryCapacity = 0;
     private AllocationScene allocationScene;
     private String architecture;
+
+    public List<VmLocationSpec> getLocationSpecs() {
+        return locationSpecs;
+    }
+
+    public void setLocationSpecs(List<VmLocationSpec> locationSpecs) {
+        this.locationSpecs = locationSpecs;
+    }
 
     public AllocationScene getAllocationScene() {
         return allocationScene;
@@ -121,25 +131,6 @@ public class HostAllocatorSpec {
 
     public void setVmOperation(String vmOperation) {
         this.vmOperation = vmOperation;
-    }
-
-    public List<String> getAvoidHostUuids() {
-        if (avoidHostUuids == null) {
-            avoidHostUuids = new ArrayList<>();
-        }
-        return avoidHostUuids;
-    }
-
-    public void setAvoidHostUuids(List<String> avoidHostUuids) {
-        this.avoidHostUuids = avoidHostUuids;
-    }
-
-    public List<String> getSoftAvoidHostUuids() {
-        return softAvoidHostUuids;
-    }
-
-    public void setSoftAvoidHostUuids(List<String> softAvoidHostUuids) {
-        this.softAvoidHostUuids = softAvoidHostUuids;
     }
 
     public long getCpuCapacity() {
@@ -244,8 +235,7 @@ public class HostAllocatorSpec {
     public static HostAllocatorSpec fromAllocationMsg(AllocateHostMsg msg) {
         HostAllocatorSpec spec = new HostAllocatorSpec();
         spec.setAllocatorStrategy(msg.getAllocatorStrategy());
-        spec.setAvoidHostUuids(msg.getAvoidHostUuids());
-        spec.setSoftAvoidHostUuids(msg.getSoftAvoidHostUuids());
+        spec.setLocationSpecs(msg.getLocationSpecs());
         spec.setCpuCapacity(msg.getCpuCapacity());
         spec.setDiskSize(msg.getDiskSize());
         spec.setListAllHosts(msg.isListAllHosts());
