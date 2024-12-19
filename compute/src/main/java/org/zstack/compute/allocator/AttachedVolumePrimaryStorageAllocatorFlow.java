@@ -8,7 +8,7 @@ import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
-import org.zstack.header.host.HostVO;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO;
 import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO_;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
@@ -16,7 +16,6 @@ import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.header.volume.VolumeStatus;
 import org.zstack.utils.CollectionUtils;
-import org.zstack.utils.function.Function;
 
 import java.util.*;
 
@@ -32,7 +31,7 @@ public class AttachedVolumePrimaryStorageAllocatorFlow extends AbstractHostAlloc
         throwExceptionIfIAmTheFirstFlow();
 
         if (VmOperation.NewCreate.toString().equals(spec.getVmOperation())) {
-            next(candidates);
+            next();
             return;
         }
 
@@ -41,12 +40,7 @@ public class AttachedVolumePrimaryStorageAllocatorFlow extends AbstractHostAlloc
             fail(Platform.operr("cannot find root volume of vm[uuid:%s]", vm.getUuid()));
         }
 
-        List<String> requiredPsUuids = CollectionUtils.transformToList(vm.getAllVolumes(), new Function<String, VolumeInventory>() {
-            @Override
-            public String call(VolumeInventory arg) {
-                return arg.getPrimaryStorageUuid();
-            }
-        });
+        List<String> requiredPsUuids = CollectionUtils.transformAndRemoveNull(vm.getAllVolumes(), VolumeInventory::getPrimaryStorageUuid);
 
         // find out cluster that have all required primary storage attached
         SimpleQuery<PrimaryStorageClusterRefVO> q = dbf.createQuery(PrimaryStorageClusterRefVO.class);
@@ -54,11 +48,7 @@ public class AttachedVolumePrimaryStorageAllocatorFlow extends AbstractHostAlloc
         List<PrimaryStorageClusterRefVO> refs = q.list();
         Map<String, Set<String>> clusterPs = new HashMap<>();
         for (PrimaryStorageClusterRefVO ref : refs) {
-            Set<String> pss = clusterPs.get(ref.getClusterUuid());
-            if (pss == null) {
-                pss = new HashSet<>();
-                clusterPs.put(ref.getClusterUuid(), pss);
-            }
+            Set<String> pss = clusterPs.computeIfAbsent(ref.getClusterUuid(), k -> new HashSet<>());
             pss.add(ref.getPrimaryStorageUuid());
         }
 
@@ -69,22 +59,19 @@ public class AttachedVolumePrimaryStorageAllocatorFlow extends AbstractHostAlloc
             }
         }
 
+        if (clusterHavingAllPs.isEmpty()) {
+            rejectAll("need to attach primary storage: " + requiredPsUuids);
+            next();
+            return;
+        }
+
         // find out host in above result clusters
-        List<HostVO> tmp = candidates;
-        candidates = new ArrayList<>();
-        if (!clusterHavingAllPs.isEmpty()) {
-            for (HostVO h : tmp) {
-                if (clusterHavingAllPs.contains(h.getClusterUuid())) {
-                    candidates.add(h);
-                }
+        for (HostCandidate candidate : candidates) {
+            if (!clusterHavingAllPs.contains(candidate.host.getClusterUuid())) {
+                reject(candidate, "need to attach primary storage: " + requiredPsUuids);
             }
         }
 
-        if (candidates.isEmpty()) {
-            fail(Platform.operr("no host found in clusters which have attached to all primary storage %s where vm[uuid:%s]'s volumes locate",
-                    requiredPsUuids, vm.getUuid()));
-        } else {
-            next(candidates);
-        }
+        next();
     }
 }

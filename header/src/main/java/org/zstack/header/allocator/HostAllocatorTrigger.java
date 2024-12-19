@@ -8,7 +8,9 @@ import java.util.List;
 /**
  */
 public interface HostAllocatorTrigger {
-    void next(List<HostVO> candidates);
+    void next();
+
+    void push(List<HostVO> candidates);
 
     void skip();
 

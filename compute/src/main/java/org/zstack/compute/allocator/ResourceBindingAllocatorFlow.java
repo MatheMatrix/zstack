@@ -1,6 +1,5 @@
 package org.zstack.compute.allocator;
 
-import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
@@ -11,13 +10,15 @@ import org.zstack.core.Platform;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
 import org.zstack.header.allocator.AllocationScene;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.allocator.ResourceBindingCollector;
 import org.zstack.header.allocator.ResourceBindingStrategy;
 import org.zstack.header.host.HostVO;
 import org.zstack.resourceconfig.ResourceConfigFacade;
 
 import java.util.*;
-import java.util.stream.Collectors;
+
+import static org.zstack.utils.CollectionUtils.transform;
 
 /**
  * @ Author : yh.w
@@ -80,7 +81,7 @@ public class ResourceBindingAllocatorFlow extends AbstractHostAllocatorFlow {
 
         Boolean resourceConfig = rcf.getResourceConfigValue(VmGlobalConfig.VM_HA_ACROSS_CLUSTERS, spec.getVmInstance().getUuid(), Boolean.class);
         if (!validateAllocationScene() || (!VmSystemTags.VM_RESOURCE_BINGDING.hasTag(spec.getVmInstance().getUuid()) && resourceConfig)) {
-            next(candidates);
+            next();
             return;
         }
 
@@ -94,7 +95,7 @@ public class ResourceBindingAllocatorFlow extends AbstractHostAllocatorFlow {
         }
 
         if (resources.isEmpty()) {
-            next(candidates);
+            next();
             return;
         }
 
@@ -108,20 +109,22 @@ public class ResourceBindingAllocatorFlow extends AbstractHostAllocatorFlow {
             availableHost.addAll(collector.collect(entry.getValue()));
         }
 
-        List<HostVO> filteredHost = candidates.stream()
-                .filter(v -> availableHost.stream().anyMatch(h -> h.getUuid().equals(v.getUuid())))
-                .collect(Collectors.toList());
+        String strategy = rcf.getResourceConfigValue(VmGlobalConfig.RESOURCE_BINDING_STRATEGY, spec.getVmInstance().getUuid(), String.class);
+        boolean isSoft = ResourceBindingStrategy.Soft.toString().equals(strategy);
 
-        if (CollectionUtils.isNotEmpty(filteredHost)) {
-            next(filteredHost);
-            return;
+        List<String> availableHostUuidList = transform(availableHost, HostVO::getUuid);
+        for (HostCandidate candidate : candidates) {
+            if (availableHostUuidList.contains(candidate.getUuid())) {
+                continue;
+            }
+
+            if (isSoft) {
+                notRecommend(candidate);
+            } else {
+                reject(candidate, "not bound resource");
+            }
         }
 
-        if (rcf.getResourceConfigValue(VmGlobalConfig.RESOURCE_BINDING_STRATEGY, spec.getVmInstance().getUuid(), String.class)
-                .equals(ResourceBindingStrategy.Soft.toString())) {
-            next(candidates);
-        } else {
-            fail(Platform.operr("no available host found with binded resource %s", resources));
-        }
+        next();
     }
 }

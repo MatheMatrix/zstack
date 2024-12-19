@@ -3,9 +3,7 @@ package org.zstack.compute.allocator;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
-import org.zstack.core.Platform;
 import org.zstack.core.db.DatabaseFacade;
-import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
 import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
@@ -13,19 +11,14 @@ import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
 import org.zstack.header.allocator.HostAllocatorError;
 import org.zstack.header.allocator.HostAllocatorSpec;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.errorcode.OperationFailureException;
-import org.zstack.header.host.HostVO;
-import org.zstack.header.image.ImageBackupStorageRefInventory;
 import org.zstack.header.image.ImageStatus;
 import org.zstack.header.storage.backup.*;
-import org.zstack.header.storage.primary.ImageCacheVO;
-import org.zstack.header.storage.primary.ImageCacheVO_;
 import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO;
 import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO_;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
-import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
-import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.Collections;
@@ -35,6 +28,7 @@ import java.util.Set;
 
 import static org.zstack.core.Platform.err;
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.CollectionUtils.*;
 
 /**
  */
@@ -47,13 +41,8 @@ public class ImageBackupStorageAllocatorFlow extends AbstractHostAllocatorFlow {
     @Autowired
     private ErrorFacade errf;
 
-    private boolean checkIfNeedBackupStorageToDownloadImage(HostAllocatorSpec spec, List<HostVO> candidates) {
-        List<String> clusterUuids = CollectionUtils.transformToList(candidates, new Function<String, HostVO>() {
-            @Override
-            public String call(HostVO arg) {
-                return arg.getClusterUuid();
-            }
-        });
+    private boolean checkIfNeedBackupStorageToDownloadImage(HostAllocatorSpec spec, List<HostCandidate> candidates) {
+        Set<String> clusterUuids = transformToSet(candidates, candidate -> candidate.host.getClusterUuid());
 
         SimpleQuery<PrimaryStorageClusterRefVO> pq = dbf.createQuery(PrimaryStorageClusterRefVO.class);
         pq.select(PrimaryStorageClusterRefVO_.primaryStorageUuid);
@@ -89,28 +78,25 @@ public class ImageBackupStorageAllocatorFlow extends AbstractHostAllocatorFlow {
     @Override
     public void allocate() {
         if (!VmOperation.NewCreate.toString().equals(spec.getVmOperation())) {
-            next(candidates);
+            skip();
             return;
         }
 
         if (spec.getImage() == null){
-            next(candidates);
+            skip();
             return;
         }
 
         throwExceptionIfIAmTheFirstFlow();
 
         if (!checkIfNeedBackupStorageToDownloadImage(spec, candidates)) {
-            next(candidates);
+            next();
             return;
         }
 
-        List<String> bsUuids = CollectionUtils.transformToList(spec.getImage().getBackupStorageRefs(), new Function<String, ImageBackupStorageRefInventory>() {
-            @Override
-            public String call(ImageBackupStorageRefInventory arg) {
-                return ImageStatus.Deleted.toString().equals(arg.getStatus()) ? null : arg.getBackupStorageUuid();
-            }
-        });
+        List<String> bsUuids = transformAndRemoveNull(
+                spec.getImage().getBackupStorageRefs(),
+                arg -> ImageStatus.Deleted.toString().equals(arg.getStatus()) ? null : arg.getBackupStorageUuid());
 
         if (bsUuids.isEmpty()) {
             throw new OperationFailureException(operr(
@@ -136,20 +122,13 @@ public class ImageBackupStorageAllocatorFlow extends AbstractHostAllocatorFlow {
         q.add(BackupStorageZoneRefVO_.backupStorageUuid, Op.IN, bsUuids);
         final List<String> zoneUuids = q.listValue();
 
-        candidates = CollectionUtils.transformToList(candidates, new Function<HostVO, HostVO>() {
-            @Override
-            public HostVO call(HostVO arg) {
-                if (zoneUuids.contains(arg.getZoneUuid())) {
-                    return arg;
-                }
-                return null;
+        for (HostCandidate candidate : candidates) {
+            if (!zoneUuids.contains(candidate.host.getZoneUuid())) {
+                reject(candidate, String.format("not in zones %s attached to backup storage of image[uuid:%s]",
+                        zoneUuids, spec.getImage().getUuid()));
             }
-        });
-
-        if (candidates.isEmpty()) {
-            fail(Platform.operr("no host found in zones[uuids:%s] that attaches to backup storage where image[%s] is on", zoneUuids, spec.getImage().getUuid()));
-        } else {
-            next(candidates);
         }
+
+        next();
     }
 }
