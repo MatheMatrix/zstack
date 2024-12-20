@@ -1,7 +1,6 @@
 package org.zstack.identity;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.zstack.header.identity.AccountConstant;
 import org.zstack.header.query.APIQueryMessage;
 import org.zstack.query.AbstractMysqlQuerySubQueryExtension;
 import org.zstack.query.QueryUtils;
@@ -14,8 +13,7 @@ public class AccountSubQueryExtension extends AbstractMysqlQuerySubQueryExtensio
 
     @Override
     public String makeSubquery(APIQueryMessage msg, Class inventoryClass) {
-        if (AccountConstant.INITIAL_SYSTEM_ADMIN_UUID.equals(msg.getSession().getAccountUuid())
-                && IdentityGlobalConfig.SHOW_ALL_RESOURCE_TO_ADMIN.value(Boolean.class))  {
+        if (Account.isAdminPermission(msg.getSession()))  {
             return null;
         }
 

@@ -2,7 +2,6 @@ package org.zstack.identity;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.db.EntityMetadata;
-import org.zstack.header.identity.AccountConstant;
 import org.zstack.header.identity.SessionInventory;
 import org.zstack.header.zql.ASTNode;
 import org.zstack.header.zql.MarshalZQLASTTreeExtensionPoint;
@@ -55,8 +54,7 @@ public class IdentityZQLExtension implements MarshalZQLASTTreeExtensionPoint, Re
         }
 
         List<String> restrictAccountUuids = getRestrictAccountUuids(context.getAPISession());
-        String accountUuid = context.getAPISession().getAccountUuid();
-        if (AccountConstant.INITIAL_SYSTEM_ADMIN_UUID.equals(accountUuid) && restrictAccountUuids == null) {
+        if (Account.isAdminPermission(context.getAPISession()) && restrictAccountUuids == null) {
             throw new SkipThisRestrictExprException();
         }
 
