@@ -4,7 +4,7 @@ package org.zstack.header.core.external.plugin
 
 doc {
 
-	title "插件驱动器"
+	title "在这里输入结构的名称"
 
 	field {
 		name "name"
@@ -14,31 +14,31 @@ doc {
 	}
 	field {
 		name "type"
-		desc "资源类型"
+		desc ""
 		type "String"
 		since "5.3.0"
 	}
 	field {
 		name "vendor"
-		desc "插件供应商"
+		desc ""
 		type "String"
 		since "5.3.0"
 	}
 	field {
 		name "features"
-		desc "插件特性"
+		desc ""
 		type "String"
 		since "5.3.0"
 	}
 	field {
 		name "license"
-		desc "插件许可证"
+		desc ""
 		type "String"
 		since "5.3.0"
 	}
 	field {
 		name "version"
-		desc "插件版本"
+		desc ""
 		type "String"
 		since "5.3.0"
 	}

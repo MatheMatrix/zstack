@@ -8,6 +8,7 @@ import org.reflections.util.FilterBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.abstraction.PluginDriver;
 import org.zstack.abstraction.PluginValidator;
+import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.Platform;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.CloudBus;
@@ -24,11 +25,19 @@ import org.zstack.header.managementnode.ManagementNodeVO;
 import org.zstack.header.managementnode.ManagementNodeVO_;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
+import org.zstack.utils.Bash;
 import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
+import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.*;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 import static org.zstack.core.Platform.operr;
 
@@ -82,8 +91,17 @@ public class PluginManagerImpl extends AbstractService implements PluginManager 
                     .getConstructor()
                     .newInstance();
             if (pluginInstances.containsKey(pluginDriver.uuid())) {
-                throw new CloudRuntimeException(
-                        String.format("duplicate plugin[class: %s]", pluginRegisterClz));
+                logger.debug(String.format("reload plugin[class: %s, productKey: %s, version: %s," +
+                                " capabilities: %s, description: %s, vendor: %s, url: %s," +
+                                " license: %s]",
+                        pluginRegisterClz,
+                        pluginDriver.uuid(),
+                        pluginDriver.version(),
+                        JSONObjectUtil.toJsonString(pluginDriver.features()),
+                        pluginDriver.description(),
+                        pluginDriver.vendor(),
+                        pluginDriver.url(),
+                        pluginDriver.license()));
             }
 
             if (pluginValidators.containsKey(pluginRegisterClz)) {
@@ -183,35 +201,23 @@ public class PluginManagerImpl extends AbstractService implements PluginManager 
         // TODO: verify plugin driver
     }
 
-    private void collectPluginValidators() {
-        Platform.getReflections().getSubTypesOf(PluginValidator.class).forEach(clz -> {
-            if (!clz.getCanonicalName().contains("org.zstack.abstraction")
-                    || !clz.isInterface()) {
-                return;
-            }
-
-            if (pluginMetadata.contains(clz)) {
-                throw new CloudRuntimeException(
-                        String.format("duplicate PluginValidator[name: %s]", clz));
-            }
-
-            try {
-                PluginValidator pluginValidator = clz
-                        .getConstructor()
-                        .newInstance();
-
-                pluginValidators.put(pluginValidator.pluginClass(), pluginValidator);
-            } catch (Exception e) {
-                throw new CloudRuntimeException(e);
-            }
-        });
+    private void collectPluginValidators(Class<?> validatorClazz) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        PluginValidator pluginValidator = ((Class<? extends PluginValidator>) validatorClazz).getConstructor().newInstance();
+        pluginValidators.put(pluginValidator.pluginClass(), pluginValidator);
     }
 
     @Override
     public boolean start() {
-        collectPluginProtocolMetadata();
-        collectPluginValidators();
-        loadPluginsFromMetadata();
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            return true;
+        }
+        new Bash() {
+            @Override
+            protected void scripts() {
+                mkdirs(FILE_DIR_PATH);
+            }
+        }.execute();
+        scanAndLoadPlugins(FILE_DIR_PATH);
         return true;
     }
 
@@ -305,12 +311,73 @@ public class PluginManagerImpl extends AbstractService implements PluginManager 
         }
     }
 
+    protected List<File> getJarFiles(String dirPath) {
+        File dir = new File(dirPath);
+        List<File> jarFiles = new ArrayList<>();
+
+        if (!dir.exists() || !dir.isDirectory()) {
+            return jarFiles;
+        }
+
+        File[] files = dir.listFiles((file) -> file.isFile() && file.getName().endsWith(".jar"));
+        if (files != null) {
+            for (File file : files) {
+                jarFiles.add(file);
+            }
+        }
+        return jarFiles;
+    }
+
+    protected void loadPluginsFromJar(File jarFile) {
+        URL jarUrl = null;
+        try {
+            jarUrl = jarFile.toURI().toURL();
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        try (URLClassLoader classLoader = new URLClassLoader(new URL[]{jarUrl}, getClass().getClassLoader())) {
+            try (JarFile jar = new JarFile(jarFile)) {
+                Enumeration<JarEntry> entries = jar.entries();
+                while (entries.hasMoreElements()) {
+                    JarEntry entry = entries.nextElement();
+                    String entryName = entry.getName();
+                    if (!entryName.endsWith(".class")) {
+                        continue;
+                    }
+
+                    if (entryName.contains("$")) {
+                        continue;
+                    }
+
+                    if (entryName.contains("Test")) {
+                        continue;
+                    }
+
+                    String className = entryName.replace('/', '.').substring(0, entryName.length() - 6);
+                    Class<?> tempClazz = classLoader.loadClass(className);
+                    if (className.contains("Validator")) {
+                        collectPluginValidators(tempClazz);
+                        continue;
+                    }
+
+                    registerPluginAsSingleton((Class<? extends PluginDriver>) tempClazz, (Class<? extends PluginDriver>) tempClazz.getInterfaces()[0]);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    protected void scanAndLoadPlugins(String directoryPath) {
+        List<File> jarFiles = getJarFiles(directoryPath);
+        for (File jarFile : jarFiles) {
+            loadPluginsFromJar(jarFile);
+        }
+    }
+
     private void handle(RefreshPluginDriversMsg msg) {
         RefreshPluginDriversReply reply = new RefreshPluginDriversReply();
-        cleanUp();
-        collectPluginProtocolMetadata();
-        collectPluginValidators();
-        loadPluginsFromMetadata();
+        scanAndLoadPlugins(FILE_DIR_PATH);
         bus.reply(msg, reply);
     }
 
@@ -324,32 +391,23 @@ public class PluginManagerImpl extends AbstractService implements PluginManager 
     private void handle(APIDeletePluginDriversMsg msg) {
         APIDeletePluginDriversEvent event = new APIDeletePluginDriversEvent(msg.getId());
         // TODO send msg to local and remote mn to delete plugin driver
+        pluginInstances.remove(msg.getUuid());
         dbf.removeByPrimaryKey(msg.getUuid(), PluginDriverVO.class);
-        cleanUp();
-        collectPluginProtocolMetadata();
-        collectPluginValidators();
-        loadPluginsFromMetadata();
         bus.publish(event);
-    }
-
-    private void cleanUp() {
-        pluginMetadata.clear();
-        pluginInstances.clear();
-        pluginRegisters.clear();
-        pluginValidators.clear();
     }
 
     private void handle(APIRefreshPluginDriversMsg msg) {
         APIRefreshPluginDriversEvent event = new APIRefreshPluginDriversEvent(msg.getId());
         new While<>(Q.New(ManagementNodeVO.class).select(ManagementNodeVO_.uuid).listValues()).step((mnUuid, com) -> {
             RefreshPluginDriversMsg rmsg = new RefreshPluginDriversMsg();
-            bus.makeServiceIdByManagementNodeId(msg, SERVICE_ID, (String) mnUuid);
+            bus.makeServiceIdByManagementNodeId(rmsg, SERVICE_ID, (String) mnUuid);
             bus.send(rmsg, new CloudBusCallBack(com) {
                 @Override
                 public void run(MessageReply reply) {
                     if (!reply.isSuccess()) {
                         com.addError(reply.getError());
                         com.allDone();
+                        return;
                     }
 
                     com.done();
