@@ -4118,6 +4118,11 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         CephPrimaryStoragePoolVO vo = dbf.findByUuid(msg.getUuid(), CephPrimaryStoragePoolVO.class);
         dbf.remove(vo);
         osdHelper.recalculateAvailableCapacity();
+
+        for(CephPrimaryStorageMonAfterModifiedExtensionPoint ext : pluginRgty.getExtensionList(CephPrimaryStorageMonAfterModifiedExtensionPoint.class)) {
+            ext.afterModified(getSelf());
+        }
+
         bus.publish(evt);
     }
 
@@ -4157,6 +4162,11 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
             @Override
             public void success(AddPoolRsp rsp) {
                 osdHelper.recalculateAvailableCapacity();
+
+                for(CephPrimaryStorageMonAfterModifiedExtensionPoint ext : pluginRgty.getExtensionList(CephPrimaryStorageMonAfterModifiedExtensionPoint.class)) {
+                    ext.afterModified(getSelf());
+                }
+
                 evt.setInventory(CephPrimaryStoragePoolInventory.valueOf(finalVo));
                 bus.publish(evt);
                 completion.done();
