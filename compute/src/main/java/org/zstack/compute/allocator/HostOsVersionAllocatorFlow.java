@@ -7,6 +7,7 @@ import org.zstack.compute.host.HostManager;
 import org.zstack.core.Platform;
 import org.zstack.core.db.Q;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.host.*;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.header.vo.ResourceVO;
@@ -33,15 +34,16 @@ public class HostOsVersionAllocatorFlow  extends AbstractHostAllocatorFlow {
     public void allocate() {
         throwExceptionIfIAmTheFirstFlow();
 
-        Map<String, HostVO> hostMap = toMap(candidates, HostVO::getUuid, Function.identity());
+        Map<String, HostCandidate> hostMap = toMap(candidates, HostCandidate::getUuid, Function.identity());
         final VmInstanceInventory vm = spec.getVmInstance();
         String currentHostUuid = vm.getHostUuid() == null ? vm.getLastHostUuid() : vm.getHostUuid();
         if (currentHostUuid == null) {
             logger.debug(String.format("VM[uuid:%s] never started on any host, skip host OS checker", vm.getUuid()));
+            skip();
             return;
         }
 
-        List<HostVO> allHostList = new ArrayList<>(candidates);
+        List<HostVO> allHostList = transform(candidates, candidate -> candidate.host);
         final HostVO currentHost = Q.New(HostVO.class)
                 .eq(HostVO_.uuid, currentHostUuid)
                 .find();
@@ -51,20 +53,23 @@ public class HostOsVersionAllocatorFlow  extends AbstractHostAllocatorFlow {
         final HostOperationSystem currentHostOs = hostOsMap.get(currentHostUuid);
         allHostList.remove(currentHost);
 
-        List<HostVO> matchedHosts = allHostList.stream()
+        Set<String> matchedHosts = allHostList.stream()
                 .map(HostVO::getUuid)
                 .filter(hostUuid -> {
                     final HostOperationSystem hostOs = hostOsMap.get(hostUuid);
                     return hostOs == null ? true : hostOs.equals(currentHostOs);
                 })
                 .map(hostMap::get)
-                .collect(Collectors.toList());
+                .map(HostCandidate::getUuid)
+                .collect(Collectors.toSet());
 
-        if (matchedHosts.isEmpty()) {
-            fail(Platform.operr("no candidate host has version[%s]", currentHostOs));
-        } else {
-            next(matchedHosts);
+        for (HostCandidate candidate : candidates) {
+            if (!matchedHosts.contains(candidate.getUuid())) {
+                reject(candidate, String.format("OS version %s required", currentHostOs));
+            }
         }
+
+        next();
     }
 
     private Map<String, HostOperationSystem> generateHostUuidOsMap(List<HostVO> hostList) {

@@ -210,8 +210,8 @@
                 <value>org.zstack.compute.allocator.TagAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.ResourceBindingAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.FilterFlow</value>
-                <value>org.zstack.compute.allocator.RecommendedLocationFlow</value>
                 <value>org.zstack.compute.allocator.LastHostAllocatorFlow</value>
+                <value>org.zstack.compute.allocator.RecommendedLocationFlow</value>
             </list>
         </property>
     </bean>
@@ -237,8 +237,8 @@
                 <value>org.zstack.compute.allocator.TagAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.ResourceBindingAllocatorFlow</value>
                 <value>org.zstack.compute.allocator.FilterFlow</value>
-                <value>org.zstack.compute.allocator.RecommendedLocationFlow</value>
                 <value>org.zstack.compute.allocator.LastHostAllocatorFlow</value>
+                <value>org.zstack.compute.allocator.RecommendedLocationFlow</value>
             </list>
         </property>
     </bean>

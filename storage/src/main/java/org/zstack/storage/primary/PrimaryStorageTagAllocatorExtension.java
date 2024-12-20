@@ -5,11 +5,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.allocator.DiskOfferingTagAllocatorExtensionPoint;
-import org.zstack.header.allocator.HostAllocatorError;
 import org.zstack.header.allocator.HostAllocatorSpec;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.allocator.InstanceOfferingTagAllocatorExtensionPoint;
 import org.zstack.header.errorcode.OperationFailureException;
-import org.zstack.header.host.HostVO;
 import org.zstack.header.storage.primary.PrimaryStorageTagAllocatorExtensionPoint;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.header.tag.SystemTagInventory;
@@ -22,7 +21,6 @@ import javax.persistence.TypedQuery;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.zstack.core.Platform.err;
 import static org.zstack.core.Platform.operr;
 
 /**
@@ -35,79 +33,72 @@ public class PrimaryStorageTagAllocatorExtension implements InstanceOfferingTagA
     private ErrorFacade errf;
 
     @Transactional(readOnly = true)
-    private List<HostVO> uuidTagAllocateHost(List<HostVO> candidates, String psUuid) {
-        List<String> hostUuids = CollectionUtils.transformToList(candidates, new Function<String, HostVO>() {
-            @Override
-            public String call(HostVO arg) {
-                return arg.getUuid();
-            }
-        });
+    private void uuidTagAllocateHost(List<HostCandidate> candidates, String psUuid) {
+        List<String> hostUuids = CollectionUtils.transform(candidates, HostCandidate::getUuid);
 
-        String sql = "select h from HostVO h where h.clusterUuid in (select ref.clusterUuid from PrimaryStorageClusterRefVO ref where ref.primaryStorageUuid = :psUuid) and h.uuid in (:huuids)";
-        TypedQuery<HostVO> q = dbf.getEntityManager().createQuery(sql, HostVO.class);
+        String sql = "select h.uuid from HostVO h where h.clusterUuid in (select ref.clusterUuid from PrimaryStorageClusterRefVO ref where ref.primaryStorageUuid = :psUuid) and h.uuid in (:huuids)";
+        TypedQuery<String> q = dbf.getEntityManager().createQuery(sql, String.class);
         q.setParameter("psUuid", psUuid);
         q.setParameter("huuids", hostUuids);
-        candidates = q.getResultList();
+        List<String> results = q.getResultList();
 
-        if (candidates.isEmpty()) {
-            throw new OperationFailureException(err(HostAllocatorError.NO_AVAILABLE_HOST,
-                    "cannot find host whose cluster has attached to primary storage[uuid:%s]. The primary storage uuid is specified in instance offering tag", psUuid
-            ));
+        for (HostCandidate candidate : candidates) {
+            if (!results.contains(candidate.getUuid())) {
+                candidate.markAsRejected(
+                        getClass().getSimpleName(),
+                        String.format("not attach to primary storage[uuid:%s] the instance offering tag specified", psUuid));
+            }
         }
-
-        return candidates;
     }
 
     @Override
-    public List<HostVO> allocateHost(List<TagInventory> tags, List<HostVO> candidates, HostAllocatorSpec spec) {
+    public void allocateHost(List<TagInventory> tags, List<HostCandidate> candidates, HostAllocatorSpec spec) {
         if (!VmOperation.NewCreate.toString().equals(spec.getVmOperation())) {
-            return candidates;
+            return;
         }
 
         for (TagInventory tag : tags) {
             String uuid = PrimaryStorageSystemTags.PRIMARY_STORAGE_ALLOCATOR_UUID_TAG.getTokenByTag(tag.getTag(), "uuid");
             if (uuid != null) {
-                return uuidTagAllocateHost(candidates, uuid);
+                uuidTagAllocateHost(candidates, uuid);
+                return;
             }
 
             String requiredUserTag = PrimaryStorageSystemTags.PRIMARY_STORAGE_ALLOCATOR_USERTAG_TAG_MANDATORY.getTokenByTag(tag.getTag(), "tag");
             if (requiredUserTag != null) {
-                return userTagAllocateHost(candidates, requiredUserTag, true);
+                userTagAllocateHost(candidates, requiredUserTag, true);
+                return;
             }
 
             String userTag = PrimaryStorageSystemTags.PRIMARY_STORAGE_ALLOCATOR_USERTAG_TAG.getTokenByTag(tag.getTag(), "tag");
             if (userTag != null) {
-                return userTagAllocateHost(candidates, userTag, false);
+                userTagAllocateHost(candidates, userTag, false);
+                return;
             }
         }
-
-        return candidates;
     }
 
     @Transactional(readOnly = true)
-    private List<HostVO> userTagAllocateHost(List<HostVO> candidates, String tag, boolean required) {
-        List<String> hostUuids = CollectionUtils.transformToList(candidates, new Function<String, HostVO>() {
-            @Override
-            public String call(HostVO arg) {
-                return arg.getUuid();
-            }
-        });
+    private void userTagAllocateHost(List<HostCandidate> candidates, String tag, boolean required) {
+        List<String> hostUuids = CollectionUtils.transform(candidates, HostCandidate::getUuid);
 
-        String sql = "select h from HostVO h where h.clusterUuid in (select ref.clusterUuid from PrimaryStorageClusterRefVO ref where ref.primaryStorageUuid in (select t.resourceUuid from UserTagVO t where t.tag = :tag and t.resourceType = :resourceType)) and h.uuid in (:huuids)";
-        TypedQuery<HostVO> q = dbf.getEntityManager().createQuery(sql, HostVO.class);
+        String sql = "select h.uuid from HostVO h where h.clusterUuid in (select ref.clusterUuid from PrimaryStorageClusterRefVO ref where ref.primaryStorageUuid in (select t.resourceUuid from UserTagVO t where t.tag = :tag and t.resourceType = :resourceType)) and h.uuid in (:huuids)";
+        TypedQuery<String> q = dbf.getEntityManager().createQuery(sql, String.class);
         q.setParameter("tag", tag);
         q.setParameter("resourceType", PrimaryStorageVO.class.getSimpleName());
         q.setParameter("huuids", hostUuids);
-        List<HostVO> vos = q.getResultList();
+        List<String> vos = q.getResultList();
 
-        if (vos.isEmpty() && required) {
-            throw new OperationFailureException(err(HostAllocatorError.NO_AVAILABLE_HOST,
-                    "cannot find host whose cluster has attached to primary storage having user tag[%s]. The user tag is specified in instance offering tag", tag
-            ));
-        } else if (vos.isEmpty()) {
-            return candidates;
-        } else {
-            return vos;
+        if (vos.isEmpty() && !required) {
+            return;
+        }
+
+        for (HostCandidate candidate : candidates) {
+            if (!vos.contains(candidate.getUuid())) {
+                candidate.markAsRejected(
+                        getClass().getSimpleName(),
+                        String.format("not attach to primary storage the user tag[%s] specified", tag));
+            }
         }
     }
 
