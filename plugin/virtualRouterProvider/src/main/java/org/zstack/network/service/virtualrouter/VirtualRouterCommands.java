@@ -1264,4 +1264,28 @@ public class VirtualRouterCommands {
 	public static class ConfigureNtpRsp extends AgentResponse {
 
 	}
+
+	public static class ConfigPromtailCmd extends AgentCommand {
+		@GrayVersion(value = "5.4.0")
+		private boolean enable;
+
+		@GrayVersion(value = "5.4.0")
+		private String logTarget;
+
+		public boolean isEnable() {
+			return enable;
+		}
+
+		public void setEnable(boolean enable) {
+			this.enable = enable;
+		}
+
+		public String getLogTarget() {
+			return logTarget;
+		}
+
+		public void setLogTarget(String logTarget) {
+			this.logTarget = logTarget;
+		}
+	}
 }
