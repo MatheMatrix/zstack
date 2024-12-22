@@ -17,8 +17,6 @@ import static org.zstack.utils.CollectionUtils.*;
 public class AvoidHostAllocatorFlow extends AbstractHostAllocatorFlow {
     @Override
     public void allocate() {
-        throwExceptionIfIAmTheFirstFlow();
-
         final Set<String> avoidHostUuids = avoidHostUuids();
         for (HostCandidate candidate : candidates) {
             if (avoidHostUuids.contains(candidate.getUuid())) {

@@ -45,7 +45,6 @@ public class TagAllocatorFlow extends AbstractHostAllocatorFlow {
 
     @Override
     public void allocate() {
-        throwExceptionIfIAmTheFirstFlow();
         List<HostCandidate> tmp = new ArrayList<>(candidates);
 
         if (!instanceOfferingExtensions.isEmpty()) {

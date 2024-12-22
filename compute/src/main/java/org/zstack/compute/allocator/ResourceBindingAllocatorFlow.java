@@ -77,8 +77,6 @@ public class ResourceBindingAllocatorFlow extends AbstractHostAllocatorFlow {
 
     @Override
     public void allocate() {
-        throwExceptionIfIAmTheFirstFlow();
-
         Boolean resourceConfig = rcf.getResourceConfigValue(VmGlobalConfig.VM_HA_ACROSS_CLUSTERS, spec.getVmInstance().getUuid(), Boolean.class);
         if (!validateAllocationScene() || (!VmSystemTags.VM_RESOURCE_BINGDING.hasTag(spec.getVmInstance().getUuid()) && resourceConfig)) {
             next();

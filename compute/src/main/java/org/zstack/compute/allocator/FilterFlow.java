@@ -30,8 +30,6 @@ public class FilterFlow extends AbstractHostAllocatorFlow {
 
     @Override
     public void allocate() {
-        throwExceptionIfIAmTheFirstFlow();
-
         Map<String, HostCandidate> uuidCandidateMap = toMap(candidates, HostCandidate::getUuid, Function.identity());
 
         List<HostVO> hostsBefore = transform(candidates, candidate -> candidate.host);
@@ -41,7 +39,8 @@ public class FilterFlow extends AbstractHostAllocatorFlow {
             try {
                 hostsAfter = filter.filterHostCandidates(new ArrayList<>(hostsBefore), spec);
             } catch (OperationFailureException e) {
-                fail(e.getErrorCode());
+                rejectAll(e.getErrorCode().getDetails());
+                next();
                 return;
             }
 
@@ -54,7 +53,10 @@ public class FilterFlow extends AbstractHostAllocatorFlow {
             }
 
             if (hostsAfter.isEmpty()) {
-                fail(Platform.operr("after filtering, HostAllocatorFilterExtensionPoint[%s] returns zero candidate host, it means: %s", filter.getClass().getSimpleName(), filter.filterErrorReason()));
+                logger.debug(String.format(
+                        "after filtering, HostAllocatorFilterExtensionPoint[%s] returns zero candidate host, it means: %s",
+                        filter.getClass().getSimpleName(), filter.filterErrorReason()));
+                next();
                 return;
             }
 

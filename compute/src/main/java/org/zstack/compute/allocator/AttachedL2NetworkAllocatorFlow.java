@@ -7,8 +7,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
-import org.zstack.header.allocator.AbstractHostAllocatorFlow;
-import org.zstack.header.allocator.HostCandidate;
+import org.zstack.header.allocator.HostAllocatorSpec;
+import org.zstack.header.allocator.HostCandidateProducer;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.host.HostVO_;
 import org.zstack.header.network.l2.*;
@@ -24,7 +24,7 @@ import org.zstack.utils.Utils;
 
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
-public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
+public class AttachedL2NetworkAllocatorFlow implements HostCandidateProducer {
     private static final CLogger logger = Utils.getLogger(AttachedL2NetworkAllocatorFlow.class);
 
     @Autowired
@@ -33,7 +33,7 @@ public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
     private PluginRegistry pluginRgty;
 
     @Transactional(readOnly = true)
-    private List<HostVO> allocate(Collection<String> l3NetworkUuids, Collection<String> hostUuids) {
+    private List<HostVO> allocate(Collection<String> l3NetworkUuids, HostCandidateProducerContext context) {
         String sql = "select l3.l2NetworkUuid from L3NetworkVO l3 where l3.uuid in (:l3uuids)";
         TypedQuery<String> q = dbf.getEntityManager().createQuery(sql, String.class);
         q.setParameter("l3uuids", l3NetworkUuids);
@@ -67,15 +67,10 @@ public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
             return new ArrayList<>();
         }
 
-        List<String> retHostUuids;
-        if (hostUuids.isEmpty()) {
-            retHostUuids = Q.New(HostVO.class).select(HostVO_.uuid)
-                    .in(HostVO_.clusterUuid, clusterUuids).listValues();
-        } else {
-            retHostUuids = Q.New(HostVO.class).select(HostVO_.uuid)
-                    .in(HostVO_.clusterUuid, clusterUuids)
-                    .in(HostVO_.uuid, hostUuids).listValues();
-        }
+        List<String> retHostUuids = Q.New(HostVO.class)
+                .select(HostVO_.uuid)
+                .in(HostVO_.clusterUuid, clusterUuids)
+                .listValues();
 
         if (retHostUuids.isEmpty()){
             return new ArrayList<>();
@@ -92,56 +87,37 @@ public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
         TypedQuery<HostVO> hq = dbf.getEntityManager().createQuery(sql, HostVO.class);
         hq.setParameter("huuids", retHostUuids);
 
-        if (usePagination()) {
-            hq.setFirstResult(paginationInfo.getOffset());
-            hq.setMaxResults(paginationInfo.getLimit());
+        if (context.usePagination()) {
+            hq.setFirstResult(context.paginationInfo.getOffset());
+            hq.setMaxResults(context.paginationInfo.getLimit());
         }
 
         return hq.getResultList();
     }
 
     @Override
-    public void allocate() {
+    public void produce(HostCandidateProducerContext context) {
+        final HostAllocatorSpec spec = context.spec;
+
         if (spec.getL3NetworkUuids().isEmpty()) {
             if (spec.isAllowNoL3Networks()) {
-                skip();
-                return;
-            } else {
-                spec.setAllowNoL3Networks(true);
-
-                String sql;
-                Set<String> clusterUuids = new HashSet<>();
-                clusterUuids.add(spec.getVmInstance().getClusterUuid());
-                List<String> hostUuids = null;
-                if (!amITheFirstFlow()) {
-                    hostUuids = candidates.stream().map(HostCandidate::getUuid).collect(Collectors.toList());
-                }
-
-                if (hostUuids == null || hostUuids.isEmpty()) {
-                    sql = "select h from HostVO h where h.clusterUuid in (:cuuids)";
-                    TypedQuery<HostVO> hq = dbf.getEntityManager().createQuery(sql, HostVO.class);
-                    hq.setParameter("cuuids", clusterUuids);
-                    if (usePagination()) {
-                        hq.setFirstResult(paginationInfo.getOffset());
-                        hq.setMaxResults(paginationInfo.getLimit());
-                    }
-                    accept(hq.getResultList());
-                } else {
-                    sql = "select h from HostVO h where h.clusterUuid in (:cuuids) and h.uuid in (:huuids)";
-                    TypedQuery<HostVO> hq = dbf.getEntityManager().createQuery(sql, HostVO.class);
-                    hq.setParameter("cuuids", clusterUuids);
-                    hq.setParameter("huuids", hostUuids);
-
-                    if (usePagination()) {
-                        hq.setFirstResult(paginationInfo.getOffset());
-                        hq.setMaxResults(paginationInfo.getLimit());
-                    }
-                    accept(hq.getResultList());
-                }
-
-                next();
                 return;
             }
+
+            spec.setAllowNoL3Networks(true);
+            String sql;
+            Set<String> clusterUuids = new HashSet<>();
+            clusterUuids.add(spec.getVmInstance().getClusterUuid());
+
+            sql = "select h from HostVO h where h.clusterUuid in (:cuuids)";
+            TypedQuery<HostVO> hq = dbf.getEntityManager().createQuery(sql, HostVO.class);
+            hq.setParameter("cuuids", clusterUuids);
+            if (context.usePagination()) {
+                hq.setFirstResult(context.paginationInfo.getOffset());
+                hq.setMaxResults(context.paginationInfo.getLimit());
+            }
+            context.accept(hq.getResultList());
+            return;
         }
 
         List<String> l3Uuids = spec.getL3NetworkUuids();
@@ -153,17 +129,11 @@ public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
             l3Uuids.addAll(serviceL3s.stream().map(L3NetworkInventory::getUuid).distinct().collect(Collectors.toList()));
         }
 
-
-        if (amITheFirstFlow()) {
-            accept(allocate(l3Uuids, new ArrayList<>()));
-        } else {
-            accept(allocate(l3Uuids, allHostUuidList()));
-        }
-
+        final List<HostVO> newcomers = allocate(l3Uuids, context);
         if (newcomers.isEmpty()) {
             logger.warn(String.format("no host found in clusters that has attached to L2Networks which have L3Networks%s", spec.getL3NetworkUuids()));
         }
 
-        next();
+        context.accept(newcomers);
     }
 }

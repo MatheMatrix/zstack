@@ -30,8 +30,6 @@ public class AllocatePrimaryStorageForVmMigrationFlow  extends AbstractHostAlloc
 
     @Override
     public void allocate() {
-        throwExceptionIfIAmTheFirstFlow();
-
         if (!VmOperation.Migrate.toString().equals(spec.getVmOperation())) {
             throw new CloudRuntimeException("AllocatePrimaryStorageForVmMigrationFlow is only used for migrating vm");
         }

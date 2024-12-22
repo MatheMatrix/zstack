@@ -28,8 +28,6 @@ public class AttachedVolumePrimaryStorageAllocatorFlow extends AbstractHostAlloc
 
     @Override
     public void allocate() {
-        throwExceptionIfIAmTheFirstFlow();
-
         if (VmOperation.NewCreate.toString().equals(spec.getVmOperation())) {
             next();
             return;

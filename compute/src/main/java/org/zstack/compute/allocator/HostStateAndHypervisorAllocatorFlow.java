@@ -4,14 +4,10 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.db.DatabaseFacade;
-import org.zstack.core.db.SimpleQuery;
-import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
 import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.host.HostState;
 import org.zstack.header.host.HostStatus;
-import org.zstack.header.host.HostVO;
-import org.zstack.header.host.HostVO_;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
@@ -21,22 +17,6 @@ public class HostStateAndHypervisorAllocatorFlow extends AbstractHostAllocatorFl
 
     @Autowired
     private DatabaseFacade dbf;
-
-    private void produce(String hypervisorType) {
-        SimpleQuery<HostVO> query = dbf.createQuery(HostVO.class);
-        query.add(HostVO_.state, Op.EQ, HostState.Enabled);
-        query.add(HostVO_.status, Op.EQ, HostStatus.Connected);
-        if (hypervisorType != null) {
-            query.add(HostVO_.hypervisorType, Op.EQ, hypervisorType);
-        }
-
-        if (usePagination()) {
-            query.setStart(paginationInfo.getOffset());
-            query.setLimit(paginationInfo.getLimit());
-        }
-
-        accept(query.list());
-    }
 
     private void allocate(String hypervisorType) {
         for (HostCandidate candidate : candidates) {
@@ -58,12 +38,7 @@ public class HostStateAndHypervisorAllocatorFlow extends AbstractHostAllocatorFl
 
     @Override
     public void allocate() {
-        if (amITheFirstFlow()) {
-            produce(spec.getHypervisorType());
-        } else {
-            allocate(spec.getHypervisorType());
-        }
-
+        allocate(spec.getHypervisorType());
         next();
     }
 }

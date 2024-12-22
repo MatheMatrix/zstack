@@ -9,6 +9,7 @@ import java.util.List;
 public abstract class AbstractHostAllocatorStrategyFactory implements HostAllocatorStrategyFactory, Component {
     protected HostAllocatorChainBuilder builder;
     protected HostAllocatorChainBuilder sorter;
+    private List<String> producerNames = new ArrayList<>();
     private List<String> allocatorFlowNames = new ArrayList<>();
     private List<String> sortFlowNames = new ArrayList<>();
 
@@ -22,12 +23,20 @@ public abstract class AbstractHostAllocatorStrategyFactory implements HostAlloca
 
     public abstract HostAllocatorStrategyType getHostAllocatorStrategyType();
 
-    public void setAllocatorFlowNames(List<String> allocatorFlowNames) {
-        this.allocatorFlowNames = allocatorFlowNames;
+    public List<String> getProducerNames() {
+        return producerNames;
+    }
+
+    public void setProducerNames(List<String> producerNames) {
+        this.producerNames = producerNames;
     }
 
     public List<String> getAllocatorFlowNames() {
         return allocatorFlowNames;
+    }
+
+    public void setAllocatorFlowNames(List<String> allocatorFlowNames) {
+        this.allocatorFlowNames = allocatorFlowNames;
     }
 
     public List<String> getSortFlowNames() {
@@ -39,8 +48,13 @@ public abstract class AbstractHostAllocatorStrategyFactory implements HostAlloca
     }
 
     public boolean start() {
-        builder = HostAllocatorChainBuilder.newBuilder().setFlowClassNames(allocatorFlowNames).construct();
-        sorter = HostAllocatorChainBuilder.newBuilder().setFlowClassNames(sortFlowNames).construct();
+        builder = HostAllocatorChainBuilder.newBuilder()
+                .setProducerClassNames(producerNames)
+                .setFlowClassNames(allocatorFlowNames)
+                .construct();
+        sorter = HostAllocatorChainBuilder.newBuilder()
+                .setSorterClassNames(sortFlowNames)
+                .construct();
         return true;
     }
 
