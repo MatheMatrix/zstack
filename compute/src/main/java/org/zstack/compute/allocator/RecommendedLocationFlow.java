@@ -23,10 +23,8 @@ public class RecommendedLocationFlow extends AbstractHostAllocatorFlow {
 
     @Override
     public void allocate() {
-        throwExceptionIfIAmTheFirstFlow();
-
         if (spec.isListAllHosts()) {
-            skip();
+            next();
             return;
         }
 

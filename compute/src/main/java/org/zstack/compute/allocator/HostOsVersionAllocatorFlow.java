@@ -32,14 +32,12 @@ public class HostOsVersionAllocatorFlow  extends AbstractHostAllocatorFlow {
 
     @Override
     public void allocate() {
-        throwExceptionIfIAmTheFirstFlow();
-
         Map<String, HostCandidate> hostMap = toMap(candidates, HostCandidate::getUuid, Function.identity());
         final VmInstanceInventory vm = spec.getVmInstance();
         String currentHostUuid = vm.getHostUuid() == null ? vm.getLastHostUuid() : vm.getHostUuid();
         if (currentHostUuid == null) {
             logger.debug(String.format("VM[uuid:%s] never started on any host, skip host OS checker", vm.getUuid()));
-            skip();
+            next();
             return;
         }
 

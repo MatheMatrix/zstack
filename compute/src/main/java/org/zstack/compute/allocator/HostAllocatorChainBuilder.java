@@ -2,6 +2,7 @@ package org.zstack.compute.allocator;
 
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
 import org.zstack.header.allocator.AbstractHostSortorFlow;
+import org.zstack.header.allocator.datatypes.HostCandidateProducer;
 import org.zstack.header.exception.CloudRuntimeException;
 
 import java.util.ArrayList;
@@ -10,9 +11,11 @@ import java.util.List;
 /**
  */
 public class HostAllocatorChainBuilder {
+    private List<String> producerClassNames;
     private List<String> flowClassNames;
     private boolean isConstructed;
-    private List<Class> classes = new ArrayList<Class>();
+    private List<Class<?>> producerClasses = new ArrayList<>();
+    private List<Class> classes = new ArrayList<>();
 
     public static HostAllocatorChain newAllocationChain() {
         return new HostAllocatorChain();
@@ -28,6 +31,9 @@ public class HostAllocatorChainBuilder {
 
     public HostAllocatorChainBuilder construct() {
         try {
+            for (String clzName : producerClassNames) {
+                producerClasses.add(Class.forName(clzName));
+            }
             for (String clzName : flowClassNames) {
                 classes.add(Class.forName(clzName));
             }
@@ -39,8 +45,20 @@ public class HostAllocatorChainBuilder {
         }
     }
 
+    private List<HostCandidateProducer> buildProducers() {
+        List<HostCandidateProducer> list = new ArrayList<>();
+        try {
+            for (Class<?> clazz : producerClasses) {
+                list.add((HostCandidateProducer) clazz.newInstance());
+            }
+        } catch (Exception e) {
+            throw new CloudRuntimeException(e);
+        }
+        return list;
+    }
+
     private List<AbstractHostAllocatorFlow> buildFlows() {
-        List<AbstractHostAllocatorFlow> flows = new ArrayList<AbstractHostAllocatorFlow>();
+        List<AbstractHostAllocatorFlow> flows = new ArrayList<>();
         try {
             for (Class flowClass : classes) {
                 flows.add((AbstractHostAllocatorFlow) flowClass.newInstance());
@@ -70,6 +88,7 @@ public class HostAllocatorChainBuilder {
         }
 
         HostAllocatorChain chain = newAllocationChain();
+        chain.setProducers(buildProducers());
         chain.setFlows(buildFlows());
         return chain;
     }
@@ -82,6 +101,15 @@ public class HostAllocatorChainBuilder {
         HostSortorChain chain = newSortChain();
         chain.setFlows(buildSortFlows());
         return chain;
+    }
+
+    public List<String> getProducerClassNames() {
+        return producerClassNames;
+    }
+
+    public HostAllocatorChainBuilder setProducerClassNames(List<String> producerClassNames) {
+        this.producerClassNames = producerClassNames;
+        return this;
     }
 
     public List<String> getFlowClassNames() {

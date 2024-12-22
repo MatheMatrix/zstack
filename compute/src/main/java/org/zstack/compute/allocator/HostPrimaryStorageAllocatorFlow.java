@@ -296,8 +296,6 @@ public class HostPrimaryStorageAllocatorFlow extends AbstractHostAllocatorFlow {
 
     @Override
     public void allocate() {
-        throwExceptionIfIAmTheFirstFlow();
-
         allocateFromCandidates();
         next();
     }

@@ -16,10 +16,8 @@ import static org.zstack.utils.CollectionUtils.findOneOrNull;
 public class LastHostAllocatorFlow extends AbstractHostAllocatorFlow {
     @Override
     public void allocate() {
-        throwExceptionIfIAmTheFirstFlow();
-
         if (spec.isListAllHosts()) {
-            skip();
+            next();
             return;
         }
 

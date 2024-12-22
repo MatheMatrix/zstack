@@ -40,10 +40,8 @@ public class BackupStorageSelectPrimaryStorageAllocatorFlow extends AbstractHost
 
     @Override
     public void allocate() {
-        throwExceptionIfIAmTheFirstFlow();
-
         if (spec.getRequiredBackupStorageUuid() == null) {
-            skip();
+            next();
             return;
         }
 

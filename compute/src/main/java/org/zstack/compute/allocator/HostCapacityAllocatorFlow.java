@@ -66,8 +66,6 @@ public class HostCapacityAllocatorFlow extends AbstractHostAllocatorFlow {
 
     @Override
     public void allocate() {
-        throwExceptionIfIAmTheFirstFlow();
-
         List<HostCandidate> ret = allocate(spec.getCpuCapacity(), spec.getMemoryCapacity(), spec.getOldMemoryCapacity());
         List<HostVO> hosts = reserveMgr.filterOutHostsByReservedCapacity(
                 transform(ret, candidate -> candidate.host),
