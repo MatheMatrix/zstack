@@ -78,16 +78,14 @@ public class ImageBackupStorageAllocatorFlow extends AbstractHostAllocatorFlow {
     @Override
     public void allocate() {
         if (!VmOperation.NewCreate.toString().equals(spec.getVmOperation())) {
-            skip();
+            next();
             return;
         }
 
         if (spec.getImage() == null){
-            skip();
+            next();
             return;
         }
-
-        throwExceptionIfIAmTheFirstFlow();
 
         if (!checkIfNeedBackupStorageToDownloadImage(spec, candidates)) {
             next();
