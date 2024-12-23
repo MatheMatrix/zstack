@@ -7,10 +7,9 @@ import org.zstack.compute.host.HostGlobalConfig;
 import org.zstack.compute.vm.CrashStrategy;
 import org.zstack.compute.vm.VmGlobalConfig;
 import org.zstack.compute.vm.VmNicManager;
-import org.zstack.compute.vm.VmNicManagerImpl;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.network.l2.L2NetworkRealizationExtensionPoint;
-import org.zstack.header.network.l2.VSwitchType;
+import org.zstack.core.config.*;
+import org.zstack.core.config.schema.GuestOsCharacter;
 import org.zstack.header.tag.SystemTagInventory;
 import org.zstack.header.tag.SystemTagLifeCycleListener;
 import org.zstack.header.tag.SystemTagValidator;
@@ -27,7 +26,6 @@ import org.zstack.core.config.GlobalConfigException;
 import org.zstack.core.config.GlobalConfigUpdateExtensionPoint;
 import org.zstack.core.config.GlobalConfigValidatorExtensionPoint;
 import org.zstack.core.config.schema.GuestOsCategory;
-import org.zstack.core.config.schema.GuestOsCharacter;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
@@ -56,8 +54,6 @@ import org.zstack.header.vm.*;
 import org.zstack.header.volume.*;
 import org.zstack.kvm.KVMAgentCommands.ReconnectMeCmd;
 import org.zstack.kvm.KVMAgentCommands.TransmitVmOperationToMnCmd;
-import org.zstack.resourceconfig.ResourceConfigUpdateExtensionPoint;
-import org.zstack.resourceconfig.ResourceConfigValidatorExtensionPoint;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.IpRangeSet;
 import org.zstack.utils.SizeUtils;
@@ -86,6 +82,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -141,7 +138,8 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
     private VmInstanceDeviceManager vidm;
     @Autowired
     private VmNicManager vmNicManager;
-
+    @Autowired
+    private GlobalConfigFacade gcf;
     private Future<Void> checkSocketChannelTimeoutThread;
 
     @Override
@@ -355,6 +353,21 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
         asf.deployModule(KVMConstant.ANSIBLE_MODULE_PATH, KVMConstant.ANSIBLE_PLAYBOOK_NAME);
     }
 
+
+    private void processKvmagentPhysicalMemUsageAbnormal(KVMAgentCommands.HostProcessPhysicalMemoryUsageAlarmCmd cmd) {
+        if (cmd.getMemoryUsage() <= gcf.getConfigValue(KVMGlobalConfig.CATEGORY,
+                KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_HARD_LIMIT.getName(), Long.class)) {
+            return;
+        }
+
+        logger.debug("The zstack-kvmagent service has exceeded the hard limit for physical memory usage, " +
+                "and we will try restart it later");
+        RestartKvmAgentMsg restartKvmAgentMsg = new RestartKvmAgentMsg();
+        restartKvmAgentMsg.setHostUuid(cmd.getHostUuid());
+        bus.makeTargetServiceIdByResourceUuid(restartKvmAgentMsg, HostConstant.SERVICE_ID, restartKvmAgentMsg.getHostUuid());
+        bus.send(restartKvmAgentMsg);
+    }
+
     @Override
     public boolean start() {
         deployAnsibleModule();
@@ -502,6 +515,27 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             }
             return null;
         });
+
+
+        restf.registerSyncHttpCallHandler(KVMConstant.HOST_PROCESS_PHYSICAL_MEMORY_USAGE_ALARM_PATH, KVMAgentCommands.HostProcessPhysicalMemoryUsageAlarmCmd.class, cmd -> {
+            HostCanonicalEvents.HostProcessPhysicalMemoryUsageAlarmData data = new HostCanonicalEvents.HostProcessPhysicalMemoryUsageAlarmData();
+            data.setHostUuid(cmd.getHostUuid());
+            data.setPid(cmd.getPid());
+            data.setMemoryUsage(String.format("%s MB", cmd.getMemoryUsage() / 1048576));
+            data.setProcessName(cmd.getProcessName());
+            evf.fire(HostCanonicalEvents.HOST_PROCESS_PHYSICAL_MEMORY_USAGE_ABNORMAL, data);
+
+            switch (data.getProcessName()) {
+                case "zstack-kvmagent":
+                    processKvmagentPhysicalMemUsageAbnormal(cmd);
+                    break;
+                default:
+                    logger.debug(String.format("unknown process name[%s] in host[uuid:%s]", cmd.getProcessName(), cmd.getHostUuid()));
+            }
+
+            return null;
+        });
+
 
         KVMSystemTags.CHECK_CLUSTER_CPU_MODEL.installValidator(((resourceUuid, resourceType, systemTag) -> {
             String check = KVMSystemTags.CHECK_CLUSTER_CPU_MODEL.getTokenByTag(systemTag, KVMSystemTags.CHECK_CLUSTER_CPU_MODEL_TOKEN);
