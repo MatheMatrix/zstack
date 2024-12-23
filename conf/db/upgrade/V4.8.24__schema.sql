@@ -40,3 +40,9 @@ END $$
 DELIMITER ;
 call CreateResourceConfigForBindingVms();
 DROP PROCEDURE IF EXISTS CreateResourceConfigForBindingVms;
+
+DELETE ref FROM `zstack`.`VolumeSnapshotReferenceVO` ref
+         INNER JOIN `zstack`.`VolumeEO` vol ON vol.uuid = ref.referenceVolumeUuid
+WHERE ref.referenceType = 'VolumeVO'
+AND ref.referenceVolumeUuid = ref.referenceUuid
+AND ref.referenceInstallUrl NOT LIKE CONCAT('%', SUBSTRING_INDEX(vol.installPath, '/', -1), '%');
