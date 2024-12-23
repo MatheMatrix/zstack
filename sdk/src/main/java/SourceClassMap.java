@@ -528,6 +528,7 @@ public class SourceClassMap {
 			put("org.zstack.observabilityServer.ObservabilityServerOfferingInventory", "org.zstack.sdk.ObservabilityServerOfferingInventory");
 			put("org.zstack.observabilityServer.ObservabilityServerVmInventory", "org.zstack.sdk.ObservabilityServerVmInventory");
 			put("org.zstack.observabilityServer.service.ObservabilityServerServiceDataInventory", "org.zstack.sdk.ObservabilityServerServiceDataInventory");
+			put("org.zstack.observabilityServer.service.ObservabilityServerServiceRefInventory", "org.zstack.sdk.ObservabilityServerServiceRefInventory");
 			put("org.zstack.observabilityServer.service.loadBalancer.LoadBalancerDataInventory", "org.zstack.sdk.LoadBalancerDataInventory");
 			put("org.zstack.ovf.datatype.ImagePackageInventory", "org.zstack.sdk.ImagePackageInventory");
 			put("org.zstack.ovf.datatype.ImagePackageState", "org.zstack.sdk.ImagePackageState");
@@ -1140,6 +1141,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.OAuth2TokenInventory", "org.zstack.sso.header.OAuth2TokenInventory");
 			put("org.zstack.sdk.ObservabilityServerOfferingInventory", "org.zstack.observabilityServer.ObservabilityServerOfferingInventory");
 			put("org.zstack.sdk.ObservabilityServerServiceDataInventory", "org.zstack.observabilityServer.service.ObservabilityServerServiceDataInventory");
+			put("org.zstack.sdk.ObservabilityServerServiceRefInventory", "org.zstack.observabilityServer.service.ObservabilityServerServiceRefInventory");
 			put("org.zstack.sdk.ObservabilityServerVmInventory", "org.zstack.observabilityServer.ObservabilityServerVmInventory");
 			put("org.zstack.sdk.OssBucketInventory", "org.zstack.header.aliyun.oss.OssBucketInventory");
 			put("org.zstack.sdk.OssBucketProperty", "org.zstack.header.aliyun.oss.OssBucketProperty");
