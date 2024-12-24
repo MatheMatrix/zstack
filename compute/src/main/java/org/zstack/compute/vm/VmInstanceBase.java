@@ -95,6 +95,7 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.asList;
 import static org.zstack.core.Platform.*;
 import static org.zstack.core.progress.ProgressReportService.*;
+import static org.zstack.header.vm.VmErrors.ATTACH_VOLUME_ERROR;
 import static org.zstack.utils.CollectionDSL.*;
 
 public class VmInstanceBase extends AbstractVmInstance {
@@ -5157,6 +5158,10 @@ public class VmInstanceBase extends AbstractVmInstance {
             vmCdRomVO = dbf.findByUuid(specifiedCdRomUuid, VmCdRomVO.class);
         } else {
             vmCdRomVO = IsoOperator.getEmptyCdRom(self.getUuid());
+            if (vmCdRomVO == null) {
+                completion.fail(err(ATTACH_VOLUME_ERROR, "no available empty cdrom for VM[uuid:%s]", self.getUuid()));
+                return;
+            }
         }
 
         final VmCdRomVO targetVmCdRomVO = vmCdRomVO;
@@ -6917,7 +6922,7 @@ public class VmInstanceBase extends AbstractVmInstance {
     protected void attachDataVolume(final AttachDataVolumeToVmMsg msg, final NoErrorCompletion completion) {
         final AttachDataVolumeToVmReply reply = new AttachDataVolumeToVmReply();
         refreshVO();
-        ErrorCode err = validateOperationByState(msg, self.getState(), VmErrors.ATTACH_VOLUME_ERROR);
+        ErrorCode err = validateOperationByState(msg, self.getState(), ATTACH_VOLUME_ERROR);
         if (err != null) {
             throw new OperationFailureException(err);
         }
@@ -6975,7 +6980,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void handle(final ErrorCode errCode, Map data) {
                 extEmitter.failedToAttachVolume(getSelfInventory(), volume, errCode, data);
-                reply.setError(err(VmErrors.ATTACH_VOLUME_ERROR, errCode, errCode.getDetails()));
+                reply.setError(err(ATTACH_VOLUME_ERROR, errCode, errCode.getDetails()));
                 bus.reply(msg, reply);
                 completion.done();
             }
