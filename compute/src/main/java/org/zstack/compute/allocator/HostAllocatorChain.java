@@ -1,10 +1,7 @@
 package org.zstack.compute.allocator;
 
 import org.springframework.beans.factory.annotation.Autowire;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
-import org.zstack.core.componentloader.PluginRegistry;
-import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.allocator.*;
 import org.zstack.header.allocator.HostCandidateProducer;
 import org.zstack.header.allocator.HostCandidateProducer.HostCandidateProducerContext;
@@ -50,14 +47,6 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     private ErrorCode errorCode;
     private Set<ErrorCode> seriesErrorWhenPagination = new HashSet<>();
     private ReturnValueCompletion<List<HostInventory>> completion;
-    private ReturnValueCompletion<List<HostInventory>> dryRunCompletion;
-
-    @Autowired
-    private ErrorFacade errf;
-    @Autowired
-    private PluginRegistry pluginRgty;
-    @Autowired
-    private HostCapacityOverProvisioningManager ratioMgr;
 
     public HostAllocatorSpec getAllocationSpec() {
         return allocationSpec;
@@ -99,35 +88,22 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
 
     private void done() {
         if (result == null) {
-            if (isDryRun) {
-                if (HostAllocatorError.NO_AVAILABLE_HOST.toString().equals(errorCode.getCode())) {
-                    dryRunCompletion.success(new ArrayList<HostInventory>());
-                } else {
-                    dryRunCompletion.fail(errorCode);
-                }
-            } else {
-                completion.fail(errorCode);
+            if (isDryRun && HostAllocatorError.NO_AVAILABLE_HOST.toString().equals(errorCode.getCode())) {
+                completion.success(new ArrayList<>());
+                return;
             }
+            completion.fail(errorCode);
             return;
         }
 
         // in case a wrong flow returns an empty result set
         if (result.isEmpty()) {
-            if (isDryRun) {
-                dryRunCompletion.fail(err(HostAllocatorError.NO_AVAILABLE_HOST,
-                        "host allocation flow doesn't indicate any details"));
-            } else {
-                completion.fail(err(HostAllocatorError.NO_AVAILABLE_HOST,
-                        "host allocation flow doesn't indicate any details"));
-            }
+            completion.fail(err(HostAllocatorError.NO_AVAILABLE_HOST,
+                    "host allocation flow doesn't indicate any details"));
             return;
         }
 
-        if (isDryRun) {
-            dryRunCompletion.success(HostInventory.valueOf(transform(result, candidate -> candidate.host)));
-        } else {
-            completion.success(HostInventory.valueOf(transform(result, candidate -> candidate.host)));
-        }
+        completion.success(HostInventory.valueOf(transform(result, candidate -> candidate.host)));
     }
 
     private void runFlow(AbstractHostAllocatorFlow flow) {
@@ -163,10 +139,6 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
      * </pre></blockquote>
      */
     private void start() {
-        for (HostAllocatorPreStartExtensionPoint processor : pluginRgty.getExtensionList(HostAllocatorPreStartExtensionPoint.class)) {
-            processor.beforeHostAllocatorStart(allocationSpec, flows);
-        }
-
         if (HostAllocatorGlobalConfig.USE_PAGINATION.value(Boolean.class)) {
             pageSize = HostAllocatorGlobalConfig.PAGINATION_LIMIT.value(Integer.class);
             startNextPage();
@@ -220,18 +192,6 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
         result = transform(hosts, HostCandidate::new);
         it = flows.iterator();
         runFlow(it.next());
-    }
-
-    private void allocate(ReturnValueCompletion<List<HostInventory>> completion) {
-        isDryRun = false;
-        this.completion = completion;
-        start();
-    }
-
-    private void dryRun(ReturnValueCompletion<List<HostInventory>> completion) {
-        isDryRun = true;
-        this.dryRunCompletion = completion;
-        start();
     }
 
     @Override
@@ -316,12 +276,16 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     @Override
     public void allocate(HostAllocatorSpec spec, ReturnValueCompletion<List<HostInventory>> completion) {
         this.allocationSpec = spec;
-        allocate(completion);
+        this.isDryRun = false;
+        this.completion = completion;
+        start();
     }
 
     @Override
     public void dryRun(HostAllocatorSpec spec, ReturnValueCompletion<List<HostInventory>> completion) {
         this.allocationSpec = spec;
-        dryRun(completion);
+        this.isDryRun = true;
+        this.completion = completion;
+        start();
     }
 }
