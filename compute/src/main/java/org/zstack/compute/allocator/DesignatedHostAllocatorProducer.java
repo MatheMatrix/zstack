@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.Platform;
 import org.zstack.core.db.DatabaseFacade;
-import org.zstack.header.allocator.HostAllocatorConstant;
 import org.zstack.header.allocator.HostCandidateProducer;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.host.HostState;
@@ -60,9 +59,9 @@ public class DesignatedHostAllocatorProducer implements HostCandidateProducer {
 
     @Override
     public void produce(HostCandidateProducerContext context) {
-        String zoneUuid = (String) context.spec.getExtraData().get(HostAllocatorConstant.LocationSelector.zone);
-        List<String> clusterUuids = (List<String>) context.spec.getExtraData().get(HostAllocatorConstant.LocationSelector.cluster);
-        String hostUuid = (String) context.spec.getExtraData().get(HostAllocatorConstant.LocationSelector.host);
+        String zoneUuid = context.spec.getZoneUuid();
+        List<String> clusterUuids = context.spec.getClusterUuids();
+        String hostUuid = context.spec.getHostUuid();
         String hypervisorType = context.spec.getHypervisorType();
 
         if (zoneUuid == null && CollectionUtils.isEmpty(clusterUuids) && hostUuid == null && hypervisorType == null) {

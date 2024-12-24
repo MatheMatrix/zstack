@@ -11,9 +11,14 @@ import java.util.*;
 /**
  */
 public class HostAllocatorSpec {
+    // locations
     // recommendCluster, avoidHostUuids and softAvoidHostUuids
     private List<VmLocationSpec> locationSpecs = new ArrayList<>();
+    private String zoneUuid;
+    private List<String> clusterUuids;
+    private String hostUuid;
 
+    // matched properties
     private long cpuCapacity;
     private long memoryCapacity;
     private List<String> l3NetworkUuids;
@@ -26,7 +31,6 @@ public class HostAllocatorSpec {
     private String imageRequiredPrimaryStorageUuid;
     private String vmOperation;
     private List<DiskOfferingInventory> diskOfferings = new ArrayList<>();
-    private Map<Object, Object> extraData = new HashMap<>();
     private boolean allowNoL3Networks;
     private boolean listAllHosts;
     private String requiredBackupStorageUuid;
@@ -49,6 +53,30 @@ public class HostAllocatorSpec {
 
     public void setLocationSpecs(List<VmLocationSpec> locationSpecs) {
         this.locationSpecs = locationSpecs;
+    }
+
+    public String getZoneUuid() {
+        return zoneUuid;
+    }
+
+    public void setZoneUuid(String zoneUuid) {
+        this.zoneUuid = zoneUuid;
+    }
+
+    public List<String> getClusterUuids() {
+        return clusterUuids;
+    }
+
+    public void setClusterUuids(List<String> clusterUuids) {
+        this.clusterUuids = clusterUuids;
+    }
+
+    public String getHostUuid() {
+        return hostUuid;
+    }
+
+    public void setHostUuid(String hostUuid) {
+        this.hostUuid = hostUuid;
     }
 
     public AllocationScene getAllocationScene() {
@@ -198,14 +226,6 @@ public class HostAllocatorSpec {
 
     public void setVmInstance(VmInstanceInventory vmInstance) {
         this.vmInstance = vmInstance;
-    }
-
-    public Map<Object, Object> getExtraData() {
-        return extraData;
-    }
-
-    public void setExtraData(Map<Object, Object> extraData) {
-        this.extraData = extraData;
     }
 
     public ImageInventory getImage() {
