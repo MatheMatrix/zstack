@@ -1,23 +1,16 @@
 package org.zstack.compute.allocator;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.zstack.core.Platform;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
 import org.zstack.header.allocator.HostAllocatorFilterExtensionPoint;
 import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.errorcode.OperationFailureException;
-import org.zstack.header.host.HostVO;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-
-import static org.zstack.utils.CollectionUtils.*;
+import java.util.Iterator;
 
 /**
  * Created by frank on 7/2/2015.
@@ -30,37 +23,35 @@ public class FilterFlow extends AbstractHostAllocatorFlow {
 
     @Override
     public void allocate() {
-        Map<String, HostCandidate> uuidCandidateMap = toMap(candidates, HostCandidate::getUuid, Function.identity());
+        final ArrayList<HostCandidate> candidates = new ArrayList<>(this.candidates);
 
-        List<HostVO> hostsBefore = transform(candidates, candidate -> candidate.host);
         for (HostAllocatorFilterExtensionPoint filter : pluginRgty.getExtensionList(HostAllocatorFilterExtensionPoint.class)) {
-            List<HostVO> hostsAfter;
+            int beforeCount = candidates.size();
 
             try {
-                hostsAfter = filter.filterHostCandidates(new ArrayList<>(hostsBefore), spec);
+                filter.filter(new ArrayList<>(candidates), spec);
             } catch (OperationFailureException e) {
-                rejectAll(e.getErrorCode().getDetails());
+                candidates.forEach(candidate -> candidate.markAsRejected(filter.getClass(), e.getErrorCode().getDetails()));
                 next();
                 return;
+            }
+
+            for (Iterator<HostCandidate> iterator = candidates.iterator(); iterator.hasNext();) {
+                HostCandidate candidate = iterator.next();
+                if (candidate.reject != null) {
+                    logger.debug(String.format("host[%s] is rejected by %s: %s",
+                            candidate.getUuid(), candidate.rejectBy, candidate.reject));
+                    iterator.remove();
+                }
             }
 
             logger.debug(String.format("after HostAllocatorFilterExtensionPoint[%s], candidates num: %s -> %s",
-                    filter.getClass().getSimpleName(), hostsBefore.size(), hostsAfter.size()));
-            if (hostsBefore.size() != hostsAfter.size()) {
-                Set<String> set = transformToSet(hostsBefore, HostVO::getUuid);
-                set.removeAll(transform(hostsAfter, HostVO::getUuid));
-                set.forEach(uuid -> reject(uuidCandidateMap.get(uuid), filter.getClass().getSimpleName()));
-            }
+                    filter.getClass().getSimpleName(), beforeCount, candidates.size()));
 
-            if (hostsAfter.isEmpty()) {
-                logger.debug(String.format(
-                        "after filtering, HostAllocatorFilterExtensionPoint[%s] returns zero candidate host, it means: %s",
-                        filter.getClass().getSimpleName(), filter.filterErrorReason()));
+            if (candidates.isEmpty()) {
                 next();
                 return;
             }
-
-            hostsBefore = hostsAfter;
         }
 
         next();
