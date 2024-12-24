@@ -1,13 +1,20 @@
 package org.zstack.network.l2;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.MessageSafe;
+import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
+import org.zstack.core.workflow.SimpleFlowChain;
 import org.zstack.header.AbstractService;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.ReturnValueCompletion;
+import org.zstack.header.core.WhileDoneCompletion;
+import org.zstack.header.core.workflow.*;
+import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.network.l2.*;
@@ -20,6 +27,7 @@ import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.List;
+import java.util.Map;
 
 public class L2VlanNetworkFactory extends AbstractService implements L2NetworkFactory, L2NetworkDefaultMtu, L2NetworkGetVniExtensionPoint {
     private static CLogger logger = Utils.getLogger(L2VlanNetworkFactory.class);
@@ -33,6 +41,8 @@ public class L2VlanNetworkFactory extends AbstractService implements L2NetworkFa
     private QueryFacade qf;
     @Autowired
     private ResourceConfigFacade rcf;
+    @Autowired
+    protected PluginRegistry pluginRgty;
 
     @Override
     public L2NetworkType getType() {
@@ -41,15 +51,69 @@ public class L2VlanNetworkFactory extends AbstractService implements L2NetworkFa
 
     @Override
     public void createL2Network(L2NetworkVO ovo, APICreateL2NetworkMsg msg, ReturnValueCompletion<L2NetworkInventory> completion) {
-        APICreateL2VlanNetworkMsg amsg = (APICreateL2VlanNetworkMsg) msg;
-        L2VlanNetworkVO vo = new L2VlanNetworkVO(ovo);
-        vo.setVlan(amsg.getVlan());
-        vo.setVirtualNetworkId(vo.getVlan());
-        vo = dbf.persistAndRefresh(vo);
-        L2VlanNetworkInventory inv = L2VlanNetworkInventory.valueOf(vo);
-        String info = String.format("successfully create L2VlanNetwork, %s", JSONObjectUtil.toJsonString(inv));
-        logger.debug(info);
-        completion.success(inv);
+        FlowChain chain = new SimpleFlowChain();
+        chain.setName("create-no-vlan-network");
+        chain.then(new Flow() {
+            String __name__ = "write-db";
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                APICreateL2VlanNetworkMsg amsg = (APICreateL2VlanNetworkMsg) msg;
+                L2VlanNetworkVO vo = new L2VlanNetworkVO(ovo);
+                vo.setVlan(amsg.getVlan());
+                vo.setVirtualNetworkId(vo.getVlan());
+                dbf.persist(vo);
+                trigger.next();
+            }
+
+            @Override
+            public void rollback(FlowRollback trigger, Map data) {
+                dbf.removeByPrimaryKey(ovo.getUuid(), L2VlanNetworkVO.class);
+                trigger.rollback();
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "create-l2-network-extension";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                new While<>(pluginRgty.getExtensionList(L2NetworkCreateExtensionPoint.class))
+                        .each((exp, wcompl) -> exp.postCreateL2Network(L2NetworkInventory.valueOf(ovo), msg, new Completion(trigger) {
+                            @Override
+                            public void success() {
+                                wcompl.done();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                wcompl.addError(errorCode);
+                                wcompl.allDone();
+                            }
+                        })).run(new WhileDoneCompletion(trigger) {
+                            @Override
+                            public void done(ErrorCodeList errorCodeList) {
+                                if (errorCodeList.getCauses().isEmpty()) {
+                                    trigger.next();
+                                } else {
+                                    trigger.fail(errorCodeList.getCauses().get(0));
+                                }
+                            }
+                        });
+            }
+        }).error(new FlowErrorHandler(completion) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                completion.fail(errCode);
+            }
+        }).done(new FlowDoneHandler(completion) {
+            @Override
+            public void handle(Map data) {
+                L2VlanNetworkInventory inv = L2VlanNetworkInventory.valueOf(
+                        dbf.findByUuid(ovo.getUuid(), L2VlanNetworkVO.class));
+                logger.debug(String.format("Successfully created VlanL2Network[uuid:%s, name:%s]",
+                        inv.getUuid(), inv.getName()));
+                completion.success(inv);
+            }
+        }).start();
+
     }
 
     @Override

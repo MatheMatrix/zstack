@@ -36,6 +36,8 @@ public interface RESTFacade {
     void asyncJsonDelete(String url, String body, Map<String, String> headers, AsyncRESTCallback callback, TimeUnit unit, long timeout);
     void asyncJsonGet(String url, String body, Map<String, String> headers, AsyncRESTCallback callback, TimeUnit unit, long timeout);
 
+    void asyncJson(final String url, final String body, Map<String, String> headers, HttpMethod method, final AsyncRESTCallback callback, final TimeUnit unit, final long timeout);
+
     <T> T syncJsonPost(String url, Object body, Class<T> returnClass);
 
     <T> T syncJsonPost(String url, Object body, Class<T> returnClass, TimeUnit unit, long timeout);

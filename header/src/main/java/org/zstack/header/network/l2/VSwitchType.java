@@ -7,6 +7,7 @@ public class VSwitchType {
     private final String typeName;
     private boolean exposed = true;
     private boolean attatchTohost = true;
+    private String sdnControllerType = null;
 
     public VSwitchType(String typeName) {
         this.typeName = typeName;
@@ -37,6 +38,14 @@ public class VSwitchType {
 
     public void setAttatchTohost(boolean attatchTohost) {
         this.attatchTohost = attatchTohost;
+    }
+
+    public String getSdnControllerType() {
+        return sdnControllerType;
+    }
+
+    public void setSdnControllerType(String sdnControllerType) {
+        this.sdnControllerType = sdnControllerType;
     }
 
     public static VSwitchType valueOf(String typeName) {
