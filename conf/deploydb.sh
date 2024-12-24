@@ -34,7 +34,7 @@ mysql_run() {
 }
 
 if command -v greatdb &> /dev/null; then
-  ${MYSQL} ${loginCmd} << EOF
+  mysql_run << EOF
     set global log_bin_trust_function_creators=1;
     DROP DATABASE IF EXISTS zstack;
     CREATE DATABASE zstack;
@@ -48,7 +48,7 @@ if command -v greatdb &> /dev/null; then
     grant all privileges on zstack_rest.* to root@'127.0.0.1';
 EOF
 else
-  ${MYSQL} ${loginCmd} << EOF
+  mysql_run << EOF
   set global log_bin_trust_function_creators=1;
   DROP DATABASE IF EXISTS zstack;
   CREATE DATABASE zstack;
