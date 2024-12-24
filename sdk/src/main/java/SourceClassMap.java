@@ -104,7 +104,9 @@ public class SourceClassMap {
 			put("org.zstack.cloudformation.template.struct.ResourceStruct", "org.zstack.sdk.ResourceStruct");
 			put("org.zstack.cloudformation.template.struct.ResourceType", "org.zstack.sdk.ResourceType");
 			put("org.zstack.container.ContainerUsage", "org.zstack.sdk.ContainerUsage");
-			put("org.zstack.container.entity.ContainerManagementVmInventory", "org.zstack.sdk.ContainerManagementVmInventory");
+			put("org.zstack.container.entity.ContainerManagementEndpointInventory", "org.zstack.sdk.ContainerManagementEndpointInventory");
+			put("org.zstack.container.entity.NativeClusterInventory", "org.zstack.sdk.NativeClusterInventory");
+			put("org.zstack.container.entity.NativeHostInventory", "org.zstack.sdk.NativeHostInventory");
 			put("org.zstack.core.config.GlobalConfigInventory", "org.zstack.sdk.GlobalConfigInventory");
 			put("org.zstack.core.config.GlobalConfigOptions", "org.zstack.sdk.GlobalConfigOptions");
 			put("org.zstack.core.config.GuestOsCharacterInventory", "org.zstack.sdk.GuestOsCharacterInventory");
@@ -281,7 +283,6 @@ public class SourceClassMap {
 			put("org.zstack.header.longjob.LongJobInventory", "org.zstack.sdk.LongJobInventory");
 			put("org.zstack.header.longjob.LongJobState", "org.zstack.sdk.LongJobState");
 			put("org.zstack.header.managementnode.ManagementNodeInventory", "org.zstack.sdk.ManagementNodeInventory");
-			put("org.zstack.header.message.APIBatchRequest$BatchOperationResult", "org.zstack.sdk.BatchOperationResult");
 			put("org.zstack.header.network.l2.L2NetworkData", "org.zstack.sdk.L2NetworkData");
 			put("org.zstack.header.network.l2.L2NetworkInventory", "org.zstack.sdk.L2NetworkInventory");
 			put("org.zstack.header.network.l2.L2VlanNetworkInventory", "org.zstack.sdk.L2VlanNetworkInventory");
@@ -864,7 +865,6 @@ public class SourceClassMap {
 			put("org.zstack.sdk.BaremetalPxeServerInventory", "org.zstack.header.baremetal.pxeserver.BaremetalPxeServerInventory");
 			put("org.zstack.sdk.BaremetalVlanNicInventory", "org.zstack.header.baremetal.network.BaremetalVlanNicInventory");
 			put("org.zstack.sdk.BatchDeleteVolumeSnapshotStruct", "org.zstack.header.storage.snapshot.BatchDeleteVolumeSnapshotStruct");
-			put("org.zstack.sdk.BatchOperationResult", "org.zstack.header.message.APIBatchRequest$BatchOperationResult");
 			put("org.zstack.sdk.BillingInventory", "org.zstack.billing.generator.BillingInventory");
 			put("org.zstack.sdk.BlockPrimaryStorageInventory", "org.zstack.storage.primary.block.BlockPrimaryStorageInventory");
 			put("org.zstack.sdk.BlockVolumeInventory", "org.zstack.header.volume.block.BlockVolumeInventory");
@@ -904,7 +904,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.ConnectionRelationShipProperty", "org.zstack.header.aliyun.network.connection.ConnectionRelationShipProperty");
 			put("org.zstack.sdk.ConsoleInventory", "org.zstack.header.console.ConsoleInventory");
 			put("org.zstack.sdk.ConsoleProxyAgentInventory", "org.zstack.header.console.ConsoleProxyAgentInventory");
-			put("org.zstack.sdk.ContainerManagementVmInventory", "org.zstack.container.entity.ContainerManagementVmInventory");
+			put("org.zstack.sdk.ContainerManagementEndpointInventory", "org.zstack.container.entity.ContainerManagementEndpointInventory");
 			put("org.zstack.sdk.ContainerUsage", "org.zstack.container.ContainerUsage");
 			put("org.zstack.sdk.ControlStrategy", "org.zstack.loginControl.entity.ControlStrategy");
 			put("org.zstack.sdk.CpuMemoryCapacityData", "org.zstack.header.allocator.datatypes.CpuMemoryCapacityData");
@@ -1112,6 +1112,8 @@ public class SourceClassMap {
 			put("org.zstack.sdk.NasFileSystemInventory", "org.zstack.nas.NasFileSystemInventory");
 			put("org.zstack.sdk.NasMountTargetInventory", "org.zstack.nas.NasMountTargetInventory");
 			put("org.zstack.sdk.NasProtocolType", "org.zstack.nas.NasProtocolType");
+			put("org.zstack.sdk.NativeClusterInventory", "org.zstack.container.entity.NativeClusterInventory");
+			put("org.zstack.sdk.NativeHostInventory", "org.zstack.container.entity.NativeHostInventory");
 			put("org.zstack.sdk.Neighbor", "org.zstack.header.protocol.Neighbor");
 			put("org.zstack.sdk.NetworkReachablePair", "org.zstack.zops.NetworkReachablePair");
 			put("org.zstack.sdk.NetworkRouterAreaRefInventory", "org.zstack.header.protocol.NetworkRouterAreaRefInventory");
