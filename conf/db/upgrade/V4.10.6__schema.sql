@@ -21,3 +21,28 @@ CREATE TABLE IF NOT EXISTS `zstack`.`FcHbaDeviceVO` (
     CONSTRAINT fkFcHbaDeviceVO FOREIGN KEY (uuid) REFERENCES HbaDeviceVO (uuid) ON DELETE CASCADE,
     PRIMARY KEY (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE IF NOT EXISTS `zstack`.`VmHaVO` (
+    `uuid` char(32) not null unique,
+    `haLevel` varchar(64) not null default 'Undefined',
+    `haLevelUpdateTime` timestamp not null default CURRENT_TIMESTAMP,
+    `inhibitionReason` varchar(255) default null,
+    `inhibitionTime` timestamp default '0000-00-00 00:00:00',
+    CONSTRAINT fkVmHaVOVmInstanceVO FOREIGN KEY (uuid) REFERENCES VmInstanceEO (uuid) ON DELETE CASCADE,
+    PRIMARY KEY (`uuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+INSERT INTO `zstack`.`VmHaVO` (`uuid`, `haLevel`)
+    SELECT `uuid`, 'None' FROM `zstack`.`VmInstanceEO`;
+
+UPDATE `zstack`.`VmHaVO`
+    SET `haLevel` = 'NeverStop'
+    WHERE `uuid` IN (
+        SELECT `resourceUuid` FROM `SystemTagVO` WHERE `tag` = 'ha::NeverStop'
+    );
+
+UPDATE `zstack`.`VmHaVO`
+    SET `haLevel` = 'OnHostFailure'
+    WHERE `uuid` IN (
+        SELECT `resourceUuid` FROM `SystemTagVO` WHERE `tag` = 'ha::OnHostFailure'
+    );
