@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
-import org.zstack.header.allocator.HostAllocatorConstant;
 import org.zstack.header.allocator.HostCandidate;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
@@ -46,9 +45,9 @@ public class DesignatedHostAllocatorFlow extends AbstractHostAllocatorFlow {
 
     @Override
     public void allocate() {
-        String zoneUuid = (String) spec.getExtraData().get(HostAllocatorConstant.LocationSelector.zone);
-        List<String> clusterUuids = (List<String>) spec.getExtraData().get(HostAllocatorConstant.LocationSelector.cluster);
-        String hostUuid = (String) spec.getExtraData().get(HostAllocatorConstant.LocationSelector.host);
+        String zoneUuid = spec.getZoneUuid();
+        List<String> clusterUuids = spec.getClusterUuids();
+        String hostUuid = spec.getHostUuid();
 
         if (zoneUuid == null && CollectionUtils.isEmpty(clusterUuids) && hostUuid == null && spec.getHypervisorType() == null) {
             next();

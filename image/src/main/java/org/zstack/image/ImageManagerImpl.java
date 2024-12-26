@@ -27,6 +27,7 @@ import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.AbstractService;
 import org.zstack.header.allocator.HostAllocatorFilterExtensionPoint;
 import org.zstack.header.allocator.HostAllocatorSpec;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.StopRoutingException;
 import org.zstack.header.core.*;
@@ -2024,9 +2025,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
 
     @Override
     @Transactional(readOnly = true)
-    public List<HostVO> filterHostCandidates(List<HostVO> candidates, HostAllocatorSpec spec) {
-        // TODO: move to compute module.
-
+    public void filter(List<HostCandidate> candidates, HostAllocatorSpec spec) {
         String architecture = spec.getArchitecture();
         if (architecture == null && spec.getVmInstance() != null) {
             architecture = spec.getVmInstance().getArchitecture();
@@ -2037,15 +2036,13 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
         }
 
         if (architecture == null) {
-            return candidates;
+            return;
         }
 
-        String finalArchitecture = architecture;
-        return candidates.stream().filter(it -> it.getArchitecture().equals(finalArchitecture)).collect(Collectors.toList());
-    }
-
-    @Override
-    public String filterErrorReason() {
-        return null;
+        for (HostCandidate candidate : candidates) {
+            if (!architecture.equals(candidate.host.getArchitecture())) {
+                candidate.markAsRejected(getClass(), i18n("architecture %s required", architecture));
+            }
+        }
     }
 }

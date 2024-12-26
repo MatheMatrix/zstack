@@ -33,6 +33,10 @@ public class HostCandidate implements Serializable {
         notRecommendBy.add(flowName);
     }
 
+    public void markAsRejected(Class<?> flowClazz, String reason) {
+        markAsRejected(flowClazz.getSimpleName(), reason);
+    }
+
     public void markAsRejected(String flowName, String reason) {
         rejectBy = flowName;
         reject = reason;

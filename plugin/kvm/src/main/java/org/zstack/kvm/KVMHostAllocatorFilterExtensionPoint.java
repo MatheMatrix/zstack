@@ -1,15 +1,16 @@
 package org.zstack.kvm;
 
-import org.zstack.core.Platform;
 import org.zstack.header.allocator.HostAllocatorFilterExtensionPoint;
 import org.zstack.header.allocator.HostAllocatorSpec;
-import org.zstack.header.host.HostVO;
+import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.zstack.core.Platform.i18n;
 
 public class KVMHostAllocatorFilterExtensionPoint implements HostAllocatorFilterExtensionPoint {
     private CLogger logger = Utils.getLogger(KVMHostAllocatorFilterExtensionPoint.class);
@@ -166,38 +167,28 @@ public class KVMHostAllocatorFilterExtensionPoint implements HostAllocatorFilter
     }
 
     @Override
-    public List<HostVO> filterHostCandidates(List<HostVO> candidates, HostAllocatorSpec spec) {
+    public void filter(List<HostCandidate> candidates, HostAllocatorSpec spec) {
         if (spec.getHypervisorType() == null || !spec.getHypervisorType().equals(KVMConstant.KVM_HYPERVISOR_TYPE)) {
-            return candidates;
+            return;
         }
 
         if (!VmInstanceConstant.VmOperation.Migrate.toString().equals(spec.getVmOperation())) {
-            return candidates;
+            return;
         }
 
         // note: for control plane use KVMPropertyName to define kvm host related property related to
         // live migration
         // vm can only live migrate to host that have the same version of qemu/libvirt, the
         // same cpu model name and same ept state
-        List<HostVO> result = new ArrayList<>();
         String srcHostUuid = spec.getVmInstance().getHostUuid();
         // nothing to check
         Map<KVMPropertyName, String> srcHostPropertyMap = getPropertyMapOfHost(srcHostUuid);
-        for (HostVO host : candidates) {
-            Map<KVMPropertyName, String> candidateHostPropertyMap = getPropertyMapOfHost(host.getUuid());
-            if (allPropertiesMatched(srcHostPropertyMap, candidateHostPropertyMap)) {
-                result.add(host);
-            } else {
-                logger.debug(String.format("cannot migrate vm[uuid:%s] to host[uuid:%s] because kvm properties mismatch detected",
-                        spec.getVmInstance().getUuid(), host.getUuid()));
+        for (HostCandidate candidate : candidates) {
+            Map<KVMPropertyName, String> candidateHostPropertyMap = getPropertyMapOfHost(candidate.getUuid());
+            if (!allPropertiesMatched(srcHostPropertyMap, candidateHostPropertyMap)) {
+                candidate.markAsRejected(getClass(),
+                        i18n("kvm properties mismatch detected from host[uuid:%s]", srcHostUuid));
             }
         }
-
-        return result;
-    }
-
-    @Override
-    public String filterErrorReason() {
-        return Platform.i18n("cannot adapt version for the bellow rpm: libvirt / qemu / cpumodel");
     }
 }
