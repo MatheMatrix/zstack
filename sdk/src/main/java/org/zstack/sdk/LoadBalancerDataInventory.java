@@ -108,4 +108,12 @@ public class LoadBalancerDataInventory extends org.zstack.sdk.ObservabilityServe
         return this.logTimestamp;
     }
 
+    public java.lang.String logCount;
+    public void setLogCount(java.lang.String logCount) {
+        this.logCount = logCount;
+    }
+    public java.lang.String getLogCount() {
+        return this.logCount;
+    }
+
 }
