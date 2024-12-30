@@ -1,10 +1,10 @@
-package org.zstack.sdk.databasebackup;
+package org.zstack.sdk;
 
 import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class DeleteDatabaseBackupFromManagementAction extends AbstractAction {
+public class UpdateExternalSchedulerJobGroupAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class DeleteDatabaseBackupFromManagementAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.databasebackup.DeleteDatabaseBackupFromManagementResult value;
+        public org.zstack.sdk.UpdateExternalSchedulerJobGroupResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,11 +25,11 @@ public class DeleteDatabaseBackupFromManagementAction extends AbstractAction {
         }
     }
 
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String managementUuid;
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String uuid;
 
     @Param(required = false)
-    public java.util.List installPaths;
+    public java.util.Map parameters;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -63,8 +63,8 @@ public class DeleteDatabaseBackupFromManagementAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.databasebackup.DeleteDatabaseBackupFromManagementResult value = res.getResult(org.zstack.sdk.databasebackup.DeleteDatabaseBackupFromManagementResult.class);
-        ret.value = value == null ? new org.zstack.sdk.databasebackup.DeleteDatabaseBackupFromManagementResult() : value; 
+        org.zstack.sdk.UpdateExternalSchedulerJobGroupResult value = res.getResult(org.zstack.sdk.UpdateExternalSchedulerJobGroupResult.class);
+        ret.value = value == null ? new org.zstack.sdk.UpdateExternalSchedulerJobGroupResult() : value; 
 
         return ret;
     }
@@ -93,11 +93,11 @@ public class DeleteDatabaseBackupFromManagementAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "DELETE";
-        info.path = "/database-backup/management";
+        info.httpMethod = "PUT";
+        info.path = "/cron/scheduler/jobgroups/{uuid}/actions";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "";
+        info.parameterName = "updateExternalSchedulerJobGroup";
         return info;
     }
 

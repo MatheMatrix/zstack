@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class ChangeOutOfBandCronGroupStateAction extends AbstractAction {
+public class UpdateExternalSchedulerJobGroupTimeExpressionAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class ChangeOutOfBandCronGroupStateAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.ChangeOutOfBandCronGroupStateResult value;
+        public org.zstack.sdk.UpdateExternalSchedulerJobGroupTimeExpressionResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -28,8 +28,8 @@ public class ChangeOutOfBandCronGroupStateAction extends AbstractAction {
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String uuid;
 
-    @Param(required = true, validValues = {"Enabled","Disabled"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String state;
+    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String timeExpression;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -63,8 +63,8 @@ public class ChangeOutOfBandCronGroupStateAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.ChangeOutOfBandCronGroupStateResult value = res.getResult(org.zstack.sdk.ChangeOutOfBandCronGroupStateResult.class);
-        ret.value = value == null ? new org.zstack.sdk.ChangeOutOfBandCronGroupStateResult() : value; 
+        org.zstack.sdk.UpdateExternalSchedulerJobGroupTimeExpressionResult value = res.getResult(org.zstack.sdk.UpdateExternalSchedulerJobGroupTimeExpressionResult.class);
+        ret.value = value == null ? new org.zstack.sdk.UpdateExternalSchedulerJobGroupTimeExpressionResult() : value; 
 
         return ret;
     }
@@ -94,10 +94,10 @@ public class ChangeOutOfBandCronGroupStateAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "PUT";
-        info.path = "/cron/scheduler/state/jobgroups/{uuid}/actions";
+        info.path = "/cron/timeexpression/scheduler/jobgroups/{uuid}/actions";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "changeOutOfBandCronGroupState";
+        info.parameterName = "updateExternalSchedulerJobGroupTimeExpression";
         return info;
     }
 
