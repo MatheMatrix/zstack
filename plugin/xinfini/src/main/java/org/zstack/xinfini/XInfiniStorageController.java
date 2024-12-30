@@ -771,11 +771,6 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
     @Override
     public void expandVolume(String installPath, long size, ReturnValueCompletion<VolumeStats> comp) {
         int id = getVolIdFromPath(installPath);
-        List<BdcBdevModule> bdcBdevs = apiHelper.queryBdcBdevByVolumeId(id);
-        if (!bdcBdevs.isEmpty()) {
-            comp.fail(operr("volume has related bdevs, not support live expand yet"));
-            return;
-        }
 
         VolumeModule vol = apiHelper.expandVolume(id, convertBytesToMegaBytes(size));
         VolumeStats stats = new VolumeStats();
