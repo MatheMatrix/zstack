@@ -4458,4 +4458,11 @@ public class KVMAgentCommands {
             this.additionalProperties = additionalProperties;
         }
     }
+
+    public static class UpdateHostNqnCmd extends AgentCommand {
+        public String nqn;
+    }
+
+    public static class UpdateHostNqnRsp extends AgentResponse {
+    }
 }

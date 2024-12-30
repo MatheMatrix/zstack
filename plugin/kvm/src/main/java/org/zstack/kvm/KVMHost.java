@@ -702,9 +702,61 @@ public class KVMHost extends HostBase implements Host {
             handle((GetHostBlockDevicesMsg) msg);
         } else if (msg instanceof GetHostSensorsMsg) {
             handle((GetHostSensorsMsg) msg);
+        } else if (msg instanceof UpdateHostNqnMsg) {
+            handle((UpdateHostNqnMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
+    }
+
+    private void handle(UpdateHostNqnMsg msg) {
+        UpdateHostNqnReply ureply = new UpdateHostNqnReply();
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return id;
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                UpdateHostNqnCmd cmd = new UpdateHostNqnCmd();
+                cmd.nqn = msg.getNqn();
+
+                KVMHostAsyncHttpCallMsg kmsg = new KVMHostAsyncHttpCallMsg();
+                kmsg.setCommand(cmd);
+                kmsg.setPath(KVMConstant.KVM_UPDATE_HOST_NQN_PATH);
+                kmsg.setHostUuid(msg.getHostUuid());
+                bus.makeTargetServiceIdByResourceUuid(kmsg, HostConstant.SERVICE_ID, msg.getHostUuid());
+                bus.send(kmsg, new CloudBusCallBack(chain) {
+                    @Override
+                    public void run(MessageReply reply) {
+                        if (!reply.isSuccess()) {
+                            ureply.setError(operr("fail to update nqn of host[uuid:%s], because %s", msg.getHostUuid(), reply.getError()));
+                        } else {
+                            KVMHostAsyncHttpCallReply r = reply.castReply();
+                            UpdateHostNqnRsp rsp = r.toResponse(UpdateHostNqnRsp.class);
+                            if (!rsp.isSuccess()) {
+                                ureply.setError(operr("fail to update nqn of host[uuid:%s], because %s", msg.getHostUuid(), rsp.getError()));
+                            } else {
+                                SQL.New(HostVO.class).eq(HostVO_.uuid, msg.getHostUuid())
+                                        .set(HostVO_.nqn, msg.getNqn())
+                                        .update();
+
+                                self = dbf.reload(self);
+                                ureply.setInventory(getSelfInventory());
+                            }
+                        }
+                        bus.reply(msg, ureply);
+                        chain.next();
+                    }
+                });
+            }
+
+            @Override
+            public String getName() {
+                return String.format("update-nqn-of-host-%s", msg.getHostUuid());
+            }
+        });
     }
 
     private void handle(UpdateVmCpuQuotaMsg msg) {
@@ -4985,13 +5037,12 @@ public class KVMHost extends HostBase implements Host {
         return inaccessiblePsCount == attachedPsCount && attachedPsCount > 0;
     }
 
-    private void updateHostOsInformation(String distro, String release, String version, String iscsiInitiatorName, String nqn) {
+    private void updateHostOsInformation(String distro, String release, String version, String iscsiInitiatorName) {
         final KVMHostVO kvmHostVO = getSelf();
         kvmHostVO.setOsDistribution(distro);
         kvmHostVO.setOsRelease(release);
         kvmHostVO.setOsVersion(version);
         kvmHostVO.setIscsiInitiatorName(iscsiInitiatorName);
-        kvmHostVO.setNqn(nqn);
         self = dbf.updateAndRefresh(kvmHostVO);
 
         // for compatibility
@@ -5823,6 +5874,11 @@ public class KVMHost extends HostBase implements Host {
 
             @SuppressWarnings({"unchecked"})
             private void saveGeneralHostHardwareFacts(HostFactResponse ret) {
+                HostVO host = getSelf();
+                host.setNqn(ret.getNqn());
+                dbf.update(host);
+                self = dbf.reload(self);
+
                 recordHardwareChangesAndCreateTag(HOST_CPU_MODEL_NAME, map(
                         e(HOST_CPU_MODEL_NAME_TOKEN, ret.getHostCpuModelName())));
                 recordHardwareChangesAndCreateTag(CPU_GHZ, map(
@@ -5900,7 +5956,7 @@ public class KVMHost extends HostBase implements Host {
             }
 
             private void saveKvmHostRelatedFacts(HostFactResponse ret) {
-                updateHostOsInformation(ret.getOsDistribution(), ret.getOsRelease(), ret.getOsVersion(), ret.getIscsiInitiatorName(), ret.getNqn());
+                updateHostOsInformation(ret.getOsDistribution(), ret.getOsRelease(), ret.getOsVersion(), ret.getIscsiInitiatorName());
 
                 createTagWithoutNonValue(KVMSystemTags.QEMU_IMG_VERSION, KVMSystemTags.QEMU_IMG_VERSION_TOKEN, ret.getQemuImgVersion(), false);
                 createTagWithoutNonValue(KVMSystemTags.LIBVIRT_VERSION, KVMSystemTags.LIBVIRT_VERSION_TOKEN, ret.getLibvirtVersion(), false);
