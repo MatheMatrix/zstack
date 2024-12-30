@@ -300,7 +300,8 @@ public class RESTFacadeImpl implements RESTFacade {
         asyncJson(url, body, headers, HttpMethod.GET, callback, unit, timeout);
     }
 
-    private void asyncJson(final String url, final String body, Map<String, String> headers, HttpMethod method, final AsyncRESTCallback callback, final TimeUnit unit, final long timeout) {
+    @Override
+    public void asyncJson(final String url, final String body, Map<String, String> headers, HttpMethod method, final AsyncRESTCallback callback, final TimeUnit unit, final long timeout) {
         synchronized (interceptors) {
             for (BeforeAsyncJsonPostInterceptor ic : interceptors) {
                 ic.beforeAsyncJsonPost(url, body, unit, timeout);

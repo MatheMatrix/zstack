@@ -18,8 +18,10 @@ import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
+import org.zstack.core.workflow.SimpleFlowChain;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.core.Completion;
+import org.zstack.header.core.NoErrorCompletion;
 import org.zstack.header.core.NopeCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.core.workflow.*;
@@ -342,19 +344,63 @@ public class L2NoVlanNetwork implements L2Network {
         L2NetworkInventory inv = L2NetworkInventory.valueOf(self);
         extpEmitter.beforeDelete(inv);
         L2NetworkDeletionReply reply = new L2NetworkDeletionReply();
-        deleteHook(new Completion(msg) {
-            @Override
-            public void success() {
-                extpEmitter.afterDelete(inv);
-                bus.reply(msg, reply);
-            }
+
+        FlowChain chain = new SimpleFlowChain();
+        chain.setName("delete-l2-network-" + inv.getUuid());
+        chain.then(new NoRollbackFlow() {
+            String __name__ = "delete-l2-network-extension";
 
             @Override
-            public void fail(ErrorCode errorCode) {
-                reply.setError(errorCode);
+            public void run(FlowTrigger trigger, Map data) {
+                new While<>(pluginRgty.getExtensionList(L2NetworkDeleteExtensionPoint.class))
+                        .each((exp, wcompl) -> exp.deleteL2Network(inv, new NoErrorCompletion(trigger) {
+                            @Override
+                            public void done() {
+                                wcompl.done();
+                            }
+                        })).run(new WhileDoneCompletion(trigger) {
+                            @Override
+                            public void done(ErrorCodeList errorCodeList) {
+                                if (errorCodeList.getCauses().isEmpty()) {
+                                    trigger.next();
+                                } else {
+                                    trigger.fail(errorCodeList.getCauses().get(0));
+                                }
+                            }
+                        });
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "delete-l2-network";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                deleteHook(new Completion(msg) {
+                    @Override
+                    public void success() {
+                        extpEmitter.afterDelete(inv);
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        reply.setError(errorCode);
+                        bus.reply(msg, reply);
+                        trigger.fail(errorCode);
+                    }
+                });
+            }
+        }).error(new FlowErrorHandler(msg) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                reply.setError(errCode);
                 bus.reply(msg, reply);
             }
-        });
+        }).done(new FlowDoneHandler(msg) {
+            @Override
+            public void handle(Map data) {
+                bus.reply(msg, reply);
+            }
+        }).start();
     }
 
     private void handleApiMessage(APIMessage msg) {
