@@ -257,10 +257,11 @@ public class XInfiniApiHelper {
     }
 
     public VolumeModule expandVolume(int volId, long size) {
-        ExpandVolumeRequest req = new ExpandVolumeRequest();
+        UpdateVolumeRequest req = new UpdateVolumeRequest();
+        req.setCreator(XInfiniConstants.DEFAULT_CREATOR);
         req.setId(volId);
         req.setSizeMb(size);
-        callErrorOut(req, ExpandVolumeResponse.class);
+        callErrorOut(req, UpdateVolumeResponse.class);
         GetVolumeRequest gReq = new GetVolumeRequest();
         gReq.setId(volId);
         return retryUtilStateActive(gReq, GetVolumeResponse.class,
