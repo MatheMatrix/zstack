@@ -1,10 +1,10 @@
-package org.zstack.sdk;
+package org.zstack.sdk.databasebackup;
 
 import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class UpdateOutOfBandCronGroupTimeExpressionAction extends AbstractAction {
+public class DeleteDatabaseBackupOnManagementAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class UpdateOutOfBandCronGroupTimeExpressionAction extends AbstractAction
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.UpdateOutOfBandCronGroupTimeExpressionResult value;
+        public org.zstack.sdk.databasebackup.DeleteDatabaseBackupOnManagementResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,11 +25,11 @@ public class UpdateOutOfBandCronGroupTimeExpressionAction extends AbstractAction
         }
     }
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String uuid;
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String managementUuid;
 
-    @Param(required = true)
-    public java.lang.String timeExpression;
+    @Param(required = false)
+    public java.util.List installPaths;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -63,8 +63,8 @@ public class UpdateOutOfBandCronGroupTimeExpressionAction extends AbstractAction
             return ret;
         }
         
-        org.zstack.sdk.UpdateOutOfBandCronGroupTimeExpressionResult value = res.getResult(org.zstack.sdk.UpdateOutOfBandCronGroupTimeExpressionResult.class);
-        ret.value = value == null ? new org.zstack.sdk.UpdateOutOfBandCronGroupTimeExpressionResult() : value; 
+        org.zstack.sdk.databasebackup.DeleteDatabaseBackupOnManagementResult value = res.getResult(org.zstack.sdk.databasebackup.DeleteDatabaseBackupOnManagementResult.class);
+        ret.value = value == null ? new org.zstack.sdk.databasebackup.DeleteDatabaseBackupOnManagementResult() : value; 
 
         return ret;
     }
@@ -93,11 +93,11 @@ public class UpdateOutOfBandCronGroupTimeExpressionAction extends AbstractAction
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "PUT";
-        info.path = "/cron/timeexpression/scheduler/jobgroups/{uuid}/actions";
+        info.httpMethod = "DELETE";
+        info.path = "/database-backup/management";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "updateOutOfBandCronGroupTimeExpression";
+        info.parameterName = "";
         return info;
     }
 

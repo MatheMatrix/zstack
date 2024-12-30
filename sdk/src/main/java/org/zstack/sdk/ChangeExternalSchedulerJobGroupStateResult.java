@@ -2,7 +2,7 @@ package org.zstack.sdk;
 
 import org.zstack.sdk.SchedulerJobGroupInventory;
 
-public class ChangeOutOfBandCronGroupStateResult {
+public class ChangeExternalSchedulerJobGroupStateResult {
     public SchedulerJobGroupInventory inventory;
     public void setInventory(SchedulerJobGroupInventory inventory) {
         this.inventory = inventory;
