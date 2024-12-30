@@ -2,6 +2,7 @@ package org.zstack.header.host
 
 import java.lang.Long
 import java.lang.Integer
+import org.zstack.header.host.HwMonitorStatus
 import java.sql.Timestamp
 
 doc {
@@ -122,11 +123,89 @@ doc {
 		type "String"
 		since "0.6"
 	}
+	ref {
+		name "cpuStatus"
+		path "org.zstack.header.host.HostInventory.cpuStatus"
+		desc "CPU状态"
+		type "HwMonitorStatus"
+		since "zsv 4.10.0"
+		clz HwMonitorStatus.class
+	}
+	ref {
+		name "memoryStatus"
+		path "org.zstack.header.host.HostInventory.memoryStatus"
+		desc "内存状态"
+		type "HwMonitorStatus"
+		since "zsv 4.10.0"
+		clz HwMonitorStatus.class
+	}
+	ref {
+		name "diskStatus"
+		path "org.zstack.header.host.HostInventory.diskStatus"
+		desc "磁盘状态"
+		type "HwMonitorStatus"
+		since "zsv 4.10.0"
+		clz HwMonitorStatus.class
+	}
+	ref {
+		name "nicStatus"
+		path "org.zstack.header.host.HostInventory.nicStatus"
+		desc "网卡状态"
+		type "HwMonitorStatus"
+		since "zsv 4.10.0"
+		clz HwMonitorStatus.class
+	}
+	ref {
+		name "gpuStatus"
+		path "org.zstack.header.host.HostInventory.gpuStatus"
+		desc "GPU状态"
+		type "HwMonitorStatus"
+		since "zsv 4.10.0"
+		clz HwMonitorStatus.class
+	}
+	ref {
+		name "powerSupplyStatus"
+		path "org.zstack.header.host.HostInventory.powerSupplyStatus"
+		desc "电源状态"
+		type "HwMonitorStatus"
+		since "zsv 4.10.0"
+		clz HwMonitorStatus.class
+	}
+	ref {
+		name "fanStatus"
+		path "org.zstack.header.host.HostInventory.fanStatus"
+		desc "风扇状态"
+		type "HwMonitorStatus"
+		since "zsv 4.10.0"
+		clz HwMonitorStatus.class
+	}
+	ref {
+		name "raidStatus"
+		path "org.zstack.header.host.HostInventory.raidStatus"
+		desc "RAID状态"
+		type "HwMonitorStatus"
+		since "zsv 4.10.0"
+		clz HwMonitorStatus.class
+	}
+	ref {
+		name "temperatureStatus"
+		path "org.zstack.header.host.HostInventory.temperatureStatus"
+		desc "温度状态"
+		type "HwMonitorStatus"
+		since "zsv 4.10.0"
+		clz HwMonitorStatus.class
+	}
 	field {
 		name "architecture"
 		desc ""
 		type "String"
 		since "0.6"
+	}
+	field {
+		name "nqn"
+		desc "NVMe 限定名称"
+		type "String"
+		since "zsv 4.10.6"
 	}
 	field {
 		name "createDate"

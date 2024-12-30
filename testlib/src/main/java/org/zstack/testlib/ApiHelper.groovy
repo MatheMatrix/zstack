@@ -5477,20 +5477,20 @@ abstract class ApiHelper {
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
         c()
-
+        
 
         if (System.getProperty("apipath") != null) {
             if (a.apiId == null) {
                 a.apiId = Platform.uuid
             }
-
+    
             def tracker = new ApiPathTracker(a.apiId)
             def out = errorOut(a.call())
             def path = tracker.getApiPath()
             if (!path.isEmpty()) {
                 Test.apiPaths[a.class.name] = path.join(" --->\n")
             }
-
+        
             return out
         } else {
             return errorOut(a.call())
@@ -18869,20 +18869,20 @@ abstract class ApiHelper {
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
         c()
-
+        
 
         if (System.getProperty("apipath") != null) {
             if (a.apiId == null) {
                 a.apiId = Platform.uuid
             }
-
+    
             def tracker = new ApiPathTracker(a.apiId)
             def out = errorOut(a.call())
             def path = tracker.getApiPath()
             if (!path.isEmpty()) {
                 Test.apiPaths[a.class.name] = path.join(" --->\n")
             }
-
+        
             return out
         } else {
             return errorOut(a.call())
@@ -19166,20 +19166,20 @@ abstract class ApiHelper {
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
         c()
-
+        
 
         if (System.getProperty("apipath") != null) {
             if (a.apiId == null) {
                 a.apiId = Platform.uuid
             }
-
+    
             def tracker = new ApiPathTracker(a.apiId)
             def out = errorOut(a.call())
             def path = tracker.getApiPath()
             if (!path.isEmpty()) {
                 Test.apiPaths[a.class.name] = path.join(" --->\n")
             }
-
+        
             return out
         } else {
             return errorOut(a.call())
@@ -26328,6 +26328,35 @@ abstract class ApiHelper {
     }
 
 
+    def queryFcHbaDevice(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryFcHbaDeviceAction.class) Closure c) {
+        def a = new org.zstack.sdk.QueryFcHbaDeviceAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+        a.conditions = a.conditions.collect { it.toString() }
+
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def queryFiberChannelLun(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryFiberChannelLunAction.class) Closure c) {
         def a = new org.zstack.sdk.QueryFiberChannelLunAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -26649,6 +26678,35 @@ abstract class ApiHelper {
 
     def queryGlobalConfigTemplate(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryGlobalConfigTemplateAction.class) Closure c) {
         def a = new org.zstack.sdk.QueryGlobalConfigTemplateAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+        a.conditions = a.conditions.collect { it.toString() }
+
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def queryGpuDevice(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryGpuDeviceAction.class) Closure c) {
+        def a = new org.zstack.sdk.QueryGpuDeviceAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -38176,6 +38234,33 @@ abstract class ApiHelper {
     }
 
 
+    def updateHostIscsiInitiatorName(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateHostIscsiInitiatorNameAction.class) Closure c) {
+        def a = new org.zstack.sdk.UpdateHostIscsiInitiatorNameAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def updateHostKernelInterface(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateHostKernelInterfaceAction.class) Closure c) {
         def a = new org.zstack.sdk.UpdateHostKernelInterfaceAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -38205,6 +38290,33 @@ abstract class ApiHelper {
 
     def updateHostNetworkInterface(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateHostNetworkInterfaceAction.class) Closure c) {
         def a = new org.zstack.sdk.UpdateHostNetworkInterfaceAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def updateHostNqn(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateHostNqnAction.class) Closure c) {
+        def a = new org.zstack.sdk.UpdateHostNqnAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -43237,6 +43349,7 @@ abstract class ApiHelper {
         c.delegate = a
         c()
         
+
         if (System.getProperty("apipath") != null) {
             if (a.apiId == null) {
                 a.apiId = Platform.uuid
@@ -43593,6 +43706,7 @@ abstract class ApiHelper {
         c.delegate = a
         c()
         
+
         if (System.getProperty("apipath") != null) {
             if (a.apiId == null) {
                 a.apiId = Platform.uuid
@@ -43839,6 +43953,7 @@ abstract class ApiHelper {
         c.delegate = a
         c()
         
+
         if (System.getProperty("apipath") != null) {
             if (a.apiId == null) {
                 a.apiId = Platform.uuid
