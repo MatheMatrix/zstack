@@ -7,7 +7,7 @@ import org.zstack.xinfini.sdk.XInfiniResponse;
  * @ Author : yh.w
  * @ Date   : Created in 11:51 2024/5/28
  */
-public class ExpandVolumeResponse extends XInfiniResponse {
+public class UpdateVolumeResponse extends XInfiniResponse {
     private BaseResource.Metadata metadata;
     private VolumeModule.VolumeSpec spec;
     private VolumeModule.VolumeStatus status;
