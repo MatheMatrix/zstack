@@ -1,8 +1,6 @@
 package org.zstack.sdk;
 
-import org.zstack.sdk.SchedulerJobGroupInventory;
-
-public class UpdateOutOfBandCronGroupResult {
+public class UpdateExternalSchedulerJobGroupResult {
     public SchedulerJobGroupInventory inventory;
     public void setInventory(SchedulerJobGroupInventory inventory) {
         this.inventory = inventory;

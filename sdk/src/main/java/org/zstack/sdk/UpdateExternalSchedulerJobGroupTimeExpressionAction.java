@@ -2,9 +2,8 @@ package org.zstack.sdk;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.zstack.sdk.*;
 
-public class UpdateOutOfBandCronGroupAction extends AbstractAction {
+public class UpdateExternalSchedulerJobGroupTimeExpressionAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +11,7 @@ public class UpdateOutOfBandCronGroupAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.UpdateOutOfBandCronGroupResult value;
+        public org.zstack.sdk.UpdateExternalSchedulerJobGroupTimeExpressionResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -28,8 +27,8 @@ public class UpdateOutOfBandCronGroupAction extends AbstractAction {
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String uuid;
 
-    @Param(required = false)
-    public java.util.Map parameters;
+    @Param(required = true)
+    public java.lang.String timeExpression;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -62,9 +61,9 @@ public class UpdateOutOfBandCronGroupAction extends AbstractAction {
             ret.error = res.error;
             return ret;
         }
-        
-        org.zstack.sdk.UpdateOutOfBandCronGroupResult value = res.getResult(org.zstack.sdk.UpdateOutOfBandCronGroupResult.class);
-        ret.value = value == null ? new org.zstack.sdk.UpdateOutOfBandCronGroupResult() : value; 
+
+        org.zstack.sdk.UpdateExternalSchedulerJobGroupTimeExpressionResult value = res.getResult(UpdateExternalSchedulerJobGroupTimeExpressionResult.class);
+        ret.value = value == null ? new org.zstack.sdk.UpdateExternalSchedulerJobGroupTimeExpressionResult() : value; 
 
         return ret;
     }
@@ -94,10 +93,10 @@ public class UpdateOutOfBandCronGroupAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "PUT";
-        info.path = "/cron/scheduler/jobgroups/{uuid}/actions";
+        info.path = "/cron/timeexpression/scheduler/jobgroups/{uuid}/actions";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "updateOutOfBandCronGroup";
+        info.parameterName = "updateExternalSchedulerJobGroupTimeExpression";
         return info;
     }
 

@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class DeleteDatabaseBackupFromManagementAction extends AbstractAction {
+public class DeleteDatabaseBackupOnManagementAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class DeleteDatabaseBackupFromManagementAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.databasebackup.DeleteDatabaseBackupFromManagementResult value;
+        public org.zstack.sdk.databasebackup.DeleteDatabaseBackupOnManagementResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -62,9 +62,9 @@ public class DeleteDatabaseBackupFromManagementAction extends AbstractAction {
             ret.error = res.error;
             return ret;
         }
-        
-        org.zstack.sdk.databasebackup.DeleteDatabaseBackupFromManagementResult value = res.getResult(org.zstack.sdk.databasebackup.DeleteDatabaseBackupFromManagementResult.class);
-        ret.value = value == null ? new org.zstack.sdk.databasebackup.DeleteDatabaseBackupFromManagementResult() : value; 
+
+        org.zstack.sdk.databasebackup.DeleteDatabaseBackupOnManagementResult value = res.getResult(DeleteDatabaseBackupOnManagementResult.class);
+        ret.value = value == null ? new org.zstack.sdk.databasebackup.DeleteDatabaseBackupOnManagementResult() : value; 
 
         return ret;
     }

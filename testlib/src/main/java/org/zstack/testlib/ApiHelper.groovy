@@ -38986,8 +38986,8 @@ abstract class ApiHelper {
     }
 
 
-    def updateOutOfBandCronGroup(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateOutOfBandCronGroupAction.class) Closure c) {
-        def a = new org.zstack.sdk.UpdateOutOfBandCronGroupAction()
+    def updateExternalSchedulerJobGroup(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateExternalSchedulerJobGroupAction.class) Closure c) {
+        def a = new org.zstack.sdk.UpdateExternalSchedulerJobGroupAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -39013,8 +39013,8 @@ abstract class ApiHelper {
     }
 
 
-    def updateOutOfBandCronGroupTimeExpression(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateOutOfBandCronGroupTimeExpressionAction.class) Closure c) {
-        def a = new org.zstack.sdk.UpdateOutOfBandCronGroupTimeExpressionAction()
+    def updateExternalSchedulerJobGroupTimeExpression(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateExternalSchedulerJobGroupTimeExpressionAction.class) Closure c) {
+        def a = new org.zstack.sdk.UpdateExternalSchedulerJobGroupTimeExpressionAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -41173,8 +41173,8 @@ abstract class ApiHelper {
     }
 
 
-    def deleteDatabaseBackupFromManagement(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.databasebackup.DeleteDatabaseBackupFromManagementAction.class) Closure c) {
-        def a = new org.zstack.sdk.databasebackup.DeleteDatabaseBackupFromManagementAction()
+    def deleteDatabaseBackupFromManagement(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.databasebackup.DeleteDatabaseBackupOnManagementAction.class) Closure c) {
+        def a = new org.zstack.sdk.databasebackup.DeleteDatabaseBackupOnManagementAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -42373,8 +42373,8 @@ abstract class ApiHelper {
     }
 
 
-    def changeOutOfBandCronGroupState(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.ChangeOutOfBandCronGroupStateAction.class) Closure c) {
-        def a = new org.zstack.sdk.ChangeOutOfBandCronGroupStateAction()
+    def changeExternalSchedulerJobGroupState(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.ChangeExternalSchedulerJobGroupStateAction.class) Closure c) {
+        def a = new org.zstack.sdk.ChangeExternalSchedulerJobGroupStateAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
