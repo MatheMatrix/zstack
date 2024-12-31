@@ -1,31 +1,31 @@
 package org.zstack.header.core.external.plugin
 
-import org.zstack.header.core.external.plugin.APIRefreshPluginDriversEvent
+import org.zstack.header.core.external.plugin.APIGetPluginOptionTypeListReply
 
 doc {
-    title "RefreshPluginDrivers"
+    title "GetPluginOptionTypeList"
 
     category "external.plugin"
 
-    desc """刷新插件驱动器"""
+    desc """获取插件选项类型列表"""
 
     rest {
         request {
-			url "PUT /v1/external/plugins"
+			url "GET /v1/external/plugins/option/list"
 
 			header (Authorization: 'OAuth the-session-uuid')
 
-            clz APIRefreshPluginDriversMsg.class
+            clz APIGetPluginOptionTypeListMsg.class
 
             desc """"""
             
 			params {
 
 				column {
-					name "name"
-					enclosedIn "refreshPluginDrivers"
-					desc "资源名称"
-					location "body"
+					name "pluginUuid"
+					enclosedIn ""
+					desc "插件驱动器uuid"
+					location "query"
 					type "String"
 					optional true
 					since "5.3.0"
@@ -34,7 +34,7 @@ doc {
 					name "systemTags"
 					enclosedIn ""
 					desc "系统标签"
-					location "body"
+					location "query"
 					type "List"
 					optional true
 					since "5.3.0"
@@ -43,7 +43,7 @@ doc {
 					name "userTags"
 					enclosedIn ""
 					desc "用户标签"
-					location "body"
+					location "query"
 					type "List"
 					optional true
 					since "5.3.0"
@@ -52,7 +52,7 @@ doc {
         }
 
         response {
-            clz APIRefreshPluginDriversEvent.class
+            clz APIGetPluginOptionTypeListReply.class
         }
     }
 }

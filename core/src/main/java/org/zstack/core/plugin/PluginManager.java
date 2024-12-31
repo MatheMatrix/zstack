@@ -1,6 +1,8 @@
 package org.zstack.core.plugin;
 
 import org.zstack.abstraction.PluginDriver;
+import org.zstack.core.CoreGlobalProperty;
+import org.zstack.utils.path.PathUtil;
 
 import java.util.List;
 
@@ -13,6 +15,8 @@ import java.util.List;
  */
 public interface PluginManager {
     String SERVICE_ID = "external.plugin";
+
+    String FILE_DIR_PATH = PathUtil.join(CoreGlobalProperty.DATA_DIR, "/plugins/");
 
     boolean isFeatureSupported(String pluginUuid, String capability);
 
