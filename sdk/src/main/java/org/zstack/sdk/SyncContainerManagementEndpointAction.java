@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class UpdateDatasetAction extends AbstractAction {
+public class SyncContainerManagementEndpointAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class UpdateDatasetAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.UpdateDatasetResult value;
+        public org.zstack.sdk.SyncContainerManagementEndpointResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -28,17 +28,8 @@ public class UpdateDatasetAction extends AbstractAction {
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String uuid;
 
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String name;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String description;
-
-    @Param(required = false, validValues = {"FineTune","Endpoint","App","ModelEval","ModelPerf"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List usageScenarios;
-
-    @Param(required = false, validValues = {"Text","Audio","Image","Video","Tabular","Geospatial","TimeSeries"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String dataType;
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String zoneUuid;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -72,8 +63,8 @@ public class UpdateDatasetAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.UpdateDatasetResult value = res.getResult(org.zstack.sdk.UpdateDatasetResult.class);
-        ret.value = value == null ? new org.zstack.sdk.UpdateDatasetResult() : value; 
+        org.zstack.sdk.SyncContainerManagementEndpointResult value = res.getResult(org.zstack.sdk.SyncContainerManagementEndpointResult.class);
+        ret.value = value == null ? new org.zstack.sdk.SyncContainerManagementEndpointResult() : value; 
 
         return ret;
     }
@@ -103,10 +94,10 @@ public class UpdateDatasetAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "PUT";
-        info.path = "/ai/datasets/{uuid}";
+        info.path = "/container/management/endpoint/{uuid}/actions";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "updateDataset";
+        info.parameterName = "syncContainerManagementEndpoint";
         return info;
     }
 

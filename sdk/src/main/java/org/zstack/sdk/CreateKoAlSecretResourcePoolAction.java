@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class UpdateDatasetAction extends AbstractAction {
+public class CreateKoAlSecretResourcePoolAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class UpdateDatasetAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.UpdateDatasetResult value;
+        public org.zstack.sdk.CreateSecretResourcePoolResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,20 +25,38 @@ public class UpdateDatasetAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String uuid;
+    @Param(required = false)
+    public java.lang.String managementIp;
 
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    @Param(required = false)
+    public java.lang.Integer port;
+
+    @Param(required = false)
+    public java.lang.String secretKey;
+
+    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String name;
 
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String description;
 
-    @Param(required = false, validValues = {"FineTune","Endpoint","App","ModelEval","ModelPerf"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List usageScenarios;
+    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String model;
 
-    @Param(required = false, validValues = {"Text","Audio","Image","Video","Tabular","Geospatial","TimeSeries"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String dataType;
+    @Param(required = true, validValues = {"CloudSecurityMachine","OrdinarySecurityMachine","CloudSecurityResourceService","SecureSignVerifyService"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String type;
+
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, numberRange = {6L,180L}, noTrim = false)
+    public java.lang.Integer heartbeatInterval;
+
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String zoneUuid;
+
+    @Param(required = false)
+    public java.lang.String resourceUuid;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.util.List tagUuids;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -72,8 +90,8 @@ public class UpdateDatasetAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.UpdateDatasetResult value = res.getResult(org.zstack.sdk.UpdateDatasetResult.class);
-        ret.value = value == null ? new org.zstack.sdk.UpdateDatasetResult() : value; 
+        org.zstack.sdk.CreateSecretResourcePoolResult value = res.getResult(org.zstack.sdk.CreateSecretResourcePoolResult.class);
+        ret.value = value == null ? new org.zstack.sdk.CreateSecretResourcePoolResult() : value; 
 
         return ret;
     }
@@ -102,11 +120,11 @@ public class UpdateDatasetAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "PUT";
-        info.path = "/ai/datasets/{uuid}";
+        info.httpMethod = "POST";
+        info.path = "/secret-resource-pool/koal";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "updateDataset";
+        info.parameterName = "params";
         return info;
     }
 

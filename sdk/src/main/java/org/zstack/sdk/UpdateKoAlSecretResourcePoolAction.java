@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class UpdateDatasetAction extends AbstractAction {
+public class UpdateKoAlSecretResourcePoolAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class UpdateDatasetAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.UpdateDatasetResult value;
+        public org.zstack.sdk.UpdateSecretResourcePoolResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,20 +25,29 @@ public class UpdateDatasetAction extends AbstractAction {
         }
     }
 
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String managementIp;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.Integer port;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String secretKey;
+
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String uuid;
 
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String name;
 
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String description;
 
-    @Param(required = false, validValues = {"FineTune","Endpoint","App","ModelEval","ModelPerf"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List usageScenarios;
+    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String model;
 
-    @Param(required = false, validValues = {"Text","Audio","Image","Video","Tabular","Geospatial","TimeSeries"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String dataType;
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, numberRange = {6L,180L}, noTrim = false)
+    public java.lang.Integer heartbeatInterval;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -72,8 +81,8 @@ public class UpdateDatasetAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.UpdateDatasetResult value = res.getResult(org.zstack.sdk.UpdateDatasetResult.class);
-        ret.value = value == null ? new org.zstack.sdk.UpdateDatasetResult() : value; 
+        org.zstack.sdk.UpdateSecretResourcePoolResult value = res.getResult(org.zstack.sdk.UpdateSecretResourcePoolResult.class);
+        ret.value = value == null ? new org.zstack.sdk.UpdateSecretResourcePoolResult() : value; 
 
         return ret;
     }
@@ -103,10 +112,10 @@ public class UpdateDatasetAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "PUT";
-        info.path = "/ai/datasets/{uuid}";
+        info.path = "/secret-resource-pools/koal/{uuid}/actions";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "updateDataset";
+        info.parameterName = "updateKoAlSecretResourcePool";
         return info;
     }
 
