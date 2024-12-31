@@ -295,7 +295,7 @@ public class VmNicManagerImpl implements VmNicManager, VmNicExtensionPoint, Prep
         L2NetworkVO l2nw =  dbf.findByUuid(l3nw.getL2NetworkUuid(), L2NetworkVO.class);
         VSwitchType vSwitchType = VSwitchType.valueOf(l2nw.getvSwitchType());
 
-        return VmNicType.getNicType(vSwitchType, subType);
+        return vSwitchType.getVmNicType(subType);
     }
 
     @Override

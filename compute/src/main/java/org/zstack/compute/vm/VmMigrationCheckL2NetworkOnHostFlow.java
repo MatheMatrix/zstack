@@ -20,7 +20,6 @@ import org.zstack.header.vm.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  */
@@ -41,7 +40,7 @@ public class VmMigrationCheckL2NetworkOnHostFlow implements Flow {
             CheckL2NetworkOnHostMsg msg = new CheckL2NetworkOnHostMsg();
             L2NetworkVO l2NetworkVO = dbf.findByUuid(l3.getL2NetworkUuid(), L2NetworkVO.class);
             VSwitchType switchType = VSwitchType.valueOf(l2NetworkVO.getvSwitchType());
-            if (!switchType.isAttatchTohost()) {
+            if (!switchType.isAttachToCluster()) {
                 continue;
             }
             msg.setL2NetworkUuid(l3.getL2NetworkUuid());

@@ -85,6 +85,10 @@ public class L2NoVlanNetwork implements L2Network {
         return L2NetworkInventory.valueOf(self);
     }
 
+    public VSwitchType getVSwitchType() {
+        return VSwitchType.valueOf(self.getvSwitchType());
+    }
+
     @Override
     public void handleMessage(Message msg) {
         try {
@@ -143,15 +147,6 @@ public class L2NoVlanNetwork implements L2Network {
             }
         });
     }
-
-    protected boolean checkPhysicalInterfaceForAttach() {
-        return true;
-    }
-
-    protected boolean realizeDataPlaneForAttach() {
-        return true;
-    }
-
 
     private void handle(DeleteL2NetworkMsg msg) {
         DeleteL2NetworkReply reply = new DeleteL2NetworkReply();
@@ -244,7 +239,8 @@ public class L2NoVlanNetwork implements L2Network {
     }
 
     private void handle(DetachL2NetworkFromClusterMsg msg) {
-        if (!L2NetworkGlobalConfig.DeleteL2BridgePhysically.value(Boolean.class)) {
+        if (!L2NetworkGlobalConfig.DeleteL2BridgePhysically.value(Boolean.class) ||
+                !getVSwitchType().isAttachToCluster()) {
             SQL.New(L2NetworkClusterRefVO.class)
                     .eq(L2NetworkClusterRefVO_.clusterUuid, msg.getClusterUuid())
                     .eq(L2NetworkClusterRefVO_.l2NetworkUuid, msg.getL2NetworkUuid())
@@ -315,7 +311,6 @@ public class L2NoVlanNetwork implements L2Network {
         String htype = q.findValue();
         final HypervisorType hvType = HypervisorType.valueOf(htype);
         final L2NetworkType l2Type = L2NetworkType.valueOf(self.getType());
-        final VSwitchType vSwitchType = VSwitchType.valueOf(self.getvSwitchType());
 
         L2NetworkHostRefInventory hostRef = l2NetworkHostHelper.getL2NetworkHostRef(msg.getL2NetworkUuid(), msg.getHostUuid());
         String providerType = null;
@@ -325,7 +320,7 @@ public class L2NoVlanNetwork implements L2Network {
 
         final CheckL2NetworkOnHostReply reply = new CheckL2NetworkOnHostReply();
         // TODO: this should be fixed
-        L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, vSwitchType, hvType);
+        L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, getVSwitchType(), hvType);
         ext.check(getSelfInventory(), msg.getHostUuid(), new Completion(msg) {
             @Override
             public void success() {
@@ -518,15 +513,13 @@ public class L2NoVlanNetwork implements L2Network {
     protected void updateVlanNetwork(L2NetworkInventory oldl2, L2NetworkInventory newl2, String hostUuid, String htype, Completion completion) {
         final HypervisorType hvType = HypervisorType.valueOf(htype);
         final L2NetworkType l2Type = L2NetworkType.valueOf(self.getType());
-        final VSwitchType vSwitchType = VSwitchType.valueOf(self.getvSwitchType());
-        L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, vSwitchType, hvType);
+        L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, getVSwitchType(), hvType);
         ext.update(oldl2, newl2, hostUuid, completion);
     }
     protected void realizeNetwork(String hostUuid, String htype, String providerType, Completion completion) {
         final HypervisorType hvType = HypervisorType.valueOf(htype);
         final L2NetworkType l2Type = L2NetworkType.valueOf(self.getType());
-        final VSwitchType vSwitchType = VSwitchType.valueOf(self.getvSwitchType());
-        L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, vSwitchType, hvType);
+        L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, getVSwitchType(), hvType);
         ext.realize(getSelfInventory(), hostUuid, completion);
     }
 
@@ -672,7 +665,7 @@ public class L2NoVlanNetwork implements L2Network {
         chain.then(new NoRollbackFlow() {
             @Override
             public boolean skip(Map data) {
-                return !checkPhysicalInterfaceForAttach();
+                return !getVSwitchType().isAttachToCluster();
             }
 
             @Override
@@ -709,7 +702,7 @@ public class L2NoVlanNetwork implements L2Network {
 
             @Override
             public boolean skip(Map data) {
-                return !realizeDataPlaneForAttach();
+                return !getVSwitchType().isAttachToCluster();
             }
 
             @Override
@@ -1054,8 +1047,7 @@ public class L2NoVlanNetwork implements L2Network {
         new While<>(hostss).step((host,compl) -> {
             HypervisorType hvType = HypervisorType.valueOf(host.getHypervisorType());
             L2NetworkType l2Type = L2NetworkType.valueOf(self.getType());
-            VSwitchType vSwitchType = VSwitchType.valueOf(self.getvSwitchType());
-            L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, vSwitchType, hvType);
+            L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, getVSwitchType(), hvType);
             ext.delete(getSelfInventory(), host.getUuid(), new Completion(compl){
                 @Override
                 public void success() {

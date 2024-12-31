@@ -4,13 +4,11 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.transaction.annotation.Transactional;
-import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.Platform;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
-import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.host.HostVO_;
 import org.zstack.header.network.l2.*;
@@ -22,12 +20,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import org.zstack.utils.logging.CLogger;
-import org.zstack.header.host.HostVO;
-import org.zstack.header.host.HostVO_;
-import org.zstack.core.db.Q;
 import org.zstack.utils.Utils;
-import org.zstack.core.db.SimpleQuery;
-import org.zstack.header.host.*;
 
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
@@ -47,51 +40,6 @@ public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
         List<String> l2uuids = q.getResultList();
         if (l2uuids.isEmpty()) {
             return new ArrayList<>();
-        }
-
-        /* for vswitch type */
-        List<Tuple> tuples = Q.New(L2NetworkVO.class)
-                .select(L2NetworkVO_.uuid, L2NetworkVO_.vSwitchType)
-                .in(L2NetworkVO_.uuid, l2uuids).listTuple();
-        List<String> ovnL2Uuids = new ArrayList<>();
-        l2uuids = new ArrayList<>();
-        for (Tuple t : tuples) {
-            String uuid = t.get(0, String.class);
-            String vsType = t.get(1, String.class);
-            if (vsType.equals(L2NetworkConstant.VSWITCH_TYPE_OVN_DPDK)) {
-                ovnL2Uuids.add(uuid);
-            } else {
-                l2uuids.add(uuid);
-            }
-        }
-
-        if (!ovnL2Uuids.isEmpty()) {
-            List<String> ovnHostUuids = new ArrayList<>();
-            for (GetHostsAttachedToL2Networks extp : pluginRgty.getExtensionList(GetHostsAttachedToL2Networks.class)) {
-                ovnHostUuids.addAll(extp.GetHostsAttachedToL2Networks(L2NetworkConstant.VSWITCH_TYPE_OVN_DPDK, ovnL2Uuids));
-            }
-
-            /* vm only has ovn network */
-            if (l2uuids.isEmpty()) {
-                sql = "select h from HostVO h where h.uuid in (:huuids)";
-                TypedQuery<HostVO> hq = dbf.getEntityManager().createQuery(sql, HostVO.class);
-                hq.setParameter("huuids", ovnHostUuids);
-
-                if (usePagination()) {
-                    hq.setFirstResult(paginationInfo.getOffset());
-                    hq.setMaxResults(paginationInfo.getLimit());
-                }
-
-                return hq.getResultList();
-            }
-
-            if (hostUuids.isEmpty()) {
-                hostUuids = new ArrayList<>(ovnHostUuids);
-            } else {
-                hostUuids = hostUuids.stream()
-                        .filter(ovnHostUuids::contains).distinct()
-                        .collect(Collectors.toList());
-            }
         }
 
         sql = "select ref from L2NetworkClusterRefVO ref where ref.l2NetworkUuid in (:l2uuids)";
@@ -138,6 +86,14 @@ public class AttachedL2NetworkAllocatorFlow extends AbstractHostAllocatorFlow {
                 .notEq(L2NetworkHostRefVO_.attachStatus, L2NetworkAttachStatus.Attached)
                 .select(L2NetworkHostRefVO_.hostUuid).listValues();
         retHostUuids.removeAll(excludeHostUuids);
+        if (retHostUuids.isEmpty()){
+            return new ArrayList<>();
+        }
+
+        for (AttachedL2NetworkAllocatorExtensionPoint extp : pluginRgty.getExtensionList(AttachedL2NetworkAllocatorExtensionPoint.class)) {
+            retHostUuids = extp.filter(retHostUuids, l2uuids);
+        }
+
         if (retHostUuids.isEmpty()){
             return new ArrayList<>();
         }

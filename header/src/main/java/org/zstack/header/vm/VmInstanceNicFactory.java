@@ -7,7 +7,6 @@ import java.util.List;
 
 public interface VmInstanceNicFactory {
     VmNicType getType();
-    VSwitchType getVSwitchType();
     VmNicVO createVmNic(VmNicInventory inv, VmInstanceSpec spec);
 
     static VmNicVO createVmNic(VmNicInventory nic) {
