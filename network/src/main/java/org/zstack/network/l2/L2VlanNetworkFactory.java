@@ -75,8 +75,10 @@ public class L2VlanNetworkFactory extends AbstractService implements L2NetworkFa
 
             @Override
             public void run(FlowTrigger trigger, Map data) {
+                L2VlanNetworkInventory inv = L2VlanNetworkInventory.valueOf(
+                        dbf.findByUuid(ovo.getUuid(), L2VlanNetworkVO.class));
                 new While<>(pluginRgty.getExtensionList(L2NetworkCreateExtensionPoint.class))
-                        .each((exp, wcompl) -> exp.postCreateL2Network(L2NetworkInventory.valueOf(ovo), msg, new Completion(trigger) {
+                        .each((exp, wcompl) -> exp.postCreateL2Network(inv, msg, new Completion(trigger) {
                             @Override
                             public void success() {
                                 wcompl.done();
