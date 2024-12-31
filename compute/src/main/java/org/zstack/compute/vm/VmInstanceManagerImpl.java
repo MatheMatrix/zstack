@@ -1195,12 +1195,21 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 }
 
                 flow(new Flow() {
-                    List<ErrorCode> errorCodes = Collections.emptyList();
+                    List<ErrorCode> errorCodes = new ArrayList<>();
                     String __name__ = String.format("instantiate-systemTag-for-vm-%s", finalVo.getUuid());
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        instantiateTagsForCreateMessage(msg, cmsg, finalVo);
+                        try {
+                            instantiateTagsForCreateMessage(msg, cmsg, finalVo);
+                        } catch (Exception e) {
+                            errorCodes.add(operr("instantiate system tag for vm failed because %s", e.getMessage()));
+                        }
+                        if (!errorCodes.isEmpty()) {
+                            trigger.fail(errorCodes.get(0));
+                            return;
+                        }
+
                         errorCodes = extEmitterHandleSystemTag(msg, cmsg, finalVo);
                         if (!errorCodes.isEmpty()) {
                             trigger.fail(operr("handle system tag fail when creating vm because [%s]",
