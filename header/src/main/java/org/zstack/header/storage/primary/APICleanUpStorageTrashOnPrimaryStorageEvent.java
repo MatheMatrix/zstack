@@ -33,4 +33,10 @@ public class APICleanUpStorageTrashOnPrimaryStorageEvent extends APIEvent {
 
     public APICleanUpStorageTrashOnPrimaryStorageEvent() {
     }
+
+    public static APICleanUpStorageTrashOnPrimaryStorageEvent __example__() {
+        APICleanUpStorageTrashOnPrimaryStorageEvent event = new APICleanUpStorageTrashOnPrimaryStorageEvent();
+        event.setTotal(1);
+        return event;
+    }
 }

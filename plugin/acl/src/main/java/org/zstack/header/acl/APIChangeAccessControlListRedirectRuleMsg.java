@@ -41,4 +41,11 @@ public class APIChangeAccessControlListRedirectRuleMsg extends APIMessage implem
     public Result audit(APIMessage msg, APIEvent rsp) {
         return null;
     }
+
+    public static APIChangeAccessControlListRedirectRuleMsg __example__() {
+        APIChangeAccessControlListRedirectRuleMsg msg = new APIChangeAccessControlListRedirectRuleMsg();
+        msg.setUuid(uuid());
+        msg.setName("redirectRule");
+        return msg;
+    }
 }
