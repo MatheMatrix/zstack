@@ -6,6 +6,7 @@ import org.zstack.compute.host.HostManagerImpl
 import org.zstack.compute.host.HostReconnectTask
 import org.zstack.compute.host.HostTrackImpl
 import org.zstack.core.cloudbus.CloudBus
+import org.zstack.core.config.GlobalConfigFacadeImpl
 import org.zstack.core.db.Q
 import org.zstack.core.db.SQL
 import org.zstack.header.core.NoErrorCompletion
@@ -13,6 +14,7 @@ import org.zstack.header.errorcode.SysErrors
 import org.zstack.header.host.*
 import org.zstack.kvm.KVMAgentCommands
 import org.zstack.kvm.KVMConstant
+import org.zstack.kvm.KVMGlobalConfig
 import org.zstack.kvm.KVMReconnectHostTask
 import org.zstack.sdk.ClusterInventory
 import org.zstack.sdk.HostInventory
@@ -27,6 +29,7 @@ import java.util.concurrent.TimeUnit
 class KVMPingCase extends SubCase {
     EnvSpec env
     CloudBus bus
+    GlobalConfigFacadeImpl gcf
 
     @Override
     void clean() {
@@ -100,6 +103,8 @@ class KVMPingCase extends SubCase {
 
         env.afterSimulator(KVMConstant.KVM_PING_PATH) { KVMAgentCommands.PingResponse rsp, HttpEntity<String> e ->
             KVMAgentCommands.PingCmd cmd = JSONObjectUtil.toObject(e.getBody(), KVMAgentCommands.PingCmd.class)
+            assert cmd.kvmagentPhysicalMemoryUsageAlarmThreshold == gcf.getConfigValue(KVMGlobalConfig.CATEGORY, KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_ALARM_THRESHOLD.getName(), Long.class);
+            assert cmd.kvmagentPhysicalMemoryUsageHardLimit == gcf.getConfigValue(KVMGlobalConfig.CATEGORY, KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_HARD_LIMIT.getName(), Long.class);
 
             if (cmd.hostUuid == kvm1.uuid && !pingSuccess) {
                 throw new RuntimeException("failure on purpose")
@@ -458,6 +463,7 @@ class KVMPingCase extends SubCase {
     @Override
     void test() {
         bus = bean(CloudBus.class)
+        gcf = bean(GlobalConfigFacadeImpl.class)
 
         env.create {
             HostGlobalConfig.PING_HOST_INTERVAL.updateValue(1)
