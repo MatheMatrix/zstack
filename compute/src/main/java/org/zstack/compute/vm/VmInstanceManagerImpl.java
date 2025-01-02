@@ -897,7 +897,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
             @Override
             public void run(FlowTrigger trigger, Map data) {
                 int deviceId = 1;
-                String mac = NetworkUtils.generateMacWithDeviceId((short) deviceId);
+                String mac = MacOperator.generateMacWithDeviceId((short) deviceId);
                 nic.setUuid(Platform.getUuid());
                 nic.setMac(mac);
                 nic.setDeviceId(deviceId);
@@ -928,7 +928,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                                     "The error[Duplicate entry] printed by jdbc.spi.SqlExceptionHelper is no harm, " +
                                     "we will try finding another mac", nicVO.getMac()));
                             logger.trace("", e);
-                            nicVO.setMac(NetworkUtils.generateMacWithDeviceId((short) nicVO.getDeviceId()));
+                            nicVO.setMac(MacOperator.generateMacWithDeviceId((short) nicVO.getDeviceId()));
                         } else {
                             throw e;
                         }
