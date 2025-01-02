@@ -43,7 +43,7 @@ public class KVMExtensionEmitter implements Component {
     private List<KVMMergeSnapshotExtensionPoint> mergeSnapshotExts = new ArrayList<>();
     private List<KVMCheckVmStateExtensionPoint> checkVmStateExts = new ArrayList<>();
     private List<KVMSyncVmDeviceInfoExtensionPoint> syncVmDeviceInfoExts = new ArrayList<>();
-    private List<KVMBlockCommitExtensionPoint> blockCommitExts = new ArrayList<>();
+    private List<KVMDeleteVolumeSnapshotSelfExtensionPoint> deleteVolumeSnapshotSelfExts = new ArrayList<>();
 
     private void populateExtensions() {
         startVmExts = pluginRgty.getExtensionList(KVMStartVmExtensionPoint.class);
@@ -58,7 +58,7 @@ public class KVMExtensionEmitter implements Component {
         checkVmStateExts = pluginRgty.getExtensionList(KVMCheckVmStateExtensionPoint.class);
         checkSnapshotExts = pluginRgty.getExtensionList(KVMCheckSnapshotExtensionPoint.class);
         syncVmDeviceInfoExts = pluginRgty.getExtensionList(KVMSyncVmDeviceInfoExtensionPoint.class);
-        blockCommitExts = pluginRgty.getExtensionList(KVMBlockCommitExtensionPoint.class);
+        deleteVolumeSnapshotSelfExts = pluginRgty.getExtensionList(KVMDeleteVolumeSnapshotSelfExtensionPoint.class);
     }
 
     public void afterReceiveSyncVmDeviceInfoRespoinse(final VmInstanceInventory vm, final KVMAgentCommands.VmDevicesInfoResponse rsp, VmInstanceSpec spec) {
@@ -231,17 +231,17 @@ public class KVMExtensionEmitter implements Component {
         });
     }
 
-    public void doBeforeCommitVolume(Iterator<KVMBlockCommitExtensionPoint> it, KVMHostInventory host, CommitVolumeOnHypervisorMsg msg, KVMAgentCommands.BlockCommitVolumeCmd cmd, Completion completion) {
+    public void doBeforeDeleteVolumeSnapshotSelf(Iterator<KVMDeleteVolumeSnapshotSelfExtensionPoint> it, KVMHostInventory host, DeleteVolumeSnapshotSelfOnHypervisorMsg msg, Map context, Completion completion) {
         if (!it.hasNext()) {
             completion.success();
             return;
         }
 
-        KVMBlockCommitExtensionPoint ext = it.next();
-        ext.beforeCommitVolume(host, msg, cmd, new Completion(completion) {
+        KVMDeleteVolumeSnapshotSelfExtensionPoint ext = it.next();
+        ext.beforeDeleteVolumeSnapshotSelf(host, msg, context, new Completion(completion) {
             @Override
             public void success() {
-                doBeforeCommitVolume(it, host, msg, cmd, completion);
+                doBeforeDeleteVolumeSnapshotSelf(it, host, msg, context, completion);
             }
 
             @Override
@@ -251,22 +251,22 @@ public class KVMExtensionEmitter implements Component {
         });
     }
 
-    public void beforeCommitVolume(KVMHostInventory host, CommitVolumeOnHypervisorMsg msg, KVMAgentCommands.BlockCommitVolumeCmd cmd, Completion completion) {
-        Iterator<KVMBlockCommitExtensionPoint> it = blockCommitExts.iterator();
-        doBeforeCommitVolume(it, host, msg, cmd, completion);
+    public void beforeDeleteVolumeSnapshotSelf(KVMHostInventory host, DeleteVolumeSnapshotSelfOnHypervisorMsg msg, Map context, Completion completion) {
+        Iterator<KVMDeleteVolumeSnapshotSelfExtensionPoint> it = deleteVolumeSnapshotSelfExts.iterator();
+        doBeforeDeleteVolumeSnapshotSelf(it, host, msg, context, completion);
     }
 
-    public void doAfterCommitVolume(Iterator<KVMBlockCommitExtensionPoint> it, KVMHostInventory host, CommitVolumeOnHypervisorMsg msg, KVMAgentCommands.BlockCommitVolumeCmd cmd, CommitVolumeOnHypervisorReply reply, Completion completion) {
+    private void doAfterDeleteVolumeSnapshotSelf(Iterator<KVMDeleteVolumeSnapshotSelfExtensionPoint> it, KVMHostInventory host, DeleteVolumeSnapshotSelfOnHypervisorMsg msg, DeleteVolumeSnapshotSelfOnHypervisorReply reply, Map context, Completion completion) {
         if (!it.hasNext()) {
             completion.success();
             return;
         }
 
-        KVMBlockCommitExtensionPoint ext = it.next();
-        ext.afterCommitVolume(host, msg, cmd, reply, new Completion(completion) {
+        KVMDeleteVolumeSnapshotSelfExtensionPoint ext = it.next();
+        ext.afterDeleteVolumeSnapshotSelf(host, msg, reply, context, new Completion(completion) {
             @Override
             public void success() {
-                doAfterCommitVolume(it, host, msg, cmd, reply, completion);
+                doAfterDeleteVolumeSnapshotSelf(it, host, msg, reply, context, completion);
             }
 
             @Override
@@ -276,14 +276,14 @@ public class KVMExtensionEmitter implements Component {
         });
     }
 
-    public void afterCommitVolume(KVMHostInventory host, CommitVolumeOnHypervisorMsg msg, KVMAgentCommands.BlockCommitVolumeCmd cmd, CommitVolumeOnHypervisorReply reply, Completion completion) {
-        Iterator<KVMBlockCommitExtensionPoint> it = blockCommitExts.iterator();
-        doAfterCommitVolume(it, host, msg, cmd, reply, completion);
+    public void afterDeleteVolumeSnapshotSelf(KVMHostInventory host, DeleteVolumeSnapshotSelfOnHypervisorMsg msg, Map context, DeleteVolumeSnapshotSelfOnHypervisorReply reply, Completion completion) {
+        Iterator<KVMDeleteVolumeSnapshotSelfExtensionPoint> it = deleteVolumeSnapshotSelfExts.iterator();
+        doAfterDeleteVolumeSnapshotSelf(it, host, msg, reply, context, completion);
     }
 
-    public void failedToCommitVolume(KVMHostInventory host, CommitVolumeOnHypervisorMsg msg, KVMAgentCommands.BlockCommitVolumeCmd cmd, KVMAgentCommands.BlockCommitVolumeResponse rsp, ErrorCode err) {
-        for (KVMBlockCommitExtensionPoint ext : blockCommitExts) {
-            ext.failedToCommitVolume(host, msg, cmd, rsp, err);
+    public void failedToDeleteVolumeSnapshotSelf(KVMHostInventory host, DeleteVolumeSnapshotSelfOnHypervisorMsg msg, KVMAgentCommands.AgentResponse rsp, Map context, ErrorCode err) {
+        for (KVMDeleteVolumeSnapshotSelfExtensionPoint ext : deleteVolumeSnapshotSelfExts) {
+            ext.failedToDeleteVolumeSnapshotSelf(host, msg, rsp, context, err);
         }
     }
 
