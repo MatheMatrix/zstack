@@ -176,6 +176,10 @@ public class CreateApplianceVmJob implements Job {
                     }
                 }
 
+                final ApplianceVmVO finalVO = avo;
+                pluginRgty.getExtensionList(VmInstanceCreateExtensionPoint.class).forEach(
+                        extension -> extension.afterPersistVmInstanceVO(finalVO));
+
                 trigger.next();
             }
 

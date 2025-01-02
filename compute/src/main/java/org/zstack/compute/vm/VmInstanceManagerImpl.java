@@ -1180,6 +1180,22 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 }
 
                 flow(new Flow() {
+                    String __name__ = "call-after-persist-vm-extensions";
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        pluginRgty.getExtensionList(VmInstanceCreateExtensionPoint.class).forEach(
+                                extensionPoint -> extensionPoint.afterPersistVmInstanceVO(finalVo));
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void rollback(FlowRollback trigger, Map data) {
+                        // do nothing
+                        trigger.rollback();
+                    }
+                });
+
+                flow(new Flow() {
                     List<ErrorCode> errorCodes = Collections.emptyList();
                     String __name__ = String.format("instantiate-systemTag-for-vm-%s", finalVo.getUuid());
 
