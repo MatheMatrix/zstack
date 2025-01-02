@@ -66,7 +66,7 @@ public class VmNicFactory implements VmInstanceNicFactory {
                             "The error[Duplicate entry] printed by jdbc.spi.SqlExceptionHelper is no harm, " +
                             "we will try finding another mac", vo.getMac()));
                     logger.trace("", e);
-                    vo.setMac(NetworkUtils.generateMacWithDeviceId((short) vo.getDeviceId()));
+                    vo.setMac(MacOperator.generateMacWithDeviceId((short) vo.getDeviceId()));
                 } else {
                     throw e;
                 }
