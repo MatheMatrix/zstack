@@ -178,6 +178,7 @@ class KVMSimulator implements Simulator {
             rsp.hvmCpuFlag = ""
             rsp.cpuCache = "64.0,4096.0,16384.0"
             rsp.iscsiInitiatorName = "iqn.2015-01.io.helix:a6e4508d2378"
+            rsp.nqn = "nqn.2014-08.org.nvmexpress:uuid:748d0363-8366-44db-803b-146effb96988"
 
             rsp.virtualizerInfo = new VirtualizerInfoTO()
             rsp.virtualizerInfo.version = "4.2.0-627.g36ee592.el7"
@@ -601,6 +602,11 @@ class KVMSimulator implements Simulator {
         spec.simulator(KVMConstant.TAKE_VM_CONSOLE_SCREENSHOT_PATH) {
             def rsp = new KVMAgentCommands.TakeVmConsoleScreenshotRsp()
             rsp.imageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAABECAIAAADFvmZTAAACA0lEQVR4nO3VMYviQBQH8Hkvk5hE2ZUEU+juFlbKauH3/wYWNhYWKiiIRBDcZDckJJmZK6Zb7q44uJW7/f+qCcOQzP89XoSAL0FPT09VVTFzEARhGKZp2rat67qO4xhjlFJ5nidJcr1eHx8fPc+r65qZ27Zt2zbP83t//z9DRlFUVRURGWN83/c8z/O8Xq/HzFEUvb29aa211sxsgxZCKKWIKMuyPM9tSWypHMdRSmmtP72DmTudTlmWRCSl1Forpe5x2XuSSZJcLpeiKPr9flEUdV0LIZqm+fj4GI/H+/1+Npsdj8fX11chRFVV5/N5MBgIIZg5juP5fN7tdpfL5WAwiKJovV4Ph8MgCDabzWQyKcvycDgsFoskSVarlZTy+fl5t9udz2db2jvf/gsRETGz1tp13bZtbT8yszHGdqiNw66Z2W4ZY7TWUkqbl5TSGGOPSymFEHb+2Oa1u47jEFHTNFrrbxWxRQ8PD1LKuq7Lsux2u8zcNE1d10EQFEXR6XRc1yWiPM9937cxua6rlPrplIBfkS8vL2EYZlmWpul0OvV9/3Q6vb+/j0aj4/EYx3EYhkqp7XY7HA6TJDHG3G43IjocDnbsfsP2/OuIyP4P4U8Q0W8eAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgf/QDviYImvcayGAAAAAASUVORK5CYII="
+            return rsp
+        }
+
+        spec.simulator(KVMConstant.KVM_UPDATE_HOST_NQN_PATH) {
+            def rsp = new KVMAgentCommands.UpdateHostNqnRsp()
             return rsp
         }
     }

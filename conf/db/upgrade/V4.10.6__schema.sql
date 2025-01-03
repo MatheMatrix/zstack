@@ -46,3 +46,7 @@ UPDATE `zstack`.`VmHaVO`
     WHERE `uuid` IN (
         SELECT `resourceUuid` FROM `SystemTagVO` WHERE `tag` = 'ha::OnHostFailure'
     );
+
+CALL INSERT_COLUMN('HostEO', 'nqn', 'varchar(256)', 1, NULL, 'managementIp');
+DROP VIEW IF EXISTS `zstack`.`HostVO`;
+CREATE VIEW `zstack`.`HostVO` AS SELECT uuid, zoneUuid, clusterUuid, name, description, managementIp, hypervisorType, state, status, architecture, nqn, createDate, lastOpDate FROM `zstack`.`HostEO` WHERE deleted IS NULL;

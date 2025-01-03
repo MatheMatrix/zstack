@@ -76,4 +76,8 @@
     <message>
         <name>org.zstack.header.host.APIGetHostSensorsMsg</name>
     </message>
+
+    <message>
+        <name>org.zstack.header.host.APIUpdateHostNqnMsg</name>
+    </message>
 </service>

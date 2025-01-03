@@ -115,6 +115,7 @@ public interface KVMConstant {
     String GET_VM_UPTIME_PATH = "/vm/getpidcreatetime";
     String KVM_HOST_GET_BLOCK_DEVICES_PATH = "/host/blockdevices/get";
     String KVM_HOST_GET_SENSORS_PATH = "/host/sensors/get";
+    String KVM_UPDATE_HOST_NQN_PATH = "/host/nqn/update";
 
     String SET_HOST_PHYSICAL_MEMORY_MONITOR = "/host/physical/memory/monitor/start";
 
@@ -123,7 +124,7 @@ public interface KVMConstant {
     String HOST_PHYSICAL_DISK_REMOVE_ALARM_EVENT = "/host/physical/disk/remove/alarm";
     String HOST_PHYSICAL_MEMORY_ECC_ERROR_ALARM_EVENT = "/host/physical/memory/ecc/error/alarm";
     String HOST_PHYSICAL_GPU_REMOVE_ALARM_EVENT = "/host/physical/gpu/remove/alarm";
-     String HOST_STORAGEDEVICE_HBA_STATE_EVENT = "/storagedevice/hba/state/alarm";
+    String HOST_STORAGEDEVICE_HBA_STATE_EVENT = "/storagedevice/hba/state/alarm";
     String KVM_AGENT_OWNER = "kvm";
 
     String ALI_REPO = "ali";

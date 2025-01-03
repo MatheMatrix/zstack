@@ -185,6 +185,8 @@ public class HostInventory implements Serializable {
 
     private String architecture;
 
+    private String nqn;
+
     /**
      * @desc the time this resource gets created
      */
@@ -207,6 +209,7 @@ public class HostInventory implements Serializable {
         this.setZoneUuid(vo.getZoneUuid());
         this.setClusterUuid(vo.getClusterUuid());
         this.setArchitecture(vo.getArchitecture());
+        this.setNqn(vo.getNqn());
         if (vo.getCapacity() != null) {
             this.setTotalCpuCapacity(vo.getCapacity().getTotalCpu());
             this.setAvailableCpuCapacity(vo.getCapacity().getAvailableCpu());
@@ -393,6 +396,14 @@ public class HostInventory implements Serializable {
 
     public void setArchitecture(String architecture) {
         this.architecture = architecture;
+    }
+
+    public String getNqn() {
+        return nqn;
+    }
+
+    public void setNqn(String nqn) {
+        this.nqn = nqn;
     }
 
     public String getIpmiAddress() {
