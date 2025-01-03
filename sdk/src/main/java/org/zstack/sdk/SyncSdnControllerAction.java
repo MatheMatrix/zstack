@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class CreateL2NoVlanNetworkAction extends AbstractAction {
+public class SyncSdnControllerAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class CreateL2NoVlanNetworkAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.CreateL2NetworkResult value;
+        public org.zstack.sdk.SyncSdnControllerResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,35 +25,8 @@ public class CreateL2NoVlanNetworkAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String name;
-
-    @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String description;
-
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String zoneUuid;
-
-    @Param(required = false, maxLength = 1024, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String physicalInterface;
-
-    @Param(required = false)
-    public java.lang.String type;
-
-    @Param(required = false, validValues = {"LinuxBridge","OvsDpdk","MacVlan","Ovn-netdev"}, maxLength = 1024, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String vSwitchType = "LinuxBridge";
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.Boolean isolated = false;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String pvlan;
-
-    @Param(required = false)
-    public java.lang.String resourceUuid;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List tagUuids;
+    public java.lang.String sdnControllerUuid;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -87,8 +60,8 @@ public class CreateL2NoVlanNetworkAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.CreateL2NetworkResult value = res.getResult(org.zstack.sdk.CreateL2NetworkResult.class);
-        ret.value = value == null ? new org.zstack.sdk.CreateL2NetworkResult() : value; 
+        org.zstack.sdk.SyncSdnControllerResult value = res.getResult(org.zstack.sdk.SyncSdnControllerResult.class);
+        ret.value = value == null ? new org.zstack.sdk.SyncSdnControllerResult() : value; 
 
         return ret;
     }
@@ -117,11 +90,11 @@ public class CreateL2NoVlanNetworkAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "POST";
-        info.path = "/l2-networks/no-vlan";
+        info.httpMethod = "PUT";
+        info.path = "/sdn-controllers/{sdnControllerUuid}/actions";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "params";
+        info.parameterName = "syncSdnController";
         return info;
     }
 

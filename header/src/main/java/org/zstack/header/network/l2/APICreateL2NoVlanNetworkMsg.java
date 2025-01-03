@@ -12,8 +12,7 @@ import org.zstack.header.zone.ZoneVO;
  */
 @TagResourceType(L2NetworkVO.class)
 @OverriddenApiParams({
-        @OverriddenApiParam(field = "physicalInterface", param = @APIParam(maxLength = 1024, required = false)),
-        @OverriddenApiParam(field = "zoneUuid", param = @APIParam(maxLength = 1024, required = false, resourceType = ZoneVO.class))
+        @OverriddenApiParam(field = "physicalInterface", param = @APIParam(maxLength = 1024, required = false))
 })
 @RestRequest(
         path = "/l2-networks/no-vlan",

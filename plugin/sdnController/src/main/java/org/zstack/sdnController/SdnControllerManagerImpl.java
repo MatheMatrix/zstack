@@ -39,10 +39,10 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 import static org.zstack.core.Platform.operr;
+import static org.zstack.sdnController.header.SdnControllerFlowDataParam.*;
 
 public class SdnControllerManagerImpl extends AbstractService implements SdnControllerManager,
         L2NetworkCreateExtensionPoint, L2NetworkDeleteExtensionPoint, InstantiateResourceOnAttachingNicExtensionPoint,
@@ -89,7 +89,68 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             handle((APISdnControllerAddHostMsg) msg);
         } else if (msg instanceof APISdnControllerRemoveHostMsg) {
             handle((APISdnControllerRemoveHostMsg) msg);
+        } else if (msg instanceof APISyncSdnControllerMsg) {
+            handle((APISyncSdnControllerMsg) msg);
         }
+    }
+
+    private void handle(APISyncSdnControllerMsg msg) {
+        APISyncSdnControllerEvent event = new APISyncSdnControllerEvent(msg.getId());
+        sdnControllerSync(msg, new Completion(msg) {
+            @Override
+            public void success() {
+                event.setInventory(SdnControllerInventory.valueOf(dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class)));
+                bus.publish(event);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                event.setError(errorCode);
+                bus.publish(event);
+            }
+        });
+    }
+
+    private void sdnControllerSync(APISyncSdnControllerMsg msg, Completion completion) {
+        SdnControllerVO controllerVO = dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class);
+        SdnControllerFactory factory = getSdnControllerFactory(controllerVO.getVendorType());
+
+        FlowChain chain = factory.getSyncChain();
+        chain.getData().put(SDN_CONTROLLER_INV, SdnControllerInventory.valueOf(controllerVO));
+        chain.setName(String.format("sync-sdn-controller-%s-%s", controllerVO.getUuid(), controllerVO.getName()));
+        chain.insert(new Flow() {
+            String __name__ = "change-sdn-controller-status-to-connecting";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                controllerVO.setStatus(SdnControllerStatus.Connecting);
+                trigger.next();
+            }
+
+            @Override
+            public void rollback(FlowRollback trigger, Map data) {
+                controllerVO.setStatus(SdnControllerStatus.Disconnected);
+                trigger.rollback();
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "change-sdn-controller-status-to-connected";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                controllerVO.setStatus(SdnControllerStatus.Connected);
+                trigger.next();
+            }
+        }).done(new FlowDoneHandler(completion) {
+            @Override
+            public void handle(Map data) {
+                completion.success();
+            }
+        }).error(new FlowErrorHandler(completion) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                completion.fail(errCode);
+            }
+        }).start();
     }
 
     private void handle(APISdnControllerAddHostMsg msg) {
@@ -779,12 +840,6 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
     @Override
     public void preInstantiateVmResource(VmInstanceSpec spec, Completion completion) {
-        if (VmInstanceConstant.VmOperation.AttachNic != spec.getCurrentVmOperation() &&
-                VmInstanceConstant.VmOperation.NewCreate != spec.getCurrentVmOperation()) {
-            completion.success();
-            return;
-        }
-
         if (spec.getL3Networks() == null || spec.getL3Networks().isEmpty()) {
             completion.success();
             return;
