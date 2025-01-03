@@ -8,10 +8,12 @@ import org.zstack.core.GlobalPropertyDefinition;
  * @ Date   : Created in 14:22 2019/9/24
  */
 @GlobalPropertyDefinition
-public class VmPriorityGlobalProperty {
+public class VmGlobalProperty {
 
     @GlobalProperty(name="initRunningVmPriority", defaultValue = "false")
     public static boolean initRunningVmPriority;
     @GlobalProperty(name="initRunningApplianceVmPriority", defaultValue = "false")
     public static boolean initRunningApplianceVmPriority;
+    @GlobalProperty(name="vmMacAddressSchema", defaultValue = "random")
+    public static String vmMacAddressSchema;
 }
