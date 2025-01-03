@@ -50,3 +50,10 @@ UPDATE `zstack`.`VmHaVO`
 CALL INSERT_COLUMN('HostEO', 'nqn', 'varchar(256)', 1, NULL, 'managementIp');
 DROP VIEW IF EXISTS `zstack`.`HostVO`;
 CREATE VIEW `zstack`.`HostVO` AS SELECT uuid, zoneUuid, clusterUuid, name, description, managementIp, hypervisorType, state, status, architecture, nqn, createDate, lastOpDate FROM `zstack`.`HostEO` WHERE deleted IS NULL;
+
+UPDATE GlobalConfigVO
+    SET `description` = 'Allow the use of other hosts with the same storage but different clusters to check if the target host is still connected.'
+    WHERE category = 'ha' and name = 'allow.slibing.cross.clusters';
+UPDATE GlobalConfigVO
+    SET `value` = 'true', `defaultValue` = 'true'
+    WHERE `value` = 'false' and `defaultValue` = 'false' and category = 'ha' and name = 'allow.slibing.cross.clusters';
