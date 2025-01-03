@@ -321,11 +321,14 @@ ${output.join("\n")}
     }
 
     def makeFieldText(String fname, Field field) {
+        boolean isDeprecated = field.getDeclaredAnnotation(Deprecated.class) != null
+        String annotationPrefix = isDeprecated ? "    @Deprecated\n" : ""
+
         // zstack type
         if (isZStackClass(field.type) || Enum.class.isAssignableFrom(field.type)) {
             addToLaterResolvedClassesIfNeed(field.type)
 
-            return """\
+            return """${annotationPrefix}\
     public ${getTargetClassName(field.type)} ${fname};
     public void set${StringUtils.capitalize(fname)}(${getTargetClassName(field.type)} ${fname}) {
         this.${fname} = ${fname};
@@ -350,7 +353,7 @@ ${output.join("\n")}
                 }
             }
 
-            return """\
+            return """${annotationPrefix}\
     public ${field.type.name} ${fname};
     public void set${StringUtils.capitalize(fname)}(${field.type.name} ${fname}) {
         this.${fname} = ${fname};
@@ -367,7 +370,7 @@ ${output.join("\n")}
                 }
             }
 
-            return """\
+            return """${annotationPrefix}\
     public ${field.type.name} ${fname};
     public void set${StringUtils.capitalize(fname)}(${field.type.name} ${fname}) {
         this.${fname} = ${fname};
@@ -377,7 +380,7 @@ ${output.join("\n")}
     }
 """
         } else {
-            return """\
+            return """${annotationPrefix}\
     public ${field.type.name} ${fname};
     public void set${StringUtils.capitalize(fname)}(${field.type.name} ${fname}) {
         this.${fname} = ${fname};

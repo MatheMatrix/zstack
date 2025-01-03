@@ -31,6 +31,7 @@ public class CreateCdpPolicyAction extends AbstractAction {
     @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String description;
 
+    @Deprecated
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, numberRange = {1L,30L}, noTrim = false)
     public java.lang.Integer retentionTimePerDay;
 

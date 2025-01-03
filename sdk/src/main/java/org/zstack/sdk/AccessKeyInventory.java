@@ -28,6 +28,7 @@ public class AccessKeyInventory  {
         return this.accountUuid;
     }
 
+    @Deprecated
     public java.lang.String userUuid;
     public void setUserUuid(java.lang.String userUuid) {
         this.userUuid = userUuid;

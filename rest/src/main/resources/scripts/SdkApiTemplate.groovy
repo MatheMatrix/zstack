@@ -129,6 +129,9 @@ class SdkApiTemplate implements SdkTemplate {
                 continue
             }
 
+            boolean isDeprecated = f.getDeclaredAnnotation(Deprecated.class) != null
+            String annotationPrefix = isDeprecated ? "    @Deprecated\n" : ""
+
             APIParam apiParam = overriden.containsKey(f.name) ? overriden[f.name] : f.getAnnotation(APIParam.class)
 
             def annotationFields = []
@@ -183,7 +186,7 @@ class SdkApiTemplate implements SdkTemplate {
                 annotationFields.add(String.format("required = false"))
             }
 
-            def fs = """\
+            def fs = """${annotationPrefix}\
     @Param(${annotationFields.join(", ")})
     public ${getFieldType(f)} ${f.getName()}${{ ->
                 f.accessible = true

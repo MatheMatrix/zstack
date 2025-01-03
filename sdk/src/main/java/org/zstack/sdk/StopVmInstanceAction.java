@@ -31,6 +31,7 @@ public class StopVmInstanceAction extends AbstractAction {
     @Param(required = false, validValues = {"grace","cold"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String type = "grace";
 
+    @Deprecated
     @Param(required = false, validValues = {"true","false"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String stopHA = "true";
 

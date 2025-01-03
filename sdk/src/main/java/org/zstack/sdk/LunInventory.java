@@ -68,6 +68,7 @@ public class LunInventory  {
         return this.type;
     }
 
+    @Deprecated
     public java.lang.String hctl;
     public void setHctl(java.lang.String hctl) {
         this.hctl = hctl;
@@ -76,6 +77,7 @@ public class LunInventory  {
         return this.hctl;
     }
 
+    @Deprecated
     public java.lang.String path;
     public void setPath(java.lang.String path) {
         this.path = path;

@@ -25,6 +25,7 @@ public class CreateSNSEmailEndpointAction extends AbstractAction {
         }
     }
 
+    @Deprecated
     @Param(required = false, maxLength = 1024, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String email;
 
