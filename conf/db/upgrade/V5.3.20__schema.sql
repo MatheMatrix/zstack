@@ -20,3 +20,6 @@ SELECT
     e.defaultProtocol as protocol
 FROM PrimaryStorageHostRefVO p LEFT JOIN ExternalPrimaryStorageVO e ON p.primaryStorageUuid = e.uuid
 ORDER BY p.id;
+
+-- Delete old UserTagVO of AI::Image-Generation
+DELETE FROM UserTagVO WHERE uuid = 'a7ec68923efe447d9119ba7b6df2b54c';
