@@ -18,10 +18,7 @@ import static org.zstack.core.Platform.err;
 public class TfVmNicFactory extends VmNicFactory {
     private static final CLogger logger = Utils.getLogger(TfVmNicFactory.class);
     private static final VSwitchType vSwitchType = new VSwitchType(VmInstanceConstant.L2_TF_VSWITCH_TYPE);
-    private static final VmNicType type = new VmNicType(VmInstanceConstant.TF_VIRTUAL_NIC_TYPE, vSwitchType);
-    static {
-        type.setHasAddon(true);
-    }
+    private static final VmNicType type = new VmNicType(VmInstanceConstant.TF_VIRTUAL_NIC_TYPE);
 
     @Autowired
     private CloudBus bus;
@@ -30,6 +27,9 @@ public class TfVmNicFactory extends VmNicFactory {
 
     @Override
     public VmNicType getType() {
+        type.setHasAddon(true);
+        vSwitchType.addVmNicType(VmNicType.VmNicSubType.NONE, type);
+
         return type;
     }
 

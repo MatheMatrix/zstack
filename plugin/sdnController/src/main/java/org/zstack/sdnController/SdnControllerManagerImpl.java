@@ -620,7 +620,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         }
 
         SdnController controller = factory.getSdnController();
-        controller.addLogicalPorts(nics, completion);
+        controller.removeLogicalPorts(nics, completion);
     }
 
     void removeLogicalPort(Map<String, List<VmNicInventory>> nicMaps, Completion completion) {
@@ -651,6 +651,12 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
     @Override
     public void releaseVmResource(VmInstanceSpec spec, Completion completion) {
+        if (VmInstanceConstant.VmOperation.DetachNic != spec.getCurrentVmOperation() &&
+                VmInstanceConstant.VmOperation.Destroy != spec.getCurrentVmOperation()) {
+            completion.success();
+            return;
+        }
+
         if (spec.getL3Networks() == null || spec.getL3Networks().isEmpty()) {
             completion.success();
             return;
@@ -773,6 +779,12 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
     @Override
     public void preInstantiateVmResource(VmInstanceSpec spec, Completion completion) {
+        if (VmInstanceConstant.VmOperation.AttachNic != spec.getCurrentVmOperation() &&
+                VmInstanceConstant.VmOperation.NewCreate != spec.getCurrentVmOperation()) {
+            completion.success();
+            return;
+        }
+
         if (spec.getL3Networks() == null || spec.getL3Networks().isEmpty()) {
             completion.success();
             return;

@@ -20,23 +20,17 @@ import static org.zstack.core.Platform.err;
 public class VmNicFactory implements VmInstanceNicFactory {
     private static final CLogger logger = Utils.getLogger(VmNicFactory.class);
     private static final VSwitchType vSwitchType = new VSwitchType(L2NetworkConstant.VSWITCH_TYPE_LINUX_BRIDGE);
-    private static final VmNicType type = new VmNicType(VmInstanceConstant.VIRTUAL_NIC_TYPE, vSwitchType);
-
-    static {
-        type.setHasAddon(true);
-    }
+    private static final VmNicType type = new VmNicType(VmInstanceConstant.VIRTUAL_NIC_TYPE);
 
     @Autowired
     private DatabaseFacade dbf;
 
     @Override
     public VmNicType getType() {
-        return type;
-    }
+        type.setHasAddon(true);
+        vSwitchType.addVmNicType(VmNicType.VmNicSubType.NONE, type);
 
-    @Override
-    public VSwitchType getVSwitchType() {
-        return vSwitchType;
+        return type;
     }
 
     @Override
