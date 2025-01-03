@@ -101,7 +101,7 @@ public class VmAllocateNicFlow implements Flow {
                 mo.deleteCustomMacSystemTag(spec.getVmInventory().getUuid(), nw.getUuid(), customMac);
                 customMac = customMac.toLowerCase();
             } else {
-                customMac = NetworkUtils.generateMacWithDeviceId((short) deviceId);
+                customMac = MacOperator.generateMacWithDeviceId((short) deviceId);
             }
             final String mac = customMac;
             CustomNicOperator nicOperator = new CustomNicOperator(spec.getVmInventory().getUuid(),nw.getUuid());
