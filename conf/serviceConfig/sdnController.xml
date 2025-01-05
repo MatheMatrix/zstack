@@ -24,6 +24,10 @@
     </message>
 
     <message>
+        <name>org.zstack.sdnController.header.APISyncSdnControllerMsg</name>
+    </message>
+
+    <message>
         <name>org.zstack.sdnController.header.APIQuerySdnControllerMsg</name>
         <serviceId>query</serviceId>
     </message>

@@ -39532,6 +39532,33 @@ abstract class ApiHelper {
     }
 
 
+    def syncSdnController(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.SyncSdnControllerAction.class) Closure c) {
+        def a = new org.zstack.sdk.SyncSdnControllerAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def syncVCenter(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.SyncVCenterAction.class) Closure c) {
         def a = new org.zstack.sdk.SyncVCenterAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid

@@ -1,5 +1,7 @@
 package org.zstack.sdnController;
 
+import org.zstack.core.workflow.FlowChainBuilder;
+import org.zstack.header.core.workflow.FlowChain;
 import org.zstack.header.network.l2.L2NetworkInventory;
 import org.zstack.sdnController.header.SdnControllerVO;
 
@@ -11,4 +13,6 @@ public interface SdnControllerFactory {
     default SdnController getSdnController(L2NetworkInventory inv) {return null;};
 
     default SdnController getSdnController() {return null;};
+
+    default FlowChain getSyncChain() {return FlowChainBuilder.newSimpleFlowChain();};
 }
