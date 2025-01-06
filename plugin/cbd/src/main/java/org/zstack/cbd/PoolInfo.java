@@ -1,45 +1,44 @@
 package org.zstack.cbd;
 
 /**
- * [root@zbs-8 ~]# zbs list logical-pool --format json
- * {
- *   "error": {
- *     "code": 0,
- *     "message": "success"
- *   },
- *   "result": [
- *     {
- *       "statusCode": 0,
- *       "logicalPoolInfos": [
- *         {
- *           "logicalPoolID": 1,
- *           "logicalPoolName": "pool-e0f7d92fadb3446bb06ac0e48918172a",
- *           "physicalPoolID": 1,
- *           "physicalPoolName": "pool-e0f7d92fadb3446bb06ac0e48918172a_physical",
- *           "type": 0,
- *           "createTime": 1735627690,
- *           "redundanceAndPlaceMentPolicy": "eyJjb3B5c2V0TnVtIjo2MDAsInJlcGxpY2FOdW0iOjMsInpvbmVOdW0iOjN9Cg==",
- *           "userPolicy": "eyJwb2xpY3kiIDogMX0=",
- *           "allocateStatus": 0,
- *           "capacity": 42504271429632,
- *           "usedSize": 84297121792,
- *           "allocatedSize": 129922760704,
- *           "rawUsedSize": 252891365376,
- *           "rawWalUsedSize": 3123609600,
- *           "quota": 0
- *         }
- *       ]
- *     }
- *   ]
- * }
- * [root@zbs-8 ~]#
- */
-
-/**
  * @author Xingwei Yu
  * @date 2025/1/6 14:06
  */
 public class PoolInfo {
+    /**
+     * [root@zbs-8 ~]# zbs list logical-pool --format json
+     * {
+     *   "error": {
+     *     "code": 0,
+     *     "message": "success"
+     *   },
+     *   "result": [
+     *     {
+     *       "statusCode": 0,
+     *       "logicalPoolInfos": [
+     *         {
+     *           "logicalPoolID": 1,
+     *           "logicalPoolName": "pool-e0f7d92fadb3446bb06ac0e48918172a",
+     *           "physicalPoolID": 1,
+     *           "physicalPoolName": "pool-e0f7d92fadb3446bb06ac0e48918172a_physical",
+     *           "type": 0,
+     *           "createTime": 1735627690,
+     *           "redundanceAndPlaceMentPolicy": "eyJjb3B5c2V0TnVtIjo2MDAsInJlcGxpY2FOdW0iOjMsInpvbmVOdW0iOjN9Cg==",
+     *           "userPolicy": "eyJwb2xpY3kiIDogMX0=",
+     *           "allocateStatus": 0,
+     *           "capacity": 42504271429632,
+     *           "usedSize": 84297121792,
+     *           "allocatedSize": 129922760704,
+     *           "rawUsedSize": 252891365376,
+     *           "rawWalUsedSize": 3123609600,
+     *           "quota": 0
+     *         }
+     *       ]
+     *     }
+     *   ]
+     * }
+     * [root@zbs-8 ~]#
+     */
     private String logicalPoolID;
     private String logicalPoolName;
     private long physicalPoolID;
