@@ -44,8 +44,9 @@ public class APIStopVmInstanceMsg extends APIMessage implements VmInstanceMessag
     private String uuid;
     @APIParam(required = false, validValues = {"grace", "cold"})
     private String type = "grace";
-    @APIParam(required = false, validValues = {"true"})
-    private String stopHA;
+    @Deprecated
+    @APIParam(required = false, validValues = {"true", "false"})
+    private String stopHA = "true";
 
     public String getUuid() {
         return uuid;

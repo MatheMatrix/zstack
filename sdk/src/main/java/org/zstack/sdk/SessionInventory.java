@@ -20,6 +20,7 @@ public class SessionInventory  {
         return this.accountUuid;
     }
 
+    @Deprecated
     public java.lang.String userUuid;
     public void setUserUuid(java.lang.String userUuid) {
         this.userUuid = userUuid;
@@ -28,6 +29,7 @@ public class SessionInventory  {
         return this.userUuid;
     }
 
+    @Deprecated
     public java.lang.String userType;
     public void setUserType(java.lang.String userType) {
         this.userType = userType;

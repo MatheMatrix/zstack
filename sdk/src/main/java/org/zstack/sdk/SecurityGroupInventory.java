@@ -36,6 +36,7 @@ public class SecurityGroupInventory  {
         return this.state;
     }
 
+    @Deprecated
     public java.lang.Integer ipVersion;
     public void setIpVersion(java.lang.Integer ipVersion) {
         this.ipVersion = ipVersion;
