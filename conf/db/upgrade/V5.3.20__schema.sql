@@ -50,7 +50,7 @@ BEGIN
             VALUES (logServerUuid, name, 'LogServerVO', 'org.zstack.log.server.LogServerVO');
 
             INSERT zstack.LogServerVO(uuid, name, description, category, type, level, configuration, lastOpDate, createDate)
-            VALUES(logServerUuid, name, description, 'ManagementNodeLog', 'log4j2', level, logConfiguration, logLastOpDate, logCreateDate);
+            VALUES(logServerUuid, name, description, 'ManagementNodeLog', 'Log4j2', level, logConfiguration, logLastOpDate, logCreateDate);
 
             INSERT zstack.AccountResourceRefVO(accountUuid, ownerAccountUuid, resourceUuid, resourceType, permission, isShared, lastOpDate, createDate, concreteResourceType)
             VALUES('36c27e8ff05c4780bf6d2fa65700f22e', '36c27e8ff05c4780bf6d2fa65700f22e', logServerUuid, 'LogServerVO', 2, 0, logLastOpDate, logCreateDate, 'org.zstack.log.server.LogServerVO');
