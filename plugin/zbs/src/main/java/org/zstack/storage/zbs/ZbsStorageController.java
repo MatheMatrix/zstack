@@ -74,7 +74,8 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     private Config config;
 
     public static final String DEPLOY_CLIENT_PATH = "/zbs/primarystorage/client/deploy";
-    public static final String GET_FACTS_PATH = "/zbs/primarystorage/facts";
+    public static final String GET_MDS_INFO_PATH = "/zbs/primarystorage/mds/info";
+    public static final String GET_LOGICAL_POOL_INFO_PATH = "/zbs/primarystorage/logicalpool/info";
     public static final String GET_CAPACITY_PATH = "/zbs/primarystorage/capacity";
     public static final String COPY_PATH = "/zbs/primarystorage/copy";
     public static final String CREATE_VOLUME_PATH = "/zbs/primarystorage/volume/create";
@@ -308,18 +309,18 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 });
 
                 flow(new NoRollbackFlow() {
-                    String __name__ = "get-facts";
+                    String __name__ = "get-mds-info";
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
                         List<ErrorCode> errors = new ArrayList<>();
                         new While<>(mds).each((m, comp) -> {
-                            GetFactsCmd cmd = new GetFactsCmd();
+                            GetMdsInfoCmd cmd = new GetMdsInfoCmd();
                             cmd.setUuid(self.getUuid());
                             cmd.setMdsAddr(m.getSelf().getMdsAddr());
-                            m.httpCall(GET_FACTS_PATH, cmd, GetFactsRsp.class, new ReturnValueCompletion<GetFactsRsp>(comp) {
+                            m.httpCall(GET_MDS_INFO_PATH, cmd, GetMdsInfoRsp.class, new ReturnValueCompletion<GetMdsInfoRsp>(comp) {
                                 @Override
-                                public void success(GetFactsRsp returnValue) {
+                                public void success(GetMdsInfoRsp returnValue) {
                                     m.getSelf().setMdsExternalAddr(returnValue.getMdsExternalAddr());
                                     comp.done();
                                 }
@@ -339,6 +340,29 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                                 }
 
                                 trigger.next();
+                            }
+                        });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "get-logical-pool-info";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        GetLogicalPoolInfoCmd cmd = new GetLogicalPoolInfoCmd();
+                        cmd.setLogicalPoolName(config.getLogicalPoolName());
+
+                        httpCall(GET_LOGICAL_POOL_INFO_PATH, cmd, GetLogicalPoolInfoRsp.class, new ReturnValueCompletion<GetLogicalPoolInfoRsp>(trigger) {
+                            @Override
+                            public void success(GetLogicalPoolInfoRsp returnValue) {
+                                info.setLogicalPoolInfo(returnValue.getLogicalPoolInfo());
+                                trigger.next();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.fail(errorCode);
                             }
                         });
                     }
@@ -410,7 +434,6 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                     @Override
                     public void handle(Map data) {
                         changeStatus(PrimaryStorageStatus.Connected);
-                        addonInfo = info;
                         completion.success(JSONObjectUtil.rehashObject(info, LinkedHashMap.class));
                     }
                 });
@@ -1307,7 +1330,19 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     }
 
-    public static class GetFactsRsp extends AgentResponse {
+    public static class GetLogicalPoolInfoRsp extends AgentResponse {
+        private LogicalPoolInfo logicalPoolInfo;
+
+        public LogicalPoolInfo getLogicalPoolInfo() {
+            return logicalPoolInfo;
+        }
+
+        public void setLogicalPoolInfo(LogicalPoolInfo logicalPoolInfo) {
+            this.logicalPoolInfo = logicalPoolInfo;
+        }
+    }
+
+    public static class GetMdsInfoRsp extends AgentResponse {
         private String mdsExternalAddr;
 
         public String getMdsExternalAddr() {
@@ -1700,7 +1735,19 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         }
     }
 
-    public static class GetFactsCmd extends AgentCommand {
+    public static class GetLogicalPoolInfoCmd extends AgentCommand {
+        private String logicalPoolName;
+
+        public String getLogicalPoolName() {
+            return logicalPoolName;
+        }
+
+        public void setLogicalPoolName(String logicalPoolName) {
+            this.logicalPoolName = logicalPoolName;
+        }
+    }
+
+    public static class GetMdsInfoCmd extends AgentCommand {
     }
 
     public static class AgentResponse extends ZbsMdsBase.AgentResponse {
