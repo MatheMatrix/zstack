@@ -101,6 +101,8 @@ if command -v greatdb &> /dev/null; then
     create user if not exists 'zstack_rest'@'%' identified by "$zstack_user_password";
     grant all privileges on zstack.* to zstack@'localhost';
     grant all privileges on zstack.* to zstack@'%';
+    grant system_user on *.* to zstack@'localhost';
+    grant system_user on *.* to zstack@'%';
     grant all privileges on zstack_rest.* to zstack@'localhost';
     grant all privileges on zstack_rest.* to zstack@'%';
     flush privileges;
