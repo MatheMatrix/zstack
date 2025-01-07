@@ -44,7 +44,7 @@ public class UpdateCasClientAction extends AbstractAction {
     public java.lang.String serverName;
 
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String loginType;
+    public java.lang.String usernameProperty;
 
     @Param(required = false)
     public java.util.List systemTags;
