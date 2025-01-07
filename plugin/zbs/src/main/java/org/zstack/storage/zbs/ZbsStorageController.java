@@ -482,12 +482,17 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         httpCall(GET_CAPACITY_PATH, cmd, GetCapacityRsp.class, new ReturnValueCompletion<GetCapacityRsp>(comp) {
             @Override
             public void success(GetCapacityRsp returnValue) {
+                addonInfo.setLogicalPoolInfo(returnValue.logicalPoolInfo);
+                SQL.New(ExternalPrimaryStorageVO.class).eq(ExternalPrimaryStorageVO_.uuid, self.getUuid())
+                        .set(ExternalPrimaryStorageVO_.addonInfo, JSONObjectUtil.toJsonString(addonInfo))
+                        .update();
+
                 StorageCapacity cap = new StorageCapacity();
-                long total = returnValue.getCapacity();
-                long avail = total != 0 ? total - returnValue.getUsedSize() : 0;
-                cap.setHealthy(StorageHealthy.Ok);
+                long total = returnValue.getLogicalPoolInfo().getCapacity();
+                long avail = total != 0 ? total - returnValue.getLogicalPoolInfo().getUsedSize() : 0;
                 cap.setTotalCapacity(total);
                 cap.setAvailableCapacity(avail);
+                cap.setHealthy(StorageHealthy.Ok);
                 comp.success(cap);
             }
 
@@ -1283,23 +1288,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     }
 
     public static class GetCapacityRsp extends AgentResponse {
-        private long capacity;
-        private long usedSize;
+        private LogicalPoolInfo logicalPoolInfo;
 
-        public long getCapacity() {
-            return capacity;
+        public LogicalPoolInfo getLogicalPoolInfo() {
+            return logicalPoolInfo;
         }
 
-        public void setCapacity(long capacity) {
-            this.capacity = capacity;
-        }
-
-        public long getUsedSize() {
-            return usedSize;
-        }
-
-        public void setUsedSize(long usedSize) {
-            this.usedSize = usedSize;
+        public void setLogicalPoolInfo(LogicalPoolInfo logicalPoolInfo) {
+            this.logicalPoolInfo = logicalPoolInfo;
         }
     }
 

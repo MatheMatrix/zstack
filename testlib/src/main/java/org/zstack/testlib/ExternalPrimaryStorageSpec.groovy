@@ -1,6 +1,7 @@
 package org.zstack.testlib
 
 import org.springframework.http.HttpEntity
+import org.zstack.cbd.LogicalPoolInfo
 import org.zstack.sdk.PrimaryStorageInventory
 import org.zstack.storage.zbs.ZbsPrimaryStorageMdsBase
 import org.zstack.storage.zbs.ZbsStorageController
@@ -83,9 +84,25 @@ class ExternalPrimaryStorageSpec extends PrimaryStorageSpec {
                 ExternalPrimaryStorageSpec zspec = spec.specByUuid(cmd.uuid)
                 assert zspec != null: "cannot found zbs primary storage[uuid:${cmd.uuid}], check your environment()."
 
+                LogicalPoolInfo logicalPoolInfo = new LogicalPoolInfo()
+                logicalPoolInfo.setPhysicalPoolID(1);
+                logicalPoolInfo.setRedundanceAndPlaceMentPolicy("eyJjb3B5c2V0TnVtIjozMDAsInJlcGxpY2FOdW0iOjMsInpvbmVOdW0iOjN9Cg==");
+                logicalPoolInfo.setLogicalPoolID(1);
+                logicalPoolInfo.setUsedSize(322961408);
+                logicalPoolInfo.setQuota(0);
+                logicalPoolInfo.setCreateTime(1735875794);
+                logicalPoolInfo.setType(0);
+                logicalPoolInfo.setRawWalUsedSize(0);
+                logicalPoolInfo.setAllocateStatus(0);
+                logicalPoolInfo.setRawUsedSize(968884224);
+                logicalPoolInfo.setPhysicalPoolName("pool1");
+                logicalPoolInfo.setCapacity(579933831168);
+                logicalPoolInfo.setLogicalPoolName(cmd.logicalPoolName);
+                logicalPoolInfo.setUserPolicy("eyJwb2xpY3kiIDogMX0=");
+                logicalPoolInfo.setAllocatedSize(3221225472);
+
                 def rsp = new ZbsStorageController.GetCapacityRsp()
-                rsp.setCapacity(536870912000)
-                rsp.setUsedSize(4194304)
+                rsp.setLogicalPoolInfo(logicalPoolInfo)
 
                 return rsp
             }
