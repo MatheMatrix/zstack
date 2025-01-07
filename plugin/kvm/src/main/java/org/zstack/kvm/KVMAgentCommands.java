@@ -4685,18 +4685,50 @@ public class KVMAgentCommands {
     }
 
     public static class InstallOvsPackageCmd extends AgentCommand {
+        @GrayVersion(value = "5.4.0")
+        public String ovnControllerIp;
+
+        public String getOvnControllerIp() {
+            return ovnControllerIp;
+        }
+
+        public void setOvnControllerIp(String ovnControllerIp) {
+            this.ovnControllerIp = ovnControllerIp;
+        }
     }
 
     public static class InstallOvsPackageRsp extends AgentResponse {
     }
 
+    public static class UnInstallOvsPackageCmd extends AgentCommand {
+        @GrayVersion(value = "5.4.0")
+        public String ovnControllerIp;
+
+        public String getOvnControllerIp() {
+            return ovnControllerIp;
+        }
+
+        public void setOvnControllerIp(String ovnControllerIp) {
+            this.ovnControllerIp = ovnControllerIp;
+        }
+    }
+
+    public static class UnInstallOvsPackageRsp extends AgentResponse {
+    }
+
     public static class StartOvsServiceCmd extends AgentCommand {
         @GrayVersion(value = "5.4.0")
-        public String vswitchType;
+        public String vSwitchType;
         @GrayVersion(value = "5.4.0")
-        public List<String> nicList;
+        public List<String> nicNames;
         @GrayVersion(value = "5.4.0")
-        public String vtepIp;
+        public String brExName;
+        @GrayVersion(value = "5.4.0")
+        public String ovnRemoteConnection;
+        @GrayVersion(value = "5.4.0")
+        public String ovnEncapIP;
+        @GrayVersion(value = "5.4.0")
+        public String ovnEncapType;
     }
 
     public static class StartOvsServiceRsp extends AgentResponse {

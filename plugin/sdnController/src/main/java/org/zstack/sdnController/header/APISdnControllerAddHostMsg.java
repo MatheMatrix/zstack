@@ -47,7 +47,6 @@ public class APISdnControllerAddHostMsg extends APIMessage {
     @APIParam(required = false)
     private String vtepIp;
 
-
     public String getSdnControllerUuid() {
         return sdnControllerUuid;
     }
