@@ -3,31 +3,67 @@ package org.zstack.header.network.l2;
 import java.util.List;
 
 public class VSwitchOvsConfigStruct {
-    private String vswitchType;
-    private List<String> nicList;
-    private String vtepIp;
+    private String ovnControllerIp;
+    private String vSwitchType;
+    private String brExName;
+    private List<String> nicNames;
+    private String ovnEncapIP;
+    private String ovnRemoteConnection;
+    private String ovnEncapType;
 
-    public String getVswitchType() {
-        return vswitchType;
+    public String getvSwitchType() {
+        return vSwitchType;
     }
 
-    public void setVswitchType(String vswitchType) {
-        this.vswitchType = vswitchType;
+    public void setvSwitchType(String vSwitchType) {
+        this.vSwitchType = vSwitchType;
     }
 
-    public List<String> getNicList() {
-        return nicList;
+    public String getOvnControllerIp() {
+        return ovnControllerIp;
     }
 
-    public void setNicList(List<String> nicList) {
-        this.nicList = nicList;
+    public void setOvnControllerIp(String ovnControllerIp) {
+        this.ovnControllerIp = ovnControllerIp;
     }
 
-    public void setVtepIp(String vtepIp) {
-        this.vtepIp = vtepIp;
+    public String getBrExName() {
+        return brExName;
     }
 
-    public String getVtepIp() {
-        return vtepIp;
+    public void setBrExName(String brExName) {
+        this.brExName = brExName;
+    }
+
+    public List<String> getNicNames() {
+        return nicNames;
+    }
+
+    public void setNicNames(List<String> nicNames) {
+        this.nicNames = nicNames;
+    }
+
+    public String getOvnEncapIP() {
+        return ovnEncapIP;
+    }
+
+    public void setOvnEncapIP(String ovnEncapIP) {
+        this.ovnEncapIP = ovnEncapIP;
+    }
+
+    public String getOvnRemoteConnection() {
+        return ovnRemoteConnection;
+    }
+
+    public void setOvnRemoteConnection(String ovnRemoteConnection) {
+        this.ovnRemoteConnection = ovnRemoteConnection;
+    }
+
+    public String getOvnEncapType() {
+        return ovnEncapType;
+    }
+
+    public void setOvnEncapType(String ovnEncapType) {
+        this.ovnEncapType = ovnEncapType;
     }
 }
