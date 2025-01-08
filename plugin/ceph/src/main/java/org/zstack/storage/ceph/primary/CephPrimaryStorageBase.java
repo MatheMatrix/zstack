@@ -1834,13 +1834,9 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         chain.done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map data) {
-                IncreasePrimaryStorageCapacityMsg imsg = new IncreasePrimaryStorageCapacityMsg();
-                imsg.setPrimaryStorageUuid(self.getUuid());
-                imsg.setDiskSize(inv.getSize());
-                bus.makeTargetServiceIdByResourceUuid(imsg, PrimaryStorageConstant.SERVICE_ID, self.getUuid());
-                bus.send(imsg);
-                logger.info(String.format("Returned space[size:%s] to PS %s after volume migration", inv.getSize(), self.getUuid()));
                 trash.removeFromDb(trashId);
+                trash.increaseCapacityAfterRemoveTrash(Collections.singletonList(inv));
+                logger.info(String.format("Returned space[size:%s] to PS %s after volume migration", inv.getSize(), self.getUuid()));
 
                 completion.success(new TrashCleanupResult(inv.getResourceUuid(), inv.getTrashId(), inv.getSize()));
             }
@@ -1929,15 +1925,10 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
             chain.done(new FlowDoneHandler(coml) {
                 @Override
                 public void handle(Map data) {
-                    IncreasePrimaryStorageCapacityMsg imsg = new IncreasePrimaryStorageCapacityMsg();
-                    imsg.setPrimaryStorageUuid(self.getUuid());
-                    imsg.setDiskSize(inv.getSize());
-                    bus.makeTargetServiceIdByResourceUuid(imsg, PrimaryStorageConstant.SERVICE_ID, self.getUuid());
-                    bus.send(imsg);
-                    logger.info(String.format("Returned space[size:%s] to PS %s after volume migration", inv.getSize(), self.getUuid()));
-
                     results.add(new TrashCleanupResult(inv.getResourceUuid(), inv.getTrashId(), inv.getSize()));
                     trash.removeFromDb(inv.getTrashId());
+                    trash.increaseCapacityAfterRemoveTrash(Collections.singletonList(inv));
+                    logger.info(String.format("Returned space[size:%s] to PS %s after volume migration", inv.getSize(), self.getUuid()));
                     coml.done();
                 }
             }).error(new FlowErrorHandler(coml) {
@@ -3296,7 +3287,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                         .findValue();
                 reply.setActualSize(asize);
                 reply.setSize(rsp.size);
-                reply.setWithInternalSnapshot(true);
+                reply.setSupportExternalSnapshot(false);
                 bus.reply(msg, reply);
             }
 
