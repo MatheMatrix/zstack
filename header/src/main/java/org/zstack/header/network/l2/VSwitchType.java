@@ -14,6 +14,7 @@ public class VSwitchType {
     private boolean exposed = true;
     private boolean attachToCluster = true;
     private String sdnControllerType = null;
+    private boolean useDpdk = false;
     private Map<VmNicType.VmNicSubType, VmNicType> nicTypes = Collections.synchronizedMap(new HashMap<>());
 
     public VSwitchType(String typeName) {
@@ -53,6 +54,14 @@ public class VSwitchType {
 
     public void setSdnControllerType(String sdnControllerType) {
         this.sdnControllerType = sdnControllerType;
+    }
+
+    public boolean isUseDpdk() {
+        return useDpdk;
+    }
+
+    public void setUseDpdk(boolean useDpdk) {
+        this.useDpdk = useDpdk;
     }
 
     public void addVmNicType(VmNicType.VmNicSubType subType, VmNicType nicType) {

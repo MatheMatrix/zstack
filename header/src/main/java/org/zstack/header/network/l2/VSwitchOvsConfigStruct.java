@@ -10,6 +10,7 @@ public class VSwitchOvsConfigStruct {
     private String ovnEncapIP;
     private String ovnRemoteConnection;
     private String ovnEncapType;
+    private int hugePageNumber;
 
     public String getvSwitchType() {
         return vSwitchType;
@@ -65,5 +66,13 @@ public class VSwitchOvsConfigStruct {
 
     public void setOvnEncapType(String ovnEncapType) {
         this.ovnEncapType = ovnEncapType;
+    }
+
+    public int getHugePageNumber() {
+        return hugePageNumber;
+    }
+
+    public void setHugePageNumber(int hugePageNumber) {
+        this.hugePageNumber = hugePageNumber;
     }
 }
