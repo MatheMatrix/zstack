@@ -53,6 +53,7 @@ public class APIUpdateSshKeyPairMsg extends APIMessage implements SshKeyPairMess
         APIUpdateSshKeyPairMsg ret = new APIUpdateSshKeyPairMsg();
         ret.name = "ssh-key-pair";
         ret.description = "description";
+        ret.uuid = uuid();
         return ret;
     }
 

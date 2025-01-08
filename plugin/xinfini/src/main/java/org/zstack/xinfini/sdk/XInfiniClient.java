@@ -91,6 +91,7 @@ public class XInfiniClient extends ExternalStorageApiClient {
 
         final String taskIdForLog = Platform.getUuid();
         String reqBody; // for log
+        final String CREATOR_PARAM = "creator";
 
         Api(XInfiniRequest action) {
             this.action = action;
@@ -280,6 +281,13 @@ public class XInfiniClient extends ExternalStorageApiClient {
             } else if (restInfo.method().equals(HttpMethod.DELETE) && !restInfo.hasBody()) {
                 params.forEach((k, v) -> builder.addQueryParameter(k, v.toString()));
                 reqBuilder.url(builder.build()).delete();
+            } else if (restInfo.method().equals(HttpMethod.PATCH)) {
+                if (params.containsKey(CREATOR_PARAM)) {
+                    builder.addQueryParameter(CREATOR_PARAM, params.get(CREATOR_PARAM).toString());
+                    params.remove(CREATOR_PARAM);
+                }
+                reqBody = gson.toJson(new WrappedRequest(params));
+                reqBuilder.url(builder.build()).method(restInfo.method().toString(), RequestBody.create(XInfiniConstants.JSON, reqBody));
             } else {
                 reqBody = gson.toJson(new WrappedRequest(params));
                 reqBuilder.url(builder.build()).method(restInfo.method().toString(), RequestBody.create(XInfiniConstants.JSON, reqBody));

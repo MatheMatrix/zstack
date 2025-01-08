@@ -9,14 +9,12 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.tag.SystemTagVO;
 import org.zstack.header.tag.SystemTagVO_;
 import org.zstack.header.vm.*;
-import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * @ Author : yh.w
@@ -96,7 +94,7 @@ public class VmPriorityUpgradeExtension implements Component {
     }
 
     private void initRunningVmPriority() {
-        if (!VmPriorityGlobalProperty.initRunningVmPriority) {
+        if (!VmGlobalProperty.initRunningVmPriority) {
             return;
         }
 

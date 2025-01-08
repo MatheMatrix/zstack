@@ -2,6 +2,8 @@ package org.zstack.header.host;
 
 import java.util.List;
 
+import static org.zstack.utils.CollectionDSL.list;
+
 public class HostNUMANode {
     public List<String> distance;
     public List<String> cpus;
@@ -56,5 +58,16 @@ public class HostNUMANode {
 
     public void setVMsUuid(List<String> VMsUuid) {
         this.VMsUuid = VMsUuid;
+    }
+
+    public static HostNUMANode __example__() {
+        HostNUMANode node = new HostNUMANode();
+        node.setNodeID("1");
+        node.setDistance(list("0", "1"));
+        node.setCpus(list("0", "1"));
+        node.setFree(1L);
+        node.setSize(2L);
+        node.setVMsUuid(list("vm-1", "vm-2"));
+        return node;
     }
 }

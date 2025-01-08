@@ -7,9 +7,14 @@ import org.zstack.compute.host.HostGlobalConfig;
 import org.zstack.compute.vm.CrashStrategy;
 import org.zstack.compute.vm.VmGlobalConfig;
 import org.zstack.compute.vm.VmNicManager;
-import org.zstack.core.config.GuestOsExtensionPoint;
+import org.zstack.core.asyncbatch.While;
+import org.zstack.core.config.*;
 import org.zstack.core.config.schema.GuestOsCharacter;
+import org.zstack.header.core.*;
+import org.zstack.header.core.progress.ChainInfo;
+import org.zstack.header.core.progress.TaskInfo;
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.network.l2.*;
 import org.zstack.header.tag.SystemTagInventory;
 import org.zstack.header.tag.SystemTagLifeCycleListener;
@@ -22,10 +27,6 @@ import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.ansible.AnsibleFacade;
 import org.zstack.core.cloudbus.*;
 import org.zstack.core.componentloader.PluginRegistry;
-import org.zstack.core.config.GlobalConfig;
-import org.zstack.core.config.GlobalConfigException;
-import org.zstack.core.config.GlobalConfigUpdateExtensionPoint;
-import org.zstack.core.config.GlobalConfigValidatorExtensionPoint;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
@@ -76,6 +77,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -132,7 +134,8 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
     private VmInstanceDeviceManager vidm;
     @Autowired
     private VmNicManager vmNicManager;
-
+    @Autowired
+    private GlobalConfigFacade gcf;
     private Future<Void> checkSocketChannelTimeoutThread;
 
     @Override
@@ -410,6 +413,20 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
         evf.fire(HostCanonicalEvents.HOST_PHYSICAL_VOLUME_STATE_ABNORMAL, cdata);
     }
 
+    private void processKvmagentPhysicalMemUsageAbnormal(HostProcessPhysicalMemoryUsageAlarmCmd cmd) {
+        if (cmd.getMemoryUsage() <= gcf.getConfigValue(KVMGlobalConfig.CATEGORY,
+                KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_HARD_LIMIT.getName(), Long.class)) {
+            return;
+        }
+
+        logger.debug("The zstack-kvmagent service has exceeded the hard limit for physical memory usage, " +
+                "and we will try restart it later");
+        RestartKvmAgentMsg restartKvmAgentMsg = new RestartKvmAgentMsg();
+        restartKvmAgentMsg.setHostUuid(cmd.getHostUuid());
+        bus.makeTargetServiceIdByResourceUuid(restartKvmAgentMsg, HostConstant.SERVICE_ID, restartKvmAgentMsg.getHostUuid());
+        bus.send(restartKvmAgentMsg);
+    }
+
     @Override
     public boolean start() {
         deployAnsibleModule();
@@ -614,7 +631,27 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             return null;
         });
 
-        restf.registerSyncHttpCallHandler(KVMConstant.HOST_PHYSICAL_DISK_INSERT_ALARM_EVENT, HostPhysicalDiskInsertAlarmEventCmd.class, cmd -> {
+
+        restf.registerSyncHttpCallHandler(KVMConstant.HOST_PROCESS_PHYSICAL_MEMORY_USAGE_ALARM_PATH, HostProcessPhysicalMemoryUsageAlarmCmd.class, cmd -> {
+            HostCanonicalEvents.HostProcessPhysicalMemoryUsageAlarmData data = new HostCanonicalEvents.HostProcessPhysicalMemoryUsageAlarmData();
+            data.setHostUuid(cmd.getHostUuid());
+            data.setPid(cmd.getPid());
+            data.setMemoryUsage(String.format("%s MB", cmd.getMemoryUsage() / 1048576));
+            data.setProcessName(cmd.getProcessName());
+            evf.fire(HostCanonicalEvents.HOST_PROCESS_PHYSICAL_MEMORY_USAGE_ABNORMAL, data);
+
+            switch (data.getProcessName()) {
+                case "zstack-kvmagent":
+                    processKvmagentPhysicalMemUsageAbnormal(cmd);
+                    break;
+                default:
+                    logger.debug(String.format("unknown process name[%s] in host[uuid:%s]", cmd.getProcessName(), cmd.getHostUuid()));
+            }
+
+            return null;
+        });
+
+            restf.registerSyncHttpCallHandler(KVMConstant.HOST_PHYSICAL_DISK_INSERT_ALARM_EVENT, HostPhysicalDiskInsertAlarmEventCmd.class, cmd -> {
             HostCanonicalEvents.HostPhysicalDiskData cdata = new HostCanonicalEvents.HostPhysicalDiskData();
             cdata.setHostUuid(cmd.host);
             cdata.setSerialNumber(cmd.additionalProperties.get(KVMConstant.DEVICE_SERIAL_NUMBER).toString());

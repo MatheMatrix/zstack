@@ -3,6 +3,7 @@ package org.zstack.test.integration.kvm.vm
 import org.springframework.http.HttpEntity
 import org.zstack.core.cloudbus.CloudBus
 import org.zstack.core.db.Q
+import org.zstack.core.db.SQL
 import org.zstack.core.errorcode.ErrorFacade
 import org.zstack.header.host.CheckVmStateOnHypervisorMsg
 import org.zstack.header.host.CheckVmStateOnHypervisorReply
@@ -21,6 +22,7 @@ import org.zstack.sdk.DestroyVmInstanceAction
 import org.zstack.sdk.VmInstanceInventory
 import org.zstack.test.integration.kvm.KvmTest
 import org.zstack.testlib.EnvSpec
+import org.zstack.testlib.HttpError
 import org.zstack.testlib.SubCase
 import org.zstack.utils.data.SizeUnit
 import org.zstack.utils.gson.JSONObjectUtil
@@ -165,6 +167,7 @@ class VmDestroyingCase extends SubCase {
             simulatorEnv()
             testDestroyingVmWillBeSetToDestroyedIfDestroyingFailButVmSyncMsgReturnStopped()
             testRecover()
+            testStartFail()
             testDestroyingVmWillBeSetToDestroyedIfDestroyingFailButVmSyncMsgReturnStopped()
             testExpunge()
         }
@@ -230,6 +233,52 @@ class VmDestroyingCase extends SubCase {
         assert vo.state == VmInstanceState.Running
 
         env.cleanSimulatorAndMessageHandlers()
+    }
+
+    void testStartFail() {
+        stopVmInstance {
+            uuid = vm.uuid
+        }
+
+        VmInstanceVO vo = dbFindByUuid(vm.uuid, VmInstanceVO.class)
+        assert vo.state == VmInstanceState.Stopped
+
+        env.message(CheckVmStateOnHypervisorMsg.class) { CheckVmStateOnHypervisorMsg msg, CloudBus bus ->
+            def reply = new CheckVmStateOnHypervisorReply()
+            def list = new HashMap<String, String>()
+            list.put(vm.uuid, VmInstanceState.Paused.toString())
+            reply.setStates(list)
+            reply.success = true
+            bus.reply(msg, reply)
+        }
+
+        env.afterSimulator(KVMConstant.KVM_START_VM_PATH) { KVMAgentCommands.StartVmResponse rsp, HttpEntity<String> e ->
+            throw new HttpError(403, "on purpose")
+        }
+
+        expect(AssertionError.class) {
+            startVmInstance {
+                uuid = vm.uuid
+            }
+        }
+
+        retryInSecs {
+            vo = dbFindByUuid(vm.uuid, VmInstanceVO.class)
+            assert vo.state == VmInstanceState.Paused
+        }
+
+        env.cleanSimulatorAndMessageHandlers()
+
+        SQL.New(VmInstanceVO).eq(VmInstanceVO_.uuid, vm.uuid).set(VmInstanceVO_.state, VmInstanceState.Stopped).update()
+
+        startVmInstance {
+            uuid = vm.uuid
+        }
+
+        retryInSecs {
+            vo = dbFindByUuid(vm.uuid, VmInstanceVO.class)
+            assert vo.state == VmInstanceState.Running
+        }
     }
 
     void testExpunge() {

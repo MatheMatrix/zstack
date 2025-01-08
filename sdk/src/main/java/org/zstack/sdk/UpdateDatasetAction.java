@@ -34,6 +34,12 @@ public class UpdateDatasetAction extends AbstractAction {
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String description;
 
+    @Param(required = false, validValues = {"FineTune","Endpoint","App","ModelEval","ModelPerf"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.util.List usageScenarios;
+
+    @Param(required = false, validValues = {"Text","Audio","Image","Video","Tabular","Geospatial","TimeSeries"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String dataType;
+
     @Param(required = false)
     public java.util.List systemTags;
 
