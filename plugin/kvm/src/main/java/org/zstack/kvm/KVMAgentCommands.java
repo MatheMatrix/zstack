@@ -4729,6 +4729,8 @@ public class KVMAgentCommands {
         public String ovnEncapIP;
         @GrayVersion(value = "5.4.0")
         public String ovnEncapType;
+        @GrayVersion(value = "5.4.0")
+        public Integer hugePageNumber;
     }
 
     public static class StartOvsServiceRsp extends AgentResponse {
