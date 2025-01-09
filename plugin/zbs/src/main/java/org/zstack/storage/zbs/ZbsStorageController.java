@@ -74,7 +74,6 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     private Config config;
 
     public static final String DEPLOY_CLIENT_PATH = "/zbs/primarystorage/client/deploy";
-    public static final String GET_FACTS_PATH = "/zbs/primarystorage/facts";
     public static final String GET_CAPACITY_PATH = "/zbs/primarystorage/capacity";
     public static final String COPY_PATH = "/zbs/primarystorage/copy";
     public static final String CREATE_VOLUME_PATH = "/zbs/primarystorage/volume/create";
@@ -304,43 +303,6 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
                         new Connector().connect(trigger);
-                    }
-                });
-
-                flow(new NoRollbackFlow() {
-                    String __name__ = "get-facts";
-
-                    @Override
-                    public void run(FlowTrigger trigger, Map data) {
-                        List<ErrorCode> errors = new ArrayList<>();
-                        new While<>(mds).each((m, comp) -> {
-                            GetFactsCmd cmd = new GetFactsCmd();
-                            cmd.setUuid(self.getUuid());
-                            cmd.setMdsAddr(m.getSelf().getMdsAddr());
-                            m.httpCall(GET_FACTS_PATH, cmd, GetFactsRsp.class, new ReturnValueCompletion<GetFactsRsp>(comp) {
-                                @Override
-                                public void success(GetFactsRsp returnValue) {
-                                    m.getSelf().setMdsExternalAddr(returnValue.getMdsExternalAddr());
-                                    comp.done();
-                                }
-
-                                @Override
-                                public void fail(ErrorCode errorCode) {
-                                    errors.add(errorCode);
-                                    comp.done();
-                                }
-                            });
-                        }).run(new WhileDoneCompletion(trigger) {
-                            @Override
-                            public void done(ErrorCodeList errorCodeList) {
-                                if (!errors.isEmpty()) {
-                                    trigger.fail(errors.get(0));
-                                    return;
-                                }
-
-                                trigger.next();
-                            }
-                        });
                     }
                 });
 

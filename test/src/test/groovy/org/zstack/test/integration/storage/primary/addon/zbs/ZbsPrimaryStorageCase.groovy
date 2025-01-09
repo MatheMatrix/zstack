@@ -306,13 +306,6 @@ class ZbsPrimaryStorageCase extends SubCase {
             return [:]
         }
 
-        env.simulator(ZbsStorageController.GET_FACTS_PATH) { HttpEntity<String> e, EnvSpec spec ->
-            def rsp = new ZbsStorageController.GetFactsRsp()
-            rsp.setSuccess(false)
-            rsp.setError("failed to GET_FACTS on purpose")
-            return rsp
-        }
-
         expect(AssertionError.class) {
             addExternalPrimaryStorage {
                 zoneUuid = zone.uuid
@@ -326,21 +319,6 @@ class ZbsPrimaryStorageCase extends SubCase {
 
         env.simulator(ZbsPrimaryStorageMdsBase.ECHO_PATH) { HttpEntity<String> entity, EnvSpec spec ->
             return [:]
-        }
-
-        env.simulator(ZbsStorageController.GET_FACTS_PATH) { HttpEntity<String> e, EnvSpec spec ->
-            ZbsStorageController.GetFactsCmd cmd = JSONObjectUtil.toObject(e.body, ZbsStorageController.GetFactsCmd.class)
-
-            def rsp = new ZbsStorageController.GetFactsRsp()
-            if (cmd.getMdsAddr().equals("127.0.2.1")) {
-                rsp.setMdsExternalAddr("1.1.2.1:6666")
-            } else if (cmd.mdsAddr.equals("127.0.2.2")) {
-                rsp.setMdsExternalAddr("1.1.2.2:6666")
-            } else if (cmd.mdsAddr.equals("127.0.2.3")) {
-                rsp.setMdsExternalAddr("1.1.2.3:6666")
-            }
-
-            return rsp
         }
 
         env.simulator(ZbsStorageController.GET_CAPACITY_PATH) { HttpEntity<String> e, EnvSpec spec ->
