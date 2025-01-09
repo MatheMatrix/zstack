@@ -2,22 +2,14 @@ package org.zstack.sdnController.header;
 
 import org.zstack.header.configuration.PythonClassInventory;
 import org.zstack.header.host.HostInventory;
-import org.zstack.header.log.NoLogging;
-import org.zstack.header.network.l2.L2NetworkInventory;
 import org.zstack.header.query.ExpandedQueries;
 import org.zstack.header.query.ExpandedQuery;
 import org.zstack.header.search.Inventory;
-import org.zstack.header.search.Parent;
-import org.zstack.network.l2.vxlan.vxlanNetwork.L2VxlanNetworkInventory;
-import org.zstack.network.l2.vxlan.vxlanNetworkPool.VniRangeInventory;
-import org.zstack.sdnController.h3cVcfc.H3cVcfcSdnControllerSystemTags;
 
 import java.io.Serializable;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 @PythonClassInventory
 @Inventory(mappingVOClass = SdnControllerHostRefVO.class)
@@ -30,17 +22,18 @@ import java.util.Map;
 public class SdnControllerHostRefInventory implements Serializable {
     private String sdnControllerUuid;
     private String hostUuid;
-    private String vswitchType;
+    private String vSwitchType;
     private String vtepIp;
-    private String physicalNics;
+    private String nicPciAddresses;
+    private String nicDrivers;
 
     public static SdnControllerHostRefInventory valueOf(SdnControllerHostRefVO vo) {
         SdnControllerHostRefInventory inv = new SdnControllerHostRefInventory();
         inv.setSdnControllerUuid(vo.getSdnControllerUuid());
         inv.setHostUuid(vo.getHostUuid());
-        inv.setVswitchType(vo.getVswitchType());
+        inv.setvSwitchType(vo.getvSwitchType());
         inv.setVtepIp(vo.getVtepIp());
-        inv.setPhysicalNics(vo.getPhysicalNics());
+        inv.setNicPciAddresses(vo.getNicPciAddresses());
         return inv;
     }
 
@@ -68,12 +61,12 @@ public class SdnControllerHostRefInventory implements Serializable {
         this.hostUuid = hostUuid;
     }
 
-    public String getVswitchType() {
-        return vswitchType;
+    public String getvSwitchType() {
+        return vSwitchType;
     }
 
-    public void setVswitchType(String vswitchType) {
-        this.vswitchType = vswitchType;
+    public void setvSwitchType(String vSwitchType) {
+        this.vSwitchType = vSwitchType;
     }
 
     public String getVtepIp() {
@@ -84,11 +77,11 @@ public class SdnControllerHostRefInventory implements Serializable {
         this.vtepIp = vtepIp;
     }
 
-    public String getPhysicalNics() {
-        return physicalNics;
+    public String getNicPciAddresses() {
+        return nicPciAddresses;
     }
 
-    public void setPhysicalNics(String physicalNics) {
-        this.physicalNics = physicalNics;
+    public void setNicPciAddresses(String nicPciAddresses) {
+        this.nicPciAddresses = nicPciAddresses;
     }
 }

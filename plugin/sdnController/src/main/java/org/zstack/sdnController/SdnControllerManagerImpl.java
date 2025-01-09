@@ -33,11 +33,15 @@ import org.zstack.header.network.l2.*;
 import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.vm.*;
+import org.zstack.network.hostNetworkInterface.HostNetworkInterfaceVO;
+import org.zstack.network.hostNetworkInterface.HostNetworkInterfaceVO_;
 import org.zstack.sdnController.header.*;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.Utils;
+import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
+import javax.persistence.Tuple;
 import java.util.*;
 
 import static java.util.Arrays.asList;
@@ -162,8 +166,23 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                 SdnControllerHostRefVO ref = new SdnControllerHostRefVO();
                 ref.setSdnControllerUuid(msg.getSdnControllerUuid());
                 ref.setHostUuid(msg.getHostUuid());
-                ref.setVswitchType(msg.getvSwitchType());
-                ref.setPhysicalNics(String.join(",", msg.getNicNames()));
+                ref.setvSwitchType(msg.getvSwitchType());
+
+                Map<String, String> nicNameDriverMap = new HashMap<>();
+                Map<String, String> nicNamePciAddressMap = new HashMap<>();
+                List<Tuple> nicTuples = Q.New(HostNetworkInterfaceVO.class)
+                        .eq(HostNetworkInterfaceVO_.hostUuid, msg.getHostUuid())
+                        .in(HostNetworkInterfaceVO_.interfaceName, msg.getNicNames())
+                        .select(HostNetworkInterfaceVO_.interfaceName,
+                                HostNetworkInterfaceVO_.driverType,
+                                HostNetworkInterfaceVO_.pciDeviceAddress)
+                        .listTuple();
+                for (Tuple t : nicTuples) {
+                    nicNameDriverMap.put(t.get(0, String.class), t.get(1, String.class));
+                    nicNamePciAddressMap.put(t.get(0, String.class), t.get(2, String.class));
+                }
+                ref.setNicDrivers(JSONObjectUtil.toJsonString(nicNameDriverMap));
+                ref.setNicPciAddresses(JSONObjectUtil.toJsonString(nicNamePciAddressMap));
                 if (msg.getVtepIp() != null) {
                     ref.setVtepIp(msg.getVtepIp());
                 }
@@ -190,7 +209,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                 SQL.New(SdnControllerHostRefVO.class)
                         .eq(SdnControllerHostRefVO_.sdnControllerUuid, msg.getSdnControllerUuid())
                         .eq(SdnControllerHostRefVO_.hostUuid, msg.getHostUuid())
-                        .eq(SdnControllerHostRefVO_.vswitchType, msg.getvSwitchType()).delete();
+                        .eq(SdnControllerHostRefVO_.vSwitchType, msg.getvSwitchType()).delete();
 
                 event.setInventory(SdnControllerInventory.valueOf(dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class)));
                 bus.publish(event);

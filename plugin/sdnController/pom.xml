@@ -42,6 +42,11 @@
             <artifactId>vxlan</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.zstack</groupId>
+            <artifactId>hostNetworkInterface</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

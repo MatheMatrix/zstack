@@ -1,15 +1,17 @@
 CALL ADD_COLUMN('SdnControllerVO', 'status', 'VARCHAR(32)', 0, 'Connected');
+CALL ADD_COLUMN('HostNetworkInterfaceVO', 'driverType', 'VARCHAR(32)', 1, NULL);
 
 CREATE TABLE IF NOT EXISTS `zstack`.`SdnControllerHostRefVO` (
     `id` BIGINT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
     `sdnControllerUuid` varchar(32) default null,
     `hostUuid`  varchar(32) default null,
-    `vswitchType`  varchar(255) default null,
+    `vSwitchType`  varchar(255) default null,
     `vtepIp`  varchar(255) default null,
-    `physicalNics`  varchar(255) default null,
+    `nicPciAddresses`  varchar(1024) default null,
+    `nicDrivers`  varchar(1024) default null,
     CONSTRAINT fkSdnControllerHostRefVOSdnControllerVO FOREIGN KEY (sdnControllerUuid) REFERENCES SdnControllerVO (uuid) ON DELETE CASCADE,
     CONSTRAINT fkSdnControllerHostRefVOHostEO FOREIGN KEY (hostUuid) REFERENCES HostEO (uuid) ON DELETE CASCADE,
-    CONSTRAINT ukSdnControllerHostRefVO UNIQUE (`sdnControllerUuid`,`hostUuid`, `vswitchType`),
+    CONSTRAINT ukSdnControllerHostRefVO UNIQUE (`sdnControllerUuid`,`hostUuid`, `vSwitchType`),
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
