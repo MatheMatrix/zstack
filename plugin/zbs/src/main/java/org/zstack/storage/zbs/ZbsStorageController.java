@@ -87,8 +87,6 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     public static final String DELETE_SNAPSHOT_PATH = "/zbs/primarystorage/snapshot/delete";
     public static final String ROLLBACK_SNAPSHOT_PATH = "/zbs/primarystorage/snapshot/rollback";
 
-    private static final Integer SUPPORT_MINIMUM_MDS_NUMBER = 2;
-
     private static final StorageCapabilities capabilities = new StorageCapabilities();
 
     static {
@@ -391,9 +389,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     @Override
     public void ping(Completion completion) {
         reloadDbInfo();
-
         final List<ZbsPrimaryStorageMdsBase> mds = CollectionUtils.transformToList(addonInfo.getMdsInfos(), ZbsPrimaryStorageMdsBase::new);
-
         new While<>(mds).each((m, comp) -> {
             m.ping(new Completion(comp) {
                 @Override
@@ -415,18 +411,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                         .set(ExternalPrimaryStorageVO_.addonInfo, JSONObjectUtil.toJsonString(addonInfo))
                         .update();
 
-                boolean isConnected = addonInfo.getMdsInfos().stream()
-                        .filter(mdsInfo -> MdsStatus.Connected.equals(mdsInfo.getMdsStatus()))
-                        .count() >= SUPPORT_MINIMUM_MDS_NUMBER;
-
+                boolean isConnected = addonInfo.getMdsInfos().stream().anyMatch(mdsInfo -> MdsStatus.Connected.equals(mdsInfo.getMdsStatus()));
                 if (!isConnected) {
                     String notConnectedIps = addonInfo.getMdsInfos().stream()
                             .filter(mdsInfo -> !MdsStatus.Connected.equals(mdsInfo.getMdsStatus()))
                             .map(MdsInfo::getMdsAddr)
                             .collect(Collectors.joining(", "));
 
-                    completion.fail(operr("at least %d of the MDS nodes exist in the Connected state, " +
-                            "the following MDS nodes[%s] are not Connected.", SUPPORT_MINIMUM_MDS_NUMBER, notConnectedIps));
+                    completion.fail(operr("No MDS node is Connected, the following MDS nodes[%s] are not Connected.", notConnectedIps));
                     return;
                 }
                 completion.success();
