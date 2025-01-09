@@ -12,6 +12,14 @@ public class OAuth2ClientInventory extends org.zstack.sdk.identity.imports.entit
         return this.clientId;
     }
 
+    public java.lang.String clientSecret;
+    public void setClientSecret(java.lang.String clientSecret) {
+        this.clientSecret = clientSecret;
+    }
+    public java.lang.String getClientSecret() {
+        return this.clientSecret;
+    }
+
     public java.lang.String grantType;
     public void setGrantType(java.lang.String grantType) {
         this.grantType = grantType;
