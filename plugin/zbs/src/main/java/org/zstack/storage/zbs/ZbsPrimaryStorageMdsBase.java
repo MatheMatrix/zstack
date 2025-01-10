@@ -282,6 +282,7 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
 
         new While<>(stepCount).each((step, comp) -> {
             PingCmd cmd = new PingCmd();
+            cmd.setMdsAddr(getSelf().getMdsAddr());
             restf.asyncJsonPost(ZbsAgentUrl.primaryStorageUrl(getSelf().getMdsAddr(), PING_PATH),
                     cmd, new JsonAsyncRESTCallback<PingRsp>(completion) {
                         @Override
