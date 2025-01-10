@@ -1,12 +1,13 @@
 package org.zstack.header.network.l2;
 
-import java.util.List;
+import java.util.Map;
 
 public class VSwitchOvsConfigStruct {
     private String ovnControllerIp;
     private String vSwitchType;
     private String brExName;
-    private List<String> nicNames;
+    private Map<String, String> nicNamePciMap;
+    private Map<String, String> nicNameDriverMap;
     private String ovnEncapIP;
     private String ovnRemoteConnection;
     private String ovnEncapType;
@@ -36,12 +37,12 @@ public class VSwitchOvsConfigStruct {
         this.brExName = brExName;
     }
 
-    public List<String> getNicNames() {
-        return nicNames;
+    public Map<String, String> getNicNamePciMap() {
+        return nicNamePciMap;
     }
 
-    public void setNicNames(List<String> nicNames) {
-        this.nicNames = nicNames;
+    public void setNicNamePciMap(Map<String, String> nicNamePciMap) {
+        this.nicNamePciMap = nicNamePciMap;
     }
 
     public String getOvnEncapIP() {
@@ -74,5 +75,13 @@ public class VSwitchOvsConfigStruct {
 
     public void setHugePageNumber(int hugePageNumber) {
         this.hugePageNumber = hugePageNumber;
+    }
+
+    public Map<String, String> getNicNameDriverMap() {
+        return nicNameDriverMap;
+    }
+
+    public void setNicNameDriverMap(Map<String, String> nicNameDriverMap) {
+        this.nicNameDriverMap = nicNameDriverMap;
     }
 }

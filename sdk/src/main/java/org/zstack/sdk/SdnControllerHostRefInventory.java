@@ -20,12 +20,12 @@ public class SdnControllerHostRefInventory  {
         return this.hostUuid;
     }
 
-    public java.lang.String vswitchType;
-    public void setVswitchType(java.lang.String vswitchType) {
-        this.vswitchType = vswitchType;
+    public java.lang.String vSwitchType;
+    public void setVSwitchType(java.lang.String vSwitchType) {
+        this.vSwitchType = vSwitchType;
     }
-    public java.lang.String getVswitchType() {
-        return this.vswitchType;
+    public java.lang.String getVSwitchType() {
+        return this.vSwitchType;
     }
 
     public java.lang.String vtepIp;
@@ -36,12 +36,20 @@ public class SdnControllerHostRefInventory  {
         return this.vtepIp;
     }
 
-    public java.lang.String physicalNics;
-    public void setPhysicalNics(java.lang.String physicalNics) {
-        this.physicalNics = physicalNics;
+    public java.lang.String nicPciAddresses;
+    public void setNicPciAddresses(java.lang.String nicPciAddresses) {
+        this.nicPciAddresses = nicPciAddresses;
     }
-    public java.lang.String getPhysicalNics() {
-        return this.physicalNics;
+    public java.lang.String getNicPciAddresses() {
+        return this.nicPciAddresses;
+    }
+
+    public java.lang.String nicDrivers;
+    public void setNicDrivers(java.lang.String nicDrivers) {
+        this.nicDrivers = nicDrivers;
+    }
+    public java.lang.String getNicDrivers() {
+        return this.nicDrivers;
     }
 
 }

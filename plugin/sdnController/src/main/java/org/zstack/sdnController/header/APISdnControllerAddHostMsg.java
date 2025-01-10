@@ -6,9 +6,12 @@ import org.zstack.header.host.HostVO;
 import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
+import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Action(category = SdnControllerConstant.ACTION_CATEGORY)
 @RestRequest(

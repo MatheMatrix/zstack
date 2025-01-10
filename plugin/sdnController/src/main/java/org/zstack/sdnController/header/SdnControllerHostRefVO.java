@@ -1,9 +1,6 @@
 package org.zstack.sdnController.header;
 
-import org.zstack.header.cluster.ClusterEO;
-import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.host.HostEO;
-import org.zstack.header.host.HostVO;
 import org.zstack.header.search.SqlTrigger;
 import org.zstack.header.search.TriggerIndex;
 import org.zstack.header.vo.EntityGraph;
@@ -45,13 +42,16 @@ public class SdnControllerHostRefVO {
     private String hostUuid;
 
     @Column
-    private String vswitchType;
+    private String vSwitchType;
 
     @Column
     private String vtepIp;
 
     @Column
-    private String physicalNics;
+    private String nicPciAddresses;
+
+    @Column
+    private String nicDrivers;
 
 
     public SdnControllerHostRefVO() {
@@ -81,12 +81,12 @@ public class SdnControllerHostRefVO {
         this.hostUuid = hostUuid;
     }
 
-    public String getVswitchType() {
-        return vswitchType;
+    public String getvSwitchType() {
+        return vSwitchType;
     }
 
-    public void setVswitchType(String vswitchType) {
-        this.vswitchType = vswitchType;
+    public void setvSwitchType(String vSwitchType) {
+        this.vSwitchType = vSwitchType;
     }
 
     public String getVtepIp() {
@@ -97,11 +97,19 @@ public class SdnControllerHostRefVO {
         this.vtepIp = vtepIp;
     }
 
-    public String getPhysicalNics() {
-        return physicalNics;
+    public String getNicPciAddresses() {
+        return nicPciAddresses;
     }
 
-    public void setPhysicalNics(String physicalNics) {
-        this.physicalNics = physicalNics;
+    public void setNicPciAddresses(String nicPciAddresses) {
+        this.nicPciAddresses = nicPciAddresses;
+    }
+
+    public String getNicDrivers() {
+        return nicDrivers;
+    }
+
+    public void setNicDrivers(String nicDrivers) {
+        this.nicDrivers = nicDrivers;
     }
 }

@@ -25,6 +25,7 @@ public class HostNetworkInterfaceVO_ extends ResourceVO_ {
     public static volatile SingularAttribute<HostNetworkInterfaceVO, String> gateway;
     public static volatile SingularAttribute<HostNetworkInterfaceVO, String> callBackIp;
     public static volatile SingularAttribute<HostNetworkInterfaceVO, String> pciDeviceAddress;
+    public static volatile SingularAttribute<HostNetworkInterfaceVO, String> driverType;
     public static volatile SingularAttribute<HostNetworkInterfaceVO, String> offloadStatus;
     public static volatile SingularAttribute<HostNetworkInterfaceVO, Long> speed;
     public static volatile SingularAttribute<HostNetworkInterfaceVO, Boolean> slaveActive;

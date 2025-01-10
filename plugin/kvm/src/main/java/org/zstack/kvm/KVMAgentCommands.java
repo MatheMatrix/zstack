@@ -4720,7 +4720,7 @@ public class KVMAgentCommands {
         @GrayVersion(value = "5.4.0")
         public String vSwitchType;
         @GrayVersion(value = "5.4.0")
-        public List<String> nicNames;
+        public Map<String, String> nicNamePciAddressMap;
         @GrayVersion(value = "5.4.0")
         public String brExName;
         @GrayVersion(value = "5.4.0")
