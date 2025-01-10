@@ -418,7 +418,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                             .map(MdsInfo::getMdsAddr)
                             .collect(Collectors.joining(", "));
 
-                    completion.fail(operr("No MDS node is Connected, the following MDS nodes[%s] are not Connected.", notConnectedIps));
+                    completion.fail(operr("no MDS node is Connected, the following MDS nodes[%s] are not Connected.", notConnectedIps));
                     return;
                 }
                 completion.success();
