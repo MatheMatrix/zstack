@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.transaction.annotation.Transactional;
+import org.zstack.compute.vm.MacOperator;
 import org.zstack.compute.vm.VmInstanceManager;
 import org.zstack.compute.vm.VmNicManager;
 import org.zstack.core.Platform;
@@ -86,7 +87,7 @@ public class ApplianceVmAllocateNicFlow implements Flow {
         inv.setDeviceId(deviceId[0]);
         inv.setMetaData(nicSpec.getMetaData());
         inv.setInternalName(VmNicVO.generateNicInternalName(vmSpec.getVmInventory().getInternalId(), inv.getDeviceId()));
-        inv.setMac(NetworkUtils.generateMacWithDeviceId((short) inv.getDeviceId()));
+        inv.setMac(MacOperator.generateMacWithDeviceId((short) inv.getDeviceId()));
         inv.setHypervisorType(vmSpec.getVmInventory().getHypervisorType());
         inv.setDriverType(ImagePlatform.valueOf(vmSpec.getVmInventory().getPlatform()).isParaVirtualization() ?
                 nicManager.getDefaultPVNicDriver() : nicManager.getDefaultNicDriver());

@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class QueryContainerManagementVmAction extends QueryAction {
+public class QueryNativeClusterAction extends QueryAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class QueryContainerManagementVmAction extends QueryAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.QueryVmInstanceResult value;
+        public org.zstack.sdk.QueryNativeClusterResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -34,8 +34,8 @@ public class QueryContainerManagementVmAction extends QueryAction {
             return ret;
         }
         
-        org.zstack.sdk.QueryVmInstanceResult value = res.getResult(org.zstack.sdk.QueryVmInstanceResult.class);
-        ret.value = value == null ? new org.zstack.sdk.QueryVmInstanceResult() : value; 
+        org.zstack.sdk.QueryNativeClusterResult value = res.getResult(org.zstack.sdk.QueryNativeClusterResult.class);
+        ret.value = value == null ? new org.zstack.sdk.QueryNativeClusterResult() : value; 
 
         return ret;
     }
@@ -65,7 +65,7 @@ public class QueryContainerManagementVmAction extends QueryAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "GET";
-        info.path = "/container/management/vm";
+        info.path = "/container/native/cluster";
         info.needSession = true;
         info.needPoll = false;
         info.parameterName = "";

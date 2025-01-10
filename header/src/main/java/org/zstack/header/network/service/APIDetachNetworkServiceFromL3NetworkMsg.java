@@ -72,7 +72,7 @@ public class APIDetachNetworkServiceFromL3NetworkMsg extends APIMessage implemen
 
         msg.setL3NetworkUuid(uuid());
         msg.setNetworkServices(m);
-
+        msg.setService("PortForwarding");
 
         return msg;
     }

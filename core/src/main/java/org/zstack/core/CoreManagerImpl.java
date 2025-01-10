@@ -22,6 +22,7 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -136,6 +137,9 @@ public class CoreManagerImpl extends AbstractService implements CoreManager {
         GetLocalTaskReply reply = new GetLocalTaskReply();
         Map<String, ChainInfo> results = msg.getSyncSignatures().stream()
                 .collect(Collectors.toMap(Function.identity(), thdf::getChainTaskInfo));
+        if (msg.isOnlyRunningTask()) {
+            results.values().forEach(c -> c.getPendingTask().clear());
+        }
         reply.setResults(results);
         bus.reply(msg, reply);
     }

@@ -41,8 +41,6 @@ public class APICleanUpImageCacheOnPrimaryStorageMsg extends APIMessage implemen
         return uuid;
     }
 
-
-
     public static APICleanUpImageCacheOnPrimaryStorageMsg __example__() {
         APICleanUpImageCacheOnPrimaryStorageMsg msg = new APICleanUpImageCacheOnPrimaryStorageMsg();
         msg.setUuid(uuid());

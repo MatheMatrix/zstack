@@ -387,30 +387,6 @@ public class NetworkUtils {
         return ia.getHostAddress();
     }
 
-    public static String generateMacWithDeviceId(short deviceId) {
-        int seed = random.nextInt();
-        String seedStr = Integer.toHexString(seed);
-        if (seedStr.length() < 8) {
-            String compensate = StringUtils.repeat("0", 8 - seedStr.length());
-            seedStr = compensate + seedStr;
-        }
-        String octet2 = seedStr.substring(0, 2);
-        String octet3 = seedStr.substring(2, 4);
-        String octet4 = seedStr.substring(4, 6);
-        String octet5 = seedStr.substring(6, 8);
-        StringBuilder sb = new StringBuilder("fa").append(":");
-        sb.append(octet2).append(":");
-        sb.append(octet3).append(":");
-        sb.append(octet4).append(":");
-        sb.append(octet5).append(":");
-        String deviceIdStr = Integer.toHexString(deviceId);
-        if (deviceIdStr.length() < 2) {
-            deviceIdStr = "0" + deviceIdStr;
-        }
-        sb.append(deviceIdStr);
-        return sb.toString();
-    }
-
     public static List<Pair<String, String>> findConsecutiveIpRange(Collection<String> ips) {
         List<Pair<String, String>> ret = new ArrayList<Pair<String, String>>();
         if (ips.isEmpty()) {

@@ -19,12 +19,34 @@ import java.util.Map;
     responseClass = GetVolumeResponse.class,
     category = XInfiniApiCategory.AFA
 )
-public class ExpandVolumeRequest extends XInfiniRequest {
+public class UpdateVolumeRequest extends XInfiniRequest {
+    @Param(required = false)
+    private String creator;
+
     @Param
     private int id;
 
-    @Param
+    @Param(required = false)
     private long sizeMb;
+
+    @Param(required = false)
+    private String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getCreator() {
+        return creator;
+    }
+
+    public void setCreator(String creator) {
+        this.creator = creator;
+    }
 
     public long getSizeMb() {
         return sizeMb;

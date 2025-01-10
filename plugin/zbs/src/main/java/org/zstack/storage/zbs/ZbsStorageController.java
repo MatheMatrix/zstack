@@ -193,7 +193,8 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             public void success(CreateVolumeRsp returnValue) {
                 CbdHeartbeatVolumeTO to = new CbdHeartbeatVolumeTO();
                 to.setInstallPath(returnValue.installPath);
-                to.setHeartbeatRequiredSpace(SizeUnit.GIGABYTE.toByte(1));
+                to.setHeartbeatRequiredSpace(SizeUnit.MEGABYTE.toByte(1));
+                to.setCoveringPaths(Collections.singletonList(config.getLogicalPoolName()));
                 comp.success(to);
             }
 
@@ -211,7 +212,12 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     @Override
     public HeartbeatVolumeTO getHeartbeatVolumeActiveInfo(HostInventory h) {
-        return null;
+        // FIXME: hard code for install path
+        CbdHeartbeatVolumeTO to = new CbdHeartbeatVolumeTO();
+        to.setInstallPath(String.format("cbd:%s_physical/%s/%s", config.getLogicalPoolName(), config.getLogicalPoolName(), ZbsHelper.zbsHeartbeatVolumeName));
+        to.setHeartbeatRequiredSpace(SizeUnit.MEGABYTE.toByte(1));
+        to.setCoveringPaths(Collections.singletonList(config.getLogicalPoolName()));
+        return to;
     }
 
     @Override
@@ -476,12 +482,20 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         httpCall(GET_CAPACITY_PATH, cmd, GetCapacityRsp.class, new ReturnValueCompletion<GetCapacityRsp>(comp) {
             @Override
             public void success(GetCapacityRsp returnValue) {
+                addonInfo.setLogicalPoolInfos(returnValue.getLogicalPoolInfos());
+                SQL.New(ExternalPrimaryStorageVO.class).eq(ExternalPrimaryStorageVO_.uuid, self.getUuid())
+                        .set(ExternalPrimaryStorageVO_.addonInfo, JSONObjectUtil.toJsonString(addonInfo))
+                        .update();
+
+                List<LogicalPoolInfo> logicalPoolInfos = getSelfPools();
+                long total = logicalPoolInfos.stream().mapToLong(LogicalPoolInfo::getCapacity).sum();
+                long used = logicalPoolInfos.stream().mapToLong(LogicalPoolInfo::getUsedSize).sum();
+                long avail = total != 0 ? total - used : 0;
+
                 StorageCapacity cap = new StorageCapacity();
-                long total = returnValue.getCapacity();
-                long avail = total != 0 ? total - returnValue.getUsedSize() : 0;
-                cap.setHealthy(StorageHealthy.Ok);
                 cap.setTotalCapacity(total);
                 cap.setAvailableCapacity(avail);
+                cap.setHealthy(StorageHealthy.Ok);
                 comp.success(cap);
             }
 
@@ -516,8 +530,27 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     @Override
     public String allocateSpace(AllocateSpaceSpec aspec) {
-        reloadDbInfo();
+        // TODO allocate pool
+        LogicalPoolInfo logicalPoolInfo = allocateFreePool(aspec.getSize());
+        if (logicalPoolInfo == null) {
+            throw new OperationFailureException(operr("no available logical pool with enough space[%d]", aspec.getSize()));
+        }
+
         return buildVolumePath("", config.getLogicalPoolName(), "");
+    }
+
+    private LogicalPoolInfo allocateFreePool(long size) {
+        List<LogicalPoolInfo> logicalPoolInfos = getSelfPools();
+        return logicalPoolInfos.stream().filter(it -> it.getCapacity() - it.getUsedSize() > size)
+                .max(Comparator.comparingLong(it -> it.getCapacity() - it.getUsedSize()))
+                .orElse(null);
+    }
+
+    private List<LogicalPoolInfo> getSelfPools() {
+        String configLogicalPoolName = config.getLogicalPoolName();
+        List<LogicalPoolInfo> logicalPoolInfos = addonInfo.getLogicalPoolInfos();
+        logicalPoolInfos.removeIf(it -> !configLogicalPoolName.equals(it.getLogicalPoolName()));
+        return logicalPoolInfos;
     }
 
     @Override
@@ -1277,23 +1310,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     }
 
     public static class GetCapacityRsp extends AgentResponse {
-        private long capacity;
-        private long usedSize;
+        private List<LogicalPoolInfo> logicalPoolInfos;
 
-        public long getCapacity() {
-            return capacity;
+        public List<LogicalPoolInfo> getLogicalPoolInfos() {
+            return logicalPoolInfos;
         }
 
-        public void setCapacity(long capacity) {
-            this.capacity = capacity;
-        }
-
-        public long getUsedSize() {
-            return usedSize;
-        }
-
-        public void setUsedSize(long usedSize) {
-            this.usedSize = usedSize;
+        public void setLogicalPoolInfos(List<LogicalPoolInfo> logicalPoolInfos) {
+            this.logicalPoolInfos = logicalPoolInfos;
         }
     }
 

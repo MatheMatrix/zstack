@@ -1,8 +1,5 @@
 package org.zstack.header.network.l2
 
-import java.sql.Timestamp
-import java.sql.Timestamp
-
 doc {
 
 	title "二层网络结构"

@@ -115,6 +115,10 @@ public class ApiResult {
                 }
 
                 Object bean = getProperty(ret, path);
+                if (bean == null) {
+                    throw new ApiException(String.format("cannot find property[%s] in the result. src class[%s], dst class[%s]", path, src, dst));
+                }
+
                 if (bean.getClass().getName().equals(dst)) {
                     // not an inherent object
                     continue;
