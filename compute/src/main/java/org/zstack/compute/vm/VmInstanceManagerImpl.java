@@ -1299,7 +1299,8 @@ public class VmInstanceManagerImpl extends AbstractService implements
                         smsg.setVmInstanceInventory(VmInstanceInventory.valueOf(finalVo));
                         smsg.setCandidatePrimaryStorageUuidsForDataVolume(msg.getCandidatePrimaryStorageUuidsForDataVolume());
                         smsg.setCandidatePrimaryStorageUuidsForRootVolume(msg.getCandidatePrimaryStorageUuidsForRootVolume());
-                        if (Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString()) && attachOtherDisks) {
+                        if (Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString())
+                                && attachOtherDisks && ImagePlatform.Other.name().equals(msg.getPlatform())) {
                             smsg.setStrategy(VmCreationStrategy.CreateStopped.toString());
                         } else {
                             smsg.setStrategy(msg.getStrategy());
@@ -1359,12 +1360,12 @@ public class VmInstanceManagerImpl extends AbstractService implements
                     }
                 });
 
-
-                if (!Objects.equals(msg.getStrategy(), VmCreationStrategy.JustCreate.toString()) && attachOtherDisks) {
+                if (VmCreationStrategy.JustCreate != VmCreationStrategy.valueOf(msg.getStrategy()) && attachOtherDisks) {
                     otherDisks.forEach(diskAO -> flow(new VmInstantiateOtherDiskFlow(diskAO)));
                 }
 
-                if (Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString()) && attachOtherDisks) {
+                if (Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString())
+                        && attachOtherDisks && ImagePlatform.Other.name().equals(msg.getPlatform())) {
                     flow(new NoRollbackFlow() {
                         String __name__ = "start-vm";
 
