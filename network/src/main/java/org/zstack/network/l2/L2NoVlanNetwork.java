@@ -30,9 +30,6 @@ import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.host.*;
-import org.zstack.header.identity.AccessLevel;
-import org.zstack.header.identity.AccountResourceRefVO;
-import org.zstack.header.identity.AccountResourceRefVO_;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
@@ -53,7 +50,6 @@ import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 import static org.zstack.core.Platform.*;
-import static org.zstack.utils.CollectionDSL.list;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class L2NoVlanNetwork implements L2Network {
@@ -1117,6 +1113,9 @@ public class L2NoVlanNetwork implements L2Network {
         }
     }
 
+    protected void afterAttachL2NetworkToCluster(final AttachL2NetworkToClusterMsg msg, final List<HostInventory> hosts) {
+    }
+
     protected void afterAttachL2NetworkToClusterFailed(final AttachL2NetworkToClusterMsg msg) {
         if (!L2NetworkType.valueOf(self.getType()).isAttachToAllHosts()) {
             List<String> hostUuids = Q.New(HostVO.class).select(HostVO_.uuid)
@@ -1208,6 +1207,7 @@ public class L2NoVlanNetwork implements L2Network {
         prepareL2NetworkOnHosts(invs, msg.getL2ProviderType(), new Completion(msg, completion) {
             @Override
             public void success() {
+                afterAttachL2NetworkToCluster(msg, invs);
                 L2NetworkClusterRefVO rvo = new L2NetworkClusterRefVO();
                 rvo.setClusterUuid(msg.getClusterUuid());
                 rvo.setL2NetworkUuid(self.getUuid());
@@ -1231,6 +1231,9 @@ public class L2NoVlanNetwork implements L2Network {
                 msg.getL2ProviderType(), makeBridgeName());
     }
 
+    protected void afterAttachL2NetworkToHost(final AttachL2NetworkToHostMsg msg) {
+    }
+
     protected void afterAttachL2NetworkToHostFailed(final AttachL2NetworkToHostMsg msg) {
         L2NetworkHostUtils.deleteL2NetworkHostRef(msg.getL2NetworkUuid(), msg.getHostUuid());
     }
@@ -1246,6 +1249,7 @@ public class L2NoVlanNetwork implements L2Network {
         prepareL2NetworkOnHosts(Collections.singletonList(inv), msg.getL2ProviderType(), new Completion(msg, completion) {
             @Override
             public void success() {
+                afterAttachL2NetworkToHost(msg);
                 logger.debug(String.format("successfully attached L2Network[uuid:%s] to host [uuid:%s]", self.getUuid(), msg.getHostUuid()));
                 self = dbf.findByUuid(self.getUuid(), L2NetworkVO.class);
                 completion.success();
