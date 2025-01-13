@@ -30,3 +30,32 @@ WHERE ref.referenceType = 'VolumeVO'
   AND ref.referenceVolumeUuid = ref.referenceUuid
   AND ref.referenceInstallUrl NOT LIKE CONCAT('%', SUBSTRING_INDEX(vol.installPath, '/', -1), '%');
 
+DROP PROCEDURE IF EXISTS ModifyApplicationDevelopmentServiceVO;
+DELIMITER $$
+
+CREATE PROCEDURE ModifyApplicationDevelopmentServiceVO()
+BEGIN
+    START TRANSACTION;
+
+    CREATE TABLE IF NOT EXISTS `zstack`.`ApplicationDevelopmentServiceVO_temp` (
+        `uuid` varchar(32) NOT NULL UNIQUE,
+        `deploymentStatus` varchar(255) NOT NULL,
+        PRIMARY KEY (`uuid`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+    INSERT INTO `zstack`.`ApplicationDevelopmentServiceVO_temp` (uuid, deploymentStatus)
+    SELECT modelServiceGroupUuid, deploymentStatus
+    FROM `zstack`.`ApplicationDevelopmentServiceVO`
+    WHERE modelServiceGroupUuid IS NOT NULL;
+
+    DROP TABLE `zstack`.`ApplicationDevelopmentServiceVO`;
+
+    RENAME TABLE `zstack`.`ApplicationDevelopmentServiceVO_temp` TO `zstack`.`ApplicationDevelopmentServiceVO`;
+
+    COMMIT;
+END $$
+
+DELIMITER ;
+
+CALL ModifyApplicationDevelopmentServiceVO();
+
