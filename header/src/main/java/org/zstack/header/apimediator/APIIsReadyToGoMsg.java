@@ -2,6 +2,7 @@ package org.zstack.header.apimediator;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.identity.SuppressCredentialCheck;
+import org.zstack.header.managementnode.APIManagementNodeMessage;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 
@@ -12,7 +13,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIIsReadyToGoReply.class,
         category = "other"
 )
-public class APIIsReadyToGoMsg extends APISyncCallMessage {
+public class APIIsReadyToGoMsg extends APISyncCallMessage implements APIManagementNodeMessage {
     private String managementNodeId;
 
     public String getManagementNodeId() {
