@@ -4,5 +4,4 @@ public enum SdnControllerStatus {
 	Connecting,
 	Connected,
 	Disconnected,
-	Synchronizing,
 }
