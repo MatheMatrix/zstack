@@ -4,6 +4,8 @@ CALL ADD_CONSTRAINT('AutoScalingRuleSchedulerJobTriggerVO', 'fkAutoScalingRuleSc
 ALTER TABLE `zstack`.`ExternalPrimaryStorageVO` MODIFY COLUMN `config` TEXT DEFAULT NULL;
 ALTER TABLE `zstack`.`HostNetworkInterfaceLldpRefVO` MODIFY COLUMN `systemName` VARCHAR(255) NOT NULL;
 
+ALTER TABLE `zstack`.`EncryptionIntegrityVO` MODIFY COLUMN `resourceUuid` varchar(128) NOT NULL;
+
 CREATE TABLE IF NOT EXISTS `zstack`.`ExternalPrimaryStorageHostRefVO` (
     `id`       BIGINT UNSIGNED UNIQUE,
     `hostId`   INT          DEFAULT NULL,
