@@ -2,7 +2,7 @@ package org.zstack.sdk;
 
 
 
-public class QueryContainerManagementVmResult {
+public class QueryNativeHostResult {
     public java.util.List inventories;
     public void setInventories(java.util.List inventories) {
         this.inventories = inventories;

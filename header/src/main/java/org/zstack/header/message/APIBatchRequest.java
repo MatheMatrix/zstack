@@ -3,7 +3,8 @@ package org.zstack.header.message;
 import org.zstack.header.errorcode.ErrorCode;
 
 public interface APIBatchRequest {
-    class BatchOperationResult {
+    class BatchOperationResult<T> {
+        private T inventory;
         private String uuid;
         private boolean success;
         private ErrorCode error;
@@ -30,6 +31,14 @@ public interface APIBatchRequest {
 
         public void setError(ErrorCode error) {
             this.error = error;
+        }
+
+        public T getInventory() {
+            return inventory;
+        }
+
+        public void setInventory(T inventory) {
+            this.inventory = inventory;
         }
     }
 
