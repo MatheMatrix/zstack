@@ -13,6 +13,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.TimeZone;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -111,6 +112,11 @@ public class TimeUtils {
     }
 
     private static final String DEFAULT_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    private static final String SHORT_TIME_FORMAT = "yyMMdd";
+
+    public static String getShortDateFormat() {
+        return new SimpleDateFormat(SHORT_TIME_FORMAT).format(Date.from(Instant.now()));
+    }
 
     public static boolean isValidTimestampFormat(String timestamp) {
         try {
