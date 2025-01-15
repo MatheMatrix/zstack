@@ -59,3 +59,4 @@ DELIMITER ;
 
 CALL ModifyApplicationDevelopmentServiceVO();
 
+CALL ADD_COLUMN('ModelVO', 'modelId', 'VARCHAR(255)', 1, NULL);

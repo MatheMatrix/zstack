@@ -68,6 +68,14 @@ public class ModelInventory  {
         return this.vendor;
     }
 
+    public java.lang.String modelId;
+    public void setModelId(java.lang.String modelId) {
+        this.modelId = modelId;
+    }
+    public java.lang.String getModelId() {
+        return this.modelId;
+    }
+
     public java.lang.String introduction;
     public void setIntroduction(java.lang.String introduction) {
         this.introduction = introduction;
