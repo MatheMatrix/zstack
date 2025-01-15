@@ -48,6 +48,10 @@ public abstract class AbstractKVMConnectExtensionForL2Network {
         List<L2NetworkInventory> ret = new ArrayList<L2NetworkInventory>(vos.size());
         List<L2NetworkInventory> noVlanL2Networks = new ArrayList<>();
         for (L2NetworkVO vo : vos) {
+            VSwitchType vSwitchType = VSwitchType.valueOf(vo.getvSwitchType());
+            if (!vSwitchType.isAttachToCluster()) {
+                continue;
+            }
             if (L2NetworkConstant.L2_NO_VLAN_NETWORK_TYPE.equals(vo.getType())) {
                 noVlanL2Networks.add(L2NetworkInventory.valueOf(vo));
             } else if (L2NetworkConstant.L2_VLAN_NETWORK_TYPE.equals(vo.getType())) {
