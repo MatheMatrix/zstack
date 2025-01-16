@@ -43,6 +43,7 @@ import org.zstack.utils.logging.CLogger;
 
 import javax.transaction.Transactional;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -537,7 +538,7 @@ public class L2NoVlanNetwork implements L2Network {
         chain.then(new ShareFlow() {
             @Override
             public void setup() {
-                final List<HostVO> updatedHosts = new ArrayList<>();
+                final Map<HostVO, Boolean> updatedHosts = new ConcurrentHashMap<>();
                 L2NetworkInventory oldInv = self.toInventory();
                 L2NetworkInventory newInv = self.toInventory();
                 if (msg.getType() != null) {
@@ -556,18 +557,20 @@ public class L2NoVlanNetwork implements L2Network {
                             updateVlanNetwork(oldInv, newInv, host.getUuid(), host.getHypervisorType(), new Completion(whileCompletion) {
                                 @Override
                                 public void success() {
-                                    updatedHosts.add(host);
+                                    logger.debug(String.format("successfully updated l2 network vlan on host[uuid:%s]", host.getUuid()));
+                                    updatedHosts.put(host, true);
                                     whileCompletion.done();
                                 }
 
                                 @Override
                                 public void fail(ErrorCode errorCode) {
                                     logger.error(String.format("update l2 network in host:[%s] failed", host.getUuid()));
+                                    updatedHosts.put(host, false);
                                     whileCompletion.addError(errorCode);
-                                    whileCompletion.allDone();
+                                    whileCompletion.done();
                                 }
                             });
-                        }, 10).run(new WhileDoneCompletion(trigger) {
+                        }, 5).run(new WhileDoneCompletion(trigger) {
                             @Override
                             public void done(ErrorCodeList errorCodeList) {
                                 if (!errorCodeList.getCauses().isEmpty()) {
@@ -581,22 +584,35 @@ public class L2NoVlanNetwork implements L2Network {
 
                     @Override
                     public void rollback(FlowRollback trigger, Map data) {
-                        new While<>(updatedHosts).step((host, whileCompletion) -> {
+                        List<HostVO> successfulHosts = updatedHosts.entrySet().stream()
+                                .filter(Map.Entry::getValue)
+                                .map(Map.Entry::getKey)
+                                .collect(Collectors.toList());
+                        if(successfulHosts.isEmpty()) {
+                            trigger.rollback();
+                            return;
+                        }
+                        logger.debug(String.format("rollback l2 network vlan changes on %d hosts", successfulHosts.size()));
+                        new While<>(successfulHosts).step((host, whileCompletion) -> {
+                            logger.debug(String.format("rolling back l2 network vlan on host[uuid:%s]", host.getUuid()));
                             updateVlanNetwork(newInv, oldInv, host.getUuid(), host.getHypervisorType(), new Completion(whileCompletion) {
                                 @Override
                                 public void success() {
+                                    logger.debug(String.format("successfully rolled back l2 network vlan on host[uuid:%s]", host.getUuid()));
                                     whileCompletion.done();
                                 }
 
                                 @Override
                                 public void fail(ErrorCode errorCode) {
-                                    logger.error(String.format("rollback l2 network in host:[%s] failed", host.getUuid()));
+                                    logger.error(String.format("failed to rollback l2 network vlan on host[uuid:%s], because %s",
+                                            host.getUuid(), errorCode.toString()));
                                     whileCompletion.done();
                                 }
                             });
-                        }, updatedHosts.size()).run(new WhileDoneCompletion(trigger) {
+                        }, 5).run(new WhileDoneCompletion(trigger) {
                             @Override
                             public void done(ErrorCodeList errorCodeList) {
+                                logger.debug("finished rolling back l2 network vlan changes");
                                 trigger.rollback();
                             }
                         });
