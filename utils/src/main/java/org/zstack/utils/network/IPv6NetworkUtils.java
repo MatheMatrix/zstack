@@ -278,7 +278,7 @@ public class IPv6NetworkUtils {
 
     private static final String[] IP6MASK = new String[] {
             "8000", "c000", "e000", "f000",
-            "f800", "fc00", "fe00", "ff800",
+            "f800", "fc00", "fe00", "ff00",
             "ff80", "ffc0", "ffe0", "fff0",
             "fff8", "fffc", "fffe", "ffff"
     };
