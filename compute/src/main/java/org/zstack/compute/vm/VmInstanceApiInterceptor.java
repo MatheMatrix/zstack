@@ -44,6 +44,7 @@ import org.zstack.header.zone.ZoneVO_;
 import org.zstack.network.l3.IpRangeHelper;
 import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.tag.SystemTagUtils;
+import org.zstack.tag.TagManager;
 import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
@@ -80,6 +81,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
     private VmNicManager nicManager;
     @Autowired
     private PluginRegistry pluginRgty;
+    @Autowired
+    private TagManager tagMgr;
 
     private void setServiceId(APIMessage msg) {
         if (msg instanceof VmInstanceMessage) {
@@ -1516,6 +1519,9 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             APIDestroyVmInstanceEvent evt = new APIDestroyVmInstanceEvent(msg.getId());
             bus.publish(evt);
             throw new StopRoutingException();
+        }
+        if (tagMgr.hasSystemTag(msg.getUuid(), VmSystemTags.CREATED_BY_MARKETPLACE.getTagFormat())) {
+            throw new ApiMessageInterceptionException(argerr("the VM [%s] cannot perform this operation because it was created by the marketplace.", msg.getUuid()));
         }
     }
 

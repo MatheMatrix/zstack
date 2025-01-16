@@ -1,10 +1,12 @@
 package org.zstack.test.integration.kvm.vm
 
+import org.zstack.compute.vm.VmSystemTags
+import org.zstack.core.db.Q
+import org.zstack.core.db.SQL
 import org.zstack.header.configuration.InstanceOfferingStateEvent
-import org.zstack.sdk.CreateVmInstanceAction
-import org.zstack.sdk.ImageInventory
-import org.zstack.sdk.InstanceOfferingInventory
-import org.zstack.sdk.L3NetworkInventory
+import org.zstack.header.tag.SystemTagVO
+import org.zstack.header.tag.SystemTagVO_
+import org.zstack.sdk.*
 import org.zstack.test.integration.kvm.Env
 import org.zstack.test.integration.kvm.KvmTest
 import org.zstack.testlib.EnvSpec
@@ -13,7 +15,7 @@ import org.zstack.testlib.SubCase
 /**
  * Created by MaJin on 2017-07-07.
  */
-class CreateVmInstanceOfferingCase extends SubCase{
+class CreateVmInstanceOfferingCase extends SubCase {
     EnvSpec env
     InstanceOfferingInventory userIns, vrIns
     ImageInventory img
@@ -36,6 +38,7 @@ class CreateVmInstanceOfferingCase extends SubCase{
             vrIns = env.inventoryByName("vr") as InstanceOfferingInventory
             img = env.inventoryByName("image1") as ImageInventory
             l3 = env.inventoryByName("l3") as L3NetworkInventory
+            testDestroyMarketplaceVm()
             testCreateVmUseDisabledInstanceOffering()
             testCreateVmUseVRInstanceOffering()
         }
@@ -46,7 +49,35 @@ class CreateVmInstanceOfferingCase extends SubCase{
         env.delete()
     }
 
-    void testCreateVmUseDisabledInstanceOffering(){
+    void testDestroyMarketplaceVm() {
+        VmInstanceInventory markVm = createVmInstance {
+            name = "marketplace"
+            l3NetworkUuids = [l3.uuid]
+            instanceOfferingUuid = userIns.uuid
+            imageUuid = img.uuid
+            systemTags = [VmSystemTags.CREATED_BY_MARKETPLACE.getTagFormat()]
+        }
+
+        assert Q.New(SystemTagVO.class).eq(SystemTagVO_.tag, VmSystemTags.CREATED_BY_MARKETPLACE.getTagFormat()).eq(SystemTagVO_.resourceUuid, markVm.uuid).count() == 1
+        expect(AssertionError.class) {
+            destroyVmInstance {
+                uuid = markVm.uuid
+            }
+        }
+
+        SQL.New(SystemTagVO.class).eq(SystemTagVO_.tag, VmSystemTags.CREATED_BY_MARKETPLACE.getTagFormat()).eq(SystemTagVO_.resourceUuid, markVm.uuid).delete()
+
+        destroyVmInstance {
+            uuid = markVm.uuid
+        }
+
+        expungeVmInstance {
+            uuid = markVm.uuid
+        }
+    }
+
+
+    void testCreateVmUseDisabledInstanceOffering() {
         changeInstanceOfferingState {
             uuid = userIns.uuid
             stateEvent = InstanceOfferingStateEvent.disable
