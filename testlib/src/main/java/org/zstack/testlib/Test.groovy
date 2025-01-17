@@ -19,6 +19,7 @@ import org.zstack.header.message.AbstractBeforeSendMessageInterceptor
 import org.zstack.header.message.Event
 import org.zstack.header.message.Message
 import org.zstack.sdk.ErrorCode
+import org.zstack.sdk.ErrorCodeList
 import org.zstack.sdk.SessionInventory
 import org.zstack.sdk.ZQLQueryReturn
 import org.zstack.sdk.ZSClient
@@ -985,7 +986,7 @@ mysqldump -u root zstack > ${failureLogDir.absolutePath}/dbdump.sql
 
     static void expectApiFailure(
             Closure c,
-            @DelegatesTo(strategy = Closure.OWNER_FIRST, value = ErrorCode.class) Closure errorCodeChecker) {
+            @DelegatesTo(strategy = Closure.OWNER_FIRST, value = ErrorCodeList.class) Closure errorCodeChecker) {
         AssertionError error = null
 
         try {
@@ -1005,11 +1006,11 @@ mysqldump -u root zstack > ${failureLogDir.absolutePath}/dbdump.sql
             throw new Exception("unexpected API failure", error)
         }
 
-        ErrorCode code
+        ErrorCodeList code
         try {
             int startIndex = "API failure: ".length()
             int endIndex = message.indexOf(". Expression: ")
-            code = JSONObjectUtil.toObject(message.substring(startIndex, endIndex), ErrorCode)
+            code = JSONObjectUtil.toObject(message.substring(startIndex, endIndex), ErrorCodeList)
         } catch (JsonSyntaxException | IndexOutOfBoundsException ignored) {
             throw new Exception("unexpected API failure", error)
         }
@@ -1029,10 +1030,10 @@ mysqldump -u root zstack > ${failureLogDir.absolutePath}/dbdump.sql
      *
      * The function would extract original error code from SDKErrorCode.
      */
-    static ErrorCode extractFromSDKError(ErrorCode sdkError) {
+    static ErrorCodeList extractFromSDKError(ErrorCode sdkError) {
         assert sdkError.code == "sdk.1000"
         def errorCodeJson = JsonParser.parseString(sdkError.details).getAsJsonObject().get("error")
-        return JSONObjectUtil.rehashObject(errorCodeJson, ErrorCode.class)
+        return JSONObjectUtil.rehashObject(errorCodeJson, ErrorCodeList.class)
     }
 
     protected void configProperty() {
