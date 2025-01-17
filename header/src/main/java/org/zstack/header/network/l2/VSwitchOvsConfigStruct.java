@@ -3,6 +3,8 @@ package org.zstack.header.network.l2;
 import java.util.Map;
 
 public class VSwitchOvsConfigStruct {
+    private boolean hostStatusCheck = true;
+
     private String ovnControllerIp;
     private String vSwitchType;
     private String brExName;
@@ -83,5 +85,13 @@ public class VSwitchOvsConfigStruct {
 
     public void setNicNameDriverMap(Map<String, String> nicNameDriverMap) {
         this.nicNameDriverMap = nicNameDriverMap;
+    }
+
+    public boolean isHostStatusCheck() {
+        return hostStatusCheck;
+    }
+
+    public void setHostStatusCheck(boolean hostStatusCheck) {
+        this.hostStatusCheck = hostStatusCheck;
     }
 }
