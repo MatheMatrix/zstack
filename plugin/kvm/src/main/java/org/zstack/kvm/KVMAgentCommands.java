@@ -481,7 +481,6 @@ public class KVMAgentCommands {
         private List<String> ipAddresses;
         private List<String> libvirtCapabilities;
         private VirtualizerInfoTO virtualizerInfo;
-
         private String iscsiInitiatorName;
         private String nqn;
 
@@ -1447,18 +1446,23 @@ public class KVMAgentCommands {
         }
     }
 
-    public static class IsoTO {
-        private String path;
-        private String imageUuid;
-        private int deviceId;
+    public static class IsoTO extends BaseVirtualDeviceTO {
+        protected String path;
+        protected String imageUuid;
+        protected String primaryStorageUuid;
+        protected String protocol;
+        protected int deviceId;
 
         public IsoTO() {
         }
 
         public IsoTO(IsoTO other) {
+            this.resourceUuid = other.resourceUuid;
             this.path = other.path;
             this.imageUuid = other.imageUuid;
             this.deviceId = other.deviceId;
+            this.primaryStorageUuid = other.primaryStorageUuid;
+            this.protocol = other.protocol;
         }
 
         public String getImageUuid() {
@@ -1484,12 +1488,25 @@ public class KVMAgentCommands {
         public void setDeviceId(int deviceId) {
             this.deviceId = deviceId;
         }
+
+        public void setPrimaryStorageUuid(String primaryStorageUuid) {
+            this.primaryStorageUuid = primaryStorageUuid;
+        }
+
+        public String getPrimaryStorageUuid() {
+            return primaryStorageUuid;
+        }
+
+        public void setProtocol(String protocol) {
+            this.protocol = protocol;
+        }
+
+        public String getProtocol() {
+            return protocol;
+        }
     }
 
-    public static class CdRomTO extends BaseVirtualDeviceTO {
-        private String path;
-        private String imageUuid;
-        private int deviceId;
+    public static class CdRomTO extends IsoTO {
         // unmounted iso
         private boolean isEmpty;
         private int bootOrder;
@@ -1503,30 +1520,6 @@ public class KVMAgentCommands {
             this.imageUuid = other.imageUuid;
             this.deviceId = other.deviceId;
             this.bootOrder = other.bootOrder;
-        }
-
-        public String getImageUuid() {
-            return imageUuid;
-        }
-
-        public void setImageUuid(String imageUuid) {
-            this.imageUuid = imageUuid;
-        }
-
-        public String getPath() {
-            return path;
-        }
-
-        public void setPath(String path) {
-            this.path = path;
-        }
-
-        public int getDeviceId() {
-            return deviceId;
-        }
-
-        public void setDeviceId(int deviceId) {
-            this.deviceId = deviceId;
         }
 
         public boolean isEmpty() {
@@ -2031,7 +2024,6 @@ public class KVMAgentCommands {
         private List<CdRomTO> cdRoms = new ArrayList<>();
         private List<VolumeTO> dataVolumes;
         private List<VolumeTO> cacheVolumes;
-        private List<VolumeTO> Volumes;
         private List<NicTO> nics;
         private long timeout;
         private Map<String, Object> addons;
@@ -2434,16 +2426,6 @@ public class KVMAgentCommands {
 
         public void setInstanceOfferingOnlineChange(boolean instanceOfferingOnlineChange) {
             this.instanceOfferingOnlineChange = instanceOfferingOnlineChange;
-        }
-
-        @Deprecated
-        public List<IsoTO> getBootIso() {
-            return bootIso;
-        }
-
-        @Deprecated
-        public void setBootIso(List<IsoTO> bootIso) {
-            this.bootIso = bootIso;
         }
 
         public List<CdRomTO> getCdRoms() {
@@ -3317,6 +3299,30 @@ public class KVMAgentCommands {
         }
     }
 
+    public static class VolumeSyncCmd extends AgentCommand {
+        private List<String> storagePaths;
+
+        public void setStoragePaths(List<String> storagePaths) {
+            this.storagePaths = storagePaths;
+        }
+
+        public List<String> getStoragePaths() {
+            return storagePaths;
+        }
+    }
+
+    public static class VolumeSyncRsp extends AgentResponse {
+        private Map<String, List<String>> inactiveVolumePaths;
+
+        public void setInactiveVolumePaths(Map<String, List<String>> inactiveVolumePaths) {
+            this.inactiveVolumePaths = inactiveVolumePaths;
+        }
+
+        public Map<String, List<String>> getInactiveVolumePaths() {
+            return inactiveVolumePaths;
+        }
+    }
+
     public static class RefreshAllRulesOnHostCmd extends AgentCommand {
         private List<VmNicSecurityTO> vmNicTOs;
         private Map<String, List<RuleTO>> ruleTOs;
@@ -3951,6 +3957,7 @@ public class KVMAgentCommands {
     }
 
     public static class LoginIscsiTargetCmd extends AgentCommand implements Serializable {
+        private String url;
         private String hostname;
         private int port;
         private String target;
@@ -3996,6 +4003,14 @@ public class KVMAgentCommands {
 
         public void setTarget(String target) {
             this.target = target;
+        }
+
+        public String getUrl() {
+            return url;
+        }
+
+        public void setUrl(String url) {
+            this.url = url;
         }
     }
 

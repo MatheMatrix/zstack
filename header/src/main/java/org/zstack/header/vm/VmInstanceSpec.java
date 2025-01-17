@@ -173,6 +173,7 @@ public class VmInstanceSpec implements Serializable {
         private String imageUuid;
         private String primaryStorageUuid;
         private String backupStorageUuid;
+        private String protocol;
         private int deviceId;
 
         public String getBackupStorageUuid() {
@@ -207,6 +208,14 @@ public class VmInstanceSpec implements Serializable {
             this.installPath = installPath;
         }
 
+        public void setProtocol(String protocol) {
+            this.protocol = protocol;
+        }
+
+        public String getProtocol() {
+            return protocol;
+        }
+
         public int getDeviceId() {
             return deviceId;
         }
@@ -223,6 +232,7 @@ public class VmInstanceSpec implements Serializable {
         private String imageUuid;
         private String primaryStorageUuid;
         private String backupStorageUuid;
+        private String protocol;
 
         public boolean isAttachedIso() {
             return imageUuid != null;
@@ -274,6 +284,14 @@ public class VmInstanceSpec implements Serializable {
 
         public void setDeviceId(int deviceId) {
             this.deviceId = deviceId;
+        }
+
+        public void setProtocol(String protocol) {
+            this.protocol = protocol;
+        }
+
+        public String getProtocol() {
+            return protocol;
         }
     }
 
