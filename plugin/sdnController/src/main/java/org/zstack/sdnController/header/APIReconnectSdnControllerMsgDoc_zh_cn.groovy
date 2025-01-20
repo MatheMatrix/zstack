@@ -1,7 +1,9 @@
 package org.zstack.sdnController.header
 
+import org.zstack.sdnController.header.APIReconnectSdnControllerEvent
+
 doc {
-    title "SyncSdnController"
+    title "ReconnectSdnController"
 
     category "SdnController"
 
@@ -21,7 +23,7 @@ doc {
 
 				column {
 					name "sdnControllerUuid"
-					enclosedIn "syncSdnController"
+					enclosedIn "reconnectSdnController"
 					desc ""
 					location "url"
 					type "String"

@@ -24,10 +24,4 @@ doc {
 		type "SdnControllerStatus"
 		since "5.3.0"
 	}
-	field {
-		name "Synchronizing"
-		desc ""
-		type "SdnControllerStatus"
-		since "5.3.0"
-	}
 }

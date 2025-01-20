@@ -20,11 +20,15 @@
     </message>
 
     <message>
+        <name>org.zstack.sdnController.header.APISdnControllerChangeHostMsg</name>
+    </message>
+
+    <message>
         <name>org.zstack.sdnController.header.APISdnControllerRemoveHostMsg</name>
     </message>
 
     <message>
-        <name>org.zstack.sdnController.header.APISyncSdnControllerMsg</name>
+        <name>org.zstack.sdnController.header.APIReconnectSdnControllerMsg</name>
     </message>
 
     <message>

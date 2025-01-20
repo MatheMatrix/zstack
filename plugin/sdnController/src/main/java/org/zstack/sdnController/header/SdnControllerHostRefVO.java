@@ -9,6 +9,7 @@ import org.zstack.header.vo.SoftDeletionCascade;
 import org.zstack.header.vo.SoftDeletionCascades;
 
 import javax.persistence.*;
+import java.util.HashMap;
 
 /**
  * Created by shixin.ruan on 09/30/2019.
@@ -48,10 +49,19 @@ public class SdnControllerHostRefVO {
     private String vtepIp;
 
     @Column
+    private String netmask;
+
+    @Column
     private String nicPciAddresses;
 
     @Column
     private String nicDrivers;
+
+    @Column
+    private String bondMode;
+
+    @Column
+    private String lacpMode;
 
 
     public SdnControllerHostRefVO() {
@@ -111,5 +121,44 @@ public class SdnControllerHostRefVO {
 
     public void setNicDrivers(String nicDrivers) {
         this.nicDrivers = nicDrivers;
+    }
+
+    public String getNetmask() {
+        return netmask;
+    }
+
+    public void setNetmask(String netmask) {
+        this.netmask = netmask;
+    }
+
+    public String getBondMode() {
+        return bondMode;
+    }
+
+    public void setBondMode(String bondMode) {
+        this.bondMode = bondMode;
+    }
+
+    public String getLacpMode() {
+        return lacpMode;
+    }
+
+    public void setLacpMode(String lacpMode) {
+        this.lacpMode = lacpMode;
+    }
+
+    public static SdnControllerHostRefVO fromOther(SdnControllerHostRefVO vo) {
+        SdnControllerHostRefVO newRef = new SdnControllerHostRefVO();
+        newRef.sdnControllerUuid = vo.getSdnControllerUuid();
+        newRef.hostUuid = vo.getHostUuid();
+        newRef.vSwitchType = vo.getvSwitchType();
+        newRef.vtepIp = vo.getVtepIp();
+        newRef.netmask = vo.getNetmask();
+        newRef.bondMode = vo.getBondMode();
+        newRef.nicPciAddresses = vo.nicPciAddresses;
+        newRef.nicDrivers = vo.getNicDrivers();
+        newRef.lacpMode = vo.getLacpMode();
+
+        return newRef;
     }
 }
