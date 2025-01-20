@@ -348,6 +348,7 @@ public class KVMAgentCommands {
 
     public static class PingCmd extends AgentCommand {
         public String hostUuid;
+        public Map<String, Object> kvmagentConfig;
         public long kvmagentPhysicalMemoryUsageAlarmThreshold;
         public long kvmagentPhysicalMemoryUsageHardLimit;
     }
@@ -4530,6 +4531,36 @@ public class KVMAgentCommands {
 
         public void setAdditionalProperties(Map<String, Object> additionalProperties) {
             this.additionalProperties = additionalProperties;
+        }
+    }
+
+    public static class HostKvmagentStatusCmd {
+        private String status;
+        private String hostUuid;
+        private long memoryUsage;
+
+        public String getHostUuid() {
+            return hostUuid;
+        }
+
+        public void setHostUuid(String hostUuid) {
+            this.hostUuid = hostUuid;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public long getMemoryUsage() {
+            return memoryUsage;
+        }
+
+        public void setMemoryUsage(long memoryUsage) {
+            this.memoryUsage = memoryUsage;
         }
     }
 

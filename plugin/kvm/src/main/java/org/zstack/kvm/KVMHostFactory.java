@@ -58,6 +58,7 @@ import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.IpRangeSet;
 import org.zstack.utils.SizeUtils;
 import org.zstack.utils.Utils;
+import org.zstack.utils.data.SizeUnit;
 import org.zstack.utils.form.Form;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.function.ValidateFunction;
@@ -82,7 +83,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -141,6 +141,7 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
     @Autowired
     private GlobalConfigFacade gcf;
     private Future<Void> checkSocketChannelTimeoutThread;
+    public static int skipHostPingTimeWhenKvmagentBusy = 300;
 
     @Override
     public HostVO createHost(HostVO vo, AddHostMessage msg) {
@@ -413,6 +414,18 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
                 }
             }
         });
+        KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_ALARM_THRESHOLD.installUpdateExtension(new GlobalConfigUpdateExtensionPoint() {
+            @Override
+            public void updateGlobalConfig(GlobalConfig oldConfig, GlobalConfig newConfig) {
+                KVMHost.kvmagentConfig.put(newConfig.getName(), Long.valueOf(newConfig.value()));
+            }
+        });
+        KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_ALARM_THRESHOLD.installUpdateExtension(new GlobalConfigUpdateExtensionPoint() {
+            @Override
+            public void updateGlobalConfig(GlobalConfig oldConfig, GlobalConfig newConfig) {
+                KVMHost.kvmagentConfig.put(newConfig.getName(), Long.valueOf(newConfig.value()));
+            }
+        });
         ResourceConfig resourceConfig = rcf.getResourceConfig(KVMGlobalConfig.VM_CPU_HYPERVISOR_FEATURE.getIdentity());
         resourceConfig.installValidatorExtension((resourceUuid, oldValue, newValue) -> {
             if (Boolean.TRUE.toString().equals(newValue)) {
@@ -536,6 +549,22 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             return null;
         });
 
+        restf.registerSyncHttpCallHandler(KVMConstant.HOST_KVMAGENT_STATUS_PATH, KVMAgentCommands.HostKvmagentStatusCmd.class, cmd -> {
+            if ("busy".equals(cmd.getStatus())) {
+                HostCanonicalEvents.HostPingSkipData data = new HostCanonicalEvents.HostPingSkipData();
+                data.setHostUuid(cmd.getHostUuid());
+                // this will skip host ping sometime if kvmagent busy
+                data.setSkipTimeInSec(skipHostPingTimeWhenKvmagentBusy * (int)(cmd.getMemoryUsage() / SizeUnit.GIGABYTE.toByte(4) + 1));
+                evf.fire(HostCanonicalEvents.HOST_PING_SKIP, data);
+            } else if ("available".equals(cmd.getStatus())) {
+                HostCanonicalEvents.HostPingSkipData data = new HostCanonicalEvents.HostPingSkipData();
+                data.setHostUuid(cmd.getHostUuid());
+                evf.fire(HostCanonicalEvents.HOST_PING_CANCEL_SKIP, data);
+            } else {
+                logger.debug("unknown kvmagent status: " + cmd.getStatus());
+            }
+            return null;
+        });
 
         KVMSystemTags.CHECK_CLUSTER_CPU_MODEL.installValidator(((resourceUuid, resourceType, systemTag) -> {
             String check = KVMSystemTags.CHECK_CLUSTER_CPU_MODEL.getTokenByTag(systemTag, KVMSystemTags.CHECK_CLUSTER_CPU_MODEL_TOKEN);

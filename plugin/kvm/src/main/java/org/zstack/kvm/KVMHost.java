@@ -105,6 +105,7 @@ import org.zstack.utils.tester.ZTester;
 import javax.persistence.TypedQuery;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -224,6 +225,7 @@ public class KVMHost extends HostBase implements Host {
     private String blockCommitVolumePath;
     private String agentPackageName = KVMGlobalProperty.AGENT_PACKAGE_NAME;
     private String hostTakeOverFlagPath = KVMGlobalProperty.TAKEVOERFLAGPATH;
+    public static final Map<String, Object> kvmagentConfig = new ConcurrentHashMap<>();
 
     public KVMHost(KVMHostVO self, KVMHostContext context) {
         super(self);
@@ -848,6 +850,50 @@ public class KVMHost extends HostBase implements Host {
                 } else {
                     trigger.next();
                 }
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "wait for kvmagent to be ready";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                int retryCount = 60;
+                While.makeRetryWhile(retryCount).each((currentStep, compl) -> {
+                    PingCmd cmd = new PingCmd();
+                    cmd.hostUuid = self.getUuid();
+                    restf.asyncJsonPost(pingPath, cmd, new JsonAsyncRESTCallback<PingResponse>(compl) {
+                        @Override
+                        public void fail(ErrorCode err) {
+                            try {
+                                if (currentStep < retryCount) {
+                                    TimeUnit.SECONDS.sleep(1);
+                                }
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            } finally {
+                                compl.addError(err);
+                                compl.done();
+                            }
+                        }
+
+                        @Override
+                        public void success(PingResponse ret) {
+                            compl.allDone();
+                        }
+
+                        @Override
+                        public Class<PingResponse> getReturnClass() {
+                            return PingResponse.class;
+                        }
+                    }, TimeUnit.SECONDS, HostGlobalConfig.PING_HOST_TIMEOUT.value(Long.class));
+                }).run(new WhileDoneCompletion(trigger) {
+                    @Override
+                    public void done(ErrorCodeList errorCodeList) {
+                        if (errorCodeList.getCauses().size() == retryCount) {
+                            logger.debug("waiting for kvmagent to start timeout: " + errorCodeList.getCauses().get(0).getDetails());
+                        }
+                        trigger.next();
+                    }
+                });
             }
         }).then(new NoRollbackFlow() {
             String __name__ = String.format("reconnect host %s after restart kvmagent", self.getUuid());
@@ -4813,6 +4859,7 @@ public class KVMHost extends HostBase implements Host {
                     public void run(FlowTrigger trigger, Map data) {
                         PingCmd cmd = new PingCmd();
                         cmd.hostUuid = self.getUuid();
+                        cmd.kvmagentConfig = kvmagentConfig;
                         cmd.kvmagentPhysicalMemoryUsageAlarmThreshold = gcf.getConfigValue(KVMGlobalConfig.CATEGORY, KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_ALARM_THRESHOLD.getName(), Long.class);
                         cmd.kvmagentPhysicalMemoryUsageHardLimit = gcf.getConfigValue(KVMGlobalConfig.CATEGORY, KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_HARD_LIMIT.getName(), Long.class);
                         restf.asyncJsonPost(pingPath, cmd, new JsonAsyncRESTCallback<PingResponse>(trigger) {
