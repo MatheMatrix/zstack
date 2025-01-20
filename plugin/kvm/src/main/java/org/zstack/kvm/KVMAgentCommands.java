@@ -4730,9 +4730,15 @@ public class KVMAgentCommands {
         @GrayVersion(value = "5.4.0")
         public String ovnEncapIP;
         @GrayVersion(value = "5.4.0")
+        public String ovnEncapNetmask;
+        @GrayVersion(value = "5.4.0")
         public String ovnEncapType;
         @GrayVersion(value = "5.4.0")
         public Integer hugePageNumber;
+        @GrayVersion(value = "5.4.0")
+        public String bondingMode;
+        @GrayVersion(value = "5.4.0")
+        public String lacpMode;
     }
 
     public static class StartOvsServiceRsp extends AgentResponse {

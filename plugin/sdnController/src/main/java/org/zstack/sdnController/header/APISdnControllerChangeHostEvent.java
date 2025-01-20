@@ -3,30 +3,31 @@ package org.zstack.sdnController.header;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.rest.RestResponse;
 
-/**
- * Created by shixin.ruan on 09/19/2019.
- */
 @RestResponse(allTo = "inventory")
-public class APISyncSdnControllerEvent extends APIEvent {
+public class APISdnControllerChangeHostEvent extends APIEvent {
+    /**
+     * @desc see :ref:`SdnControllerInventory`
+     */
     private SdnControllerInventory inventory;
+
+    public APISdnControllerChangeHostEvent(String apiId) {
+        super(apiId);
+    }
 
     public SdnControllerInventory getInventory() {
         return inventory;
+    }
+
+    public APISdnControllerChangeHostEvent() {
+        super(null);
     }
 
     public void setInventory(SdnControllerInventory inventory) {
         this.inventory = inventory;
     }
 
-    public APISyncSdnControllerEvent() {
-    }
-
-    public APISyncSdnControllerEvent(String apiId) {
-        super(apiId);
-    }
- 
-    public static APISyncSdnControllerEvent __example__() {
-        APISyncSdnControllerEvent event = new APISyncSdnControllerEvent();
+    public static APISdnControllerChangeHostEvent __example__() {
+        APISdnControllerChangeHostEvent event = new APISdnControllerChangeHostEvent();
         SdnControllerInventory inventory = new SdnControllerInventory();
 
         inventory.setUuid(uuid());
@@ -40,5 +41,4 @@ public class APISyncSdnControllerEvent extends APIEvent {
         event.setInventory(inventory);
         return event;
     }
-
 }

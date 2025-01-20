@@ -11,9 +11,12 @@ public class VSwitchOvsConfigStruct {
     private Map<String, String> nicNamePciMap;
     private Map<String, String> nicNameDriverMap;
     private String ovnEncapIP;
+    private String ovnEncapNetmask;
     private String ovnRemoteConnection;
     private String ovnEncapType;
     private int hugePageNumber;
+    private String bondMode;
+    private String lacpMode;
 
     public String getvSwitchType() {
         return vSwitchType;
@@ -93,5 +96,29 @@ public class VSwitchOvsConfigStruct {
 
     public void setHostStatusCheck(boolean hostStatusCheck) {
         this.hostStatusCheck = hostStatusCheck;
+    }
+
+    public String getBondMode() {
+        return bondMode;
+    }
+
+    public void setBondMode(String bondMode) {
+        this.bondMode = bondMode;
+    }
+
+    public String getLacpMode() {
+        return lacpMode;
+    }
+
+    public void setLacpMode(String lacpMode) {
+        this.lacpMode = lacpMode;
+    }
+
+    public String getOvnEncapNetmask() {
+        return ovnEncapNetmask;
+    }
+
+    public void setOvnEncapNetmask(String ovnEncapNetmask) {
+        this.ovnEncapNetmask = ovnEncapNetmask;
     }
 }

@@ -4,7 +4,6 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
-import org.zstack.header.network.l2.L2NetworkMessage;
 import org.zstack.header.rest.RestRequest;
 
 /**
@@ -13,11 +12,11 @@ import org.zstack.header.rest.RestRequest;
 @RestRequest(
         path = "/sdn-controllers/{sdnControllerUuid}/actions",
         method = HttpMethod.PUT,
-        responseClass = APISyncSdnControllerEvent.class,
+        responseClass = APIReconnectSdnControllerEvent.class,
         isAction = true
 )
 @Action(category = SdnControllerConstant.ACTION_CATEGORY)
-public class APISyncSdnControllerMsg extends APIMessage implements SdnControllerMessage {
+public class APIReconnectSdnControllerMsg extends APIMessage implements SdnControllerMessage {
     @APIParam(resourceType = SdnControllerVO.class, checkAccount = true, operationTarget = true)
     private String sdnControllerUuid;
 
@@ -30,8 +29,8 @@ public class APISyncSdnControllerMsg extends APIMessage implements SdnController
         return sdnControllerUuid;
     }
 
-    public static APISyncSdnControllerMsg __example__() {
-        APISyncSdnControllerMsg msg = new APISyncSdnControllerMsg();
+    public static APIReconnectSdnControllerMsg __example__() {
+        APIReconnectSdnControllerMsg msg = new APIReconnectSdnControllerMsg();
         msg.setSdnControllerUuid(uuid());
 
         return msg;

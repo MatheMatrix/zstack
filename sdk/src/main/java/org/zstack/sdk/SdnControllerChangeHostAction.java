@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class SyncSdnControllerAction extends AbstractAction {
+public class SdnControllerChangeHostAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class SyncSdnControllerAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.SyncSdnControllerResult value;
+        public org.zstack.sdk.SdnControllerChangeHostResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -27,6 +27,27 @@ public class SyncSdnControllerAction extends AbstractAction {
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String sdnControllerUuid;
+
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String hostUuid;
+
+    @Param(required = false, validValues = {"Ovn-netdev","Ovn-system"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String vSwitchType = "Ovn-netdev";
+
+    @Param(required = false, nonempty = true, nullElements = false, emptyString = true, noTrim = false)
+    public java.util.List nicNames;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String vtepIp;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String netmask;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String bondMode;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String lacpMode;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -60,8 +81,8 @@ public class SyncSdnControllerAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.SyncSdnControllerResult value = res.getResult(org.zstack.sdk.SyncSdnControllerResult.class);
-        ret.value = value == null ? new org.zstack.sdk.SyncSdnControllerResult() : value; 
+        org.zstack.sdk.SdnControllerChangeHostResult value = res.getResult(org.zstack.sdk.SdnControllerChangeHostResult.class);
+        ret.value = value == null ? new org.zstack.sdk.SdnControllerChangeHostResult() : value; 
 
         return ret;
     }
@@ -91,10 +112,10 @@ public class SyncSdnControllerAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "PUT";
-        info.path = "/sdn-controllers/{sdnControllerUuid}/actions";
+        info.path = "/sdn-controllers/{sdnControllerUuid}/hosts/{hostUuid}";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "syncSdnController";
+        info.parameterName = "sdnControllerChangeHost";
         return info;
     }
 

@@ -26,6 +26,9 @@ public class SdnControllerHostRefInventory implements Serializable {
     private String vtepIp;
     private String nicPciAddresses;
     private String nicDrivers;
+    private String netmask;
+    private String bondMode;
+    private String lacpMode;
 
     public static SdnControllerHostRefInventory valueOf(SdnControllerHostRefVO vo) {
         SdnControllerHostRefInventory inv = new SdnControllerHostRefInventory();
@@ -33,7 +36,11 @@ public class SdnControllerHostRefInventory implements Serializable {
         inv.setHostUuid(vo.getHostUuid());
         inv.setvSwitchType(vo.getvSwitchType());
         inv.setVtepIp(vo.getVtepIp());
+        inv.setNetmask(vo.getNetmask());
         inv.setNicPciAddresses(vo.getNicPciAddresses());
+        inv.setNicDrivers(vo.getNicDrivers());
+        inv.setBondMode(vo.getBondMode());
+        inv.setLacpMode(vo.getLacpMode());
         return inv;
     }
 
@@ -83,5 +90,37 @@ public class SdnControllerHostRefInventory implements Serializable {
 
     public void setNicPciAddresses(String nicPciAddresses) {
         this.nicPciAddresses = nicPciAddresses;
+    }
+
+    public String getNicDrivers() {
+        return nicDrivers;
+    }
+
+    public void setNicDrivers(String nicDrivers) {
+        this.nicDrivers = nicDrivers;
+    }
+
+    public String getNetmask() {
+        return netmask;
+    }
+
+    public void setNetmask(String netmask) {
+        this.netmask = netmask;
+    }
+
+    public String getBondMode() {
+        return bondMode;
+    }
+
+    public void setBondMode(String bondMode) {
+        this.bondMode = bondMode;
+    }
+
+    public String getLacpMode() {
+        return lacpMode;
+    }
+
+    public void setLacpMode(String lacpMode) {
+        this.lacpMode = lacpMode;
     }
 }

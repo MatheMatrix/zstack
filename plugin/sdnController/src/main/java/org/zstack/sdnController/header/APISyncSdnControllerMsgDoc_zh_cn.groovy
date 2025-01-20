@@ -1,7 +1,5 @@
 package org.zstack.sdnController.header
 
-import org.zstack.sdnController.header.APISyncSdnControllerEvent
-
 doc {
     title "SyncSdnController"
 
@@ -15,7 +13,7 @@ doc {
 
 			header (Authorization: 'OAuth the-session-uuid')
 
-            clz APISyncSdnControllerMsg.class
+            clz APIReconnectSdnControllerMsg.class
 
             desc """"""
             
@@ -52,7 +50,7 @@ doc {
         }
 
         response {
-            clz APISyncSdnControllerEvent.class
+            clz APIReconnectSdnControllerEvent.class
         }
     }
 }
