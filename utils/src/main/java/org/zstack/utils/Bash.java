@@ -5,6 +5,8 @@ import org.zstack.utils.logging.CLogger;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class Bash {
     private static final CLogger logger = Utils.getLogger(Bash.class);
@@ -47,6 +49,36 @@ public abstract class Bash {
 
             return lastReturnCode;
         }
+    }
+
+    public static class Script {
+        public boolean escape = true;
+        public String cmd;
+
+        @Override
+        public String toString() {
+            if (cmd == null) {
+                return "";
+            }
+            return escape ? escapeCmd(cmd) : cmd;
+        }
+
+        public static String escapeCmd(String cmd) {
+            if (cmd.contains("\\")) {
+                cmd = cmd.replace("\\", "\\\\");
+            }
+            if (cmd.contains(" ")) {
+                cmd = cmd.replace(" ", "\\ ");
+            }
+            return cmd;
+        }
+    }
+
+    protected Script noEscape(String cmd) {
+        Script s = new Script();
+        s.escape = false;
+        s.cmd = cmd;
+        return s;
     }
 
     /**
@@ -119,6 +151,22 @@ public abstract class Bash {
         }
 
         return lastReturnCode;
+    }
+
+    /**
+     * ex: sudoRun("tar", "-xf", path)      => run("tar -xf %s", path)     => tar -xf $your_path
+     * ex: sudoRun("cat", "error code.txt") => run("cat error\\ code.txt") => cat error\ code.txt
+     */
+    protected int sudoRun(Object... cmdScripts) {
+        List<String> tos = new ArrayList<>(cmdScripts.length);
+        for (Object cmd : cmdScripts) {
+            if (cmd instanceof Script) {
+                tos.add(cmd.toString());
+            } else {
+                tos.add(Script.escapeCmd(cmd.toString()));
+            }
+        }
+        return run(String.join(" ", tos), true, new Object[0]);
     }
 
     protected void errorOnFailure() {
