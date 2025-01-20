@@ -19,6 +19,7 @@ import org.zstack.utils.logging.CLogger;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -61,6 +62,8 @@ public class LogSafeGson {
 
         private static final Pattern uriPattern = Pattern.compile(":[^:]*@");
 
+        private static final Pattern otherPattern = Pattern.compile("http_passwd");
+
         FieldNoLogging(Field field) {
             this.field = field;
         }
@@ -100,7 +103,21 @@ public class LogSafeGson {
             } else if (annotation.type().tag()) {
                 return tagInfoHider.call(raw);
             } else {
-                return Utils.getLogMaskWords().getOrDefault(raw, uriPattern.matcher(raw).replaceFirst(":*****@"));
+                String maskedValue = Utils.getLogMaskWords().get(raw);
+                if (maskedValue != null) {
+                    return maskedValue;
+                }
+
+                Matcher uriMatcher = uriPattern.matcher(raw);
+                if (uriMatcher.find()) {
+                    return uriMatcher.replaceFirst(":*****@");
+                }
+
+                Matcher otherMatcher = otherPattern.matcher(raw);
+                if (otherMatcher.find()) {
+                    return otherMatcher.replaceFirst("");
+                }
+                return raw;
             }
         }
     }
