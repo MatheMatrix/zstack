@@ -226,3 +226,5 @@ CREATE VIEW `zstack`.`VolumeVO` AS SELECT uuid, name, description, primaryStorag
 
 ALTER TABLE VmCdRomVO ADD COLUMN protocol VARCHAR(32) DEFAULT NULL;
 
+CALL INSERT_COLUMN('NvmeLunHostRefVO', 'locate', 'varchar(16)', 0, 'Unknown', 'path');
+CALL INSERT_COLUMN('NvmeLunHostRefVO', 'transport', 'varchar(32)', 0, '', 'locate');
