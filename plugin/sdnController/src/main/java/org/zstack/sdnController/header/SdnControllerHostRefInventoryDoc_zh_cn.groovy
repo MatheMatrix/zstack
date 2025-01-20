@@ -19,7 +19,7 @@ doc {
 		since "5.3.0"
 	}
 	field {
-		name "vswitchType"
+		name "vSwitchType"
 		desc ""
 		type "String"
 		since "5.3.0"
@@ -31,7 +31,31 @@ doc {
 		since "5.3.0"
 	}
 	field {
-		name "physicalNics"
+		name "nicPciAddresses"
+		desc ""
+		type "String"
+		since "5.3.0"
+	}
+	field {
+		name "nicDrivers"
+		desc ""
+		type "String"
+		since "5.3.0"
+	}
+	field {
+		name "netmask"
+		desc ""
+		type "String"
+		since "5.3.0"
+	}
+	field {
+		name "bondMode"
+		desc ""
+		type "String"
+		since "5.3.0"
+	}
+	field {
+		name "lacpMode"
 		desc ""
 		type "String"
 		since "5.3.0"

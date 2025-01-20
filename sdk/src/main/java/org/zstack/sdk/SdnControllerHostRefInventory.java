@@ -52,4 +52,28 @@ public class SdnControllerHostRefInventory  {
         return this.nicDrivers;
     }
 
+    public java.lang.String netmask;
+    public void setNetmask(java.lang.String netmask) {
+        this.netmask = netmask;
+    }
+    public java.lang.String getNetmask() {
+        return this.netmask;
+    }
+
+    public java.lang.String bondMode;
+    public void setBondMode(java.lang.String bondMode) {
+        this.bondMode = bondMode;
+    }
+    public java.lang.String getBondMode() {
+        return this.bondMode;
+    }
+
+    public java.lang.String lacpMode;
+    public void setLacpMode(java.lang.String lacpMode) {
+        this.lacpMode = lacpMode;
+    }
+    public java.lang.String getLacpMode() {
+        return this.lacpMode;
+    }
+
 }

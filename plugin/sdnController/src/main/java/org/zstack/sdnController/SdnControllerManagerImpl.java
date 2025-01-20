@@ -1,5 +1,8 @@
 package org.zstack.sdnController;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.Platform;
 import org.zstack.core.asyncbatch.While;
@@ -42,6 +45,7 @@ import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.Tuple;
+import java.lang.reflect.Type;
 import java.util.*;
 
 import static java.util.Arrays.asList;
@@ -93,13 +97,15 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             handle((APISdnControllerAddHostMsg) msg);
         } else if (msg instanceof APISdnControllerRemoveHostMsg) {
             handle((APISdnControllerRemoveHostMsg) msg);
-        } else if (msg instanceof APISyncSdnControllerMsg) {
-            handle((APISyncSdnControllerMsg) msg);
+        } else if (msg instanceof APIReconnectSdnControllerMsg) {
+            handle((APIReconnectSdnControllerMsg) msg);
+        } else if (msg instanceof APISdnControllerChangeHostMsg) {
+            handle((APISdnControllerChangeHostMsg) msg);
         }
     }
 
-    private void handle(APISyncSdnControllerMsg msg) {
-        APISyncSdnControllerEvent event = new APISyncSdnControllerEvent(msg.getId());
+    private void handle(APIReconnectSdnControllerMsg msg) {
+        APIReconnectSdnControllerEvent event = new APIReconnectSdnControllerEvent(msg.getId());
         sdnControllerSync(msg, new Completion(msg) {
             @Override
             public void success() {
@@ -115,7 +121,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         });
     }
 
-    private void sdnControllerSync(APISyncSdnControllerMsg msg, Completion completion) {
+    private void sdnControllerSync(APIReconnectSdnControllerMsg msg, Completion completion) {
         SdnControllerVO controllerVO = dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class);
         SdnControllerFactory factory = getSdnControllerFactory(controllerVO.getVendorType());
 
@@ -223,12 +229,96 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         });
     }
 
+    private void handle(APISdnControllerChangeHostMsg msg) {
+        APISdnControllerChangeHostEvent event = new APISdnControllerChangeHostEvent(msg.getId());
+
+        SdnControllerHostRefVO newRef = Q.New(SdnControllerHostRefVO.class)
+                .eq(SdnControllerHostRefVO_.sdnControllerUuid, msg.getSdnControllerUuid())
+                .eq(SdnControllerHostRefVO_.hostUuid, msg.getHostUuid()).find();
+        SdnControllerHostRefVO oldRef = SdnControllerHostRefVO.fromOther(newRef);
+
+        boolean changed = false;
+        Gson gson = new Gson();
+        Type type = new TypeToken<Map<String, String>>(){}.getType();
+        Map<String, String> nicNamePciAddressMap = gson.fromJson(newRef.getNicPciAddresses(), type);
+        List<String> oldNicNames = new ArrayList<>(nicNamePciAddressMap.keySet());
+        Collections.sort(oldNicNames);
+        Collections.sort(msg.getNicNames());
+        if (!oldNicNames.equals(msg.getNicNames())) {
+            changed = true;
+            Map<String, String> nicNameDriverMap = new HashMap<>();
+            nicNamePciAddressMap = new HashMap<>();
+            List<Tuple> nicTuples = Q.New(HostNetworkInterfaceVO.class)
+                    .eq(HostNetworkInterfaceVO_.hostUuid, msg.getHostUuid())
+                    .in(HostNetworkInterfaceVO_.interfaceName, msg.getNicNames())
+                    .select(HostNetworkInterfaceVO_.interfaceName,
+                            HostNetworkInterfaceVO_.driverType,
+                            HostNetworkInterfaceVO_.pciDeviceAddress)
+                    .listTuple();
+            for (Tuple t : nicTuples) {
+                nicNameDriverMap.put(t.get(0, String.class), t.get(1, String.class));
+                nicNamePciAddressMap.put(t.get(0, String.class), t.get(2, String.class));
+            }
+            newRef.setNicDrivers(JSONObjectUtil.toJsonString(nicNameDriverMap));
+            newRef.setNicPciAddresses(JSONObjectUtil.toJsonString(nicNamePciAddressMap));
+        }
+
+        if (msg.getVtepIp() != null && !msg.getVtepIp().equals(newRef.getVtepIp())) {
+            changed = true;
+            newRef.setVtepIp(msg.getVtepIp());
+        }
+
+        if (msg.getNetmask() != null && !msg.getNetmask().equals(newRef.getNetmask())) {
+            changed = true;
+            newRef.setNetmask(msg.getNetmask());
+        }
+
+        if (msg.getBondMode() != null && !msg.getBondMode().equals(newRef.getBondMode())) {
+            changed = true;
+            newRef.setBondMode(msg.getBondMode());
+        }
+
+        if (msg.getLacpMode() != null && !msg.getBondMode().equals(newRef.getBondMode())) {
+            changed = true;
+            newRef.setBondMode(msg.getBondMode());
+        }
+
+        if (!changed) {
+            event.setInventory(SdnControllerInventory.valueOf(dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class)));
+            bus.publish(event);
+            return;
+        }
+
+        sdnControllerChangeHost(oldRef, newRef, new Completion(msg) {
+            @Override
+            public void success() {
+                dbf.update(newRef);
+                event.setInventory(SdnControllerInventory.valueOf(dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class)));
+                bus.publish(event);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                event.setError(errorCode);
+                bus.publish(event);
+            }
+        });
+    }
+
     private void sdnControllerAddHost(APISdnControllerAddHostMsg msg, Completion completion) {
         SdnControllerVO controllerVO = dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class);
         SdnControllerFactory factory = getSdnControllerFactory(controllerVO.getVendorType());
         SdnController controller = factory.getSdnController(controllerVO);
 
         controller.addHost(msg, completion);
+    }
+
+    private void sdnControllerChangeHost(SdnControllerHostRefVO oldref, SdnControllerHostRefVO newRef, Completion completion) {
+        SdnControllerVO controllerVO = dbf.findByUuid(oldref.getSdnControllerUuid(), SdnControllerVO.class);
+        SdnControllerFactory factory = getSdnControllerFactory(controllerVO.getVendorType());
+        SdnController controller = factory.getSdnController(controllerVO);
+
+        controller.changeHost(oldref, newRef, completion);
     }
 
     private void sdnControllerRemoveHost(APISdnControllerRemoveHostMsg msg, Completion completion) {

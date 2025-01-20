@@ -1,27 +1,23 @@
 package org.zstack.sdnController.header;
 
 import org.springframework.http.HttpMethod;
-import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l2.L2NetworkConstant;
-import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Action(category = SdnControllerConstant.ACTION_CATEGORY)
 @RestRequest(
-        path = "/sdn-controllers/{sdnControllerUuid}/hosts/{hostUuid}",
-        method = HttpMethod.POST,
-        responseClass = APISdnControllerAddHostEvent.class,
-        parameterName = "null"
+        path = "/sdn-controllers/{sdnControllerUuid}/hosts/{hostUuid}/actions",
+        method = HttpMethod.PUT,
+        responseClass = APISdnControllerChangeHostEvent.class,
+        isAction = true
 )
-public class APISdnControllerAddHostMsg extends APIMessage {
+public class APISdnControllerChangeHostMsg extends APIMessage {
     /**
      * @desc l2Network uuid
      */
@@ -42,7 +38,7 @@ public class APISdnControllerAddHostMsg extends APIMessage {
     /**
      * @desc physical nics used by vSwitchType
      */
-    @APIParam(nonempty = true)
+    @APIParam(nonempty = true, required = false)
     private List<String> nicNames;
 
     /**
@@ -68,7 +64,6 @@ public class APISdnControllerAddHostMsg extends APIMessage {
      */
     @APIParam(required = false)
     private String lacpMode;
-
 
     public String getSdnControllerUuid() {
         return sdnControllerUuid;
@@ -134,8 +129,8 @@ public class APISdnControllerAddHostMsg extends APIMessage {
         this.lacpMode = lacpMode;
     }
 
-    public static APISdnControllerAddHostMsg __example__() {
-        APISdnControllerAddHostMsg msg = new APISdnControllerAddHostMsg();
+    public static APISdnControllerChangeHostMsg __example__() {
+        APISdnControllerChangeHostMsg msg = new APISdnControllerChangeHostMsg();
 
         msg.setSdnControllerUuid(uuid());
         msg.setHostUuid(uuid());

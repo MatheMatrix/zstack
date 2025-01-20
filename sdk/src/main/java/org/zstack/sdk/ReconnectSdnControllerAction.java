@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class SdnControllerAddHostAction extends AbstractAction {
+public class ReconnectSdnControllerAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class SdnControllerAddHostAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.SdnControllerAddHostResult value;
+        public org.zstack.sdk.ReconnectSdnControllerResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -27,27 +27,6 @@ public class SdnControllerAddHostAction extends AbstractAction {
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String sdnControllerUuid;
-
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String hostUuid;
-
-    @Param(required = false, validValues = {"Ovn-netdev","Ovn-system"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String vSwitchType = "Ovn-netdev";
-
-    @Param(required = true, nonempty = true, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List nicNames;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String vtepIp;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String netmask;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String bondMode;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String lacpMode;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -81,8 +60,8 @@ public class SdnControllerAddHostAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.SdnControllerAddHostResult value = res.getResult(org.zstack.sdk.SdnControllerAddHostResult.class);
-        ret.value = value == null ? new org.zstack.sdk.SdnControllerAddHostResult() : value; 
+        org.zstack.sdk.ReconnectSdnControllerResult value = res.getResult(org.zstack.sdk.ReconnectSdnControllerResult.class);
+        ret.value = value == null ? new org.zstack.sdk.ReconnectSdnControllerResult() : value; 
 
         return ret;
     }
@@ -111,11 +90,11 @@ public class SdnControllerAddHostAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "POST";
-        info.path = "/sdn-controllers/{sdnControllerUuid}/hosts/{hostUuid}";
+        info.httpMethod = "PUT";
+        info.path = "/sdn-controllers/{sdnControllerUuid}/actions";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "null";
+        info.parameterName = "reconnectSdnController";
         return info;
     }
 

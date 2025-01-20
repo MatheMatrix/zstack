@@ -47,4 +47,13 @@ public interface L2NetworkConstant {
     public static final int VIRTUAL_NETWORK_ID_DEFAULT_VALUE = 0;
 
     public static final String KVM_HYPERVISOR_TYPE = "KVM";
+
+    public static final String BONDING_MODE_LACP = "802.3ad";
+    public static final String BONDING_MODE_AB = "active-backup";
+    public static final String BONDING_MODE_SLB = "balance-slb";
+    public static final String BONDING_MODE_TCP = "balance-tcp";
+
+    public static final String LACP_MODE_OFF = "off";
+    public static final String LACP_MODE_ACTIVE = "active";
+    public static final String LACP_MODE_PASSIVE = "passive";
 }

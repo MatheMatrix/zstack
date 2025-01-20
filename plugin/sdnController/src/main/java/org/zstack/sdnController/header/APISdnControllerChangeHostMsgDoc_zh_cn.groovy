@@ -1,21 +1,21 @@
 package org.zstack.sdnController.header
 
-import org.zstack.sdnController.header.APISdnControllerAddHostEvent
+import org.zstack.sdnController.header.APISdnControllerChangeHostEvent
 
 doc {
-    title "SdnControllerAddHost"
+    title "SdnControllerChangeHost"
 
-    category "未知类别"
+    category "SdnController"
 
     desc """在这里填写API描述"""
 
     rest {
         request {
-			url "POST /v1/sdn-controllers/{sdnControllerUuid}/hosts/{hostUuid}"
+			url "PUT /v1/sdn-controllers/{sdnControllerUuid}/hosts/{hostUuid}/actions"
 
 			header (Authorization: 'OAuth the-session-uuid')
 
-            clz APISdnControllerAddHostMsg.class
+            clz APISdnControllerChangeHostMsg.class
 
             desc """"""
             
@@ -23,7 +23,7 @@ doc {
 
 				column {
 					name "sdnControllerUuid"
-					enclosedIn ""
+					enclosedIn "sdnControllerChangeHost"
 					desc ""
 					location "url"
 					type "String"
@@ -32,7 +32,7 @@ doc {
 				}
 				column {
 					name "hostUuid"
-					enclosedIn ""
+					enclosedIn "sdnControllerChangeHost"
 					desc "物理机UUID"
 					location "url"
 					type "String"
@@ -41,26 +41,53 @@ doc {
 				}
 				column {
 					name "vSwitchType"
-					enclosedIn ""
+					enclosedIn "sdnControllerChangeHost"
 					desc ""
 					location "body"
 					type "String"
 					optional true
 					since "5.3.0"
-					values ("OvsKernel","OvsDpdk","sriov")
+					values ("Ovn-netdev","Ovn-system")
 				}
 				column {
 					name "nicNames"
-					enclosedIn ""
+					enclosedIn "sdnControllerChangeHost"
 					desc ""
 					location "body"
 					type "List"
-					optional false
+					optional true
 					since "5.3.0"
 				}
 				column {
 					name "vtepIp"
-					enclosedIn ""
+					enclosedIn "sdnControllerChangeHost"
+					desc ""
+					location "body"
+					type "String"
+					optional true
+					since "5.3.0"
+				}
+				column {
+					name "netmask"
+					enclosedIn "sdnControllerChangeHost"
+					desc ""
+					location "body"
+					type "String"
+					optional true
+					since "5.3.0"
+				}
+				column {
+					name "bondMode"
+					enclosedIn "sdnControllerChangeHost"
+					desc ""
+					location "body"
+					type "String"
+					optional true
+					since "5.3.0"
+				}
+				column {
+					name "lacpMode"
+					enclosedIn "sdnControllerChangeHost"
 					desc ""
 					location "body"
 					type "String"
@@ -85,38 +112,11 @@ doc {
 					optional true
 					since "5.3.0"
 				}
-				column {
-					name "netmask"
-					enclosedIn ""
-					desc ""
-					location "body"
-					type "String"
-					optional true
-					since "5.3.0"
-				}
-				column {
-					name "bondMode"
-					enclosedIn ""
-					desc ""
-					location "body"
-					type "String"
-					optional true
-					since "5.3.0"
-				}
-				column {
-					name "lacpMode"
-					enclosedIn ""
-					desc ""
-					location "body"
-					type "String"
-					optional true
-					since "5.3.0"
-				}
 			}
         }
 
         response {
-            clz APISdnControllerAddHostEvent.class
+            clz APISdnControllerChangeHostEvent.class
         }
     }
 }

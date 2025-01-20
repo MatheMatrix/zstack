@@ -39,6 +39,9 @@ public interface SdnController {
 
     default void addHost(APISdnControllerAddHostMsg msg, Completion completion) {completion.success();};
     default void removeHost(APISdnControllerRemoveHostMsg msg, Completion completion) {completion.success();};
+
+    default void changeHost(SdnControllerHostRefVO oldRef, SdnControllerHostRefVO newRef, Completion completion) {completion.success();};
+
     default void addLogicalPorts(List<VmNicInventory> nics, Completion completion) {completion.success();};
     default void removeLogicalPorts(List<VmNicInventory> nics, Completion completion) {completion.success();};
 }
