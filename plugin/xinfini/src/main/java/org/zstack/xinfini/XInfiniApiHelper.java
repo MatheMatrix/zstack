@@ -32,6 +32,7 @@ import org.zstack.xinfini.sdk.volume.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
@@ -59,6 +60,22 @@ public class XInfiniApiHelper {
         T rsp = client.call(req, clz);
         errorOut(rsp);
         return rsp;
+    }
+
+    public <T extends XInfiniResponse> T callErrorOutWithRetry(XInfiniRequest req, Class<T> clz, int retryTimes) {
+        while (retryTimes-- > 0) {
+            T rsp = client.call(req, clz);
+            if (!rsp.isSuccess()) {
+                try {
+                    TimeUnit.SECONDS.sleep(3);
+                } catch (InterruptedException ignore) {}
+            } else {
+                return rsp;
+            }
+        }
+
+        throw new OperationFailureException(operr("xinfini request failed, message: %s.",
+                req.getClass().getSimpleName()));
     }
 
     public <T extends XInfiniResponse> T call(XInfiniRequest req, Class<T> clz) {
@@ -208,6 +225,17 @@ public class XInfiniApiHelper {
         return rsp.getItems().get(0);
     }
 
+    public VolumeModule queryVolumeById(int id) {
+        QueryVolumeRequest req = new QueryVolumeRequest();
+        req.q = String.format("spec.id:%s", id);
+        QueryVolumeResponse rsp = queryErrorOut(req, QueryVolumeResponse.class);
+        if (rsp.getMetadata().getPagination().getCount() == 0) {
+            return null;
+        }
+
+        return rsp.getItems().get(0);
+    }
+
     public VolumeModule getVolume(int id) {
         GetVolumeRequest req = new GetVolumeRequest();
         req.setId(id);
@@ -312,7 +340,7 @@ public class XInfiniApiHelper {
         req.setName(name);
         req.setBdcId(bdcId);
         req.setBsVolumeId(volumeId);
-        CreateBdcBdevResponse rsp = callErrorOut(req, CreateBdcBdevResponse.class);
+        CreateBdcBdevResponse rsp = callErrorOutWithRetry(req, CreateBdcBdevResponse.class, 3);
         GetBdcBdevRequest gReq = new GetBdcBdevRequest();
         gReq.setId(rsp.getSpec().getId());
         return retryUtilStateActive(gReq, GetBdcBdevResponse.class,

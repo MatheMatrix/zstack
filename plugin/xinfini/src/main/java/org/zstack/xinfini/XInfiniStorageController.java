@@ -158,7 +158,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
 
         VhostVolumeTO to = new VhostVolumeTO();
         BdcBdevModule bdev = apiHelper.queryBdcBdevByVolumeIdAndBdcId(volModule.getSpec().getId(), bdc.getSpec().getId());
-        if (bdev != null) {
+        if (bdev != null && MetadataState.active.toString().equals(bdev.getMetadata().getState().getState())) {
             logger.info("dest bdc bdev has been created, skip active");
             to.setInstallPath(bdev.getSpec().getSocketPath());
             return to;
@@ -335,7 +335,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
     @Override
     public List<ActiveVolumeClient> getActiveClients(String installPath, String protocol) {
         if (VolumeProtocol.Vhost.toString().equals(protocol)) {
-            VolumeModule vol = apiHelper.getVolume(getVolIdFromPath(installPath));
+            VolumeModule vol = apiHelper.queryVolumeById(getVolIdFromPath(installPath));
             if (vol == null) {
                 return Collections.emptyList();
             }
@@ -351,7 +351,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
                 return c;
             }).collect(Collectors.toList());
         } else if (VolumeProtocol.iSCSI.toString().equals(protocol)) {
-            VolumeModule vol = apiHelper.getVolume(getVolIdFromPath(installPath));
+            VolumeModule vol = apiHelper.queryVolumeById(getVolIdFromPath(installPath));
             if (vol == null) {
                 return Collections.emptyList();
             }
