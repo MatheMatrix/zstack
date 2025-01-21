@@ -39,6 +39,9 @@ public interface AccountConstant {
 
     String PREFERRED_USERNAME = "preferred_username";
     String FULL_NAME = "fullname";
+    String Phone_NAME = "phone";
+    String Mail_NAME = "mail";
+    String Identifier_NAME = "identifier";
     String LOGIN_TYPE_NAME = "loginType";
     String GROUPS_NAME = "groups";
     String PROJECTS_NAME = "projects";
