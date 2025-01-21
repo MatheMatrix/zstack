@@ -192,6 +192,15 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                 if (msg.getVtepIp() != null) {
                     ref.setVtepIp(msg.getVtepIp());
                 }
+                if (msg.getNetmask() != null) {
+                    ref.setNetmask(msg.getNetmask());
+                }
+                if (msg.getBondMode() != null) {
+                    ref.setBondMode(msg.getBondMode());
+                }
+                if (msg.getLacpMode() != null) {
+                    ref.setLacpMode(msg.getLacpMode());
+                }
                 dbf.persist(ref);
 
                 event.setInventory(SdnControllerInventory.valueOf(dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class)));
@@ -278,9 +287,9 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             newRef.setBondMode(msg.getBondMode());
         }
 
-        if (msg.getLacpMode() != null && !msg.getBondMode().equals(newRef.getBondMode())) {
+        if (msg.getLacpMode() != null && !msg.getLacpMode().equals(newRef.getLacpMode())) {
             changed = true;
-            newRef.setBondMode(msg.getBondMode());
+            newRef.setLacpMode(msg.getLacpMode());
         }
 
         if (!changed) {
