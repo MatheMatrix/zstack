@@ -1,15 +1,23 @@
 package org.zstack.sdk.zstone.entity;
 
-import org.zstack.sdk.zstone.entity.ZStonePlatformLicenseView;
+import org.zstack.sdk.zstone.entity.ZStoneLicenseInventory;
 
 public class ZStoneLicenseView  {
 
-    public ZStonePlatformLicenseView platform;
-    public void setPlatform(ZStonePlatformLicenseView platform) {
+    public ZStoneLicenseInventory platform;
+    public void setPlatform(ZStoneLicenseInventory platform) {
         this.platform = platform;
     }
-    public ZStonePlatformLicenseView getPlatform() {
+    public ZStoneLicenseInventory getPlatform() {
         return this.platform;
+    }
+
+    public java.util.List addOns;
+    public void setAddOns(java.util.List addOns) {
+        this.addOns = addOns;
+    }
+    public java.util.List getAddOns() {
+        return this.addOns;
     }
 
 }
