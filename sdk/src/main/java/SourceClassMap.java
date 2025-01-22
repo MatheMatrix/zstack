@@ -643,8 +643,8 @@ public class SourceClassMap {
 			put("org.zstack.zstone.entity.ZStoneClusterView", "org.zstack.sdk.zstone.entity.ZStoneClusterView");
 			put("org.zstack.zstone.entity.ZStoneHostSummaryView", "org.zstack.sdk.zstone.entity.ZStoneHostSummaryView");
 			put("org.zstack.zstone.entity.ZStoneInventory", "org.zstack.sdk.zstone.entity.ZStoneInventory");
+			put("org.zstack.zstone.entity.ZStoneLicenseInventory", "org.zstack.sdk.zstone.entity.ZStoneLicenseInventory");
 			put("org.zstack.zstone.entity.ZStoneLicenseView", "org.zstack.sdk.zstone.entity.ZStoneLicenseView");
-			put("org.zstack.zstone.entity.ZStonePlatformLicenseView", "org.zstack.sdk.zstone.entity.ZStonePlatformLicenseView");
 			put("org.zstack.zstone.entity.ZStonePoolSummaryView", "org.zstack.sdk.zstone.entity.ZStonePoolSummaryView");
 			put("org.zstack.zwatch.alarm.APICreateAlarmMsg$ActionParam", "org.zstack.sdk.zwatch.alarm.ActionParam");
 			put("org.zstack.zwatch.alarm.AlarmActionInventory", "org.zstack.sdk.zwatch.alarm.AlarmActionInventory");
@@ -1348,8 +1348,8 @@ public class SourceClassMap {
 			put("org.zstack.sdk.zstone.entity.ZStoneClusterView", "org.zstack.zstone.entity.ZStoneClusterView");
 			put("org.zstack.sdk.zstone.entity.ZStoneHostSummaryView", "org.zstack.zstone.entity.ZStoneHostSummaryView");
 			put("org.zstack.sdk.zstone.entity.ZStoneInventory", "org.zstack.zstone.entity.ZStoneInventory");
+			put("org.zstack.sdk.zstone.entity.ZStoneLicenseInventory", "org.zstack.zstone.entity.ZStoneLicenseInventory");
 			put("org.zstack.sdk.zstone.entity.ZStoneLicenseView", "org.zstack.zstone.entity.ZStoneLicenseView");
-			put("org.zstack.sdk.zstone.entity.ZStonePlatformLicenseView", "org.zstack.zstone.entity.ZStonePlatformLicenseView");
 			put("org.zstack.sdk.zstone.entity.ZStonePoolSummaryView", "org.zstack.zstone.entity.ZStonePoolSummaryView");
 			put("org.zstack.sdk.zwatch.alarm.ActionParam", "org.zstack.zwatch.alarm.APICreateAlarmMsg$ActionParam");
 			put("org.zstack.sdk.zwatch.alarm.AlarmActionInventory", "org.zstack.zwatch.alarm.AlarmActionInventory");
