@@ -136,9 +136,9 @@ CREATE TABLE IF NOT EXISTS `zstack`.`CasClientVO` (
 -- Transfer data       OAuth2ClientVODeprecated + SSOClientVO -> OAuth2ClientVO + ThirdPartyAccountSourceVO
 -- Note: usernameProperty from SystemTagVO (tag like 'ssoUseAsLoginName::%')
 INSERT INTO `zstack`.`ThirdPartyAccountSourceVO`
-    (`uuid`, `description`, `type`, `createAccountStrategy`, `deleteAccountStrategy`, `createDate`)
+    (`uuid`, `description`, `type`, `createAccountStrategy`, `deleteAccountStrategy`, `createDate`, `lastOpDate`)
 SELECT
-    sso.uuid, sso.description, 'OAuth2', 'CreateAccount', 'NoAction', sso.createDate
+    sso.uuid, sso.description, 'OAuth2', 'CreateAccount', 'NoAction', sso.createDate, sso.lastOpDate
 FROM
     OAuth2ClientVODeprecated oa
         LEFT JOIN SSOClientVO sso ON oa.uuid = sso.uuid;
