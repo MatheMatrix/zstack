@@ -76,6 +76,14 @@ public class ModelServiceInventory  {
         return this.framework;
     }
 
+    public java.lang.String source;
+    public void setSource(java.lang.String source) {
+        this.source = source;
+    }
+    public java.lang.String getSource() {
+        return this.source;
+    }
+
     public java.lang.String dockerImage;
     public void setDockerImage(java.lang.String dockerImage) {
         this.dockerImage = dockerImage;

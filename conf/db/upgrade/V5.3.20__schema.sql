@@ -61,3 +61,4 @@ CALL ModifyApplicationDevelopmentServiceVO();
 
 CALL ADD_COLUMN('ModelVO', 'modelId', 'VARCHAR(255)', 1, NULL);
 CALL ADD_COLUMN('ModelServiceInstanceGroupVO', 'description', 'VARCHAR(2048)', 1, NULL);
+CALL ADD_COLUMN('ModelServiceVO', 'source', 'VARCHAR(32)', 1, NULL);
