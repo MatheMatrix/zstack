@@ -86,6 +86,7 @@ import java.util.stream.Collectors;
 import static org.zstack.core.Platform.*;
 import static org.zstack.core.progress.ProgressReportService.getTaskStage;
 import static org.zstack.core.progress.ProgressReportService.reportProgress;
+import static org.zstack.header.image.ImageConstant.SNAPSHOT_IMAGE_SCHEMA;
 import static org.zstack.longjob.LongJobUtils.buildErrIfCanceled;
 import static org.zstack.longjob.LongJobUtils.noncancelableErr;
 import static org.zstack.utils.CollectionDSL.list;
@@ -215,7 +216,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
         ImageVO vo = createTemporaryImageInDb(msg, imgvo -> {
             imgvo.setSize(size);
             imgvo.setFormat(format);
-            imgvo.setUrl(String.format("volumeSnapshot://%s", msg.getSnapshotUuid()));
+            imgvo.setUrl(String.format("%s%s", SNAPSHOT_IMAGE_SCHEMA, msg.getSnapshotUuid()));
         });
 
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
@@ -572,7 +573,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
 
         ImageVO vo = createImageInDb(msg, imgvo -> {
             imgvo.setFormat(format);
-            imgvo.setUrl(String.format("volumeSnapshot://%s", snapshotUuid));
+            imgvo.setUrl(String.format("%s%s", SNAPSHOT_IMAGE_SCHEMA, snapshotUuid));
         });
 
         createSysTag(msg, vo);

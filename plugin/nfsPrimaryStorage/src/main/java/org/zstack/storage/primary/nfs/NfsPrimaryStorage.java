@@ -1081,8 +1081,8 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     protected void handle(CreateImageCacheFromVolumeSnapshotOnPrimaryStorageMsg msg) {
         CreateImageCacheFromVolumeSnapshotOnPrimaryStorageReply reply = new CreateImageCacheFromVolumeSnapshotOnPrimaryStorageReply();
 
-        boolean incremental = msg.hasSystemTag(VolumeSystemTags.FAST_CREATE.getTagFormat());
-        if (incremental && PrimaryStorageGlobalProperty.USE_SNAPSHOT_AS_INCREMENTAL_CACHE) {
+        boolean useSnapshotAsCache = msg.hasSystemTag(VolumeSystemTags.FAST_CREATE.getTagFormat());
+        if (useSnapshotAsCache) {
             ImageCacheVO cache = createTemporaryImageCacheFromVolumeSnapshot(msg.getImageInventory(), msg.getVolumeSnapshot());
             dbf.persist(cache);
             reply.setInventory(cache.toInventory());
@@ -1098,7 +1098,6 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
         job.setPrimaryStorage(getSelfInventory());
         job.setImage(spec);
         job.setVolumeResourceInstallPath(msg.getVolumeSnapshot().getPrimaryStorageInstallPath());
-        job.setIncremental(incremental);
 
         jobf.execute(NfsPrimaryStorageKvmHelper.makeDownloadImageJobName(msg.getImageInventory(), job.getPrimaryStorage()),
                 NfsPrimaryStorageKvmHelper.makeJobOwnerName(job.getPrimaryStorage()), job,

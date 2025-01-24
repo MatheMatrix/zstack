@@ -629,7 +629,6 @@ public class KvmBackend extends HypervisorBackend {
         String primaryStorageInstallPath;
         String backupStorageInstallPath;
         String volumeResourceInstallPath;
-        boolean incremental;
 
         void download(final ReturnValueCompletion<ImageCacheInventory> completion) {
             DebugUtils.Assert(image != null, "image cannot be null");
@@ -702,35 +701,10 @@ public class KvmBackend extends HypervisorBackend {
                                 @Override
                                 public void run(final FlowTrigger trigger, Map data) {
                                     if (volumeResourceInstallPath != null) {
-                                        if (incremental) {
-                                            incrementalDownloadFromVolume(trigger);
-                                        } else {
-                                            downloadFromVolumeResource(trigger);
-                                        }
+                                        downloadFromVolumeResource(trigger);
                                     } else {
                                         downloadFromBackupStorage(trigger);
                                     }
-                                }
-
-                                private void incrementalDownloadFromVolume(FlowTrigger trigger) {
-                                    CreateVolumeWithBackingCmd cmd = new CreateVolumeWithBackingCmd();
-                                    cmd.installPath = primaryStorageInstallPath;
-                                    cmd.templatePathInCache = volumeResourceInstallPath;
-
-                                    new Do().go(CREATE_VOLUME_WITH_BACKING_PATH, cmd, CreateVolumeWithBackingRsp.class,
-                                            new ReturnValueCompletion<AgentRsp>(trigger) {
-                                                @Override
-                                                public void success(AgentRsp r) {
-                                                    CreateVolumeWithBackingRsp rsp = (CreateVolumeWithBackingRsp) r;
-                                                    actualSize = rsp.actualSize;
-                                                    trigger.next();
-                                                }
-
-                                                @Override
-                                                public void fail(ErrorCode errorCode) {
-                                                    trigger.fail(errorCode);
-                                                }
-                                            });
                                 }
 
                                 private void downloadFromVolumeResource(FlowTrigger trigger) {
@@ -1873,8 +1847,8 @@ public class KvmBackend extends HypervisorBackend {
     void handle(CreateImageCacheFromVolumeSnapshotOnPrimaryStorageMsg msg, ReturnValueCompletion<CreateImageCacheFromVolumeSnapshotOnPrimaryStorageReply> completion) {
         CreateImageCacheFromVolumeSnapshotOnPrimaryStorageReply reply = new CreateImageCacheFromVolumeSnapshotOnPrimaryStorageReply();
 
-        boolean incremental = msg.hasSystemTag(VolumeSystemTags.FAST_CREATE.getTagFormat());
-        if (incremental && PrimaryStorageGlobalProperty.USE_SNAPSHOT_AS_INCREMENTAL_CACHE) {
+        boolean useSnapshotAsCache = msg.hasSystemTag(VolumeSystemTags.FAST_CREATE.getTagFormat());
+        if (useSnapshotAsCache) {
             ImageCacheVO cache = createTemporaryImageCacheFromVolumeSnapshot(msg.getImageInventory(), msg.getVolumeSnapshot());
             dbf.persist(cache);
             reply.setInventory(cache.toInventory());
@@ -1887,12 +1861,10 @@ public class KvmBackend extends HypervisorBackend {
         cache.image = msg.getImageInventory();
         cache.primaryStorageInstallPath = makeCachedImageInstallUrl(msg.getImageInventory());
         cache.volumeResourceInstallPath = msg.getVolumeSnapshot().getPrimaryStorageInstallPath();
-        cache.incremental = msg.hasSystemTag(VolumeSystemTags.FAST_CREATE.getTagFormat());
         cache.download(new ReturnValueCompletion<ImageCacheInventory>(completion) {
             @Override
             public void success(ImageCacheInventory inv) {
                 reply.setInventory(inv);
-                reply.setIncremental(cache.incremental);
                 completion.success(reply);
             }
 

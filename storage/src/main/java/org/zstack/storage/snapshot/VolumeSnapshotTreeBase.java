@@ -63,6 +63,7 @@ import org.zstack.storage.primary.PrimaryStorageCapacityUpdater;
 import org.zstack.storage.primary.PrimaryStorageGlobalProperty;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
 import org.zstack.storage.volume.FireSnapShotCanonicalEvent;
+import org.zstack.storage.volume.VolumeSystemTags;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.TimeUtils;
@@ -1170,7 +1171,8 @@ public class VolumeSnapshotTreeBase {
                 reply.setLocationHostUuid(cr.getLocateHostUuid());
                 reply.setActualSize(cr.getActualSize());
 
-                if (cr.isIncremental()) {
+                boolean useSnapshotAsCache = msg.hasSystemTag(VolumeSystemTags.FAST_CREATE.getTagFormat());
+                if (useSnapshotAsCache) {
                     VolumeSnapshotReferenceVO ref = new VolumeSnapshotReferenceVO();
                     ref.setReferenceUuid(msg.getImageUuid());
                     ref.setReferenceType(ImageCacheVO.class.getSimpleName());
@@ -1185,9 +1187,7 @@ public class VolumeSnapshotTreeBase {
                     logger.debug(String.format("refer image cache[uuid:%s] from volume snapshot[uuid:%s, volumeUuid:%s]" +
                             " because of incremental image cache creation", msg.getImageUuid(), currentRoot.getUuid(), currentRoot.getVolumeUuid()));
 
-                    if (PrimaryStorageGlobalProperty.USE_SNAPSHOT_AS_INCREMENTAL_CACHE) {
-                        reply.setImageUrl(ImageConstant.SNAPSHOT_REUSE_IMAGE_SCHEMA + currentRoot.getUuid());
-                    }
+                    reply.setImageUrl(ImageConstant.SNAPSHOT_REUSE_IMAGE_SCHEMA + currentRoot.getUuid());
                 }
 
                 bus.reply(msg, reply);
