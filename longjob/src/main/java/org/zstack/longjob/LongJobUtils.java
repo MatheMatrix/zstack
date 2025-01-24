@@ -13,6 +13,7 @@ import org.zstack.header.Constants;
 import org.zstack.header.core.ExceptionSafe;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
+import org.zstack.header.errorcode.JobResultError;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.longjob.*;
 import org.zstack.utils.Utils;
@@ -96,7 +97,7 @@ public class LongJobUtils {
     }
 
     public static LongJobVO setJobError(String uuid, ErrorCode error) {
-        return updateByUuid(uuid, vo -> vo.setJobResult(ErrorCode.getJobResult(wrapDefaultError(vo, error))));
+        return updateByUuid(uuid, vo -> vo.setJobResult(errorCodeToJobResult(wrapDefaultError(vo, error))));
     }
 
     public static LongJobVO setJobResult(String uuid, String result) {
@@ -173,5 +174,13 @@ public class LongJobUtils {
     private static void cleanProgress(LongJobVO job) {
         ProgressReportService progRpt = Platform.getComponentLoader().getComponent(ProgressReportService.class);
         progRpt.cleanTaskProgress(job.getApiId());
+    }
+
+    public static String errorCodeToJobResult(ErrorCode errorCode) {
+        if (errorCode == null) {
+            return null;
+        }
+        JobResultError error = JobResultError.valueOf(errorCode);
+        return JSONObjectUtil.toJsonString(error);
     }
 }

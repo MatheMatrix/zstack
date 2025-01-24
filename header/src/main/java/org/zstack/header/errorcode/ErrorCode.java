@@ -16,13 +16,15 @@ public class ErrorCode implements Serializable, Cloneable {
     private String description;
     private String details;
     private String elaboration;
-    private String location;
     @APINoSee
     private ErrorCodeElaboration messages;
+    @APINoSee
     private String cost;
     private ErrorCode cause;
     @NoJsonSchema
-    private LinkedHashMap opaque;
+    private LinkedHashMap<String, Object> opaque;
+
+    public static final String OPAQUE_KEY_LOCATION = "error.location";
 
     public LinkedHashMap getOpaque() {
         return opaque;
@@ -32,11 +34,12 @@ public class ErrorCode implements Serializable, Cloneable {
         this.opaque = opaque;
     }
 
-    public void putToOpaque(String key, Object value) {
+    public ErrorCode withOpaque(String key, Object value) {
         if (opaque == null) {
-            opaque = new LinkedHashMap();
+            opaque = new LinkedHashMap<>();
         }
         opaque.put(key, value);
+        return this;
     }
 
     public Object getFromOpaque(String key) {
@@ -66,7 +69,9 @@ public class ErrorCode implements Serializable, Cloneable {
         this.elaboration = other.elaboration;
         this.messages = other.messages;
         this.cause = other.cause;
-        this.location = other.location;
+        if (other.opaque != null) {
+            this.opaque = new LinkedHashMap<>(other.opaque);
+        }
     }
 
     public void setCode(String code) {
@@ -222,23 +227,10 @@ public class ErrorCode implements Serializable, Cloneable {
     }
 
     public String getLocation() {
-        return location;
+        return (String) getFromOpaque(OPAQUE_KEY_LOCATION);
     }
 
     public void setLocation(String location) {
-        this.location = location;
-    }
-
-    public static String getDeduplicateError(String operationName) {
-        return String.format("an other %s task is running, cancel this operation", operationName);
-    }
-
-
-    public static String getJobResult(ErrorCode errorCode) {
-        if (errorCode == null) {
-            return null;
-        }
-        JobResultError error = JobResultError.valueOf(errorCode);
-        return JSONObjectUtil.toJsonString(error);
+        withOpaque(OPAQUE_KEY_LOCATION, location);
     }
 }

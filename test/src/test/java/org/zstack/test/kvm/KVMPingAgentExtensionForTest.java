@@ -24,9 +24,8 @@ public class KVMPingAgentExtensionForTest implements KVMPingAgentExtensionPoint 
         if (success) {
             completion.success();
         } else {
-            ErrorCode err = operr("on purpose");
-            err.putToOpaque(Opaque.NO_RECONNECT_AFTER_PING_FAILURE.toString(), true);
-            completion.fail(err);
+            completion.fail(operr("on purpose")
+                    .withOpaque(Opaque.NO_RECONNECT_AFTER_PING_FAILURE.toString(), true));
         }
     }
 }

@@ -298,8 +298,7 @@ public abstract class BackupStorageBase extends AbstractBackupStorage {
                 if (changeStatus(BackupStorageStatus.Disconnected)) {
                     fireDisconnectedCanonicalEvent(errorCode);
                 }
-                errorCode.putToOpaque(Opaque.NEED_RECONNECT_CHECKING.toString(), true);
-                reply.setError(errorCode);
+                reply.setError(errorCode.withOpaque(Opaque.NEED_RECONNECT_CHECKING.toString(), true));
                 bus.reply(msg, reply);
             }
         });

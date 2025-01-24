@@ -8,6 +8,8 @@ import java.util.List;
 
 /**
  * Created by xing5 on 2016/4/19.
+ *
+ * TODO: merge ErrorCodeList into ErrorCode soon
  */
 public class ErrorCodeList extends ErrorCode {
     private List<ErrorCode> causes = Collections.synchronizedList(new ArrayList<>());
@@ -20,6 +22,11 @@ public class ErrorCodeList extends ErrorCode {
         this.causes = causes;
     }
 
+    @Override
+    public ErrorCodeList withOpaque(String key, Object value) {
+        super.withOpaque(key, value);
+        return this;
+    }
 
     /**
      *
