@@ -4,15 +4,21 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.cloudbus.CloudBus;
+import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.ApiMessageInterceptor;
 import org.zstack.header.apimediator.GlobalApiMessageInterceptor;
+import org.zstack.header.host.HostHugepageExtensionPoint;
+import org.zstack.header.host.HostInventory;
+import org.zstack.header.host.HostVO;
+import org.zstack.header.host.HostVO_;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.network.l2.APIAttachL2NetworkToClusterMsg;
 import org.zstack.header.network.l2.L2NetworkConstant;
 import org.zstack.network.l2.vxlan.vxlanNetwork.APICreateL2VxlanNetworkMsg;
+import org.zstack.resourceconfig.ResourceConfig;
 import org.zstack.sdnController.header.*;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
@@ -34,6 +40,8 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
     protected DatabaseFacade dbf;
     @Autowired
     protected CloudBus bus;
+    @Autowired
+    private PluginRegistry pluginRgty;
 
     private void setServiceId(APIMessage msg) {
         if (msg instanceof SdnControllerMessage) {
@@ -107,6 +115,16 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
 
         if (msg.getBondMode() != null && msg.getLacpMode() == null) {
             msg.setLacpMode(L2NetworkConstant.LACP_MODE_OFF);
+        }
+
+        HostVO hostVO = Q.New(HostVO.class).eq(HostVO_.uuid, msg.getHostUuid()).find();
+        if (hostVO != null) {
+            for(HostHugepageExtensionPoint extp : pluginRgty.getExtensionList(HostHugepageExtensionPoint.class)) {
+                if (!extp.checkHugepageSupport(HostInventory.valueOf(hostVO))) {
+                    throw new ApiMessageInterceptionException(argerr("the host[uuid:%s] which in cluster[uuid:%s] does not enable hugepage," +
+                                    " it is not allowed to add to sdn controller", msg.getHostUuid(), hostVO.getClusterUuid()));
+                }
+            }
         }
     }
 
