@@ -153,7 +153,6 @@ public class SourceClassMap {
 			put("org.zstack.header.aliyun.storage.disk.AliyunDiskInventory", "org.zstack.sdk.AliyunDiskInventory");
 			put("org.zstack.header.aliyun.storage.snapshot.AliyunSnapshotInventory", "org.zstack.sdk.AliyunSnapshotInventory");
 			put("org.zstack.header.allocator.datatypes.CpuMemoryCapacityData", "org.zstack.sdk.CpuMemoryCapacityData");
-			put("org.zstack.header.baremetal.BaremetalException", "org.zstack.sdk.BaremetalException");
 			put("org.zstack.header.baremetal.chassis.BaremetalChassisInventory", "org.zstack.sdk.BaremetalChassisInventory");
 			put("org.zstack.header.baremetal.chassis.BaremetalHardwareInfoInventory", "org.zstack.sdk.BaremetalHardwareInfoInventory");
 			put("org.zstack.header.baremetal.instance.BaremetalInstanceInventory", "org.zstack.sdk.BaremetalInstanceInventory");
@@ -784,7 +783,6 @@ public class SourceClassMap {
 			put("org.zstack.sdk.BareMetal2SpendingDetails", "org.zstack.billing.spendingcalculator.baremetal2.BareMetal2SpendingDetails");
 			put("org.zstack.sdk.BaremetalBondingInventory", "org.zstack.header.baremetal.network.BaremetalBondingInventory");
 			put("org.zstack.sdk.BaremetalChassisInventory", "org.zstack.header.baremetal.chassis.BaremetalChassisInventory");
-			put("org.zstack.sdk.BaremetalException", "org.zstack.header.baremetal.BaremetalException");
 			put("org.zstack.sdk.BaremetalHardwareInfoInventory", "org.zstack.header.baremetal.chassis.BaremetalHardwareInfoInventory");
 			put("org.zstack.sdk.BaremetalInstanceInventory", "org.zstack.header.baremetal.instance.BaremetalInstanceInventory");
 			put("org.zstack.sdk.BaremetalNicInventory", "org.zstack.header.baremetal.network.BaremetalNicInventory");
