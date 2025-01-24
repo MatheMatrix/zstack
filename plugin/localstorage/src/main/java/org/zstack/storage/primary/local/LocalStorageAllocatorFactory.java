@@ -18,6 +18,8 @@ import org.zstack.header.allocator.HostCandidate;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.storage.primary.*;
+import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
+import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.header.volume.VolumeInventory;
@@ -321,7 +323,8 @@ public class LocalStorageAllocatorFactory implements PrimaryStorageAllocatorStra
                 protocol = new URI(msg.getRequiredInstallUri()).getScheme();
             } catch (URISyntaxException e) {
                 throw new OperationFailureException(
-                        argerr("invalid uri, correct example is file://$URL;hostUuid://$HOSTUUID or volume://$VOLUMEUUID "));
+                        argerr("invalid uri, correct example is file://$URL;hostUuid://$HOSTUUID or volume://$VOLUMEUUID" +
+                                " or volumeSnapshotReuse://$SNAPSHOTUUID or volumeSnapshot://$SNAPSHOTUUID"));
             }
             hostUuid = uriParsers.get(protocol).parseUri(msg.getRequiredInstallUri()).hostUuid;
         } else if (msg.getRequiredHostUuid() != null) {
@@ -377,17 +380,15 @@ public class LocalStorageAllocatorFactory implements PrimaryStorageAllocatorStra
     private static void parseRequiredInstallUri() {
         String protocolVolume = "volume";
         String protocolFile = "file";
+        String protocolSnapshotReuse = "volumeSnapshotReuse";
+        String protocolSnapshot = "volumeSnapshot";
 
         AbstractUriParser volumeParser = new AbstractUriParser() {
             @Override
             LocalStorageUtils.InstallPath parseUri(String uri) {
                 String volumeUuid = uri.replaceFirst("volume://", "");
                 String path = Q.New(VolumeVO.class).select(VolumeVO_.installPath).eq(VolumeVO_.uuid, volumeUuid).findValue();
-                String hostUuid = Q.New(LocalStorageResourceRefVO.class)
-                        .select(LocalStorageResourceRefVO_.hostUuid)
-                        .eq(LocalStorageResourceRefVO_.resourceUuid, volumeUuid)
-                        .eq(LocalStorageResourceRefVO_.resourceType, VolumeVO.class.getSimpleName())
-                        .findValue();
+                String hostUuid = getHostUuidFromLocalStorageResourceRefVO(volumeUuid, VolumeVO.class.getSimpleName());
                 LocalStorageUtils.InstallPath p = new LocalStorageUtils.InstallPath();
                 p.hostUuid = hostUuid;
                 p.installPath = path;
@@ -405,8 +406,41 @@ public class LocalStorageAllocatorFactory implements PrimaryStorageAllocatorStra
             }
         };
 
+        AbstractUriParser snapshotParser = new AbstractUriParser() {
+            @Override
+            LocalStorageUtils.InstallPath parseUri(String uri) {
+                String snapshotUuid = "";
+                if (uri.startsWith(protocolSnapshotReuse)) {
+                    snapshotUuid = uri.replaceFirst("volumeSnapshotReuse://", "");
+                } else if (uri.startsWith(protocolSnapshot)) {
+                    snapshotUuid = uri.replaceFirst("volumeSnapshot://", "");
+                }
+                if (snapshotUuid.isEmpty()) {
+                    throw new OperationFailureException(
+                            argerr("invalid protocol, correct example is volumeSnapshotReuse or volumeSnapshot"));
+                }
+                String path = Q.New(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, snapshotUuid)
+                        .select(VolumeSnapshotVO_.primaryStorageInstallPath).findValue();
+                String hostUuid = getHostUuidFromLocalStorageResourceRefVO(snapshotUuid, VolumeSnapshotVO.class.getSimpleName());
+                LocalStorageUtils.InstallPath p = new LocalStorageUtils.InstallPath();
+                p.hostUuid = hostUuid;
+                p.installPath = path;
+                return p;
+            }
+        };
+
         uriParsers.put(protocolVolume, volumeParser);
         uriParsers.put(protocolFile, fileParser);
+        uriParsers.put(protocolSnapshotReuse, snapshotParser);
+        uriParsers.put(protocolSnapshot, snapshotParser);
+    }
+
+    private static String getHostUuidFromLocalStorageResourceRefVO(String resourceUuid, String resourceType) {
+        return Q.New(LocalStorageResourceRefVO.class)
+                .eq(LocalStorageResourceRefVO_.resourceUuid, resourceUuid)
+                .eq(LocalStorageResourceRefVO_.resourceType, resourceType)
+                .select(LocalStorageResourceRefVO_.hostUuid)
+                .findValue();
     }
 
     abstract static class AbstractUriParser {
