@@ -44,9 +44,6 @@ public class NfsDownloadImageToCacheJob implements Job {
     private PrimaryStorageInventory primaryStorage;
     @JobContext
     private String volumeResourceInstallPath;
-    @JobContext
-    private boolean incremental;
-
 
     @Autowired
     private NfsPrimaryStorageFactory nfsFactory;
@@ -173,11 +170,7 @@ public class NfsDownloadImageToCacheJob implements Job {
                             }
                         };
 
-                        if (incremental) {
-                            bkd.createIncrementalImageCacheFromVolumeResource(primaryStorage, volumeResourceInstallPath, image.getInventory(), compl);
-                        } else {
-                            bkd.createImageCacheFromVolumeResource(primaryStorage, volumeResourceInstallPath, image.getInventory(), compl);
-                        }
+                        bkd.createImageCacheFromVolumeResource(primaryStorage, volumeResourceInstallPath, image.getInventory(), compl);
                     }
 
                     private void downloadFromBackupStorage(FlowTrigger trigger) {
@@ -281,13 +274,5 @@ public class NfsDownloadImageToCacheJob implements Job {
 
     public void setVolumeResourceInstallPath(String volumeResourceInstallPath) {
         this.volumeResourceInstallPath = volumeResourceInstallPath;
-    }
-
-    public void setIncremental(boolean incremental) {
-        this.incremental = incremental;
-    }
-
-    public boolean isIncremental() {
-        return incremental;
     }
 }

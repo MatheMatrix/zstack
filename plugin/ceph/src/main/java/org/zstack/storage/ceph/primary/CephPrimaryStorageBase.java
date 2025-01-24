@@ -2109,7 +2109,6 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
     class DownloadToCache {
         ImageSpec image;
         VolumeSnapshotInventory snapshot;
-        boolean incremental;
         private void doDownload(final ReturnValueCompletion<ImageCacheVO> completion) {
             ImageCacheVO cache = Q.New(ImageCacheVO.class)
                     .eq(ImageCacheVO_.primaryStorageUuid, self.getUuid())
@@ -2185,34 +2184,11 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                             dstPath = makeVolumeInstallPathByTargetPool(image.getInventory().getUuid(),
                                     getTargetPoolNameFromAllocatedUrl(allocatedInstall));
                             if (snapshot != null) {
-                                if (incremental) {
-                                    incrementalCreateFromVolumeSnapshot(trigger);
-                                } else {
-                                    createFromVolumeSnapshot(trigger);
-                                }
+                                createFromVolumeSnapshot(trigger);
                             } else {
                                 downloadFromBackupStorage(trigger);
                             }
                         }
-
-                        private void incrementalCreateFromVolumeSnapshot(FlowTrigger trigger) {
-                            cloneAndProtectSnaphost(snapshot.getPrimaryStorageInstallPath(), dstPath, new ReturnValueCompletion<CloneRsp>(trigger) {
-                                @Override
-                                public void success(CloneRsp rsp) {
-                                    if (rsp.actualSize != null) {
-                                        actualSize = rsp.actualSize;
-                                    }
-                                    cachePath = rsp.installPath;
-                                    trigger.next();
-                                }
-
-                                @Override
-                                public void fail(ErrorCode errorCode) {
-                                    trigger.fail(errorCode);
-                                }
-                            });
-                        }
-
 
                         private void createFromVolumeSnapshot(FlowTrigger trigger) {
                             deleteOnRollback = true;
@@ -2842,8 +2818,8 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
     protected void handle(CreateImageCacheFromVolumeSnapshotOnPrimaryStorageMsg msg) {
         CreateImageCacheFromVolumeSnapshotOnPrimaryStorageReply reply = new CreateImageCacheFromVolumeSnapshotOnPrimaryStorageReply();
 
-        boolean incremental = msg.hasSystemTag(VolumeSystemTags.FAST_CREATE.getTagFormat());
-        if (incremental && PrimaryStorageGlobalProperty.USE_SNAPSHOT_AS_INCREMENTAL_CACHE) {
+        boolean useSnapshotAsCache = msg.hasSystemTag(VolumeSystemTags.FAST_CREATE.getTagFormat());
+        if (useSnapshotAsCache) {
             ProtectSnapshotCmd cmd = new ProtectSnapshotCmd();
             cmd.snapshotPath = msg.getVolumeSnapshot().getPrimaryStorageInstallPath();
             cmd.ignoreError = true;
@@ -2870,12 +2846,10 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         cache.image = new ImageSpec();
         cache.image.setInventory(msg.getImageInventory());
         cache.snapshot = msg.getVolumeSnapshot();
-        cache.incremental = incremental;
         cache.download(new ReturnValueCompletion<ImageCacheVO>(msg) {
             @Override
             public void success(ImageCacheVO inv) {
                 reportProgress(getTaskStage().getEnd().toString());
-                reply.setIncremental(cache.incremental);
                 reply.setInventory(inv.toInventory());
                 bus.reply(msg, reply);
             }

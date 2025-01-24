@@ -1402,31 +1402,24 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
     }
 
     @Override
-    public void createIncrementalImageCacheFromVolumeResource(PrimaryStorageInventory primaryStorage, String volumeResource, ImageInventory image, ReturnValueCompletion<BitsInfo> completion) {
-        final String installPath = NfsPrimaryStorageKvmHelper.makeCachedImageInstallUrl(primaryStorage, image);
-        doCreateTemplateFromVolume(installPath, primaryStorage, volumeResource, image, true, completion);
-    }
-
-    @Override
     public void createImageCacheFromVolumeResource(PrimaryStorageInventory primaryStorage, String volumeResource, ImageInventory image, ReturnValueCompletion<BitsInfo> completion) {
         final String installPath = NfsPrimaryStorageKvmHelper.makeCachedImageInstallUrl(primaryStorage, image);
-        doCreateTemplateFromVolume(installPath, primaryStorage, volumeResource, image, false, completion);
+        doCreateTemplateFromVolume(installPath, primaryStorage, volumeResource, image, completion);
     }
 
     @Override
     public void createTemplateFromVolume(final PrimaryStorageInventory primaryStorage, final VolumeInventory volume, final ImageInventory image, final ReturnValueCompletion<BitsInfo> completion) {
         final String installPath = NfsPrimaryStorageKvmHelper.makeTemplateFromVolumeInWorkspacePath(primaryStorage, image.getUuid());
-        doCreateTemplateFromVolume(installPath, primaryStorage, volume.getInstallPath(), image, false, completion);
+        doCreateTemplateFromVolume(installPath, primaryStorage, volume.getInstallPath(), image, completion);
     }
 
-    private void doCreateTemplateFromVolume(final String installPath, final PrimaryStorageInventory primaryStorage, final String volumeResourceInstallPath, final ImageInventory image, boolean incremental, final ReturnValueCompletion<BitsInfo> completion) {
+    private void doCreateTemplateFromVolume(final String installPath, final PrimaryStorageInventory primaryStorage, final String volumeResourceInstallPath, final ImageInventory image, final ReturnValueCompletion<BitsInfo> completion) {
         final HostInventory destHost = nfsFactory.getConnectedHostForOperation(primaryStorage).get(0);
 
         CreateTemplateFromVolumeCmd cmd = new CreateTemplateFromVolumeCmd();
         cmd.setInstallPath(installPath);
         cmd.setVolumePath(volumeResourceInstallPath);
         cmd.setUuid(primaryStorage.getUuid());
-        cmd.setIncremental(incremental);
 
         KVMHostAsyncHttpCallMsg msg = new KVMHostAsyncHttpCallMsg();
         msg.setCommand(cmd);

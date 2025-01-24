@@ -41,6 +41,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.zstack.header.image.ImageConstant.SNAPSHOT_REUSE_IMAGE_SCHEMA;
+
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class VmAllocatePrimaryStorageFlow implements Flow {
     private static final CLogger logger = Utils.getLogger(VmAllocatePrimaryStorageFlow.class);
@@ -66,6 +68,9 @@ public class VmAllocatePrimaryStorageFlow implements Flow {
         if (spec.getImageSpec() != null) {
             if (spec.getImageSpec().getInventory() != null) {
                 rmsg.setImageUuid(spec.getImageSpec().getInventory().getUuid());
+                if (spec.getImageSpec().getInventory().getUrl().startsWith(SNAPSHOT_REUSE_IMAGE_SCHEMA)) {
+                    rmsg.setRequiredInstallUri(spec.getImageSpec().getInventory().getUrl());
+                }
             }
             Optional.ofNullable(spec.getImageSpec().getSelectedBackupStorage())
                     .ifPresent(it -> rmsg.setBackupStorageUuid(it.getBackupStorageUuid()));

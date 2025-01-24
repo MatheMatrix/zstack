@@ -37,7 +37,6 @@ import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.exception.CloudRuntimeException;
-import org.zstack.header.host.HostVO;
 import org.zstack.header.identity.*;
 import org.zstack.header.identity.quota.QuotaMessageHandler;
 import org.zstack.header.image.*;
@@ -86,6 +85,7 @@ import java.util.stream.Collectors;
 import static org.zstack.core.Platform.*;
 import static org.zstack.core.progress.ProgressReportService.getTaskStage;
 import static org.zstack.core.progress.ProgressReportService.reportProgress;
+import static org.zstack.header.image.ImageConstant.IMAGE_FROM_SNAPSHOT_SCHEMA;
 import static org.zstack.longjob.LongJobUtils.buildErrIfCanceled;
 import static org.zstack.longjob.LongJobUtils.noncancelableErr;
 import static org.zstack.utils.CollectionDSL.list;
@@ -215,7 +215,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
         ImageVO vo = createTemporaryImageInDb(msg, imgvo -> {
             imgvo.setSize(size);
             imgvo.setFormat(format);
-            imgvo.setUrl(String.format("volumeSnapshot://%s", msg.getSnapshotUuid()));
+            imgvo.setUrl(String.format("%s%s", IMAGE_FROM_SNAPSHOT_SCHEMA, msg.getSnapshotUuid()));
         });
 
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
@@ -572,7 +572,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
 
         ImageVO vo = createImageInDb(msg, imgvo -> {
             imgvo.setFormat(format);
-            imgvo.setUrl(String.format("volumeSnapshot://%s", snapshotUuid));
+            imgvo.setUrl(String.format("%s%s", IMAGE_FROM_SNAPSHOT_SCHEMA, snapshotUuid));
         });
 
         createSysTag(msg, vo);
