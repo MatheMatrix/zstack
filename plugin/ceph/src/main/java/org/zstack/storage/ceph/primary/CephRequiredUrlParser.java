@@ -2,6 +2,8 @@ package org.zstack.storage.ceph.primary;
 
 import org.zstack.core.db.Q;
 import org.zstack.header.errorcode.OperationFailureException;
+import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
+import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.volume.VolumeVO_;
 import org.zstack.utils.DebugUtils;
@@ -29,7 +31,8 @@ public class CephRequiredUrlParser {
             protocol = new URI(requiredUrl).getScheme();
         } catch (URISyntaxException e) {
             throw new OperationFailureException(
-                    argerr("invalid uri, correct example is ceph://$POOLNAME/$VOLUMEUUID or volume://$VOLUMEUUID"));
+                    argerr("invalid uri, correct example is ceph://$POOLNAME/$VOLUMEUUID or volume://$VOLUMEUUID " +
+                            "or volumeSnapshotReuse://$SNAPSHOTUUID"));
         }
 
         return uriParsers.get(protocol).parseUri(requiredUrl);
@@ -60,6 +63,7 @@ public class CephRequiredUrlParser {
     private static void parseRequiredInstallUri() {
         String protocolVolume = "volume";
         String protocolCeph = "ceph";
+        String protocolSnapshot = "snpashot";
 
         AbstractUriParser volumeParser = new AbstractUriParser() {
             @Override
@@ -83,7 +87,23 @@ public class CephRequiredUrlParser {
             }
         };
 
+        AbstractUriParser snapshotParser = new AbstractUriParser() {
+            @Override
+            InstallPath parseUri(String uri) {
+                String snapshotUuid = uri.replaceFirst("volumeSnapshotReuse://", "");
+                String installPath = Q.New(VolumeSnapshotVO.class).select(VolumeSnapshotVO_.primaryStorageInstallPath)
+                        .eq(VolumeSnapshotVO_.uuid, snapshotUuid)
+                        .findValue();
+
+                InstallPath p = new InstallPath();
+                p.fullPath = installPath.split("@")[0];
+                p.disassemble();
+                return p;
+            }
+        };
+
         uriParsers.put(protocolVolume, volumeParser);
         uriParsers.put(protocolCeph, cephParser);
+        uriParsers.put(protocolSnapshot, snapshotParser);
     }
 }

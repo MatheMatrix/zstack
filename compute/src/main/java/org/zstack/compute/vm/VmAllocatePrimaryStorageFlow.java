@@ -18,7 +18,10 @@ import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.host.HostInventory;
+import org.zstack.header.image.ImageConstant;
 import org.zstack.header.image.ImageInventory;
+import org.zstack.header.image.ImageVO;
+import org.zstack.header.image.ImageVO_;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.storage.backup.BackupStorageVO;
 import org.zstack.header.storage.backup.BackupStorageVO_;
@@ -66,6 +69,9 @@ public class VmAllocatePrimaryStorageFlow implements Flow {
         if (spec.getImageSpec() != null) {
             if (spec.getImageSpec().getInventory() != null) {
                 rmsg.setImageUuid(spec.getImageSpec().getInventory().getUuid());
+                if (spec.getImageSpec().getInventory().getUrl().startsWith(ImageConstant.SNAPSHOT_REUSE_IMAGE_SCHEMA)) {
+                    rmsg.setRequiredInstallUri(spec.getImageSpec().getInventory().getUrl());
+                }
             }
             Optional.ofNullable(spec.getImageSpec().getSelectedBackupStorage())
                     .ifPresent(it -> rmsg.setBackupStorageUuid(it.getBackupStorageUuid()));
