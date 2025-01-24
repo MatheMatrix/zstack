@@ -80,6 +80,18 @@ class SdnControllerCase extends SubCase {
         /* this result depends on the simulator */
         assert sdn2.vniRanges.size() == 3
 
+        /* can not add controller with same ip again */
+        expectError {
+            addSdnController {
+                vendorType = SdnControllerConstant.H3C_VCFC_CONTROLLER
+                name = "sdn2"
+                ip = "127.1.1.1"
+                userName = "user"
+                password = "password"
+                systemTags = [String.format("vdsUuid::%s", h3cVdsUuid), String.format("tenantUuid::%s", inputTenantUuid), String.format("startVni::%s::endVni::%s", sVni, eVni)]
+            }
+        }
+
         updateSdnController {
             uuid = sdn2.uuid
             name = "sdn2"
