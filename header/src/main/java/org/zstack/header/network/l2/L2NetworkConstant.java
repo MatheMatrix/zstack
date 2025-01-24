@@ -36,7 +36,7 @@ public interface L2NetworkConstant {
     public static final String VSWITCH_TYPE_OVS_KERNEL = "OvsKernel";
 
     @PythonClass
-    public static final String VSWITCH_TYPE_OVN_DPDK = "Ovn-netdev";
+    public static final String VSWITCH_TYPE_OVN_DPDK = "OvnDpdk";
     public static final String OVN_DPDK_VNIC_SRC_PATH = "/var/run/openvswitch/";
 
     public static final String DETACH_L2NETWORK_CODE = "l2Network.detach";

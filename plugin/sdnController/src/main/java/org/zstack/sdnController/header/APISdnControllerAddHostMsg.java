@@ -36,8 +36,8 @@ public class APISdnControllerAddHostMsg extends APIMessage {
     /**
      * @desc vSwitch type
      */
-    @APIParam(required = false, validValues = {"Ovn-netdev", "Ovn-system"})
-    private String vSwitchType = "Ovn-netdev";
+    @APIParam(required = false, validValues = {"OvnDpdk", "OvnKernel"})
+    private String vSwitchType = "OvnDpdk";
 
     /**
      * @desc physical nics used by vSwitchType
