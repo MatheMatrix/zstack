@@ -47,7 +47,7 @@ doc {
 					type "String"
 					optional true
 					since "5.3.0"
-					values ("Ovn-netdev","Ovn-system")
+					values ("OvnDpdk","OvnKernel")
 				}
 				column {
 					name "systemTags"

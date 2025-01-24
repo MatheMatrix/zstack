@@ -29,8 +29,8 @@ public class APISdnControllerRemoveHostMsg extends APIMessage {
     /**
      * @desc vSwitch type
      */
-    @APIParam(required = false, validValues = {"Ovn-netdev", "Ovn-system"})
-    private String vSwitchType = "Ovn-netdev";
+    @APIParam(required = false, validValues = {"OvnDpdk", "OvnKernel"})
+    private String vSwitchType = "OvnDpdk";
 
     public String getSdnControllerUuid() {
         return sdnControllerUuid;

@@ -691,7 +691,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             return;
         }
 
-        /* vswitch type: Ovn-netdev will go here */
+        /* vswitch type: OvnDpdk will go here */
         SdnControllerFactory factory = getSdnControllerFactory(vSwitchType.getSdnControllerType());
         SdnController controller = factory.getSdnController(l2Network);
         if (controller == null) {
@@ -726,7 +726,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             return;
         }
 
-        /* vswitch type: Ovn-netdev will go here */
+        /* vswitch type: OvnDpdk will go here */
         SdnControllerFactory factory = getSdnControllerFactory(vSwitchType.getSdnControllerType());
         SdnController controller = factory.getSdnController(inv);
         if (controller == null) {
