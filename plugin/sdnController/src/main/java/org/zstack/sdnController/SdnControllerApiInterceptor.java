@@ -86,6 +86,11 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
         if (!SdnControllerType.getAllTypeNames().contains(msg.getVendorType())) {
             throw new ApiMessageInterceptionException(argerr("Sdn controller type: %s in not in the supported list: %s ", msg.getVendorType(), SdnControllerType.getAllTypeNames()));
         }
+
+        boolean existed = Q.New(SdnControllerVO.class).eq(SdnControllerVO_.ip, msg.getIp()).isExists();
+        if (existed) {
+            throw new ApiMessageInterceptionException(argerr("Sdn controller with ip [%s] is already added ", msg.getIp()));
+        }
     }
 
     private void validate(APISdnControllerAddHostMsg msg) {
