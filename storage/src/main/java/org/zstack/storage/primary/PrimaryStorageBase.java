@@ -1391,7 +1391,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
 
             protected void exceedMaxPendingCallback() {
                 APIAttachPrimaryStorageToClusterEvent evt = new APIAttachPrimaryStorageToClusterEvent(msg.getId());
-                evt.setError(operr(ErrorCode.getDeduplicateError(getName())));
+                evt.setError(operr(getDeduplicateError(getName())));
                 bus.publish(evt);
             }
 
@@ -1730,5 +1730,9 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
 
         logger.debug(String.format("mark volume snapshot[uuid:%s] as temporary image cache", volumeSnapshot.getUuid()));
         return cvo;
+    }
+
+    private static String getDeduplicateError(String operationName) {
+        return String.format("an other %s task is running, cancel this operation", operationName);
     }
 }

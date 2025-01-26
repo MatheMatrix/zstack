@@ -148,9 +148,8 @@ public class VolumeSnapshotCascadeExtension extends AbstractAsyncCascadeExtensio
                     Iterator<NeedReplyMessage> iterator = omsg.getMessages().iterator();
                     if (!r.isSuccess()) {
                         omsg.getMessages().forEach(m -> {
-                            ErrorCode error = r.getError().copy();
-                            error.putToOpaque(VolumeSnapshotConstant.SNAPSHOT_UUID, ((VolumeSnapshotDeletionMsg)iterator.next()).getSnapshotUuid());
-                            errorCodes.add(error);
+                            errorCodes.add(r.getError().copy()
+                                    .withOpaque(VolumeSnapshotConstant.SNAPSHOT_UUID, ((VolumeSnapshotDeletionMsg)iterator.next()).getSnapshotUuid()));
                         });
                         return errorCodes;
                     }
@@ -158,9 +157,8 @@ public class VolumeSnapshotCascadeExtension extends AbstractAsyncCascadeExtensio
                     reply.getInnerReplies().forEach(innerReply -> {
                         VolumeSnapshotDeletionMsg innerMsg = (VolumeSnapshotDeletionMsg)iterator.next();
                         if (!innerReply.isSuccess()) {
-                            ErrorCode err = innerReply.getError();
-                            err.putToOpaque(VolumeSnapshotConstant.SNAPSHOT_UUID, innerMsg.getSnapshotUuid());
-                            errorCodes.add(err);
+                            errorCodes.add(innerReply.getError()
+                                    .withOpaque(VolumeSnapshotConstant.SNAPSHOT_UUID, innerMsg.getSnapshotUuid()));
                         }
                     });
                     return errorCodes;

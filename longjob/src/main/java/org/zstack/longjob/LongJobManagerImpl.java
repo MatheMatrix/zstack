@@ -634,7 +634,7 @@ public class LongJobManagerImpl extends AbstractService implements LongJobManage
             public void fail(ErrorCode errorCode) {
                 LongJobVO vo = changeState(longJobUuid, getEventOnError(errorCode), it -> {
                     if (Strings.isEmpty(it.getJobResult())) {
-                        it.setJobResult(ErrorCode.getJobResult(wrapDefaultError(it, errorCode)));
+                        it.setJobResult(errorCodeToJobResult(wrapDefaultError(it, errorCode)));
                     }
                 });
 
