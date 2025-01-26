@@ -101,6 +101,8 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             handle((APIReconnectSdnControllerMsg) msg);
         } else if (msg instanceof APISdnControllerChangeHostMsg) {
             handle((APISdnControllerChangeHostMsg) msg);
+        } else if (msg instanceof SdnControllerRemoveHostMsg) {
+            handle((SdnControllerRemoveHostMsg) msg);
         }
     }
 
@@ -215,9 +217,10 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         });
     }
 
-    private void handle(APISdnControllerRemoveHostMsg msg) {
-        APISdnControllerRemoveHostEvent event = new APISdnControllerRemoveHostEvent(msg.getId());
+    private void handle(APISdnControllerRemoveHostMsg amsg) {
+        APISdnControllerRemoveHostEvent event = new APISdnControllerRemoveHostEvent(amsg.getId());
 
+        SdnControllerRemoveHostMsg msg = SdnControllerRemoveHostMsg.fromApi(amsg);
         sdnControllerRemoveHost(msg, new Completion(msg) {
             @Override
             public void success() {
@@ -234,6 +237,28 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             public void fail(ErrorCode errorCode) {
                 event.setError(errorCode);
                 bus.publish(event);
+            }
+        });
+    }
+
+    private void handle(SdnControllerRemoveHostMsg msg) {
+        SdnControllerRemoveHostReply reply = new SdnControllerRemoveHostReply();
+
+        sdnControllerRemoveHost(msg, new Completion(msg) {
+            @Override
+            public void success() {
+                SQL.New(SdnControllerHostRefVO.class)
+                        .eq(SdnControllerHostRefVO_.sdnControllerUuid, msg.getSdnControllerUuid())
+                        .eq(SdnControllerHostRefVO_.hostUuid, msg.getHostUuid())
+                        .eq(SdnControllerHostRefVO_.vSwitchType, msg.getvSwitchType()).delete();
+
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
             }
         });
     }
@@ -330,7 +355,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         controller.changeHost(oldref, newRef, completion);
     }
 
-    private void sdnControllerRemoveHost(APISdnControllerRemoveHostMsg msg, Completion completion) {
+    private void sdnControllerRemoveHost(SdnControllerRemoveHostMsg msg, Completion completion) {
         SdnControllerVO controllerVO = dbf.findByUuid(msg.getSdnControllerUuid(), SdnControllerVO.class);
         SdnControllerFactory factory = getSdnControllerFactory(controllerVO.getVendorType());
         SdnController controller = factory.getSdnController(controllerVO);
@@ -354,7 +379,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             public void run(FlowTrigger trigger, Map data) {
                 List<HardwareL2VxlanNetworkPoolVO> poolVos = Q.New(HardwareL2VxlanNetworkPoolVO.class)
                         .eq(HardwareL2VxlanNetworkPoolVO_.sdnControllerUuid, msg.getSdnControllerUuid()).list();
-                new While<>(poolVos).all((pool, wcomp) -> {
+                new While<>(poolVos).each((pool, wcomp) -> {
                     DeleteL2NetworkMsg msg = new DeleteL2NetworkMsg();
                     msg.setUuid(pool.getUuid());
                     bus.makeTargetServiceIdByResourceUuid(msg, L2NetworkConstant.SERVICE_ID, pool.getUuid());
@@ -371,6 +396,80 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                     @Override
                     public void done(ErrorCodeList errorCodeList) {
                         trigger.next();
+                    }
+                });
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ =  "delete-sdn-network";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                List<String> l2Uuids = controller.getL2Network();
+                if (l2Uuids.isEmpty()) {
+                    trigger.next();
+                    return;
+                }
+
+                new While<>(l2Uuids).step((uuid, wcomp) -> {
+                    DeleteL2NetworkMsg msg = new DeleteL2NetworkMsg();
+                    msg.setUuid(uuid);
+                    bus.makeTargetServiceIdByResourceUuid(msg, L2NetworkConstant.SERVICE_ID, uuid);
+                    bus.send(msg, new CloudBusCallBack(wcomp) {
+                        @Override
+                        public void run(MessageReply reply) {
+                            if (!reply.isSuccess()) {
+                                logger.info(String.format("delete sdn l2 network[uuid:%s] failed, reason:%s", uuid, reply.getError().getDetails()));
+                            }
+                            wcomp.done();
+                        }
+                    });
+                }, 5).run(new WhileDoneCompletion(trigger) {
+                    @Override
+                    public void done(ErrorCodeList errorCodeList) {
+                        if (errorCodeList.getCauses().isEmpty()) {
+                            trigger.next();
+                        } else {
+                            trigger.fail(errorCodeList.getCauses().get(0));
+                        }
+                    }
+                });
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ =  "remove-host-from-sdn-controller";
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                List<SdnControllerHostRefVO> refVOS = Q.New(SdnControllerHostRefVO.class)
+                        .eq(SdnControllerHostRefVO_.sdnControllerUuid, msg.getSdnControllerUuid())
+                        .list();
+                if (refVOS.isEmpty()) {
+                    trigger.next();
+                    return;
+                }
+
+                new While<>(refVOS).step((ref, wcomp) -> {
+                    SdnControllerRemoveHostMsg msg = new SdnControllerRemoveHostMsg();
+                    msg.setSdnControllerUuid(ref.getSdnControllerUuid());
+                    msg.setHostUuid(ref.getHostUuid());
+                    msg.setvSwitchType(ref.getvSwitchType());
+                    bus.makeTargetServiceIdByResourceUuid(msg, SdnControllerConstant.SERVICE_ID, ref.getSdnControllerUuid());
+                    bus.send(msg, new CloudBusCallBack(wcomp) {
+                        @Override
+                        public void run(MessageReply reply) {
+                            if (!reply.isSuccess()) {
+                                logger.debug(String.format("delete host [uuid:%s] from sdn controller[uuid:%s] failed, error:%s",
+                                        msg.getHostUuid(), msg.getSdnControllerUuid(), reply.getError().getDetails()));
+                            }
+                            wcomp.done();
+                        }
+                    });
+                }, 5).run(new WhileDoneCompletion(trigger) {
+                    @Override
+                    public void done(ErrorCodeList errorCodeList) {
+                        if (errorCodeList.getCauses().isEmpty()) {
+                            trigger.next();
+                        } else {
+                            trigger.fail(errorCodeList.getCauses().get(0));
+                        }
                     }
                 });
             }
