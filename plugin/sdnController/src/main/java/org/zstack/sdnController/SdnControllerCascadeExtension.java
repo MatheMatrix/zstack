@@ -9,16 +9,16 @@ import org.zstack.core.cascade.CascadeConstant;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.db.DatabaseFacade;
+import org.zstack.core.db.Q;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.errorcode.ErrorCodeList;
+import org.zstack.header.host.HostInventory;
+import org.zstack.header.host.HostVO;
 import org.zstack.header.identity.AccountInventory;
 import org.zstack.header.identity.AccountVO;
 import org.zstack.header.message.MessageReply;
-import org.zstack.sdnController.header.SdnControllerConstant;
-import org.zstack.sdnController.header.SdnControllerDeletionMsg;
-import org.zstack.sdnController.header.SdnControllerInventory;
-import org.zstack.sdnController.header.SdnControllerVO;
+import org.zstack.sdnController.header.*;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
@@ -59,6 +59,51 @@ public class SdnControllerCascadeExtension extends AbstractAsyncCascadeExtension
     }
 
     private void handleDeletion(final CascadeAction action, final Completion completion) {
+        if (HostVO.class.getSimpleName().equals(action.getParentIssuer())) {
+            List<HostInventory> hosts = action.getParentIssuerContext();
+            List<String> hostUuids = hosts.stream().map(HostInventory::getUuid).collect(Collectors.toList());
+            List<SdnControllerHostRefVO> refVOS = Q.New(SdnControllerHostRefVO.class)
+                    .in(SdnControllerHostRefVO_.hostUuid, hostUuids).list();
+            if (refVOS.isEmpty()) {
+                completion.success();
+                return;
+            }
+
+            List<SdnControllerRemoveHostMsg> msgs = new ArrayList<>();
+            for (SdnControllerHostRefVO ref : refVOS) {
+                SdnControllerRemoveHostMsg msg = new SdnControllerRemoveHostMsg();
+                msg.setSdnControllerUuid(ref.getSdnControllerUuid());
+                msg.setHostUuid(ref.getHostUuid());
+                msg.setvSwitchType(ref.getvSwitchType());
+                bus.makeTargetServiceIdByResourceUuid(msg, SdnControllerConstant.SERVICE_ID, ref.getSdnControllerUuid());
+                msgs.add(msg);
+            }
+
+            new While<>(msgs).each((msg, wcomp) -> {
+                bus.send(msg, new CloudBusCallBack(wcomp) {
+                    @Override
+                    public void run(MessageReply reply) {
+                        if (!reply.isSuccess()) {
+                            logger.debug(String.format("delete host [uuid:%s] from sdn controller[uuid:%s] failed, error:%s",
+                                    msg.getHostUuid(), msg.getSdnControllerUuid(), reply.getError().getDetails()));
+                        }
+                        wcomp.done();
+                    }
+                });
+            }).run(new WhileDoneCompletion(completion) {
+                @Override
+                public void done(ErrorCodeList errorCodeList) {
+                    if (errorCodeList.getCauses().isEmpty()) {
+                        completion.success();
+                    } else {
+                        completion.fail(errorCodeList.getCauses().get(0));
+                    }
+                }
+            });
+
+            return;
+        }
+
         final List<SdnControllerInventory> sdnControllers = sdnControllerFromAction(action);
         if (sdnControllers == null) {
             completion.success();
@@ -100,7 +145,10 @@ public class SdnControllerCascadeExtension extends AbstractAsyncCascadeExtension
 
     @Override
     public List<String> getEdgeNames() {
-        return Arrays.asList(AccountVO.class.getSimpleName());
+        List<String> ret = new ArrayList<>();
+        ret.add(AccountVO.class.getSimpleName());
+        ret.add(HostVO.class.getSimpleName());
+        return ret;
     }
 
     @Override
