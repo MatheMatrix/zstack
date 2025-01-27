@@ -53,6 +53,7 @@ BEGIN
     RENAME TABLE `zstack`.`ApplicationDevelopmentServiceVO_temp` TO `zstack`.`ApplicationDevelopmentServiceVO`;
 
     COMMIT;
+    SELECT CURTIME();
 END $$
 
 DELIMITER ;
@@ -62,3 +63,18 @@ CALL ModifyApplicationDevelopmentServiceVO();
 CALL ADD_COLUMN('ModelVO', 'modelId', 'VARCHAR(255)', 1, NULL);
 CALL ADD_COLUMN('ModelServiceInstanceGroupVO', 'description', 'VARCHAR(2048)', 1, NULL);
 CALL ADD_COLUMN('ModelServiceVO', 'source', 'VARCHAR(32)', 1, NULL);
+
+# Delete ZStack-default-inference-template
+DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = '97e66447fa4246649dcc41b72b412407';
+# Delete qwen chat
+DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = '0446d8fd9487403cc12e7645f5r68d04';
+# Delete xtts
+DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = 'e944c98c4a154f53a86f34eb0fcd093c';
+# Delete sdxl
+DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = '80fab6f2f3d444e1a0b39702dcc62bac';
+# Delete blip image
+DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = '2ad69dc6cebf405f9e0d750bb50e120c';
+# Delete stable video
+DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = 'c65d3019cb3f400f80e5e2a10dcaf861';
+# Delete yolo
+DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = '0b714f4d8c5c43ca86c3a6caa58358a7';
