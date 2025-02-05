@@ -27,7 +27,18 @@ public class CreateBdcBdevRequest extends XInfiniRequest {
     private int bsVolumeId;
 
     @Param
+    private int queueNum = 1;
+
+    @Param
     private String name;
+
+    public int getQueueNum() {
+        return queueNum;
+    }
+
+    public void setQueueNum(int queueNum) {
+        this.queueNum = queueNum;
+    }
 
     public String getName() {
         return name;
