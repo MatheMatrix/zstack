@@ -9,6 +9,7 @@ import org.zstack.core.retry.Retry;
 import org.zstack.core.retry.RetryCondition;
 import org.zstack.header.core.Completion;
 import org.zstack.header.errorcode.OperationFailureException;
+import org.zstack.header.volume.VolumeConfigs;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.volume.VolumeVO_;
 import org.zstack.header.xinfini.XInfiniConstants;
@@ -335,11 +336,12 @@ public class XInfiniApiHelper {
         }.run();
     }
 
-    public BdcBdevModule createBdcBdev(int bdcId, int volumeId, String name) {
+    public BdcBdevModule createBdcBdev(int bdcId, int volumeId, String name, VolumeConfigs vcfs) {
         CreateBdcBdevRequest req = new CreateBdcBdevRequest();
         req.setName(name);
         req.setBdcId(bdcId);
         req.setBsVolumeId(volumeId);
+        req.setQueueNum(vcfs.getQueueNum());
         CreateBdcBdevResponse rsp = callErrorOutWithRetry(req, CreateBdcBdevResponse.class, 3);
         GetBdcBdevRequest gReq = new GetBdcBdevRequest();
         gReq.setId(rsp.getSpec().getId());
@@ -358,12 +360,12 @@ public class XInfiniApiHelper {
         return rsp.getItems().get(0);
     }
 
-    public BdcBdevModule getOrCreateBdcBdevByVolumeIdAndBdcId(int volId, int bdcId, String bdevName) {
+    public BdcBdevModule getOrCreateBdcBdevByVolumeIdAndBdcId(int volId, int bdcId, String bdevName, VolumeConfigs vcfs) {
         QueryBdcBdevRequest req = new QueryBdcBdevRequest();
         req.q = String.format("((spec.bdc_id:%s) AND (spec.bs_volume_id:%s))", bdcId, volId);
         QueryBdcBdevResponse rsp = queryErrorOut(req, QueryBdcBdevResponse.class);
         if (rsp.getMetadata().getPagination().getCount() == 0) {
-            return createBdcBdev(bdcId, volId, bdevName);
+            return createBdcBdev(bdcId, volId, bdevName, vcfs);
         }
 
         return rsp.getItems().get(0);

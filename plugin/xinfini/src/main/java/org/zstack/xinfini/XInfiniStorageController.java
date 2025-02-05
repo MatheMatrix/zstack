@@ -19,15 +19,14 @@ import org.zstack.header.storage.addon.*;
 import org.zstack.header.storage.addon.primary.*;
 import org.zstack.header.storage.primary.VolumeSnapshotCapability;
 import org.zstack.header.storage.snapshot.VolumeSnapshotStats;
-import org.zstack.header.volume.VolumeConstant;
-import org.zstack.header.volume.VolumeInventory;
-import org.zstack.header.volume.VolumeProtocol;
-import org.zstack.header.volume.VolumeStats;
+import org.zstack.header.volume.*;
 import org.zstack.header.xinfini.XInfiniConstants;
 import org.zstack.iscsi.IscsiUtils;
 import org.zstack.iscsi.kvm.IscsiHeartbeatVolumeTO;
 import org.zstack.iscsi.kvm.IscsiVolumeTO;
+import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.storage.addon.primary.ExternalPrimaryStorageFactory;
+import org.zstack.storage.volume.VolumeConfigsGetter;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.DebugUtils;
 import org.zstack.utils.Utils;
@@ -75,6 +74,8 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
     private final XInfiniApiHelper apiHelper;
     @Autowired
     private ExternalPrimaryStorageFactory extPsFactory;
+    @Autowired
+    private ResourceConfigFacade rcf;
 
     private final String vhostSocketDir;
 
@@ -164,7 +165,8 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
             return to;
         }
 
-        bdev = apiHelper.createBdcBdev(bdc.getSpec().getId(), volModule.getSpec().getId(), vhostName);
+        VolumeConfigs vcfs = new VolumeConfigsGetter().getConfigs(vol.getUuid());
+        bdev = apiHelper.createBdcBdev(bdc.getSpec().getId(), volModule.getSpec().getId(), vhostName, vcfs);
         to.setInstallPath(bdev.getSpec().getSocketPath());
         return to;
     }
@@ -268,7 +270,9 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
             String bdevName = buildBdevName(v.getUuid());
             BdcModule bdc = apiHelper.queryBdcByIp(h.getManagementIp());
             VolumeModule volModule = getVolumeModule(v);
-            BdcBdevModule bdev = apiHelper.getOrCreateBdcBdevByVolumeIdAndBdcId(volModule.getSpec().getId(), bdc.getSpec().getId(), bdevName);
+            VolumeConfigs vcfs = new VolumeConfigsGetter().getConfigs(v.getUuid());
+            BdcBdevModule bdev = apiHelper.getOrCreateBdcBdevByVolumeIdAndBdcId(volModule.getSpec().getId(),
+                    bdc.getSpec().getId(), bdevName, vcfs);
             return bdev.getSpec().getSocketPath();
         } else if (VolumeProtocol.iSCSI.toString().equals(v.getProtocol())) {
             if (v.getInstallPath().contains("@")) {
