@@ -142,6 +142,9 @@ DELIMITER ;
 call CreateResourceConfigForBindingVms();
 DROP PROCEDURE IF EXISTS CreateResourceConfigForBindingVms;
 
+DELETE FROM `SSOServerTokenVO`;
+ALTER TABLE `zstack`.`SSOServerTokenVO` ADD sessionUuid VARCHAR(32) DEFAULT NULL;
+ALTER TABLE `zstack`.`SSOServerTokenVO` ADD CONSTRAINT `fkSSOServerTokenVOSessionVO` FOREIGN KEY (`sessionUuid`) REFERENCES `SessionVO` (`uuid`) ON DELETE CASCADE;
 
 CALL ADD_COLUMN('SdnControllerVO', 'status', 'VARCHAR(32)', 0, 'Connected');
 CALL ADD_COLUMN('HostNetworkInterfaceVO', 'driverType', 'VARCHAR(32)', 1, NULL);

@@ -225,7 +225,7 @@ public class LoginManagerImpl extends AbstractService implements LoginManager {
 
                         SessionInventory session = processSession(info);
                         data.put(LoginAuthConstant.LOGIN_SESSION_INVENTORY, session);
-
+                        loginContext.getProperties().put(LoginAuthConstant.LOGIN_SESSION_UUID, session.getUuid());
                         for (LoginAuthExtensionPoint ext : matchedAuthExtensions) {
                             ext.afterLoginSuccess(loginContext, info);
                         }
