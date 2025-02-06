@@ -78,3 +78,5 @@ DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = '2ad69dc6cebf405f9e0d750bb5
 DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = 'c65d3019cb3f400f80e5e2a10dcaf861';
 # Delete yolo
 DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = '0b714f4d8c5c43ca86c3a6caa58358a7';
+
+ALTER TABLE `zstack`.`BaremetalNicVO` modify column mac varchar(255) DEFAULT NULL;
