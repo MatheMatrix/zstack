@@ -80,3 +80,5 @@ DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = 'c65d3019cb3f400f80e5e2a10d
 DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = '0b714f4d8c5c43ca86c3a6caa58358a7';
 
 ALTER TABLE `zstack`.`BaremetalNicVO` modify column mac varchar(255) DEFAULT NULL;
+
+UPDATE `zstack`.`ModelServiceVO` SET `framework`='BentoML' WHERE `framework`='Bentoml';
