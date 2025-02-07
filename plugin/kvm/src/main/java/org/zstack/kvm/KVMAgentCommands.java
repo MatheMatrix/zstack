@@ -4750,6 +4750,8 @@ public class KVMAgentCommands {
         @GrayVersion(value = "5.4.0")
         public String vSwitchType;
         @GrayVersion(value = "5.4.0")
+        public Boolean sync;
+        @GrayVersion(value = "5.4.0")
         public Map<String, String> nicMap = new HashMap<>();
     }
 
