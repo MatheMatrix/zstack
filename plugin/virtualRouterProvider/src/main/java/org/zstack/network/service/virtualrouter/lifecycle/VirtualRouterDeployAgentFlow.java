@@ -54,7 +54,7 @@ public class VirtualRouterDeployAgentFlow extends NoRollbackFlow {
     @Autowired
     private UpgradeChecker upgradeChecker;
 
-    private String agentPackageName = VirtualRouterGlobalProperty.AGENT_PACKAGE_NAME;
+    private final String agentPackageName = VirtualRouterGlobalProperty.AGENT_PACKAGE_NAME;
 
 	private void continueConnect(final VmNicInventory mgmtNic, final Map<String, Object> data, final FlowTrigger completion) {
         final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
