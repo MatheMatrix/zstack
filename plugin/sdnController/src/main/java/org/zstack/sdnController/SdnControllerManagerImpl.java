@@ -538,7 +538,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
             @Override
             public String getName() {
-                return String.format("attach-sdn-controller-%s", msg.getSdnControllerUuid());
+                return String.format("delete-sdn-controller-%s", msg.getSdnControllerUuid());
             }
         });
     }
