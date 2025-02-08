@@ -592,16 +592,16 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        controller.initSdnController(msg, new Completion(completion) {
+                        controller.initSdnController(msg, new Completion(trigger) {
                             @Override
                             public void success() {
-                                completion.success();
+                                trigger.next();
                             }
 
                             @Override
                             public void fail(ErrorCode errorCode) {
                                 dbf.removeByPrimaryKey(vo.getUuid(), SdnControllerVO.class);
-                                completion.fail(errorCode);
+                                trigger.fail(errorCode);
                             }
                         });
                     }
