@@ -44,6 +44,14 @@ public class SSOServerTokenInventory  {
         return this.userUuid;
     }
 
+    public java.lang.String sessionUuid;
+    public void setSessionUuid(java.lang.String sessionUuid) {
+        this.sessionUuid = sessionUuid;
+    }
+    public java.lang.String getSessionUuid() {
+        return this.sessionUuid;
+    }
+
     public java.sql.Timestamp createDate;
     public void setCreateDate(java.sql.Timestamp createDate) {
         this.createDate = createDate;

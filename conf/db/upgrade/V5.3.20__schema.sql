@@ -30,3 +30,7 @@ WHERE ref.referenceType = 'VolumeVO'
   AND ref.referenceVolumeUuid = ref.referenceUuid
   AND ref.referenceInstallUrl NOT LIKE CONCAT('%', SUBSTRING_INDEX(vol.installPath, '/', -1), '%');
 
+DELETE FROM `SSOServerTokenVO`;
+ALTER TABLE `zstack`.`SSOServerTokenVO` ADD sessionUuid VARCHAR(32) DEFAULT NULL;
+ALTER TABLE `zstack`.`SSOServerTokenVO` ADD CONSTRAINT `fkSSOServerTokenVOSessionVO` FOREIGN KEY (`sessionUuid`) REFERENCES `SessionVO` (`uuid`) ON DELETE CASCADE;
+
