@@ -16,6 +16,7 @@ import org.zstack.network.l2.vxlan.vxlanNetwork.APICreateL2VxlanNetworkMsg;
 import org.zstack.sdnController.header.*;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.utils.network.NetworkUtils;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -85,6 +86,10 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
     private void validate(APIAddSdnControllerMsg msg) {
         if (!SdnControllerType.getAllTypeNames().contains(msg.getVendorType())) {
             throw new ApiMessageInterceptionException(argerr("Sdn controller type: %s in not in the supported list: %s ", msg.getVendorType(), SdnControllerType.getAllTypeNames()));
+        }
+
+        if (!NetworkUtils.isUnicastIPAddress(msg.getIp())) {
+            throw new ApiMessageInterceptionException(argerr("Sdn controller ip[%s] is not an unicast address ", msg.getIp()));
         }
 
         boolean existed = Q.New(SdnControllerVO.class).eq(SdnControllerVO_.ip, msg.getIp()).isExists();

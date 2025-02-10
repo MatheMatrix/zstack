@@ -84,7 +84,7 @@ class SugonSdnControllerEnv {
                 sdnController {
                     vendorType = "TF"
                     name = "tf"
-                    ip = "127.0.0.1"
+                    ip = "192.168.0.1"
                     userName = "user"
                     password = "password"
                 }

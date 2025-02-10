@@ -54,7 +54,7 @@ class SdnControllerCase extends SubCase {
             addSdnController {
                 vendorType = SdnControllerConstant.H3C_VCFC_CONTROLLER
                 name = "sdn2"
-                ip = "127.1.1.1"
+                ip = "192.168.1.1"
                 userName = "user"
                 password = "password"
             }
@@ -63,7 +63,7 @@ class SdnControllerCase extends SubCase {
         SdnControllerInventory sdn2 = addSdnController {
             vendorType = SdnControllerConstant.H3C_VCFC_CONTROLLER
             name = "sdn1"
-            ip = "127.1.1.1"
+            ip = "192.168.1.1"
             userName = "user"
             password = "password"
             systemTags = [String.format("vdsUuid::%s", h3cVdsUuid), String.format("tenantUuid::%s", inputTenantUuid), String.format("startVni::%s::endVni::%s", sVni, eVni)]
@@ -85,7 +85,7 @@ class SdnControllerCase extends SubCase {
             addSdnController {
                 vendorType = SdnControllerConstant.H3C_VCFC_CONTROLLER
                 name = "sdn2"
-                ip = "127.1.1.1"
+                ip = "192.168.1.1"
                 userName = "user"
                 password = "password"
                 systemTags = [String.format("vdsUuid::%s", h3cVdsUuid), String.format("tenantUuid::%s", inputTenantUuid), String.format("startVni::%s::endVni::%s", sVni, eVni)]

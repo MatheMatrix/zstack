@@ -2,7 +2,6 @@ package org.zstack.sdnController;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.Platform;
 import org.zstack.core.asyncbatch.While;
@@ -592,16 +591,16 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        controller.initSdnController(msg, new Completion(completion) {
+                        controller.initSdnController(msg, new Completion(trigger) {
                             @Override
                             public void success() {
-                                completion.success();
+                                trigger.next();
                             }
 
                             @Override
                             public void fail(ErrorCode errorCode) {
                                 dbf.removeByPrimaryKey(vo.getUuid(), SdnControllerVO.class);
-                                completion.fail(errorCode);
+                                trigger.fail(errorCode);
                             }
                         });
                     }
@@ -790,15 +789,28 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             return;
         }
 
-        /* vswitch type: OvnDpdk will go here */
-        SdnControllerFactory factory = getSdnControllerFactory(vSwitchType.getSdnControllerType());
-        SdnController controller = factory.getSdnController(l2Network);
-        if (controller == null) {
+        String sdnControllerUuid = null;
+        for (String systag : msg.getSystemTags()) {
+            if (SdnControllerSystemTags.L2_NETWORK_OVN_UUID.isMatch(systag)) {
+                sdnControllerUuid = SdnControllerSystemTags.L2_NETWORK_OVN_UUID.getTokenByTag(
+                        systag, SdnControllerSystemTags.L2_NETWORK_OVN_UUID_TOKEN);
+            }
+        }
+
+        if (sdnControllerUuid == null) {
+            completion.fail(operr("can not create sdn l2 network because there is not sdn controller uuid in api message"));
+            return;
+        }
+
+        SdnControllerVO vo = dbf.findByUuid(sdnControllerUuid, SdnControllerVO.class);
+        if (vo == null) {
             completion.fail(operr("can not found sdn controller for l2 network[uuid:%s, vswitchType:%s]",
                     l2Network.getUuid(), l2Network.getvSwitchType()));
             return;
         }
 
+        SdnControllerFactory factory = getSdnControllerFactory(vo.getVendorType());
+        SdnController controller = factory.getSdnController(vo);
         controller.createL2Network(l2Network, msg.getSystemTags(), completion);
     }
 
@@ -827,7 +839,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
         /* vswitch type: OvnDpdk will go here */
         SdnControllerFactory factory = getSdnControllerFactory(vSwitchType.getSdnControllerType());
-        SdnController controller = factory.getSdnController(inv);
+        SdnController controller = factory.getSdnController(inv.getUuid());
         if (controller == null) {
             logger.warn(String.format("can not found sdn controller for l2 network[uuid:%s, vswitchType:%s]",
                     inv.getUuid(), inv.getvSwitchType()));
@@ -855,13 +867,15 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
     }
 
-    void addOvnLogicalPorts(String controllerType, List<VmNicInventory> nics, Completion completion) {
-        SdnControllerFactory factory = getSdnControllerFactory(controllerType);
+    void addOvnLogicalPorts(String sdnControllerUuid, List<VmNicInventory> nics, Completion completion) {
+        SdnControllerVO vo = dbf.findByUuid(sdnControllerUuid, SdnControllerVO.class);
+        SdnControllerFactory factory = getSdnControllerFactory(vo.getVendorType());
         if (factory == null) {
-            completion.fail(operr("there is no sdn controller for sdn controller type:%s", controllerType));
+            completion.fail(operr("there is no sdn controller factory for sdn controller type:%s", vo.getVendorType()));
+            return;
         }
 
-        SdnController controller = factory.getSdnController();
+        SdnController controller = factory.getSdnController(vo);
         controller.addLogicalPorts(nics, completion);
     }
 
@@ -891,13 +905,15 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         });
     }
 
-    void removeOvnLogicalPorts(String controllerType, List<VmNicInventory> nics, Completion completion) {
-        SdnControllerFactory factory = getSdnControllerFactory(controllerType);
+    void removeOvnLogicalPorts(String controllerUuid, List<VmNicInventory> nics, Completion completion) {
+        SdnControllerVO vo = dbf.findByUuid(controllerUuid, SdnControllerVO.class);
+        SdnControllerFactory factory = getSdnControllerFactory(vo.getVendorType());
         if (factory == null) {
-            completion.fail(operr("there is no sdn controller for sdn controller type:%s", controllerType));
+            completion.fail(operr("there is no sdn controller factory for sdn controller type:%s", vo.getVendorType()));
+            return;
         }
 
-        SdnController controller = factory.getSdnController();
+        SdnController controller = factory.getSdnController(vo);
         controller.removeLogicalPorts(nics, completion);
     }
 
@@ -964,7 +980,14 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                 continue;
             }
 
-            nicMaps.computeIfAbsent(vSwitchType.getSdnControllerType(), k -> new ArrayList<>()).add(nic);
+            String controllerUuid = SdnControllerSystemTags.L2_NETWORK_OVN_UUID.getTokenByResourceUuid(
+                    l2VO.getUuid(), SdnControllerSystemTags.L2_NETWORK_OVN_UUID_TOKEN);
+            if (controllerUuid == null) {
+                completion.fail(operr("sdn l2 network[uuid:%s] is not attached controller", l2VO.getUuid()));
+                return;
+            }
+
+            nicMaps.computeIfAbsent(controllerUuid, k -> new ArrayList<>()).add(nic);
         }
 
         if (nicMaps.isEmpty()) {
@@ -984,10 +1007,17 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             return;
         }
 
+        String controllerUuid = SdnControllerSystemTags.L2_NETWORK_OVN_UUID.getTokenByResourceUuid(
+                l2NetworkVO.getUuid(), SdnControllerSystemTags.L2_NETWORK_OVN_UUID_TOKEN);
+        if (controllerUuid == null) {
+            completion.fail(operr("sdn l2 network[uuid:%s] is not attached controller", l2NetworkVO.getUuid()));
+            return;
+        }
+
         Map<String, List<VmNicInventory>> nicMaps = new HashMap<>();
         List<VmNicInventory> nics = new ArrayList<>();
         nics.add(spec.getDestNics().get(0));
-        nicMaps.put(vSwitchType.getSdnControllerType(), nics);
+        nicMaps.put(controllerUuid, nics);
         addOvnLogicalPort(nicMaps, completion);
     }
 
@@ -1000,10 +1030,18 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             return;
         }
 
+        String controllerUuid = SdnControllerSystemTags.L2_NETWORK_OVN_UUID.getTokenByResourceUuid(
+                l2NetworkVO.getUuid(), SdnControllerSystemTags.L2_NETWORK_OVN_UUID_TOKEN);
+        if (controllerUuid == null) {
+            logger.warn(String.format("sdn l2 network[uuid:%s] is not attached controller", l2NetworkVO.getUuid()));
+            completion.done();
+            return;
+        }
+
         Map<String, List<VmNicInventory>> nicMaps = new HashMap<>();
         List<VmNicInventory> nics = new ArrayList<>();
         nics.add(spec.getDestNics().get(0));
-        nicMaps.put(vSwitchType.getSdnControllerType(), nics);
+        nicMaps.put(controllerUuid, nics);
 
         removeLogicalPort(nicMaps, new Completion(completion) {
             @Override
@@ -1030,10 +1068,18 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             return;
         }
 
+        String controllerUuid = SdnControllerSystemTags.L2_NETWORK_OVN_UUID.getTokenByResourceUuid(
+                l2NetworkVO.getUuid(), SdnControllerSystemTags.L2_NETWORK_OVN_UUID_TOKEN);
+        if (controllerUuid == null) {
+            logger.warn(String.format("sdn l2 network[uuid:%s] is not attached controller", l2NetworkVO.getUuid()));
+            completion.done();
+            return;
+        }
+
         Map<String, List<VmNicInventory>> nicMaps = new HashMap<>();
         List<VmNicInventory> nics = new ArrayList<>();
         nics.add(spec.getDestNics().get(0));
-        nicMaps.put(vSwitchType.getSdnControllerType(), nics);
+        nicMaps.put(controllerUuid, nics);
 
         removeLogicalPort(nicMaps, new Completion(completion) {
             @Override
@@ -1086,7 +1132,14 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                 continue;
             }
 
-            nicMaps.computeIfAbsent(vSwitchType.getSdnControllerType(), k -> new ArrayList<>()).add(nic);
+            String controllerUuid = SdnControllerSystemTags.L2_NETWORK_OVN_UUID.getTokenByResourceUuid(
+                    l2VO.getUuid(), SdnControllerSystemTags.L2_NETWORK_OVN_UUID_TOKEN);
+            if (controllerUuid == null) {
+                completion.fail(operr("sdn l2 network[uuid:%s] is not attached controller", l2VO.getUuid()));
+                return;
+            }
+
+            nicMaps.computeIfAbsent(controllerUuid, k -> new ArrayList<>()).add(nic);
         }
 
         if (nicMaps.isEmpty()) {
@@ -1128,7 +1181,14 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                 continue;
             }
 
-            nicMaps.computeIfAbsent(vSwitchType.getSdnControllerType(), k -> new ArrayList<>()).add(nic);
+            String controllerUuid = SdnControllerSystemTags.L2_NETWORK_OVN_UUID.getTokenByResourceUuid(
+                    l2VO.getUuid(), SdnControllerSystemTags.L2_NETWORK_OVN_UUID_TOKEN);
+            if (controllerUuid == null) {
+                completion.fail(operr("sdn l2 network[uuid:%s] is not attached controller", l2VO.getUuid()));
+                return;
+            }
+
+            nicMaps.computeIfAbsent(controllerUuid, k -> new ArrayList<>()).add(nic);
         }
 
         if (nicMaps.isEmpty()) {
