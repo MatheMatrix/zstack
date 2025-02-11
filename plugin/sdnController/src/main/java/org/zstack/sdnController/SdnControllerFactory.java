@@ -10,9 +10,7 @@ public interface SdnControllerFactory {
 
     SdnController getSdnController(SdnControllerVO vo);
 
-    default SdnController getSdnController(L2NetworkInventory inv) {return null;};
-
-    default SdnController getSdnController() {return null;};
+    default SdnController getSdnController(String l2NetworkUuid) {return null;};
 
     default FlowChain getSyncChain() {return FlowChainBuilder.newSimpleFlowChain();};
 }
