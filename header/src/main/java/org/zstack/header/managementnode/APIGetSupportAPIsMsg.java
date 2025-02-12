@@ -12,7 +12,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         responseClass = APIGetSupportAPIsReply.class
 )
-public class APIGetSupportAPIsMsg extends APISyncCallMessage {
+public class APIGetSupportAPIsMsg extends APISyncCallMessage implements APIManagementNodeMessage {
 
     public static APIGetSupportAPIsMsg __example__() {
         return new APIGetSupportAPIsMsg();
