@@ -1001,7 +1001,8 @@ public class L2NoVlanNetwork implements L2Network {
 
     @Override
     public void deleteHook(Completion completion) {
-        if (L2NetworkGlobalConfig.DeleteL2BridgePhysically.value(Boolean.class)) {
+        if (L2NetworkGlobalConfig.DeleteL2BridgePhysically.value(Boolean.class)
+                && getVSwitchType().isAttachToCluster()) {
             deleteL2Bridge(completion);
         } else {
             completion.success();
@@ -1033,13 +1034,9 @@ public class L2NoVlanNetwork implements L2Network {
         }
 
         List<HostVO> hostss = new ArrayList<>();
-        Map<String, String> hostL2ProviderMap = new HashMap<>();
         for (Map.Entry<String, List<String>> e : providerClusterMap.entrySet()) {
             List<HostVO> hosts = Q.New(HostVO.class)
                     .in(HostVO_.clusterUuid, e.getValue()).list();
-            for (HostVO h: hosts) {
-                hostL2ProviderMap.put(h.getUuid(), e.getKey());
-            }
             hostss.addAll(hosts);
         }
 
