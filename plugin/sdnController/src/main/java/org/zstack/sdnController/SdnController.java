@@ -36,7 +36,7 @@ public interface SdnController {
     List<SdnVniRange> getVniRange(SdnControllerInventory controller);
     List<SdnVlanRange> getVlanRange(SdnControllerInventory controller);
 
-    default List<String> getL2Network() { return new ArrayList<>();};
+    default List<String> getL2NetworkOfSdnController() { return new ArrayList<>();};
 
     default void addHost(APISdnControllerAddHostMsg msg, Completion completion) {completion.success();};
     default void removeHost(SdnControllerRemoveHostMsg msg, Completion completion) {completion.success();};
