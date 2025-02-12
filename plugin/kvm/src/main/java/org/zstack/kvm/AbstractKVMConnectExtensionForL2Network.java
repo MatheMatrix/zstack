@@ -104,7 +104,7 @@ public abstract class AbstractKVMConnectExtensionForL2Network {
                 }
 
                 for (int i = 0; i < count; i++) {
-                    int end = (i + 1) * step - 1;
+                    int end = (i + 1) * step;
                     List<String> interfaces = l2NetworksCheckList.subList(i * step, Math.min(end, l2NetworksCheckList.size()))
                             .stream()
                             .map(L2NetworkInventory::getPhysicalInterface)

@@ -403,7 +403,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
             @Override
             public void run(FlowTrigger trigger, Map data) {
-                List<String> l2Uuids = controller.getL2Network();
+                List<String> l2Uuids = controller.getL2NetworkOfSdnController();
                 if (l2Uuids.isEmpty()) {
                     trigger.next();
                     return;
