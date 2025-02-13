@@ -11,6 +11,8 @@ import org.zstack.header.apimediator.ApiMessageInterceptor;
 import org.zstack.header.apimediator.GlobalApiMessageInterceptor;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.network.l2.APIAttachL2NetworkToClusterMsg;
+import org.zstack.header.network.l2.APICreateL2NoVlanNetworkMsg;
+import org.zstack.header.network.l2.APICreateL2VlanNetworkMsg;
 import org.zstack.header.network.l2.L2NetworkConstant;
 import org.zstack.network.l2.vxlan.vxlanNetwork.APICreateL2VxlanNetworkMsg;
 import org.zstack.sdnController.header.*;
@@ -45,8 +47,6 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
 
     public List<Class> getMessageClassToIntercept() {
         List<Class> ret = new ArrayList<>();
-        ret.add(APICreateL2VxlanNetworkMsg.class);
-        ret.add(APIAttachL2NetworkToClusterMsg.class);
         ret.add(APIAddSdnControllerMsg.class);
         ret.add(APIRemoveSdnControllerMsg.class);
 
@@ -58,11 +58,7 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
     }
 
     public APIMessage intercept(APIMessage msg) throws ApiMessageInterceptionException {
-        if (msg instanceof APICreateL2VxlanNetworkMsg) {
-            validate((APICreateL2VxlanNetworkMsg)msg);
-        } else if (msg instanceof APIAttachL2NetworkToClusterMsg){
-            validate((APIAttachL2NetworkToClusterMsg)msg);
-        } else if (msg instanceof APIAddSdnControllerMsg) {
+        if (msg instanceof APIAddSdnControllerMsg) {
             validate((APIAddSdnControllerMsg)msg);
         } else if (msg instanceof APISdnControllerAddHostMsg) {
             validate((APISdnControllerAddHostMsg)msg);
@@ -75,12 +71,6 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
         setServiceId(msg);
 
         return msg;
-    }
-
-    private void validate(APICreateL2VxlanNetworkMsg msg) {
-    }
-
-    private void validate(APIAttachL2NetworkToClusterMsg msg) {
     }
 
     private void validate(APIAddSdnControllerMsg msg) {
@@ -103,7 +93,7 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
                 .eq(SdnControllerHostRefVO_.vSwitchType, msg.getvSwitchType())
                 .eq(SdnControllerHostRefVO_.hostUuid, msg.getHostUuid()).isExists()) {
             throw new ApiMessageInterceptionException(argerr("could not add host[uuid:%s] to sdn controller[uuid:%s], " +
-                            " because host already add to sdn controller", msg.getHostUuid(), msg.getSdnControllerUuid()));
+                            " because host already attached to sdn controller", msg.getHostUuid(), msg.getSdnControllerUuid()));
         }
 
         if (msg.getVtepIp() != null && msg.getNetmask() == null) {

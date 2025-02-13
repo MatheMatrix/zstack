@@ -17,6 +17,7 @@ import org.zstack.header.rest.RESTFacade;
 import org.zstack.network.l2.vxlan.vxlanNetwork.L2VxlanNetworkInventory;
 import org.zstack.network.l2.vxlan.vxlanNetwork.VxlanNetworkVO;
 import org.zstack.sdnController.SdnController;
+import org.zstack.sdnController.SdnControllerL2;
 import org.zstack.sdnController.header.*;
 import org.zstack.sdnController.SdnControllerLog;
 import org.zstack.tag.SystemTagCreator;
@@ -30,7 +31,7 @@ import static org.zstack.utils.CollectionDSL.e;
 import static org.zstack.utils.CollectionDSL.map;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
-public class H3cVcfcSdnController implements SdnController {
+public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
     private static final CLogger logger = Utils.getLogger(H3cVcfcSdnController.class);
 
     @Autowired

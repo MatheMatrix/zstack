@@ -15,6 +15,7 @@ import org.zstack.network.l2.vxlan.vxlanNetwork.APIDeleteVxlanL2Network;
 import org.zstack.network.l2.vxlan.vxlanNetworkPool.APICreateVniRangeMsg;
 import org.zstack.network.l2.vxlan.vxlanNetworkPool.VxlanNetworkPoolVO;
 import org.zstack.sdnController.SdnController;
+import org.zstack.sdnController.SdnControllerL2;
 import org.zstack.sdnController.SdnControllerManager;
 import org.zstack.sdnController.header.*;
 import org.zstack.utils.Utils;
@@ -116,8 +117,8 @@ public class H3cVcfcApiInterceptor implements ApiMessageInterceptor, GlobalApiMe
         if (msg.getStartVni() > 4094 || msg.getEndVni() > 4094) {
             throw new ApiMessageInterceptionException(argerr("the vni range:[%s.%s} is illegal, because h3c's controller uses vni as vlan id", msg.getStartVni(), msg.getEndVni()));
         }
-        
-        SdnController sdnController = sdnControllerManager.getSdnController(vo);
+
+        SdnControllerL2 sdnController = sdnControllerManager.getSdnControllerL2(vo);
         SdnVniRange userVniRange = new SdnVniRange();
         userVniRange.startVni = msg.getStartVni();
         userVniRange.endVni = msg.getEndVni();

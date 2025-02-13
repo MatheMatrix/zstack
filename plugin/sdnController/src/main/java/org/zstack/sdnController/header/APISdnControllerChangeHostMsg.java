@@ -17,7 +17,7 @@ import java.util.List;
         responseClass = APISdnControllerChangeHostEvent.class,
         isAction = true
 )
-public class APISdnControllerChangeHostMsg extends APIMessage {
+public class APISdnControllerChangeHostMsg extends APIMessage implements SdnControllerMessage {
     /**
      * @desc l2Network uuid
      */
@@ -65,6 +65,7 @@ public class APISdnControllerChangeHostMsg extends APIMessage {
     @APIParam(required = false)
     private String lacpMode;
 
+    @Override
     public String getSdnControllerUuid() {
         return sdnControllerUuid;
     }

@@ -19,6 +19,7 @@ import org.zstack.header.network.l3.*;
 import org.zstack.network.l2.vxlan.vxlanNetwork.L2VxlanNetworkInventory;
 import org.zstack.network.l3.L3NetworkSystemTags;
 import org.zstack.sdnController.SdnController;
+import org.zstack.sdnController.SdnControllerL2;
 import org.zstack.sdnController.header.*;
 import org.zstack.sugonSdnController.controller.api.*;
 import org.zstack.sugonSdnController.controller.api.types.*;
@@ -34,7 +35,7 @@ import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.network.NetworkUtils.getSubnetInfo;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
-public class SugonSdnController implements TfSdnController, SdnController {
+public class SugonSdnController implements TfSdnController, SdnController, SdnControllerL2 {
     private static final CLogger logger = Utils.getLogger(SugonSdnController.class);
 
     @Autowired
