@@ -100,7 +100,7 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
 
     private void validate(APISdnControllerAddHostMsg msg) {
         if (Q.New(SdnControllerHostRefVO.class)
-                .eq(SdnControllerHostRefVO_.sdnControllerUuid, msg.getSdnControllerUuid())
+                .eq(SdnControllerHostRefVO_.vSwitchType, msg.getvSwitchType())
                 .eq(SdnControllerHostRefVO_.hostUuid, msg.getHostUuid()).isExists()) {
             throw new ApiMessageInterceptionException(argerr("could not add host[uuid:%s] to sdn controller[uuid:%s], " +
                             " because host already add to sdn controller", msg.getHostUuid(), msg.getSdnControllerUuid()));
