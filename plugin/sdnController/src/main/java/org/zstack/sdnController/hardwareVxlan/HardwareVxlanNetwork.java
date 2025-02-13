@@ -12,6 +12,7 @@ import org.zstack.header.host.*;
 import org.zstack.header.network.l2.*;
 import org.zstack.network.l2.vxlan.vxlanNetwork.*;
 import org.zstack.sdnController.SdnController;
+import org.zstack.sdnController.SdnControllerL2;
 import org.zstack.sdnController.SdnControllerManager;
 import org.zstack.sdnController.header.*;
 import org.zstack.utils.Utils;
@@ -40,7 +41,7 @@ public class HardwareVxlanNetwork extends VxlanNetwork implements HardwareVxlanN
     public void createVxlanNetworkOnSdnController(L2VxlanNetworkInventory vxlan, List<String> systemTags, Completion completion) {
         HardwareL2VxlanNetworkPoolVO poolVO = dbf.findByUuid(vxlan.getPoolUuid(), HardwareL2VxlanNetworkPoolVO.class);
         SdnControllerVO sdn = dbf.findByUuid(poolVO.getSdnControllerUuid(), SdnControllerVO.class);
-        SdnController sdnController = sdnControllerManager.getSdnController(sdn);
+        SdnControllerL2 sdnController = sdnControllerManager.getSdnControllerL2(sdn);
         sdnController.createL2Network(vxlan, systemTags, completion);
     }
 
@@ -53,7 +54,7 @@ public class HardwareVxlanNetwork extends VxlanNetwork implements HardwareVxlanN
         }
 
         SdnControllerVO sdn = dbf.findByUuid(poolVO.getSdnControllerUuid(), SdnControllerVO.class);
-        SdnController sdnController = sdnControllerManager.getSdnController(sdn);
+        SdnControllerL2 sdnController = sdnControllerManager.getSdnControllerL2(sdn);
         sdnController.deleteL2Network(L2VxlanNetworkInventory.valueOf(vo), completion);
     }
 

@@ -38,6 +38,7 @@ import org.zstack.network.l2.vxlan.vxlanNetworkPool.VxlanNetworkPoolVO;
 import org.zstack.network.service.NetworkServiceGlobalConfig;
 import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.sdnController.SdnController;
+import org.zstack.sdnController.SdnControllerL2;
 import org.zstack.sdnController.SdnControllerManager;
 import org.zstack.sdnController.header.*;
 import org.zstack.utils.Utils;
@@ -106,7 +107,7 @@ public class HardwareVxlanNetworkFactory implements L2NetworkFactory, VmInstance
                             return;
                         }
                         SdnControllerVO sdn = dbf.findByUuid(poolVO.getSdnControllerUuid(), SdnControllerVO.class);
-                        SdnController controller = sdnControllerManager.getSdnController(sdn);
+                        SdnControllerL2 controller = sdnControllerManager.getSdnControllerL2(sdn);
 
                         controller.preCreateVxlanNetwork(vxlan, msg.getSystemTags(), new Completion(trigger) {
                             @Override
@@ -201,7 +202,7 @@ public class HardwareVxlanNetworkFactory implements L2NetworkFactory, VmInstance
                         HardwareL2VxlanNetworkPoolVO poolVO = dbf.findByUuid(vxlan.getPoolUuid(), HardwareL2VxlanNetworkPoolVO.class);
                         SdnControllerVO sdn = dbf.findByUuid(poolVO.getSdnControllerUuid(), SdnControllerVO.class);
 
-                        SdnController controller = sdnControllerManager.getSdnController(sdn);
+                        SdnControllerL2 controller = sdnControllerManager.getSdnControllerL2(sdn);
                         controller.postCreateVxlanNetwork(vxlan, msg.getSystemTags(), new Completion(trigger) {
                             @Override
                             public void success() {
@@ -225,7 +226,7 @@ public class HardwareVxlanNetworkFactory implements L2NetworkFactory, VmInstance
                         HardwareL2VxlanNetworkPoolVO poolVO = dbf.findByUuid(vxlan.getPoolUuid(), HardwareL2VxlanNetworkPoolVO.class);
                         SdnControllerVO sdn = dbf.findByUuid(poolVO.getSdnControllerUuid(), SdnControllerVO.class);
 
-                        SdnController controller = sdnControllerManager.getSdnController(sdn);
+                        SdnControllerL2 controller = sdnControllerManager.getSdnControllerL2(sdn);
                         controller.preAttachL2NetworkToCluster(vxlan, msg.getSystemTags(), new Completion(trigger) {
                             @Override
                             public void success() {
@@ -275,7 +276,7 @@ public class HardwareVxlanNetworkFactory implements L2NetworkFactory, VmInstance
                         HardwareL2VxlanNetworkPoolVO poolVO = dbf.findByUuid(vxlan.getPoolUuid(), HardwareL2VxlanNetworkPoolVO.class);
                         SdnControllerVO sdn = dbf.findByUuid(poolVO.getSdnControllerUuid(), SdnControllerVO.class);
 
-                        SdnController controller = sdnControllerManager.getSdnController(sdn);
+                        SdnControllerL2 controller = sdnControllerManager.getSdnControllerL2(sdn);
                         controller.attachL2NetworkToCluster(vxlan, msg.getSystemTags(), new Completion(trigger) {
                             @Override
                             public void success() {
@@ -304,7 +305,7 @@ public class HardwareVxlanNetworkFactory implements L2NetworkFactory, VmInstance
                         HardwareL2VxlanNetworkPoolVO poolVO = dbf.findByUuid(vxlan.getPoolUuid(), HardwareL2VxlanNetworkPoolVO.class);
                         SdnControllerVO sdn = dbf.findByUuid(poolVO.getSdnControllerUuid(), SdnControllerVO.class);
 
-                        SdnController controller = sdnControllerManager.getSdnController(sdn);
+                        SdnControllerL2 controller = sdnControllerManager.getSdnControllerL2(sdn);
                         controller.postAttachL2NetworkToCluster(vxlan, msg.getSystemTags(), new Completion(trigger) {
                             @Override
                             public void success() {

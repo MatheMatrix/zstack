@@ -12,7 +12,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIRemoveSdnControllerEvent.class
 )
-public class APIRemoveSdnControllerMsg extends APIDeleteMessage {
+public class APIRemoveSdnControllerMsg extends APIDeleteMessage implements SdnControllerMessage {
     @APIParam(checkAccount = true, operationTarget = true, successIfResourceNotExisting = true, resourceType = SdnControllerVO.class)
     private String uuid;
 
@@ -24,7 +24,11 @@ public class APIRemoveSdnControllerMsg extends APIDeleteMessage {
         this.uuid = uuid;
     }
 
- 
+    @Override
+    public String getSdnControllerUuid() {
+        return uuid;
+    }
+
     public static APIRemoveSdnControllerMsg __example__() {
         APIRemoveSdnControllerMsg msg = new APIRemoveSdnControllerMsg();
 
