@@ -63,6 +63,7 @@ CALL ModifyApplicationDevelopmentServiceVO();
 CALL ADD_COLUMN('ModelVO', 'modelId', 'VARCHAR(255)', 1, NULL);
 CALL ADD_COLUMN('ModelServiceInstanceGroupVO', 'description', 'VARCHAR(2048)', 1, NULL);
 CALL ADD_COLUMN('ModelServiceVO', 'source', 'VARCHAR(32)', 1, NULL);
+CALL ADD_COLUMN('ModelServiceVO', 'readme', 'TEXT', 1, NULL);
 
 # Delete ZStack-default-inference-template
 DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = '97e66447fa4246649dcc41b72b412407';
@@ -81,7 +82,18 @@ DELETE FROM `zstack`.`ModelServiceVO` WHERE `uuid` = '0b714f4d8c5c43ca86c3a6caa5
 
 ALTER TABLE `zstack`.`BaremetalNicVO` modify column mac varchar(255) DEFAULT NULL;
 
-UPDATE `zstack`.`ModelServiceVO` SET `framework`='BentoML' WHERE `framework`='Bentoml';
+# framework field changed to LLM frameworks not service sources
+# 1. Change the origin framework value to source field
+# 2. If source is Bentoml change framework to BentoML
+# 3. Else change framework to Other
+
+UPDATE `zstack`.`ModelServiceVO` SET source = framework WHERE source IS NULL;
+
+UPDATE `zstack`.`ModelServiceVO` SET framework = 'BentoML' WHERE source = 'Bentoml';
+
+Update ModelServiceVO set framework = 'Other' where framework not in
+    ('vLLM', 'Diffusers', 'Transformers', 'sentence_transformers', 'llama.cpp', 'BentoML', 'Other', 'Ollama')
+    AND source != 'Bentoml';
 
 DROP PROCEDURE IF EXISTS CreateResourceConfigForBindingVms;
 DELIMITER $$
