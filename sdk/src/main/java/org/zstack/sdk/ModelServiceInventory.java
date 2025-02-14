@@ -28,6 +28,14 @@ public class ModelServiceInventory  {
         return this.description;
     }
 
+    public java.lang.String readme;
+    public void setReadme(java.lang.String readme) {
+        this.readme = readme;
+    }
+    public java.lang.String getReadme() {
+        return this.readme;
+    }
+
     public java.lang.String yaml;
     public void setYaml(java.lang.String yaml) {
         this.yaml = yaml;
