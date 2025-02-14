@@ -15,7 +15,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         responseClass = APIGetCurrentTimeReply.class
 )
-public class APIGetCurrentTimeMsg extends APISyncCallMessage {
+public class APIGetCurrentTimeMsg extends APISyncCallMessage implements APIManagementNodeMessage {
  
     public static APIGetCurrentTimeMsg __example__() {
         APIGetCurrentTimeMsg msg = new APIGetCurrentTimeMsg();

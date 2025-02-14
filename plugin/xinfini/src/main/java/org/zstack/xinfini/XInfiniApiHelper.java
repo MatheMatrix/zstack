@@ -9,6 +9,7 @@ import org.zstack.core.retry.Retry;
 import org.zstack.core.retry.RetryCondition;
 import org.zstack.header.core.Completion;
 import org.zstack.header.errorcode.OperationFailureException;
+import org.zstack.header.volume.VolumeConfigs;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.volume.VolumeVO_;
 import org.zstack.header.xinfini.XInfiniConstants;
@@ -32,6 +33,7 @@ import org.zstack.xinfini.sdk.volume.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
@@ -59,6 +61,22 @@ public class XInfiniApiHelper {
         T rsp = client.call(req, clz);
         errorOut(rsp);
         return rsp;
+    }
+
+    public <T extends XInfiniResponse> T callErrorOutWithRetry(XInfiniRequest req, Class<T> clz, int retryTimes) {
+        while (retryTimes-- > 0) {
+            T rsp = client.call(req, clz);
+            if (!rsp.isSuccess()) {
+                try {
+                    TimeUnit.SECONDS.sleep(3);
+                } catch (InterruptedException ignore) {}
+            } else {
+                return rsp;
+            }
+        }
+
+        throw new OperationFailureException(operr("xinfini request failed, message: %s.",
+                req.getClass().getSimpleName()));
     }
 
     public <T extends XInfiniResponse> T call(XInfiniRequest req, Class<T> clz) {
@@ -208,6 +226,17 @@ public class XInfiniApiHelper {
         return rsp.getItems().get(0);
     }
 
+    public VolumeModule queryVolumeById(int id) {
+        QueryVolumeRequest req = new QueryVolumeRequest();
+        req.q = String.format("spec.id:%s", id);
+        QueryVolumeResponse rsp = queryErrorOut(req, QueryVolumeResponse.class);
+        if (rsp.getMetadata().getPagination().getCount() == 0) {
+            return null;
+        }
+
+        return rsp.getItems().get(0);
+    }
+
     public VolumeModule getVolume(int id) {
         GetVolumeRequest req = new GetVolumeRequest();
         req.setId(id);
@@ -257,10 +286,11 @@ public class XInfiniApiHelper {
     }
 
     public VolumeModule expandVolume(int volId, long size) {
-        ExpandVolumeRequest req = new ExpandVolumeRequest();
+        UpdateVolumeRequest req = new UpdateVolumeRequest();
+        req.setCreator(XInfiniConstants.DEFAULT_CREATOR);
         req.setId(volId);
         req.setSizeMb(size);
-        callErrorOut(req, ExpandVolumeResponse.class);
+        callErrorOut(req, UpdateVolumeResponse.class);
         GetVolumeRequest gReq = new GetVolumeRequest();
         gReq.setId(volId);
         return retryUtilStateActive(gReq, GetVolumeResponse.class,
@@ -306,12 +336,13 @@ public class XInfiniApiHelper {
         }.run();
     }
 
-    public BdcBdevModule createBdcBdev(int bdcId, int volumeId, String name) {
+    public BdcBdevModule createBdcBdev(int bdcId, int volumeId, String name, VolumeConfigs vcfs) {
         CreateBdcBdevRequest req = new CreateBdcBdevRequest();
         req.setName(name);
         req.setBdcId(bdcId);
         req.setBsVolumeId(volumeId);
-        CreateBdcBdevResponse rsp = callErrorOut(req, CreateBdcBdevResponse.class);
+        req.setQueueNum(vcfs.getQueueNum());
+        CreateBdcBdevResponse rsp = callErrorOutWithRetry(req, CreateBdcBdevResponse.class, 3);
         GetBdcBdevRequest gReq = new GetBdcBdevRequest();
         gReq.setId(rsp.getSpec().getId());
         return retryUtilStateActive(gReq, GetBdcBdevResponse.class,
@@ -329,12 +360,12 @@ public class XInfiniApiHelper {
         return rsp.getItems().get(0);
     }
 
-    public BdcBdevModule getOrCreateBdcBdevByVolumeIdAndBdcId(int volId, int bdcId, String bdevName) {
+    public BdcBdevModule getOrCreateBdcBdevByVolumeIdAndBdcId(int volId, int bdcId, String bdevName, VolumeConfigs vcfs) {
         QueryBdcBdevRequest req = new QueryBdcBdevRequest();
         req.q = String.format("((spec.bdc_id:%s) AND (spec.bs_volume_id:%s))", bdcId, volId);
         QueryBdcBdevResponse rsp = queryErrorOut(req, QueryBdcBdevResponse.class);
         if (rsp.getMetadata().getPagination().getCount() == 0) {
-            return createBdcBdev(bdcId, volId, bdevName);
+            return createBdcBdev(bdcId, volId, bdevName, vcfs);
         }
 
         return rsp.getItems().get(0);

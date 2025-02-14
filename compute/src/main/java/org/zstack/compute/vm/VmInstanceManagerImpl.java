@@ -897,7 +897,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
             @Override
             public void run(FlowTrigger trigger, Map data) {
                 int deviceId = 1;
-                String mac = NetworkUtils.generateMacWithDeviceId((short) deviceId);
+                String mac = MacOperator.generateMacWithDeviceId((short) deviceId);
                 nic.setUuid(Platform.getUuid());
                 nic.setMac(mac);
                 nic.setDeviceId(deviceId);
@@ -928,7 +928,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                                     "The error[Duplicate entry] printed by jdbc.spi.SqlExceptionHelper is no harm, " +
                                     "we will try finding another mac", nicVO.getMac()));
                             logger.trace("", e);
-                            nicVO.setMac(NetworkUtils.generateMacWithDeviceId((short) nicVO.getDeviceId()));
+                            nicVO.setMac(MacOperator.generateMacWithDeviceId((short) nicVO.getDeviceId()));
                         } else {
                             throw e;
                         }
@@ -1195,12 +1195,21 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 }
 
                 flow(new Flow() {
-                    List<ErrorCode> errorCodes = Collections.emptyList();
+                    List<ErrorCode> errorCodes = new ArrayList<>();
                     String __name__ = String.format("instantiate-systemTag-for-vm-%s", finalVo.getUuid());
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        instantiateTagsForCreateMessage(msg, cmsg, finalVo);
+                        try {
+                            instantiateTagsForCreateMessage(msg, cmsg, finalVo);
+                        } catch (Exception e) {
+                            errorCodes.add(operr("instantiate system tag for vm failed because %s", e.getMessage()));
+                        }
+                        if (!errorCodes.isEmpty()) {
+                            trigger.fail(errorCodes.get(0));
+                            return;
+                        }
+
                         errorCodes = extEmitterHandleSystemTag(msg, cmsg, finalVo);
                         if (!errorCodes.isEmpty()) {
                             trigger.fail(operr("handle system tag fail when creating vm because [%s]",

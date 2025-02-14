@@ -370,6 +370,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         long size;
         boolean shareable;
         boolean skipIfExisting;
+        String format = VolumeConstant.VOLUME_FORMAT_RAW;
 
         public boolean isShareable() {
             return shareable;
@@ -401,6 +402,14 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
 
         public boolean isSkipIfExisting() {
             return skipIfExisting;
+        }
+
+        public String getFormat() {
+            return format;
+        }
+
+        public void setFormat(String format) {
+            this.format = format;
         }
     }
 
@@ -1745,6 +1754,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         cmd.size = msg.getVolume().getSize();
         cmd.setShareable(msg.getVolume().isShareable());
         cmd.skipIfExisting = msg.isSkipIfExisting();
+        cmd.format = msg.hasSystemTag(VolumeSystemTags.FORMAT_QCOW2.getTagFormat()) ? VolumeConstant.VOLUME_FORMAT_QCOW2 : VolumeConstant.VOLUME_FORMAT_RAW ;
 
         final InstantiateVolumeOnPrimaryStorageReply reply = new InstantiateVolumeOnPrimaryStorageReply();
         
@@ -4953,23 +4963,27 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         new While<>(msgs).each((msg, wc) -> bus.send(msg, new CloudBusCallBack(wc) {
             @Override
             public void run(MessageReply reply) {
-                KVMHostAsyncHttpCallReply kr = reply.castReply();
-                CheckHostStorageConnectionRsp rsp = kr.toResponse(CheckHostStorageConnectionRsp.class);
-
                 UpdatePrimaryStorageHostStatusMsg umsg = new UpdatePrimaryStorageHostStatusMsg();
                 umsg.setHostUuid(msg.getHostUuid());
                 umsg.setPrimaryStorageUuid(self.getUuid());
-
-                if (rsp == null) {
-                    wc.addError(operr("operation error, because: failed to get response"));
+                if (!reply.isSuccess()) {
+                    wc.addError(reply.getError());
                     umsg.setStatus(PrimaryStorageHostStatus.Disconnected);
                 } else {
-                    ErrorCode errorCode = rsp.buildErrorCode();
-                    if (errorCode != null) {
-                        wc.addError(operr("operation error, because:%s", errorCode));
+                    KVMHostAsyncHttpCallReply kr = reply.castReply();
+                    CheckHostStorageConnectionRsp rsp = kr.toResponse(CheckHostStorageConnectionRsp.class);
+
+                    if (rsp == null) {
+                        wc.addError(operr("operation error, because: failed to get response"));
                         umsg.setStatus(PrimaryStorageHostStatus.Disconnected);
                     } else {
-                        umsg.setStatus(PrimaryStorageHostStatus.Connected);
+                        ErrorCode errorCode = rsp.buildErrorCode();
+                        if (errorCode != null) {
+                            wc.addError(operr("operation error, because:%s", errorCode));
+                            umsg.setStatus(PrimaryStorageHostStatus.Disconnected);
+                        } else {
+                            umsg.setStatus(PrimaryStorageHostStatus.Connected);
+                        }
                     }
                 }
 

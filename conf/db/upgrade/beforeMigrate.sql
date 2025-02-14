@@ -235,3 +235,26 @@ BEGIN
 SELECT CURTIME();
 END$$
 DELIMITER ;
+
+DROP PROCEDURE IF EXISTS `RENAME_TABLE`;
+DELIMITER $$
+CREATE PROCEDURE `RENAME_TABLE`(
+    IN old_name VARCHAR(64),
+    IN new_name VARCHAR(64)
+)
+BEGIN
+    DECLARE alter_sql VARCHAR(1000);
+    IF EXISTS( SELECT NULL
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE table_name = old_name
+            AND table_schema = 'zstack') THEN
+        SET @alter_sql = CONCAT('RENAME TABLE zstack.', old_name, ' TO ', new_name);
+        SELECT @alter_sql;
+        PREPARE stmt FROM @alter_sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+
+    SELECT CURTIME();
+END$$
+DELIMITER ;

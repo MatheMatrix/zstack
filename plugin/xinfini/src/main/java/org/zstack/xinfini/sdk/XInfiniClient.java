@@ -16,6 +16,7 @@ import org.zstack.xinfini.XInfiniConfig;
 
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.X509TrustManager;
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -91,6 +92,7 @@ public class XInfiniClient extends ExternalStorageApiClient {
 
         final String taskIdForLog = Platform.getUuid();
         String reqBody; // for log
+        final String CREATOR_PARAM = "creator";
 
         Api(XInfiniRequest action) {
             this.action = action;
@@ -158,26 +160,48 @@ public class XInfiniClient extends ExternalStorageApiClient {
 
             logger.debug(String.format("call request[%s: %s]: %s, body: %s", action.getClass().getSimpleName(), taskIdForLog,
                     request, reqBody));
-
-            try {
-                try (Response response = http.newCall(request).execute()) {
-                    if (!response.isSuccessful()) {
-                        if (response.body() == null) {
-                            return httpError(response.code(), null);
-                        } else {
-                            return httpError(response.code(), response.body().string());
+            int retryCount = 0;
+            while (retryCount <= 2) {
+                try {
+                    try (Response response = http.newCall(request).execute()) {
+                        if (!response.isSuccessful()) {
+                            if (response.body() == null) {
+                                return httpError(response.code(), null);
+                            } else {
+                                return httpError(response.code(), response.body().string());
+                            }
                         }
-                    }
 
-                    if (!validHttpStatus.contains(response.code())) {
-                        throw new XInfiniApiException(String.format("[Internal Error] the server returns an unknown status code[%s]", response.code()));
-                    }
+                        if (!validHttpStatus.contains(response.code())) {
+                            throw new XInfiniApiException(String.format("[Internal Error] the server returns an unknown status code[%s]", response.code()));
+                        }
 
-                    return writeApiResult(response);
+                        return writeApiResult(response);
+                    }
+                } catch (IOException e) {
+                    if (isEOFException(e) && retryCount < 1) {
+                        retryCount++;
+                        try {
+                            TimeUnit.SECONDS.sleep(3);
+                        } catch (InterruptedException ex) {
+                            logger.warn("EOFException sleep failed");
+                        }
+                        continue;
+                    }
+                    throw new XInfiniApiException(e);
                 }
-            } catch (IOException e) {
-                throw new XInfiniApiException(e);
             }
+            throw new XInfiniApiException("Max retry attempts reached");
+        }
+
+        private boolean isEOFException(IOException e) {
+            // only retry on query api
+            if (!(action instanceof XInfiniQueryRequest)) {
+                return false;
+            }
+
+            return e instanceof EOFException ||
+                    (e.getMessage() != null && e.getMessage().contains("EOF"));
         }
 
         private void fillQueryApiRequestBuilder(Request.Builder reqBuilder, XInfiniConfig.Node node) throws Exception {
@@ -280,6 +304,13 @@ public class XInfiniClient extends ExternalStorageApiClient {
             } else if (restInfo.method().equals(HttpMethod.DELETE) && !restInfo.hasBody()) {
                 params.forEach((k, v) -> builder.addQueryParameter(k, v.toString()));
                 reqBuilder.url(builder.build()).delete();
+            } else if (restInfo.method().equals(HttpMethod.PATCH)) {
+                if (params.containsKey(CREATOR_PARAM)) {
+                    builder.addQueryParameter(CREATOR_PARAM, params.get(CREATOR_PARAM).toString());
+                    params.remove(CREATOR_PARAM);
+                }
+                reqBody = gson.toJson(new WrappedRequest(params));
+                reqBuilder.url(builder.build()).method(restInfo.method().toString(), RequestBody.create(XInfiniConstants.JSON, reqBody));
             } else {
                 reqBody = gson.toJson(new WrappedRequest(params));
                 reqBuilder.url(builder.build()).method(restInfo.method().toString(), RequestBody.create(XInfiniConstants.JSON, reqBody));

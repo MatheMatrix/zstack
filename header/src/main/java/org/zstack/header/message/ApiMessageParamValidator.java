@@ -106,6 +106,23 @@ public class ApiMessageParamValidator implements ApiMessageValidator, Ordered {
                 }
             }
         }
+
+        if (at.floatNumberRange().length > 0 && TypeUtils.isTypeOf(value, Float.TYPE, Float.class, Double.TYPE, Double.class)) {
+            DebugUtils.Assert(at.floatNumberRange().length == 2, String.format("invalid field[%s], APIParam.floatNumberRange must have and only have 2 items", f.getName()));
+            double low = at.floatNumberRange()[0];
+            double high = at.floatNumberRange()[1];
+            double val = ((Number) value).doubleValue();
+            if (val < low || val > high) {
+                if (at.numberRangeUnit().length > 0) {
+                    DebugUtils.Assert(at.numberRangeUnit().length == 2, String.format("invalid field[%s], APIParam.floatNumberRangeUnit must have and only have 2 items", f.getName()));
+                    String lowUnit = at.numberRangeUnit()[0];
+                    String highUnit = at.numberRangeUnit()[1];
+                    throw new InvalidApiMessageException("field[%s] must be in range of [%s %s, %s %s]", f.getName(), low, lowUnit, high, highUnit);
+                } else {
+                    throw new InvalidApiMessageException("field[%s] must be in range of [%s, %s]", f.getName(), low, high);
+                }
+            }
+        }
     }
     
     private void validateValue(String[] validValues, String value, String fieldName, String msgName) {

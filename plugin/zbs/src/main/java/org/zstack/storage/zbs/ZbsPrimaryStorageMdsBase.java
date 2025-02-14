@@ -3,6 +3,7 @@ package org.zstack.storage.zbs;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.cbd.MdsInfo;
 import org.zstack.cbd.MdsStatus;
+import org.zstack.compute.host.HostGlobalConfig;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.Platform;
 import org.zstack.core.ansible.*;
@@ -143,17 +144,18 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
                         @Autowired
                         public void run(FlowTrigger trigger, Map data) {
                             StringBuilder builder = new StringBuilder();
+                            String allowPorts = ZbsConstants.ZBS_PS_ALLOW_PORTS + ',' + HostGlobalConfig.NBD_PORT_RANGE.value(String.class);
                             if (!ZbsGlobalProperty.MN_NETWORKS.isEmpty()) {
                                 builder.append(String.format("sudo bash %s -m %s -p %s -c %s",
                                         "/var/lib/zstack/zbsp/package/zbsps-iptables",
                                         ZbsConstants.ZBS_PS_IPTABLES_COMMENTS,
-                                        ZbsConstants.ZBS_PS_ALLOW_PORTS,
+                                        allowPorts,
                                         String.join(",", ZbsGlobalProperty.MN_NETWORKS)));
                             } else {
                                 builder.append(String.format("sudo bash %s -m %s -p %s",
                                         "/var/lib/zstack/zbsp/package/zbsps-iptables",
                                         ZbsConstants.ZBS_PS_IPTABLES_COMMENTS,
-                                        ZbsConstants.ZBS_PS_ALLOW_PORTS));
+                                        allowPorts));
                             }
 
                             try {
@@ -282,8 +284,7 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
 
         new While<>(stepCount).each((step, comp) -> {
             PingCmd cmd = new PingCmd();
-            cmd.setMdsExternalAddr(getSelf().getMdsExternalAddr());
-
+            cmd.setMdsAddr(getSelf().getMdsAddr());
             restf.asyncJsonPost(ZbsAgentUrl.primaryStorageUrl(getSelf().getMdsAddr(), PING_PATH),
                     cmd, new JsonAsyncRESTCallback<PingRsp>(completion) {
                         @Override
@@ -305,7 +306,7 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
 
                         @Override
                         public void fail(ErrorCode errorCode) {
-                            logger.warn(String.format("ping zbs primary storage mds[%s] failed (%d/%d): %s", getSelf().getMdsExternalAddr(), step, MAX_PING_CNT, errorCode.toString()));
+                            logger.warn(String.format("ping zbs primary storage mds[%s] failed (%d/%d): %s", getSelf().getMdsAddr(), step, MAX_PING_CNT, errorCode.toString()));
                             comp.addError(errorCode);
 
                             if (step.equals(MAX_PING_CNT)) {
@@ -337,15 +338,6 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
     }
 
     public static class PingCmd extends ZbsMdsBase.AgentCommand {
-        private String mdsExternalAddr;
-
-        public String getMdsExternalAddr() {
-            return mdsExternalAddr;
-        }
-
-        public void setMdsExternalAddr(String mdsExternalAddr) {
-            this.mdsExternalAddr = mdsExternalAddr;
-        }
     }
 
     @Override

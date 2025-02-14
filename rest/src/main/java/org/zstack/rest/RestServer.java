@@ -41,6 +41,12 @@ import org.zstack.header.identity.SessionInventory;
 import org.zstack.header.identity.SuppressCredentialCheck;
 import org.zstack.header.log.MaskSensitiveInfo;
 import org.zstack.header.message.*;
+import org.zstack.header.message.APIEvent;
+import org.zstack.header.message.APIMessage;
+import org.zstack.header.message.APISyncCallMessage;
+import org.zstack.header.message.Event;
+import org.zstack.header.message.JsonSchemaBuilder;
+import org.zstack.header.message.MessageReply;
 import org.zstack.header.query.APIQueryMessage;
 import org.zstack.header.query.APIQueryReply;
 import org.zstack.header.query.QueryCondition;
@@ -60,7 +66,12 @@ import org.zstack.header.rest.RestResponseWrapper;
 import org.zstack.rest.sdk.DocumentGenerator;
 import org.zstack.rest.sdk.SdkFile;
 import org.zstack.rest.sdk.SdkTemplate;
-import org.zstack.utils.*;
+import org.zstack.utils.DebugUtils;
+import org.zstack.utils.FieldUtils;
+import org.zstack.utils.GroovyUtils;
+import org.zstack.utils.HttpServletRequestUtils;
+import org.zstack.utils.TypeUtils;
+import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 import org.zstack.utils.path.PathUtil;
@@ -129,6 +140,8 @@ public class RestServer implements Component, CloudBusEventListener {
     @Autowired
     private PluginRegistry pluginRgty;
 
+    RateLimiter rateLimiter = new RateLimiter(RestGlobalProperty.REST_RATE_LIMITS);
+
     private Map<RestAuthenticationType, RestAuthenticationBackend> restAuthBackends = new HashMap<RestAuthenticationType, RestAuthenticationBackend>();
 
     private List<RestServletRequestInterceptor> interceptors = new ArrayList<>();
@@ -168,8 +181,13 @@ public class RestServer implements Component, CloudBusEventListener {
         public RequestInfo(HttpServletRequest req) {
             session = req.getSession();
             remoteHost = req.getRemoteHost();
-            clientIp = HttpServletRequestUtils.getClientIP(req);
             clientBrowser = HttpServletRequestUtils.getClientBrowser(req);
+            String ipFromRequest = HttpServletRequestUtils.getClientIP(req);
+            if (ipFromRequest == null) {
+                clientIp = "Unknown";
+            } else {
+                clientIp = ipFromRequest;
+            }
 
             for (Enumeration e = req.getHeaderNames(); e.hasMoreElements() ;) {
                 String name = e.nextElement().toString();
@@ -638,6 +656,12 @@ public class RestServer implements Component, CloudBusEventListener {
 
     void handle(HttpServletRequest req, HttpServletResponse rsp) throws IOException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
         RequestInfo info = new RequestInfo(req);
+
+        if (rateLimiter.isRateLimitExceeded(info.clientIp)) {
+            sendResponse(HttpStatus.TOO_MANY_REQUESTS.value(), "Rate limit exceeded", rsp);
+            return;
+        }
+
         requestInfo.set(info);
         rsp.setCharacterEncoding("utf-8");
         String path = getDecodedUrl(req);

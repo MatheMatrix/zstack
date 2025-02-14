@@ -12,19 +12,18 @@ import org.zstack.compute.cluster.ClusterGlobalConfig;
 import org.zstack.compute.cluster.arch.ClusterResourceConfigInitializer;
 import org.zstack.compute.host.*;
 import org.zstack.compute.vm.*;
-import org.zstack.core.config.GuestOsHelper;
-import org.zstack.core.config.schema.GuestOsCharacter;
-import org.zstack.core.timeout.TimeHelper;
-import org.zstack.header.vm.devices.VirtualDeviceInfo;
-import org.zstack.header.vm.devices.VmInstanceDeviceManager;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.MessageCommandRecorder;
 import org.zstack.core.Platform;
 import org.zstack.core.agent.AgentConstant;
 import org.zstack.core.ansible.*;
+import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.cloudbus.CloudBusGlobalProperty;
+import org.zstack.core.cloudbus.ResourceDestinationMaker;
 import org.zstack.core.componentloader.PluginRegistry;
+import org.zstack.core.config.GuestOsHelper;
+import org.zstack.core.config.schema.GuestOsCharacter;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
 import org.zstack.core.db.SQLBatch;
@@ -32,10 +31,12 @@ import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.thread.*;
 import org.zstack.core.timeout.ApiTimeoutManager;
+import org.zstack.core.timeout.TimeHelper;
 import org.zstack.core.upgrade.UpgradeChecker;
 import org.zstack.core.upgrade.UpgradeGlobalConfig;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
+import org.zstack.core.workflow.SimpleFlowChain;
 import org.zstack.header.Constants;
 import org.zstack.header.allocator.DesignatedAllocateHostMsg;
 import org.zstack.header.allocator.HostAllocatorConstant;
@@ -44,6 +45,8 @@ import org.zstack.header.cluster.ClusterInventory;
 import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.cluster.ReportHostCapacityMessage;
 import org.zstack.header.core.*;
+import org.zstack.header.core.progress.ChainInfo;
+import org.zstack.header.core.progress.TaskInfo;
 import org.zstack.header.core.progress.TaskProgressRange;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
@@ -53,11 +56,7 @@ import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.*;
 import org.zstack.header.host.MigrateVmOnHypervisorMsg.StorageMigrationPolicy;
-import org.zstack.header.image.ImageArchitecture;
-import org.zstack.header.image.ImageBootMode;
-import org.zstack.header.image.ImageInventory;
-import org.zstack.header.image.ImagePlatform;
-import org.zstack.header.image.ImageVO;
+import org.zstack.header.image.*;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
@@ -71,6 +70,8 @@ import org.zstack.header.storage.primary.*;
 import org.zstack.header.tag.SystemTagInventory;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.devices.DeviceAddress;
+import org.zstack.header.vm.devices.VirtualDeviceInfo;
+import org.zstack.header.vm.devices.VmInstanceDeviceManager;
 import org.zstack.header.volume.*;
 import org.zstack.identity.AccountManager;
 import org.zstack.kvm.KVMAgentCommands.*;
@@ -80,12 +81,12 @@ import org.zstack.kvm.hypervisor.KvmHypervisorInfoManager;
 import org.zstack.network.l3.NetworkGlobalProperty;
 import org.zstack.resourceconfig.ResourceConfig;
 import org.zstack.resourceconfig.ResourceConfigFacade;
+import org.zstack.resourceconfig.ResourceConfigVO;
+import org.zstack.resourceconfig.ResourceConfigVO_;
 import org.zstack.tag.PatternedSystemTag;
 import org.zstack.tag.SystemTag;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.tag.TagManager;
-import org.zstack.resourceconfig.ResourceConfigVO;
-import org.zstack.resourceconfig.ResourceConfigVO_;
 import org.zstack.utils.*;
 import org.zstack.utils.data.SizeUnit;
 import org.zstack.utils.gson.JSONObjectUtil;
@@ -103,6 +104,7 @@ import javax.persistence.TypedQuery;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -156,6 +158,8 @@ public class KVMHost extends HostBase implements Host {
     private AccountManager accountMgr;
     @Autowired
     private UpgradeChecker upgradeChecker;
+    @Autowired
+    private ResourceDestinationMaker destMaker;
 
     private KVMHostContext context;
 
@@ -686,9 +690,227 @@ public class KVMHost extends HostBase implements Host {
             handle((CommitVolumeOnHypervisorMsg) msg);
         } else if (msg instanceof TakeVmConsoleScreenshotMsg) {
             handle((TakeVmConsoleScreenshotMsg) msg);
+        } else if (msg instanceof RestartKvmAgentMsg) {
+            handle((RestartKvmAgentMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
+    }
+
+    private void handle(RestartKvmAgentMsg msg) {
+        RestartKvmAgentReply reply = new RestartKvmAgentReply();
+        thdf.singleFlightSubmit(new SingleFlightTask(msg)
+                .setSyncSignature(String.format("restart-kvmagent-on-host-%s", msg.getHostUuid()))
+                .run(completion -> {
+                    if (!destMaker.isManagedByUs(msg.getHostUuid())) {
+                        completion.fail(operr("host %s is not managed by current mn node", msg.getHostUuid()));
+                        return;
+                    }
+
+                    restartKvmAgentOnHost(msg.isForce(), new Completion(completion) {
+                        @Override
+                        public void success() {
+                            completion.success(null);
+                        }
+
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            completion.fail(errorCode);
+                        }
+                    });
+                }).done(result -> {
+                    if (!result.isSuccess()) {
+                        reply.setError(result.getErrorCode());
+                    }
+                    bus.reply(msg, reply);
+                })
+        );
+    }
+
+    private void noRunningTaskOnHost(ReturnValueCompletion<Boolean> completion) {
+        String syncSignature = Host.buildId(self.getUuid());
+        List<String> nodeUuids = destMaker.getAllNodeInfo().stream().map(ResourceDestinationMaker.NodeInfo::getNodeUuid)
+                .collect(Collectors.toList());
+
+        AtomicBoolean queueIsEmpty = new AtomicBoolean(true);
+        new While<>(nodeUuids).step((mnId, compl) -> {
+            GetLocalTaskMsg gmsg = new GetLocalTaskMsg();
+            gmsg.setOnlyRunningTask(true);
+            gmsg.setSyncSignatures(Collections.singletonList(syncSignature));
+            bus.makeServiceIdByManagementNodeId(gmsg, CoreConstant.SERVICE_ID, mnId);
+            bus.send(gmsg, new CloudBusCallBack(compl) {
+                private String buildTaskInfo(List<? extends TaskInfo> tasks) {
+                    return tasks.stream().map(TaskInfo::getContext).collect(Collectors.joining("\n"));
+                }
+
+                @Override
+                public void run(MessageReply r) {
+                    if (!r.isSuccess()) {
+                        compl.addError(r.getError());
+                        compl.allDone();
+                        return;
+                    }
+                    GetLocalTaskReply gr = r.castReply();
+                    ChainInfo chainInfo = gr.getResults().get(syncSignature);
+                    if (!chainInfo.getRunningTask().isEmpty()) {
+                        logger.debug(String.format("%s tasks exist on the running task of host %s, mnNodeId %s: %s...", chainInfo.getRunningTask().size(),
+                                self.getUuid(), mnId, buildTaskInfo(chainInfo.getRunningTask())));
+                        queueIsEmpty.set(false);
+                        compl.allDone();
+                        return;
+                    }
+                    compl.done();
+                }
+            });
+        }, 2).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                if (!errorCodeList.getCauses().isEmpty()) {
+                    completion.fail(errorCodeList);
+                    return;
+                }
+                completion.success(queueIsEmpty.get());
+            }
+        });
+    }
+
+    private void restartKvmAgentOnHost(boolean force, Completion completion) {
+        SimpleFlowChain chain = new SimpleFlowChain();
+        chain.setChainName("try-restart-kvmagent-on-host-" + self.getUuid());
+        chain.then(new Flow() {
+            // changing the host connection status to 'Connecting' is to prevent sending HTTP requests to the kvmagent,
+            // which needs to be done before checking the host task queue
+            String __name__ = "change host state to connecting";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                if (self.getStatus() != HostStatus.Connected) {
+                    trigger.fail(operr("host %s is not connected, skip to restart kvmagent", self.getUuid()));
+                    return;
+                }
+                changeConnectionState(HostStatusEvent.connecting);
+                trigger.next();
+            }
+
+            @Override
+            public void rollback(FlowRollback trigger, Map data) {
+                if (self.getStatus() == HostStatus.Connecting) {
+                    changeConnectionState(HostStatusEvent.connected);
+                }
+                trigger.rollback();
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "check if the host task queue is empty";
+            @Override
+            public boolean skip(Map data) {
+                return force;
+            }
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                noRunningTaskOnHost(new ReturnValueCompletion<Boolean>(trigger) {
+                    @Override
+                    public void success(Boolean noTask) {
+                        if (noTask) {
+                            trigger.next();
+                        } else {
+                            trigger.fail(operr("running task exists on host %s", self.getUuid()));
+                        }
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        trigger.fail(errorCode);
+                    }
+                });
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "restart kvmagent on host " + self.getUuid();
+            @Override
+            public boolean skip(Map data) {
+                return CoreGlobalProperty.UNIT_TEST_ON;
+            }
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                SshShell sshShell = new SshShell();
+                sshShell.setHostname(getSelf().getManagementIp());
+                sshShell.setUsername(getSelf().getUsername());
+                sshShell.setPassword(getSelf().getPassword());
+                sshShell.setPort(getSelf().getPort());
+                SshResult ret = sshShell.runCommand("sudo service zstack-kvmagent restart");
+
+                if (ret.isSshFailure() || ret.getReturnCode() != 0) {
+                    trigger.fail(operr(ret.getExitErrorMessage()));
+                } else {
+                    trigger.next();
+                }
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "wait for kvmagent to be ready";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                int retryCount = 60;
+                While.makeRetryWhile(retryCount).each((currentStep, compl) -> {
+                    PingCmd cmd = new PingCmd();
+                    cmd.hostUuid = self.getUuid();
+                    restf.asyncJsonPost(pingPath, cmd, new JsonAsyncRESTCallback<PingResponse>(compl) {
+                        @Override
+                        public void fail(ErrorCode err) {
+                            try {
+                                if (currentStep < retryCount) {
+                                    TimeUnit.SECONDS.sleep(1);
+                                }
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            } finally {
+                                compl.addError(err);
+                                compl.done();
+                            }
+                        }
+
+                        @Override
+                        public void success(PingResponse ret) {
+                            compl.allDone();
+                        }
+
+                        @Override
+                        public Class<PingResponse> getReturnClass() {
+                            return PingResponse.class;
+                        }
+                    }, TimeUnit.SECONDS, HostGlobalConfig.PING_HOST_TIMEOUT.value(Long.class));
+                }).run(new WhileDoneCompletion(trigger) {
+                    @Override
+                    public void done(ErrorCodeList errorCodeList) {
+                        if (errorCodeList.getCauses().size() == retryCount) {
+                            logger.debug("waiting for kvmagent to start timeout: " + errorCodeList.getCauses().get(0).getDetails());
+                        }
+                        trigger.next();
+                    }
+                });
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = String.format("reconnect host %s after restart kvmagent", self.getUuid());
+
+            public void run(FlowTrigger trigger, Map data) {
+                ReconnectHostMsg rmsg = new ReconnectHostMsg();
+                rmsg.setHostUuid(self.getUuid());
+                bus.makeTargetServiceIdByResourceUuid(rmsg, HostConstant.SERVICE_ID, self.getUuid());
+                bus.send(rmsg);
+                trigger.next();
+            }
+        }).done(new FlowDoneHandler(completion) {
+            @Override
+            public void handle(Map data) {
+                completion.success();
+            }
+        }).error(new FlowErrorHandler(completion) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                completion.fail(errCode);
+            }
+        }).start();
     }
 
     private void handle(TakeVmConsoleScreenshotMsg msg) {
@@ -4279,8 +4501,8 @@ public class KVMHost extends HostBase implements Host {
             @Override
             public void fail(ErrorCode err) {
                 StartVmOnHypervisorReply reply = new StartVmOnHypervisorReply();
-                reply.setError(err);
-                reply.setSuccess(false);
+                reply.setError(err(HostErrors.FAILED_TO_START_VM_ON_HYPERVISOR, "failed to start vm[uuid: %s] on kvm host[uuid: %s], because %s",
+                        spec.getVmInventory().getUuid(), self.getUuid(), err));
                 extEmitter.startVmOnKvmFailed(KVMHostInventory.valueOf(getSelf()), spec, err);
                 bus.reply(msg, reply);
                 completion.done();
@@ -4645,6 +4867,8 @@ public class KVMHost extends HostBase implements Host {
                     public void run(FlowTrigger trigger, Map data) {
                         PingCmd cmd = new PingCmd();
                         cmd.hostUuid = self.getUuid();
+                        cmd.kvmagentPhysicalMemoryUsageAlarmThreshold = gcf.getConfigValue(KVMGlobalConfig.CATEGORY, KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_ALARM_THRESHOLD.getName(), Long.class);
+                        cmd.kvmagentPhysicalMemoryUsageHardLimit = gcf.getConfigValue(KVMGlobalConfig.CATEGORY, KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_HARD_LIMIT.getName(), Long.class);
                         restf.asyncJsonPost(pingPath, cmd, new JsonAsyncRESTCallback<PingResponse>(trigger) {
                             @Override
                             public void fail(ErrorCode err) {
@@ -5413,9 +5637,9 @@ public class KVMHost extends HostBase implements Host {
                             List<String> extraPackagesFromExt = ext.appendExtraPackages(getSelfInventory());
                             if (extraPackagesFromExt != null && !extraPackagesFromExt.isEmpty()) {
                                 if (deployArguments.getExtraPackages() != null)
-                                    deployArguments.setExtraPackages(deployArguments.getExtraPackages() + "," + String.join(",", extraPackagesFromExt));
+                                    deployArguments.setExtraPackages(deployArguments.getExtraPackages() + " " + String.join(" ", extraPackagesFromExt));
                                 else
-                                    deployArguments.setExtraPackages(String.join(",", extraPackagesFromExt));
+                                    deployArguments.setExtraPackages(String.join(" ", extraPackagesFromExt));
                             }
 
                             ext.modifyDeploymentArguments(getSelfInventory(), deployArguments);
@@ -5483,19 +5707,20 @@ public class KVMHost extends HostBase implements Host {
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
+                        String allowPorts = KVMGlobalConfig.KVMAGENT_ALLOW_PORTS_LIST.value(String.class) + ',' + HostGlobalConfig.NBD_PORT_RANGE.value(String.class);
                         StringBuilder builder = new StringBuilder();
                         if (!KVMGlobalProperty.MN_NETWORKS.isEmpty()) {
                             builder.append(String.format("bash %s -m %s -p %s -s %s -c %s",
                                     "/var/lib/zstack/kvm/kvmagent-iptables",
                                     KVMConstant.IPTABLES_COMMENTS,
-                                    KVMGlobalConfig.KVMAGENT_ALLOW_PORTS_LIST.value(String.class),
+                                    allowPorts,
                                     KVMGlobalProperty.AGENT_PORT,
                                     String.join(",", KVMGlobalProperty.MN_NETWORKS)));
                         } else {
                             builder.append(String.format("bash %s -m %s -p %s -s %s",
                                     "/var/lib/zstack/kvm/kvmagent-iptables",
                                     KVMConstant.IPTABLES_COMMENTS,
-                                    KVMGlobalConfig.KVMAGENT_ALLOW_PORTS_LIST.value(String.class),
+                                    allowPorts,
                                     KVMGlobalProperty.AGENT_PORT));
                         }
 
@@ -5768,7 +5993,6 @@ public class KVMHost extends HostBase implements Host {
                 recordHardwareChangesAndCreateTag(HostSystemTags.SYSTEM_MANUFACTURER, HostSystemTags.SYSTEM_MANUFACTURER_TOKEN, ret.getSystemManufacturer(), errorCodeList);
                 recordHardwareChangesAndCreateTag(HostSystemTags.SYSTEM_UUID, HostSystemTags.SYSTEM_UUID_TOKEN, ret.getSystemUUID(), errorCodeList);
                 recordHardwareChangesAndCreateTag(HostSystemTags.MEMORY_SLOTS_MAXIMUM, HostSystemTags.MEMORY_SLOTS_MAXIMUM_TOKEN, ret.getMemorySlotsMaximum(), errorCodeList);
-
                 createTagWithoutNonValue(HostSystemTags.POWER_SUPPLY_MODEL_NAME, HostSystemTags.POWER_SUPPLY_MODEL_NAME_TOKEN, ret.getPowerSupplyModelName(), true);
                 createTagWithoutNonValue(HostSystemTags.POWER_SUPPLY_MANUFACTURER, HostSystemTags.POWER_SUPPLY_MANUFACTURER_TOKEN, ret.getPowerSupplyManufacturer(), true);
                 createTagWithoutNonValue(HostSystemTags.IPMI_ADDRESS, HostSystemTags.IPMI_ADDRESS_TOKEN, ret.getIpmiAddress(), true);
@@ -5779,6 +6003,8 @@ public class KVMHost extends HostBase implements Host {
                 createTagWithoutNonValue(HostSystemTags.BMC_VERSION, HostSystemTags.BMC_VERSION_TOKEN, ret.getBmcVersion(), true);
                 createTagWithoutNonValue(HostSystemTags.UPTIME, HostSystemTags.UPTIME_TOKEN, ret.getUptime(), true);
                 createTagWithoutNonValue(HostSystemTags.ISCSI_INITIATOR_NAME, HostSystemTags.ISCSI_INITIATOR_NAME_TOKEN, ret.getIscsiInitiatorName(), true);
+                createTagWithoutNonValue(HostSystemTags.DEPLOY_MODE, HostSystemTags.DEPLOY_MODE_TOKEN, ret.getDeployMode(), true);
+
 
                 saveHostExtraIps(ret);
 
