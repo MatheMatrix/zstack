@@ -1,8 +1,7 @@
 package org.zstack.sugonSdnController.network;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.zstack.header.network.l3.L3NetworkVO;
-import org.zstack.header.network.l3.L3NetworkVO_;
+import org.zstack.sdnController.SdnController;
 import org.zstack.sugonSdnController.controller.SugonSdnController;
 import org.zstack.sugonSdnController.controller.SugonSdnControllerConstant;
 import org.zstack.core.db.Q;
@@ -14,7 +13,6 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.network.l2.*;
 import org.zstack.network.l2.L2NoVlanNetwork;
-import org.zstack.sdnController.SdnController;
 import org.zstack.sdnController.SdnControllerManager;
 import org.zstack.sdnController.header.SdnControllerVO;
 import org.zstack.sdnController.header.SdnControllerVO_;

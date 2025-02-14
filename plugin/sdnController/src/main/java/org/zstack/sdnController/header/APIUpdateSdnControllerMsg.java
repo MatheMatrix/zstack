@@ -17,7 +17,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 @Action(category = SdnControllerConstant.ACTION_CATEGORY)
-public class APIUpdateSdnControllerMsg extends APIMessage implements L2NetworkMessage {
+public class APIUpdateSdnControllerMsg extends APIMessage implements SdnControllerMessage {
     @APIParam(resourceType = SdnControllerVO.class, checkAccount = true, operationTarget = true)
     private String uuid;
     @APIParam(maxLength = 255, required = false)
@@ -50,10 +50,10 @@ public class APIUpdateSdnControllerMsg extends APIMessage implements L2NetworkMe
     }
 
     @Override
-    public String getL2NetworkUuid() {
+    public String getSdnControllerUuid() {
         return uuid;
     }
- 
+
     public static APIUpdateSdnControllerMsg __example__() {
         APIUpdateSdnControllerMsg msg = new APIUpdateSdnControllerMsg();
         msg.setUuid(uuid());

@@ -21,7 +21,7 @@ import java.util.Map;
         responseClass = APISdnControllerAddHostEvent.class,
         parameterName = "null"
 )
-public class APISdnControllerAddHostMsg extends APIMessage {
+public class APISdnControllerAddHostMsg extends APIMessage implements SdnControllerMessage {
     /**
      * @desc l2Network uuid
      */
@@ -46,13 +46,13 @@ public class APISdnControllerAddHostMsg extends APIMessage {
     private List<String> nicNames;
 
     /**
-     * @desc physical nics used by vSwitchType
+     * @desc VTEP (VXLAN Tunnel End Point) IP address
      */
     @APIParam(required = false)
     private String vtepIp;
 
     /**
-     * @desc physical nics used by vSwitchType
+     * @desc Netmask for the VTEP IP address
      */
     @APIParam(required = false)
     private String netmask;
@@ -70,6 +70,7 @@ public class APISdnControllerAddHostMsg extends APIMessage {
     private String lacpMode;
 
 
+    @Override
     public String getSdnControllerUuid() {
         return sdnControllerUuid;
     }
@@ -133,6 +134,7 @@ public class APISdnControllerAddHostMsg extends APIMessage {
     public void setLacpMode(String lacpMode) {
         this.lacpMode = lacpMode;
     }
+
 
     public static APISdnControllerAddHostMsg __example__() {
         APISdnControllerAddHostMsg msg = new APISdnControllerAddHostMsg();

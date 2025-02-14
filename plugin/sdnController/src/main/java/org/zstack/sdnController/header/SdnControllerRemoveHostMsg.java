@@ -6,6 +6,7 @@ public class SdnControllerRemoveHostMsg extends NeedReplyMessage implements SdnC
     private String sdnControllerUuid;
     private String hostUuid;
     private String vSwitchType;
+    private boolean createChain = true;
 
     public static SdnControllerRemoveHostMsg fromApi(APISdnControllerRemoveHostMsg amsg) {
         SdnControllerRemoveHostMsg msg = new SdnControllerRemoveHostMsg();
@@ -38,5 +39,13 @@ public class SdnControllerRemoveHostMsg extends NeedReplyMessage implements SdnC
     @Override
     public String getSdnControllerUuid() {
         return sdnControllerUuid;
+    }
+
+    public boolean isCreateChain() {
+        return createChain;
+    }
+
+    public void setCreateChain(boolean createChain) {
+        this.createChain = createChain;
     }
 }
