@@ -108,7 +108,9 @@ public class VyosDeployAgentFlow extends NoRollbackFlow {
         String remoteZvrBootBinPath =  storeDataToMap(data, REMOTE_ZVRBOOT_BIN_PATH, String.format("/home/%s/zvrboot.bin", remoteUser));
 
 
-        if (!isReconnect && !ApplianceVmGlobalConfig.DEPLOY_AGENT_ON_START.value(Boolean.class)) {
+        if (!isReconnect &&
+                !ApplianceVmGlobalConfig.DEPLOY_AGENT_ON_START.value(Boolean.class) &&
+                !ApplianceVmSystemTags.APPLIANCEVM_DEPLOY_AGENT_ON_START.hasTag(vrUuid)) {
             // no need to deploy agent
             trigger.next();
             return;
@@ -159,6 +161,9 @@ public class VyosDeployAgentFlow extends NoRollbackFlow {
                             forceReboot = true;
                         }
                         rebootAgent(REMOTE_PORT, forceReboot);
+                        if (ApplianceVmSystemTags.APPLIANCEVM_DEPLOY_AGENT_ON_START.hasTag(vrUuid)) {
+                            ApplianceVmSystemTags.APPLIANCEVM_DEPLOY_AGENT_ON_START.deleteInherentTag(vrUuid);
+                        }
                         trigger.next();
                         return true;
                     } else {
