@@ -7,6 +7,7 @@ import org.zstack.header.message.*;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.zone.ZoneVO;
 
 @TagResourceType(SdnControllerVO.class)
 @Action(category = SdnControllerConstant.ACTION_CATEGORY)
@@ -29,10 +30,10 @@ public class APIAddSdnControllerMsg extends APICreateMessage implements APIAudit
     @APIParam(maxLength = 255)
     private String ip;
 
-    @APIParam(maxLength = 255)
+    @APIParam(required = false, maxLength = 255)
     private String userName;
 
-    @APIParam(maxLength = 255)
+    @APIParam(required = false, maxLength = 255)
     @NoLogging
     private String password;
 

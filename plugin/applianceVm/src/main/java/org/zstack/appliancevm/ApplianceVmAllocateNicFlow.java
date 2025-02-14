@@ -94,21 +94,8 @@ public class ApplianceVmAllocateNicFlow implements Flow {
         inv.setState(VmNicState.enable.toString());
 
         L3NetworkVO l3NetworkVO = dbf.findByUuid(nicSpec.getL3NetworkUuid(), L3NetworkVO.class);
-        L2NetworkVO l2NetworkVO = dbf.findByUuid(l3NetworkVO.getL2NetworkUuid(), L2NetworkVO.class);
-
-        // set vnic type based on enableSRIOV system tag & enableVhostUser globalConfig
-        boolean enableSriov = Q.New(SystemTagVO.class)
-                .eq(SystemTagVO_.resourceType, VmInstanceVO.class.getSimpleName())
-                .eq(SystemTagVO_.resourceUuid, vmSpec.getVmInventory().getUuid())
-                .eq(SystemTagVO_.tag, String.format("enableSRIOV::%s", nicSpec.getL3NetworkUuid()))
-                .isExists();
-        boolean enableVhostUser = NetworkServiceGlobalConfig.ENABLE_VHOSTUSER.value(Boolean.class);
-
-        VSwitchType vSwitchType = VSwitchType.valueOf(l2NetworkVO.getvSwitchType());
-        VmNicType vmNicType = vSwitchType.getVmNicTypeWithCondition(enableSriov, enableVhostUser);
-        if (vmNicType == null) {
-            throw new OperationFailureException(Platform.operr("there is no available nicType on L2 network [%s]", l2NetworkVO.getUuid()));
-        }
+        VmNicType vmNicType = nicManager.getVmNicType(vmSpec.getVmInventory().getUuid(),
+                L3NetworkInventory.valueOf(l3NetworkVO));
         inv.setType(vmNicType.toString());
         inv.setUsedIps(new ArrayList<>());
 

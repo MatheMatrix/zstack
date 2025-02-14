@@ -35,6 +35,10 @@ public interface L2NetworkConstant {
     @PythonClass
     public static final String VSWITCH_TYPE_OVS_KERNEL = "OvsKernel";
 
+    @PythonClass
+    public static final String VSWITCH_TYPE_OVN_DPDK = "OvnDpdk";
+    public static final String OVN_DPDK_VNIC_SRC_PATH = "/var/run/openvswitch/";
+
     public static final String DETACH_L2NETWORK_CODE = "l2Network.detach";
 
     // https://elixir.bootlin.com/linux/v5.6/source/include/uapi/linux/if.h#L33
@@ -43,4 +47,13 @@ public interface L2NetworkConstant {
     public static final int VIRTUAL_NETWORK_ID_DEFAULT_VALUE = 0;
 
     public static final String KVM_HYPERVISOR_TYPE = "KVM";
+
+    public static final String BONDING_MODE_LACP = "802.3ad";
+    public static final String BONDING_MODE_AB = "active-backup";
+    public static final String BONDING_MODE_SLB = "balance-slb";
+    public static final String BONDING_MODE_TCP = "balance-tcp";
+
+    public static final String LACP_MODE_OFF = "off";
+    public static final String LACP_MODE_ACTIVE = "active";
+    public static final String LACP_MODE_PASSIVE = "passive";
 }

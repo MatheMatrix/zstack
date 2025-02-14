@@ -145,6 +145,12 @@ public class CreateApplianceVmJob implements Job {
                             rc.updateValue(finalAvo1.getUuid(), Boolean.TRUE.toString());
                         }
 
+                        String cpuMode = spec.getExtensionData(ApplianceVmConstant.APPLIANCE_VM_CPUMODE, String.class);
+                        if (cpuMode != null) {
+                            ResourceConfig rc = rcf.getResourceConfig(KVMGlobalConfig.NESTED_VIRTUALIZATION.getIdentity());
+                            rc.updateValue(finalAvo1.getUuid(), cpuMode);
+                        }
+
                         return reload(vo);
                     }
                 }.execute();

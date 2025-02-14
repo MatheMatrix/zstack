@@ -229,8 +229,10 @@ public class UpgradeChecker implements Component, GlobalApiMessageInterceptor {
             commandObj = cmd;
         }
 
+        logger.debug("grayscale compare agentVersionVO " + JSONObjectUtil.toJsonString(agentVersionVO));
         for (Map<String, String> fields : relatedFieldsVersionMap) {
             // check if current command has unexpected versions
+            logger.debug("grayscale compare fields " + JSONObjectUtil.toJsonString(fields));
             VersionComparator currentVersion = new VersionComparator(agentVersionVO.getCurrentVersion());
             Set<Map.Entry<String, String>> entries = fields.entrySet()
                     .stream()

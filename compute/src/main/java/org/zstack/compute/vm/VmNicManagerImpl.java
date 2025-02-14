@@ -286,17 +286,16 @@ public class VmNicManagerImpl implements VmNicManager, VmNicExtensionPoint, Prep
         logger.debug(String.format("create %s on l3 network[uuid:%s] inside VmAllocateNicFlow",
                 enableSriov ? "vf nic" : "vnic", l3nw.getUuid()));
         boolean enableVhostUser = NetworkServiceGlobalConfig.ENABLE_VHOSTUSER.value(Boolean.class);
-
-        L2NetworkVO l2nw =  dbf.findByUuid(l3nw.getL2NetworkUuid(), L2NetworkVO.class);
-        VmNicType type;
-        if (l2nw.getType().equals(L2NetworkConstant.L2_TF_NETWORK_TYPE)) {
-            type = VmNicType.valueOf(VmInstanceConstant.TF_VIRTUAL_NIC_TYPE);
-        } else {
-            VSwitchType vSwitchType = VSwitchType.valueOf(l2nw.getvSwitchType());
-            type = vSwitchType.getVmNicTypeWithCondition(enableSriov, enableVhostUser);
+        VmNicType.VmNicSubType subType = VmNicType.VmNicSubType.NONE;
+        if (enableSriov) {
+            subType = VmNicType.VmNicSubType.SRIOV;
+        } else if (enableVhostUser) {
+            subType = VmNicType.VmNicSubType.VHOSTUSER;
         }
+        L2NetworkVO l2nw =  dbf.findByUuid(l3nw.getL2NetworkUuid(), L2NetworkVO.class);
+        VSwitchType vSwitchType = VSwitchType.valueOf(l2nw.getvSwitchType());
 
-        return type;
+        return vSwitchType.getVmNicType(subType);
     }
 
     @Override

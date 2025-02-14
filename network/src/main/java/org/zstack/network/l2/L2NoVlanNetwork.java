@@ -18,8 +18,10 @@ import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
+import org.zstack.core.workflow.SimpleFlowChain;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.core.Completion;
+import org.zstack.header.core.NoErrorCompletion;
 import org.zstack.header.core.NopeCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.core.workflow.*;
@@ -84,6 +86,10 @@ public class L2NoVlanNetwork implements L2Network {
         return L2NetworkInventory.valueOf(self);
     }
 
+    public VSwitchType getVSwitchType() {
+        return VSwitchType.valueOf(self.getvSwitchType());
+    }
+
     @Override
     public void handleMessage(Message msg) {
         try {
@@ -142,15 +148,6 @@ public class L2NoVlanNetwork implements L2Network {
             }
         });
     }
-
-    protected boolean checkPhysicalInterfaceForAttach() {
-        return true;
-    }
-
-    protected boolean realizeDataPlaneForAttach() {
-        return true;
-    }
-
 
     private void handle(DeleteL2NetworkMsg msg) {
         DeleteL2NetworkReply reply = new DeleteL2NetworkReply();
@@ -243,7 +240,8 @@ public class L2NoVlanNetwork implements L2Network {
     }
 
     private void handle(DetachL2NetworkFromClusterMsg msg) {
-        if (!L2NetworkGlobalConfig.DeleteL2BridgePhysically.value(Boolean.class)) {
+        if (!L2NetworkGlobalConfig.DeleteL2BridgePhysically.value(Boolean.class) ||
+                !getVSwitchType().isAttachToCluster()) {
             SQL.New(L2NetworkClusterRefVO.class)
                     .eq(L2NetworkClusterRefVO_.clusterUuid, msg.getClusterUuid())
                     .eq(L2NetworkClusterRefVO_.l2NetworkUuid, msg.getL2NetworkUuid())
@@ -314,7 +312,6 @@ public class L2NoVlanNetwork implements L2Network {
         String htype = q.findValue();
         final HypervisorType hvType = HypervisorType.valueOf(htype);
         final L2NetworkType l2Type = L2NetworkType.valueOf(self.getType());
-        final VSwitchType vSwitchType = VSwitchType.valueOf(self.getvSwitchType());
 
         L2NetworkHostRefInventory hostRef = l2NetworkHostHelper.getL2NetworkHostRef(msg.getL2NetworkUuid(), msg.getHostUuid());
         String providerType = null;
@@ -324,7 +321,7 @@ public class L2NoVlanNetwork implements L2Network {
 
         final CheckL2NetworkOnHostReply reply = new CheckL2NetworkOnHostReply();
         // TODO: this should be fixed
-        L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, vSwitchType, hvType);
+        L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, getVSwitchType(), hvType);
         ext.check(getSelfInventory(), msg.getHostUuid(), new Completion(msg) {
             @Override
             public void success() {
@@ -343,19 +340,63 @@ public class L2NoVlanNetwork implements L2Network {
         L2NetworkInventory inv = L2NetworkInventory.valueOf(self);
         extpEmitter.beforeDelete(inv);
         L2NetworkDeletionReply reply = new L2NetworkDeletionReply();
-        deleteHook(new Completion(msg) {
-            @Override
-            public void success() {
-                extpEmitter.afterDelete(inv);
-                bus.reply(msg, reply);
-            }
+
+        FlowChain chain = new SimpleFlowChain();
+        chain.setName("delete-l2-network-" + inv.getUuid());
+        chain.then(new NoRollbackFlow() {
+            String __name__ = "delete-l2-network-extension";
 
             @Override
-            public void fail(ErrorCode errorCode) {
-                reply.setError(errorCode);
+            public void run(FlowTrigger trigger, Map data) {
+                new While<>(pluginRgty.getExtensionList(L2NetworkDeleteExtensionPoint.class))
+                        .each((exp, wcompl) -> exp.deleteL2Network(inv, new NoErrorCompletion(trigger) {
+                            @Override
+                            public void done() {
+                                wcompl.done();
+                            }
+                        })).run(new WhileDoneCompletion(trigger) {
+                            @Override
+                            public void done(ErrorCodeList errorCodeList) {
+                                if (errorCodeList.getCauses().isEmpty()) {
+                                    trigger.next();
+                                } else {
+                                    trigger.fail(errorCodeList.getCauses().get(0));
+                                }
+                            }
+                        });
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "delete-l2-network";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                deleteHook(new Completion(msg) {
+                    @Override
+                    public void success() {
+                        extpEmitter.afterDelete(inv);
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        reply.setError(errorCode);
+                        bus.reply(msg, reply);
+                        trigger.fail(errorCode);
+                    }
+                });
+            }
+        }).error(new FlowErrorHandler(msg) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                reply.setError(errCode);
                 bus.reply(msg, reply);
             }
-        });
+        }).done(new FlowDoneHandler(msg) {
+            @Override
+            public void handle(Map data) {
+                bus.reply(msg, reply);
+            }
+        }).start();
     }
 
     private void handleApiMessage(APIMessage msg) {
@@ -473,15 +514,13 @@ public class L2NoVlanNetwork implements L2Network {
     protected void updateVlanNetwork(L2NetworkInventory oldl2, L2NetworkInventory newl2, String hostUuid, String htype, Completion completion) {
         final HypervisorType hvType = HypervisorType.valueOf(htype);
         final L2NetworkType l2Type = L2NetworkType.valueOf(self.getType());
-        final VSwitchType vSwitchType = VSwitchType.valueOf(self.getvSwitchType());
-        L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, vSwitchType, hvType);
+        L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, getVSwitchType(), hvType);
         ext.update(oldl2, newl2, hostUuid, completion);
     }
     protected void realizeNetwork(String hostUuid, String htype, String providerType, Completion completion) {
         final HypervisorType hvType = HypervisorType.valueOf(htype);
         final L2NetworkType l2Type = L2NetworkType.valueOf(self.getType());
-        final VSwitchType vSwitchType = VSwitchType.valueOf(self.getvSwitchType());
-        L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, vSwitchType, hvType);
+        L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, getVSwitchType(), hvType);
         ext.realize(getSelfInventory(), hostUuid, completion);
     }
 
@@ -642,7 +681,7 @@ public class L2NoVlanNetwork implements L2Network {
         chain.then(new NoRollbackFlow() {
             @Override
             public boolean skip(Map data) {
-                return !checkPhysicalInterfaceForAttach();
+                return !getVSwitchType().isAttachToCluster();
             }
 
             @Override
@@ -679,7 +718,7 @@ public class L2NoVlanNetwork implements L2Network {
 
             @Override
             public boolean skip(Map data) {
-                return !realizeDataPlaneForAttach();
+                return !getVSwitchType().isAttachToCluster();
             }
 
             @Override
@@ -978,7 +1017,8 @@ public class L2NoVlanNetwork implements L2Network {
 
     @Override
     public void deleteHook(Completion completion) {
-        if (L2NetworkGlobalConfig.DeleteL2BridgePhysically.value(Boolean.class)) {
+        if (L2NetworkGlobalConfig.DeleteL2BridgePhysically.value(Boolean.class)
+                && getVSwitchType().isAttachToCluster()) {
             deleteL2Bridge(completion);
         } else {
             completion.success();
@@ -1010,13 +1050,9 @@ public class L2NoVlanNetwork implements L2Network {
         }
 
         List<HostVO> hostss = new ArrayList<>();
-        Map<String, String> hostL2ProviderMap = new HashMap<>();
         for (Map.Entry<String, List<String>> e : providerClusterMap.entrySet()) {
             List<HostVO> hosts = Q.New(HostVO.class)
                     .in(HostVO_.clusterUuid, e.getValue()).list();
-            for (HostVO h: hosts) {
-                hostL2ProviderMap.put(h.getUuid(), e.getKey());
-            }
             hostss.addAll(hosts);
         }
 
@@ -1024,8 +1060,7 @@ public class L2NoVlanNetwork implements L2Network {
         new While<>(hostss).step((host,compl) -> {
             HypervisorType hvType = HypervisorType.valueOf(host.getHypervisorType());
             L2NetworkType l2Type = L2NetworkType.valueOf(self.getType());
-            VSwitchType vSwitchType = VSwitchType.valueOf(self.getvSwitchType());
-            L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, vSwitchType, hvType);
+            L2NetworkRealizationExtensionPoint ext = l2Mgr.getRealizationExtension(l2Type, getVSwitchType(), hvType);
             ext.delete(getSelfInventory(), host.getUuid(), new Completion(compl){
                 @Override
                 public void success() {

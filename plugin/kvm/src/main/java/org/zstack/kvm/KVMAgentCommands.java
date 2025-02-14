@@ -4696,6 +4696,92 @@ public class KVMAgentCommands {
     public static class SyncIpsetRsp extends AgentResponse {
     }
 
+    public static class InstallOvsPackageCmd extends AgentCommand {
+        @GrayVersion(value = "5.4.0")
+        public String ovnControllerIp;
+
+        public String getOvnControllerIp() {
+            return ovnControllerIp;
+        }
+
+        public void setOvnControllerIp(String ovnControllerIp) {
+            this.ovnControllerIp = ovnControllerIp;
+        }
+    }
+
+    public static class InstallOvsPackageRsp extends AgentResponse {
+    }
+
+    public static class UnInstallOvsPackageCmd extends AgentCommand {
+        @GrayVersion(value = "5.4.0")
+        public String ovnControllerIp;
+
+        public String getOvnControllerIp() {
+            return ovnControllerIp;
+        }
+
+        public void setOvnControllerIp(String ovnControllerIp) {
+            this.ovnControllerIp = ovnControllerIp;
+        }
+    }
+
+    public static class UnInstallOvsPackageRsp extends AgentResponse {
+    }
+
+    public static class StartOvsServiceCmd extends AgentCommand {
+        @GrayVersion(value = "5.4.0")
+        public String vSwitchType;
+        @GrayVersion(value = "5.4.0")
+        public String hostIp;
+        @GrayVersion(value = "5.4.0")
+        public Map<String, String> nicNamePciAddressMap;
+        @GrayVersion(value = "5.4.0")
+        public Map<String, String> nicNameDriverMap;
+        @GrayVersion(value = "5.4.0")
+        public String brExName;
+        @GrayVersion(value = "5.4.0")
+        public String ovnRemoteConnection;
+        @GrayVersion(value = "5.4.0")
+        public String ovnEncapIP;
+        @GrayVersion(value = "5.4.0")
+        public String ovnEncapNetmask;
+        @GrayVersion(value = "5.4.0")
+        public String ovnEncapType;
+        @GrayVersion(value = "5.4.0")
+        public Integer hugePageNumber;
+        @GrayVersion(value = "5.4.0")
+        public String bondingMode;
+        @GrayVersion(value = "5.4.0")
+        public String lacpMode;
+    }
+
+    public static class StartOvsServiceRsp extends AgentResponse {
+    }
+
+    public static class OvsAddPortCmd extends AgentCommand {
+        @GrayVersion(value = "5.4.0")
+        public String vSwitchType;
+        @GrayVersion(value = "5.4.0")
+        public Boolean sync;
+        @GrayVersion(value = "5.4.0")
+        public Boolean reInstall;
+        @GrayVersion(value = "5.4.0")
+        public Map<String, String> nicMap = new HashMap<>();
+    }
+
+    public static class OvsAddPortRsp extends AgentResponse {
+    }
+
+    public static class OvsDelPortCmd extends AgentCommand {
+        @GrayVersion(value = "5.4.0")
+        public String vswitchType;
+        @GrayVersion(value = "5.4.0")
+        public Map<String, String> nicMap = new HashMap<>();
+    }
+
+    public static class OvsDelPortRsp extends AgentResponse {
+    }
+
     public static class HardwareMonitorCmd extends KVMAgentCommands.AgentCommand {
     }
 

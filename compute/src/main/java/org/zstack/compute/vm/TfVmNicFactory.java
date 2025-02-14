@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.header.core.workflow.FlowException;
+import org.zstack.header.network.l2.L2NetworkConstant;
+import org.zstack.header.network.l2.VSwitchType;
 import org.zstack.header.vm.*;
 import org.zstack.identity.Account;
 import org.zstack.utils.Utils;
@@ -15,7 +17,9 @@ import static org.zstack.core.Platform.err;
 
 public class TfVmNicFactory extends VmNicFactory {
     private static final CLogger logger = Utils.getLogger(TfVmNicFactory.class);
+    private static final VSwitchType vSwitchType = new VSwitchType(VmInstanceConstant.L2_TF_VSWITCH_TYPE);
     private static final VmNicType type = new VmNicType(VmInstanceConstant.TF_VIRTUAL_NIC_TYPE);
+
     @Autowired
     private CloudBus bus;
     @Autowired
@@ -23,6 +27,9 @@ public class TfVmNicFactory extends VmNicFactory {
 
     @Override
     public VmNicType getType() {
+        type.setHasAddon(true);
+        vSwitchType.addVmNicType(VmNicType.VmNicSubType.NONE, type);
+
         return type;
     }
 

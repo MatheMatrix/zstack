@@ -20,6 +20,8 @@ public class ApplianceVmConstant {
     public static final String APPLIANCE_VM_ABNORMAL_FILE_REPORT = "/appliancevm/abnormalfiles/report";
     public static final String ABNORMAL_FILE_MAX_SIZE = "abnormalFileMaxSize";
 
+    public static final String APPLIANCE_VM_CPUMODE = "cpuMode";
+
     public enum BootstrapParams {
         managementNic,
         additionalNics,

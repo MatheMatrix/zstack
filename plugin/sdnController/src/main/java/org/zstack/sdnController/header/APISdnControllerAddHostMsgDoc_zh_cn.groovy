@@ -1,0 +1,122 @@
+package org.zstack.sdnController.header
+
+import org.zstack.sdnController.header.APISdnControllerAddHostEvent
+
+doc {
+    title "SdnControllerAddHost"
+
+    category "未知类别"
+
+    desc """在这里填写API描述"""
+
+    rest {
+        request {
+			url "POST /v1/sdn-controllers/{sdnControllerUuid}/hosts/{hostUuid}"
+
+			header (Authorization: 'OAuth the-session-uuid')
+
+            clz APISdnControllerAddHostMsg.class
+
+            desc """"""
+            
+			params {
+
+				column {
+					name "sdnControllerUuid"
+					enclosedIn ""
+					desc ""
+					location "url"
+					type "String"
+					optional false
+					since "5.3.0"
+				}
+				column {
+					name "hostUuid"
+					enclosedIn ""
+					desc "物理机UUID"
+					location "url"
+					type "String"
+					optional false
+					since "5.3.0"
+				}
+				column {
+					name "vSwitchType"
+					enclosedIn ""
+					desc ""
+					location "body"
+					type "String"
+					optional true
+					since "5.3.0"
+					values ("OvsKernel","OvsDpdk","sriov")
+				}
+				column {
+					name "nicNames"
+					enclosedIn ""
+					desc ""
+					location "body"
+					type "List"
+					optional false
+					since "5.3.0"
+				}
+				column {
+					name "vtepIp"
+					enclosedIn ""
+					desc ""
+					location "body"
+					type "String"
+					optional true
+					since "5.3.0"
+				}
+				column {
+					name "systemTags"
+					enclosedIn ""
+					desc "系统标签"
+					location "body"
+					type "List"
+					optional true
+					since "5.3.0"
+				}
+				column {
+					name "userTags"
+					enclosedIn ""
+					desc "用户标签"
+					location "body"
+					type "List"
+					optional true
+					since "5.3.0"
+				}
+				column {
+					name "netmask"
+					enclosedIn ""
+					desc ""
+					location "body"
+					type "String"
+					optional true
+					since "5.3.0"
+				}
+				column {
+					name "bondMode"
+					enclosedIn ""
+					desc ""
+					location "body"
+					type "String"
+					optional true
+					since "5.3.0"
+				}
+				column {
+					name "lacpMode"
+					enclosedIn ""
+					desc ""
+					location "body"
+					type "String"
+					optional true
+					since "5.3.0"
+				}
+			}
+        }
+
+        response {
+            clz APISdnControllerAddHostEvent.class
+        }
+    }
+}

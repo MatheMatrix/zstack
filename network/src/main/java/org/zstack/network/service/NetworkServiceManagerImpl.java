@@ -53,8 +53,7 @@ public class NetworkServiceManagerImpl extends AbstractService implements Networ
 	private Set<String> supportedVmTypes = new HashSet<>();
     private List<NetworkServiceExtensionPoint> nsExts = new ArrayList<NetworkServiceExtensionPoint>();
 
-
-	private void populateExtensions() {
+    private void populateExtensions() {
         for (NetworkServiceProviderFactory extp : pluginRgty.getExtensionList(NetworkServiceProviderFactory.class)) {
             NetworkServiceProviderFactory old = providerFactories.get(extp.getType().toString());
             if (old != null) {
@@ -535,5 +534,10 @@ public class NetworkServiceManagerImpl extends AbstractService implements Networ
         }
         logger.debug(String.format("there is no backend[provideType:%s, serviceType:%S] to disable service", providerType.toString(), nsType.toString()));
         completion.success();
+    }
+
+    @Override
+    public Set<String> getSupportedVmTypes() {
+        return supportedVmTypes;
     }
 }

@@ -5,19 +5,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusListCallBack;
+import org.zstack.core.db.DatabaseFacade;
 import org.zstack.header.core.workflow.Flow;
 import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l2.CheckL2NetworkOnHostMsg;
 import org.zstack.header.network.l2.L2NetworkConstant;
+import org.zstack.header.network.l2.L2NetworkVO;
+import org.zstack.header.network.l2.VSwitchType;
 import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.vm.*;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  */
@@ -25,6 +27,8 @@ import java.util.stream.Collectors;
 public class VmMigrationCheckL2NetworkOnHostFlow implements Flow {
     @Autowired
     private CloudBus bus;
+    @Autowired
+    private DatabaseFacade dbf;
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
@@ -34,6 +38,11 @@ public class VmMigrationCheckL2NetworkOnHostFlow implements Flow {
         List<CheckL2NetworkOnHostMsg> cmsgs = new ArrayList<CheckL2NetworkOnHostMsg>();
         for (L3NetworkInventory l3 : VmNicSpec.getL3NetworkInventoryOfSpec(spec.getL3Networks())) {
             CheckL2NetworkOnHostMsg msg = new CheckL2NetworkOnHostMsg();
+            L2NetworkVO l2NetworkVO = dbf.findByUuid(l3.getL2NetworkUuid(), L2NetworkVO.class);
+            VSwitchType switchType = VSwitchType.valueOf(l2NetworkVO.getvSwitchType());
+            if (!switchType.isAttachToCluster()) {
+                continue;
+            }
             msg.setL2NetworkUuid(l3.getL2NetworkUuid());
             msg.setHostUuid(spec.getDestHost().getUuid());
             bus.makeTargetServiceIdByResourceUuid(msg, L2NetworkConstant.SERVICE_ID, l3.getL2NetworkUuid());
