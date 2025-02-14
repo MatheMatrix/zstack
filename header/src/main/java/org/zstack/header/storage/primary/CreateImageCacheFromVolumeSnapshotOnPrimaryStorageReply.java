@@ -9,7 +9,6 @@ import org.zstack.header.message.NeedReplyMessage;
 public class CreateImageCacheFromVolumeSnapshotOnPrimaryStorageReply extends MessageReply {
     private String locateHostUuid;
     private ImageCacheInventory inventory;
-    private boolean incremental;
 
     public String getLocateHostUuid() {
         return locateHostUuid;
@@ -29,13 +28,5 @@ public class CreateImageCacheFromVolumeSnapshotOnPrimaryStorageReply extends Mes
 
     public ImageCacheInventory getInventory() {
         return inventory;
-    }
-
-    public void setIncremental(boolean incremental) {
-        this.incremental = incremental;
-    }
-
-    public boolean isIncremental() {
-        return incremental;
     }
 }

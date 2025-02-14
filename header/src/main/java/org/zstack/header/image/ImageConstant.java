@@ -28,4 +28,5 @@ public interface ImageConstant {
     String EXPORTED_PACKAGE_PREFIX = "package-";
 
     String SNAPSHOT_REUSE_IMAGE_SCHEMA = "volumeSnapshotReuse://";
+    String SNAPSHOT_IMAGE_SCHEMA = "volumeSnapshot://";
 }
