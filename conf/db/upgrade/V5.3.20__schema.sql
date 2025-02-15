@@ -87,7 +87,11 @@ ALTER TABLE `zstack`.`BaremetalNicVO` modify column mac varchar(255) DEFAULT NUL
 # 2. If source is Bentoml change framework to BentoML
 # 3. Else change framework to Other
 
-UPDATE `zstack`.`ModelServiceVO` SET source = framework WHERE source IS NULL;
+UPDATE `zstack`.`ModelServiceVO` SET source = framework WHERE source is NULL
+    AND framework in ('HuggingFace', 'Bentoml', 'Other');
+
+UPDATE `zstack`.`ModelServiceVO` SET source = 'Other' WHERE source is NULL
+    AND framework not in ('HuggingFace', 'Bentoml', 'Other');
 
 UPDATE `zstack`.`ModelServiceVO` SET framework = 'BentoML' WHERE source = 'Bentoml';
 
