@@ -2,6 +2,8 @@ package org.zstack.storage.ceph.primary;
 
 import org.zstack.core.db.Q;
 import org.zstack.header.errorcode.OperationFailureException;
+import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
+import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.volume.VolumeVO_;
 import org.zstack.utils.DebugUtils;
@@ -11,6 +13,7 @@ import java.net.URISyntaxException;
 import java.util.HashMap;
 
 import static org.zstack.core.Platform.argerr;
+import static org.zstack.header.image.ImageConstant.SNAPSHOT_REUSE_IMAGE_SCHEMA;
 
 /**
  * @ Author : yh.w
@@ -29,7 +32,8 @@ public class CephRequiredUrlParser {
             protocol = new URI(requiredUrl).getScheme();
         } catch (URISyntaxException e) {
             throw new OperationFailureException(
-                    argerr("invalid uri, correct example is ceph://$POOLNAME/$VOLUMEUUID or volume://$VOLUMEUUID"));
+                    argerr("invalid uri, correct example is ceph://$POOLNAME/$VOLUMEUUID or volume://$VOLUMEUUID " +
+                            "or volumeSnapshotReuse://$SNAPSHOTUUID"));
         }
 
         return uriParsers.get(protocol).parseUri(requiredUrl);
@@ -60,6 +64,7 @@ public class CephRequiredUrlParser {
     private static void parseRequiredInstallUri() {
         String protocolVolume = "volume";
         String protocolCeph = "ceph";
+        String protocolSnapshotReuse = "volumeSnapshotReuse";
 
         AbstractUriParser volumeParser = new AbstractUriParser() {
             @Override
@@ -83,7 +88,21 @@ public class CephRequiredUrlParser {
             }
         };
 
+        AbstractUriParser snapshotReuseParser = new AbstractUriParser() {
+            @Override
+            InstallPath parseUri(String uri) {
+                String snapshotUuid = uri.replaceFirst(SNAPSHOT_REUSE_IMAGE_SCHEMA, "");
+                String installPath = Q.New(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, snapshotUuid)
+                        .select(VolumeSnapshotVO_.primaryStorageInstallPath).findValue();
+                InstallPath p = new InstallPath();
+                p.fullPath = installPath.split("@")[0];
+                p.disassemble();
+                return p;
+            }
+        };
+
         uriParsers.put(protocolVolume, volumeParser);
         uriParsers.put(protocolCeph, cephParser);
+        uriParsers.put(protocolSnapshotReuse, snapshotReuseParser);
     }
 }

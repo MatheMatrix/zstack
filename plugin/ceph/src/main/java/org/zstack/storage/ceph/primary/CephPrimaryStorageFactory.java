@@ -45,6 +45,8 @@ import org.zstack.header.host.HostCanonicalEvents;
 import org.zstack.header.host.HostStatus;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.host.HostVO_;
+import org.zstack.header.image.ImageVO;
+import org.zstack.header.image.ImageVO_;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.storage.backup.*;
 import org.zstack.header.storage.primary.*;
@@ -78,6 +80,8 @@ import java.util.stream.Collectors;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.core.progress.ProgressReportService.getTaskStage;
 import static org.zstack.core.progress.ProgressReportService.markTaskStage;
+import static org.zstack.header.image.ImageConstant.SNAPSHOT_REUSE_IMAGE_SCHEMA;
+import static org.zstack.storage.ceph.primary.CephRequiredUrlParser.getInstallPathFromUri;
 import static org.zstack.utils.CollectionDSL.e;
 import static org.zstack.utils.CollectionDSL.map;
 
@@ -1243,6 +1247,15 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
             CephRequiredUrlParser.InstallPath path = CephRequiredUrlParser.getInstallPathFromUri(msg.getRequiredInstallUri());
             checkCephPoolCapacityForNewVolume(path.poolName, msg.getSize(), psInv.getUuid());
             return path.fullPath;
+        }
+
+        if (msg.getRequiredInstallUri() == null && msg.getImageUuid() != null) {
+            String url = Q.New(ImageVO.class).eq(ImageVO_.uuid, msg.getImageUuid()).select(ImageVO_.url).findValue();
+            if (url.startsWith(SNAPSHOT_REUSE_IMAGE_SCHEMA)) {
+                CephRequiredUrlParser.InstallPath path = getInstallPathFromUri(url);
+                checkCephPoolCapacityForNewVolume(path.poolName, msg.getSize(), psInv.getUuid());
+                return path.fullPath;
+            }
         }
 
         return getPreAllocatedInstallUrl(msg, psInv.getUuid());
