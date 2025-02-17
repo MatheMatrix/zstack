@@ -67,6 +67,10 @@ public abstract class PingTracker implements Component {
                         }
 
                         NeedReplyMessage msg = getPingMessage(resUuid);
+                        if (msg == null) {
+                            continue;
+                        }
+
                         msgs.add(msg);
                         resourceInTracking.add(resUuid);
                         tmp.put(msg, resUuid);

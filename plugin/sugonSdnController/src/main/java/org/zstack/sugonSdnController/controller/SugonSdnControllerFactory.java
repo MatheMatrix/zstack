@@ -2,6 +2,7 @@ package org.zstack.sugonSdnController.controller;
 
 import org.zstack.sdnController.SdnController;
 import org.zstack.sdnController.SdnControllerFactory;
+import org.zstack.sdnController.SdnControllerL2;
 import org.zstack.sdnController.SdnControllerType;
 import org.zstack.sdnController.header.SdnControllerVO;
 
@@ -15,6 +16,11 @@ public class SugonSdnControllerFactory implements SdnControllerFactory {
 
     @Override
     public SdnController getSdnController(SdnControllerVO vo) {
+        return new SugonSdnController(vo);
+    }
+
+    @Override
+    public SdnControllerL2 getSdnControllerL2(SdnControllerVO vo) {
         return new SugonSdnController(vo);
     }
 }

@@ -14,7 +14,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APISdnControllerRemoveHostEvent.class
 )
-public class APISdnControllerRemoveHostMsg extends APIMessage {
+public class APISdnControllerRemoveHostMsg extends APIMessage implements SdnControllerMessage {
     /**
      * @desc l2Network uuid
      */
@@ -32,6 +32,7 @@ public class APISdnControllerRemoveHostMsg extends APIMessage {
     @APIParam(required = false, validValues = {"OvnDpdk", "OvnKernel"})
     private String vSwitchType = "OvnDpdk";
 
+    @Override
     public String getSdnControllerUuid() {
         return sdnControllerUuid;
     }
