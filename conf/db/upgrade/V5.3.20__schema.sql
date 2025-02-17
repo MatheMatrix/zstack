@@ -93,11 +93,14 @@ UPDATE `zstack`.`ModelServiceVO` SET source = framework WHERE source is NULL
 UPDATE `zstack`.`ModelServiceVO` SET source = 'Other' WHERE source is NULL
     AND framework not in ('HuggingFace', 'Bentoml', 'Other');
 
-UPDATE `zstack`.`ModelServiceVO` SET framework = 'BentoML' WHERE source = 'Bentoml';
+UPDATE `zstack`.`ModelServiceVO` SET source = 'Bentoml' WHERE source = 'BentoML';
+UPDATE `zstack`.`ModelServiceVO` SET framework = 'BentoML' WHERE source = 'Bentoml'
+    AND framework not in ('vLLM', 'Diffusers', 'Transformers', 'sentence_transformers', 'llama.cpp', 'BentoML', 'Other', 'Ollama');
 
 Update ModelServiceVO set framework = 'Other' where framework not in
     ('vLLM', 'Diffusers', 'Transformers', 'sentence_transformers', 'llama.cpp', 'BentoML', 'Other', 'Ollama')
     AND source != 'Bentoml';
+Update ModelServiceVO set framework = 'Other' where framework is NULL;
 
 DROP PROCEDURE IF EXISTS CreateResourceConfigForBindingVms;
 DELIMITER $$
