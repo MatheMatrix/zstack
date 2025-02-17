@@ -7,7 +7,7 @@ doc {
 
     category "SdnController"
 
-    desc """在这里填写API描述"""
+    desc """SDN控制器移除物理机"""
 
     rest {
         request {
@@ -24,7 +24,7 @@ doc {
 				column {
 					name "sdnControllerUuid"
 					enclosedIn ""
-					desc ""
+					desc "SDN控制器Uuid"
 					location "url"
 					type "String"
 					optional false
@@ -42,7 +42,7 @@ doc {
 				column {
 					name "vSwitchType"
 					enclosedIn ""
-					desc ""
+					desc "虚拟交换机类型"
 					location "body"
 					type "String"
 					optional true
