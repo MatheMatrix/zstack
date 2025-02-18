@@ -36,4 +36,11 @@ public class APIGetLoginProceduresMsg extends APISyncCallMessage {
     public void setUsername(String username) {
         this.username = username;
     }
+
+    public static APIGetLoginProceduresMsg __example__() {
+        APIGetLoginProceduresMsg msg = new APIGetLoginProceduresMsg();
+        msg.setUsername("admin");
+        msg.setLoginType("iam1");
+        return msg;
+    }
 }

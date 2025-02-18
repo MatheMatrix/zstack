@@ -27,4 +27,10 @@ public class APIRefreshCaptchaMsg extends APISyncCallMessage {
     public void setUuid(String uuid) {
         this.uuid = uuid;
     }
+
+    public static APIRefreshCaptchaMsg __example__() {
+        APIRefreshCaptchaMsg msg = new APIRefreshCaptchaMsg();
+        msg.setUuid(uuid(CaptchaVO.class));
+        return msg;
+    }
 }
