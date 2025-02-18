@@ -156,6 +156,10 @@ public class HostPrimaryStorageAllocatorFlow extends AbstractHostAllocatorFlow {
         }
 
         huuids = transform(filterHostHavingAccessiblePrimaryStorage(huuids, spec), HostVO::getUuid);
+        if (huuids.isEmpty()) {
+            rejectAll("not accessible to the specific primary storage");
+            return;
+        }
 
         // for new created vm
         String sql = "select ps.uuid" +
