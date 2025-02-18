@@ -7,7 +7,7 @@ doc {
 
     category "SdnController"
 
-    desc """在这里填写API描述"""
+    desc """重连SDN控制器"""
 
     rest {
         request {

@@ -4,18 +4,18 @@ import java.lang.Integer
 
 doc {
 
-	title "在这里输入结构的名称"
+	title "SDN控制Vni范围"
 
 	field {
 		name "startVni"
 		desc ""
 		type "Integer"
-		since "5.3.0"
+		since "3.7"
 	}
 	field {
 		name "endVni"
 		desc ""
 		type "Integer"
-		since "5.3.0"
+		since "3.7"
 	}
 }

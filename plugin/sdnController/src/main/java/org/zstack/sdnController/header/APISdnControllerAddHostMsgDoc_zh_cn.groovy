@@ -5,9 +5,9 @@ import org.zstack.sdnController.header.APISdnControllerAddHostEvent
 doc {
     title "SdnControllerAddHost"
 
-    category "未知类别"
+    category "SDN"
 
-    desc """在这里填写API描述"""
+    desc """SDN控制器添加物理机"""
 
     rest {
         request {
@@ -24,7 +24,7 @@ doc {
 				column {
 					name "sdnControllerUuid"
 					enclosedIn ""
-					desc ""
+					desc "SDN控制器Uuid"
 					location "url"
 					type "String"
 					optional false
@@ -42,17 +42,17 @@ doc {
 				column {
 					name "vSwitchType"
 					enclosedIn ""
-					desc ""
+					desc "虚拟交换机类型"
 					location "body"
 					type "String"
 					optional true
 					since "5.3.0"
-					values ("OvsKernel","OvsDpdk","sriov")
+					values ("OvsKernel","OvsDpdk","SRIOV")
 				}
 				column {
 					name "nicNames"
 					enclosedIn ""
-					desc ""
+					desc "物理机网卡名称列表"
 					location "body"
 					type "List"
 					optional false
@@ -61,7 +61,7 @@ doc {
 				column {
 					name "vtepIp"
 					enclosedIn ""
-					desc ""
+					desc "物理机VTEP IP"
 					location "body"
 					type "String"
 					optional true
@@ -88,7 +88,7 @@ doc {
 				column {
 					name "netmask"
 					enclosedIn ""
-					desc ""
+					desc "物理机VTEP IP掩码"
 					location "body"
 					type "String"
 					optional true
@@ -97,7 +97,7 @@ doc {
 				column {
 					name "bondMode"
 					enclosedIn ""
-					desc ""
+					desc "物理机网卡bond模式"
 					location "body"
 					type "String"
 					optional true
@@ -106,7 +106,7 @@ doc {
 				column {
 					name "lacpMode"
 					enclosedIn ""
-					desc ""
+					desc "物理机网卡LACP模式"
 					location "body"
 					type "String"
 					optional true

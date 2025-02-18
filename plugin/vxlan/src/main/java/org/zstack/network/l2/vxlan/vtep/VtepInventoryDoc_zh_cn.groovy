@@ -5,60 +5,54 @@ import java.sql.Timestamp
 
 doc {
 
-	title "在这里输入结构的名称"
+	title "VXLAN隧道端点清单"
 
 	field {
 		name "uuid"
 		desc "资源的UUID，唯一标示该资源"
 		type "String"
-		since "5.3.0"
+		since "0.6"
 	}
 	field {
 		name "hostUuid"
 		desc "物理机UUID"
 		type "String"
-		since "5.3.0"
+		since "0.6"
 	}
 	field {
 		name "vtepIp"
-		desc ""
+		desc "隧道端点IP地址"
 		type "String"
-		since "5.3.0"
+		since "0.6"
 	}
 	field {
 		name "port"
-		desc ""
+		desc "端口"
 		type "Integer"
-		since "5.3.0"
+		since "0.6"
 	}
 	field {
 		name "type"
-		desc ""
+		desc "类型"
 		type "String"
-		since "5.3.0"
-	}
-	field {
-		name "physicalInterface"
-		desc ""
-		type "String"
-		since "5.3.0"
+		since "0.6"
 	}
 	field {
 		name "createDate"
 		desc "创建时间"
 		type "Timestamp"
-		since "5.3.0"
+		since "0.6"
 	}
 	field {
 		name "lastOpDate"
 		desc "最后一次修改时间"
 		type "Timestamp"
-		since "5.3.0"
+		since "0.6"
 	}
 	field {
 		name "poolUuid"
-		desc ""
+		desc "VXLAN资源池UUID"
 		type "String"
-		since "5.3.0"
+		since "0.6"
 	}
 }

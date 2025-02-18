@@ -5,7 +5,7 @@ import org.zstack.header.errorcode.ErrorCode
 
 doc {
 
-	title "在这里输入结构的名称"
+	title "SDN控制器删除物理机清单"
 
 	ref {
 		name "inventory"
