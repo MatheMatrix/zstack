@@ -583,6 +583,10 @@ class RestDocumentationGenerator implements DocumentGenerator {
 
         def errInfo = []
         getRequestRequestApiSet().each {
+            if (it.isInterface() || Modifier.isAbstract(it.getModifiers())) {
+                return
+            }
+
             def docPath = getDocTemplatePathFromClass(it)
             logger.info("processing ${docPath}")
             try {
@@ -2792,7 +2796,17 @@ ${additionalRemark}
 
         paths.each {
             def f = new File(it)
-            sourceFiles[f.name - ".java"] = f
+            def key = f.name - ".java"
+            if (sourceFiles[key] == null) {
+                sourceFiles[key] = f
+                return
+            }
+
+            // Two class names have the same name
+            // 1. Exclude classes containing '/plugin/expon/' paths
+            if (sourceFiles[key].absolutePath.contains("/plugin/expon/")) {
+                sourceFiles[key] = f
+            }
         }
     }
 
