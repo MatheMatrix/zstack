@@ -1,6 +1,8 @@
 package org.zstack.test.integration.storage.primary.local_nfs.allocator.host
 
+import org.zstack.compute.allocator.HostPrimaryStorageAllocatorFlow
 import org.zstack.compute.vm.VmSystemTags
+import org.zstack.core.Platform
 import org.zstack.sdk.*
 import org.zstack.test.integration.storage.StorageTest
 import org.zstack.testlib.EnvSpec
@@ -90,6 +92,13 @@ class CreateVmHostAllocateCase extends SubCase {
                     totalCapacity = SizeUnit.GIGABYTE.toByte(60)
                 }
 
+                localPrimaryStorage { // no host attach to this ps
+                    name = "local2"
+                    url = "/local_ps2"
+                    availableCapacity = SizeUnit.GIGABYTE.toByte(60)
+                    totalCapacity = SizeUnit.GIGABYTE.toByte(60)
+                }
+
                 l2NoVlanNetwork {
                     name = "l2"
                     physicalInterface = "eth0"
@@ -115,7 +124,7 @@ class CreateVmHostAllocateCase extends SubCase {
     void test() {
         env.create {
             testGetCandidateZonesClustersHostsForCreatingVm()
-
+            testAllocateVmWithWrongPs()
             testCreateVmAssignNfs()
         }
     }
@@ -140,6 +149,48 @@ class CreateVmHostAllocateCase extends SubCase {
         }.getHosts()
 
         assert 2 == hosts.size()
+    }
+
+    void testAllocateVmWithWrongPs() {
+        def l3 = env.inventoryByName("l3") as L3NetworkInventory
+        def cluster = env.inventoryByName("cluster") as ClusterInventory
+        def image = env.inventoryByName("image") as ImageInventory
+        def wrongPs = env.inventoryByName("local2") as PrimaryStorageInventory
+
+        def kvm = env.inventoryByName("kvm") as HostInventory
+        def kvm1 = env.inventoryByName("kvm1") as HostInventory
+
+        expectApiFailure({
+            createVmInstance {
+                delegate.name = "vm2"
+                delegate.l3NetworkUuids = [l3.uuid]
+                delegate.clusterUuid = cluster.uuid
+                delegate.imageUuid = image.uuid
+                delegate.primaryStorageUuidForRootVolume = wrongPs.uuid
+                delegate.cpuNum = 1
+                delegate.memorySize = SizeUnit.GIGABYTE.toByte(1)
+                delegate.diskAOs = [
+                    [
+                        boot : true,
+                        platform : "Linux",
+                        guestOsType : "Linux",
+                        architecture : "x86_64",
+                        size : SizeUnit.GIGABYTE.toByte(10)
+                    ]
+                ]
+            }
+        }) {
+            assert delegate.code == "SYS.1006"
+            assert delegate.cause
+            assert delegate.cause.code == "HOST_ALLOCATION.1001"
+            assert delegate.cause.opaque["rejectedCandidates"]
+            def list = (delegate.cause.opaque["rejectedCandidates"] as List<Map<String, Object>>)
+            assert list.size() == 2
+            assert list.any { it["hostUuid"] == kvm.uuid && it["hostName"] == "kvm" }
+            assert list.any { it["hostUuid"] == kvm1.uuid && it["hostName"] == "kvm1" }
+            assert list.every { it["reject"] == Platform.i18n("not accessible to the specific primary storage") }
+            assert list.every { it["rejectBy"] == HostPrimaryStorageAllocatorFlow.class.simpleName }
+        }
     }
 
     void testCreateVmAssignNfs(){
