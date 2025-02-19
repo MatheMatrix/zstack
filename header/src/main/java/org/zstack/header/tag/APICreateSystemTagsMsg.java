@@ -8,6 +8,8 @@ import org.zstack.header.vo.ResourceVO;
 
 import java.util.List;
 
+import static org.zstack.utils.CollectionDSL.list;
+
 @RestRequest(
         path = "/system-tags/{resourceUuid}/tags",
         method = HttpMethod.POST,
@@ -45,5 +47,13 @@ public class APICreateSystemTagsMsg extends APIMessage {
 
     public void setTags(List<String> tags) {
         this.tags = tags;
+    }
+
+    public static APICreateSystemTagsMsg example() {
+        APICreateSystemTagsMsg msg = new APICreateSystemTagsMsg();
+        msg.setResourceUuid(uuid(ResourceVO.class));
+        msg.setResourceType("VmInstanceVO");
+        msg.setTags(list("tag1", "tag2"));
+        return msg;
     }
 }

@@ -10,5 +10,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIGetExternalServicesReply.class
 )
 public class APIGetExternalServicesMsg extends APISyncCallMessage {
-
+    public static APIGetExternalServicesMsg __example__() {
+        return new APIGetExternalServicesMsg();
+    }
 }

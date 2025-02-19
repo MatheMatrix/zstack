@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
+import static org.zstack.utils.CollectionDSL.list;
+
 /**
  * Created by MaJin on 2019/7/3.
  */
@@ -41,5 +43,11 @@ public class APIGetHostTaskMsg extends APIGetChainTaskMsg {
     @Override
     public Function<String, String> getResourceUuidMaker() {
         return s -> s.substring(s.lastIndexOf("-") + 1);
+    }
+
+    public static APIGetHostTaskMsg __example__() {
+        APIGetHostTaskMsg msg = new APIGetHostTaskMsg();
+        msg.setHostUuids(list(uuid(HostVO.class)));
+        return msg;
     }
 }

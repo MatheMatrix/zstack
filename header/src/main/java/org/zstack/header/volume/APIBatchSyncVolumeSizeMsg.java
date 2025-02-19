@@ -22,4 +22,10 @@ public class APIBatchSyncVolumeSizeMsg extends APISyncCallMessage {
     public String getClusterUuid() {
         return clusterUuid;
     }
+
+    public static APIBatchSyncVolumeSizeMsg __example__() {
+        APIBatchSyncVolumeSizeMsg msg = new APIBatchSyncVolumeSizeMsg();
+        msg.setClusterUuid(uuid(ClusterVO.class));
+        return msg;
+    }
 }

@@ -37,4 +37,11 @@ public class APICleanUpStorageTrashOnPrimaryStorageMsg extends APIMessage implem
     public void setForce(boolean force) {
         this.force = force;
     }
+
+    public static APICleanUpStorageTrashOnPrimaryStorageMsg __example__() {
+        APICleanUpStorageTrashOnPrimaryStorageMsg msg = new APICleanUpStorageTrashOnPrimaryStorageMsg();
+        msg.setUuid(uuid(PrimaryStorageVO.class));
+        msg.setForce(true);
+        return msg;
+    }
 }

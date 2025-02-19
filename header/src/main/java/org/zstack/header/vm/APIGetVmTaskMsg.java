@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
+import static org.zstack.utils.CollectionDSL.list;
+
 @RestRequest(
         path = "/vm-instances/task-details",
         method = HttpMethod.GET,
@@ -37,5 +39,11 @@ public class APIGetVmTaskMsg extends APIGetChainTaskMsg {
     @Override
     public Function<String, String> getResourceUuidMaker() {
         return s -> s.substring(s.lastIndexOf("-") + 1);
+    }
+
+    public static APIGetVmTaskMsg __example__() {
+        APIGetVmTaskMsg msg = new APIGetVmTaskMsg();
+        msg.setVmInstanceUuids(list(uuid(VmInstanceVO.class)));
+        return msg;
     }
 }

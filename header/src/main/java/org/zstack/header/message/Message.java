@@ -54,6 +54,20 @@ public abstract class Message implements Serializable, AsyncBackup, Cloneable {
         }
     }
 
+    /**
+     * return a fixed uuid that starts with "ff0" and ends with "00"
+     */
+    protected static String uuid(Class<?> voClass) {
+        StringBuilder builder = new StringBuilder(
+                UUID.nameUUIDFromBytes(voClass.getSimpleName().getBytes()).toString().replace("-", ""));
+        builder.setCharAt(0, 'f');
+        builder.setCharAt(1, 'f');
+        builder.setCharAt(2, '0');
+        builder.setCharAt(30, '0');
+        builder.setCharAt(31, '0');
+        return builder.toString();
+    }
+
     public Message() {
         createdTime = System.currentTimeMillis();
         id = UUID.randomUUID().toString().replace("-", "");
