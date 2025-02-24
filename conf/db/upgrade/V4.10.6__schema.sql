@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS `zstack`.`VmHaVO` (
     `haLevel` varchar(64) not null default 'Undefined',
     `haLevelUpdateTime` timestamp not null default CURRENT_TIMESTAMP,
     `inhibitionReason` varchar(255) default null,
-    `inhibitionTime` timestamp default '0000-00-00 00:00:00',
+    `inhibitionTime` timestamp default '1999-12-31 23:59:59',
     CONSTRAINT fkVmHaVOVmInstanceVO FOREIGN KEY (uuid) REFERENCES VmInstanceEO (uuid) ON DELETE CASCADE,
     PRIMARY KEY (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
