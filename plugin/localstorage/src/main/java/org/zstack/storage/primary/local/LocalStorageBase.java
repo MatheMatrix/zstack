@@ -844,8 +844,8 @@ public class LocalStorageBase extends PrimaryStorageBase {
             handle((GetVolumeBackingChainFromPrimaryStorageMsg) msg);
         } else if (msg instanceof GetPrimaryStorageUsageReportMsg) {
             handle((GetPrimaryStorageUsageReportMsg) msg);
-        } else if (msg instanceof UndoSnapshotCreationOnPrimaryStorageMsg) {
-            handle((UndoSnapshotCreationOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof DeleteVolumeSnapshotOnPrimaryStorageMsg) {
+            handle((DeleteVolumeSnapshotOnPrimaryStorageMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
@@ -948,7 +948,13 @@ public class LocalStorageBase extends PrimaryStorageBase {
     }
 
     private void handle(GetVolumeBackingChainFromPrimaryStorageMsg msg) {
-        LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(msg.getHostUuid());
+        LocalStorageHypervisorFactory f;
+        if (msg.getHostUuid() != null) {
+            f = getHypervisorBackendFactoryByHostUuid(msg.getHostUuid());
+        } else {
+            HypervisorType hvType = VolumeFormat.getMasterHypervisorTypeByVolumeFormat(msg.getVolumeFormat());
+            f = getHypervisorBackendFactory(hvType.toString());
+        }
         LocalStorageHypervisorBackend bkd = f.getHypervisorBackend(self);
         bkd.handle(msg, new ReturnValueCompletion<GetVolumeBackingChainFromPrimaryStorageReply>(msg) {
             @Override
@@ -1542,20 +1548,20 @@ public class LocalStorageBase extends PrimaryStorageBase {
         });
     }
 
-    private void handle(final UndoSnapshotCreationOnPrimaryStorageMsg msg) {
+    private void handle(final DeleteVolumeSnapshotOnPrimaryStorageMsg msg) {
         final String hostUuid = getHostUuidByResourceUuid(msg.getVolume().getUuid());
 
         LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(hostUuid);
         LocalStorageHypervisorBackend bkd = f.getHypervisorBackend(self);
-        bkd.handle(msg, hostUuid, new ReturnValueCompletion<UndoSnapshotCreationOnPrimaryStorageReply>(msg) {
+        bkd.handle(msg, hostUuid, new ReturnValueCompletion<DeleteVolumeSnapshotOnPrimaryStorageReply>(msg) {
             @Override
-            public void success(UndoSnapshotCreationOnPrimaryStorageReply returnValue) {
+            public void success(DeleteVolumeSnapshotOnPrimaryStorageReply returnValue) {
                 bus.reply(msg, returnValue);
             }
 
             @Override
             public void fail(ErrorCode errorCode) {
-                UndoSnapshotCreationOnPrimaryStorageReply reply = new UndoSnapshotCreationOnPrimaryStorageReply();
+                DeleteVolumeSnapshotOnPrimaryStorageReply reply = new DeleteVolumeSnapshotOnPrimaryStorageReply();
                 reply.setError(errorCode);
                 bus.reply(msg, reply);
             }

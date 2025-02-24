@@ -31,6 +31,24 @@ doc {
 					since "3.6.0"
 				}
 				column {
+					name "direction"
+					enclosedIn ""
+					desc "数据合并方向"
+					location "body"
+					type "String"
+					optional true
+					since "zsv 4.10.6"
+				}
+				column {
+					name "scope"
+					enclosedIn ""
+					desc "删除范围"
+					location "body"
+					type "String"
+					optional true
+					since "zsv 4.10.6"
+				}
+				column {
 					name "deleteMode"
 					enclosedIn ""
 					desc ""
