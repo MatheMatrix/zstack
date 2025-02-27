@@ -7,6 +7,10 @@ import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
 import org.zstack.core.db.SQLBatchWithReturn;
+import org.zstack.core.workflow.SimpleFlowChain;
+import org.zstack.header.core.Completion;
+import org.zstack.header.core.workflow.*;
+import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.network.l3.*;
 import org.zstack.utils.CollectionUtils;
@@ -17,6 +21,7 @@ import org.zstack.utils.network.NetworkUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class NormalIpRangeFactory implements IpRangeFactory {
     @Autowired
@@ -30,33 +35,66 @@ public class NormalIpRangeFactory implements IpRangeFactory {
     }
 
     @Override
-    public IpRangeInventory createIpRange(IpRangeInventory ipr, APICreateMessage msg) {
-        NormalIpRangeVO vo = new SQLBatchWithReturn<NormalIpRangeVO>() {
+    public IpRangeInventory createIpRange(IpRangeInventory ipr, APICreateMessage msg, Completion completion) {
+        FlowChain chain = new SimpleFlowChain();
+        chain.setName(String.format("add-iprange-to-l3-%s", ipr.getL3NetworkUuid()));
+        chain.then(new Flow() {
+            String __name__ = "save-db";
             @Override
-            protected NormalIpRangeVO scripts() {
-                NormalIpRangeVO vo = new NormalIpRangeVO();
-                vo.setUuid(ipr.getUuid() == null ? Platform.getUuid() : ipr.getUuid());
-                vo.setDescription(ipr.getDescription());
-                vo.setEndIp(ipr.getEndIp());
-                vo.setGateway(ipr.getGateway());
-                vo.setL3NetworkUuid(ipr.getL3NetworkUuid());
-                vo.setName(ipr.getName());
-                vo.setNetmask(ipr.getNetmask());
-                vo.setStartIp(ipr.getStartIp());
-                vo.setNetworkCidr(ipr.getNetworkCidr());
-                vo.setAccountUuid(msg.getSession().getAccountUuid());
-                vo.setIpVersion(ipr.getIpVersion());
-                vo.setAddressMode(ipr.getAddressMode());
-                vo.setPrefixLen(ipr.getPrefixLen());
-                dbf.getEntityManager().persist(vo);
-                dbf.getEntityManager().flush();
-                dbf.getEntityManager().refresh(vo);
+            public void run(FlowTrigger trigger, Map data) {
+                NormalIpRangeVO vo = new SQLBatchWithReturn<NormalIpRangeVO>() {
+                    @Override
+                    protected NormalIpRangeVO scripts() {
+                        NormalIpRangeVO vo = new NormalIpRangeVO();
+                        vo.setUuid(ipr.getUuid() == null ? Platform.getUuid() : ipr.getUuid());
+                        vo.setDescription(ipr.getDescription());
+                        vo.setEndIp(ipr.getEndIp());
+                        vo.setGateway(ipr.getGateway());
+                        vo.setL3NetworkUuid(ipr.getL3NetworkUuid());
+                        vo.setName(ipr.getName());
+                        vo.setNetmask(ipr.getNetmask());
+                        vo.setStartIp(ipr.getStartIp());
+                        vo.setNetworkCidr(ipr.getNetworkCidr());
+                        vo.setAccountUuid(msg.getSession().getAccountUuid());
+                        vo.setIpVersion(ipr.getIpVersion());
+                        vo.setAddressMode(ipr.getAddressMode());
+                        vo.setPrefixLen(ipr.getPrefixLen());
+                        dbf.getEntityManager().persist(vo);
+                        dbf.getEntityManager().flush();
+                        dbf.getEntityManager().refresh(vo);
 
-                return vo;
+                        return vo;
+                    }
+                }.execute();
+
+                IpRangeHelper.updateL3NetworkIpversion(ipr);
+                ipr.setUuid(vo.getUuid());
+
+                trigger.next();
             }
-        }.execute();
 
-        IpRangeHelper.updateL3NetworkIpversion(ipr);
+            @Override
+            public void rollback(FlowRollback trigger, Map data) {
+                dbf.removeByPrimaryKey(ipr.getUuid(), IpRangeVO.class);
+                trigger.rollback();
+            }
+        }).then(new NoRollbackFlow() {
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+
+            }
+        }).error(new FlowErrorHandler(completion) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                completion.fail(errCode);
+            }
+        }).done(new FlowDoneHandler(completion) {
+            @Override
+            public void handle(Map data) {
+                completion.success();
+            }
+        }).start();
+
 
         final IpRangeInventory finalIpr = NormalIpRangeInventory.valueOf1(vo);
         CollectionUtils.safeForEach(pluginRgty.getExtensionList(AfterAddIpRangeExtensionPoint.class), new ForEachFunction<AfterAddIpRangeExtensionPoint>() {
