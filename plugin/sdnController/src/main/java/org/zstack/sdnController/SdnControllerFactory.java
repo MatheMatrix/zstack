@@ -15,5 +15,9 @@ public interface SdnControllerFactory {
 
     default SdnControllerL2 getSdnControllerL2(String l2NetworkUuid) {return null;};
 
+    SdnControllerDhcp getSdnControllerDhcp(SdnControllerVO vo);
+
+    default SdnControllerDhcp getSdnControllerDhcp(String l2NetworkUuid) {return null;};
+
     default FlowChain getSyncChain() {return FlowChainBuilder.newSimpleFlowChain();};
 }
