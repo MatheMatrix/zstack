@@ -234,24 +234,29 @@ class NfsPrimaryStorageSpec extends PrimaryStorageSpec {
             VFS.vfsHook(NfsPrimaryStorageKVMBackend.OFFLINE_SNAPSHOT_MERGE, xspec) { rsp, HttpEntity<String> e, EnvSpec spec ->
                 def cmd = JSONObjectUtil.toObject(e.body, NfsPrimaryStorageKVMBackendCommands.OfflineMergeSnapshotCmd.class)
                 VFS vfs = vfs(cmd, spec)
-
-                if (!cmd.fullRebase) {
-                    Qcow2 src = vfs.getFile(cmd.srcPath)
-                    src.rebase(cmd.destPath)
+                Qcow2 dst = vfs.getFile(cmd.destPath, true)
+                if (cmd.fullRebase) {
+                    dst.rebase((String) null)
                 } else {
-                    // when full rebase requested
-                    // general steps for offline Qcow2 merge operation has following steps:
-                    // 1. create a temp Qcow2 file
-                    // 2. convert Qcow2 on destPath to temp Qcow2
-                    // 3. replace Qcow2 on destPath with temp file
-                    if (!vfs.exists(cmd.destPath)) {
-                        vfs.createQcow2(cmd.destPath, 0, 0)
-                    }
-
-                    Qcow2 dest = vfs.getFile(cmd.destPath)
-                    dest.rebase(null)
+                    dst.rebase(cmd.srcPath)
                 }
+                return rsp
+            }
 
+            simulator(NfsPrimaryStorageKVMBackend.OFFLINE_SNAPSHOT_COMMIT) {
+                def rsp = new NfsPrimaryStorageKVMBackendCommands.OfflineCommitSnapshotRsp()
+                rsp.size = 1
+                return rsp
+            }
+
+            VFS.vfsHook(NfsPrimaryStorageKVMBackend.OFFLINE_SNAPSHOT_COMMIT, xspec) { NfsPrimaryStorageKVMBackendCommands.OfflineCommitSnapshotRsp rsp, HttpEntity<String> e, EnvSpec spec ->
+                def cmd = JSONObjectUtil.toObject(e.body, NfsPrimaryStorageKVMBackendCommands.OfflineCommitSnapshotCmd.class)
+                VFS vfs = vfs(cmd, spec)
+                Qcow2 src = vfs.getFile(cmd.srcPath)
+                Qcow2 dst = vfs.getFile(cmd.dstPath)
+                Qcow2 qcow2 = Qcow2.commit(vfs, src, dst)
+                rsp.size = qcow2.actualSize == 0 ? 1 : qcow2.actualSize
+                rsp.newInstallPath = qcow2.pathString()
                 return rsp
             }
 

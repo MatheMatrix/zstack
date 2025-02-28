@@ -792,6 +792,41 @@ public class NfsPrimaryStorageKVMBackendCommands {
     }
 
     public static class OfflineMergeSnapshotRsp extends NfsPrimaryStorageAgentResponse {
+        private long size;
+
+        public long getSize() {
+            return size;
+        }
+
+        public void setSize(long size) {
+            this.size = size;
+        }
+    }
+
+    public static class OfflineCommitSnapshotCmd extends NfsPrimaryStorageAgentCommand implements HasThreadContext {
+        public String srcPath;
+        public String dstPath;
+    }
+
+    public static class OfflineCommitSnapshotRsp extends NfsPrimaryStorageAgentResponse {
+        private String newInstallPath;
+        private Long size;
+
+        public String getNewInstallPath() {
+            return newInstallPath;
+        }
+
+        public void setNewInstallPath(String newInstallPath) {
+            this.newInstallPath = newInstallPath;
+        }
+
+        public Long getSize() {
+            return size;
+        }
+
+        public void setSize(Long size) {
+            this.size = size;
+        }
     }
 
     public static class RemountCmd extends NfsPrimaryStorageAgentCommand {

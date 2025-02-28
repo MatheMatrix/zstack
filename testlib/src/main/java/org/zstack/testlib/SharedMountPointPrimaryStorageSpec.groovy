@@ -236,7 +236,38 @@ class SharedMountPointPrimaryStorageSpec extends PrimaryStorageSpec {
             }
 
             simulator(KvmBackend.OFFLINE_MERGE_SNAPSHOT_PATH) {
-                return new KvmBackend.AgentRsp()
+                def rsp = new KvmBackend.OfflineMergeSnapshotRsp()
+                rsp.size = 1
+                return rsp
+            }
+
+            VFS.vfsHook(KvmBackend.OFFLINE_MERGE_SNAPSHOT_PATH, xspec) { KvmBackend.OfflineMergeSnapshotRsp rsp, HttpEntity<String> e, EnvSpec spec ->
+                def cmd = JSONObjectUtil.toObject(e.body, KvmBackend.OfflineMergeSnapshotCmd.class)
+                VFS vfs = SharedMountPointPrimaryStorageSpec.vfs(cmd, spec)
+                Qcow2 dst = vfs.getFile(cmd.destPath, true)
+                if (cmd.fullRebase) {
+                    dst.rebase((String) null)
+                } else {
+                    dst.rebase(cmd.srcPath)
+                }
+                return rsp
+            }
+
+            simulator(KvmBackend.OFFLINE_COMMIT_SNAPSHOT_PATH) {
+                def rsp = new KvmBackend.OfflineCommitSnapshotRsp()
+                rsp.size = 1
+                return rsp
+            }
+
+            VFS.vfsHook(KvmBackend.OFFLINE_COMMIT_SNAPSHOT_PATH, xspec) { rsp, HttpEntity<String> e, EnvSpec spec ->
+                def cmd = JSONObjectUtil.toObject(e.body, KvmBackend.OfflineCommitSnapshotCmd.class)
+                VFS vfs = vfs(cmd, spec)
+                Qcow2 src = vfs.getFile(cmd.srcPath)
+                Qcow2 dst = vfs.getFile(cmd.dstPath)
+                Qcow2 qcow2 = Qcow2.commit(vfs, src, dst)
+                rsp.size = qcow2.actualSize == 0 ? 1 : qcow2.actualSize
+                rsp.newInstallPath = qcow2.pathString()
+                return rsp
             }
 
             simulator(KvmBackend.CREATE_EMPTY_VOLUME_PATH) {
@@ -309,6 +340,30 @@ class SharedMountPointPrimaryStorageSpec extends PrimaryStorageSpec {
                 rsp.hashValue = cmd.installPath
                 return rsp
             }
+
+            simulator(KvmBackend.GET_BACKING_CHAIN_PATH) { HttpEntity<String> e, EnvSpec spec ->
+                return new KvmBackend.GetBackingChainRsp()
+            }
+
+            VFS.vfsHook(KvmBackend.GET_BACKING_CHAIN_PATH, xspec) { rsp, HttpEntity<String> e, EnvSpec spec ->
+                def cmd = JSONObjectUtil.toObject(e.body, KvmBackend.GetBackingChainCmd.class)
+
+                List<String> chain = []
+                VFS vfs = SharedMountPointPrimaryStorageSpec.vfs(cmd, spec)
+                Qcow2 file = vfs.getFile(cmd.installPath)
+                if (file == null) {
+                    logger.debug("Dump of whole VFS:\\n${vfs.dumpAsString()}")
+                }
+                assert file != null : "cannot find file[${cmd.installPath}]"
+                while (file.backingQcow2() != null) {
+                    chain.add(file.backingQcow2().pathString())
+                    file = file.backingQcow2()
+                }
+
+                rsp.backingChain = chain
+                return rsp
+            }
+
         }
     }
 

@@ -663,8 +663,10 @@ public class SMPPrimaryStorageBase extends PrimaryStorageBase implements KVMTake
             handle((GetVolumeBackingChainFromPrimaryStorageMsg) msg);
         } else if (msg instanceof ResizeVolumeOnPrimaryStorageMsg) {
             handle((ResizeVolumeOnPrimaryStorageMsg) msg);
-        } else if (msg instanceof UndoSnapshotCreationOnPrimaryStorageMsg) {
-            handle((UndoSnapshotCreationOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof CommitVolumeSnapshotOnPrimaryStorageMsg) {
+            handle((CommitVolumeSnapshotOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof PullVolumeSnapshotOnPrimaryStorageMsg) {
+            handle((PullVolumeSnapshotOnPrimaryStorageMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
@@ -725,7 +727,13 @@ public class SMPPrimaryStorageBase extends PrimaryStorageBase implements KVMTake
     }
 
     private void handle(GetVolumeBackingChainFromPrimaryStorageMsg msg) {
-        HypervisorFactory f = getHypervisorFactoryByHostUuid(msg.getHostUuid());
+        HypervisorFactory f;
+        if (msg.getHostUuid() != null) {
+            f = getHypervisorFactoryByHostUuid(msg.getHostUuid());
+        } else {
+            HypervisorType hvType = VolumeFormat.getMasterHypervisorTypeByVolumeFormat(msg.getVolumeFormat());
+            f = getHypervisorFactoryByHypervisorType(hvType.toString());
+        }
         HypervisorBackend bkd = f.getHypervisorBackend(self);
         bkd.handle(msg, new ReturnValueCompletion<GetVolumeBackingChainFromPrimaryStorageReply>(msg) {
             public void success(GetVolumeBackingChainFromPrimaryStorageReply returnValue) {
@@ -1052,23 +1060,6 @@ public class SMPPrimaryStorageBase extends PrimaryStorageBase implements KVMTake
         });
     }
 
-    private void handle(final UndoSnapshotCreationOnPrimaryStorageMsg msg) {
-        HypervisorBackend bkd = getHypervisorBackendByVolumeUuid(msg.getVolume().getUuid());
-        bkd.handle(msg, new ReturnValueCompletion<UndoSnapshotCreationOnPrimaryStorageReply>(msg) {
-            @Override
-            public void success(UndoSnapshotCreationOnPrimaryStorageReply returnValue) {
-                bus.reply(msg, returnValue);
-            }
-
-            @Override
-            public void fail(ErrorCode errorCode) {
-                UndoSnapshotCreationOnPrimaryStorageReply reply = new UndoSnapshotCreationOnPrimaryStorageReply();
-                reply.setError(errorCode);
-                bus.reply(msg, reply);
-            }
-        });
-    }
-
     @Transactional(readOnly = true)
     protected String getAvailableHostUuidForOperation() {
         String sql = "select host.uuid from PrimaryStorageClusterRefVO ref, HostVO host where" +
@@ -1226,6 +1217,39 @@ public class SMPPrimaryStorageBase extends PrimaryStorageBase implements KVMTake
         });
     }
 
+    private void handle(final CommitVolumeSnapshotOnPrimaryStorageMsg msg) {
+        HypervisorBackend bkd = getHypervisorBackendByVolumeUuid(msg.getVolume().getUuid());
+        bkd.handle(msg, new ReturnValueCompletion<CommitVolumeSnapshotOnPrimaryStorageReply>(msg) {
+            @Override
+            public void success(CommitVolumeSnapshotOnPrimaryStorageReply reply) {
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                CommitVolumeSnapshotOnPrimaryStorageReply reply = new CommitVolumeSnapshotOnPrimaryStorageReply();
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    private void handle(final PullVolumeSnapshotOnPrimaryStorageMsg msg) {
+        HypervisorBackend bkd = getHypervisorBackendByVolumeUuid(msg.getVolume().getUuid());
+        bkd.handle(msg, new ReturnValueCompletion<PullVolumeSnapshotOnPrimaryStorageReply>(msg) {
+            @Override
+            public void success(PullVolumeSnapshotOnPrimaryStorageReply reply) {
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                PullVolumeSnapshotOnPrimaryStorageReply reply = new PullVolumeSnapshotOnPrimaryStorageReply();
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
+    }
 
     private boolean isSharedMountPointPrimaryStorage(String psUuid) {
         return psUuid != null && Q.New(PrimaryStorageVO.class)
