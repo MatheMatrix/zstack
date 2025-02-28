@@ -869,7 +869,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
                 reply.setIp6(ip);
                 int l3IpVersion = Q.New(L3NetworkVO.class).eq(L3NetworkVO_.uuid, msg.getL3NetworkUuid()).select(L3NetworkVO_.ipVersion).findValue();
                 if (l3IpVersion == IPv6Constants.IPv6) {
-                    /* to be compitable with old version, dhcp server address of ipv6 only l3 network is filled in this field */
+                    /* to be compatible with old version, dhcp server address of ipv6 only l3 network is filled in this field */
                     reply.setIp(ip);
                 }
             }
@@ -886,7 +886,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
         return allocateDhcpIp(l3Uuid, ipVersion, true, null, excludedIp);
     }
 
-    private static Map<String, String> getExistingDhcpServerIp(String l3Uuid, int ipVersion) {
+    public static Map<String, String> getExistingDhcpServerIp(String l3Uuid, int ipVersion) {
         Map<String, String> ret = new HashMap<>();
         List<String> tags = FlatNetworkSystemTags.L3_NETWORK_DHCP_IP.getTags(l3Uuid);
         if (tags != null) {

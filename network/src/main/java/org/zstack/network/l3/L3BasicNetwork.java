@@ -62,6 +62,7 @@ import java.math.BigInteger;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.codehaus.groovy.runtime.InvokerHelper.asList;
 import static org.zstack.core.Platform.err;
 import static org.zstack.utils.CollectionDSL.*;
 
@@ -154,17 +155,24 @@ public class L3BasicNetwork implements L3Network {
 
     private void handle(APIAddIpRangeMsg msg) {
         IpRangeInventory ipr = IpRangeInventory.fromMessage(msg);
+        APIAddIpRangeEvent evt = new APIAddIpRangeEvent(msg.getId());
 
         IpRangeFactory factory = l3NwMgr.getIpRangeFactory(ipr.getIpRangeType());
-        IpRangeInventory inv = factory.createIpRange(ipr, msg);
+        factory.createIpRange(Collections.singletonList(ipr), msg, new ReturnValueCompletion<IpRangeInventory>(msg) {
+            @Override
+            public void success(IpRangeInventory inv) {
+                tagMgr.createTagsFromAPICreateMessage(msg, inv.getL3NetworkUuid(), L3NetworkVO.class.getSimpleName());
+                setIpRangeSharedResource(msg.getL3NetworkUuid(), inv.getUuid());
+                evt.setInventory(inv);
+                bus.publish(evt);
+            }
 
-        tagMgr.createTagsFromAPICreateMessage(msg, inv.getL3NetworkUuid(), L3NetworkVO.class.getSimpleName());
-
-        setIpRangeSharedResource(msg.getL3NetworkUuid(), inv.getUuid());
-
-        APIAddIpRangeEvent evt = new APIAddIpRangeEvent(msg.getId());
-        evt.setInventory(inv);
-        bus.publish(evt);
+            @Override
+            public void fail(ErrorCode errorCode) {
+                evt.setError(errorCode);
+                bus.publish(evt);
+            }
+        });
     }
 
     private void handleLocalMessage(Message msg) {
@@ -906,47 +914,68 @@ public class L3BasicNetwork implements L3Network {
 
     private void handle(APIAddIpRangeByNetworkCidrMsg msg) {
         List<IpRangeInventory> iprs = IpRangeInventory.fromMessage(msg);
-        List<IpRangeInventory> ret = new ArrayList<>();
-        for (IpRangeInventory ipr : iprs) {
-            IpRangeFactory factory = l3NwMgr.getIpRangeFactory(ipr.getIpRangeType());
-            IpRangeInventory inv = factory.createIpRange(ipr, msg);
-            setIpRangeSharedResource(msg.getL3NetworkUuid(), inv.getUuid());
-            ret.add(inv);
-        }
-        tagMgr.createTagsFromAPICreateMessage(msg, iprs.get(0).getL3NetworkUuid(), L3NetworkVO.class.getSimpleName());
         APIAddIpRangeByNetworkCidrEvent evt = new APIAddIpRangeByNetworkCidrEvent(msg.getId());
-        evt.setInventory(ret.get(0));
-        evt.setInventories(ret);
-        bus.publish(evt);
+
+        IpRangeFactory factory = l3NwMgr.getIpRangeFactory(iprs.get(0).getIpRangeType());
+        factory.createIpRange(iprs, msg, new ReturnValueCompletion<IpRangeInventory>(msg) {
+            @Override
+            public void success(IpRangeInventory inv) {
+                tagMgr.createTagsFromAPICreateMessage(msg, inv.getL3NetworkUuid(), L3NetworkVO.class.getSimpleName());
+                setIpRangeSharedResource(msg.getL3NetworkUuid(), inv.getUuid());
+                evt.setInventory(inv);
+                bus.publish(evt);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                evt.setError(errorCode);
+                bus.publish(evt);
+            }
+        });
     }
 
     private void handle(APIAddIpv6RangeByNetworkCidrMsg msg) {
         IpRangeInventory ipr = IpRangeInventory.fromMessage(msg);
-        IpRangeFactory factory = l3NwMgr.getIpRangeFactory(ipr.getIpRangeType());
-        IpRangeInventory inv = factory.createIpRange(ipr, msg);
-
-        tagMgr.createTagsFromAPICreateMessage(msg, inv.getL3NetworkUuid(), L3NetworkVO.class.getSimpleName());;
-
-        setIpRangeSharedResource(msg.getL3NetworkUuid(), inv.getUuid());
-
         APIAddIpRangeByNetworkCidrEvent evt = new APIAddIpRangeByNetworkCidrEvent(msg.getId());
-        evt.setInventory(inv);
-        evt.setInventories(Collections.singletonList(inv));
-        bus.publish(evt);
+
+        IpRangeFactory factory = l3NwMgr.getIpRangeFactory(ipr.getIpRangeType());
+        factory.createIpRange(Collections.singletonList(ipr), msg, new ReturnValueCompletion<IpRangeInventory>(msg) {
+            @Override
+            public void success(IpRangeInventory inv) {
+                tagMgr.createTagsFromAPICreateMessage(msg, inv.getL3NetworkUuid(), L3NetworkVO.class.getSimpleName());
+                setIpRangeSharedResource(msg.getL3NetworkUuid(), inv.getUuid());
+                evt.setInventory(inv);
+                bus.publish(evt);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                evt.setError(errorCode);
+                bus.publish(evt);
+            }
+        });
     }
 
     private void handle(APIAddIpv6RangeMsg msg) {
         IpRangeInventory ipr = IpRangeInventory.fromMessage(msg);
-        IpRangeFactory factory = l3NwMgr.getIpRangeFactory(ipr.getIpRangeType());
-        IpRangeInventory inv = factory.createIpRange(ipr, msg);
-
-        tagMgr.createTagsFromAPICreateMessage(msg, inv.getL3NetworkUuid(), L3NetworkVO.class.getSimpleName());
-
-        setIpRangeSharedResource(msg.getL3NetworkUuid(), inv.getUuid());
-
         APIAddIpRangeEvent evt = new APIAddIpRangeEvent(msg.getId());
-        evt.setInventory(inv);
-        bus.publish(evt);
+
+        IpRangeFactory factory = l3NwMgr.getIpRangeFactory(ipr.getIpRangeType());
+        factory.createIpRange(Collections.singletonList(ipr), msg, new ReturnValueCompletion<IpRangeInventory>(msg) {
+            @Override
+            public void success(IpRangeInventory inv) {
+                tagMgr.createTagsFromAPICreateMessage(msg, inv.getL3NetworkUuid(), L3NetworkVO.class.getSimpleName());
+                setIpRangeSharedResource(msg.getL3NetworkUuid(), inv.getUuid());
+                evt.setInventory(inv);
+                bus.publish(evt);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                evt.setError(errorCode);
+                bus.publish(evt);
+            }
+        });
     }
 
 
