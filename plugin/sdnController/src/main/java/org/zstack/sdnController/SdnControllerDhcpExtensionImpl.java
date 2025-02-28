@@ -40,7 +40,7 @@ public class SdnControllerDhcpExtensionImpl implements IpRangeBackendExtensionPo
             return;
         }
 
-        dhcp.addIpRange(iprs, completion);
+        dhcp.addIpRange(iprs, false, completion);
     }
 
     @Override
@@ -50,6 +50,7 @@ public class SdnControllerDhcpExtensionImpl implements IpRangeBackendExtensionPo
 
         String sdnControllerUuid = SdnControllerHelper.getSdnControllerUuidFromL2Uuid(l2Vo.getUuid());
         if (sdnControllerUuid == null) {
+            completion.success();
             return;
         }
 
@@ -57,6 +58,7 @@ public class SdnControllerDhcpExtensionImpl implements IpRangeBackendExtensionPo
         SdnControllerFactory factory = sdnMgr.getSdnControllerFactory(vo.getVendorType());
         SdnControllerDhcp dhcp = factory.getSdnControllerDhcp(vo);
         if (dhcp == null) {
+            completion.success();
             return;
         }
 

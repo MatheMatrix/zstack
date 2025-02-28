@@ -108,11 +108,18 @@ public class NormalIpRangeFactory implements IpRangeFactory {
                 List<IpRangeVO> vos = (List<IpRangeVO>) data.get("IpRangeVO");
                 List<IpRangeBackendExtensionPoint> exps = pluginRgty.getExtensionList(IpRangeBackendExtensionPoint.class);
                 new While<>(exps).each((exp, wcomp) -> {
-                    exp.removeIpRange(IpRangeInventory.valueOf(vos), new NoErrorCompletion(wcomp) {
+                    exp.removeIpRange(IpRangeInventory.valueOf(vos), new Completion(wcomp) {
                         @Override
-                        public void done() {
+                        public void success() {
                             wcomp.done();
                         }
+
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            wcomp.addError(errorCode);
+                            wcomp.allDone();
+                        }
+
                     });
                 }).run(new WhileDoneCompletion(trigger) {
                     @Override
