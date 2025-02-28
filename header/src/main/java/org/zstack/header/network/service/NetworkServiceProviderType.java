@@ -8,6 +8,7 @@ public class NetworkServiceProviderType {
     private static Map<String, NetworkServiceProviderType> types = Collections.synchronizedMap(new HashMap<String, NetworkServiceProviderType>());
 
     private final String typeName;
+    private boolean applyDhcpWhenVmReboot = true;
 
     public NetworkServiceProviderType(String typeName) {
         this.typeName = typeName;
@@ -29,12 +30,20 @@ public class NetworkServiceProviderType {
 
     @Override
     public boolean equals(Object t) {
-        if (t == null || !(t instanceof NetworkServiceProviderType)) {
+        if (!(t instanceof NetworkServiceProviderType)) {
             return false;
         }
 
         NetworkServiceProviderType type = (NetworkServiceProviderType) t;
         return type.toString().equals(typeName);
+    }
+
+    public boolean isApplyDhcpWhenVmReboot() {
+        return applyDhcpWhenVmReboot;
+    }
+
+    public void setApplyDhcpWhenVmReboot(boolean applyDhcpWhenVmReboot) {
+        this.applyDhcpWhenVmReboot = applyDhcpWhenVmReboot;
     }
 
     @Override
