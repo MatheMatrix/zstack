@@ -1,7 +1,6 @@
 package org.zstack.header.network.l3;
 
 import org.zstack.header.core.Completion;
-import org.zstack.header.core.NoErrorCompletion;
 
 import java.util.List;
 

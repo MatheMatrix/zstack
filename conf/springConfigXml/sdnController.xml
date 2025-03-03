@@ -92,8 +92,7 @@
 
     <bean id="SdnControllerDhcpExtension" class="org.zstack.sdnController.SdnControllerDhcpExtensionImpl">
         <zstack:plugin>
-            <zstack:extension interface="org.zstack.header.network.l3.AfterAddIpRangeExtensionPoint" />
-            <zstack:extension interface="org.zstack.header.network.l3.IpRangeDeletionExtensionPoint" />
+            <zstack:extension interface="org.zstack.header.network.l3.IpRangeBackendExtensionPoint" />
         </zstack:plugin>
     </bean>
 

@@ -221,19 +221,66 @@ public class L3BasicNetwork implements L3Network {
             }
         });
 
+        FlowChain chain = new SimpleFlowChain();
+        chain.setName(String.format("del-ip-range-%s", inv.getUuid()));
+        chain.then(new NoRollbackFlow() {
+            String __name__ = "remove-from-backend";
 
-        dbf.remove(iprvo);
-        IpRangeHelper.updateL3NetworkIpversion(iprvo);
-
-        CollectionUtils.safeForEach(exts, new ForEachFunction<IpRangeDeletionExtensionPoint>() {
             @Override
-            public void run(IpRangeDeletionExtensionPoint arg) {
-                arg.afterDeleteIpRange(inv);
+            public void run(FlowTrigger trigger, Map data) {
+                List<IpRangeBackendExtensionPoint> exps = pluginRgty.getExtensionList(IpRangeBackendExtensionPoint.class);
+                new While<>(exps).each((exp, wcomp) -> {
+                    exp.removeIpRange(Collections.singletonList(inv), new Completion(wcomp) {
+                        @Override
+                        public void success() {
+                            wcomp.done();
+                        }
+
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            wcomp.addError(errorCode);
+                            wcomp.allDone();
+                        }
+                    });
+                }).run(new WhileDoneCompletion(trigger) {
+                    @Override
+                    public void done(ErrorCodeList errorCodeList) {
+                        if (errorCodeList.getCauses().isEmpty()) {
+                            trigger.next();
+                        } else {
+                            trigger.fail(errorCodeList.getCauses().get(0));
+                        }
+                    }
+                });
             }
-        });
+        }).then(new NoRollbackFlow() {
+            String __name__ = "remove-db";
 
-        bus.reply(msg, reply);
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                dbf.remove(iprvo);
+                IpRangeHelper.updateL3NetworkIpversion(iprvo);
 
+                CollectionUtils.safeForEach(exts, new ForEachFunction<IpRangeDeletionExtensionPoint>() {
+                    @Override
+                    public void run(IpRangeDeletionExtensionPoint arg) {
+                        arg.afterDeleteIpRange(inv);
+                    }
+                });
+                trigger.next();
+            }
+        }).error(new FlowErrorHandler(msg) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                reply.setError(errCode);
+                bus.reply(msg, reply);
+            }
+        }).done(new FlowDoneHandler(msg) {
+            @Override
+            public void handle(Map data) {
+                bus.reply(msg, reply);
+            }
+        }).start();
     }
 
     private void handle(L3NetworkDeletionMsg msg) {
