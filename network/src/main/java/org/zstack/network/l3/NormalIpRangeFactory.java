@@ -59,6 +59,7 @@ public class NormalIpRangeFactory implements IpRangeFactory {
                             return vo;
                         }
                     }.execute();
+                    vos.add(vo);
                 }
 
                 data.put("IpRangeVO", vos);
