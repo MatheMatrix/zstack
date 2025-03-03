@@ -51,7 +51,7 @@ public class NormalIpRangeFactory implements IpRangeFactory {
                         @Override
                         protected NormalIpRangeVO scripts() {
                             NormalIpRangeVO vo = (NormalIpRangeVO) IpRangeHelper
-                                    .fromIpRangeInventory(ipr, msg.getSession().getUuid());
+                                    .fromIpRangeInventory(ipr, msg.getSession().getAccountUuid());
                             dbf.getEntityManager().persist(vo);
                             dbf.getEntityManager().flush();
                             dbf.getEntityManager().refresh(vo);

@@ -284,39 +284,56 @@ public class L3BasicNetwork implements L3Network {
     }
 
     private void handle(L3NetworkDeletionMsg msg) {
-        L3NetworkVO l3NetworkVO = dbf.findByUuid(msg.getL3NetworkUuid(), L3NetworkVO.class);
-        L2NetworkVO l2NetworkVO = dbf.findByUuid(l3NetworkVO.getL2NetworkUuid(), L2NetworkVO.class);
-        boolean isExistSystemL3 = Q.New(L3NetworkVO.class).eq(L3NetworkVO_.system, true)
-                .eq(L3NetworkVO_.l2NetworkUuid, l2NetworkVO.getUuid()).isExists();
-        List<String> clusterUuids = Q.New(L2NetworkClusterRefVO.class).select(L2NetworkClusterRefVO_.clusterUuid)
-                .eq(L2NetworkClusterRefVO_.l2NetworkUuid, l2NetworkVO.getUuid()).listValues();
-        if (isExistSystemL3) {
-            if (clusterUuids != null && !clusterUuids.isEmpty()) {
-                for (ServiceTypeExtensionPoint ext : pluginRgty.getExtensionList(ServiceTypeExtensionPoint.class)) {
-                    List<String> hostUuids = Q.New(HostVO.class).select(HostVO_.uuid).in(HostVO_.clusterUuid, clusterUuids).listValues();
-                    if (l2NetworkVO.getType().equals(L2NetworkConstant.VXLAN_NETWORK_TYPE) || l2NetworkVO.getType().equals(L2NetworkConstant.HARDWARE_VXLAN_NETWORK_TYPE)) {
-                        ext.syncManagementServiceTypeExtensionPoint(hostUuids, "vxlan" + l2NetworkVO.getVirtualNetworkId(), null, true);
-                    }
-                    if (l2NetworkVO.getType().equals(L2NetworkConstant.L2_NO_VLAN_NETWORK_TYPE) || l2NetworkVO.getType().equals(L2NetworkConstant.L2_VLAN_NETWORK_TYPE)) {
-                        ext.syncManagementServiceTypeExtensionPoint(hostUuids, l2NetworkVO.getPhysicalInterface(), l2NetworkVO.getVirtualNetworkId(), true);
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public void run(SyncTaskChain chain) {
+                L3NetworkVO l3NetworkVO = dbf.findByUuid(msg.getL3NetworkUuid(), L3NetworkVO.class);
+                L2NetworkVO l2NetworkVO = dbf.findByUuid(l3NetworkVO.getL2NetworkUuid(), L2NetworkVO.class);
+                boolean isExistSystemL3 = Q.New(L3NetworkVO.class).eq(L3NetworkVO_.system, true)
+                        .eq(L3NetworkVO_.l2NetworkUuid, l2NetworkVO.getUuid()).isExists();
+                List<String> clusterUuids = Q.New(L2NetworkClusterRefVO.class).select(L2NetworkClusterRefVO_.clusterUuid)
+                        .eq(L2NetworkClusterRefVO_.l2NetworkUuid, l2NetworkVO.getUuid()).listValues();
+                if (isExistSystemL3) {
+                    if (clusterUuids != null && !clusterUuids.isEmpty()) {
+                        for (ServiceTypeExtensionPoint ext : pluginRgty.getExtensionList(ServiceTypeExtensionPoint.class)) {
+                            List<String> hostUuids = Q.New(HostVO.class).select(HostVO_.uuid).in(HostVO_.clusterUuid, clusterUuids).listValues();
+                            if (l2NetworkVO.getType().equals(L2NetworkConstant.VXLAN_NETWORK_TYPE) || l2NetworkVO.getType().equals(L2NetworkConstant.HARDWARE_VXLAN_NETWORK_TYPE)) {
+                                ext.syncManagementServiceTypeExtensionPoint(hostUuids, "vxlan" + l2NetworkVO.getVirtualNetworkId(), null, true);
+                            }
+                            if (l2NetworkVO.getType().equals(L2NetworkConstant.L2_NO_VLAN_NETWORK_TYPE) || l2NetworkVO.getType().equals(L2NetworkConstant.L2_VLAN_NETWORK_TYPE)) {
+                                ext.syncManagementServiceTypeExtensionPoint(hostUuids, l2NetworkVO.getPhysicalInterface(), l2NetworkVO.getVirtualNetworkId(), true);
+                            }
+                        }
                     }
                 }
+
+                if (!self.getReservedIpRanges().isEmpty()) {
+                    SQL.New(ReservedIpRangeVO.class)
+                            .in(ReservedIpRangeVO_.uuid, self.getReservedIpRanges().stream().map(ReservedIpRangeVO::getUuid).collect(Collectors.toList()))
+                            .delete();
+                }
+
+                L3NetworkInventory inv = L3NetworkInventory.valueOf(self);
+                extpEmitter.beforeDelete(inv);
+                deleteHook();
+                extpEmitter.afterDelete(inv);
+
+                L3NetworkDeletionReply reply = new L3NetworkDeletionReply();
+                bus.reply(msg, reply);
+                chain.next();
             }
-        }
 
-        if (!self.getReservedIpRanges().isEmpty()) {
-            SQL.New(ReservedIpRangeVO.class)
-                    .in(ReservedIpRangeVO_.uuid, self.getReservedIpRanges().stream().map(ReservedIpRangeVO::getUuid).collect(Collectors.toList()))
-                    .delete();
-        }
+            @Override
+            public String getSyncSignature() {
+                return getSyncId();
+            }
 
-        L3NetworkInventory inv = L3NetworkInventory.valueOf(self);
-        extpEmitter.beforeDelete(inv);
-        deleteHook();
-        extpEmitter.afterDelete(inv);
+            @Override
+            public String getName() {
+                return "delete-l3-network-" + msg.getL3NetworkUuid();
+            }
+        });
 
-        L3NetworkDeletionReply reply = new L3NetworkDeletionReply();
-        bus.reply(msg, reply);
     }
 
     private void handle(ReturnIpMsg msg) {
@@ -1494,33 +1511,16 @@ public class L3BasicNetwork implements L3Network {
     private void handle(APIDeleteL3NetworkMsg msg) {
         final APIDeleteL3NetworkEvent evt = new APIDeleteL3NetworkEvent(msg.getId());
 
-        thdf.chainSubmit(new ChainTask(msg) {
+        doDeleteL3Network(msg, new Completion(msg) {
             @Override
-            public void run(SyncTaskChain chain) {
-                doDeleteL3Network(msg, new Completion(msg) {
-                    @Override
-                    public void success() {
-                        bus.publish(evt);
-                        chain.next();
-                    }
-
-                    @Override
-                    public void fail(ErrorCode errorCode) {
-                        evt.setError(errorCode);
-                        bus.publish(evt);
-                        chain.next();
-                    }
-                });
+            public void success() {
+                bus.publish(evt);
             }
 
             @Override
-            public String getSyncSignature() {
-                return getSyncId();
-            }
-
-            @Override
-            public String getName() {
-                return "delete-l3-network-" + msg.getL3NetworkUuid();
+            public void fail(ErrorCode errorCode) {
+                evt.setError(errorCode);
+                bus.publish(evt);
             }
         });
     }
