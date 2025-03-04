@@ -3,6 +3,7 @@ package org.zstack.storage.primary.local;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.compute.host.VolumeMigrationTargetHostFilter;
+import org.zstack.core.ansible.AnsibleConstant;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.cloudbus.EventFacade;
@@ -260,10 +261,33 @@ public class LocalStorageBase extends PrimaryStorageBase {
 
     private void handle(final APILocalStorageMigrateVolumeMsg msg) {
         final APILocalStorageMigrateVolumeEvent evt = new APILocalStorageMigrateVolumeEvent(msg.getId());
+        LocalStorageMigrateVolumeMsg mmsg = new LocalStorageMigrateVolumeMsg();
+        mmsg.setVolumeUuid(msg.getVolumeUuid());
+        mmsg.setPrimaryStorageUuid(self.getUuid());
+        mmsg.setDestHostUuid(msg.getDestHostUuid());
+        mmsg.setVmInstanceUuid(msg.getVmInstanceUuid());
+        bus.makeTargetServiceIdByResourceUuid(msg, AnsibleConstant.SERVICE_ID, self.getUuid());
+        bus.send(msg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply reply) {
+                if (reply.isSuccess()) {
+                    LocalStorageMigrateVolumeReply r = reply.castReply();
+                    evt.setInventory(r.getInventory());
+                    bus.publish(evt);
 
+                } else {
+                    evt.setError(reply.getError());
+                    bus.publish(evt);
+                }
+            }
+        });
+    }
+
+    private void handle(final LocalStorageMigrateVolumeMsg msg) {
+        LocalStorageMigrateVolumeReply re = new LocalStorageMigrateVolumeReply();
         if (self.getState() == PrimaryStorageState.Disabled) {
-            evt.setError(operr("The primary storage[uuid:%s] is disabled cold migrate is not allowed", msg.getPrimaryStorageUuid()));
-            bus.publish(evt);
+            re.setError(operr("The primary storage[uuid:%s] is disabled cold migrate is not allowed", msg.getPrimaryStorageUuid()));
+            bus.reply(msg, re);
             return;
         }
 
@@ -440,7 +464,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
                         }
 
                         MigrateVolumeOnLocalStorageReply mr = reply.castReply();
-                        evt.setInventory(mr.getInventory());
+                        re.setInventory(mr.getInventory());
                         trigger.next();
                     }
                 });
@@ -498,13 +522,13 @@ public class LocalStorageBase extends PrimaryStorageBase {
                         .set(VmInstanceVO_.lastHostUuid, lastHostUuid)
                         .update();
 
-                bus.publish(evt);
+                bus.reply(msg, re);
             }
         }).error(new FlowErrorHandler(msg) {
             @Override
             public void handle(ErrorCode errCode, Map data) {
-                evt.setError(errCode);
-                bus.publish(evt);
+                re.setError(errCode);
+                bus.reply(msg, re);
             }
         }).start();
     }
@@ -846,6 +870,8 @@ public class LocalStorageBase extends PrimaryStorageBase {
             handle((GetPrimaryStorageUsageReportMsg) msg);
         } else if (msg instanceof UndoSnapshotCreationOnPrimaryStorageMsg) {
             handle((UndoSnapshotCreationOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof LocalStorageMigrateVolumeMsg) {
+            handle((LocalStorageMigrateVolumeMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
