@@ -312,6 +312,18 @@ class VFS {
         return null
     }
 
+    VFSFile createFileFrom(String absolutePath, VFSFile f) {
+        Path p = fileSystem.getPath(absolutePath)
+        if (Files.exists(p)) {
+            throw new FileAlreadyExistsException("file[${f.pathString()}] already exists")
+        }
+
+        createDirectories(p.getParent())
+        f.path = p
+        write(p, f.asJSONString())
+        return getFile(f.pathString(), true)
+    }
+
     VFSFile createFileFrom(Path path, VFSFile f) {
         Path p = fileSystem.getPath(path.toAbsolutePath().toString())
         if (Files.exists(p)) {
