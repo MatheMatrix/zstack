@@ -513,7 +513,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
         thdf.chainSubmit(new ChainTask(msg) {
             @Override
             public String getSyncSignature() {
-                return String.format("migrate-volume-%s", msg.getVolumeUuid());
+                return String.format("migrate-local-volume-%s", msg.getVolumeUuid());
             }
 
             @Override
@@ -696,6 +696,11 @@ public class LocalStorageBase extends PrimaryStorageBase {
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
+                        if (msg.isMoveToTrash()) {
+                            trigger.next();
+                            return;
+                        }
+
                         List<String> paths = new ArrayList<>();
                         paths.add(volume.getInstallPath());
                         for (VolumeSnapshotVO sp : snapshots) {

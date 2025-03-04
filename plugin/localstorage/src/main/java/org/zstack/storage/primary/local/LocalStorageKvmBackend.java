@@ -3055,7 +3055,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
                                 return;
                             }
 
-                            final String path = it.next();
+                            final String path = it.next().replace(String.format("%s", self.getUrl()), struct.getDstStoragePath());
                             deleteBits(path, struct.getDestHostUuid(), new Completion(trigger) {
                                 @Override
                                 public void success() {
