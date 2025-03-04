@@ -4,6 +4,7 @@ import org.zstack.header.volume.VolumeInventory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Created by frank on 11/16/2015.
@@ -42,6 +43,9 @@ public class MigrateBitsStruct {
     private List<ResourceInfo> infos = new ArrayList<ResourceInfo>();
     private String srcHostUuid;
     private String destHostUuid;
+    private String srcPrimaryStorageUuid;
+    private String dstPrimaryStorageUuid;
+    private String dstStoragePath;
 
     public String getSrcHostUuid() {
         return srcHostUuid;
@@ -65,5 +69,29 @@ public class MigrateBitsStruct {
 
     public void setDestHostUuid(String destHostUuid) {
         this.destHostUuid = destHostUuid;
+    }
+
+    public String getSrcPrimaryStorageUuid() {
+        return srcPrimaryStorageUuid;
+    }
+
+    public void setSrcPrimaryStorageUuid(String srcPrimaryStorageUuid) {
+        this.srcPrimaryStorageUuid = srcPrimaryStorageUuid;
+    }
+
+    public String getDstPrimaryStorageUuid() {
+        return dstPrimaryStorageUuid;
+    }
+
+    public void setDstPrimaryStorageUuid(String dstPrimaryStorageUuid) {
+        this.dstPrimaryStorageUuid = dstPrimaryStorageUuid;
+    }
+
+    public String getDstStoragePath() {
+        return dstStoragePath;
+    }
+
+    public void setDstStoragePath(String dstStoragePath) {
+        this.dstStoragePath = dstStoragePath;
     }
 }

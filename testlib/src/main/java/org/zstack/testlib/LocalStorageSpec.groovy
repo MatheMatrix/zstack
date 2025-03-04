@@ -7,6 +7,9 @@ import org.zstack.core.db.Q
 import org.zstack.header.Constants
 import org.zstack.header.host.HostVO
 import org.zstack.header.host.HostVO_
+import org.zstack.header.storage.primary.PrimaryStorage
+import org.zstack.header.storage.primary.PrimaryStorageVO
+import org.zstack.header.storage.primary.PrimaryStorageVO_
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO_
 import org.zstack.header.tag.SystemTagVO
@@ -17,6 +20,8 @@ import org.zstack.sdk.PrimaryStorageInventory
 import org.zstack.storage.primary.local.LocalStorageKvmBackend
 import org.zstack.storage.primary.local.LocalStorageKvmMigrateVmFlow
 import org.zstack.storage.primary.local.LocalStorageKvmSftpBackupStorageMediatorImpl
+import org.zstack.storage.primary.local.LocalStorageResourceRefVO
+import org.zstack.storage.primary.local.LocalStorageResourceRefVO_
 import org.zstack.testlib.vfs.Qcow2
 import org.zstack.testlib.vfs.VFS
 import org.zstack.testlib.vfs.VFSFile
@@ -196,9 +201,12 @@ class LocalStorageSpec extends PrimaryStorageSpec {
                     files.add(f)
                 }
 
-                VFS dstVFS = vfs(dstHostUuid, storagePath, spec)
-                files.each {
-                    dstVFS.createFileFrom(it)
+                VFS dstVFS = vfs(dstHostUuid, cmd.dstStoragePath, spec)
+                files.each { file ->
+                    String absolutePath = file.pathString().replace(String.format("%s", cmd.storagePath), cmd.dstStoragePath)
+                    if (!dstVFS.exists(absolutePath)) {
+                        dstVFS.createFileFrom(absolutePath, file)
+                    }
                 }
 
                 return rsp

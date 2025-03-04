@@ -56,6 +56,8 @@ import org.zstack.utils.logging.CLogger;
 import javax.persistence.LockModeType;
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
@@ -411,6 +413,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
             public void run(FlowTrigger trigger, Map data) {
                 MigrateVolumeOnLocalStorageMsg mmsg = new MigrateVolumeOnLocalStorageMsg();
                 mmsg.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
+                mmsg.setDestPrimaryStorageUuid(msg.getPrimaryStorageUuid());
                 mmsg.setDestHostUuid(msg.getDestHostUuid());
                 mmsg.setVolumeUuid(msg.getVolumeUuid());
                 bus.makeTargetServiceIdByResourceUuid(mmsg, PrimaryStorageConstant.SERVICE_ID, self.getUuid());
@@ -513,7 +516,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
         thdf.chainSubmit(new ChainTask(msg) {
             @Override
             public String getSyncSignature() {
-                return String.format("migrate-volume-%s", msg.getVolumeUuid());
+                return String.format("migrate-local-volume-%s", msg.getVolumeUuid());
             }
 
             @Override
@@ -548,7 +551,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
             return;
         }
 
-        if (ref.getHostUuid().equals(msg.getDestHostUuid())) {
+        if (Objects.equals(msg.getPrimaryStorageUuid(), msg.getDestPrimaryStorageUuid()) && ref.getHostUuid().equals(msg.getDestHostUuid())) {
             logger.debug(String.format("the volume[uuid:%s] is already on the host[uuid:%s], no need to migrate",
                     msg.getVolumeUuid(), msg.getDestHostUuid()));
             bus.reply(msg, reply);
@@ -569,6 +572,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
             MigrateBitsStruct struct = new MigrateBitsStruct();
             LocalStorageHypervisorBackend bkd;
             VolumeStatus originVolumeStatus;
+            String allocatedInstall;
 
             {
                 SimpleQuery<LocalStorageResourceRefVO> q = dbf.createQuery(LocalStorageResourceRefVO.class);
@@ -593,6 +597,15 @@ public class LocalStorageBase extends PrimaryStorageBase {
                 struct.setDestHostUuid(msg.getDestHostUuid());
                 struct.setSrcHostUuid(ref.getHostUuid());
                 struct.setVolume(VolumeInventory.valueOf(volume));
+                struct.setSrcPrimaryStorageUuid(msg.getPrimaryStorageUuid());
+                struct.setDstPrimaryStorageUuid(msg.getDestPrimaryStorageUuid());
+                if (Objects.equals(msg.getPrimaryStorageUuid(), msg.getDestPrimaryStorageUuid())) {
+                    struct.setDstStoragePath(Paths.get(self.getUrl()).normalize().toString());
+                } else {
+                    String url = Q.New(PrimaryStorageVO.class).eq(PrimaryStorageVO_.uuid, msg.getDestPrimaryStorageUuid())
+                            .select(PrimaryStorageVO_.url).findValue();
+                    struct.setDstStoragePath(Paths.get(url).normalize().toString());
+                }
 
                 if (!snapshots.isEmpty()) {
                     List<String> spUuids = CollectionUtils.transformToList(snapshots, ResourceVO::getUuid);
@@ -624,7 +637,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
                     }
                 }
 
-                LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(msg.getDestHostUuid());
+                LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByResourceUuid(volume.getUuid(), VolumeSnapshotVO.class.getSimpleName());
                 bkd = f.getHypervisorBackend(self);
 
                 originVolumeStatus = volume.getStatus();
@@ -640,15 +653,38 @@ public class LocalStorageBase extends PrimaryStorageBase {
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        reserveCapacityOnHost(msg.getDestHostUuid(), requiredSize, self.getUuid());
-                        success = true;
-                        trigger.next();
+                        AllocatePrimaryStorageSpaceMsg amsg = new AllocatePrimaryStorageSpaceMsg();
+                        amsg.setRequiredPrimaryStorageUuid(struct.getDstPrimaryStorageUuid());
+                        amsg.setRequiredHostUuid(struct.getDestHostUuid());
+                        amsg.setSize(requiredSize);
+                        amsg.setNoOverProvisioning(true);
+                        amsg.setPurpose(volume.getType() == VolumeType.Root ? PrimaryStorageAllocationPurpose.CreateRootVolume.toString() :
+                                PrimaryStorageAllocationPurpose.CreateDataVolume.toString());
+                        bus.makeTargetServiceIdByResourceUuid(amsg, PrimaryStorageConstant.SERVICE_ID, struct.getDstPrimaryStorageUuid());
+                        bus.send(amsg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (!reply.isSuccess()) {
+                                    trigger.fail(reply.getError());
+                                } else {
+                                    success = true;
+                                    AllocatePrimaryStorageSpaceReply ar = (AllocatePrimaryStorageSpaceReply) reply;
+                                    allocatedInstall = ar.getAllocatedInstallUrl();
+                                    trigger.next();
+                                }
+                            }
+                        });
                     }
 
                     @Override
                     public void rollback(FlowRollback trigger, Map data) {
                         if (success) {
-                            returnStorageCapacityToHost(msg.getDestHostUuid(), requiredSize);
+                            ReleasePrimaryStorageSpaceMsg msg = new ReleasePrimaryStorageSpaceMsg();
+                            msg.setPrimaryStorageUuid(struct.getDstPrimaryStorageUuid());
+                            msg.setDiskSize(requiredSize);
+                            msg.setAllocatedInstallUrl(allocatedInstall);
+                            bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, struct.getDstPrimaryStorageUuid());
+                            bus.send(msg);
                         }
                         trigger.rollback();
                     }
@@ -687,6 +723,13 @@ public class LocalStorageBase extends PrimaryStorageBase {
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
                         returnStorageCapacityToHost(ref.getHostUuid(), requiredSize);
+                        ReleasePrimaryStorageSpaceMsg msg = new ReleasePrimaryStorageSpaceMsg();
+                        msg.setPrimaryStorageUuid(struct.getDstPrimaryStorageUuid());
+                        msg.setDiskSize(requiredSize);
+                        msg.setAllocatedInstallUrl(allocatedInstall);
+                        bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, struct.getDstPrimaryStorageUuid());
+                        bus.send(msg);
+
                         trigger.next();
                     }
                 });
@@ -696,6 +739,11 @@ public class LocalStorageBase extends PrimaryStorageBase {
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
+                        if (msg.isMoveToTrash()) {
+                            trigger.next();
+                            return;
+                        }
+
                         List<String> paths = new ArrayList<>();
                         paths.add(volume.getInstallPath());
                         for (VolumeSnapshotVO sp : snapshots) {

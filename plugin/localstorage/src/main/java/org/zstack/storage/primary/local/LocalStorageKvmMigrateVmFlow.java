@@ -102,6 +102,8 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
         public Integer dstPort = 22;
         public String stage;
         public String volumeUuid;
+        public String srcStoragePath;
+        public String dstStoragePath;
     }
 
     static class BackingImage {
