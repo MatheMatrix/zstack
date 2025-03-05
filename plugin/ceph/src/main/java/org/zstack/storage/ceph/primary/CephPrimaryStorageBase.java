@@ -1017,6 +1017,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
     }
 
     public static class DeleteVolumeChainRsp extends AgentResponse {
+        public List<String> deletedVolumePaths;
     }
 
     public static class CleanTrashCmd extends AgentCommand {
@@ -1747,7 +1748,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         cmd.skipIfExisting = msg.isSkipIfExisting();
 
         final InstantiateVolumeOnPrimaryStorageReply reply = new InstantiateVolumeOnPrimaryStorageReply();
-        
+
         httpCall(CREATE_VOLUME_PATH, cmd, CreateEmptyVolumeRsp.class, new ReturnValueCompletion<CreateEmptyVolumeRsp>(msg) {
             @Override
             public void fail(ErrorCode err) {
@@ -5370,6 +5371,11 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
 
             @Override
             public void fail(ErrorCode errorCode) {
+                CephDeleteVolumeSnapshotGC snapshotGC = new CephDeleteVolumeSnapshotGC();
+                snapshotGC.NAME = String.format("gc-ceph-%s-volumesnapshot-path-%s", self.getUuid(), cmd.snapshotPath);
+                snapshotGC.primaryStorageUuid = self.getUuid();
+                snapshotGC.volumeSnapshot = msg.getSnapshot();
+                snapshotGC.deduplicateSubmit(CephGlobalConfig.GC_INTERVAL.value(Long.class), TimeUnit.SECONDS);
                 reply.setError(errorCode);
                 bus.reply(msg, reply);
                 completion.done();
@@ -5952,9 +5958,50 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         DeleteVolumeChainOnPrimaryStorageReply reply = new DeleteVolumeChainOnPrimaryStorageReply();
         DeleteVolumeChainCmd cmd = new DeleteVolumeChainCmd();
         cmd.installPaths = msg.getInstallPaths();
-        new HttpCaller<>(DELETE_VOLUME_CHAIN_PATH, cmd, AgentResponse.class, new ReturnValueCompletion<AgentResponse>(msg) {
+        new HttpCaller<>(DELETE_VOLUME_CHAIN_PATH, cmd, DeleteVolumeChainRsp.class, new ReturnValueCompletion<DeleteVolumeChainRsp>(msg) {
+            private VolumeInventory buildVolumeInventoryForGC(String path) {
+                VolumeInventory volumeInventory = new VolumeInventory();
+                volumeInventory.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
+                volumeInventory.setInstallPath(path);
+                // TODO volume chain should record size in the db and allocate primary storage space
+                volumeInventory.setSize(0);
+                return volumeInventory;
+            }
+            private VolumeSnapshotInventory buildVolumeSnapshotInventoryForGC(String path) {
+                VolumeSnapshotInventory volumeSnapshotInventory = new VolumeSnapshotInventory();
+                volumeSnapshotInventory.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
+                volumeSnapshotInventory.setPrimaryStorageInstallPath(path);
+                volumeSnapshotInventory.setSize(0);
+                return volumeSnapshotInventory;
+            }
+
             @Override
-            public void success(AgentResponse rsp) {
+            public void success(DeleteVolumeChainRsp rsp) {
+                if (rsp.deletedVolumePaths != null && rsp.deletedVolumePaths.size() == cmd.installPaths.size()) {
+                    bus.reply(msg, reply);
+                    return;
+                }
+                List<String> needGcInstallPaths = cmd.installPaths.stream().filter(path -> rsp.deletedVolumePaths == null ||
+                        !rsp.deletedVolumePaths.contains(path)).collect(Collectors.toList());
+
+                for (String needGcInstallPath : needGcInstallPaths) {
+                    if (needGcInstallPath.contains("@")) {
+                        CephDeleteVolumeSnapshotGC snapshotGC = new CephDeleteVolumeSnapshotGC();
+                        snapshotGC.NAME = String.format("gc-ceph-%s-volumesnapshot-path-%s", self.getUuid(), needGcInstallPath);
+                        snapshotGC.primaryStorageUuid = self.getUuid();
+                        snapshotGC.volumeSnapshot = buildVolumeSnapshotInventoryForGC(needGcInstallPath);
+                        snapshotGC.deduplicateSubmit(CephGlobalConfig.GC_INTERVAL.value(Long.class), TimeUnit.SECONDS);
+                        needGcInstallPath = needGcInstallPath.split("@")[0];
+                    }
+
+                    CephDeleteVolumeGC volumeGC = new CephDeleteVolumeGC();
+                    volumeGC.NAME = String.format("gc-ceph-%s-volume-path-%s", self.getUuid(), needGcInstallPath);
+                    volumeGC.primaryStorageUuid = self.getUuid();
+                    volumeGC.volume = buildVolumeInventoryForGC(needGcInstallPath);
+                    volumeGC.deduplicateSubmit(CephGlobalConfig.GC_INTERVAL.value(Long.class), TimeUnit.SECONDS);
+                }
+                logger.debug(String.format("unable to delete installPaths %s, now add GC to delete", needGcInstallPaths));
+                rsp.setSuccess(false);
                 bus.reply(msg, reply);
             }
 
