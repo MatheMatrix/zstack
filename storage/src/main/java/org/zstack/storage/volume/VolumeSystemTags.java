@@ -45,4 +45,7 @@ public class VolumeSystemTags {
 
     public static String VOLUME_QOS_TOKEN = "qos";
     public static PatternedSystemTag VOLUME_QOS = new PatternedSystemTag(String.format("%s::{%s}", VOLUME_QOS_TOKEN, VOLUME_QOS_TOKEN), VolumeVO.class);
+
+    public static String ACCESS_PATH_IQN_TOKEN = "accessPathIqnToken";
+    public static PatternedSystemTag ACCESS_PATH_IQN = new PatternedSystemTag(String.format("accessPathIqn::{%s}", ACCESS_PATH_IQN_TOKEN), VolumeVO.class);
 }
