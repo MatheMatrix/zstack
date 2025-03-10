@@ -2637,6 +2637,20 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         msg.getVolume().getUuid();
         DeleteCmd cmd = new DeleteCmd();
         cmd.installPath = msg.getVolume().getInstallPath();
+        List<CephPrimaryStorageCheckInstanceTypeExtensionPoint> exts = pluginRgty.getExtensionList(CephPrimaryStorageCheckInstanceTypeExtensionPoint.class);
+        for (CephPrimaryStorageCheckInstanceTypeExtensionPoint ext : exts) {
+            if (!ext.isBlockVolume(msg.getVolume().getUuid())) {
+                break;
+            }
+            List<String> monIps = Q.New(CephPrimaryStorageMonVO.class)
+                    .select(CephPrimaryStorageMonVO_.hostname)
+                    .eq(CephPrimaryStorageMonVO_.primaryStorageUuid, msg.getPrimaryStorageUuid())
+                    .listValues();
+            cmd.token = CephSystemTags.THIRDPARTY_PLATFORM.getTokenByResourceUuid(msg.getPrimaryStorageUuid(),
+                    CephSystemTags.THIRDPARTY_PLATFORM_TOKEN);
+            cmd.monIp = monIps.get(0);
+            cmd.tpTimeout = CephGlobalConfig.THIRD_PARTY_SDK_TIMEOUT.value(String.class);
+        }
 
         final DeleteVolumeOnPrimaryStorageReply reply = new DeleteVolumeOnPrimaryStorageReply();
 
