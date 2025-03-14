@@ -7588,6 +7588,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         spec.setDestHost(HostInventory.valueOf(dbf.findByUuid(self.getHostUuid(), HostVO.class)));
 
         final VmInstanceState originState = self.getState();
+        logger.debug("wwwwwwwsssssssss1 " + originState.toString());
         changeVmStateInDb(VmInstanceStateEvent.rebooting);
 
         extEmitter.beforeRebootVm(VmInstanceInventory.valueOf(self));
@@ -7637,11 +7638,13 @@ public class VmInstanceBase extends AbstractVmInstance {
                             .select(VmInstanceVO_.state)
                             .eq(VmInstanceVO_.uuid, self.getUuid())
                             .findValue();
+                    logger.debug("wwwwwwwsssssssss2 " + currentState.toString());
                     if (currentState == VmInstanceState.Rebooting) {
                         SQL.New(VmInstanceVO.class)
                                 .set(VmInstanceVO_.state, originState)
                                 .eq(VmInstanceVO_.uuid, self.getUuid())
                                 .update();
+                        logger.debug("wwwwwwwsssssssss3 " + originState.toString());
                     }
 
                     completion.fail(errCode);
