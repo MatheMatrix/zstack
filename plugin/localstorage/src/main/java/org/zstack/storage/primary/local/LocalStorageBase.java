@@ -411,6 +411,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
             public void run(FlowTrigger trigger, Map data) {
                 MigrateVolumeOnLocalStorageMsg mmsg = new MigrateVolumeOnLocalStorageMsg();
                 mmsg.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
+                mmsg.setDestPrimaryStorageUuid(msg.getPrimaryStorageUuid());
                 mmsg.setDestHostUuid(msg.getDestHostUuid());
                 mmsg.setVolumeUuid(msg.getVolumeUuid());
                 bus.makeTargetServiceIdByResourceUuid(mmsg, PrimaryStorageConstant.SERVICE_ID, self.getUuid());
@@ -513,7 +514,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
         thdf.chainSubmit(new ChainTask(msg) {
             @Override
             public String getSyncSignature() {
-                return String.format("migrate-volume-%s", msg.getVolumeUuid());
+                return String.format("migrate-volume-%s-on-local-storage", msg.getVolumeUuid());
             }
 
             @Override
@@ -548,7 +549,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
             return;
         }
 
-        if (ref.getHostUuid().equals(msg.getDestHostUuid())) {
+        if (Objects.equals(msg.getPrimaryStorageUuid(), msg.getDestPrimaryStorageUuid()) && ref.getHostUuid().equals(msg.getDestHostUuid())) {
             logger.debug(String.format("the volume[uuid:%s] is already on the host[uuid:%s], no need to migrate",
                     msg.getVolumeUuid(), msg.getDestHostUuid()));
             bus.reply(msg, reply);
@@ -593,6 +594,16 @@ public class LocalStorageBase extends PrimaryStorageBase {
                 struct.setDestHostUuid(msg.getDestHostUuid());
                 struct.setSrcHostUuid(ref.getHostUuid());
                 struct.setVolume(VolumeInventory.valueOf(volume));
+                struct.setSrcPrimaryStorageUuid(msg.getPrimaryStorageUuid());
+                struct.setSrcStoragePath(self.getUrl());
+                if (Objects.equals(msg.getPrimaryStorageUuid(), msg.getDestPrimaryStorageUuid())) {
+                    struct.setDstPrimaryStorageUuid(msg.getPrimaryStorageUuid());
+                    struct.setDstStoragePath(self.getUrl());
+                } else {
+                    struct.setDstPrimaryStorageUuid(msg.getDestPrimaryStorageUuid());
+                    struct.setDstStoragePath(Q.New(PrimaryStorageVO.class).eq(PrimaryStorageVO_.uuid, msg.getDestPrimaryStorageUuid())
+                            .select(PrimaryStorageVO_.url).findValue());
+                }
 
                 if (!snapshots.isEmpty()) {
                     List<String> spUuids = CollectionUtils.transformToList(snapshots, ResourceVO::getUuid);
@@ -696,6 +707,12 @@ public class LocalStorageBase extends PrimaryStorageBase {
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
+                        if (msg.isMoveToTrash()) {
+                            logger.debug(String.format("move volume[uuid:%s] to trash", volumeRefVO.getResourceUuid()));
+                            trigger.next();
+                            return;
+                        }
+
                         List<String> paths = new ArrayList<>();
                         paths.add(volume.getInstallPath());
                         for (VolumeSnapshotVO sp : snapshots) {

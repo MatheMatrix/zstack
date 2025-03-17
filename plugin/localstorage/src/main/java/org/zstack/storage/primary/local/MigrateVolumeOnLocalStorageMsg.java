@@ -9,7 +9,9 @@ import org.zstack.header.storage.primary.PrimaryStorageMessage;
 public class MigrateVolumeOnLocalStorageMsg extends NeedReplyMessage implements PrimaryStorageMessage {
     private String volumeUuid;
     private String primaryStorageUuid;
+    private String destPrimaryStorageUuid;
     private String destHostUuid;
+    private boolean moveToTrash;
 
     public String getDestHostUuid() {
         return destHostUuid;
@@ -34,5 +36,21 @@ public class MigrateVolumeOnLocalStorageMsg extends NeedReplyMessage implements 
 
     public void setPrimaryStorageUuid(String primaryStorageUuid) {
         this.primaryStorageUuid = primaryStorageUuid;
+    }
+
+    public String getDestPrimaryStorageUuid() {
+        return destPrimaryStorageUuid;
+    }
+
+    public void setDestPrimaryStorageUuid(String destPrimaryStorageUuid) {
+        this.destPrimaryStorageUuid = destPrimaryStorageUuid;
+    }
+
+    public boolean isMoveToTrash() {
+        return moveToTrash;
+    }
+
+    public void setMoveToTrash(boolean moveToTrash) {
+        this.moveToTrash = moveToTrash;
     }
 }
