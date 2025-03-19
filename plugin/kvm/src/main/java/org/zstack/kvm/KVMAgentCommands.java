@@ -67,6 +67,7 @@ public class KVMAgentCommands {
 
     public static class AgentCommand extends GrayUpgradeAgent {
         public LinkedHashMap kvmHostAddons;
+        public LinkedHashMap kvmConfigs;
     }
 
     public static class CheckVmStateCmd extends AgentCommand {

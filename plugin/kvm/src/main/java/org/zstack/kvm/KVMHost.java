@@ -12,6 +12,12 @@ import org.zstack.compute.cluster.ClusterGlobalConfig;
 import org.zstack.compute.cluster.arch.ClusterResourceConfigInitializer;
 import org.zstack.compute.host.*;
 import org.zstack.compute.vm.*;
+import org.zstack.core.config.GuestOsHelper;
+import org.zstack.core.config.GlobalConfigUpdateReply;
+import org.zstack.core.config.schema.GuestOsCharacter;
+import org.zstack.core.timeout.TimeHelper;
+import org.zstack.header.vm.devices.VirtualDeviceInfo;
+import org.zstack.header.vm.devices.VmInstanceDeviceManager;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.MessageCommandRecorder;
 import org.zstack.core.Platform;
@@ -22,8 +28,6 @@ import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.cloudbus.CloudBusGlobalProperty;
 import org.zstack.core.cloudbus.ResourceDestinationMaker;
 import org.zstack.core.componentloader.PluginRegistry;
-import org.zstack.core.config.GuestOsHelper;
-import org.zstack.core.config.schema.GuestOsCharacter;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
 import org.zstack.core.db.SQLBatch;
@@ -31,7 +35,6 @@ import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.thread.*;
 import org.zstack.core.timeout.ApiTimeoutManager;
-import org.zstack.core.timeout.TimeHelper;
 import org.zstack.core.upgrade.UpgradeChecker;
 import org.zstack.core.upgrade.UpgradeGlobalConfig;
 import org.zstack.core.workflow.FlowChainBuilder;
@@ -70,8 +73,6 @@ import org.zstack.header.storage.primary.*;
 import org.zstack.header.tag.SystemTagInventory;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.devices.DeviceAddress;
-import org.zstack.header.vm.devices.VirtualDeviceInfo;
-import org.zstack.header.vm.devices.VmInstanceDeviceManager;
 import org.zstack.header.volume.*;
 import org.zstack.identity.AccountManager;
 import org.zstack.kvm.KVMAgentCommands.*;
@@ -692,6 +693,8 @@ public class KVMHost extends HostBase implements Host {
             handle((TakeVmConsoleScreenshotMsg) msg);
         } else if (msg instanceof RestartKvmAgentMsg) {
             handle((RestartKvmAgentMsg) msg);
+        } else if (msg instanceof GlobalConfigUpdateOnKvmHostMsg) {
+            handle((GlobalConfigUpdateOnKvmHostMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
@@ -770,6 +773,26 @@ public class KVMHost extends HostBase implements Host {
                     return;
                 }
                 completion.success(queueIsEmpty.get());
+            }
+        });
+    }
+
+    private void handle(GlobalConfigUpdateOnKvmHostMsg msg) {
+        GlobalConfigUpdateReply r = new GlobalConfigUpdateReply();
+        KVMHostAsyncHttpCallMsg kmsg = new KVMHostAsyncHttpCallMsg();
+        AgentCommand cmd = new AgentCommand();
+        cmd.kvmConfigs = msg.getGlobalConfigs();
+        kmsg.setCommand(cmd);
+        kmsg.setPath(msg.getAgentPath());
+        kmsg.setHostUuid(self.getUuid());
+        bus.makeTargetServiceIdByResourceUuid(kmsg, HostConstant.SERVICE_ID, self.getUuid());
+        bus.send(kmsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    r.setError(reply.getError());
+                }
+                bus.reply(msg, r);
             }
         });
     }
