@@ -781,6 +781,65 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
             @Override
             public void setup() {
                 flow(new NoRollbackFlow() {
+                    String __name__ = "检查数据库和数据面快照链是否一致";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        GetVolumeBackingChainFromPrimaryStorageMsg gmsg = new GetVolumeBackingChainFromPrimaryStorageMsg();
+                        gmsg.setVolumeUuid(volumeVO.getUuid());
+                        gmsg.setRootInstallPaths(Collections.singletonList(volumeVO.getInstallPath()));
+                        gmsg.setPrimaryStorageUuid(volumeVO.getPrimaryStorageUuid());
+                        gmsg.setVolumeFormat(volumeVO.getFormat());
+                        bus.makeTargetServiceIdByResourceUuid(gmsg, PrimaryStorageConstant.SERVICE_ID, gmsg.getPrimaryStorageUuid());
+                        bus.send(gmsg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (!reply.isSuccess()) {
+                                    return;
+                                }
+
+                                // 找出所有 current= true 的快照树
+                                String currentTreeUuid = Q.New(VolumeSnapshotTreeVO.class).eq(VolumeSnapshotTreeVO_.current, true)
+                                        .eq(VolumeSnapshotTreeVO_.volumeUuid, volumeVO.getUuid()).select(VolumeSnapshotTreeVO_.uuid).findValue();
+
+                                //获取volume所有的快照
+                                List<VolumeSnapshotVO> aliveChainVolumeSnapshots = Q.New(VolumeSnapshotVO.class)
+                                        .eq(VolumeSnapshotVO_.volumeUuid, volumeVO.getUuid())
+                                        .eq(VolumeSnapshotVO_.treeUuid, currentTreeUuid)
+                                        .list();
+
+                                VolumeTree volumeTree = VolumeTree.fromVOs(aliveChainVolumeSnapshots, true, VolumeInventory.valueOf(volumeVO));
+                                List<String> aliveChainInDB = volumeTree.getAliveChainSnapshotInstallPath();
+
+                                logger.debug("============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+                                logger.debug(currentTreeUuid);
+                                logger.debug(aliveChainInDB.toString());
+
+
+                                GetVolumeBackingChainFromPrimaryStorageReply gr = reply.castReply();
+                                List<String> backingChainInstallPath = gr.getBackingChainInstallPath().get(volumeVO.getInstallPath());
+
+                                if (backingChainInstallPath.size() < aliveChainInDB.size()) {
+                                    throw new OperationFailureException(operr(""));
+                                }
+
+                                int top_index = backingChainInstallPath.indexOf(aliveChainInDB.get(0));
+                                int base_index = backingChainInstallPath.indexOf(aliveChainInDB.get(aliveChainInDB.size() - 1));
+                                List<String> new_chain_in_xml = backingChainInstallPath.subList(top_index, base_index + 1);
+
+                                for (int i = 0; i < new_chain_in_xml.size() - 1; i++) {
+                                    if (!new_chain_in_xml.get(i).equals(aliveChainInDB.get(i))) {
+                                        throw new OperationFailureException(operr(""));
+                                    }
+                                }
+
+                                trigger.next();
+                            }
+                        });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
                     String __name__ = "create-new-tree-if-needed";
                     @Override
                     public void run(FlowTrigger trigger, Map data) {

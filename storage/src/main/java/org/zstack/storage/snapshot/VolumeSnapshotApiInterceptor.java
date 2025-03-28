@@ -21,6 +21,7 @@ import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmInstanceVO_;
 import org.zstack.header.volume.*;
+import org.zstack.storage.snapshot.group.VolumeSnapshotGroup;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
@@ -31,6 +32,7 @@ import static org.zstack.storage.snapshot.VolumeSnapshotMessageRouter.getResourc
 import javax.persistence.Tuple;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 
@@ -74,6 +76,8 @@ public class VolumeSnapshotApiInterceptor implements ApiMessageInterceptor {
             validate((APIBatchDeleteVolumeSnapshotMsg) msg);
         } else if (msg instanceof APIRevertVmFromSnapshotGroupMsg) {
             validate((APIRevertVmFromSnapshotGroupMsg) msg);
+        } else if (msg instanceof APIDeleteVolumeSnapshotGroupMsg) {
+            validate((APIDeleteVolumeSnapshotGroupMsg) msg);
         }
 
         setServiceId(msg);
@@ -216,5 +220,27 @@ public class VolumeSnapshotApiInterceptor implements ApiMessageInterceptor {
         if (msg.getVolumeUuid() == null) {
             throw new ApiMessageInterceptionException(operr("can not find volume uuid for snapshosts[uuid: %s]", msg.getUuids()));
         }
+    }
+
+    private void validate(APIDeleteVolumeSnapshotGroupMsg msg) {
+        String vmInstanceUuid = Q.New(VolumeSnapshotGroupVO.class).eq(VolumeSnapshotGroupVO_.uuid, msg.getUuid())
+                .select(VolumeSnapshotGroupVO_.vmInstanceUuid).findValue();
+        List<String> groupUuids = Q.New(VolumeSnapshotGroupVO.class).eq(VolumeSnapshotGroupVO_.vmInstanceUuid, vmInstanceUuid)
+                .select(VolumeSnapshotGroupVO_.uuid).listValues();
+        List<VolumeSnapshotGroupRefVO> refs = Q.New(VolumeSnapshotGroupRefVO.class)
+                .in(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, groupUuids)
+                .eq(VolumeSnapshotGroupRefVO_.snapshotDeleted, true)
+                .list();
+        if (refs.isEmpty()) {
+            return;
+        }
+        if (Objects.equals(refs.get(0).getVolumeSnapshotGroupUuid(), msg.getUuid())) {
+            return;
+        }
+        List<String> volumeSnapshotUuids = refs.stream().map(VolumeSnapshotGroupRefVO::getVolumeSnapshotUuid).collect(Collectors.toList());
+        throw new ApiMessageInterceptionException(operr("the vm[%s] currently has an incomplete snapshot group. " +
+                        "this is likely because the previous snapshot group[%s] deletion failed, " +
+                        "leaving some snapshots[%s] undeleted. Please retry the last snapshot group[%s] deletion operation.",
+                vmInstanceUuid, volumeSnapshotUuids.toString(), refs.get(0).getVolumeSnapshotGroupUuid()));
     }
 }

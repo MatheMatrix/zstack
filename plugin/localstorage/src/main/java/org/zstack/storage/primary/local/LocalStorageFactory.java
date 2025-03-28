@@ -1,12 +1,14 @@
 package org.zstack.storage.primary.local;
 
 import com.google.common.collect.Lists;
+import org.apache.logging.log4j.ThreadContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.compute.host.MigrateNetworkExtensionPoint;
 import org.zstack.compute.vm.*;
 import org.zstack.configuration.DiskOfferingSystemTags;
 import org.zstack.configuration.OfferingUserConfigUtils;
+import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.cloudbus.CloudBusListCallBack;
@@ -14,6 +16,7 @@ import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.errorcode.ErrorFacade;
+import org.zstack.core.progress.ProgressReportService;
 import org.zstack.core.trash.CreateRecycleExtensionPoint;
 import org.zstack.header.Component;
 import org.zstack.header.allocator.HostAllocatorError;
@@ -22,6 +25,7 @@ import org.zstack.header.core.*;
 import org.zstack.header.core.trash.InstallPathRecycleVO;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.*;
@@ -46,6 +50,7 @@ import org.zstack.header.volume.*;
 import org.zstack.kvm.KVMConstant;
 import org.zstack.storage.primary.PrimaryStorageCapacityChecker;
 import org.zstack.storage.snapshot.PostMarkRootVolumeAsSnapshotExtension;
+import org.zstack.storage.snapshot.VolumeTree;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.utils.CollectionUtils;
@@ -62,6 +67,8 @@ import java.util.stream.Collectors;
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.err;
 import static org.zstack.core.Platform.operr;
+import static org.zstack.header.Constants.THREAD_CONTEXT_API;
+import static org.zstack.header.Constants.THREAD_CONTEXT_TASK_NAME;
 import static org.zstack.utils.CollectionDSL.*;
 
 /**

@@ -1046,7 +1046,7 @@ public class KVMHost extends HostBase implements Host {
         cmd.setBase(msg.getSrcSnapshotParentPath());
         cmd.setVmUuid(msg.getVolume().getVmInstanceUuid());
         cmd.setVolume(VolumeTO.valueOf(msg.getVolume(), (KVMHostInventory) getSelfInventory()));
-
+        cmd.setAliveChainInstallPathInDb(msg.getAliveChainInstallPathInDb());
         FlowChain chain = FlowChainBuilder.newShareFlowChain();
         chain.setName(String.format("block-pull-for-volume-%s", msg.getVolume().getUuid()));
         chain.then(new ShareFlow() {

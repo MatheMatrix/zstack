@@ -4,11 +4,15 @@ import org.zstack.header.message.NeedReplyMessage;
 import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
 import org.zstack.header.volume.VolumeInventory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class PullVolumeSnapshotOnPrimaryStorageMsg extends NeedReplyMessage implements PrimaryStorageMessage {
     private VolumeInventory volume;
     private String srcSnapshotParentPath;
     private VolumeSnapshotInventory srcSnapshot;
     private VolumeSnapshotInventory dstSnapshot;
+    private List<String> aliveChainInstallPathInDb = new ArrayList<>();
 
     public VolumeInventory getVolume() {
         return volume;
@@ -41,6 +45,15 @@ public class PullVolumeSnapshotOnPrimaryStorageMsg extends NeedReplyMessage impl
     public void setDstSnapshot(VolumeSnapshotInventory dstSnapshot) {
         this.dstSnapshot = dstSnapshot;
     }
+
+    public List<String> getAliveChainInstallPathInDb() {
+        return aliveChainInstallPathInDb;
+    }
+
+    public void setAliveChainInstallPathInDb(List<String> aliveChainInstallPathInDb) {
+        this.aliveChainInstallPathInDb = aliveChainInstallPathInDb;
+    }
+
     @Override
     public String getPrimaryStorageUuid() {
         return volume.getPrimaryStorageUuid();

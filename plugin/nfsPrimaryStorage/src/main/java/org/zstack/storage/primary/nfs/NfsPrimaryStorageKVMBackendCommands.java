@@ -757,6 +757,7 @@ public class NfsPrimaryStorageKVMBackendCommands {
         private String srcPath;
         private String destPath;
         private boolean fullRebase;
+        private List<String> aliveChainInstallPathInDb = new ArrayList<>();
 
         public boolean isFullRebase() {
             return fullRebase;
@@ -781,6 +782,14 @@ public class NfsPrimaryStorageKVMBackendCommands {
         public void setDestPath(String destPath) {
             this.destPath = destPath;
         }
+
+        public List<String> getAliveChainInstallPathInDb() {
+            return aliveChainInstallPathInDb;
+        }
+
+        public void setAliveChainInstallPathInDb(List<String> aliveChainInstallPathInDb) {
+            this.aliveChainInstallPathInDb = aliveChainInstallPathInDb;
+        }
     }
 
     public static class OfflineMergeSnapshotRsp extends NfsPrimaryStorageAgentResponse {
@@ -799,6 +808,7 @@ public class NfsPrimaryStorageKVMBackendCommands {
         public String top;
         public String base;
         public List<String> topChildrenInstallPathInDb = new ArrayList<>();
+        public List<String> aliveChainInstallPathInDb = new ArrayList<>();
     }
 
     public static class OfflineCommitSnapshotRsp extends NfsPrimaryStorageAgentResponse {
