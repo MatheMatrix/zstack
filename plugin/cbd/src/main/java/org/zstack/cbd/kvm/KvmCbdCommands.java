@@ -44,6 +44,9 @@ public class KvmCbdCommands {
         public List<String> fencers;
     }
 
+    public static class KvmCancelSelfFencerCmd extends AgentCmd {
+    }
+
     public static class AgentCmd extends KVMAgentCommands.AgentCommand {
         public String uuid;
     }
