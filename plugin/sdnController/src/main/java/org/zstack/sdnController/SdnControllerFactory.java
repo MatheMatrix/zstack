@@ -13,13 +13,13 @@ public interface SdnControllerFactory {
     default SdnController getSdnController(String l2NetworkUuid) {return null;};
 
     SdnControllerL2 getSdnControllerL2(SdnControllerVO vo);
+    default SdnControllerL2 getSdnControllerL2(String l2NetworkUuid) {return null;};
+
 
     SecurityGroupSdnBackend getSdnControllerSecurityGroup(SdnControllerVO vo);
 
-    default SdnControllerL2 getSdnControllerL2(String l2NetworkUuid) {return null;};
 
     default SdnControllerDhcp getSdnControllerDhcp(SdnControllerVO vo) {return null;};
-
     default SdnControllerDhcp getSdnControllerDhcp(String l2NetworkUuid) {return null;};
 
     default FlowChain getSyncChain() {return FlowChainBuilder.newSimpleFlowChain();};

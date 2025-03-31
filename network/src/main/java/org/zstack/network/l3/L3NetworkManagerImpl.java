@@ -149,6 +149,11 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
         );
         creator.create();
 
+        L3NetworkVO vo = dbf.findByUuid(msg.getL3NetworkUuid(), L3NetworkVO.class);
+        for (L3NetworkUpdateExtensionPoint exp : pluginRgty.getExtensionList(L3NetworkUpdateExtensionPoint.class)) {
+            exp.updateL3NetworkMtu(L3NetworkInventory.valueOf(vo));
+        }
+
         bus.publish(evt);
     }
 
