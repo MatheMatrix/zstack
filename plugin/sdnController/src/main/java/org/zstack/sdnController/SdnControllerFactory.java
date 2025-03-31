@@ -2,6 +2,7 @@ package org.zstack.sdnController;
 
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.header.core.workflow.FlowChain;
+import org.zstack.header.network.service.SdnControllerDhcp;
 import org.zstack.network.securitygroup.SecurityGroupSdnBackend;
 import org.zstack.sdnController.header.SdnControllerVO;
 

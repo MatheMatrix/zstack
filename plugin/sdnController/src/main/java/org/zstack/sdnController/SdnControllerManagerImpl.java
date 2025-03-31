@@ -21,6 +21,8 @@ import org.zstack.header.network.NetworkException;
 import org.zstack.header.network.l2.*;
 import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.network.l3.L3NetworkVO;
+import org.zstack.header.network.service.GetSdnControllerDhcpExtensionPoint;
+import org.zstack.header.network.service.SdnControllerDhcp;
 import org.zstack.header.vm.*;
 import org.zstack.network.l2.L2NetworkSystemTags;
 import org.zstack.network.l3.L3NetworkHelper;
@@ -39,7 +41,8 @@ import static org.zstack.core.Platform.operr;
 public class SdnControllerManagerImpl extends AbstractService implements SdnControllerManager,
         L2NetworkCreateExtensionPoint, L2NetworkDeleteExtensionPoint, InstantiateResourceOnAttachingNicExtensionPoint,
         PreVmInstantiateResourceExtensionPoint, VmReleaseResourceExtensionPoint,
-        ReleaseNetworkServiceOnDetachingNicExtensionPoint, SecurityGroupGetSdnBackendExtensionPoint {
+        ReleaseNetworkServiceOnDetachingNicExtensionPoint, SecurityGroupGetSdnBackendExtensionPoint,
+        GetSdnControllerDhcpExtensionPoint {
     private static final CLogger logger = Utils.getLogger(SdnControllerManagerImpl.class);
 
     @Autowired

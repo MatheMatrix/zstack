@@ -31,6 +31,8 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l2.*;
 import org.zstack.header.network.l3.*;
 import org.zstack.header.network.l3.datatypes.IpCapacityData;
+import org.zstack.header.network.service.GetSdnControllerDhcpExtensionPoint;
+import org.zstack.header.network.service.SdnControllerDhcp;
 import org.zstack.header.vm.VmNicInventory;
 import org.zstack.header.vm.VmNicVO;
 import org.zstack.header.vm.VmNicVO_;
@@ -920,5 +922,14 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
         L3NetworkFactory factory = getL3NetworkFactory(L3NetworkType.valueOf(vo.getType()));
         L3Network nw = factory.getL3Network(vo);
         completion.success(nw.checkIpAvailability(msg));
+    }
+
+    @Override
+    public SdnControllerDhcp getSdnControllerDhcp(String l3Uuid) {
+        for (GetSdnControllerDhcpExtensionPoint exp : pluginRgty.getExtensionList(GetSdnControllerDhcpExtensionPoint.class)) {
+            return exp.getSdnControllerDhcp(l3Uuid);
+        }
+
+        return null;
     }
 }

@@ -54,7 +54,7 @@ import org.zstack.network.service.NetworkServiceManager;
 import org.zstack.network.service.NetworkServiceProviderLookup;
 import org.zstack.network.service.flat.IpStatisticConstants.VmType;
 import org.zstack.network.service.vip.VipVO;
-import org.zstack.sdnController.SdnControllerDhcp;
+import org.zstack.header.network.service.SdnControllerDhcp;
 import org.zstack.sdnController.SdnControllerManager;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.utils.CollectionUtils;
@@ -368,7 +368,8 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
                     return;
                 }
 
-                sdnDhcp.updateIpRange(L3NetworkInventory.valueOf(l3VO), new Completion(trigger) {
+                sdnDhcp.enableDhcp(Collections.singletonList(L3NetworkInventory.valueOf(l3VO)),
+                        false, new Completion(trigger) {
                     @Override
                     public void success() {
                         trigger.next();

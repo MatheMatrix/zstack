@@ -13,6 +13,8 @@ import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
+import org.zstack.core.defer.Defer;
+import org.zstack.core.defer.Deferred;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.core.retry.Retry;
 import org.zstack.core.retry.RetryCondition;
@@ -60,6 +62,7 @@ import org.zstack.utils.stopwatch.StopWatch;
 import javax.persistence.Tuple;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.codehaus.groovy.runtime.InvokerHelper.asList;
@@ -199,6 +202,7 @@ public class L3BasicNetwork implements L3Network {
         bus.reply(msg, reply);
     }
 
+    @Deferred
     private void handle(IpRangeDeletionMsg msg) {
         IpRangeDeletionReply reply = new IpRangeDeletionReply();
 
@@ -225,34 +229,37 @@ public class L3BasicNetwork implements L3Network {
         FlowChain chain = new SimpleFlowChain();
         chain.setName(String.format("del-ip-range-%s", inv.getUuid()));
         chain.then(new NoRollbackFlow() {
-            String __name__ = "remove-from-backend";
+            String __name__ = "disable-sdn-dhcp";
 
             @Override
             public void run(FlowTrigger trigger, Map data) {
-                List<IpRangeBackendExtensionPoint> exps = pluginRgty.getExtensionList(IpRangeBackendExtensionPoint.class);
-                new While<>(exps).each((exp, wcomp) -> {
-                    exp.removeIpRange(Collections.singletonList(inv), new Completion(wcomp) {
+                if (self.enableIpAddressAllocation()) {
+                    trigger.next();
+                    return;
+                }
+
+                GLock lock = new GLock(String.format("delete-ip-range-from-l3-%s", self.getUuid()), TimeUnit.MINUTES.toSeconds(5));
+                lock.lock();
+                Defer.defer(lock::unlock);
+
+                self = dbf.updateAndRefresh(self);
+                List<IpRangeInventory> normalIpRanges = IpRangeHelper.getNormalIpRanges(self);
+                if (normalIpRanges.size() == 1 && normalIpRanges.get(0).getUuid().equals(msg.getIpRangeUuid())) {
+                    SdnControllerDhcp sdnDhcp = l3NwMgr.getSdnControllerDhcp(self.getUuid());
+                    sdnDhcp.disableDhcp(Collections.singletonList(L3NetworkInventory.valueOf(self)), new Completion(trigger) {
                         @Override
                         public void success() {
-                            wcomp.done();
+                            trigger.next();
                         }
 
                         @Override
                         public void fail(ErrorCode errorCode) {
-                            wcomp.addError(errorCode);
-                            wcomp.allDone();
+                            trigger.fail(errorCode);
                         }
                     });
-                }).run(new WhileDoneCompletion(trigger) {
-                    @Override
-                    public void done(ErrorCodeList errorCodeList) {
-                        if (errorCodeList.getCauses().isEmpty()) {
-                            trigger.next();
-                        } else {
-                            trigger.fail(errorCodeList.getCauses().get(0));
-                        }
-                    }
-                });
+                } else {
+                    trigger.next();
+                }
             }
         }).then(new NoRollbackFlow() {
             String __name__ = "remove-db";
