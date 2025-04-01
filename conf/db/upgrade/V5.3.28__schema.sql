@@ -49,3 +49,8 @@ CREATE TABLE IF NOT EXISTS `zstack`.`LogServerVO` (
     `createDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
     PRIMARY KEY  (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `zstack`.`GuestVmScriptEO` ADD COLUMN `contentEncode` VARCHAR(32) DEFAULT NULL COMMENT '编码方式';
+ALTER TABLE `zstack`.`GuestVmScriptExecutedRecordVO` ADD COLUMN `contentEncode` VARCHAR(32) DEFAULT NULL COMMENT '编码方式';
+DROP VIEW IF EXISTS `zstack`.`GuestVmScriptVO`;
+CREATE VIEW `zstack`.`GuestVmScriptVO` AS SELECT uuid, name, description, platform, contentEncode, scriptContent, renderParams, scriptType, scriptTimeout, version, createDate, lastOpDate FROM `zstack`.`GuestVmScriptEO` WHERE deleted IS NULL;

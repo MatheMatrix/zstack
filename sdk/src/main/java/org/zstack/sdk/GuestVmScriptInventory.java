@@ -28,6 +28,14 @@ public class GuestVmScriptInventory  {
         return this.description;
     }
 
+    public java.lang.String contentEncode;
+    public void setContentEncode(java.lang.String contentEncode) {
+        this.contentEncode = contentEncode;
+    }
+    public java.lang.String getContentEncode() {
+        return this.contentEncode;
+    }
+
     public java.lang.String scriptContent;
     public void setScriptContent(java.lang.String scriptContent) {
         this.scriptContent = scriptContent;
