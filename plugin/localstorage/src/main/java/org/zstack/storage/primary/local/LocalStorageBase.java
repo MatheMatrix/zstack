@@ -513,7 +513,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
         thdf.chainSubmit(new ChainTask(msg) {
             @Override
             public String getSyncSignature() {
-                return String.format("migrate-volume-%s", msg.getVolumeUuid());
+                return String.format("migrate-volume-%s-on-local-ps", msg.getVolumeUuid());
             }
 
             @Override
@@ -696,6 +696,11 @@ public class LocalStorageBase extends PrimaryStorageBase {
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
+                        if (msg.isMoveToTrash()) {
+                            trigger.next();
+                            return;
+                        }
+
                         List<String> paths = new ArrayList<>();
                         paths.add(volume.getInstallPath());
                         for (VolumeSnapshotVO sp : snapshots) {
@@ -751,13 +756,14 @@ public class LocalStorageBase extends PrimaryStorageBase {
                                     String vmUuid = tuple.get(1, String.class);
                                     String clusterUuid = Q.New(HostVO.class).select(HostVO_.clusterUuid)
                                             .eq(HostVO_.uuid, msg.getDestHostUuid()).findValue();
+
+                                    UpdateQuery updateQuery = sql(VmInstanceVO.class);
+                                    updateQuery.eq(VmInstanceVO_.uuid, vmUuid);
+                                    updateQuery.set(VmInstanceVO_.hostUuid, msg.getDestHostUuid());
                                     if (!originClusterUuid.equals(clusterUuid)) {
-                                        sql("update  VmInstanceEO" +
-                                                " set clusterUuid = :clusterUuid" +
-                                                " where uuid = :vmUuid")
-                                                .param("clusterUuid", clusterUuid)
-                                                .param("vmUuid", vmUuid).execute();
+                                        updateQuery.set(VmInstanceVO_.clusterUuid, clusterUuid);
                                     }
+                                    updateQuery.update();
                                 }
 
                                 sql(VolumeVO.class)
