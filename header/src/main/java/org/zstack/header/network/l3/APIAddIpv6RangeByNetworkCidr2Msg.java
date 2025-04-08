@@ -17,9 +17,9 @@ import org.zstack.utils.network.IPv6Constants;
 @Action(category = L3NetworkConstant.ACTION_CATEGORY)
 @RestRequest(
         path = "/l3-networks/{l3NetworkUuid}/ipv6-ranges/by-cidr",
-        method = HttpMethod.POST,
+        method = HttpMethod.PUT,
         parameterName = "params",
-        responseClass = APIAddIpRangeByNetworkCidrEvent.class
+        responseClass = APIAddIpRangeByNetworkCidr2Event.class
 )
 public class APIAddIpv6RangeByNetworkCidr2Msg extends APICreateMessage implements L3NetworkMessage {
     @APIParam(maxLength = 255)
