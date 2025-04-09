@@ -779,6 +779,7 @@ public class NfsPrimaryStorageFactory implements NfsPrimaryStorageManager, Prima
             return;
         }
 
+        // nfs不需要创建 制备tag
         boolean hasBackingFile = false;
         if (msg instanceof InstantiateRootVolumeFromTemplateOnPrimaryStorageMsg) {
             InstantiateRootVolumeFromTemplateOnPrimaryStorageMsg imsg = (InstantiateRootVolumeFromTemplateOnPrimaryStorageMsg) msg;

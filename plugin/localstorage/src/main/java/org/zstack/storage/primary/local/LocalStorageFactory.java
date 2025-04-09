@@ -255,6 +255,8 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
             return;
         }
 
+
+//        本地盘不需要创建 制备tag
         boolean hasBackingFile = false;
         if (msg instanceof InstantiateRootVolumeFromTemplateOnPrimaryStorageMsg) {
             InstantiateRootVolumeFromTemplateOnPrimaryStorageMsg imsg = (InstantiateRootVolumeFromTemplateOnPrimaryStorageMsg) msg;
