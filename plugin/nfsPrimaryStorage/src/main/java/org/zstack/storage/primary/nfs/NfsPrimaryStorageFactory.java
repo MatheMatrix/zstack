@@ -795,8 +795,8 @@ public class NfsPrimaryStorageFactory implements NfsPrimaryStorageManager, Prima
 
         VolumeInventory volume = msg.getVolume();
         volume.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
-        for (CreateQcow2VolumeProvisioningStrategyExtensionPoint exp : pluginRgty.getExtensionList(CreateQcow2VolumeProvisioningStrategyExtensionPoint.class)) {
-            exp.saveQcow2VolumeProvisioningStrategy(volume, hasBackingFile);
+        for (CreateQcow2VolumePreallocationExtensionPoint exp : pluginRgty.getExtensionList(CreateQcow2VolumePreallocationExtensionPoint.class)) {
+            exp.saveQcow2VolumePreallocation(volume, hasBackingFile);
         }
     }
 }

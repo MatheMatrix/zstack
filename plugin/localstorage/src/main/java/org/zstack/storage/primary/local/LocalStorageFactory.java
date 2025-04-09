@@ -45,8 +45,12 @@ import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupInventory;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
+import org.zstack.header.vo.ResourceVO;
+import org.zstack.header.vo.ResourceVO_;
 import org.zstack.header.volume.*;
 import org.zstack.kvm.KVMConstant;
+import org.zstack.resourceconfig.ResourceConfig;
+import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.storage.primary.PrimaryStorageCapacityChecker;
 import org.zstack.storage.snapshot.PostMarkRootVolumeAsSnapshotExtension;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
@@ -101,6 +105,8 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
     private CloudBus bus;
     @Autowired
     private ErrorFacade errf;
+    @Autowired
+    private ResourceConfigFacade rcf;
 
     private Map<String, LocalStorageBackupStorageMediator> backupStorageMediatorMap = new HashMap<String, LocalStorageBackupStorageMediator>();
 
@@ -264,9 +270,24 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
         
         VolumeInventory volume = msg.getVolume();
         volume.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
-        for (CreateQcow2VolumeProvisioningStrategyExtensionPoint exp : pluginRgty.getExtensionList(CreateQcow2VolumeProvisioningStrategyExtensionPoint.class)) {
-            exp.saveQcow2VolumeProvisioningStrategy(volume, hasBackingFile);
+        for (CreateQcow2VolumePreallocationExtensionPoint exp : pluginRgty.getExtensionList(CreateQcow2VolumePreallocationExtensionPoint.class)) {
+            exp.saveQcow2VolumePreallocation(volume, hasBackingFile);
         }
+
+
+        String preallocation = hasBackingFile ? "none" : getPreallocation(volumeUuid);
+        if (preallocation == null) {
+            preallocation = getPreallocation(primaryStorageUuid);
+        }
+
+        ResourceConfig resourceConfig = rcf.getResourceConfig(LocalStoragePrimaryStorageGlobalConfig.QCOW2_ALLOCATION.getIdentity());
+        resourceConfig.updateValue(volumeUuid, preallocation);
+    }
+
+    public String getPreallocation(String resourceUuid) {
+        return rcf.getResourceConfigValue(LocalStoragePrimaryStorageGlobalConfig.QCOW2_ALLOCATION, resourceUuid, String.class);
+
+//        return Q.New(ResourceVO.class).select(ResourceVO_.resourceType).eq(ResourceVO_.uuid, resourceUuid).findValue();
     }
 
     @Override
