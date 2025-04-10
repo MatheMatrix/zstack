@@ -1173,6 +1173,11 @@ public class VmInstanceManagerImpl extends AbstractService implements
 
             @Override
             public void setup() {
+                // VM in other platform do not support to attach data volume when VM is running
+                boolean temporaryShutdown = ImagePlatform.Other.name().equals(finalVo.getPlatform()) &&
+                        Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString()) &&
+                        attachOtherDisks;
+
                 if (!CollectionUtils.isEmpty(msg.getDiskAOs())) {
                     otherDisks = msg.getDiskAOs().stream().filter(diskAO -> !diskAO.isBoot()).collect(Collectors.toList());
                     setDiskAOsName(otherDisks);
@@ -1299,7 +1304,8 @@ public class VmInstanceManagerImpl extends AbstractService implements
                         smsg.setVmInstanceInventory(VmInstanceInventory.valueOf(finalVo));
                         smsg.setCandidatePrimaryStorageUuidsForDataVolume(msg.getCandidatePrimaryStorageUuidsForDataVolume());
                         smsg.setCandidatePrimaryStorageUuidsForRootVolume(msg.getCandidatePrimaryStorageUuidsForRootVolume());
-                        if (Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString()) && attachOtherDisks) {
+
+                        if (temporaryShutdown) {
                             smsg.setStrategy(VmCreationStrategy.CreateStopped.toString());
                         } else {
                             smsg.setStrategy(msg.getStrategy());
@@ -1364,7 +1370,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                     otherDisks.forEach(diskAO -> flow(new VmInstantiateOtherDiskFlow(diskAO)));
                 }
 
-                if (Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString()) && attachOtherDisks) {
+                if (temporaryShutdown) {
                     flow(new NoRollbackFlow() {
                         String __name__ = "start-vm";
 
