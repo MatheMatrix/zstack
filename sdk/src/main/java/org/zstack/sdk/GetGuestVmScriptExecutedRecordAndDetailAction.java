@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class ExecuteGuestVmScriptAction extends AbstractAction {
+public class GetGuestVmScriptExecutedRecordAndDetailAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class ExecuteGuestVmScriptAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.ExecuteGuestVmScriptResult value;
+        public org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,20 +25,17 @@ public class ExecuteGuestVmScriptAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String uuid;
-
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List vmInstanceUuids;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, numberRange = {10L,86400L}, noTrim = false)
-    public java.lang.Integer scriptTimeout;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String logPath;
-
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String recordUuid;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String vmInstanceUuid;
+
+    @Param(required = false)
+    public java.lang.Integer limit = 1000;
+
+    @Param(required = false)
+    public java.lang.Integer start = 0;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -58,12 +55,6 @@ public class ExecuteGuestVmScriptAction extends AbstractAction {
     @Param(required = false)
     public String requestIp;
 
-    @NonAPIParam
-    public long timeout = -1;
-
-    @NonAPIParam
-    public long pollingInterval = -1;
-
 
     private Result makeResult(ApiResult res) {
         Result ret = new Result();
@@ -72,8 +63,8 @@ public class ExecuteGuestVmScriptAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.ExecuteGuestVmScriptResult value = res.getResult(org.zstack.sdk.ExecuteGuestVmScriptResult.class);
-        ret.value = value == null ? new org.zstack.sdk.ExecuteGuestVmScriptResult() : value; 
+        org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailResult value = res.getResult(org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailResult.class);
+        ret.value = value == null ? new org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailResult() : value; 
 
         return ret;
     }
@@ -102,11 +93,11 @@ public class ExecuteGuestVmScriptAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "PUT";
-        info.path = "/scripts/{uuid}/actions";
+        info.httpMethod = "GET";
+        info.path = "/scripts/records-details";
         info.needSession = true;
-        info.needPoll = true;
-        info.parameterName = "executeGuestVmScript";
+        info.needPoll = false;
+        info.parameterName = "";
         return info;
     }
 

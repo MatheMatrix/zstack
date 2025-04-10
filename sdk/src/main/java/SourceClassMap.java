@@ -152,11 +152,13 @@ public class SourceClassMap {
 			put("org.zstack.externalbackup.zbox.ZBoxVmBackupInfo", "org.zstack.sdk.ZBoxVmBackupInfo");
 			put("org.zstack.externalbackup.zbox.ZBoxVolumeBackupInfo", "org.zstack.sdk.ZBoxVolumeBackupInfo");
 			put("org.zstack.faulttolerance.entity.FaultToleranceVmGroupInventory", "org.zstack.sdk.FaultToleranceVmGroupInventory");
+			put("org.zstack.guesttools.DetailData", "org.zstack.sdk.DetailData");
 			put("org.zstack.guesttools.GuestToolsInventory", "org.zstack.sdk.GuestToolsInventory");
 			put("org.zstack.guesttools.GuestToolsStateInventory", "org.zstack.sdk.GuestToolsStateInventory");
 			put("org.zstack.guesttools.GuestVmScriptExecutedRecordDetailInventory", "org.zstack.sdk.GuestVmScriptExecutedRecordDetailInventory");
 			put("org.zstack.guesttools.GuestVmScriptExecutedRecordInventory", "org.zstack.sdk.GuestVmScriptExecutedRecordInventory");
 			put("org.zstack.guesttools.GuestVmScriptInventory", "org.zstack.sdk.GuestVmScriptInventory");
+			put("org.zstack.guesttools.RecordData", "org.zstack.sdk.RecordData");
 			put("org.zstack.ha.HaStrategyConditionInventory", "org.zstack.sdk.HaStrategyConditionInventory");
 			put("org.zstack.header.acl.AccessControlListEntryInventory", "org.zstack.sdk.AccessControlListEntryInventory");
 			put("org.zstack.header.acl.AccessControlListInventory", "org.zstack.sdk.AccessControlListInventory");
@@ -923,6 +925,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.DataVolumeSpendingInventory", "org.zstack.billing.spendingcalculator.volume.data.DataVolumeSpendingInventory");
 			put("org.zstack.sdk.DatasetInventory", "org.zstack.ai.entity.DatasetInventory");
 			put("org.zstack.sdk.DeleteSnapshotGroupResult", "org.zstack.header.storage.snapshot.group.DeleteSnapshotGroupResult");
+			put("org.zstack.sdk.DetailData", "org.zstack.guesttools.DetailData");
 			put("org.zstack.sdk.DeviceTO", "org.zstack.storage.device.multipath.DeviceTO");
 			put("org.zstack.sdk.DirectoryInventory", "org.zstack.directory.DirectoryInventory");
 			put("org.zstack.sdk.DiskOfferingInventory", "org.zstack.header.configuration.DiskOfferingInventory");
@@ -1210,6 +1213,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.QuotaUsage", "org.zstack.header.identity.Quota$QuotaUsage");
 			put("org.zstack.sdk.RaidControllerInventory", "org.zstack.storage.device.localRaid.RaidControllerInventory");
 			put("org.zstack.sdk.RaidPhysicalDriveInventory", "org.zstack.storage.device.localRaid.RaidPhysicalDriveInventory");
+			put("org.zstack.sdk.RecordData", "org.zstack.guesttools.RecordData");
 			put("org.zstack.sdk.RedirectUrlTemplate", "org.zstack.sso.header.RedirectUrlTemplate");
 			put("org.zstack.sdk.RemoteVtepInventory", "org.zstack.network.l2.vxlan.vtep.RemoteVtepInventory");
 			put("org.zstack.sdk.RemovalInstanceRuleInventory", "org.zstack.autoscaling.group.rule.RemovalInstanceRuleInventory");
