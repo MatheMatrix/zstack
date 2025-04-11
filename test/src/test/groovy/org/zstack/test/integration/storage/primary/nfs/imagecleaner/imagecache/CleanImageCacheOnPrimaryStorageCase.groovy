@@ -3,11 +3,14 @@ package org.zstack.test.integration.storage.primary.nfs.imagecleaner.imagecache
 import org.springframework.http.HttpEntity
 import org.zstack.compute.vm.VmGlobalConfig
 import org.zstack.core.db.DatabaseFacade
+import org.zstack.core.db.Q
 import org.zstack.core.db.SimpleQuery
 import org.zstack.header.image.ImageDeletionPolicyManager
 import org.zstack.header.network.service.NetworkServiceType
 import org.zstack.header.storage.primary.ImageCacheVO
 import org.zstack.header.storage.primary.ImageCacheVO_
+import org.zstack.header.storage.snapshot.reference.VolumeSnapshotReferenceTreeVO
+import org.zstack.header.storage.snapshot.reference.VolumeSnapshotReferenceTreeVO_
 import org.zstack.header.vm.VmInstanceDeletionPolicyManager
 import org.zstack.image.ImageGlobalConfig
 import org.zstack.network.securitygroup.SecurityGroupConstant
@@ -15,16 +18,17 @@ import org.zstack.network.service.virtualrouter.VirtualRouterConstant
 import org.zstack.sdk.ImageInventory
 import org.zstack.sdk.PrimaryStorageInventory
 import org.zstack.sdk.VmInstanceInventory
+import org.zstack.sdk.VolumeInventory
+import org.zstack.sdk.VolumeSnapshotInventory
 import org.zstack.storage.primary.nfs.NfsPrimaryStorageKVMBackend
 import org.zstack.storage.primary.nfs.NfsPrimaryStorageKVMBackendCommands
+import org.zstack.storage.volume.VolumeSystemTags
 import org.zstack.test.integration.storage.StorageTest
 import org.zstack.testlib.EnvSpec
 import org.zstack.testlib.SubCase
 import org.zstack.utils.data.SizeUnit
 import org.zstack.utils.gson.JSONObjectUtil
 import org.zstack.utils.path.PathUtil
-import java.util.concurrent.TimeUnit
-
 /**
  * 1. two NFS storage running two VMs with the same image
  * 2. delete the image and two VMs
@@ -207,7 +211,30 @@ class CleanImageCacheOnPrimaryStorageCase extends SubCase{
         }
     }
 
+    void fastCloneDataVolumeBeforeDeletingImageCache() {
+        def volume = createDataVolume {
+            name = "test fast clone"
+            diskOfferingUuid = env.inventoryByName("diskOffering").uuid
+            primaryStorageUuid = env.inventoryByName("nfs").uuid
+        } as VolumeInventory
+
+        def sp = createVolumeSnapshot {
+            name = "sp"
+            volumeUuid = volume.uuid
+        } as VolumeSnapshotInventory
+
+        createDataVolumeFromVolumeSnapshot {
+            name = "data-vol-from-sp"
+            volumeSnapshotUuid = sp.uuid
+            systemTags = [VolumeSystemTags.FAST_CREATE.tagFormat]
+        }
+
+        assert Q.New(VolumeSnapshotReferenceTreeVO.class).isNull(VolumeSnapshotReferenceTreeVO_.rootVolumeUuid).isExists()
+    }
+
     void testDelete(){
+        fastCloneDataVolumeBeforeDeletingImageCache()
+
         dbf = bean(DatabaseFacade.class)
 
         PrimaryStorageInventory nfs = env.inventoryByName("nfs")
