@@ -186,6 +186,12 @@
         </zstack:plugin>
     </bean>
 
+    <bean id="CreateVmComplementApiInterceptor" class="org.zstack.compute.vm.CreateVmComplementApiInterceptor">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.apimediator.GlobalApiMessageInterceptor" />
+        </zstack:plugin>
+    </bean>
+
     <bean id="VmCascadeExtension" class="org.zstack.compute.vm.VmCascadeExtension">
         <zstack:plugin>
 			<zstack:extension interface="org.zstack.core.cascade.CascadeExtensionPoint" />

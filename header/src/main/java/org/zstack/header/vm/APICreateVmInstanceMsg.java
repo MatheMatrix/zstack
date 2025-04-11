@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.zstack.utils.CollectionDSL.list;
+import static org.zstack.utils.CollectionUtils.filter;
+import static org.zstack.utils.CollectionUtils.findOneOrNull;
 
 /**
  * @api create a new vm instance
@@ -224,6 +226,14 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
 
     @APIParam(required = false)
     private List<DiskAO> diskAOs;
+
+    public DiskAO findBootDisk() {
+        return findOneOrNull(diskAOs, DiskAO::isBoot);
+    }
+
+    public List<DiskAO> findAllNonBootDisks() {
+        return filter(diskAOs, disk -> !disk.isBoot());
+    }
 
     public List<DiskAO> getDiskAOs() {
         return diskAOs;

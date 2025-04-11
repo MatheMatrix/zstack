@@ -630,10 +630,6 @@ public class VolumeApiInterceptor implements ApiMessageInterceptor, Component, G
 
     @Transactional
     protected void validate(APICreateVmInstanceMsg msg) {
-        if (CollectionUtils.isEmpty(msg.getDiskAOs())) {
-            return;
-        }
-
         List<String> volumeUuids = msg.getDiskAOs().stream()
                 .filter(diskAO -> Objects.equals(diskAO.getSourceType(), VolumeVO.class.getSimpleName()))
                 .map(DiskAO::getSourceUuid).collect(Collectors.toList());

@@ -1106,14 +1106,10 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         }
     }
 
-    private void validateRootDiskOffering(ImageMediaType imgFormat, APICreateVmInstanceMsg msg) throws ApiMessageInterceptionException {
+    private void validateRootDiskOffering(ImageMediaType imgFormat, DiskAO rootDisk) throws ApiMessageInterceptionException {
         if (imgFormat == ImageMediaType.ISO) {
-            if (msg.getRootDiskOfferingUuid() == null) {
-                if (msg.getRootDiskSize() == null) {
-                    throw new ApiMessageInterceptionException(argerr("image mediaType is ISO but missing root disk settings"));
-                }
-
-                if (msg.getRootDiskSize() <= 0) {
+            if (rootDisk.getDiskOfferingUuid() == null) {
+                if (rootDisk.getSize() <= 0L) {
                     throw new ApiMessageInterceptionException(operr("Unexpected root disk settings"));
                 }
             }
@@ -1121,7 +1117,15 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
     }
 
     private void validatePsWhetherSameCluster(APICreateVmInstanceMsg msg) {
-        if (msg.getPrimaryStorageUuidForRootVolume() == null || msg.getSystemTags() == null || msg.getSystemTags().isEmpty()) {
+        String psUuid = msg.getPrimaryStorageUuidForRootVolume();
+        if (psUuid == null) {
+            psUuid = msg.findBootDisk().getPrimaryStorageUuid();
+            if (psUuid == null) {
+                return;
+            }
+        }
+
+        if (msg.getSystemTags() == null || msg.getSystemTags().isEmpty()) {
             return;
         }
 
@@ -1130,7 +1134,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             return;
         }
 
-        List<String> clusterUuidsForRootVolume = Q.New(PrimaryStorageClusterRefVO.class).select(PrimaryStorageClusterRefVO_.clusterUuid).eq(PrimaryStorageClusterRefVO_.primaryStorageUuid, msg.getPrimaryStorageUuidForRootVolume()).listValues();
+        List<String> clusterUuidsForRootVolume = Q.New(PrimaryStorageClusterRefVO.class).select(PrimaryStorageClusterRefVO_.clusterUuid).eq(PrimaryStorageClusterRefVO_.primaryStorageUuid, psUuid).listValues();
         List<String> clusterUuidsForDataVolume = Q.New(PrimaryStorageClusterRefVO.class).select(PrimaryStorageClusterRefVO_.clusterUuid).eq(PrimaryStorageClusterRefVO_.primaryStorageUuid, primaryStorageUuidForDataVolume).listValues();
 
         clusterUuidsForRootVolume.retainAll(clusterUuidsForDataVolume);
@@ -1187,12 +1191,12 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         }
     }
 
-    private void validateDataDiskSizes(APICreateVmInstanceMsg msg) throws ApiMessageInterceptionException {
-        if (CollectionUtils.isEmpty(msg.getDataDiskSizes())) {
+    private void validateDataDiskSizes(List<DiskAO> nonRootDisks) throws ApiMessageInterceptionException {
+        if (CollectionUtils.isEmpty(nonRootDisks)) {
             return;
         }
-        msg.getDataDiskSizes().forEach(dataDiskSize -> {
-            if (dataDiskSize <= 0) {
+        nonRootDisks.forEach(disks -> {
+            if (disks.getSize() <= 0) {
                 throw new ApiMessageInterceptionException(operr("Unexpected data disk settings. dataDiskSizes need to be greater than 0"));
             }
         });
@@ -1202,18 +1206,12 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         boolean virtIOTagExists = (isEmpty(msg.getSystemTags())) ? false :
                 msg.getSystemTags().contains(VmSystemTags.VIRTIO.getTagFormat());
 
-        if (CollectionUtils.isNotEmpty(msg.getDiskAOs())) {
-            DiskAO rootDiskAO = msg.getDiskAOs().stream()
-                    .filter(DiskAO::isBoot).findFirst().orElse(null);
-            if (rootDiskAO == null) {
-                throw new ApiMessageInterceptionException(argerr("missing root disk"));
-            }
-            msg.setPlatform(rootDiskAO.getPlatform());
-            msg.setGuestOsType(rootDiskAO.getGuestOsType());
-            msg.setArchitecture(rootDiskAO.getArchitecture());
-            if (!virtIOTagExists && CollectionUtils.isNotEmpty(rootDiskAO.getSystemTags())) {
-                virtIOTagExists = rootDiskAO.getSystemTags().contains(VmSystemTags.VIRTIO.getTagFormat());
-            }
+        DiskAO rootDisk = msg.findBootDisk();
+        if (rootDisk == null) {
+            throw new ApiMessageInterceptionException(argerr("missing root disk"));
+        }
+        if (!virtIOTagExists && CollectionUtils.isNotEmpty(rootDisk.getSystemTags())) {
+            virtIOTagExists = rootDisk.getSystemTags().contains(VmSystemTags.VIRTIO.getTagFormat());
         }
 
         if (virtIOTagExists && msg.getVirtio() == Boolean.FALSE) {
@@ -1222,22 +1220,30 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             msg.setVirtio(true);
         }
 
-        ImageVO image = Q.New(ImageVO.class).eq(ImageVO_.uuid, msg.getImageUuid()).find();
+        String imageUuid = msg.getImageUuid();
+        if (imageUuid == null) {
+            imageUuid = rootDisk.getTemplateUuid();
+        }
+
+        ImageVO image = Q.New(ImageVO.class)
+                .eq(ImageVO_.uuid, imageUuid)
+                .find();
+
         if (image == null) {
             List<String> errorList = new ArrayList<>();
-            if (msg.getPlatform() == null) {
+            if (rootDisk.getPlatform() == null) {
                 errorList.add(Platform.missingVariables("platform"));
             }
 
-            if (msg.getGuestOsType() == null) {
+            if (rootDisk.getGuestOsType() == null) {
                 errorList.add(Platform.missingVariables("guestOsType"));
             }
 
-            if (msg.getArchitecture() == null) {
+            if (rootDisk.getArchitecture() == null) {
                 errorList.add(Platform.missingVariables("architecture"));
             }
 
-            if (msg.getRootDiskOfferingUuid() == null && msg.getRootDiskSize() == null) {
+            if (rootDisk.getDiskOfferingUuid() == null && rootDisk.getSize() <= 0L) {
                 errorList.add("rootDiskOfferingUuid or rootDiskSize cannot be all null");
             }
 
@@ -1278,24 +1284,17 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 throw new ApiMessageInterceptionException(operr("at least one of field architecture in msg or image[uuid:%s] should be set", msg.getImageUuid()));
             }
 
-            validateRootDiskOffering(imgFormat, msg);
+            validateRootDiskOffering(imgFormat, rootDisk);
+        }
 
-            if (msg.getVirtio() == null) {
-                if (image.getVirtio() != null) {
-                    msg.setVirtio(image.getVirtio());
-                }
+        validateDataDiskSizes(msg.findAllNonBootDisks());
+
+        List<String> allDiskOfferingUuids = new ArrayList<>();
+        msg.getDiskAOs().forEach(disk -> {
+            if (disk.getDiskOfferingUuid() != null) {
+                allDiskOfferingUuids.add(disk.getDiskOfferingUuid());
             }
-        }
-
-        validateDataDiskSizes(msg);
-
-        List<String> allDiskOfferingUuids = new ArrayList<String>();
-        if (msg.getRootDiskOfferingUuid() != null) {
-            allDiskOfferingUuids.add(msg.getRootDiskOfferingUuid());
-        }
-        if (msg.getDataDiskOfferingUuids() != null) {
-            allDiskOfferingUuids.addAll(msg.getDataDiskOfferingUuids());
-        }
+        });
 
         if (!allDiskOfferingUuids.isEmpty()) {
             SimpleQuery<DiskOfferingVO> dq = dbf.createQuery(DiskOfferingVO.class);
@@ -1309,7 +1308,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         }
 
         validatePsWhetherSameCluster(msg);
-        validateDataDiskAOs(msg);
+        validateDataDiskAOs(msg.findAllNonBootDisks());
 
         if (msg.getAllocatorStrategy() != null && !HostAllocatorStrategyType.hasType(msg.getAllocatorStrategy())) {
             throw new ApiMessageInterceptionException(
@@ -1317,15 +1316,9 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         }
     }
 
-    private void validateDataDiskAOs(APICreateVmInstanceMsg msg) {
-        if (CollectionUtils.isEmpty(msg.getDiskAOs())) {
-            return;
-        }
-        for (DiskAO diskAO : msg.getDiskAOs()) {
-            if (diskAO.isBoot()) {
-                continue;
-            }
-            checkMutualExclusion(diskAO);
+    private void validateDataDiskAOs(List<DiskAO> nonBootDisks) {
+        for (DiskAO disk : nonBootDisks) {
+            checkMutualExclusion(disk);
         }
     }
 
