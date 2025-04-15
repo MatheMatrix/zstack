@@ -19,6 +19,7 @@ class BranchCascadeTest extends Test {
         ceph()
         vyos()
         include("KvmTest.xml")
+        include("sdnController.xml")
         eip()
         lb()
         portForwarding()
