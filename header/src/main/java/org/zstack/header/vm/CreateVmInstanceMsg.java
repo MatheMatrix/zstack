@@ -13,6 +13,7 @@ public class CreateVmInstanceMsg extends NeedReplyMessage implements CreateVmIns
     private String accountUuid;
     private String name;
     private String imageUuid;
+    @Deprecated
     private String instanceOfferingUuid;
     private int cpuNum;
     private long cpuSpeed;

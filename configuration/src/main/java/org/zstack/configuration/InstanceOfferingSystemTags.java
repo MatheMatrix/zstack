@@ -11,6 +11,8 @@ import org.zstack.tag.PatternedSystemTag;
 
 @TagDefinition
 public class InstanceOfferingSystemTags {
+    @Deprecated
     public static String INSTANCE_OFFERING_USER_CONFIG_TOKEN = "instanceOfferingUserConfig";
+    @Deprecated
     public static PatternedSystemTag INSTANCE_OFFERING_USER_CONFIG = new PatternedSystemTag(String.format("instanceOfferingUserConfig::{%s}", INSTANCE_OFFERING_USER_CONFIG_TOKEN), InstanceOfferingVO.class);
 }

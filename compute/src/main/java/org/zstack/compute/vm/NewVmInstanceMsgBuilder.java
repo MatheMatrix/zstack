@@ -82,14 +82,22 @@ public class NewVmInstanceMsgBuilder {
         final String instanceOfferingUuid = msg.getInstanceOfferingUuid();
         if (instanceOfferingUuid != null) {
             InstanceOfferingVO iovo = Q.New(InstanceOfferingVO.class).eq(InstanceOfferingVO_.uuid, instanceOfferingUuid).find();
-            cmsg.setInstanceOfferingUuid(iovo.getUuid());
+            cmsg.setCpuNum(iovo.getCpuNum());
             cmsg.setCpuSpeed(iovo.getCpuSpeed());
+            cmsg.setMemorySize(iovo.getMemorySize());
+            cmsg.setReservedMemorySize(iovo.getReservedMemorySize());
             cmsg.setAllocatorStrategy(iovo.getAllocatorStrategy());
         }
 
-        cmsg.setCpuNum(msg.getCpuNum());
-        cmsg.setMemorySize(msg.getMemorySize());
-        cmsg.setReservedMemorySize(msg.getReservedMemorySize() == null ? 0 : msg.getReservedMemorySize());
+        if (msg.getCpuNum() != null) {
+            cmsg.setCpuNum(msg.getCpuNum());
+        }
+        if (msg.getMemorySize() != null) {
+            cmsg.setMemorySize(msg.getMemorySize());
+        }
+        if (msg.getReservedMemorySize() != null) {
+            cmsg.setReservedMemorySize(msg.getReservedMemorySize());
+        }
 
         cmsg.setAccountUuid(api.getSession().getAccountUuid());
         cmsg.setName(msg.getName());

@@ -1293,44 +1293,9 @@ public class PrimaryStorageManagerImpl extends AbstractService implements Primar
     public void preCreateVmInstance(CreateVmInstanceMsg msg) {
         settingRootVolume(msg);
         settingDataVolume(msg);
-
-        String instanceOffering = msg.getInstanceOfferingUuid();
-        if (InstanceOfferingSystemTags.INSTANCE_OFFERING_USER_CONFIG.hasTag(instanceOffering)) {
-            InstanceOfferingUserConfig config = OfferingUserConfigUtils.getInstanceOfferingConfig(instanceOffering, InstanceOfferingUserConfig.class);
-            if (config.getAllocate() == null || config.getAllocate().getClusterUuid() == null) {
-                return;
-            }
-
-            String clusterUuid = config.getAllocate().getClusterUuid();
-            if (clusterUuid != null) {
-                if (!dbf.isExist(clusterUuid, ClusterVO.class)) {
-                    throw new IllegalArgumentException(String.format("the cluster[uuid=%s] does not exist", clusterUuid));
-                }
-            }
-
-            if (msg.getClusterUuid() != null && !msg.getClusterUuid().equals(clusterUuid)) {
-                throw new OperationFailureException(operr("clusterUuid conflict, the cluster specified by the instance offering is %s, and the cluster specified in the creation parameter is %s"
-                        , clusterUuid, msg.getClusterUuid()));
-            }
-
-            msg.setClusterUuid(clusterUuid);
-        }
     }
+
     private void settingRootVolume(CreateVmInstanceMsg msg) {
-        String instanceOffering = msg.getInstanceOfferingUuid();
-
-        if (InstanceOfferingSystemTags.INSTANCE_OFFERING_USER_CONFIG.hasTag(instanceOffering)) {
-            InstanceOfferingUserConfig config = OfferingUserConfigUtils.getInstanceOfferingConfig(instanceOffering, InstanceOfferingUserConfig.class);
-            if (config.getAllocate() != null && config.getAllocate().getPrimaryStorage() != null) {
-                String psUuid = config.getAllocate().getPrimaryStorage().getUuid();
-                if (!msg.getCandidatePrimaryStorageUuidsForRootVolume().isEmpty() && !msg.getCandidatePrimaryStorageUuidsForRootVolume().contains(psUuid)) {
-                    throw new OperationFailureException(operr("primaryStorageUuid conflict, the primary storage specified by the instance offering is %s, and the primary storage specified in the creation parameter is %s"
-                            , psUuid, msg.getCandidatePrimaryStorageUuidsForRootVolume()));
-                }
-                msg.setPrimaryStorageUuidForRootVolume(psUuid);
-            }
-        }
-
         String rootDiskOffering = msg.getRootDiskOfferingUuid();
         if (rootDiskOffering == null || !DiskOfferingSystemTags.DISK_OFFERING_USER_CONFIG.hasTag(rootDiskOffering)) {
             return;

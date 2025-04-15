@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.zstack.compute.host.HostSystemTags;
 import org.zstack.compute.vm.VmCapabilitiesExtensionPoint;
 import org.zstack.configuration.DiskOfferingSystemTags;
-import org.zstack.configuration.InstanceOfferingSystemTags;
 import org.zstack.configuration.OfferingUserConfigUtils;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.Platform;
@@ -819,39 +818,6 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
     }
 
     private void settingRootVolume(CreateVmInstanceMsg msg) {
-        String instanceOffering = msg.getInstanceOfferingUuid();
-
-        if (InstanceOfferingSystemTags.INSTANCE_OFFERING_USER_CONFIG.hasTag(instanceOffering)) {
-            InstanceOfferingUserConfig config = OfferingUserConfigUtils.getInstanceOfferingConfig(instanceOffering, InstanceOfferingUserConfig.class);
-            if (config.getAllocate() != null && config.getAllocate().getPrimaryStorage() != null) {
-                msg.setPrimaryStorageUuidForRootVolume(config.getAllocate().getPrimaryStorage().getUuid());
-
-                if (msg.getRootVolumeSystemTags() == null) {
-                    msg.setRootVolumeSystemTags(new ArrayList<>());
-                }
-
-                if (config.getAllocate().getPrimaryStorage() instanceof CephPrimaryStorageAllocateConfig) {
-                    CephPrimaryStorageAllocateConfig primaryStorageAllocateConfig = (CephPrimaryStorageAllocateConfig) config.getAllocate().getPrimaryStorage();
-                    if (primaryStorageAllocateConfig.getPoolNames() == null || primaryStorageAllocateConfig.getPoolNames().isEmpty()) {
-                        return;
-                    }
-
-                    String cephPoolName = SystemTagUtils.findTagValue(msg.getRootVolumeSystemTags(), CephSystemTags.USE_CEPH_ROOT_POOL, CephSystemTags.USE_CEPH_ROOT_POOL_TOKEN);
-                    String targetCephPoolName = primaryStorageAllocateConfig.getPoolNames().get(0);
-                    if (cephPoolName != null && !cephPoolName.equals(targetCephPoolName)) {
-                        throw new OperationFailureException(operr("ceph pool conflict, the ceph pool specified by the instance offering is %s, and the ceph pool specified in the creation parameter is %s"
-                                ,targetCephPoolName, cephPoolName));
-                    }
-
-                    msg.getRootVolumeSystemTags().add(CephSystemTags.USE_CEPH_ROOT_POOL.instantiateTag(
-                            map(
-                                    e(CephSystemTags.USE_CEPH_ROOT_POOL_TOKEN, targetCephPoolName)
-                            )
-                    ));
-                }
-            }
-        }
-
         String rootDiskOffering = msg.getRootDiskOfferingUuid();
         if (rootDiskOffering == null) {
             return;

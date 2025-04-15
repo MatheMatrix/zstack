@@ -1127,7 +1127,6 @@ public class VmInstanceManagerImpl extends AbstractService implements
             extensionPoint.preCreateVmInstance(msg);
         });
 
-        final String instanceOfferingUuid = msg.getInstanceOfferingUuid();
         final ImageVO image = Q.New(ImageVO.class).eq(ImageVO_.uuid, msg.getImageUuid()).find();
         VmInstanceVO vo = new VmInstanceVO();
         if (msg.getResourceUuid() != null) {
@@ -1139,7 +1138,6 @@ public class VmInstanceManagerImpl extends AbstractService implements
         vo.setClusterUuid(msg.getClusterUuid());
         vo.setDescription(msg.getDescription());
         vo.setImageUuid(msg.getImageUuid());
-        vo.setInstanceOfferingUuid(instanceOfferingUuid);
         vo.setState(VmInstanceState.Created);
         vo.setZoneUuid(msg.getZoneUuid());
         vo.setInternalId(dbf.generateSequenceNumber(VmInstanceSequenceNumberVO.class));
