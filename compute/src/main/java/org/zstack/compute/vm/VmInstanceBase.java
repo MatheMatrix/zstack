@@ -3298,6 +3298,8 @@ public class VmInstanceBase extends AbstractVmInstance {
             handle((APIUpdateTemplatedVmInstanceMsg) msg);
         } else if (msg instanceof APIDeleteTemplatedVmInstanceMsg) {
             handle((APIDeleteTemplatedVmInstanceMsg) msg);
+        } else if (msg instanceof APICleanUpTemplatedVmInstanceCacheMsg) {
+            handle((APICleanUpTemplatedVmInstanceCacheMsg) msg);
         } else {
             VmInstanceBaseExtensionFactory ext = vmMgr.getVmInstanceBaseExtensionFactory(msg);
             if (ext != null) {
@@ -3503,6 +3505,35 @@ public class VmInstanceBase extends AbstractVmInstance {
                 });
             }
         }).start();
+    }
+
+    private void handle(APICleanUpTemplatedVmInstanceCacheMsg msg) {
+        APICleanUpTemplatedVmInstanceCacheEvent event = new APICleanUpTemplatedVmInstanceCacheEvent(msg.getId());
+
+        TemplatedVmInstanceCacheVO cache = Q.New(TemplatedVmInstanceCacheVO.class)
+                .eq(TemplatedVmInstanceCacheVO_.templatedVmInstanceUuid, msg.getUuid()).find();
+        if (cache == null) {
+            bus.publish(event);
+            return;
+        }
+
+        DestroyVmInstanceMsg dmsg = new DestroyVmInstanceMsg();
+        dmsg.setVmInstanceUuid(cache.getCacheVmInstanceUuid());
+        dmsg.setDeletionPolicy(VmInstanceDeletionPolicyManager.VmInstanceDeletionPolicy.Direct);
+        bus.makeTargetServiceIdByResourceUuid(dmsg, VmInstanceConstant.SERVICE_ID, cache.getCacheVmInstanceUuid());
+        bus.send(dmsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    event.setError(operr("failed to delete the cache vmInstance[uuid:%s] of templated vmInstance[uuid:%s], because %s",
+                            cache.getCacheVmInstanceUuid(), msg.getUuid(), reply.getError()));
+                    bus.publish(event);
+                    return;
+                }
+                dbf.remove(cache);
+                bus.publish(event);
+            }
+        });
     }
 
     private void handle(APIConvertTemplatedVmInstanceToVmInstanceMsg msg) {

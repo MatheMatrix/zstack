@@ -166,6 +166,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             validate((APIConvertTemplatedVmInstanceToVmInstanceMsg) msg);
         } else if (msg instanceof APIDeleteTemplatedVmInstanceMsg) {
             validate((APIDeleteTemplatedVmInstanceMsg) msg);
+        } else if (msg instanceof APICleanUpTemplatedVmInstanceCacheMsg) {
+            validate((APICleanUpTemplatedVmInstanceCacheMsg) msg);
         }
 
         if (msg instanceof NewVmInstanceMessage2) {
@@ -181,6 +183,21 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             APIDeleteTemplatedVmInstanceEvent evt = new APIDeleteTemplatedVmInstanceEvent(msg.getId());
             bus.publish(evt);
             throw new StopRoutingException();
+        }
+    }
+
+    private void validate(APICleanUpTemplatedVmInstanceCacheMsg msg) {
+        if (!dbf.isExist(msg.getUuid(), TemplatedVmInstanceVO.class)) {
+            APICleanUpTemplatedVmInstanceCacheEvent evt = new APICleanUpTemplatedVmInstanceCacheEvent(msg.getId());
+            bus.publish(evt);
+            throw new StopRoutingException();
+        }
+        List<String> vmUuids = Q.New(TemplatedVmInstanceRefVO.class)
+                .eq(TemplatedVmInstanceRefVO_.templatedVmInstanceUuid, msg.getUuid())
+                .select(TemplatedVmInstanceRefVO_.vmInstanceUuid).listValues();
+        if (!vmUuids.isEmpty()) {
+            throw new ApiMessageInterceptionException(operr("cannot cleanUp templated vm [uuid:%s] cache because there are vm [uuids: %s] dependent on cache",
+                    msg.getUuid(), vmUuids));
         }
     }
 
