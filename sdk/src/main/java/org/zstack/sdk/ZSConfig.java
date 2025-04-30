@@ -1,27 +1,16 @@
 package org.zstack.sdk;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by xing5 on 2016/12/9.
  */
 public class ZSConfig {
-    String hostname = "localhost";
-    int port = 8080;
-    long defaultPollingTimeout = TimeUnit.HOURS.toMillis(3);
-    long defaultPollingInterval = TimeUnit.SECONDS.toMillis(1);
-    String webHook;
-    Long readTimeout;
-    Long writeTimeout;
-    String contextPath;
-
-    public String getHostname() {
-        return hostname;
-    }
-
-    public int getPort() {
-        return port;
-    }
+    private ConcurrentHashMap<String, ZSEnvironment> environments = new ConcurrentHashMap<>();
+    private String currentEnvironment;
+    private long defaultPollingTimeout = TimeUnit.HOURS.toMillis(3);
+    private long defaultPollingInterval = TimeUnit.SECONDS.toMillis(1);
 
     public long getDefaultPollingTimeout() {
         return defaultPollingTimeout;
@@ -31,49 +20,48 @@ public class ZSConfig {
         return defaultPollingInterval;
     }
 
+    public void addEnvironment(ZSEnvironment env) {
+        environments.put(env.getName(), env);
+        if (currentEnvironment == null) {
+            currentEnvironment = env.getName();
+        }
+    }
+
+    public void setCurrentEnvironment(String name) {
+        if (!environments.containsKey(name)) {
+            throw new IllegalArgumentException("Environment '" + name + "' not found");
+        }
+        currentEnvironment = name;
+    }
+
+    public ZSEnvironment getCurrentEnvironment() {
+        if (currentEnvironment == null) {
+            throw new IllegalStateException("No environment configured");
+        }
+        return environments.get(currentEnvironment);
+    }
+
+    public ZSEnvironment getEnvironment(String name) {
+        return environments.get(name);
+    }
+
     public static class Builder {
         ZSConfig config = new ZSConfig();
 
-        public Builder setHostname(String hostname) {
-            config.hostname = hostname;
+        public Builder setDefaultPollingTimeout(long timeout) {
+            config.defaultPollingTimeout = timeout;
             return this;
         }
 
-        public Builder setWebHook(String webHook) {
-            config.webHook = webHook;
+        public Builder setDefaultPollingInterval(long interval) {
+            config.defaultPollingInterval = interval;
             return this;
         }
 
-        public Builder setPort(int port) {
-            config.port = port;
+        public Builder addEnvironment(ZSEnvironment env) {
+            config.addEnvironment(env);
             return this;
         }
-
-        public Builder setDefaultPollingTimeout(long value, TimeUnit unit) {
-            config.defaultPollingTimeout = unit.toMillis(value);
-            return this;
-        }
-
-        public Builder setDefaultPollingInterval(long value, TimeUnit unit) {
-            config.defaultPollingInterval = unit.toMillis(value);
-            return this;
-        }
-
-        public Builder setReadTimeout(long value, TimeUnit unit) {
-            config.readTimeout = unit.toMillis(value);
-            return this;
-        }
-
-        public Builder setWriteTimeout(long value, TimeUnit unit) {
-            config.writeTimeout = unit.toMillis(value);
-            return this;
-        }
-
-        public Builder setContextPath(String name) {
-            config.contextPath = name;
-            return this;
-        }
-
 
         public ZSConfig build() {
             return config;
