@@ -44,6 +44,7 @@ import java.util.*;
 
 import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.CollectionDSL.list;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public abstract class ApplianceVmBase extends VmInstanceBase implements ApplianceVm {
     @Autowired
@@ -137,7 +138,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             public void run(final SyncTaskChain chain) {
                 final ApplianceVmAsyncHttpCallReply reply = new ApplianceVmAsyncHttpCallReply();
                 if (msg.isCheckStatus() && getSelf().getStatus() != ApplianceVmStatus.Connected) {
-                    reply.setError(operr("appliance vm[uuid:%s] is in status of %s that cannot make http call to %s",
+                    reply.setError(operr(ORG_ZSTACK_APPLIANCEVM_10006, "appliance vm[uuid:%s] is in status of %s that cannot make http call to %s",
                             self.getUuid(), getSelf().getStatus(), msg.getPath()));
                     bus.reply(msg, reply);
                     chain.next();
@@ -375,7 +376,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
                 if (!ret.isSuccess()) {
                     logger.warn(String.format("failed to refresh firewall rules on appliance vm[uuid:%s, name:%s], %s",
                             self.getUuid(), self.getName(), ret.getError()));
-                    reply.setError(operr("operation error, because:%s", ret.getError()));
+                    reply.setError(operr(ORG_ZSTACK_APPLIANCEVM_10007, "operation error, because:%s", ret.getError()));
                 }
 
                 bus.reply(msg, reply);
@@ -431,7 +432,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             public void run(FlowTrigger trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Disconnected);
                 if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s stopped",
+                    fireDisconnectedCanonicalEvent(operr(ORG_ZSTACK_APPLIANCEVM_10008, "appliance vm %s stopped",
                             getSelf().getUuid()));
                 }
                 trigger.next();
@@ -562,7 +563,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             public void run(FlowTrigger trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Connecting);
                 if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s reboot",
+                    fireDisconnectedCanonicalEvent(operr(ORG_ZSTACK_APPLIANCEVM_10009, "appliance vm %s reboot",
                             getSelf().getUuid()));
                 }
                 trigger.next();
@@ -572,7 +573,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             public void rollback(FlowRollback trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Disconnected);
                 if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s reboot failed",
+                    fireDisconnectedCanonicalEvent(operr(ORG_ZSTACK_APPLIANCEVM_10010, "appliance vm %s reboot failed",
                             getSelf().getUuid()));
                 }
                 trigger.rollback();
@@ -641,7 +642,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             public void rollback(FlowRollback trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Disconnected);
                 if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s start failed",
+                    fireDisconnectedCanonicalEvent(operr(ORG_ZSTACK_APPLIANCEVM_10011, "appliance vm %s start failed",
                             getSelf().getUuid()));
                 }
                 trigger.rollback();
@@ -710,7 +711,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             public void run(FlowTrigger trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Connecting);
                 if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s reboot",
+                    fireDisconnectedCanonicalEvent(operr(ORG_ZSTACK_APPLIANCEVM_10012, "appliance vm %s reboot",
                             getSelf().getUuid()));
                 }
                 trigger.next();
@@ -720,7 +721,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             public void rollback(FlowRollback trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Disconnected);
                 if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s reboot failed",
+                    fireDisconnectedCanonicalEvent(operr(ORG_ZSTACK_APPLIANCEVM_10013, "appliance vm %s reboot failed",
                             getSelf().getUuid()));
                 }
                 trigger.rollback();
@@ -782,7 +783,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             public void rollback(FlowRollback trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Disconnected);
                 if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s start failed",
+                    fireDisconnectedCanonicalEvent(operr(ORG_ZSTACK_APPLIANCEVM_10014, "appliance vm %s start failed",
                             getSelf().getUuid()));
                 }
                 trigger.rollback();

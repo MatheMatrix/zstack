@@ -79,6 +79,7 @@ import static org.zstack.core.Platform.err;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.core.progress.ProgressReportService.reportProgress;
 import static org.zstack.utils.CollectionDSL.e;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  */
@@ -150,7 +151,7 @@ public class VolumeSnapshotTreeBase {
         if (allowedStatus.isOperationAllowed(msg.getClass().getName(), currentRoot.getStatus().toString())) {
             return null;
         } else {
-            return err(VolumeSnapshotErrors.NOT_IN_CORRECT_STATE,
+            return err(ORG_ZSTACK_STORAGE_SNAPSHOT_10000, VolumeSnapshotErrors.NOT_IN_CORRECT_STATE,
                     "snapshot[uuid:%s, name:%s]'s status[%s] is not allowed for message[%s], allowed status%s",
                     currentRoot.getUuid(), currentRoot.getName(), currentRoot.getStatus(), msg.getClass().getName(), allowedStatus.getStatesForOperation(msg.getClass().getName()));
         }
@@ -159,7 +160,7 @@ public class VolumeSnapshotTreeBase {
     private void refreshVO() {
         VolumeSnapshotVO vo = dbf.reload(currentRoot);
         if (vo == null) {
-            throw new OperationFailureException(operr("cannot find volume snapshot[uuid:%s, name:%s], it may have been deleted by previous operation",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_SNAPSHOT_10001, "cannot find volume snapshot[uuid:%s, name:%s], it may have been deleted by previous operation",
                     currentRoot.getUuid(), currentRoot.getName()));
         }
 
@@ -415,7 +416,7 @@ public class VolumeSnapshotTreeBase {
                     return;
                 }
 
-                trigger.fail(operr("snapshot or its desendant has reference volume[uuids:%s]", refVolUuids));
+                trigger.fail(operr(ORG_ZSTACK_STORAGE_SNAPSHOT_10002, "snapshot or its desendant has reference volume[uuids:%s]", refVolUuids));
             }
         });
         chain.then(new NoRollbackFlow() {
@@ -1004,7 +1005,7 @@ public class VolumeSnapshotTreeBase {
                 }
 
                 if (err != null) {
-                    completion.fail(operr("failed to change status of volume snapshot[uuid:%s, name:%s] by status event[%s]",
+                    completion.fail(operr(ORG_ZSTACK_STORAGE_SNAPSHOT_10003, "failed to change status of volume snapshot[uuid:%s, name:%s] by status event[%s]",
                                     failSnapshot.getUuid(), failSnapshot.getName(), evt).causedBy(err));
                 } else {
                     completion.success();
@@ -1918,7 +1919,7 @@ public class VolumeSnapshotTreeBase {
                             q.add(VmInstanceVO_.uuid, Op.EQ, vmUuid);
                             VmInstanceState state = q.findValue();
                             if (state != VmInstanceState.Stopped) {
-                                trigger.fail(operr("unable to reset volume[uuid:%s] to snapshot[uuid:%s]," +
+                                trigger.fail(operr(ORG_ZSTACK_STORAGE_SNAPSHOT_10004, "unable to reset volume[uuid:%s] to snapshot[uuid:%s]," +
                                                 " the vm[uuid:%s] volume attached to is not in Stopped state," +
                                                 " current state is %s",
                                         volumeInventory.getUuid(),
@@ -2266,7 +2267,7 @@ public class VolumeSnapshotTreeBase {
         }).error(new FlowErrorHandler(completion) {
             @Override
             public void handle(ErrorCode errCode, Map data) {
-                completion.fail(err(SysErrors.DELETE_RESOURCE_ERROR, errCode, errCode.getDetails()));
+                completion.fail(err(ORG_ZSTACK_STORAGE_SNAPSHOT_10005, SysErrors.DELETE_RESOURCE_ERROR, errCode, errCode.getDetails()));
             }
         }).start();
     }
@@ -2300,7 +2301,7 @@ public class VolumeSnapshotTreeBase {
                 refreshVO();
                 MarkSnapshotAsVolumeReply reply = new MarkSnapshotAsVolumeReply();
                 if (!currentRoot.isLatest()) {
-                    reply.setError(operr("current snapshot:%s is not latest snapshot, cannot mark as volume", currentRoot.getUuid()));
+                    reply.setError(operr(ORG_ZSTACK_STORAGE_SNAPSHOT_10006, "current snapshot:%s is not latest snapshot, cannot mark as volume", currentRoot.getUuid()));
                     bus.reply(msg, reply);
                     chain.next();
                     return;

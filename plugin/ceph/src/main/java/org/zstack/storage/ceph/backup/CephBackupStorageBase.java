@@ -64,6 +64,7 @@ import static org.zstack.core.progress.ProgressReportService.reportProgress;
 import static org.zstack.header.storage.backup.BackupStorageConstant.IMPORT_IMAGES_FAKE_RESOURCE_UUID;
 import static org.zstack.header.storage.backup.BackupStorageConstant.RESTORE_IMAGES_BACKUP_STORAGE_METADATA_TO_DATABASE;
 import static org.zstack.utils.CollectionDSL.list;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * Created by frank on 7/27/2015.
@@ -757,7 +758,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
             mons.removeIf(it -> it.getSelf().getStatus() != MonStatus.Connected);
             if (mons.isEmpty()) {
                 throw new OperationFailureException(
-                        operr("all ceph mons are Disconnected in ceph backup storage[uuid:%s]", self.getUuid())
+                        operr(ORG_ZSTACK_STORAGE_CEPH_BACKUP_10000, "all ceph mons are Disconnected in ceph backup storage[uuid:%s]", self.getUuid())
                 );
             }
             return mons;
@@ -765,7 +766,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
 
         private void doCall() {
             if (!it.hasNext()) {
-                callback.fail(operr("all monitors cannot execute http call[%s]", path));
+                callback.fail(operr(ORG_ZSTACK_STORAGE_CEPH_BACKUP_10001, "all monitors cannot execute http call[%s]", path));
 
                 return;
             }
@@ -864,7 +865,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
                 .find();
         if (monvo == null) {
             r.setError(operr(
-                    "CephMon[hostname:%s] not found on backup storage[uuid:%s]",
+            ORG_ZSTACK_STORAGE_CEPH_BACKUP_10002,         "CephMon[hostname:%s] not found on backup storage[uuid:%s]",
                     msg.getHostname(), msg.getBackupStorageUuid()));
             bus.reply(msg, r);
             return;
@@ -1270,7 +1271,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
             void connect(final FlowTrigger trigger) {
                 if (!it.hasNext()) {
                     if (errorCodes.getCauses().size() == mons.size()) {
-                        trigger.fail(operr(errorCodes, "unable to connect to the ceph backup storage[uuid:%s], failed to connect all ceph monitors.",
+                        trigger.fail(operr(ORG_ZSTACK_STORAGE_CEPH_BACKUP_10003, errorCodes, "unable to connect to the ceph backup storage[uuid:%s], failed to connect all ceph monitors.",
                                         self.getUuid()));
                     } else {
                         // reload because mon status changed
@@ -1371,7 +1372,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
                                         sb.append(String.format("%s (mon ip) --> %s (fsid)\n", mon.getSelf().getHostname(), fsid));
                                     }
 
-                                    throw new OperationFailureException(operr(sb.toString()));
+                                    throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_CEPH_BACKUP_10004, sb.toString()));
                                 }
 
                                 // check if there is another ceph setup having the same fsid
@@ -1383,7 +1384,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
                                 CephBackupStorageVO otherCeph = q.find();
                                 if (otherCeph != null) {
                                     throw new OperationFailureException(
-                                            operr("there is another CEPH backup storage[name:%s, uuid:%s] with the same" +
+                                            operr(ORG_ZSTACK_STORAGE_CEPH_BACKUP_10005, "there is another CEPH backup storage[name:%s, uuid:%s] with the same" +
                                                             " FSID[%s], you cannot add the same CEPH setup as two different backup storage",
                                                     otherCeph.getName(), otherCeph.getUuid(), fsId)
                                     );
@@ -1610,7 +1611,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
                                 backupStorageDown();
                             } else if (!res.success || PingOperationFailure.MonAddrChanged.toString().equals(res.failure)) {
                                 // this mon is down(success == false), but the backup storage may still work as other mons may work
-                                ErrorCode errorCode = operr("operation error, because:%s", res.error);
+                                ErrorCode errorCode = operr(ORG_ZSTACK_STORAGE_CEPH_BACKUP_10006, "operation error, because:%s", res.error);
                                 thisMonIsDown(errorCode);
                             }
                         }
@@ -1754,7 +1755,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
                 .eq(ImageBackupStorageRefVO_.imageUuid, msg.getImageUuid())
                 .findTuple();
         if (t == null) {
-            reply.setError(operr("image[uuid: %s] is not on backup storage[uuid:%s, name:%s]",
+            reply.setError(operr(ORG_ZSTACK_STORAGE_CEPH_BACKUP_10007, "image[uuid: %s] is not on backup storage[uuid:%s, name:%s]",
                     msg.getImageUuid(), self.getUuid(), self.getName()));
             bus.reply(msg, reply);
             return;
@@ -1896,7 +1897,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
                             @Override
                             public void done() {
                                 if (!errorCodes.isEmpty()) {
-                                    trigger.fail(operr(new ErrorCodeList().causedBy(errorCodes), "unable to connect mons"));
+                                    trigger.fail(operr(ORG_ZSTACK_STORAGE_CEPH_BACKUP_10008, new ErrorCodeList().causedBy(errorCodes), "unable to connect mons"));
                                 } else {
                                     trigger.next();
                                 }
@@ -1939,7 +1940,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
                             public void done() {
                                 // one fail, all fail
                                 if (!errors.isEmpty()) {
-                                    trigger.fail(operr(new ErrorCodeList().causedBy(errors), "unable to add mon to ceph backup storage"));
+                                    trigger.fail(operr(ORG_ZSTACK_STORAGE_CEPH_BACKUP_10009, new ErrorCodeList().causedBy(errors), "unable to add mon to ceph backup storage"));
                                 } else {
                                     trigger.next();
                                 }
@@ -1955,7 +1956,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
                                 public void success(GetFactsRsp rsp) {
                                     String fsid = rsp.fsid;
                                     if (!getSelf().getFsid().equals(fsid)) {
-                                        errors.add(operr("the mon[ip:%s] returns a fsid[%s] different from the current fsid[%s] of the cep cluster," +
+                                        errors.add(operr(ORG_ZSTACK_STORAGE_CEPH_BACKUP_10010, "the mon[ip:%s] returns a fsid[%s] different from the current fsid[%s] of the cep cluster," +
                                                         "are you adding a mon not belonging to current cluster mistakenly?", base.getSelf().getHostname(), fsid, getSelf().getFsid()));
                                     }
 
@@ -2044,7 +2045,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
     @Override
     protected void handle(CalculateImageHashOnBackupStorageMsg msg) {
         CalculateImageHashOnBackupStorageReply reply = new CalculateImageHashOnBackupStorageReply();
-        reply.setError(operr("ceph backup storage do not support calculate image hash"));
+        reply.setError(operr(ORG_ZSTACK_STORAGE_CEPH_BACKUP_10011, "ceph backup storage do not support calculate image hash"));
         bus.reply(msg, reply);
     }
 

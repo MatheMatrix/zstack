@@ -71,6 +71,7 @@ import static org.zstack.core.Platform.operr;
 import static org.zstack.core.progress.ProgressReportService.*;
 import static org.zstack.utils.CollectionDSL.e;
 import static org.zstack.utils.CollectionDSL.map;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class NfsPrimaryStorage extends PrimaryStorageBase {
     private static final CLogger logger = Utils.getLogger(NfsPrimaryStorage.class);
@@ -159,7 +160,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
             } else if (state == VmInstanceState.Stopped) {
                 huuid = connectedHostUuid;
             } else {
-                reply.setError(operr("vm[uuid:%s] is not Running, Paused or Stopped, current state is %s",
+                reply.setError(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10035, "vm[uuid:%s] is not Running, Paused or Stopped, current state is %s",
                         vol.getVmInstanceUuid(), state));
                 bus.reply(msg, reply);
                 return;
@@ -300,7 +301,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     private void handle(final DeleteImageCacheOnPrimaryStorageMsg msg) {
         NfsPrimaryStorageBackend bkd = getUsableBackend();
         if (bkd == null) {
-            throw new OperationFailureException(operr("cannot find usable backend"));
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10036, "cannot find usable backend"));
         }
         DeleteImageCacheOnPrimaryStorageReply sreply = new DeleteImageCacheOnPrimaryStorageReply();
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
@@ -359,7 +360,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     private void handle(final GetVolumeRootImageUuidFromPrimaryStorageMsg msg) {
         NfsPrimaryStorageBackend bkd = getUsableBackend();
         if (bkd == null) {
-            throw new OperationFailureException(operr("no usable backend found"));
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10037, "no usable backend found"));
         }
 
         bkd.handle(getSelfInventory(), msg, new ReturnValueCompletion<GetVolumeRootImageUuidFromPrimaryStorageReply>(msg) {
@@ -517,7 +518,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
         try {
             destHost = factory.getConnectedHostForOperation(PrimaryStorageInventory.valueOf(self)).get(0);
         } catch (OperationFailureException e) {
-            reply.setError(operr("no host in Connected status to which nfs primary storage[uuid:%s, name:%s] attached" +
+            reply.setError(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10038, "no host in Connected status to which nfs primary storage[uuid:%s, name:%s] attached" +
                             " found to revert volume[uuid:%s] to snapshot[uuid:%s, name:%s]",
                     self.getUuid(), self.getName(), msg.getVolume().getUuid(),
                     msg.getSnapshot().getUuid(), msg.getSnapshot().getName()));
@@ -548,7 +549,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
 
         HostInventory destHost = factory.getConnectedHostForOperation(PrimaryStorageInventory.valueOf(self)).get(0);
         if (destHost == null) {
-            reply.setError(operr("no host in Connected status to which nfs primary storage[uuid:%s, name:%s] attached" +
+            reply.setError(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10039, "no host in Connected status to which nfs primary storage[uuid:%s, name:%s] attached" +
                             " found to revert volume[uuid:%s] to image[uuid:%s]",
                     self.getUuid(), self.getName(),
                     msg.getVolume().getUuid(), msg.getVolume().getRootImageUuid()));
@@ -626,7 +627,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
             } else if (state == VmInstanceState.Stopped) {
                 huuid = connectedHostUuid;
             } else {
-                reply.setError(operr("vm[uuid:%s] is not Running, Paused or Stopped, current state is %s",
+                reply.setError(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10040, "vm[uuid:%s] is not Running, Paused or Stopped, current state is %s",
                         vol.getVmInstanceUuid(), state));
                 bus.reply(msg, reply);
                 return;
@@ -691,7 +692,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
             } else if (state == VmInstanceState.Stopped) {
                 huuid = connectedHostUuid;
             } else {
-                reply.setError(operr("vm[uuid:%s] is not Running, Paused or Stopped, current state is %s",
+                reply.setError(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10041, "vm[uuid:%s] is not Running, Paused or Stopped, current state is %s",
                         vol.getVmInstanceUuid(), state));
                 bus.reply(msg, reply);
                 return;
@@ -734,7 +735,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     private void handle(PrimaryStorageRemoveCachedImageMsg msg) {
         if (self.getAttachedClusterRefs().isEmpty()) {
             PrimaryStorageRemoveCachedImageReply reply = new PrimaryStorageRemoveCachedImageReply();
-            reply.setError(operr("primary storage[uuid:%s] doesn't attach to any cluster", self.getUuid()));
+            reply.setError(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10042, "primary storage[uuid:%s] doesn't attach to any cluster", self.getUuid()));
             bus.reply(msg, reply);
             return;
         }
@@ -817,7 +818,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
             backend.detachFromCluster(PrimaryStorageInventory.valueOf(self), clusterUuid);
             completion.success();
         } catch (NfsPrimaryStorageException e) {
-            completion.fail(operr(e.getMessage()));
+            completion.fail(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10043, e.getMessage()));
         }
     }
 
@@ -925,7 +926,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
         } else {
             backend = getUsableBackend();
             if (backend == null) {
-                throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find any usable host to" +
+                throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10044, "the NFS primary storage[uuid:%s, name:%s] cannot find any usable host to" +
                                 " create the data volume[uuid:%s, name:%s]", self.getUuid(), self.getName(),
                         msg.getVolume().getUuid(), msg.getVolume().getName()));
             }
@@ -969,7 +970,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
         } else {
             backend = getUsableBackend();
             if (backend == null) {
-                throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find any usable host to" +
+                throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10045, "the NFS primary storage[uuid:%s, name:%s] cannot find any usable host to" +
                                 " create the data volume[uuid:%s, name:%s]", self.getUuid(), self.getName(),
                         msg.getVolume().getUuid(), msg.getVolume().getName()));
             }
@@ -1409,7 +1410,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     protected void handle(final SyncVolumeSizeOnPrimaryStorageMsg msg) {
         NfsPrimaryStorageBackend backend = getUsableBackend();
         if (backend == null) {
-            throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10046, "the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
                     self.getUuid(), self.getName()));
         }
 
@@ -1433,7 +1434,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     protected void handle(EstimateVolumeTemplateSizeOnPrimaryStorageMsg msg) {
         NfsPrimaryStorageBackend backend = getUsableBackend();
         if (backend == null) {
-            throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10047, "the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
                     self.getUuid(), self.getName()));
         }
 
@@ -1492,7 +1493,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
             public void run(SyncTaskChain chain) {
                 NfsPrimaryStorageBackend backend = getUsableBackend();
                 if (backend == null) {
-                    throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
+                    throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10048, "the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
                             self.getUuid(), self.getName()));
                 }
 
@@ -1523,7 +1524,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     private void handle(DownloadBitsFromKVMHostToPrimaryStorageMsg msg) {
         NfsPrimaryStorageBackend backend = getUsableBackend();
         if (backend == null) {
-            throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10049, "the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
                     self.getUuid(), self.getName()));
         }
 
@@ -1545,7 +1546,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     private void handle(CancelDownloadBitsFromKVMHostToPrimaryStorageMsg msg) {
         NfsPrimaryStorageBackend backend = getUsableBackend();
         if (backend == null) {
-            throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10050, "the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
                     self.getUuid(), self.getName()));
         }
 
@@ -1567,7 +1568,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     private void handle(GetDownloadBitsFromKVMHostProgressMsg msg) {
         NfsPrimaryStorageBackend backend = getUsableBackend();
         if (backend == null) {
-            throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10051, "the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
                     self.getUuid(), self.getName()));
         }
 
@@ -1589,7 +1590,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     private void handle(NfsRebaseVolumeBackingFileMsg msg) {
         NfsPrimaryStorageBackend backend = getUsableBackend();
         if (backend == null) {
-            throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10052, "the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
                     self.getUuid(), self.getName()));
         }
         backend.handle(getSelfInventory(), msg, new ReturnValueCompletion<NfsRebaseVolumeBackingFileReply>(msg) {
@@ -1610,7 +1611,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     private void handle(GetVolumeBackingChainFromPrimaryStorageMsg msg) {
         NfsPrimaryStorageBackend backend = getUsableBackend();
         if (backend == null) {
-            throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10053, "the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
                     self.getUuid(), self.getName()));
         }
         backend.handle(getSelfInventory(), msg, new ReturnValueCompletion<GetVolumeBackingChainFromPrimaryStorageReply>(msg) {
@@ -1686,7 +1687,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
         final NfsPrimaryStorageBackend backend = getUsableBackend();
         if (backend == null) {
             // the nfs primary storage has not been attached to any clusters, or no connected hosts
-            completion.fail(err(PrimaryStorageErrors.DISCONNECTED,
+            completion.fail(err(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10054, PrimaryStorageErrors.DISCONNECTED,
                     "the NFS primary storage[uuid:%s, name:%s] has not attached to any clusters, or no hosts in the" +
                             " attached clusters are connected", self.getUuid(), self.getName()
             ));
@@ -1756,7 +1757,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
         NfsPrimaryStorageBackend bkd = getUsableBackend();
         if (bkd == null) {
             // the nfs primary storage has not been attached to any clusters, or no connected hosts
-            completion.fail(operr("the NFS primary storage[uuid:%s, name:%s] has not attached to any clusters, or no hosts in the" +
+            completion.fail(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10055, "the NFS primary storage[uuid:%s, name:%s] has not attached to any clusters, or no hosts in the" +
                     " attached clusters are connected", self.getUuid(), self.getName()));
         } else {
             bkd.ping(getSelfInventory(), completion);
@@ -1772,7 +1773,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     protected void handle(GetVolumeSnapshotEncryptedOnPrimaryStorageMsg msg) {
         NfsPrimaryStorageBackend backend = getUsableBackend();
         if (backend == null) {
-            throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10056, "the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
                     self.getUuid(), self.getName()));
         }
 
@@ -1817,7 +1818,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     public void handle(AskInstallPathForNewSnapshotMsg msg) {
         NfsPrimaryStorageBackend bkd = getUsableBackend();
         if (bkd == null) {
-            throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10057, "the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
                     self.getUuid(), self.getName()));
         }
 
@@ -1852,10 +1853,10 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
                     .param("vmUuid", msg.getVmInstanceUuid())
                     .find();
             if (hostStatus == null && getAvailableHostUuidForOperation() == null) {
-                reply.setError(err(HostErrors.HOST_IS_DISCONNECTED, "cannot find available host for operation on" +
+                reply.setError(err(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10058, HostErrors.HOST_IS_DISCONNECTED, "cannot find available host for operation on" +
                         " primary storage[uuid:%s].", self.getUuid()));
             } else if (hostStatus != HostStatus.Connected && hostStatus != null) {
-                reply.setError(err(HostErrors.HOST_IS_DISCONNECTED, "host where vm[uuid:%s] locate is not Connected.", msg.getVmInstanceUuid()));
+                reply.setError(err(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10059, HostErrors.HOST_IS_DISCONNECTED, "host where vm[uuid:%s] locate is not Connected.", msg.getVmInstanceUuid()));
             }
         }
 
@@ -1869,7 +1870,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
         }
 
         List<String> infos = refVols.stream().map(v -> String.format("uuid:%s, name:%s", v.getUuid(), v.getName())).collect(Collectors.toList());
-        return operr("volume[uuid:%s] has reference volume[%s], can not change volume type before flatten " +
+        return operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10060, "volume[uuid:%s] has reference volume[%s], can not change volume type before flatten " +
                 "them and their descendants", volumeUuid, infos.toString());
     }
 
@@ -1896,7 +1897,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
 
         NfsPrimaryStorageBackend backend = getUsableBackend();
         if (backend == null) {
-            throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10061, "the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
                     self.getUuid(), self.getName()));
         }
 
@@ -1919,7 +1920,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
         UnlinkBitsOnPrimaryStorageReply reply = new UnlinkBitsOnPrimaryStorageReply();
         NfsPrimaryStorageBackend backend = getUsableBackend();
         if (backend == null) {
-            throw new OperationFailureException(operr("the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10062, "the NFS primary storage[uuid:%s, name:%s] cannot find hosts in attached clusters to perform the operation",
                     self.getUuid(), self.getName()));
         }
 

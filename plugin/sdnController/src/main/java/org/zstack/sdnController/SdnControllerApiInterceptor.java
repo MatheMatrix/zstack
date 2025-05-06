@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.zstack.core.Platform.argerr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * Created by shixin.ruan on 09/17/2019
@@ -105,7 +106,7 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
 
         SdnControllerVO controllerVO = dbf.findByUuid(sdnControlerUuid, SdnControllerVO.class);
         if (controllerVO == null) {
-            throw new ApiMessageInterceptionException(argerr("could not attach l3network to vm, " +
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10009, "could not attach l3network to vm, " +
                             "because sdn controller[uuid:%s] is not find", sdnControlerUuid));
         }
 
@@ -118,7 +119,7 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
             }
         }
         if (!found) {
-            throw new ApiMessageInterceptionException(argerr("could not attach l3network to vm, " +
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10010, "could not attach l3network to vm, " +
                     "because host[uuid:%s] of vm is not attached to sdn controller[uuid:%s]",
                     vmVo.getHostUuid(), sdnControlerUuid));
         }
@@ -132,7 +133,7 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
         
         SdnControllerVO controllerVO = dbf.findByUuid(sdnControlerUuid, SdnControllerVO.class);
         if (controllerVO == null) {
-            throw new ApiMessageInterceptionException(argerr("could not change vmnic to l3network[uuid:%s], " +
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10011, "could not change vmnic to l3network[uuid:%s], " +
                     "because sdn controller[uuid:%s] is not find", msg.getDestL3NetworkUuid(), sdnControlerUuid));
         }
 
@@ -145,7 +146,7 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
             }
         }
         if (!found) {
-            throw new ApiMessageInterceptionException(argerr("could not change vmnic to l3network[uuid:%s], " +
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10012, "could not change vmnic to l3network[uuid:%s], " +
                             "because host[uuid:%s] of vm is not attached to sdn controller[uuid:%s]",
                     msg.getDestL3NetworkUuid(), vmVo.getHostUuid(), sdnControlerUuid));
         }
@@ -157,7 +158,7 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
         for (APISetVmNicSecurityGroupMsg.VmNicSecurityGroupRefAO ref : msg.getRefs()) {
             String sgControllerUuid = SecurityGroupHelper.getSdnControllerUuid(ref.getSecurityGroupUuid());
             if (!StringUtils.equals(sgControllerUuid, nicControllerUuid)) {
-                throw new ApiMessageInterceptionException(argerr("could not add vmnic to securityGroup, " +
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10013, "could not add vmnic to securityGroup, " +
                                 "because they have different sdn controller[nic controller uuid:%s, security group controller uuid:%s]",
                         nicControllerUuid, sgControllerUuid));
             }
@@ -172,7 +173,7 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
             }
             String remoteControllerUuid = SecurityGroupHelper.getSdnControllerUuid(rule.getRemoteSecurityGroupUuid());
             if (!StringUtils.equals(sgControllerUuid, remoteControllerUuid)) {
-                throw new ApiMessageInterceptionException(argerr("could not add securityGroup rule, " +
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10014, "could not add securityGroup rule, " +
                                 "because rule remote security group sdn controller uuid[:%s] is different from security group controller uuid[:%s]",
                         remoteControllerUuid, sgControllerUuid));
             }
@@ -185,7 +186,7 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
             VmNicVO nicVO = dbf.findByUuid(uuid, VmNicVO.class);
             String nicControllerUuid = L3NetworkHelper.getSdnControllerUuidFromL3Uuid(nicVO.getL3NetworkUuid());
             if (!StringUtils.equals(sgControllerUuid, nicControllerUuid)) {
-                throw new ApiMessageInterceptionException(argerr("could not add vmnic to securityGroup, " +
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10015, "could not add vmnic to securityGroup, " +
                                 "because they have different sdn controller[nic controller uuid:%s, security group controller uuid:%s]",
                         nicControllerUuid, sgControllerUuid));
             }
@@ -197,7 +198,7 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
         String l3SdnControllerUuid = L3NetworkHelper.getSdnControllerUuidFromL3Uuid(msg.getL3NetworkUuid());
         String sgSdnControllerUuid = SecurityGroupHelper.getSdnControllerUuid(msg.getSecurityGroupUuid());
         if (!StringUtils.equals(l3SdnControllerUuid, sgSdnControllerUuid)) {
-            throw new ApiMessageInterceptionException(argerr("could not attach l3 network to securityGroup, " +
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10016, "could not attach l3 network to securityGroup, " +
                     "because they have different sdn controller[l3 controller uuid:%s, security group controller uuid:%s]",
                     l3SdnControllerUuid, sgSdnControllerUuid));
         }
@@ -205,16 +206,16 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
 
     private void validate(APIAddSdnControllerMsg msg) {
         if (!SdnControllerType.getAllTypeNames().contains(msg.getVendorType())) {
-            throw new ApiMessageInterceptionException(argerr("Sdn controller type: %s in not in the supported list: %s ", msg.getVendorType(), SdnControllerType.getAllTypeNames()));
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10017, "Sdn controller type: %s in not in the supported list: %s ", msg.getVendorType(), SdnControllerType.getAllTypeNames()));
         }
 
         if (!NetworkUtils.isUnicastIPAddress(msg.getIp())) {
-            throw new ApiMessageInterceptionException(argerr("Sdn controller ip[%s] is not an unicast address ", msg.getIp()));
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10018, "Sdn controller ip[%s] is not an unicast address ", msg.getIp()));
         }
 
         boolean existed = Q.New(SdnControllerVO.class).eq(SdnControllerVO_.ip, msg.getIp()).isExists();
         if (existed) {
-            throw new ApiMessageInterceptionException(argerr("Sdn controller with ip [%s] is already added ", msg.getIp()));
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10019, "Sdn controller with ip [%s] is already added ", msg.getIp()));
         }
     }
 
@@ -222,12 +223,12 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
         if (Q.New(SdnControllerHostRefVO.class)
                 .eq(SdnControllerHostRefVO_.vSwitchType, msg.getvSwitchType())
                 .eq(SdnControllerHostRefVO_.hostUuid, msg.getHostUuid()).isExists()) {
-            throw new ApiMessageInterceptionException(argerr("could not add host[uuid:%s] to sdn controller[uuid:%s], " +
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10020, "could not add host[uuid:%s] to sdn controller[uuid:%s], " +
                             " because host already attached to sdn controller", msg.getHostUuid(), msg.getSdnControllerUuid()));
         }
 
         if (msg.getVtepIp() != null && msg.getNetmask() == null) {
-            throw new ApiMessageInterceptionException(argerr("could not add host[uuid:%s] to sdn controller[uuid:%s], " +
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10021, "could not add host[uuid:%s] to sdn controller[uuid:%s], " +
                     " because netmask is not specified", msg.getHostUuid(), msg.getSdnControllerUuid()));
         }
 
@@ -237,7 +238,7 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
                     .eq(SdnControllerHostRefVO_.vSwitchType, msg.getvSwitchType())
                     .eq(SdnControllerHostRefVO_.vtepIp, msg.getVtepIp()).find();
             if (refvo != null) {
-                throw new ApiMessageInterceptionException(argerr("could not add host[uuid:%s] to sdn controller[uuid:%s], " +
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10022, "could not add host[uuid:%s] to sdn controller[uuid:%s], " +
                         " because vtepip is used by host[uuid:%s]", msg.getHostUuid(),
                         msg.getSdnControllerUuid(), refvo.getHostUuid()));
             }
@@ -256,7 +257,7 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
         if (!Q.New(SdnControllerHostRefVO.class)
                 .eq(SdnControllerHostRefVO_.sdnControllerUuid, msg.getSdnControllerUuid())
                 .eq(SdnControllerHostRefVO_.hostUuid, msg.getHostUuid()).isExists()) {
-            throw new ApiMessageInterceptionException(argerr("could not remove host[uuid:%s] from sdn controller[uuid:%s], " +
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10023, "could not remove host[uuid:%s] from sdn controller[uuid:%s], " +
                     " because host has not been added to sdn controller", msg.getHostUuid(), msg.getSdnControllerUuid()));
         }
     }
@@ -266,12 +267,12 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
                 .eq(SdnControllerHostRefVO_.sdnControllerUuid, msg.getSdnControllerUuid())
                 .eq(SdnControllerHostRefVO_.hostUuid, msg.getHostUuid()).find();
         if (refVO == null) {
-            throw new ApiMessageInterceptionException(argerr("could not change host[uuid:%s] of sdn controller[uuid:%s], " +
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10024, "could not change host[uuid:%s] of sdn controller[uuid:%s], " +
                     " because host has not been added to sdn controller", msg.getHostUuid(), msg.getSdnControllerUuid()));
         }
 
         if (msg.getVtepIp() != null && msg.getNetmask() == null) {
-            throw new ApiMessageInterceptionException(argerr("could not change host[uuid:%s] of sdn controller[uuid:%s], " +
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10025, "could not change host[uuid:%s] of sdn controller[uuid:%s], " +
                     " because netmask is specified", msg.getHostUuid(), msg.getSdnControllerUuid()));
         }
 

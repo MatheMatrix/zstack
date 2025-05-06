@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 import static org.zstack.core.Platform.inerr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  */
@@ -172,7 +173,7 @@ public class L2NetworkCascadeExtension extends AbstractAsyncCascadeExtension {
 
             completion.success();
         } catch (L2NetworkException e) {
-            completion.fail(inerr(e.getMessage()));
+            completion.fail(inerr(ORG_ZSTACK_NETWORK_L2_10000, e.getMessage()));
         }
     }
 

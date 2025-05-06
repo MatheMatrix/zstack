@@ -52,6 +52,7 @@ import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * Created by shixin.ruan on 09/17/2019.
@@ -103,7 +104,7 @@ public class HardwareVxlanNetworkFactory implements L2NetworkFactory, VmInstance
                         L2VxlanNetworkInventory vxlan = L2VxlanNetworkInventory.valueOf(vo);
                         HardwareL2VxlanNetworkPoolVO poolVO = dbf.findByUuid(vxlan.getPoolUuid(), HardwareL2VxlanNetworkPoolVO.class);
                         if (poolVO == null || poolVO.getSdnControllerUuid() == null) {
-                            completion.fail(argerr("there is no sdn controller for vxlan pool [uuid:%s]", vxlan.getPoolUuid()));
+                            completion.fail(argerr(ORG_ZSTACK_SDNCONTROLLER_HARDWAREVXLAN_10003, "there is no sdn controller for vxlan pool [uuid:%s]", vxlan.getPoolUuid()));
                             return;
                         }
                         SdnControllerVO sdn = dbf.findByUuid(poolVO.getSdnControllerUuid(), SdnControllerVO.class);
@@ -401,7 +402,7 @@ public class HardwareVxlanNetworkFactory implements L2NetworkFactory, VmInstance
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errList.getCauses().isEmpty()) {
-                    completion.fail(operr("cannot configure hardware vxlan network for vm[uuid:%s] on the destination host[uuid:%s]",
+                    completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_HARDWAREVXLAN_10004, "cannot configure hardware vxlan network for vm[uuid:%s] on the destination host[uuid:%s]",
                             inv.getUuid(), destHostUuid).causedBy(errorCodeList.getCauses()));
                     return;
                 }

@@ -29,6 +29,7 @@ import java.util.*;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.CollectionDSL.e;
 import static org.zstack.utils.CollectionDSL.map;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
@@ -89,7 +90,7 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
         try {
             H3cVcfcCommands.GetH3cVniRangeRsp rsp = new H3cVcfcHttpClient<>(H3cVcfcCommands.GetH3cVniRangeRsp.class).syncCall("GET", self.getIp(), H3cVcfcCommands.H3C_VCFC_VNI_RANGES, cmd, getH3cHeaders(token));
             if (rsp == null) {
-                completion.fail(operr("get vni range on sdn controller [ip:%s] failed", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10004, "get vni range on sdn controller [ip:%s] failed", self.getIp()));
                 return;
             }
 
@@ -113,13 +114,13 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
             }
 
             if (count == 0) {
-                completion.fail(operr("there is no vni range on sdn controller [ip:%s]", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10005, "there is no vni range on sdn controller [ip:%s]", self.getIp()));
                 return;
             }
 
             completion.success();
         } catch (Exception e) {
-            completion.fail(operr("get sdn controller [ip:%s] vni range failed because %s", self.getIp(), e.getLocalizedMessage()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10006, "get sdn controller [ip:%s] vni range failed because %s", self.getIp(), e.getLocalizedMessage()));
         }
     }
 
@@ -128,7 +129,7 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
         try {
             H3cVcfcCommands.GetH3cTenantsRsp rsp = new H3cVcfcHttpClient<>(H3cVcfcCommands.GetH3cTenantsRsp.class).syncCall("GET", self.getIp(), H3cVcfcCommands.H3C_VCFC_TENANTS, cmd, getH3cHeaders(token));
             if (rsp == null) {
-                completion.fail(operr("there is no vni range on sdn controller [ip:%s]", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10007, "there is no vni range on sdn controller [ip:%s]", self.getIp()));
                 return;
             }
 
@@ -151,13 +152,13 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
             }
 
             if (!found) {
-                completion.fail(operr("there is no vni range on sdn controller [ip:%s]", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10008, "there is no vni range on sdn controller [ip:%s]", self.getIp()));
                 return;
             }
 
             completion.success();
         } catch (Exception e) {
-            completion.fail(operr("there is no default tenant on sdn controller [ip:%s]", self.getIp()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10009, "there is no default tenant on sdn controller [ip:%s]", self.getIp()));
         }
     }
 
@@ -292,7 +293,7 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
         try {
             H3cVcfcCommands.CreateH3cNetworksRsp rsp = new H3cVcfcHttpClient<>(H3cVcfcCommands.CreateH3cNetworksRsp.class).syncCall("POST", leaderIp, H3cVcfcCommands.H3C_VCFC_L2_NETWORKS, cmd, getH3cHeaders(token));
             if (rsp == null) {
-                completion.fail(operr("create vxlan network on sdn controller [ip:%s] failed", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10010, "create vxlan network on sdn controller [ip:%s] failed", self.getIp()));
                 return;
             }
             H3cVcfcCommands.NetworkCmd network = rsp.networks.get(0);
@@ -308,7 +309,7 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
 
             completion.success();
         } catch (Exception e) {
-            completion.fail(operr("create vxlan network on sdn controller [ip:%s] failed because %s", self.getIp(), e.getMessage()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10011, "create vxlan network on sdn controller [ip:%s] failed because %s", self.getIp(), e.getMessage()));
         }
     }
 
@@ -386,13 +387,13 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
             String h3cL2NetworkUuid = H3cVcfcSdnControllerSystemTags.H3C_L2_NETWORK_UUID.getTokenByResourceUuid(vxlan.getUuid(), H3cVcfcSdnControllerSystemTags.H3C_L2_NETWORK_UUID_TOKEN);
             H3cVcfcCommands.DeleteH3cNetworksRsp rsp = new H3cVcfcHttpClient<>(H3cVcfcCommands.DeleteH3cNetworksRsp.class).syncCall("DELETE", leaderIp, String.format("%s/%s", H3cVcfcCommands.H3C_VCFC_L2_NETWORKS, h3cL2NetworkUuid), cmd, getH3cHeaders(token));
             if (rsp == null) {
-                completion.fail(operr("delete vxlan network on sdn controller [ip:%s] failed", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10012, "delete vxlan network on sdn controller [ip:%s] failed", self.getIp()));
                 return;
             }
 
             completion.success();
         } catch (Exception e) {
-            completion.fail(operr("delete vxlan network on sdn controller [ip:%s] failed because %s", self.getIp(), e.getMessage()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10013, "delete vxlan network on sdn controller [ip:%s] failed because %s", self.getIp(), e.getMessage()));
         }
     }
 
@@ -448,14 +449,14 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
         try {
             H3cVcfcCommands.GetH3cTeamLederIpReply rsp = new H3cVcfcHttpClient<>(H3cVcfcCommands.GetH3cTeamLederIpReply.class).syncCall("GET", self.getIp(), H3cVcfcCommands.H3C_VCFC_TEAM_LEADERIP, cmd, getH3cHeaders(token));
             if (rsp == null) {
-                completion.fail(operr("get leader of sdn controller [ip:%s] failed", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10014, "get leader of sdn controller [ip:%s] failed", self.getIp()));
                 return;
             }
 
             leaderIp = rsp.ip;
             completion.success();
         } catch (Exception e) {
-            completion.fail(operr("get token of sdn controller [ip:%s] failed because %s", self.getIp(), e.getMessage()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10015, "get token of sdn controller [ip:%s] failed because %s", self.getIp(), e.getMessage()));
         }
     }
 
@@ -469,7 +470,7 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
         try {
             H3cVcfcCommands.LoginRsp rsp = new H3cVcfcHttpClient<>(H3cVcfcCommands.LoginRsp.class).syncCall("POST", self.getIp(), H3cVcfcCommands.H3C_VCFC_GET_TOKEN, cmd, getH3cHeaders());
             if (rsp == null) {
-                completion.fail(operr("get token of sdn controller [ip:%s] failed", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10016, "get token of sdn controller [ip:%s] failed", self.getIp()));
                 return;
             }
 
@@ -477,7 +478,7 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
 
             completion.success();
         } catch (Exception e) {
-            completion.fail(operr("get token of sdn controller [ip:%s] failed because %s", self.getIp(), e.getMessage()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10017, "get token of sdn controller [ip:%s] failed because %s", self.getIp(), e.getMessage()));
         }
     }
 }

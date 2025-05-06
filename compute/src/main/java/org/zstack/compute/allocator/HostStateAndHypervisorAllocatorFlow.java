@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class HostStateAndHypervisorAllocatorFlow extends AbstractHostAllocatorFlow {
@@ -81,23 +82,23 @@ public class HostStateAndHypervisorAllocatorFlow extends AbstractHostAllocatorFl
 
         if (ret.isEmpty()) {
             if (CollectionUtils.isEmpty(candidates)) {
-                fail(operr("no host having state=Enabled status=Connected hypervisorType=%s found",
+                fail(operr(ORG_ZSTACK_COMPUTE_ALLOCATOR_10022, "no host having state=Enabled status=Connected hypervisorType=%s found",
                         spec.getHypervisorType()));
                 return;
             }
 
             ErrorCode error;
             if (isNoConnectedHost()) {
-                error = operr("no Connected hosts found in the [%s] candidate hosts", candidates.size());
+                error = operr(ORG_ZSTACK_COMPUTE_ALLOCATOR_10023, "no Connected hosts found in the [%s] candidate hosts", candidates.size());
             } else if (isNoEnabledHost()) {
-                error = operr("no Enabled hosts found in the [%s] candidate hosts", candidates.size());
+                error = operr(ORG_ZSTACK_COMPUTE_ALLOCATOR_10024, "no Enabled hosts found in the [%s] candidate hosts", candidates.size());
             } else if (isNoHypervisor(spec.getHypervisorType())) {
-                error = operr("no Enabled hosts found in the [%s] candidate hosts having the hypervisor type [%s]", candidates.size(), spec.getHypervisorType());
+                error = operr(ORG_ZSTACK_COMPUTE_ALLOCATOR_10025, "no Enabled hosts found in the [%s] candidate hosts having the hypervisor type [%s]", candidates.size(), spec.getHypervisorType());
             } else {
                 if (spec.getHypervisorType() != null) {
-                    error = operr("no host having state=Enabled status=Connected hypervisorType=%s found", spec.getHypervisorType());
+                    error = operr(ORG_ZSTACK_COMPUTE_ALLOCATOR_10026, "no host having state=Enabled status=Connected hypervisorType=%s found", spec.getHypervisorType());
                 } else {
-                    error = operr("no host having state=Enabled status=Connected found");
+                    error = operr(ORG_ZSTACK_COMPUTE_ALLOCATOR_10027, "no host having state=Enabled status=Connected found");
                 }
             }
 

@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class VmAllocatePrimaryStorageForAttachingDiskFlow implements Flow {
@@ -47,7 +48,7 @@ public class VmAllocatePrimaryStorageForAttachingDiskFlow implements Flow {
         String hostUuid = spec.getVmInventory().getHostUuid() == null ? spec.getVmInventory().getLastHostUuid() : spec.getVmInventory().getHostUuid();
 
         if(hostUuid == null){
-            ErrorCode errorCode = operr(" Can not find the vm's host, please start the vm[%s], then mount the disk", spec.getVmInventory().getUuid());
+            ErrorCode errorCode = operr(ORG_ZSTACK_COMPUTE_VM_10214, " Can not find the vm's host, please start the vm[%s], then mount the disk", spec.getVmInventory().getUuid());
             chain.fail(errorCode);
             return;
         }

@@ -65,6 +65,7 @@ import static org.zstack.core.Platform.*;
 import static org.zstack.core.progress.ProgressReportService.createSubTaskProgress;
 import static org.zstack.storage.primary.local.LocalStorageUtils.getHostUuidFromInstallUrl;
 import static org.zstack.utils.CollectionDSL.*;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * Created by frank on 6/30/2015.
@@ -223,7 +224,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
                     String originVmUuid = tuple.get(1, String.class);
                     if (originClusterUuid == null) {
                         throw new ApiMessageInterceptionException(
-                                err(SysErrors.INTERNAL, "The clusterUuid of vm cannot be null when migrate the vm"));
+                                err(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10024, SysErrors.INTERNAL, "The clusterUuid of vm cannot be null when migrate the vm"));
                     }
 
 
@@ -265,7 +266,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
         final APILocalStorageMigrateVolumeEvent evt = new APILocalStorageMigrateVolumeEvent(msg.getId());
 
         if (self.getState() == PrimaryStorageState.Disabled) {
-            evt.setError(operr("The primary storage[uuid:%s] is disabled cold migrate is not allowed", msg.getPrimaryStorageUuid()));
+            evt.setError(operr(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10025, "The primary storage[uuid:%s] is disabled cold migrate is not allowed", msg.getPrimaryStorageUuid()));
             bus.publish(evt);
             return;
         }
@@ -544,7 +545,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
         refq.add(LocalStorageResourceRefVO_.resourceType, Op.EQ, VolumeVO.class.getSimpleName());
         LocalStorageResourceRefVO ref = refq.find();
         if (ref == null) {
-            reply.setError(operr("volume[uuid:%s] is not on the local storage anymore," +
+            reply.setError(operr(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10026, "volume[uuid:%s] is not on the local storage anymore," +
                     "it may have been deleted", msg.getVolumeUuid()));
             bus.reply(msg, reply);
             completion.done();
@@ -1088,7 +1089,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
                 HostStatus status = Q.New(HostVO.class).select(HostVO_.status)
                         .eq(HostVO_.uuid, msg.getHostUuid()).findValue();
                 if (status == HostStatus.Connected) {
-                    reply.setError(err(SysErrors.RESOURCE_NOT_FOUND,
+                    reply.setError(err(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10027, SysErrors.RESOURCE_NOT_FOUND,
                             "local primary storage[uuid:%s] doesn't have the host[uuid:%s]",
                             self.getUuid(), msg.getHostUuid()));
                     bus.reply(msg, reply);
@@ -1184,7 +1185,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
             @Override
             public void done() {
                 if (ret.errorCodes.size() == hostUuids.size()) {
-                    reply.setError(operr("failed to download image[uuid:%s] to all hosts in the local storage[uuid:%s]" +
+                    reply.setError(operr(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10028, "failed to download image[uuid:%s] to all hosts in the local storage[uuid:%s]" +
                             ". %s", msg.getImage().getUuid(), self.getUuid(), JSONObjectUtil.toJsonString(ret.errorCodes)));
                 } else if (!ret.errorCodes.isEmpty()) {
                     for (HostError err : ret.errorCodes) {
@@ -1295,7 +1296,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
         final String hostUuid = getHostUuidByResourceUuid(sinv.getUuid());
         if (hostUuid == null) {
             throw new OperationFailureException(inerr(
-                    "the volume snapshot[uuid:%s] is not on the local primary storage[uuid: %s]; the local primary storage" +
+            ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10029,         "the volume snapshot[uuid:%s] is not on the local primary storage[uuid: %s]; the local primary storage" +
                             " doesn't support the manner of downloading snapshots and creating the volume", sinv.getUuid(), self.getUuid()
             ));
         }
@@ -1429,10 +1430,10 @@ public class LocalStorageBase extends PrimaryStorageBase {
                         .param("resUuid", resUuid)
                         .find();
                 if (uuid == null) {
-                    throw new OperationFailureException(operr("cannot find any host which has resource[uuid:%s]", resUuid));
+                    throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10030, "cannot find any host which has resource[uuid:%s]", resUuid));
                 } else if (findHostByUuid(uuid) == null) {
                     throw new OperationFailureException(
-                            operr("Resource[uuid:%s] can only be operated on host[uuid:%s], but the host has been deleted",
+                            operr(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10031, "Resource[uuid:%s] can only be operated on host[uuid:%s], but the host has been deleted",
                                     resUuid, uuid));
                 }
                 return uuid;
@@ -2296,7 +2297,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
     @Override
     protected void handle(final DownloadDataVolumeToPrimaryStorageMsg msg) {
         if (msg.getHostUuid() == null && msg.getAllocatedInstallUrl() == null) {
-            throw new OperationFailureException(operr("unable to create the data volume[uuid: %s] on a local primary storage[uuid:%s], because the hostUuid is not specified.",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10032, "unable to create the data volume[uuid: %s] on a local primary storage[uuid:%s], because the hostUuid is not specified.",
                     msg.getVolumeUuid(), self.getUuid()));
         }
 
@@ -2359,7 +2360,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
     @Override
     protected void handle(GetInstallPathForDataVolumeDownloadMsg msg) {
         if (msg.getHostUuid() == null && msg.getAllocatedInstallUrl() == null) {
-            throw new OperationFailureException(operr("unable to create the data volume[uuid: %s] on a local primary storage[uuid:%s], because the hostUuid is not specified.",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10033, "unable to create the data volume[uuid: %s] on a local primary storage[uuid:%s], because the hostUuid is not specified.",
                     msg.getVolumeUuid(), self.getUuid()));
         }
 
@@ -2968,7 +2969,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
     private void checkLocalStoragePrimaryStorageInitilized(LocalStorageInitParam param, Completion completion) {
         List<HostInventory> hosts = getLocalStorageHosts();
         if (!param.isNewAdded && hosts.size() == 0) {
-            completion.fail(operr("No Host state is Enabled, Please check the availability of the host"));
+            completion.fail(operr(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10034, "No Host state is Enabled, Please check the availability of the host"));
         } else {
             checkLocalStoragePrimaryStorageInitilized(param, hosts, completion);
         }
@@ -3109,7 +3110,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
         if (checkPsRef && !Q.New(LocalStorageHostRefVO.class)
                 .eq(LocalStorageHostRefVO_.hostUuid, hostUuid)
                 .eq(LocalStorageHostRefVO_.primaryStorageUuid, self.getUuid()).isExists()) {
-            throw new OperationFailureException(operr("host[uuid:%s] cannot access local storage[uuid:%s], maybe it is detached", hostUuid, self.getUuid()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10035, "host[uuid:%s] cannot access local storage[uuid:%s], maybe it is detached", hostUuid, self.getUuid()));
         }
 
         SimpleQuery<HostVO> q = dbf.createQuery(HostVO.class);
@@ -3133,12 +3134,12 @@ public class LocalStorageBase extends PrimaryStorageBase {
         List<String> ret = q.getResultList();
         if (ret.isEmpty()) {
             throw new OperationFailureException(
-                    operr("resource[uuid:%s, type: %s] is not on the local primary storage[uuid:%s]",
+                    operr(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10036, "resource[uuid:%s, type: %s] is not on the local primary storage[uuid:%s]",
                             resUuid, resourceType, self.getUuid()));
         }
         if (ret.size() != 1) {
             throw new OperationFailureException(
-                    operr("resource[uuid:%s, type: %s] on the local primary storage[uuid:%s] maps to multiple hypervisor%s",
+                    operr(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10037, "resource[uuid:%s, type: %s] on the local primary storage[uuid:%s] maps to multiple hypervisor%s",
                             resUuid, resourceType, self.getUuid(), ret));
         }
 
@@ -3182,7 +3183,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
                 .isExists()) {
 
             throw new OperationFailureException(operr(
-                    "cannot attach ISO to a primary storage[uuid:%s] which is disabled",
+            ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10038,         "cannot attach ISO to a primary storage[uuid:%s] which is disabled",
                     self.getUuid()));
         }
     }
@@ -3235,7 +3236,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
                 .param("volUuids", msg.getVolumeUuids())
                 .list();
         if (!disconnectHostUuids.isEmpty()) {
-            r.setError(err(HostErrors.HOST_IS_DISCONNECTED, "host(s)[uuids: %s] volume locate is not Connected.", disconnectHostUuids));
+            r.setError(err(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10039, HostErrors.HOST_IS_DISCONNECTED, "host(s)[uuids: %s] volume locate is not Connected.", disconnectHostUuids));
         }
 
         bus.reply(msg, r);
@@ -3248,7 +3249,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
         }
 
         List<String> infos = refVols.stream().map(v -> String.format("uuid:%s, name:%s", v.getUuid(), v.getName())).collect(Collectors.toList());
-        return operr("volume[uuid:%s] has reference volume[%s], can not change volume type before flatten " +
+        return operr(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10040, "volume[uuid:%s] has reference volume[%s], can not change volume type before flatten " +
                 "them and their descendants", volumeUuid, infos.toString());
     }
 

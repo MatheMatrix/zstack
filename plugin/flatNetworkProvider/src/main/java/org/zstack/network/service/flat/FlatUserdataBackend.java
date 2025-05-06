@@ -57,6 +57,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * Created by frank on 10/13/2015.
@@ -246,7 +247,7 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
                     @Override
                     public ErrorCode getError(KvmResponseWrapper wrapper) {
                         AgentResponse rsp = wrapper.getResponse(AgentResponse.class);
-                        return rsp.isSuccess() ? null : operr("operation error, because:%s", rsp.getError());
+                        return rsp.isSuccess() ? null : operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10003, "operation error, because:%s", rsp.getError());
                     }
                 }, new ReturnValueCompletion<KvmResponseWrapper>(trigger) {
                     @Override
@@ -311,7 +312,7 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
                 @Override
                 public ErrorCode getError(KvmResponseWrapper w) {
                     CleanupUserdataRsp rsp = w.getResponse(CleanupUserdataRsp.class);
-                    return rsp.isSuccess() ? null : operr("operation error, because:%s", rsp.getError());
+                    return rsp.isSuccess() ? null : operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10004, "operation error, because:%s", rsp.getError());
                 }
             }, new ReturnValueCompletion<KvmResponseWrapper>(null) {
                 @Override
@@ -388,7 +389,7 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
             }
 
             if (status != HostStatus.Connected) {
-                completion.fail(operr("host[uuid:%s] is not connected", struct.getHostUuid()));
+                completion.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10005, "host[uuid:%s] is not connected", struct.getHostUuid()));
                 return;
             }
 
@@ -420,7 +421,7 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
                     KVMHostAsyncHttpCallReply r = reply.castReply();
                     ReleaseUserdataRsp rsp = r.toResponse(ReleaseUserdataRsp.class);
                     if (!rsp.isSuccess()) {
-                        completion.fail(operr("operation error, because:%s", rsp.getError()));
+                        completion.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10006, "operation error, because:%s", rsp.getError()));
                         return;
                     }
 
@@ -686,7 +687,7 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
                                 KVMHostAsyncHttpCallReply r = reply.castReply();
                                 ApplyUserdataRsp rsp = r.toResponse(ApplyUserdataRsp.class);
                                 if (!rsp.isSuccess()) {
-                                    trigger.fail(operr("operation error, because:%s", rsp.getError()));
+                                    trigger.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10007, "operation error, because:%s", rsp.getError()));
                                     return;
                                 }
 
@@ -772,7 +773,7 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
                                 KVMHostAsyncHttpCallReply r = reply.castReply();
                                 ReleaseUserdataRsp rsp = r.toResponse(ReleaseUserdataRsp.class);
                                 if (!rsp.isSuccess()) {
-                                    trigger.fail(operr("operation error, because:%s", rsp.getError()));
+                                    trigger.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10008, "operation error, because:%s", rsp.getError()));
                                     return;
                                 }
 

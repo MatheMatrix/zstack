@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class LldpManagerImpl extends AbstractService implements HostAfterConnectedExtensionPoint, HostDeleteExtensionPoint {
     private static final CLogger logger = Utils.getLogger(LldpManagerImpl.class);
@@ -193,7 +194,7 @@ public class LldpManagerImpl extends AbstractService implements HostAfterConnect
                     KVMHostAsyncHttpCallReply r = reply.castReply();
                     LldpKvmAgentCommands.GetLldpInfoResponse rsp = r.toResponse(LldpKvmAgentCommands.GetLldpInfoResponse.class);
                     if (!rsp.isSuccess()) {
-                        greply.setError(operr("operation error, because %s", rsp.getError()));
+                        greply.setError(operr(ORG_ZSTACK_NETWORK_HOSTNETWORKINTERFACE_LLDP_10002, "operation error, because %s", rsp.getError()));
                     } else {
                         HostNetworkInterfaceLldpVO vo = Q.New(HostNetworkInterfaceLldpVO.class).eq(HostNetworkInterfaceLldpVO_.interfaceUuid, msg.getInterfaceUuid()).find();
 

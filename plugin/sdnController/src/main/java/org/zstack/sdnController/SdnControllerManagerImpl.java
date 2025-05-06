@@ -37,6 +37,7 @@ import org.zstack.utils.logging.CLogger;
 import java.util.*;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class SdnControllerManagerImpl extends AbstractService implements SdnControllerManager,
         L2NetworkCreateExtensionPoint, L2NetworkDeleteExtensionPoint, InstantiateResourceOnAttachingNicExtensionPoint,
@@ -250,13 +251,13 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         }
 
         if (sdnControllerUuid == null) {
-            completion.fail(operr("can not create sdn l2 network because there is not sdn controller uuid in api message"));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_10000, "can not create sdn l2 network because there is not sdn controller uuid in api message"));
             return;
         }
 
         SdnControllerVO vo = dbf.findByUuid(sdnControllerUuid, SdnControllerVO.class);
         if (vo == null) {
-            completion.fail(operr("can not found sdn controller for l2 network[uuid:%s, vswitchType:%s]",
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_10001, "can not found sdn controller for l2 network[uuid:%s, vswitchType:%s]",
                     l2Network.getUuid(), l2Network.getvSwitchType()));
             return;
         }
@@ -323,7 +324,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         SdnControllerVO vo = dbf.findByUuid(sdnControllerUuid, SdnControllerVO.class);
         SdnControllerFactory factory = getSdnControllerFactory(vo.getVendorType());
         if (factory == null) {
-            completion.fail(operr("there is no sdn controller factory for sdn controller type:%s", vo.getVendorType()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_10002, "there is no sdn controller factory for sdn controller type:%s", vo.getVendorType()));
             return;
         }
 
@@ -361,7 +362,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         SdnControllerVO vo = dbf.findByUuid(controllerUuid, SdnControllerVO.class);
         SdnControllerFactory factory = getSdnControllerFactory(vo.getVendorType());
         if (factory == null) {
-            completion.fail(operr("there is no sdn controller factory for sdn controller type:%s", vo.getVendorType()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_10003, "there is no sdn controller factory for sdn controller type:%s", vo.getVendorType()));
             return;
         }
 
@@ -435,7 +436,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             String controllerUuid = L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID.getTokenByResourceUuid(
                     l2VO.getUuid(), L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID_TOKEN);
             if (controllerUuid == null) {
-                completion.fail(operr("sdn l2 network[uuid:%s] is not attached controller", l2VO.getUuid()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_10004, "sdn l2 network[uuid:%s] is not attached controller", l2VO.getUuid()));
                 return;
             }
 
@@ -462,7 +463,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         String controllerUuid = L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID.getTokenByResourceUuid(
                 l2NetworkVO.getUuid(), L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID_TOKEN);
         if (controllerUuid == null) {
-            completion.fail(operr("sdn l2 network[uuid:%s] is not attached controller", l2NetworkVO.getUuid()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_10005, "sdn l2 network[uuid:%s] is not attached controller", l2NetworkVO.getUuid()));
             return;
         }
 
@@ -587,7 +588,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             String controllerUuid = L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID.getTokenByResourceUuid(
                     l2VO.getUuid(), L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID_TOKEN);
             if (controllerUuid == null) {
-                completion.fail(operr("sdn l2 network[uuid:%s] is not attached controller", l2VO.getUuid()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_10006, "sdn l2 network[uuid:%s] is not attached controller", l2VO.getUuid()));
                 return;
             }
 
@@ -636,7 +637,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             String controllerUuid = L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID.getTokenByResourceUuid(
                     l2VO.getUuid(), L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID_TOKEN);
             if (controllerUuid == null) {
-                completion.fail(operr("sdn l2 network[uuid:%s] is not attached controller", l2VO.getUuid()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_10007, "sdn l2 network[uuid:%s] is not attached controller", l2VO.getUuid()));
                 return;
             }
 

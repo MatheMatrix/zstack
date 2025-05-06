@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * Created by mingjian.deng on 2017/11/6.
@@ -133,7 +134,7 @@ public class HostSortorChain implements HostSortorStrategy {
                             logger.debug(String.format("[Host Allocation]: %s on host[uuid:%s]. try next one",
                                     e.getMessage(), host.getUuid()), e);
                             trigger.fail(operr(
-                                    "[Host Allocation]: %s on host[uuid:%s]. try next one. %s", e.getMessage(), host.getUuid(), e.getMessage()));
+                            ORG_ZSTACK_COMPUTE_ALLOCATOR_10028,         "[Host Allocation]: %s on host[uuid:%s]. try next one. %s", e.getMessage(), host.getUuid(), e.getMessage()));
                         }
                     }
 

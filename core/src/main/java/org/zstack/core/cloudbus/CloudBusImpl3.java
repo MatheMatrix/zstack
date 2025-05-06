@@ -51,6 +51,7 @@ import static org.zstack.core.Platform.*;
 import static org.zstack.core.cloudbus.CloudBusGlobalProperty.SYNC_CALL_TIMEOUT;
 import static org.zstack.utils.BeanUtils.getProperty;
 import static org.zstack.utils.BeanUtils.setProperty;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class CloudBusImpl3 implements CloudBus, CloudBusIN {
     private static final CLogger logger = Utils.getLogger(CloudBusImpl3.class);
@@ -287,7 +288,7 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
     }
 
     private MessageReply createTimeoutReply(NeedReplyMessage m) {
-        return createErrorReply(m, touterr(m.toErrorString()));
+        return createErrorReply(m, touterr(ORG_ZSTACK_CORE_CLOUDBUS_10002, m.toErrorString()));
     }
 
     @Override
@@ -329,7 +330,7 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
 
                 timeoutTaskReceipt.cancel();
 
-                callback.run(createErrorReply(msg, canerr(error)));
+                callback.run(createErrorReply(msg, canerr(ORG_ZSTACK_CORE_CLOUDBUS_10003, error)));
             }
 
             @Override
@@ -454,7 +455,7 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
                 callReplyPreSendingExtensions(reply, (NeedReplyMessage) request);
             } catch (Exception e) {
                 logger.error("failed to call pre-sending reply extension:", e);
-                reply.setError(operr(e.getMessage()));
+                reply.setError(operr(ORG_ZSTACK_CORE_CLOUDBUS_10004, e.getMessage()));
             }
         }
 
@@ -530,7 +531,7 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
             try {
                 doSend();
             } catch (Throwable th) {
-                replyErrorIfNeeded(operr(th.getMessage()));
+                replyErrorIfNeeded(operr(ORG_ZSTACK_CORE_CLOUDBUS_10005, th.getMessage()));
             }
         }
 
@@ -612,12 +613,12 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
                 }.run();
 
                 if (!rsp.getStatusCode().is2xxSuccessful()) {
-                    replyErrorIfNeeded(operr("HTTP ERROR, status code: %s, body: %s", rsp.getStatusCode(), rsp.getBody()));
+                    replyErrorIfNeeded(operr(ORG_ZSTACK_CORE_CLOUDBUS_10006, "HTTP ERROR, status code: %s, body: %s", rsp.getStatusCode(), rsp.getBody()));
                 }
             } catch (OperationFailureException e) {
                 replyErrorIfNeeded(e.getErrorCode());
             } catch (Throwable e) {
-                replyErrorIfNeeded(operr(e.getMessage()));
+                replyErrorIfNeeded(operr(ORG_ZSTACK_CORE_CLOUDBUS_10007, e.getMessage()));
             }
         }
 
@@ -794,7 +795,7 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
                                 if (t instanceof OperationFailureException) {
                                     replyErrorByMessageType(msg, ((OperationFailureException) t).getErrorCode());
                                 } else {
-                                    replyErrorByMessageType(msg, inerr(t.getMessage()));
+                                    replyErrorByMessageType(msg, inerr(ORG_ZSTACK_CORE_CLOUDBUS_10008, t.getMessage()));
                                 }
                             }
 
@@ -871,16 +872,16 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
         String details = String.format("No service deals with message: %s", dumpMessage(msg));
         if (msg instanceof APISyncCallMessage) {
             APIReply reply = new APIReply();
-            reply.setError(err(SysErrors.UNKNOWN_MESSAGE_ERROR, details));
+            reply.setError(err(ORG_ZSTACK_CORE_CLOUDBUS_10009, SysErrors.UNKNOWN_MESSAGE_ERROR, details));
             reply.setSuccess(false);
             reply(msg, reply);
         } else if (msg instanceof APIMessage) {
             APIEvent evt = new APIEvent(msg.getId());
-            evt.setError(err(SysErrors.UNKNOWN_MESSAGE_ERROR, details));
+            evt.setError(err(ORG_ZSTACK_CORE_CLOUDBUS_10010, SysErrors.UNKNOWN_MESSAGE_ERROR, details));
             publish(evt);
         } else if (msg instanceof NeedReplyMessage) {
             MessageReply reply = new MessageReply();
-            reply.setError(err(SysErrors.UNKNOWN_MESSAGE_ERROR, details));
+            reply.setError(err(ORG_ZSTACK_CORE_CLOUDBUS_10011, SysErrors.UNKNOWN_MESSAGE_ERROR, details));
             reply.setSuccess(false);
             reply(msg, reply);
         }
@@ -908,7 +909,7 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
 
     private void replyErrorIfMessageNeedReply(Message msg, String errStr) {
         if (msg instanceof NeedReplyMessage) {
-            ErrorCode err = inerr(errStr);
+            ErrorCode err = inerr(ORG_ZSTACK_CORE_CLOUDBUS_10012, errStr);
             replyErrorIfMessageNeedReply(msg, err);
         } else {
             DebugUtils.dumpStackTrace(String.format("An error happened when dealing with message[%s], because this message doesn't need a reply, we call it out loudly\nerror: %s\nmessage dump: %s", msg.getClass().getName(), errStr, dumpMessage(msg)));
@@ -916,7 +917,7 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
     }
 
     private void replyErrorExistingApiEvent(APIEvent evt, String err) {
-        replyErrorExistingApiEvent(evt, inerr(err));
+        replyErrorExistingApiEvent(evt, inerr(ORG_ZSTACK_CORE_CLOUDBUS_10013, err));
     }
 
     private void replyErrorExistingApiEvent(APIEvent evt, ErrorCode err) {
@@ -945,7 +946,7 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
     }
 
     private void replyErrorToApiMessage(APIMessage msg, String err) {
-        replyErrorToApiMessage(msg, inerr(err));
+        replyErrorToApiMessage(msg, inerr(ORG_ZSTACK_CORE_CLOUDBUS_10014, err));
     }
 
     @Override
@@ -974,7 +975,7 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
     public void logExceptionWithMessageDump(Message msg, Throwable e) {
         if (!(e instanceof OperationFailureException)) {
             String errMsg = String.format("unhandled throwable happened when dealing with message[%s], dump: %s", msg.getClass().getName(), dumpMessage(msg));
-            Platform.addErrorCounter(inerr(errMsg));
+            Platform.addErrorCounter(inerr(ORG_ZSTACK_CORE_CLOUDBUS_10015, errMsg));
             logger.warn(errMsg, e);
         }
     }

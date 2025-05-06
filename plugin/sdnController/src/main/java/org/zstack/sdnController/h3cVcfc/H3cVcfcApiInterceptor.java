@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.zstack.core.Platform.argerr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class H3cVcfcApiInterceptor implements ApiMessageInterceptor, GlobalApiMessageInterceptor {
     private static final CLogger logger = Utils.getLogger(H3cVcfcApiInterceptor.class);
@@ -100,7 +101,7 @@ public class H3cVcfcApiInterceptor implements ApiMessageInterceptor, GlobalApiMe
     private void validate(APICreateVniRangeMsg msg) {
         VxlanNetworkPoolVO pool = dbf.findByUuid(msg.getL2NetworkUuid(), VxlanNetworkPoolVO.class);
         if ( pool == null ) {
-            throw new ApiMessageInterceptionException(argerr("unable create vni range, because l2 uuid[%s] is not vxlan network pool",msg.getL2NetworkUuid()));
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10000, "unable create vni range, because l2 uuid[%s] is not vxlan network pool",msg.getL2NetworkUuid()));
         }
 
         HardwareL2VxlanNetworkPoolVO poolVO = dbf.findByUuid(msg.getL2NetworkUuid(), HardwareL2VxlanNetworkPoolVO.class);
@@ -115,7 +116,7 @@ public class H3cVcfcApiInterceptor implements ApiMessageInterceptor, GlobalApiMe
 
         // user's vni must <= 4094
         if (msg.getStartVni() > 4094 || msg.getEndVni() > 4094) {
-            throw new ApiMessageInterceptionException(argerr("the vni range:[%s.%s} is illegal, because h3c's controller uses vni as vlan id", msg.getStartVni(), msg.getEndVni()));
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10001, "the vni range:[%s.%s} is illegal, because h3c's controller uses vni as vlan id", msg.getStartVni(), msg.getEndVni()));
         }
 
         SdnControllerL2 sdnController = sdnControllerManager.getSdnControllerL2(vo);
@@ -130,7 +131,7 @@ public class H3cVcfcApiInterceptor implements ApiMessageInterceptor, GlobalApiMe
                 return;
             }
         }
-        throw new ApiMessageInterceptionException(argerr("the vni range:[%s.%s} is illegal, must covered by a sdn's vniRange", userVniRange.startVni, userVniRange.endVni));
+        throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10002, "the vni range:[%s.%s} is illegal, must covered by a sdn's vniRange", userVniRange.startVni, userVniRange.endVni));
     }
 
     private void validate(APICreateL3NetworkMsg msg) {
@@ -176,7 +177,7 @@ public class H3cVcfcApiInterceptor implements ApiMessageInterceptor, GlobalApiMe
             return;
         }
         if (!validateH3cController(msg)) {
-            throw new ApiMessageInterceptionException(argerr("H3C VCFC controller must include systemTags vdsUuid::{%s}"));
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10003, "H3C VCFC controller must include systemTags vdsUuid::{%s}"));
         }
     }
 }

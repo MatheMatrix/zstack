@@ -37,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class XInfiniApiHelper {
 
@@ -75,7 +76,7 @@ public class XInfiniApiHelper {
             }
         }
 
-        throw new OperationFailureException(operr("xinfini request failed, message: %s.",
+        throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10000, "xinfini request failed, message: %s.",
                 req.getClass().getSimpleName()));
     }
 
@@ -90,13 +91,13 @@ public class XInfiniApiHelper {
                 return;
             }
 
-            completion.fail(operr("xinfini request failed, message: %s.", result.getMessage()));
+            completion.fail(operr(ORG_ZSTACK_XINFINI_10001, "xinfini request failed, message: %s.", result.getMessage()));
         });
     }
 
     public void errorOut(XInfiniResponse rsp) {
         if (!rsp.isSuccess()) {
-            throw new OperationFailureException(operr("xinfini request failed, message: %s.", rsp.getMessage()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10002, "xinfini request failed, message: %s.", rsp.getMessage()));
         }
     }
 
@@ -167,7 +168,7 @@ public class XInfiniApiHelper {
         QueryBdcResponse rsp = queryErrorOut(req, QueryBdcResponse.class);
         if (rsp.getMetadata().getPagination().getCount() == 0) {
             if (errorIfNotExist) {
-                throw new OperationFailureException(operr("bdc with ip %s not found.", ip));
+                throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10003, "bdc with ip %s not found.", ip));
             }
 
             return null;
@@ -393,7 +394,7 @@ public class XInfiniApiHelper {
                 return;
             }
 
-            throw new OperationFailureException(operr("delete bdev failed %s", rsp.getMessage()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10004, "delete bdev failed %s", rsp.getMessage()));
         }
 
         GetBdcBdevRequest gReq = new GetBdcBdevRequest();
@@ -419,7 +420,7 @@ public class XInfiniApiHelper {
                 return;
             }
 
-            throw new OperationFailureException(operr("delete volume failed %s", rsp.getMessage()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10005, "delete volume failed %s", rsp.getMessage()));
         }
 
         GetVolumeRequest gReq = new GetVolumeRequest();
@@ -452,7 +453,7 @@ public class XInfiniApiHelper {
                     .isExists();
 
             if (exist) {
-                throw new OperationFailureException(operr("snapshot %s has %d cloned volumes, volumes names: %s", snapShotId, vRsp.getMetadata().getPagination().getCount(), volNames));
+                throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10006, "snapshot %s has %d cloned volumes, volumes names: %s", snapShotId, vRsp.getMetadata().getPagination().getCount(), volNames));
             }
             logger.info("all cloned volumes not exist in database, try to delete them");
             // try to delete cloned volumes if not exist in db
@@ -471,7 +472,7 @@ public class XInfiniApiHelper {
                 return;
             }
 
-            throw new OperationFailureException(operr("delete volume snapshot failed %s", rsp.getMessage()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10007, "delete volume snapshot failed %s", rsp.getMessage()));
         }
         GetVolumeSnapshotRequest gReq = new GetVolumeSnapshotRequest();
         gReq.setId(snapShotId);
@@ -582,7 +583,7 @@ public class XInfiniApiHelper {
                 return;
             }
 
-            throw new OperationFailureException(operr("delete volume-client-group-mapping failed %s", rsp.getMessage()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10008, "delete volume-client-group-mapping failed %s", rsp.getMessage()));
         }
 
         GetVolumeClientGroupMappingRequest gReq = new GetVolumeClientGroupMappingRequest();
@@ -629,7 +630,7 @@ public class XInfiniApiHelper {
                 return;
             }
 
-            throw new OperationFailureException(operr("delete iscsi client failed %s", rsp.getMessage()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10009, "delete iscsi client failed %s", rsp.getMessage()));
         }
 
         GetIscsiClientRequest gReq = new GetIscsiClientRequest();

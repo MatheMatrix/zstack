@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtensionPoint, KVMPingAgentNoFailureExtensionPoint,
         KvmVmActiveVolumeSyncExtensionPoint, KVMStartVmExtensionPoint {
@@ -181,7 +182,7 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
 
     private void checkHostStatus(KVMHostInventory host, List<ExternalPrimaryStorageVO> extPss, WhileDoneCompletion completion) {
         Map<String, PrimaryStorageHostStatus> hostStatus = getHostStatus(extPss);
-        new While<>(extPss).each((extPs, compl) -> {
+        new While<>(extPss).each((ExternalPrimaryStorageVO extPs, WhileCompletion compl) -> {
             logger.debug(String.format("checking host status for external primary storage[uuid:%s, name:%s] on KVM host[uuid:%s, name:%s]",
                     extPs.getUuid(), extPs.getName(), host.getUuid(), host.getName()));
             extPsFactory.getControllerSvc(extPs.getUuid()).reportNodeHealthy(host, new ReturnValueCompletion<NodeHealthy>(compl) {
@@ -194,7 +195,7 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
                         status = PrimaryStorageHostStatus.Connected;
                     } else {
                         status = PrimaryStorageHostStatus.Disconnected;
-                        err = operr("external primary storage[uuid:%s, name:%s] returns unhealthy status: %s",
+                        err = operr(ORG_ZSTACK_EXTERNALSTORAGE_PRIMARY_KVM_10000, "external primary storage[uuid:%s, name:%s] returns unhealthy status: %s",
                                 extPs.getUuid(), extPs.getName(), returnValue.getHealthy());
                         compl.addError(err);
                     }

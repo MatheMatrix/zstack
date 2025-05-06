@@ -64,6 +64,7 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.asList;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.CollectionDSL.list;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * Created by xing5 on 2016/4/4.
@@ -505,7 +506,7 @@ public class FlatEipBackend implements EipBackend, KVMHostConnectExtensionPoint,
                 KVMHostAsyncHttpCallReply ar = reply.castReply();
                 AgentRsp rsp = ar.toResponse(AgentRsp.class);
                 if (!rsp.success) {
-                    completion.fail(operr("operation error, because:%s", rsp.error));
+                    completion.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10015, "operation error, because:%s", rsp.error));
                     return;
                 }
 
@@ -539,7 +540,7 @@ public class FlatEipBackend implements EipBackend, KVMHostConnectExtensionPoint,
                 KVMHostAsyncHttpCallReply ar = reply.castReply();
                 AgentRsp rsp = ar.toResponse(AgentRsp.class);
                 if (!rsp.success) {
-                    completion.fail(operr("operation error, because:%s", rsp.error));
+                    completion.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10016, "operation error, because:%s", rsp.error));
                     return;
                 }
 
@@ -609,7 +610,7 @@ public class FlatEipBackend implements EipBackend, KVMHostConnectExtensionPoint,
             if (vm == null) {
                 throw new CloudRuntimeException(String.format("cannot find the vm[uuid:%s]", vmUuid));
             } else {
-                throw new OperationFailureException(operr("unable to apply the EIP operation for the the vm[uuid:%s, state:%s], because cannot find the VM's hostUUid",
+                throw new OperationFailureException(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10017, "unable to apply the EIP operation for the the vm[uuid:%s, state:%s], because cannot find the VM's hostUUid",
                                 vmUuid, vm.getState()));
             }
         }
@@ -679,7 +680,7 @@ public class FlatEipBackend implements EipBackend, KVMHostConnectExtensionPoint,
                 KVMHostAsyncHttpCallReply ar = reply.castReply();
                 AgentRsp rsp = ar.toResponse(AgentRsp.class);
                 if (!rsp.success) {
-                    completion.fail(operr("operation error, because:%s", rsp.error));
+                    completion.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10018, "operation error, because:%s", rsp.error));
                     return;
                 }
 
@@ -741,7 +742,7 @@ public class FlatEipBackend implements EipBackend, KVMHostConnectExtensionPoint,
                 KVMHostAsyncHttpCallReply ar = reply.castReply();
                 AgentRsp rsp = ar.toResponse(AgentRsp.class);
                 if (!rsp.success) {
-                    completion.fail(operr("operation error, because:%s", rsp.error));
+                    completion.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10019, "operation error, because:%s", rsp.error));
                     return;
                 }
 

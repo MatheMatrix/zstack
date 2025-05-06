@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class ErrorCode implements Serializable, Cloneable {
+    private String globalErrorCode;
     private String code;
     private String description;
     private String details;
@@ -59,6 +60,14 @@ public class ErrorCode implements Serializable, Cloneable {
         this.details = details;
     }
 
+    public ErrorCode(String globalErrorCode, String code, String description, String details) {
+        super();
+        this.globalErrorCode = globalErrorCode;
+        this.code = code;
+        this.description = description;
+        this.details = details;
+    }
+
     public ErrorCode(ErrorCode other) {
         this.code = other.code;
         this.description = other.description;
@@ -67,6 +76,14 @@ public class ErrorCode implements Serializable, Cloneable {
         this.messages = other.messages;
         this.cause = other.cause;
         this.location = other.location;
+    }
+
+    public String getGlobalErrorCode() {
+        return globalErrorCode;
+    }
+
+    public void setGlobalErrorCode(String globalErrorCode) {
+        this.globalErrorCode = globalErrorCode;
     }
 
     public void setCode(String code) {

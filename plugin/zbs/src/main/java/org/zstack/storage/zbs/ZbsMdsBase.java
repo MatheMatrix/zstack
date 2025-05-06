@@ -18,6 +18,7 @@ import org.zstack.utils.ssh.SshResult;
 import java.util.concurrent.TimeUnit;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * @author Xingwei Yu
@@ -50,7 +51,7 @@ public abstract class ZbsMdsBase {
             ssh.setHostname(self.getMdsAddr()).setUsername(self.getSshUsername()).setPassword(self.getSshPassword()).setPort(self.getSshPort())
                     .checkTool("zbs").setTimeout(60).runErrorByExceptionAndClose();
         } catch (SshException e) {
-            throw new OperationFailureException(operr("The problem may be caused by zbs-tool is missing on mds node."));
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_ZBS_10020, "The problem may be caused by zbs-tool is missing on mds node."));
         }
     }
 
@@ -61,7 +62,7 @@ public abstract class ZbsMdsBase {
             ret = ssh.setHostname(self.getMdsAddr()).setUsername(self.getSshUsername()).setPassword(self.getSshPassword()).setPort(self.getSshPort())
                     .shell("zbs status mds --format json").setTimeout(60).runAndClose();
         } catch (SshException e) {
-            throw new OperationFailureException(operr("The problem may be caused by zbs storage health issue."));
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_ZBS_10021, "The problem may be caused by zbs storage health issue."));
         }
 
         if (ret.getReturnCode() != 0) {
@@ -136,7 +137,7 @@ public abstract class ZbsMdsBase {
             if (success) {
                 return null;
             }
-            return operr("operation error, because:%s", error);
+            return operr(ORG_ZSTACK_STORAGE_ZBS_10022, "operation error, because:%s", error);
         }
     }
 
