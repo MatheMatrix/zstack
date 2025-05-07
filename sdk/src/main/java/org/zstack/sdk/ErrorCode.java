@@ -4,6 +4,14 @@ import org.zstack.sdk.ErrorCode;
 
 public class ErrorCode  {
 
+    public java.lang.String globalErrorCode;
+    public void setGlobalErrorCode(java.lang.String globalErrorCode) {
+        this.globalErrorCode = globalErrorCode;
+    }
+    public java.lang.String getGlobalErrorCode() {
+        return this.globalErrorCode;
+    }
+
     public java.lang.String code;
     public void setCode(java.lang.String code) {
         this.code = code;
