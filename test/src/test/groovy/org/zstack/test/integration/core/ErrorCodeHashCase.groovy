@@ -29,9 +29,9 @@ class ErrorCodeHashCase extends SubCase{
         ErrorFacade errf = bean(ErrorFacade.class)
         ErrorCode err1, err2, err3
         ErrorCodeList errl1, errl2, errl3, errl4
-        err1 = operr("test error")
-        err2 = operr("test error")
-        err3 = argerr("test error")
+        err1 = operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "test error")
+        err2 = operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "test error")
+        err3 = argerr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "test error")
 
         assert err1.hashCode() == err1.hashCode()
         assert err1.hashCode() == err2.hashCode()

@@ -39,7 +39,7 @@ class BatchAddHostCase extends SubCase {
             while (!over) {
                 sleep(1000)
             }
-            reply.setError(operr("on purpose"))
+            reply.setError(operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "on purpose"))
             bus.reply(msg, reply)
         }
 

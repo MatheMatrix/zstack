@@ -43,7 +43,7 @@ class TimeBasedGarbageCollectorCase extends SubCase {
             if (ret == Behavior.SUCCESS) {
                 completion.success()
             } else if (ret == Behavior.FAILURE) {
-                completion.fail(operr("failure"))
+                completion.fail(operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "failure"))
             } else if (ret == Behavior.CANCEL) {
                 completion.cancel()
             } else {
@@ -61,7 +61,7 @@ class TimeBasedGarbageCollectorCase extends SubCase {
             if (ret == Behavior.SUCCESS) {
                 completion.success()
             } else if (ret == Behavior.FAILURE) {
-                completion.fail(operr("failure"))
+                completion.fail(operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "failure"))
             } else if (ret == Behavior.CANCEL) {
                 completion.cancel()
             } else {

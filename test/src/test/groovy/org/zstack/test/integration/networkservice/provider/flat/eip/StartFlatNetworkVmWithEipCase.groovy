@@ -213,7 +213,7 @@ class StartFlatNetworkVmWithEipCase extends SubCase {
 
         env.message(StopVipMsg.class) { StopVipMsg msg, CloudBus bus ->
             def reply = new StopVipReply()
-            reply.setError(operr("on purpose"))
+            reply.setError(operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "on purpose"))
             bus.reply(msg, reply)
         }
 

@@ -2,6 +2,11 @@ package org.zstack.utils.clouderrorcode;
 
 public class CloudOperationsErrorCode {
 
+    /**
+     * all case default use this error code
+     */
+    public static final String CLOUD_CASE_ERROR_10000 = "CLOUD_CASE_ERROR_10000";
+
     public static final String ORG_ZSTACK_STORAGE_CEPH_BACKUP_10000 = "ORG_ZSTACK_STORAGE_CEPH_BACKUP_10000";
 
     public static final String ORG_ZSTACK_STORAGE_CEPH_BACKUP_10001 = "ORG_ZSTACK_STORAGE_CEPH_BACKUP_10001";

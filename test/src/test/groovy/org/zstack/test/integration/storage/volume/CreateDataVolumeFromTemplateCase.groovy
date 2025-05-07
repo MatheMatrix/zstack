@@ -123,7 +123,7 @@ class CreateDataVolumeFromTemplateCase extends SubCase{
 
         env.message(DownloadDataVolumeToPrimaryStorageMsg.class){DownloadDataVolumeToPrimaryStorageMsg msg, CloudBus bus ->
             def reply = new DownloadDataVolumeToPrimaryStorageReply()
-            reply.setError(operr("on purpose"))
+            reply.setError(operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "on purpose"))
             installPath = PathUtil.join(ps.getUrl(), PrimaryStoragePathMaker.makeDataVolumeInstallPath(volumeUuid))
             bus.reply(msg, reply)
         }

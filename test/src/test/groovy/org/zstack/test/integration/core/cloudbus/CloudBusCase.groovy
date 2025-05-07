@@ -74,7 +74,7 @@ class CloudBusCase extends SubCase{
                 })
             } else if (msg instanceof FakeNeedReplyMessage3) {
                 def r = new MessageReply()
-                r.setError(errf.stringToOperationError("fake first error", [operr("origin error")]))
+                r.setError(errf.stringToOperationError("fake first error", [operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "origin error")]))
                 bus.reply(msg, r)
             }
         }

@@ -31,7 +31,7 @@ class PrimaryStorageController {
             TProxy proxy = new TProxy(ps)
             proxy.mockMethod("connectHook") { Closure invokeSuper, PrimaryStorageBase.ConnectParam param, Completion completion ->
                 if (disconnectedUuids.contains(ps.self.uuid)) {
-                    completion.fail(Platform.operr("PrimaryStorageController puts it down"))
+                    completion.fail(Platform.operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "PrimaryStorageController puts it down"))
                 } else {
                     return invokeSuper()
                 }

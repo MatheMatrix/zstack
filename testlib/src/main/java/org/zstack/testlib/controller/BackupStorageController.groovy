@@ -32,7 +32,7 @@ class BackupStorageController {
             def proxy = new TProxy(bs)
             proxy.mockMethod("connectHook") { invokeSuper, boolean newAdd, Completion completion ->
                 if (disconnectedUuids.contains(bs.self.uuid)) {
-                    completion.fail(Platform.operr("BackupStorageController puts it down"))
+                    completion.fail(Platform.operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "BackupStorageController puts it down"))
                 } else {
                     return invokeSuper()
                 }
