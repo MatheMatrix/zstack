@@ -2,7 +2,7 @@ package org.zstack.sdk;
 
 
 
-public class RecordData  {
+public class AliyunInvocationRecordData  {
 
     public java.sql.Timestamp startTime;
     public void setStartTime(java.sql.Timestamp startTime) {

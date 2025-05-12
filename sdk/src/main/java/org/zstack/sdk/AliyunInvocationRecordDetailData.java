@@ -2,7 +2,7 @@ package org.zstack.sdk;
 
 
 
-public class DetailData  {
+public class AliyunInvocationRecordDetailData  {
 
     public java.lang.String InstanceId;
     public void setInstanceId(java.lang.String InstanceId) {

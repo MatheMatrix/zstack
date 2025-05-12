@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class GetGuestVmScriptExecutedRecordAndDetailAction extends AbstractAction {
+public class GetAliyunInvocationsAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class GetGuestVmScriptExecutedRecordAndDetailAction extends AbstractActio
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailResult value;
+        public org.zstack.sdk.GetAliyunInvocationsResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -30,6 +30,9 @@ public class GetGuestVmScriptExecutedRecordAndDetailAction extends AbstractActio
 
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String vmInstanceUuid;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.Boolean includeOutput = false;
 
     @Param(required = false)
     public java.lang.Integer limit = 1000;
@@ -63,8 +66,8 @@ public class GetGuestVmScriptExecutedRecordAndDetailAction extends AbstractActio
             return ret;
         }
         
-        org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailResult value = res.getResult(org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailResult.class);
-        ret.value = value == null ? new org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailResult() : value; 
+        org.zstack.sdk.GetAliyunInvocationsResult value = res.getResult(org.zstack.sdk.GetAliyunInvocationsResult.class);
+        ret.value = value == null ? new org.zstack.sdk.GetAliyunInvocationsResult() : value; 
 
         return ret;
     }
@@ -94,7 +97,7 @@ public class GetGuestVmScriptExecutedRecordAndDetailAction extends AbstractActio
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "GET";
-        info.path = "/scripts/records-details";
+        info.path = "/scripts/aliyun-invocations";
         info.needSession = true;
         info.needPoll = false;
         info.parameterName = "";
