@@ -53,10 +53,7 @@ import org.zstack.utils.network.NetworkUtils;
 
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -687,7 +684,8 @@ public class FlatEipBackend implements EipBackend, KVMHostConnectExtensionPoint,
                 }
 
                 for (AfterApplyFlatEipExtensionPoint ext : pluginRgty.getExtensionList(AfterApplyFlatEipExtensionPoint.class)) {
-                    ext.AfterApplyFlatEip(asList(struct.getVip().getUuid()), hostUuid);
+                    ext.AfterApplyFlatEip(Collections.singletonList(struct.getVip().getUuid()), hostUuid);
+                    ext.cleanGatewayArpEntry(struct.getNic().getVmInstanceUuid(), struct.getGuestIp().getGateway());
                 }
 
                 completion.success();
