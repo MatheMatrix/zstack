@@ -77,6 +77,9 @@ if [ $tool = 'zstack-cli' ]; then
 
 elif [ $tool = 'zstack-ctl' ]; then
     CTL_VIRENV_PATH=/var/lib/zstack/virtualenv/zstackctl
+    lsof +D $CTL_VIRENV_PATH
+    echo "----"
+    lsof +D $CTL_VIRENV_PATH/lib/python2.7
     rm -rf $CTL_VIRENV_PATH && virtualenv $CTL_VIRENV_PATH --python=python2.7 || exit 1
     . $CTL_VIRENV_PATH/bin/activate
     cd $cwd
