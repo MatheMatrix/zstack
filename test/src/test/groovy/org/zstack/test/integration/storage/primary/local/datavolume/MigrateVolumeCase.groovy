@@ -343,7 +343,7 @@ class MigrateVolumeCase extends SubCase {
             env.message(LocalStorageCreateEmptyVolumeMsg.class) { LocalStorageCreateEmptyVolumeMsg msg, CloudBus bus ->
                 def reply = new LocalStorageCreateEmptyVolumeReply()
                 run.run()
-                reply.setError(operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "on purpose"))
+                reply.setError(operr("CASE_OF_ERROR_CODE",  "on purpose"))
                 context.called = true
                 bus.reply(msg, reply)
             }

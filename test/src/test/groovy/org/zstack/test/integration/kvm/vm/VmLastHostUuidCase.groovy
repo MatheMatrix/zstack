@@ -180,7 +180,7 @@ class VmLastHostUuidCase extends SubCase{
     void testStartVmAllocateHostFailHostUuid(){
         env.message(AllocateHostMsg.class) { AllocateHostMsg msg, CloudBus bus ->
             def reply = new AllocateHostReply()
-            reply.setError(operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "allocate host fail"))
+            reply.setError(operr("CASE_OF_ERROR_CODE",  "allocate host fail"))
             bus.reply(msg, reply)
         }
         testStartVmExpect(false, host1.uuid, null, host2.uuid)
@@ -210,7 +210,7 @@ class VmLastHostUuidCase extends SubCase{
     void testMigrateVmAllocateHostFailHostUuid(){
         env.message(AllocateHostMsg.class) { AllocateHostMsg msg, CloudBus bus ->
             def reply = new AllocateHostReply()
-            reply.setError(operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "allocate host fail"))
+            reply.setError(operr("CASE_OF_ERROR_CODE",  "allocate host fail"))
             bus.reply(msg, reply)
         }
         testMigrateVmExpect(false, host1.uuid, host2.uuid, host1.uuid)

@@ -149,7 +149,7 @@ class VmVolumeGCCase extends SubCase {
 
             DeleteVolumeReply reply = new DeleteVolumeReply()
             reply.success = false
-            reply.setError(operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "ase mock error"))
+            reply.setError(operr("CASE_OF_ERROR_CODE",  "ase mock error"))
             bus.reply(msg, reply)
         }
 

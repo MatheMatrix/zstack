@@ -227,7 +227,7 @@ class MaintainHostCase extends SubCase{
 
         env.message(StopVmInstanceMsg){ StopVmInstanceMsg msg, CloudBus bus ->
             def r = new StopVmInstanceReply()
-            r.setError(operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "on purpose"))
+            r.setError(operr("CASE_OF_ERROR_CODE",  "on purpose"))
             bus.reply(msg, r)
         }
 

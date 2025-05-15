@@ -50,7 +50,7 @@ class RebootVmInstanceCase extends SubCase{
                     .update()
 
             StartVmOnHypervisorReply reply = new StartVmOnHypervisorReply()
-            reply.setError(operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "start fail on purpose"))
+            reply.setError(operr("CASE_OF_ERROR_CODE",  "start fail on purpose"))
             bus.reply(msg, reply)
         }
 

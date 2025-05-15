@@ -51,7 +51,7 @@ class VirtualRouterCreateFailedCase extends SubCase {
 
         env.message(StartNewCreatedApplianceVmMsg.class) { StartNewCreatedApplianceVmMsg msg, CloudBus bus ->
             InstantiateNewCreatedVmInstanceReply reply = new InstantiateNewCreatedVmInstanceReply()
-            reply.setError(operr(org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.CLOUD_CASE_ERROR_10000, "on purpose"))
+            reply.setError(operr("CASE_OF_ERROR_CODE",  "on purpose"))
             bus.reply(msg, reply)
         }
 
