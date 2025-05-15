@@ -189,6 +189,7 @@ public class VirtualRouter extends ApplianceVmBase {
         restf.asyncJsonPost(buildUrl(vr.getManagementNic().getIp(), VirtualRouterConstant.VR_PING), cmd, new JsonAsyncRESTCallback<PingRsp>(completion) {
             @Override
             public void fail(ErrorCode err) {
+                logger.debug("virtual router ping failed " + err.toString());
                 completion.fail(err);
             }
 
@@ -466,7 +467,8 @@ public class VirtualRouter extends ApplianceVmBase {
                         if (replies.size() == steps.size()) {
                             changeApplianceVmStatus(ApplianceVmStatus.Disconnected);
                         }
-                        
+
+                        logger.debug("ping virtual router reply " + JSONObjectUtil.toJsonString(replies));
                         bus.reply(msg, replies.get(0));
                         chain.next();
                     }
@@ -922,10 +924,6 @@ public class VirtualRouter extends ApplianceVmBase {
         }).error(new FlowErrorHandler(completion) {
             @Override
             public void handle(ErrorCode errCode, Map data) {
-                if (oldStatus == ApplianceVmStatus.Connected) {
-                    fireDisconnectedCanonicalEvent(errCode);
-                }
-
                 completion.fail(errCode);
             }
         }).start();

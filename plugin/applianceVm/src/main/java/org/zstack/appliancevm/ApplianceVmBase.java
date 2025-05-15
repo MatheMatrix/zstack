@@ -430,10 +430,6 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             @Override
             public void run(FlowTrigger trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Disconnected);
-                if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s stopped",
-                            getSelf().getUuid()));
-                }
                 trigger.next();
             }
 
@@ -468,7 +464,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
         data.setHealthy(false);
         data.setReason(err);
 
-        evtf.fire(ApplianceVmCanonicalEvents.SERVICE_UNHEALTHY_PATH, data);
+        evtf.fire(ApplianceVmCanonicalEvents.SERVICE_HEALTHY_PATH, data);
     }
 
     protected void fireServicehealthyCanonicalEvent() {
@@ -561,20 +557,12 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             @Override
             public void run(FlowTrigger trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Connecting);
-                if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s reboot",
-                            getSelf().getUuid()));
-                }
-                trigger.next();
+                                trigger.next();
             }
 
             @Override
             public void rollback(FlowRollback trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Disconnected);
-                if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s reboot failed",
-                            getSelf().getUuid()));
-                }
                 trigger.rollback();
             }
         });
@@ -640,10 +628,6 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             @Override
             public void rollback(FlowRollback trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Disconnected);
-                if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s start failed",
-                            getSelf().getUuid()));
-                }
                 trigger.rollback();
             }
         });
@@ -709,20 +693,12 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             @Override
             public void run(FlowTrigger trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Connecting);
-                if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s reboot",
-                            getSelf().getUuid()));
-                }
                 trigger.next();
             }
 
             @Override
             public void rollback(FlowRollback trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Disconnected);
-                if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s reboot failed",
-                            getSelf().getUuid()));
-                }
                 trigger.rollback();
             }
         });
@@ -781,10 +757,6 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             @Override
             public void rollback(FlowRollback trigger, Map data) {
                 changeApplianceVmStatus(ApplianceVmStatus.Disconnected);
-                if (originStatus.equals(ApplianceVmStatus.Connected)) {
-                    fireDisconnectedCanonicalEvent(operr("appliance vm %s start failed",
-                            getSelf().getUuid()));
-                }
                 trigger.rollback();
             }
         });
