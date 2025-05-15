@@ -10,6 +10,7 @@ public class MdsInfo {
     private int sshPort = 22;
     private String mdsAddr;
     private MdsStatus mdsStatus;
+    private long createDate;
 
     public String getSshUsername() {
         return sshUsername;
@@ -49,5 +50,13 @@ public class MdsInfo {
 
     public void setMdsStatus(MdsStatus mdsStatus) {
         this.mdsStatus = mdsStatus;
+    }
+
+    public long getCreateDate() {
+        return createDate;
+    }
+
+    public void setCreateDate(long createDate) {
+        this.createDate = createDate;
     }
 }

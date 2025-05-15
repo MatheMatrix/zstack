@@ -49,6 +49,7 @@ import org.zstack.utils.logging.CLogger;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -74,6 +75,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     private ExternalPrimaryStorageVO self;
     private AddonInfo addonInfo;
     private Config config;
+    private Map<String, Long> mdsCreateDateMap = new HashMap<>();
 
     public static final String DEPLOY_CLIENT_PATH = "/zbs/primarystorage/client/deploy";
     public static final String GET_CAPACITY_PATH = "/zbs/primarystorage/capacity";
@@ -243,6 +245,11 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             mdsInfo.setSshPassword(uri.getSshPassword());
             mdsInfo.setSshPort(uri.getSshPort());
             mdsInfo.setMdsAddr(uri.getHostname());
+            if (mdsCreateDateMap.containsKey(uri.getHostname())) {
+                mdsInfo.setCreateDate(mdsCreateDateMap.get(uri.getHostname()));
+            } else {
+                mdsInfo.setCreateDate(System.currentTimeMillis() / 1000);
+            }
             mdsInfos.add(mdsInfo);
         }
 
@@ -925,6 +932,10 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         self = dbf.reload(self);
         addonInfo = StringUtils.isEmpty(self.getAddonInfo()) ? new AddonInfo() : JSONObjectUtil.toObject(self.getAddonInfo(), AddonInfo.class);
         config = StringUtils.isEmpty(self.getConfig()) ? new Config() : JSONObjectUtil.toObject(self.getConfig(), Config.class);
+        if (addonInfo != null && !addonInfo.getMdsInfos().isEmpty()) {
+            mdsCreateDateMap = addonInfo.getMdsInfos().stream().map(MdsInfo::getMdsAddr)
+                    .collect(Collectors.toMap(Function.identity(), MdsInfo::getCreateDate));
+        }
     }
 
     public void changeStatus(PrimaryStorageStatus status) {
