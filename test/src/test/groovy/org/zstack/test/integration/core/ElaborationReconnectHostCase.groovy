@@ -39,13 +39,13 @@ class ElaborationReconnectHostCase extends SubCase {
         def err1 = Platform.operr("CASE_OF_ERROR_CODE",  "failed to create bridge") as ErrorCode
         assert err1.elaboration == null
 
-        def err2 = Platform.err( HostErrors.CONNECTION_ERROR, err1, "connection error for KVM host[uuid:%s, ip:%s]", Platform.getUuid(), "127.0.0.1") as ErrorCode
+        def err2 = Platform.err("CASE_OF_ERROR_CODE",  HostErrors.CONNECTION_ERROR, err1, "connection error for KVM host[uuid:%s, ip:%s]", Platform.getUuid(), "127.0.0.1") as ErrorCode
         assert err2.getElaboration() == null
 
-        def err3 = Platform.err( HostErrors.CONNECTION_ERROR, err2, "connection error for KVM host[uuid:%s, ip:%s]", Platform.getUuid(), "127.0.0.1") as ErrorCode
+        def err3 = Platform.err("CASE_OF_ERROR_CODE",  HostErrors.CONNECTION_ERROR, err2, "connection error for KVM host[uuid:%s, ip:%s]", Platform.getUuid(), "127.0.0.1") as ErrorCode
         assert err3.getElaboration() == null
 
-        def err4 = Platform.err( SysErrors.OPERATION_ERROR, err, "failed to create bridge") as ErrorCode
+        def err4 = Platform.err("CASE_OF_ERROR_CODE",  SysErrors.OPERATION_ERROR, err, "failed to create bridge") as ErrorCode
         assert err4.getElaboration() != null
         assert err4.elaboration.trim() == "错误信息: 无法重连物理机。"
     }

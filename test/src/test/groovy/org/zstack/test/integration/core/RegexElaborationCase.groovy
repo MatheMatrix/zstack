@@ -98,7 +98,7 @@ class RegexElaborationCase extends SubCase {
         causes.add(errCode2)
         errorCodes.setCauses(causes)
 
-        ErrorCode result = err( PrimaryStorageErrors.ATTACH_ERROR, errorCodes, errorCodes.getDetails())
+        ErrorCode result = err("CASE_OF_ERROR_CODE",  PrimaryStorageErrors.ATTACH_ERROR, errorCodes, errorCodes.getDetails())
 
         assert result.elaboration.trim().equals("错误信息: .*can not find vg .* and create vg with forceWipw=.*")
         assert result.messages.message_cn.trim().equals("无法将物理机上的共享块主存储加载到集群，因为存在原有数据，请勾选清理块设备并重试。")
@@ -112,7 +112,7 @@ class RegexElaborationCase extends SubCase {
         causes.add(errCode2)
         errorCodes.setCauses(causes)
 
-        result = err( PrimaryStorageErrors.ATTACH_ERROR, errorCodes, errorCodes.getDetails())
+        result = err("CASE_OF_ERROR_CODE",  PrimaryStorageErrors.ATTACH_ERROR, errorCodes, errorCodes.getDetails())
         assert result.elaboration.trim().equals("错误信息: 无法将物理机上的共享块主存储加载到集群，因为存在原有数据，请勾选清理块设备并重试。")
         assert result.messages.message_cn.trim().equals("无法将物理机上的共享块主存储加载到集群，因为存在原有数据，请勾选清理块设备并重试。")
         assert result.messages.message_en.trim().equals("Could not attach shared block storage to cluster, because device is not empty. Please select the checkbox \"Clear LUN\" and try again.")
@@ -124,7 +124,7 @@ class RegexElaborationCase extends SubCase {
      */
     void testElaboration8() {
         ErrorCode errorCode = Platform.operr("CASE_OF_ERROR_CODE",  "operation error, because:%s", "failed to execute bash")
-        ErrorCode result = err( VmErrors.START_ERROR, errorCode, errorCode.getDetails())
+        ErrorCode result = err("CASE_OF_ERROR_CODE",  VmErrors.START_ERROR, errorCode, errorCode.getDetails())
         // current error do not match elaboration
         assert result.elaboration == null
     }

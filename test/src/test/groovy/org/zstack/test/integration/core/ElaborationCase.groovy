@@ -64,7 +64,7 @@ class ElaborationCase extends SubCase {
         err = operr("CASE_OF_ERROR_CODE",  "test for missed error") as ErrorCode
         assert err.elaboration == null
 
-        err = Platform.err( IdentityErrors.INVALID_SESSION, "xxxxxxxxx") as ErrorCode
+        err = Platform.err("CASE_OF_ERROR_CODE",  IdentityErrors.INVALID_SESSION, "xxxxxxxxx") as ErrorCode
         assert err.elaboration != null
     }
 
@@ -98,7 +98,7 @@ class ElaborationCase extends SubCase {
         err = operr("CASE_OF_ERROR_CODE",  "test for missed error") as ErrorCode
         assert err.elaboration == null
 
-        err = Platform.err( IdentityErrors.INVALID_SESSION, "xxxxxxxxx") as ErrorCode
+        err = Platform.err("CASE_OF_ERROR_CODE",  IdentityErrors.INVALID_SESSION, "xxxxxxxxx") as ErrorCode
         assert err.elaboration != null
     }
 
