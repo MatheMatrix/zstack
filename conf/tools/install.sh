@@ -77,9 +77,15 @@ if [ $tool = 'zstack-cli' ]; then
 
 elif [ $tool = 'zstack-ctl' ]; then
     CTL_VIRENV_PATH=/var/lib/zstack/virtualenv/zstackctl
+    # Temporarily disable exit-on-error to prevent lsof failure from aborting script
+    set +e
+    echo "Listing open files under $CTL_VIRENV_PATH before removal:"
     lsof +D $CTL_VIRENV_PATH
     echo "----"
+    echo "Listing open files under $CTL_VIRENV_PATH/lib/python2.7 before removal:"
     lsof +D $CTL_VIRENV_PATH/lib/python2.7
+    set -e
+
     rm -rf $CTL_VIRENV_PATH && virtualenv $CTL_VIRENV_PATH --python=python2.7 || exit 1
     . $CTL_VIRENV_PATH/bin/activate
     cd $cwd
