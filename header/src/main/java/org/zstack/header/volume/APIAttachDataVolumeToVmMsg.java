@@ -40,7 +40,7 @@ import org.zstack.header.vm.VmInstanceVO;
         responseClass = APIAttachDataVolumeToVmEvent.class
 )
 public class APIAttachDataVolumeToVmMsg extends APIMessage implements VolumeMessage {
-    
+
     /**
      * @desc vm uuid. see :ref:`VmInstanceInventory`
      */
