@@ -2,13 +2,14 @@ package org.zstack.kvm;
 
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.zstack.core.db.Q;
+import org.zstack.header.vm.ArchiveVmBundle;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.header.vm.VmNicInventory;
-import org.zstack.header.vm.devices.DeviceAddress;
-import org.zstack.header.vm.devices.VirtualDeviceInfo;
-import org.zstack.header.vm.devices.VmInstanceDeviceManager;
+import org.zstack.header.vm.devices.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.vm.VmInstanceSpec;
+import org.zstack.utils.gson.JSONObjectUtil;
 
 public class VirtualPciDeviceKvmExtensionPoint implements KVMStartVmExtensionPoint, KVMSyncVmDeviceInfoExtensionPoint {
     @Autowired
@@ -31,19 +32,36 @@ public class VirtualPciDeviceKvmExtensionPoint implements KVMStartVmExtensionPoi
         if (cmd.getCdRoms() != null) {
             cmd.getCdRoms().forEach(to -> setDeviceAddress(to, cmd));
         }
+
+        cmd.setVmXml(getVmXml(spec.getVmInventory().getUuid()));
     }
 
     private void setDeviceAddress(BaseVirtualDeviceTO to, KVMAgentCommands.StartVmCmd cmd) {
         to.setDeviceAddress(vidManager.getVmDeviceAddress(to.getResourceUuid(), cmd.getVmInstanceUuid()));
     }
 
-    @Override
-    public void afterReceiveVmDeviceInfoResponse(VmInstanceInventory vm, KVMAgentCommands.VmDevicesInfoResponse rsp, VmInstanceSpec spec) {
-        if (rsp.getVirtualDeviceInfoList() == null) {
-            return;
+    private String getVmXml(String vmUuid) {
+        VmInstanceDeviceAddressVO vo = Q.New(VmInstanceDeviceAddressVO.class)
+                .eq(VmInstanceDeviceAddressVO_.vmInstanceUuid, vmUuid)
+                .eq(VmInstanceDeviceAddressVO_.resourceUuid, vmUuid)
+                .find();
+        if (vo == null || vo.getMetadata() == null) {
+            return null;
         }
 
+        ArchiveVmBundle archiveVmBundle = JSONObjectUtil.toObject(vo.getMetadata(), ArchiveVmBundle.class);
+        if (archiveVmBundle == null || archiveVmBundle.getXml() == null) {
+            return null;
+        }
+        return archiveVmBundle.getXml();
+    }
+
+    @Override
+    public void afterReceiveVmDeviceInfoResponse(VmInstanceInventory vm, KVMAgentCommands.VmDevicesInfoResponse rsp, VmInstanceSpec spec) {
         String vmUuid = spec != null ? spec.getVmInventory().getUuid() : vm.getUuid();
+
+        vidManager.archiveOrUpdateVmXml(rsp.getVmXml(), vmUuid);
+
         // only update pci address, metadata is not mandatory in normal usage
         // check its usage when create snapshot or backup
         rsp.getVirtualDeviceInfoList().forEach(info -> {

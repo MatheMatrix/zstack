@@ -5,7 +5,7 @@ import org.zstack.header.vm.cdrom.VmCdRomInventory;
 /**
  * Created by LiangHanYu on 2022/9/26 17:44
  */
-public class ArchiveVmCdRomBundle {
+public class ArchiveVmCdRomBundle extends ArchiveBundle {
     VmCdRomInventory cdRomInventory;
 
     public ArchiveVmCdRomBundle() {

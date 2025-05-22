@@ -1,6 +1,5 @@
 package org.zstack.utils;
 
-import org.apache.commons.codec.binary.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 
 import java.util.*;
@@ -80,5 +79,21 @@ public class TagUtils {
 
     public static String tagPatternToSqlPattern(String tag) {
         return tag.replaceAll("\\{(.+?)\\}", "%");
+    }
+
+    public static String getTagFormat(String tag) {
+        if (Strings.isEmpty(tag)) {
+            return tag;
+        }
+        if (!tag.contains("::")) {
+            return tag;
+        }
+
+        int lastColonIndex = tag.lastIndexOf("::");
+        if (lastColonIndex == -1) {
+            return tag;
+        }
+
+        return tag.substring(0, lastColonIndex) + "::{%s}";
     }
 }
