@@ -17,6 +17,7 @@ import org.zstack.header.vm.devices.*;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.volume.VolumeVO_;
 import org.zstack.utils.Utils;
+import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.ArrayList;
@@ -99,6 +100,30 @@ public class VmInstanceDeviceManagerImpl implements VmInstanceDeviceManager {
     @Override
     public VmInstanceDeviceAddressVO createOrUpdateVmDeviceAddress(VirtualDeviceInfo virtualDeviceInfo, String vmInstanceUuid) {
         return createOrUpdateVmDeviceAddress(virtualDeviceInfo.getResourceUuid(), virtualDeviceInfo.getDeviceAddress(), vmInstanceUuid, null, null);
+    }
+
+    @Override
+    public void recordOrUpdateVmXml(String vmXml, String vmInstanceUuid) {
+        if (deviceAddressRecordingDisabled()) {
+            return;
+        }
+
+        VmInstanceDeviceAddressVO vo = Q.New(VmInstanceDeviceAddressVO.class)
+                .eq(VmInstanceDeviceAddressVO_.vmInstanceUuid, vmInstanceUuid)
+                .eq(VmInstanceDeviceAddressVO_.resourceUuid, vmInstanceUuid).find();
+        if (vo != null) {
+            ArchiveVmBundle archiveVmBundle = JSONObjectUtil.toObject(vo.getMetadata(), ArchiveVmBundle.class);
+            archiveVmBundle.setXml(vmXml);
+            vo.setMetadata(JSONObjectUtil.toJsonString(archiveVmBundle));
+            dbf.updateAndRefresh(vo);
+        } else {
+            vo = new VmInstanceDeviceAddressVO();
+            vo.setMetadata(JSONObjectUtil.toJsonString(new ArchiveVmBundle(vmXml)));
+            vo.setMetadataClass(ArchiveVmBundle.class.getCanonicalName());
+            vo.setResourceUuid(vmInstanceUuid);
+            vo.setVmInstanceUuid(vmInstanceUuid);
+            dbf.persist(vo);
+        }
     }
 
     @Override

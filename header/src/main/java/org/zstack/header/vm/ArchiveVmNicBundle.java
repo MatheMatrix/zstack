@@ -1,9 +1,11 @@
 package org.zstack.header.vm;
 
+import java.util.List;
+
 /**
  * Created by LiangHanYu on 2022/7/1 13:33
  */
-public class ArchiveVmNicBundle {
+public class ArchiveVmNicBundle extends ArchiveBundle {
     VmNicInventory vmNicInventory;
     long outboundBandwidth;
     long inboundBandwidth;

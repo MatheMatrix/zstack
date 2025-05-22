@@ -38,6 +38,14 @@ public interface VmInstanceDeviceManager {
     VmInstanceDeviceAddressVO createOrUpdateVmDeviceAddress(VirtualDeviceInfo virtualDeviceInfo, String vmInstanceUuid);
 
     /**
+     * create or update vm xml configuration
+     *
+     * @param vmXml          the XML configuration string of the vm
+     * @param vmInstanceUuid vm uuid for which the XML configuration should be created or updated
+     */
+    void recordOrUpdateVmXml(String vmXml, String vmInstanceUuid);
+
+    /**
      * get vm device address
      *
      * @param resourceUuid the uuid of resource that want to get device address
