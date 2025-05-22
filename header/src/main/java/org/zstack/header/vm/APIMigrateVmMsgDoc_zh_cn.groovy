@@ -1,7 +1,5 @@
 package org.zstack.header.vm
 
-import org.zstack.header.vm.APIMigrateVmEvent
-
 doc {
     title "热迁移云主机(MigrateVm)"
 
@@ -65,7 +63,7 @@ doc {
 					type "String"
 					optional true
 					since "3.6.0"
-					values ("auto-converge")
+					values ("auto-converge","no-converge")
 				}
 				column {
 					name "systemTags"
