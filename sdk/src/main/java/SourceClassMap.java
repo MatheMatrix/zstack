@@ -279,6 +279,7 @@ public class SourceClassMap {
 			put("org.zstack.header.identity.QuotaInventory", "org.zstack.sdk.QuotaInventory");
 			put("org.zstack.header.identity.SessionInventory", "org.zstack.sdk.SessionInventory");
 			put("org.zstack.header.identity.SharedResourceInventory", "org.zstack.sdk.SharedResourceInventory");
+			put("org.zstack.header.identity.StatementEffect", "org.zstack.sdk.PolicyStatementEffect");
 			put("org.zstack.header.identity.UserGroupInventory", "org.zstack.sdk.UserGroupInventory");
 			put("org.zstack.header.identity.UserInventory", "org.zstack.sdk.UserInventory");
 			put("org.zstack.header.identity.login.LoginAuthenticationProcedureDesc", "org.zstack.sdk.LoginAuthenticationProcedureDesc");
@@ -455,6 +456,7 @@ public class SourceClassMap {
 			put("org.zstack.iam2.entity.IAM2VirtualIDInventory", "org.zstack.sdk.iam2.entity.IAM2VirtualIDInventory");
 			put("org.zstack.iam2.entity.OrganizationType", "org.zstack.sdk.iam2.entity.OrganizationType");
 			put("org.zstack.iam2.entity.ProjectState", "org.zstack.sdk.iam2.entity.ProjectState");
+			put("org.zstack.iam2.entity.State", "org.zstack.sdk.iam2.entity.State");
 			put("org.zstack.iam2.entity.StateEvent", "org.zstack.sdk.iam2.entity.StateEvent");
 			put("org.zstack.iam2.project.template.Template", "org.zstack.sdk.iam2.project.template.Template");
 			put("org.zstack.imagereplicator.ImageReplicationGroupBackupStorageRefInventory", "org.zstack.sdk.ImageReplicationGroupBackupStorageRefInventory");
@@ -647,11 +649,15 @@ public class SourceClassMap {
 			put("org.zstack.sns.platform.universalsms.supplier.emay.SNSEmaySmsEndpointInventory", "org.zstack.sdk.sns.platform.universalsms.supplier.emay.SNSEmaySmsEndpointInventory");
 			put("org.zstack.sns.platform.wecom.SNSWeComAtPersonInventory", "org.zstack.sdk.sns.platform.wecom.SNSWeComAtPersonInventory");
 			put("org.zstack.sns.platform.wecom.SNSWeComEndpointInventory", "org.zstack.sdk.sns.platform.wecom.SNSWeComEndpointInventory");
+			put("org.zstack.sso.header.AttributePurpose", "org.zstack.sdk.AttributePurpose");
 			put("org.zstack.sso.header.CasClientInventory", "org.zstack.sdk.CasClientInventory");
 			put("org.zstack.sso.header.CasState", "org.zstack.sdk.CasState");
+			put("org.zstack.sso.header.ExtendedAttribute", "org.zstack.sdk.ExtendedAttribute");
 			put("org.zstack.sso.header.OAuth2ClientInventory", "org.zstack.sdk.OAuth2ClientInventory");
 			put("org.zstack.sso.header.OAuth2TokenInventory", "org.zstack.sdk.OAuth2TokenInventory");
 			put("org.zstack.sso.header.RedirectUrlTemplate", "org.zstack.sdk.RedirectUrlTemplate");
+			put("org.zstack.sso.header.RuleAttributeType", "org.zstack.sdk.RuleAttributeType");
+			put("org.zstack.sso.header.SSOClientAttributeInventory", "org.zstack.sdk.SSOClientAttributeInventory");
 			put("org.zstack.sso.header.SSOClientInventory", "org.zstack.sdk.SSOClientInventory");
 			put("org.zstack.sso.header.SSORedirectTemplateInventory", "org.zstack.sdk.SSORedirectTemplateInventory");
 			put("org.zstack.sso.header.SSOServerTokenInventory", "org.zstack.sdk.SSOServerTokenInventory");
@@ -793,6 +799,9 @@ public class SourceClassMap {
 			put("org.zstack.zwatch.datatype.AlarmData", "org.zstack.sdk.zwatch.datatype.AlarmData");
 			put("org.zstack.zwatch.datatype.AlarmDataV1", "org.zstack.sdk.zwatch.datatype.AlarmDataV1");
 			put("org.zstack.zwatch.datatype.AlarmDataV2", "org.zstack.sdk.zwatch.datatype.AlarmDataV2");
+			put("org.zstack.zwatch.datatype.AuditData", "org.zstack.sdk.zwatch.datatype.AuditData");
+			put("org.zstack.zwatch.datatype.AuditDataV1", "org.zstack.sdk.zwatch.datatype.AuditDataV1");
+			put("org.zstack.zwatch.datatype.AuditDataV2", "org.zstack.sdk.zwatch.datatype.AuditDataV2");
 			put("org.zstack.zwatch.datatype.AuditType", "org.zstack.sdk.zwatch.datatype.AuditType");
 			put("org.zstack.zwatch.datatype.Datapoint", "org.zstack.sdk.zwatch.datatype.Datapoint");
 			put("org.zstack.zwatch.datatype.EmergencyLevel", "org.zstack.sdk.zwatch.datatype.EmergencyLevel");
@@ -872,9 +881,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.ApplianceVmInventory", "org.zstack.appliancevm.ApplianceVmInventory");
 			put("org.zstack.sdk.ApplicationDevelopmentServiceInventory", "org.zstack.ai.entity.ApplicationDevelopmentServiceInventory");
 			put("org.zstack.sdk.AttachTagResult", "org.zstack.tag2.AttachTagResult");
-			put("org.zstack.sdk.AuditData", "org.zstack.header.zwatch.AuditData");
-			put("org.zstack.sdk.AuditDataV1", "org.zstack.header.zwatch.AuditDataV1");
-			put("org.zstack.sdk.AuditDataV2", "org.zstack.header.zwatch.AuditDataV2");
+			put("org.zstack.sdk.AttributePurpose", "org.zstack.sso.header.AttributePurpose");
 			put("org.zstack.sdk.AutoScalingGroupActivityInventory", "org.zstack.autoscaling.group.activity.AutoScalingGroupActivityInventory");
 			put("org.zstack.sdk.AutoScalingGroupInstanceInventory", "org.zstack.autoscaling.group.instance.AutoScalingGroupInstanceInventory");
 			put("org.zstack.sdk.AutoScalingGroupInventory", "org.zstack.autoscaling.group.AutoScalingGroupInventory");
@@ -999,6 +1006,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.EthernetVfStatus", "org.zstack.header.sriov.EthernetVfStatus");
 			put("org.zstack.sdk.EventLogInventory", "org.zstack.core.eventlog.EventLogInventory");
 			put("org.zstack.sdk.ExponBlockVolumeInventory", "org.zstack.header.volume.block.ExponBlockVolumeInventory");
+			put("org.zstack.sdk.ExtendedAttribute", "org.zstack.sso.header.ExtendedAttribute");
 			put("org.zstack.sdk.ExternalBackupInventory", "org.zstack.externalbackup.ExternalBackupInventory");
 			put("org.zstack.sdk.ExternalBackupState", "org.zstack.externalbackup.ExternalBackupState");
 			put("org.zstack.sdk.ExternalBackupStorageInventory", "org.zstack.header.storage.addon.backup.ExternalBackupStorageInventory");
@@ -1316,8 +1324,10 @@ public class SourceClassMap {
 			put("org.zstack.sdk.RootVolumeSpending", "org.zstack.billing.spendingcalculator.volume.root.RootVolumeSpending");
 			put("org.zstack.sdk.RootVolumeSpendingInventory", "org.zstack.billing.spendingcalculator.volume.root.RootVolumeSpendingInventory");
 			put("org.zstack.sdk.RouterAreaInventory", "org.zstack.header.protocol.RouterAreaInventory");
+			put("org.zstack.sdk.RuleAttributeType", "org.zstack.sso.header.RuleAttributeType");
 			put("org.zstack.sdk.RunningState", "org.zstack.storage.device.localRaid.RunningState");
 			put("org.zstack.sdk.RunningTaskInfo", "org.zstack.header.core.progress.RunningTaskInfo");
+			put("org.zstack.sdk.SSOClientAttributeInventory", "org.zstack.sso.header.SSOClientAttributeInventory");
 			put("org.zstack.sdk.SSOClientInventory", "org.zstack.sso.header.SSOClientInventory");
 			put("org.zstack.sdk.SSORedirectTemplateInventory", "org.zstack.sso.header.SSORedirectTemplateInventory");
 			put("org.zstack.sdk.SSOServerTokenInventory", "org.zstack.sso.header.SSOServerTokenInventory");
@@ -1550,6 +1560,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.iam2.entity.IAM2VirtualIDInventory", "org.zstack.iam2.entity.IAM2VirtualIDInventory");
 			put("org.zstack.sdk.iam2.entity.OrganizationType", "org.zstack.iam2.entity.OrganizationType");
 			put("org.zstack.sdk.iam2.entity.ProjectState", "org.zstack.iam2.entity.ProjectState");
+			put("org.zstack.sdk.iam2.entity.State", "org.zstack.iam2.entity.State");
 			put("org.zstack.sdk.iam2.entity.StateEvent", "org.zstack.iam2.entity.StateEvent");
 			put("org.zstack.sdk.iam2.project.template.Template", "org.zstack.iam2.project.template.Template");
 			put("org.zstack.sdk.identity.role.RoleInventory", "org.zstack.header.identity.role.RoleInventory");
