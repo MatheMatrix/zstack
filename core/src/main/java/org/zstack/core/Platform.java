@@ -1,5 +1,6 @@
 package org.zstack.core;
 
+import io.sentry.Sentry;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.LocaleUtils;
 import org.apache.commons.lang.RandomStringUtils;
@@ -10,6 +11,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.web.context.WebApplicationContext;
 import org.zstack.core.cloudbus.CloudBus;
+import org.zstack.core.cloudbus.CloudBusGlobalProperty;
 import org.zstack.core.componentloader.ComponentLoader;
 import org.zstack.core.componentloader.ComponentLoaderImpl;
 import org.zstack.core.config.GlobalConfigFacade;
@@ -390,6 +392,14 @@ public class Platform {
         }
     }
 
+    private static void setUpSentry() {
+        if (!CloudBusGlobalProperty.SENTRY_ON) {
+            return;
+        }
+
+        Sentry.init();
+    }
+
     private static void prepareHibernateSearchProperties() {
         if (!SearchGlobalProperty.SearchAutoRegister) {
             System.setProperty("Search.autoRegister", "false");
@@ -498,6 +508,7 @@ public class Platform {
             validateGlobalProperty();
             prepareDefaultDbProperties();
             prepareHibernateSearchProperties();
+            setUpSentry();
             callStaticInitMethods();
             encryptedMethodsMap = getAllEncryptPassword();
             writePidFile();

@@ -23,6 +23,7 @@
         <property name="locations">
             <list>
                 <value>classpath:zstack.properties</value>
+                <value>classpath:sentry.properties</value>
             </list>
         </property>
         <property name="ignoreUnresolvablePlaceholders" value="true"/>
