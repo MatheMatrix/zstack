@@ -463,6 +463,11 @@ public class ImageBase implements Image {
                 @Override
                 public void run(final FlowTrigger trigger, Map data) {
                     if (deletionPolicy == ImageDeletionPolicy.Direct) {
+                        long count = Q.New(ImageBackupStorageRefVO.class).eq(ImageBackupStorageRefVO_.installPath, ref.getInstallPath()).count();
+                        if (count > 1) {
+                            trigger.next();
+                        }
+
                         DeleteBitsOnBackupStorageMsg dmsg = new DeleteBitsOnBackupStorageMsg();
                         dmsg.setBackupStorageUuid(ref.getBackupStorageUuid());
                         dmsg.setInstallPath(ref.getInstallPath());

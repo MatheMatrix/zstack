@@ -12,6 +12,10 @@
     </message>
 
     <message>
+        <name>org.zstack.header.image.APICloneImageMsg</name>
+    </message>
+
+    <message>
         <name>org.zstack.header.image.APIQueryImageMsg</name>
         <serviceId>query</serviceId>
     </message>

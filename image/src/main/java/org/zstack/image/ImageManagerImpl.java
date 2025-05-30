@@ -34,6 +34,7 @@ import org.zstack.header.core.progress.TaskProgressRange;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
+import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.HostVO;
@@ -55,10 +56,7 @@ import org.zstack.header.storage.primary.PrimaryStorageVO_;
 import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.tag.SystemTagCreateMessageValidator;
 import org.zstack.header.tag.SystemTagValidator;
-import org.zstack.header.vm.CreateTemplateFromRootVolumeVmMsg;
-import org.zstack.header.vm.CreateTemplateFromRootVolumeVmReply;
-import org.zstack.header.vm.VmInstanceConstant;
-import org.zstack.header.vm.VmInstanceVO;
+import org.zstack.header.vm.*;
 import org.zstack.header.volume.*;
 import org.zstack.identity.AccountManager;
 import org.zstack.tag.TagManager;
@@ -504,6 +502,8 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
             handle((APICreateDataVolumeTemplateFromVolumeMsg) msg);
         } else if (msg instanceof APICreateDataVolumeTemplateFromVolumeSnapshotMsg) {
             handle((APICreateDataVolumeTemplateFromVolumeSnapshotMsg) msg);
+        } else if (msg instanceof APICloneImageMsg) {
+            handle((APICloneImageMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
@@ -804,6 +804,83 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
         AddImageLongJobData data = new AddImageLongJobData(msg);
         BeanUtils.copyProperties(msg, data);
         handleAddImageMsg(data, evt);
+    }
+
+    private void handle(final APICloneImageMsg msg) {
+        APICloneImageEvent evt = new APICloneImageEvent(msg.getId());
+
+        ImageVO sourceImage = dbf.findByUuid(msg.getImageUuid(), ImageVO.class);
+        if (sourceImage == null) {
+            throw new OperationFailureException(operr("source image [%s] not existed", msg.getImageUuid()));
+        }
+        if (sourceImage.getStatus() != ImageStatus.Ready) {
+            throw new OperationFailureException(operr("cannot clone image, because image [%s] status is not ready", msg.getImageUuid()));
+        }
+
+        ImageVO vo = new ImageVO();
+        if (msg.getResourceUuid() != null) {
+            dbf.eoCleanup(ImageVO.class, msg.getResourceUuid());
+            vo.setUuid(msg.getResourceUuid());
+        } else {
+            vo.setUuid(Platform.getUuid());
+        }
+        vo.setName(sourceImage.getName());
+        vo.setDescription(sourceImage.getDescription());
+        vo.setStatus(ImageStatus.Ready);
+        vo.setState(sourceImage.getState());
+        vo.setSize(sourceImage.getSize());
+        vo.setActualSize(sourceImage.getActualSize());
+        vo.setMd5Sum(sourceImage.getMd5Sum());
+        vo.setPlatform(sourceImage.getPlatform());
+        vo.setType(sourceImage.getType());
+        vo.setFormat(sourceImage.getFormat());
+        vo.setUrl(sourceImage.getUrl());
+        vo.setSystem(sourceImage.isSystem());
+        vo.setMediaType(sourceImage.getMediaType());
+        vo.setCreateDate(sourceImage.getCreateDate());
+        vo.setLastOpDate(sourceImage.getLastOpDate());
+        vo.setGuestOsType(sourceImage.getGuestOsType());
+        vo.setArchitecture(sourceImage.getArchitecture());
+        vo.setVirtio(sourceImage.getVirtio());
+        vo.setAccountUuid(sourceImage.getAccountUuid());
+        if (sourceImage.getBackupStorageRefs() != null) {
+            Set<ImageBackupStorageRefVO> copiedRefs = new HashSet<>();
+            for (ImageBackupStorageRefVO ref : sourceImage.getBackupStorageRefs()) {
+                copiedRefs.add(copyImageBackupStorageRefVO(ref));
+            }
+            vo.setBackupStorageRefs(copiedRefs);
+        }
+
+
+        ImageFactory factory = getImageFacotry(ImageType.valueOf(sourceImage.getType()));
+        final ImageVO ivo = new SQLBatchWithReturn<ImageVO>() {
+            @Override
+            protected ImageVO scripts() {
+                vo.setAccountUuid(sourceImage.getAccountUuid());
+                final ImageVO ivo = factory.createImage(vo);
+                tagMgr.createTagsFromAPICreateMessage(msg, vo.getUuid(), ImageVO.class.getSimpleName());
+                return ivo;
+            }
+        }.execute();
+
+        evt.setInventory(ImageInventory.valueOf(ivo));
+        bus.publish(evt);
+    }
+
+    private static ImageBackupStorageRefVO copyImageBackupStorageRefVO(ImageBackupStorageRefVO original) {
+        if (original == null) {
+            return null;
+        }
+
+        ImageBackupStorageRefVO copy = new ImageBackupStorageRefVO();
+        copy.setImageUuid(original.getImageUuid());
+        copy.setBackupStorageUuid(original.getBackupStorageUuid());
+        copy.setStatus(original.getStatus());
+        copy.setInstallPath(original.getInstallPath());
+        copy.setCreateDate(original.getCreateDate());
+        copy.setLastOpDate(original.getLastOpDate());
+
+        return copy;
     }
 
     @Override
