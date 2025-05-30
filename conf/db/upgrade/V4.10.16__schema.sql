@@ -27,3 +27,14 @@ CREATE TABLE IF NOT EXISTS `zstack`.`VolumeCbtBackupRecordVO` (
     `createDate` timestamp NOT NULL DEFAULT '1999-12-31 23:59:59',
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE IF NOT EXISTS `zstack`.`NvmeServerTargetRefVO` (
+  `id` bigint unsigned NOT NULL UNIQUE AUTO_INCREMENT,
+  `nvmeTargetUuid` VARCHAR(32) NOT NULL,
+  `nvmeServerUuid` VARCHAR(32) NOT NULL,
+  `lastOpDate` timestamp ON UPDATE CURRENT_TIMESTAMP,
+  `createDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fkNvmeServerClusterRefVONvmeServerVO` FOREIGN KEY (`nvmeServerUuid`) REFERENCES NvmeServerVO (`uuid`) ON DELETE CASCADE,
+  CONSTRAINT `fkNvmeServerClusterRefVOClusterEO` FOREIGN KEY (`nvmeTargetUuid`) REFERENCES ClusterEO (`uuid`) ON DELETE CASCADE
+)  ENGINE=InnoDB DEFAULT CHARSET=utf8;
