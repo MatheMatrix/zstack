@@ -33,7 +33,6 @@ public class HostCanonicalEvents {
     public static final String HOST_PROCESS_PHYSICAL_MEMORY_USAGE_ABNORMAL = "/host/process/physicalMemory/usage/abnormal";
     public static final String HOST_PING_SKIP = "/host/ping/skip";
     public static final String HOST_PING_CANCEL_SKIP = "/host/ping/cancel/skip";
-    public static final String HOST_PRIMARY_STORAGE_METADATA_REPAIR = "/host/primarystorage/metadata/repair";
 
     @NeedJsonSchema
     public static class HostPhysicalHbaPortStateAbnormalData {
