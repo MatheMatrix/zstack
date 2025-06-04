@@ -4,14 +4,6 @@ package org.zstack.sdk;
 
 public class ImageGroupInventory  {
 
-    public java.lang.String uuid;
-    public void setUuid(java.lang.String uuid) {
-        this.uuid = uuid;
-    }
-    public java.lang.String getUuid() {
-        return this.uuid;
-    }
-
     public java.lang.Integer imageCount;
     public void setImageCount(java.lang.Integer imageCount) {
         this.imageCount = imageCount;
@@ -52,12 +44,12 @@ public class ImageGroupInventory  {
         return this.lastOpDate;
     }
 
-    public java.util.List imageGroupRefs;
-    public void setImageGroupRefs(java.util.List imageGroupRefs) {
-        this.imageGroupRefs = imageGroupRefs;
+    public java.lang.String uuid;
+    public void setUuid(java.lang.String uuid) {
+        this.uuid = uuid;
     }
-    public java.util.List getImageGroupRefs() {
-        return this.imageGroupRefs;
+    public java.lang.String getUuid() {
+        return this.uuid;
     }
 
 }

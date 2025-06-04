@@ -1,61 +1,52 @@
 package org.zstack.header.image;
 
-import org.zstack.header.query.*;
+import org.zstack.header.configuration.PythonClassInventory;
+import org.zstack.header.image.ImageGroupRefVO;
+import org.zstack.header.query.ExpandedQueries;
+import org.zstack.header.query.ExpandedQuery;
 import org.zstack.header.search.Inventory;
 
-import javax.persistence.JoinColumn;
+import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
-@Inventory(mappingVOClass = ImageGroupVO.class)
-@ExpandedQueries({
-        @ExpandedQuery(expandedField = "imageRef", inventoryClass = ImageGroupRefInventory.class,
-                foreignKey = "uuid", expandedInventoryKey = "imageGroupUuid", hidden = true),
-})
-@ExpandedQueryAliases({
-        @ExpandedQueryAlias(alias = "image", expandedField = "imageRef.image")
-})
-public class ImageGroupInventory {
-    private String uuid;
+@PythonClassInventory
+@Inventory(mappingVOClass = ImageGroupVO.class, collectionValueOfMethod = "valueOf1")
+public class ImageGroupInventory implements Serializable {
     private Integer imageCount;
     private String name;
     private String description;
     private Timestamp createDate;
     private Timestamp lastOpDate;
+    private String uuid;
 
-    @Queryable(mappingClass = ImageGroupRefInventory.class,
-            joinColumn = @JoinColumn(name = "imageGroupUuid"))
-    private List<ImageGroupRefInventory> imageGroupRefs;
-    public static ImageGroupInventory valueOf(ImageGroupVO imageGroupVO) {
-        ImageGroupInventory inv = new ImageGroupInventory();
-        inv.setUuid(imageGroupVO.getUuid());
-        inv.setImageCount(imageGroupVO.getImageCount());
-        inv.setName(imageGroupVO.getName());
-        inv.setDescription(imageGroupVO.getDescription());
-        inv.setCreateDate(imageGroupVO.getCreateDate());
-        inv.setLastOpDate(imageGroupVO.getLastOpDate());
-        inv.setImageGroupRefs(ImageGroupRefInventory.valueOf(imageGroupVO.getImageGroupRefs()));
-        return inv;
+    protected ImageGroupInventory(ImageGroupVO vo) {
+        this.setImageCount(vo.getImageCount());
+        this.setName(vo.getName());
+        this.setDescription(vo.getDescription());
+        this.setCreateDate(vo.getCreateDate());
+        this.setLastOpDate(vo.getLastOpDate());
+        this.setUuid(vo.getUuid());
     }
 
-    public static List<ImageGroupRefInventory>  valueOf(Collection<ImageGroupRefVO> vos) {
-        List<ImageGroupRefInventory> invs = new ArrayList<ImageGroupRefInventory>();
-        for (ImageGroupRefVO vo : vos) {
-            invs.add(ImageGroupRefInventory.valueOf(vo));
+    public static ImageGroupInventory valueOf(ImageGroupVO vo) {
+        return new ImageGroupInventory(vo);
+    }
+
+    public static List<ImageGroupInventory> valueOf1(Collection<ImageGroupVO> vos) {
+        List<ImageGroupInventory> invs = new ArrayList<ImageGroupInventory>(vos.size());
+        for (ImageGroupVO vo : vos) {
+            invs.add(ImageGroupInventory.valueOf(vo));
         }
         return invs;
     }
 
-
-    public String getUuid() {
-        return uuid;
+    public ImageGroupInventory() {
     }
 
-    public void setUuid(String uuid) {
-        this.uuid = uuid;
-    }
 
     public Integer getImageCount() {
         return imageCount;
@@ -97,12 +88,11 @@ public class ImageGroupInventory {
         this.lastOpDate = lastOpDate;
     }
 
-    public List<ImageGroupRefInventory> getImageGroupRefs() {
-        return imageGroupRefs;
+    public String getUuid() {
+        return uuid;
     }
 
-    public void setImageGroupRefs(List<ImageGroupRefInventory> imageGroupRefs) {
-        this.imageGroupRefs = imageGroupRefs;
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
     }
-
 }

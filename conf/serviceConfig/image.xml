@@ -21,6 +21,16 @@
     </message>
 
     <message>
+        <name>org.zstack.header.image.APIQueryImageGroupMsg</name>
+        <serviceId>query</serviceId>
+    </message>
+
+    <message>
+        <name>org.zstack.header.image.APIQueryImageGroupRefMsg</name>
+        <serviceId>query</serviceId>
+    </message>
+
+    <message>
         <name>org.zstack.header.image.APIGetUploadImageJobDetailsMsg</name>
     </message>
 
@@ -50,6 +60,10 @@
 
     <message>
         <name>org.zstack.header.image.APIExpungeImageMsg</name>
+    </message>
+
+    <message>
+        <name>org.zstack.header.image.APIExpungeImageGroupMsg</name>
     </message>
 
     <message>
