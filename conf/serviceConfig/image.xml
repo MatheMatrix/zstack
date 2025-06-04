@@ -63,4 +63,8 @@
     <message>
         <name>org.zstack.header.image.APICalculateImageHashMsg</name>
     </message>
+
+    <message>
+        <name>org.zstack.header.image.APICreateImageGroupFromVmInstanceMsg</name>
+    </message>
 </service>
