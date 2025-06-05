@@ -400,6 +400,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 @Override
                 public void success() {
                     m.getSelf().setMdsStatus(MdsStatus.Connected);
+                    m.getSelf().setMdsExternalAddr();
                     comp.done();
                 }
 

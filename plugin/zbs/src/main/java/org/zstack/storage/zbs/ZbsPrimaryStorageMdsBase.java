@@ -273,7 +273,7 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
         });
     }
 
-    private void pingMds(final Completion completion) {
+    private void pingMds(final ReturnValueCompletion<PingRsp> completion) {
         final Integer MAX_PING_CNT = ZbsConstants.PRIMARY_STORAGE_MDS_MAXIMUM_PING_FAILURE;
         final List<Integer> stepCount = new ArrayList<>();
         for (int i = 1; i <= MAX_PING_CNT; i++) {
@@ -333,6 +333,7 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
     }
 
     public static class PingRsp extends ZbsMdsBase.AgentResponse {
+        private boolean mdsExternalAddr;
     }
 
     public static class PingCmd extends ZbsMdsBase.AgentCommand {

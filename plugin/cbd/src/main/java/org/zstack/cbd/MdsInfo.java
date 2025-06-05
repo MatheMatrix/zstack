@@ -9,6 +9,7 @@ public class MdsInfo {
     private String sshPassword;
     private int sshPort = 22;
     private String mdsAddr;
+    private String mdsExternalAddr;
     private MdsStatus mdsStatus;
 
     public String getSshUsername() {
@@ -41,6 +42,14 @@ public class MdsInfo {
 
     public void setMdsAddr(String mdsAddr) {
         this.mdsAddr = mdsAddr;
+    }
+
+    public String getMdsExternalAddr() {
+        return mdsExternalAddr;
+    }
+
+    public void setMdsExternalAddr(String mdsExternalAddr) {
+        this.mdsExternalAddr = mdsExternalAddr;
     }
 
     public MdsStatus getMdsStatus() {
