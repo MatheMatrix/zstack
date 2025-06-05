@@ -11,12 +11,12 @@ import java.util.List;
 
 @Action(category = ImageConstant.ACTION_CATEGORY)
 @RestRequest(
-        path = "/imagegroup/from/snapshot/{rootVolumeTemplateUuid}",
+        path = "/imagegroup/from/snapshot/{rootVolumeSnapshotUuid}",
         method = HttpMethod.POST,
         responseClass = APICreateImageGroupFromImageEvent.class,
         parameterName = "params"
 )
-@TagResourceType(ImageGroupVO.class)
+@TagResourceType(ImageVO.class)
 public class APICreateImageGroupFromSnapshotMsg extends APICreateMessage {
     @APIParam(maxLength = 255)
     private String name;

@@ -16,7 +16,7 @@ import java.util.List;
         responseClass = APICreateImageGroupFromImageEvent.class,
         parameterName = "params"
 )
-@TagResourceType(ImageGroupVO.class)
+@TagResourceType(ImageVO.class)
 public class APICreateImageGroupFromImageMsg extends APICreateMessage {
     @APIParam(maxLength = 255)
     private String name;
