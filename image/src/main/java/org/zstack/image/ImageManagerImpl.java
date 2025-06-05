@@ -1039,7 +1039,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                         imageGroupVO = new SQLBatchWithReturn<ImageGroupVO>() {
                             @Override
                             protected ImageGroupVO scripts() {
-                                String groupUuid = Platform.getUuid();
+                                String groupUuid = StringUtils.isEmpty(msg.getResourceUuid())? msg.getResourceUuid() :Platform.getUuid();
                                 ImageGroupVO vo = new ImageGroupVO();
                                 vo.setUuid(groupUuid);
                                 vo.setName(msg.getName());
