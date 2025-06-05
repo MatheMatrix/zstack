@@ -89,6 +89,13 @@ public class ZQLMetadata {
 
         public Object toInventoryFieldObject(String fieldName, Object value) {
             FieldTypeMapping mapping = typeMappingMap.get(fieldName);
+            if (mapping != null && String.class.isAssignableFrom(mapping.voFieldType)
+                    && List.class.isAssignableFrom(mapping.inventoryFieldType)
+                    && value instanceof String) {
+                String strValue = (String) value;
+                return Arrays.asList(strValue.split(","));
+            }
+
             if (mapping == null || TypeUtils.isZstackBeanPrimitive(mapping.voFieldType)) {
                 return value;
             }
