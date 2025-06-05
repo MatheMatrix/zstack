@@ -7,6 +7,7 @@ import org.zstack.header.vm.VmInstanceVO
 import org.zstack.header.vm.VmInstanceVO_
 import org.zstack.sdk.DiskOfferingInventory
 import org.zstack.sdk.HostInventory
+import org.zstack.sdk.ImageInventory
 import org.zstack.sdk.SftpBackupStorageInventory
 import org.zstack.sdk.VmInstanceInventory
 import org.zstack.sdk.VolumeInventory
@@ -20,10 +21,11 @@ class ImageGroupOperationsCase extends SubCase {
     EnvSpec env
     DatabaseFacade dbf
     VmInstanceInventory vm
-    org.zstack.sdk.BackupStorageInventory bs
     DiskOfferingInventory diskOffering
-    SftpBackupStorageInventory ps
+    SftpBackupStorageInventory bs
     HostInventory host
+    ImageInventory rimage
+    ImageInventory dimage
 
     @Override
     void setup() {
@@ -119,8 +121,9 @@ class ImageGroupOperationsCase extends SubCase {
         env.create {
             vm = env.inventoryByName("vm") as VmInstanceInventory
             diskOffering = env.inventoryByName("diskOffering") as DiskOfferingInventory
-            ps = env.inventoryByName("sftp") as SftpBackupStorageInventory
+            bs = env.inventoryByName("sftp") as SftpBackupStorageInventory
             host = env.inventoryByName("kvm") as HostInventory
+            rimage = env.inventoryByName("image") as ImageInventory
 
             testCreateImageGroup()
         }
@@ -142,6 +145,12 @@ class ImageGroupOperationsCase extends SubCase {
         }
         assert Q.New(VmInstanceVO.class).eq(VmInstanceVO_.state, VmInstanceState.Stopped).eq(VmInstanceVO_.uuid, vm.uuid).isExists()
 
+        dimage = createDataVolumeTemplateFromVolume {
+            name = "data-image"
+            volumeUuid = volume.uuid
+            backupStorageUuids = [bs.uuid]
+        } as ImageInventory
+
         ImageGroupInventory group = createImageGroupFromVmInstance{
             vmInstanceUuid = vm.uuid
             name = "imageGroup"
@@ -156,6 +165,33 @@ class ImageGroupOperationsCase extends SubCase {
 
         expungeImageGroup {
             uuid = group.uuid
+        }
+
+        ImageGroupInventory group2 = createImageGroupFromImage {
+            rootVolumeTemplateUuid = rimage.uuid
+            dateVolumeTemplateUuids = [dimage.uuid]
+            name = "imageGroup2"
+        } as ImageGroupInventory
+
+        queryImageGroup {
+        }
+
+        queryImageGroupRef {
+
+        }
+
+        ImageInventory cimage = cloneImage {
+            imageUuid = rimage.uuid
+        } as ImageInventory
+
+        queryImage {}
+
+        expungeImageGroup {
+            uuid = group2.uuid
+        }
+
+        deleteImage {
+            uuid = cimage.uuid
         }
     }
 

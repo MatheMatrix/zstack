@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class CloneImageAction extends AbstractAction {
+public class CreateImageGroupFromImageAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class CloneImageAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.CloneImageResult value;
+        public org.zstack.sdk.CreateImageGroupFromImageResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,11 +25,17 @@ public class CloneImageAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String imageUuid;
+    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String name;
 
-    @Param(required = false, validValues = {"DatabaseOnly"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String strategy = "DatabaseOnly";
+    @Param(required = true, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String rootVolumeTemplateUuid;
+
+    @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String description;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.util.List dateVolumeTemplateUuids;
 
     @Param(required = false)
     public java.lang.String resourceUuid;
@@ -69,8 +75,8 @@ public class CloneImageAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.CloneImageResult value = res.getResult(org.zstack.sdk.CloneImageResult.class);
-        ret.value = value == null ? new org.zstack.sdk.CloneImageResult() : value; 
+        org.zstack.sdk.CreateImageGroupFromImageResult value = res.getResult(org.zstack.sdk.CreateImageGroupFromImageResult.class);
+        ret.value = value == null ? new org.zstack.sdk.CreateImageGroupFromImageResult() : value; 
 
         return ret;
     }
@@ -100,7 +106,7 @@ public class CloneImageAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "POST";
-        info.path = "/image/clone/{imageUuid}";
+        info.path = "/imagegroup/from/image/{rootVolumeTemplateUuid}";
         info.needSession = true;
         info.needPoll = true;
         info.parameterName = "params";

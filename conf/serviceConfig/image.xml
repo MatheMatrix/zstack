@@ -85,4 +85,12 @@
     <message>
         <name>org.zstack.header.image.APICreateImageGroupFromVmInstanceMsg</name>
     </message>
+
+    <message>
+        <name>org.zstack.header.image.APICreateImageGroupFromImageMsg</name>
+    </message>
+
+    <message>
+        <name>org.zstack.header.image.APICreateImageGroupFromSnapshotMsg</name>
+    </message>
 </service>

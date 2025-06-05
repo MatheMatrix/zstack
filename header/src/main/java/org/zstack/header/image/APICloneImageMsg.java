@@ -19,9 +19,6 @@ public class APICloneImageMsg extends APICreateMessage implements APIAuditor {
     @APIParam(resourceType = ImageVO.class, noOwnerCheck = true)
     private String imageUuid;
 
-    @APIParam(resourceType = ImageVO.class, noOwnerCheck = true)
-    private String imageGroupUuid;
-
     @APIParam(required = false, validValues = {"DatabaseOnly"})
     private String strategy = ImageCloneStrategy.DatabaseOnly.toString();
 
@@ -36,14 +33,6 @@ public class APICloneImageMsg extends APICreateMessage implements APIAuditor {
 
     public void setImageUuid(String imageUuid) {
         this.imageUuid = imageUuid;
-    }
-
-    public String getImageGroupUuid() {
-        return imageGroupUuid;
-    }
-
-    public void setImageGroupUuid(String imageGroupUuid) {
-        this.imageGroupUuid = imageGroupUuid;
     }
 
     public String getStrategy() {
