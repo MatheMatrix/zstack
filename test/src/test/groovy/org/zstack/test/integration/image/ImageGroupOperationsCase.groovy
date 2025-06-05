@@ -12,6 +12,7 @@ import org.zstack.sdk.SftpBackupStorageInventory
 import org.zstack.sdk.VmInstanceInventory
 import org.zstack.sdk.VolumeInventory
 import org.zstack.sdk.ImageGroupInventory
+import org.zstack.sdk.VolumeSnapshotInventory
 import org.zstack.test.integration.ZStackTest
 import org.zstack.testlib.EnvSpec
 import org.zstack.testlib.SubCase
@@ -51,7 +52,26 @@ class ImageGroupOperationsCase extends SubCase {
                 url = "/sftp"
                 username = "username"
                 password = "password"
-                hostname = "hostname"
+                hostname = "hostname1"
+
+                image {
+                    name = "image"
+                    url = "http://somehost/boot.iso"
+                    format = "iso"
+                }
+
+                image {
+                    name = "image1"
+                    url = "http://somehost/boot.iso"
+                }
+            }
+
+            sftpBackupStorage {
+                name = "sftp1"
+                url = "/sftp1"
+                username = "username"
+                password = "password"
+                hostname = "hostname2"
 
                 image {
                     name = "image"
@@ -105,6 +125,7 @@ class ImageGroupOperationsCase extends SubCase {
                     }
                 }
                 attachBackupStorage("sftp")
+                attachBackupStorage("sftp1")
             }
 
             vm {
@@ -139,6 +160,16 @@ class ImageGroupOperationsCase extends SubCase {
             volumeUuid = volume.uuid
             vmInstanceUuid = vm.uuid
         }
+
+        VolumeSnapshotInventory rsnap = createVolumeSnapshot {
+            name = "snap-root"
+            volumeUuid = vm.rootVolumeUuid
+        } as VolumeSnapshotInventory
+
+        VolumeSnapshotInventory dsnap = createVolumeSnapshot {
+            name = "snap-data"
+            volumeUuid = volume.uuid
+        } as VolumeSnapshotInventory
 
         stopVmInstance {
             uuid = vm.uuid
@@ -192,6 +223,23 @@ class ImageGroupOperationsCase extends SubCase {
 
         deleteImage {
             uuid = cimage.uuid
+        }
+
+        ImageGroupInventory group3 = createImageGroupFromSnapshot {
+            rootVolumeSnapshotUuid = rsnap.uuid
+            dateVolumeSnapshotUuids = [dsnap.uuid]
+            name = "imageGroup3"
+        } as ImageGroupInventory
+
+        queryImageGroup {
+        }
+
+        queryImageGroupRef {
+
+        }
+
+        expungeImageGroup {
+            uuid = group3.uuid
         }
     }
 

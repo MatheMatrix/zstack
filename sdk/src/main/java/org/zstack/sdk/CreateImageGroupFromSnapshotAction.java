@@ -106,7 +106,7 @@ public class CreateImageGroupFromSnapshotAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "POST";
-        info.path = "/imagegroup/from/snapshot/{rootVolumeTemplateUuid}";
+        info.path = "/imagegroup/from/snapshot/{rootVolumeSnapshotUuid}";
         info.needSession = true;
         info.needPoll = true;
         info.parameterName = "params";

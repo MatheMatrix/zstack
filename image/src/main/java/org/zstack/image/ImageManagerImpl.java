@@ -600,7 +600,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
     }
 
     private void handle(APICreateImageGroupFromSnapshotMsg msg) {
-        APICreateImageGroupFromVmInstanceEvent evt = new APICreateImageGroupFromVmInstanceEvent(msg.getId());
+        APICreateImageGroupFromSnapshotEvent evt = new APICreateImageGroupFromSnapshotEvent(msg.getId());
         createImageGroupFromSnapshot(msg, new ReturnValueCompletion<ImageGroupInventory>(evt) {
             @Override
             public void success(ImageGroupInventory imageGroup) {
@@ -696,7 +696,6 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
         chain.setName(String.format("create-image-group-from-snapshot-%s", msg.getRootVolumeSnapshotUuid()));
         chain.then(new ShareFlow() {
             ImageGroupVO imageGroupVO;
-            List<ImageGroupRefVO> imageGroupRefs = new ArrayList<ImageGroupRefVO>();
             String rootVolumeSnapshotUuid = msg.getRootVolumeSnapshotUuid();
             List<String> dataVolumeSnapshotUuids = msg.getDateVolumeSnapshotUuids();
             List<String> newImageUuids = new ArrayList<String>();
@@ -708,22 +707,22 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        CreateRootVolumeTemplateFromRootVolumeMsg crtMsg = new CreateRootVolumeTemplateFromRootVolumeMsg();
-                        crtMsg.setRootVolumeUuid(rootVolumeUuid);
-                        crtMsg.setName(String.format("%s-root", msg.getName()));
-                        crtMsg.setDescription(msg.getDescription());
-                        crtMsg.setSession(msg.getSession());
-                        bus.makeLocalServiceId(crtMsg, ImageConstant.SERVICE_ID);
-                        bus.send(crtMsg, new CloudBusCallBack(trigger) {
+                        CreateRootVolumeTemplateFromVolumeSnapshotMsg cmsg = new CreateRootVolumeTemplateFromVolumeSnapshotMsg();
+                        cmsg.setName("create-from-snap-" + rootVolumeSnapshotUuid);
+                        cmsg.setSnapshotUuid(rootVolumeSnapshotUuid);
+                        cmsg.setSession(msg.getSession());
+                        bus.makeLocalServiceId(cmsg, ImageConstant.SERVICE_ID);
+                        bus.send(cmsg, new CloudBusCallBack(completion) {
                             @Override
-                            public void run(MessageReply reply) {
-                                if (!reply.isSuccess()) {
-                                    trigger.fail(reply.getError());
+                            public void run(MessageReply r) {
+                                if (!r.isSuccess()) {
+                                    trigger.fail(r.getError());
                                     return;
                                 }
 
-                                ImageInventory imageInv = ((CreateRootVolumeTemplateFromRootVolumeReply) reply).getInventory();
-                                newVolumeUuids.add(imageInv.getUuid());
+                                CreateRootVolumeTemplateFromVolumeSnapshotReply reply = r.castReply();
+                                ImageInventory imageInv = ((CreateRootVolumeTemplateFromVolumeSnapshotReply) reply).getInventory();
+                                newImageUuids.add(imageInv.getUuid());
                                 trigger.next();
                             }
                         });
@@ -732,42 +731,41 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                     @Override
                     public void rollback(FlowRollback trigger, Map data) {
                         //TODO: rootImageUuid
-                        if (CollectionUtils.isEmpty(newVolumeUuids)) {
+                        if (CollectionUtils.isEmpty(newImageUuids)) {
                             trigger.rollback();
                             return;
                         }
-                        for (String uuid : newVolumeUuids) {
+                        for (String uuid : newImageUuids) {
                             ImageDeletionMsg delMsg = new ImageDeletionMsg();
                             delMsg.setImageUuid(uuid);
                             delMsg.setDeletionPolicy(VolumeDeletionPolicyManager.VolumeDeletionPolicy.Direct.toString());
                             delMsg.setForceDelete(true);
                             bus.makeTargetServiceIdByResourceUuid(delMsg, ImageConstant.SERVICE_ID, uuid);
                             bus.send(delMsg);
-                            newVolumeUuids.remove(uuid);
+                            newImageUuids.remove(uuid);
                         }
                         trigger.rollback();
                     }
                 });
 
                 flow(new Flow() {
-                    String __name__ = "create-data-templates-from-volumes";
+                    String __name__ = "create-data-templates-from-snapshots";
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        if (dataVolumeUuids.isEmpty()) {
+                        if (dataVolumeSnapshotUuids.isEmpty()) {
                             trigger.next();
                             return;
                         }
 
                         List<ErrorCode> errors = new ArrayList<>();
-                        new While<>(dataVolumeUuids).each((volUuid, compl) -> {
-                            CreateDataVolumeTemplateFromVolumeMsg cdtMsg = new CreateDataVolumeTemplateFromVolumeMsg();
-                            cdtMsg.setVolumeUuid(volUuid);
-                            cdtMsg.setName(String.format("%s-data-%s", msg.getName(), volUuid));//name改一下
-                            cdtMsg.setDescription(msg.getDescription());
-                            cdtMsg.setSession(msg.getSession());
-                            bus.makeLocalServiceId(cdtMsg, ImageConstant.SERVICE_ID);
-                            bus.send(cdtMsg, new CloudBusCallBack(trigger) {
+                        new While<>(dataVolumeSnapshotUuids).each((iUuid, compl) -> {
+                            CreateDataVolumeTemplateFromVolumeSnapshotMsg csmsg = new CreateDataVolumeTemplateFromVolumeSnapshotMsg();
+                            csmsg.setName(String.format("for-clone-snapshot-%s", iUuid));
+                            csmsg.setSnapshotUuid(iUuid);
+                            csmsg.setSession(msg.getSession());
+                            bus.makeLocalServiceId(csmsg, ImageConstant.SERVICE_ID);
+                            bus.send(csmsg, new CloudBusCallBack(trigger) {
                                 @Override
                                 public void run(MessageReply reply) {
                                     if (!reply.isSuccess()) {
@@ -775,8 +773,8 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                                         compl.allDone();
                                     }
 
-                                    ImageInventory imageInv = ((CreateDataVolumeTemplateFromVolumeReply) reply).getInventory();
-                                    newVolumeUuids.add(imageInv.getUuid());
+                                    ImageInventory imageInv = ((CreateDataVolumeTemplateFromVolumeSnapshotReply) reply).getInventory();
+                                    newImageUuids.add(imageInv.getUuid());
                                     compl.done();
                                 }
                             });
@@ -795,18 +793,18 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
 
                     @Override
                     public void rollback(FlowRollback trigger, Map data) {
-                        if (CollectionUtils.isEmpty(newVolumeUuids)) {
+                        if (CollectionUtils.isEmpty(newImageUuids)) {
                             trigger.rollback();
                             return;
                         }
-                        for (String uuid : newVolumeUuids) {
+                        for (String uuid : newImageUuids) {
                             ImageDeletionMsg delMsg = new ImageDeletionMsg();
                             delMsg.setImageUuid(uuid);
                             delMsg.setDeletionPolicy(VolumeDeletionPolicyManager.VolumeDeletionPolicy.Direct.toString());
                             delMsg.setForceDelete(true);
                             bus.makeTargetServiceIdByResourceUuid(delMsg, ImageConstant.SERVICE_ID, uuid);
                             bus.send(delMsg);
-                            newVolumeUuids.remove(uuid);
+                            newImageUuids.remove(uuid);
                         }
                         trigger.rollback();
                     }
@@ -825,10 +823,13 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                                 vo.setUuid(groupUuid);
                                 vo.setName(msg.getName());
                                 vo.setDescription(msg.getDescription());
-                                vo.setImageCount(1 + dataVolumeUuids.size());
+                                vo.setImageCount(1);
+                                if (!CollectionUtils.isEmpty(dataVolumeSnapshotUuids)) {
+                                    vo.setImageCount(1 + dataVolumeSnapshotUuids.size());
+                                }
                                 vo = persist(vo);
 
-                                new HashSet<String>(newVolumeUuids).forEach(
+                                new HashSet<String>(newImageUuids).forEach(
                                         resourceUuid -> {
                                             ImageVO image = q(ImageVO.class)
                                                     .eq(ImageVO_.uuid, resourceUuid)
@@ -852,7 +853,6 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                                             refVO.setMd5Sum(image.getMd5Sum());
                                             refVO.setActualSize(image.getActualSize());
                                             refVO.setArchitecture(image.getArchitecture());
-                                            refVO.setGuestOsType(image.getGuestOsType());
                                             refVO.setVirtio(image.getVirtio());
                                             persist(refVO);
                                         }
@@ -1039,7 +1039,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                         imageGroupVO = new SQLBatchWithReturn<ImageGroupVO>() {
                             @Override
                             protected ImageGroupVO scripts() {
-                                String groupUuid = StringUtils.isEmpty(msg.getResourceUuid())? msg.getResourceUuid() :Platform.getUuid();
+                                String groupUuid = StringUtils.isEmpty(msg.getResourceUuid()) ? Platform.getUuid() : msg.getResourceUuid();
                                 ImageGroupVO vo = new ImageGroupVO();
                                 vo.setUuid(groupUuid);
                                 vo.setName(msg.getName());
@@ -1071,7 +1071,6 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                                             refVO.setMd5Sum(image.getMd5Sum());
                                             refVO.setActualSize(image.getActualSize());
                                             refVO.setArchitecture(image.getArchitecture());
-                                            refVO.setGuestOsType(image.getGuestOsType());
                                             refVO.setVirtio(image.getVirtio());
                                             persist(refVO);
                                         }

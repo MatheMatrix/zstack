@@ -11,7 +11,7 @@ import java.util.List;
 
 @Action(category = ImageConstant.ACTION_CATEGORY)
 @RestRequest(
-        path = "/imagegroup/from/snapshot/{rootVolumeTemplateUuid}",
+        path = "/imagegroup/from/snapshot/{rootVolumeSnapshotUuid}",
         method = HttpMethod.POST,
         responseClass = APICreateImageGroupFromImageEvent.class,
         parameterName = "params"
