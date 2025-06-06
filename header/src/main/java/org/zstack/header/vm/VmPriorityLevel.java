@@ -1,8 +1,10 @@
 package org.zstack.header.vm;
 
+import org.zstack.utils.SHAUtils;
+
 public enum VmPriorityLevel {
-    Normal(512, 0),
-    CpuHigh(1024, 0),
+    Normal(512, -600),
+    CpuHigh(1024, -600),
     MemoryHigh(512, -900),
     High(1024, -900),
     ApplianceVmHigh(1536, -950);
@@ -30,5 +32,10 @@ public enum VmPriorityLevel {
 
     public void setOomScoreAdj(int oomScoreAdj) {
         this.oomScoreAdj = oomScoreAdj;
+    }
+
+    public String generateChecksum() {
+        String data = this.name() + ":" + this.cpuShares + "," + this.oomScoreAdj;
+        return SHAUtils.encrypt(data, "SHA-256");
     }
 }

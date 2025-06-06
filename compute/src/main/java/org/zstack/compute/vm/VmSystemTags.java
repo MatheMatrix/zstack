@@ -180,6 +180,10 @@ public class VmSystemTags {
     public static final String VM_PRIORITY_TOKEN = "vmPriority";
     public static PatternedSystemTag VM_PRIORITY = new PatternedSystemTag(String.format("vmPriority::{%s}", VM_PRIORITY_TOKEN), VmInstanceVO.class);
 
+    public static final String VM_PRIORITY_CHECKSUM_TOKEN = "vmPriorityChecksum";
+
+    public static PatternedSystemTag VM_PRIORITY_CHECKSUM = new PatternedSystemTag(String.format("vmPriorityChecksum::{%s}", VM_PRIORITY_TOKEN), VmInstanceVO.class);
+
     public static String SOUND_TYPE_TOKEN = "soundType";
     public static PatternedSystemTag SOUND_TYPE = new PatternedSystemTag(String.format("soundType::{%s}", SOUND_TYPE_TOKEN), VmInstanceVO.class);
 

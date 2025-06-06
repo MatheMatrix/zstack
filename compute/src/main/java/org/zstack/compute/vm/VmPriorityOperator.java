@@ -91,6 +91,14 @@ public class VmPriorityOperator implements PrepareDbInitialValueExtensionPoint {
         creator.inherent = false;
         creator.recreate = true;
         creator.create();
+
+        creator = VmSystemTags.VM_PRIORITY_CHECKSUM.newSystemTagCreator(vmUuid);
+        creator.setTagByTokens(map(
+                e(VmSystemTags.VM_PRIORITY_CHECKSUM_TOKEN, level.generateChecksum())
+        ));
+        creator.inherent = false;
+        creator.recreate = true;
+        creator.create();
     }
 
     public void batchSetVmPriority(List<String> vmUuids, VmPriorityLevel level) {
