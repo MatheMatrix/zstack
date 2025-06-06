@@ -753,7 +753,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        if (dataVolumeSnapshotUuids.isEmpty()) {
+                        if (CollectionUtils.isEmpty(dataVolumeSnapshotUuids)) {
                             trigger.next();
                             return;
                         }
@@ -973,7 +973,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        if (dataVolumeUuids.isEmpty()) {
+                        if (CollectionUtils.isEmpty(dataVolumeUuids)) {
                             trigger.next();
                             return;
                         }
@@ -1044,7 +1044,10 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                                 vo.setUuid(groupUuid);
                                 vo.setName(msg.getName());
                                 vo.setDescription(msg.getDescription());
-                                vo.setImageCount(1 + dataVolumeUuids.size());
+                                vo.setImageCount(1);
+                                if (!CollectionUtils.isEmpty(dataVolumeUuids)) {
+                                    vo.setImageCount(1 + dataVolumeUuids.size());
+                                }
                                 vo = persist(vo);
 
                                 new HashSet<String>(newVolumeUuids).forEach(
