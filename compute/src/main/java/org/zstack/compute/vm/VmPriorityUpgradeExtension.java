@@ -1,5 +1,6 @@
 package org.zstack.compute.vm;
 
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.cloudbus.*;
 import org.zstack.core.db.Q;
@@ -15,6 +16,7 @@ import org.zstack.utils.logging.CLogger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * @ Author : yh.w
@@ -51,28 +53,47 @@ public class VmPriorityUpgradeExtension implements Component {
                 .eq(VmInstanceVO_.type, VmInstanceConstant.USER_VM_TYPE)
                 .listValues();
 
-        if (vmUuids.isEmpty()) {
-            return;
-        }
-
-        List<String> updatedVms = Q.New(SystemTagVO.class)
-                .select(SystemTagVO_.resourceUuid)
-                .like(SystemTagVO_.tag, "vmPriority::%")
-                .in(SystemTagVO_.resourceUuid, vmUuids)
-                .listValues();
-
-        vmUuids.removeAll(updatedVms);
         vmUuids.removeIf( v -> !destinationMaker.isManagedByUs(v));
 
         if (vmUuids.isEmpty()) {
             return;
         }
 
-        VmPriorityConfigVO priorityVO = Q.New(VmPriorityConfigVO.class).eq(VmPriorityConfigVO_.level, VmPriorityLevel.Normal).find();
+        List<SystemTagVO> vmPriorityTags = Q.New(SystemTagVO.class)
+                .like(SystemTagVO_.tag, "vmPriority::%")
+                .in(SystemTagVO_.resourceUuid, vmUuids)
+                .list();
+
+        List<String> hasTagVmUuids = vmPriorityTags.stream().map(SystemTagVO::getResourceUuid).collect(Collectors.toList());
+        List<String> normalVmUuids = vmPriorityTags.stream().filter(t -> t.getTag().equals("vmPriority::" + VmPriorityLevel.Normal.name()))
+                .map(SystemTagVO::getResourceUuid).collect(Collectors.toList());
+        List<String> cpuHighVmUuids = vmPriorityTags.stream().filter(t -> t.getTag().equals("vmPriority::" + VmPriorityLevel.CpuHigh.name()))
+                .map(SystemTagVO::getResourceUuid).collect(Collectors.toList());
+
+        vmUuids.removeAll(hasTagVmUuids);
+
+        VmPriorityConfigVO normalPriorityVO = Q.New(VmPriorityConfigVO.class).eq(VmPriorityConfigVO_.level, VmPriorityLevel.Normal).find();
+        VmPriorityConfigVO cpuHighPriorityVO = Q.New(VmPriorityConfigVO.class).eq(VmPriorityConfigVO_.level, VmPriorityLevel.CpuHigh).find();
+
+        // no tag vm, set to normal
         List<PriorityConfigStruct> priorityConfigStructs = new ArrayList<>();
         vmUuids.forEach(v -> {
-            priorityConfigStructs.add(new PriorityConfigStruct(priorityVO, v));
+            priorityConfigStructs.add(new PriorityConfigStruct(normalPriorityVO, v));
         });
+
+        // normal level vm
+        normalVmUuids.forEach(v -> {
+            priorityConfigStructs.add(new PriorityConfigStruct(normalPriorityVO, v));
+        });
+
+        // cpu high level vm
+        cpuHighVmUuids.forEach(v -> {
+            priorityConfigStructs.add(new PriorityConfigStruct(cpuHighPriorityVO, v));
+        });
+
+        if (priorityConfigStructs.isEmpty()) {
+            return;
+        }
 
         UpdateVmPriorityMsg msg = new UpdateVmPriorityMsg();
         msg.setHostUuid(inv.getUuid());
