@@ -242,7 +242,7 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
     }
 
     @Override
-    public void ping(Completion completion) {
+    public void ping(ReturnValueCompletion<PingRsp> completion) {
         thdf.chainSubmit(new ChainTask(completion) {
             @Override
             public String getSyncSignature() {
@@ -251,10 +251,10 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
 
             @Override
             public void run(final SyncTaskChain chain) {
-                pingMds(new Completion(completion) {
+                pingMds(new ReturnValueCompletion<PingRsp>(completion) {
                     @Override
-                    public void success() {
-                        completion.success();
+                    public void success(PingRsp rsp) {
+                        completion.success(rsp);
                         chain.next();
                     }
 
@@ -280,6 +280,7 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
             stepCount.add(i);
         }
 
+        final PingRsp[] pingRsp = new PingRsp[1];
         new While<>(stepCount).each((step, comp) -> {
             PingCmd cmd = new PingCmd();
             cmd.setMdsAddr(getSelf().getMdsAddr());
@@ -287,7 +288,8 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
                     cmd, new JsonAsyncRESTCallback<PingRsp>(completion) {
                         @Override
                         public void success(PingRsp rsp) {
-                            if (rsp.isSuccess()){
+                            if (rsp.isSuccess()) {
+                                pingRsp[0] = rsp;
                                 comp.allDone();
                                 return;
                             }
@@ -327,13 +329,13 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
                     completion.fail(errorCodeList.getCauses().get(0));
                     return;
                 }
-                completion.success();
+                completion.success(pingRsp[0]);
             }
         });
     }
 
     public static class PingRsp extends ZbsMdsBase.AgentResponse {
-        private boolean mdsExternalAddr;
+        public String mdsExternalAddr;
     }
 
     public static class PingCmd extends ZbsMdsBase.AgentCommand {

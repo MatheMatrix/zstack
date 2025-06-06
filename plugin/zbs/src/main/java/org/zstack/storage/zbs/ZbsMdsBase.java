@@ -41,7 +41,7 @@ public abstract class ZbsMdsBase {
     }
 
     public abstract void connect(Completion completion);
-    public abstract void ping(Completion completion);
+    public abstract void ping(ReturnValueCompletion<ZbsPrimaryStorageMdsBase.PingRsp> completion);
     protected abstract String makeHttpPath(String ip, String path);
 
     protected void checkTools() {

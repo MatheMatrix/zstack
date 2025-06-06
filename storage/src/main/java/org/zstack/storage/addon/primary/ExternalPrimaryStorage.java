@@ -186,6 +186,8 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
         }
         externalVO = dbf.updateAndRefresh(externalVO);
         evt.setInventory(externalVO.toInventory());
+
+
         bus.publish(evt);
     }
 

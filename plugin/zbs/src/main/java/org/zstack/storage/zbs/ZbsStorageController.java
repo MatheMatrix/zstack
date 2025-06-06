@@ -396,11 +396,11 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         reloadDbInfo();
         final List<ZbsPrimaryStorageMdsBase> mds = CollectionUtils.transformToList(addonInfo.getMdsInfos(), ZbsPrimaryStorageMdsBase::new);
         new While<>(mds).each((m, comp) -> {
-            m.ping(new Completion(comp) {
+            m.ping(new ReturnValueCompletion<ZbsPrimaryStorageMdsBase.PingRsp>(comp) {
                 @Override
-                public void success() {
+                public void success(ZbsPrimaryStorageMdsBase.PingRsp rps) {
                     m.getSelf().setMdsStatus(MdsStatus.Connected);
-                    m.getSelf().setMdsExternalAddr();
+                    m.getSelf().setMdsExternalAddr(rps.mdsExternalAddr);
                     comp.done();
                 }
 
