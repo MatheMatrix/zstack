@@ -15,7 +15,7 @@ import java.util.List;
         path = "/imagegrouprefs",
         optionalPaths = {"/imagegrouprefs/{imageGroupUuid}"},
         method = HttpMethod.GET,
-        responseClass = APIQueryImageGroupReply.class
+        responseClass = APIQueryImageGroupRefReply.class
 )
 public class APIQueryImageGroupRefMsg extends APIQueryMessage {
     public static List<String> __example__() {
