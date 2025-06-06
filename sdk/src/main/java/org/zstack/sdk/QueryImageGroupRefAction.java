@@ -12,7 +12,7 @@ public class QueryImageGroupRefAction extends QueryAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.QueryImageGroupResult value;
+        public org.zstack.sdk.QueryImageGroupRefResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -34,8 +34,8 @@ public class QueryImageGroupRefAction extends QueryAction {
             return ret;
         }
         
-        org.zstack.sdk.QueryImageGroupResult value = res.getResult(org.zstack.sdk.QueryImageGroupResult.class);
-        ret.value = value == null ? new org.zstack.sdk.QueryImageGroupResult() : value; 
+        org.zstack.sdk.QueryImageGroupRefResult value = res.getResult(org.zstack.sdk.QueryImageGroupRefResult.class);
+        ret.value = value == null ? new org.zstack.sdk.QueryImageGroupRefResult() : value; 
 
         return ret;
     }
