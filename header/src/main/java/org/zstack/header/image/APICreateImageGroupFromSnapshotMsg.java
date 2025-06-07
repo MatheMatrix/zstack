@@ -13,7 +13,7 @@ import java.util.List;
 @RestRequest(
         path = "/imagegroup/from/snapshot/{rootVolumeSnapshotUuid}",
         method = HttpMethod.POST,
-        responseClass = APICreateImageGroupFromImageEvent.class,
+        responseClass = APICreateImageGroupFromSnapshotEvent.class,
         parameterName = "params"
 )
 @TagResourceType(ImageVO.class)

@@ -1,9 +1,6 @@
 package org.zstack.header.image;
 
 import org.zstack.header.configuration.PythonClassInventory;
-import org.zstack.header.image.ImageGroupRefVO;
-import org.zstack.header.query.ExpandedQueries;
-import org.zstack.header.query.ExpandedQuery;
 import org.zstack.header.search.Inventory;
 
 import java.io.Serializable;
@@ -11,7 +8,6 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 
 @PythonClassInventory
 @Inventory(mappingVOClass = ImageGroupVO.class, collectionValueOfMethod = "valueOf1")
@@ -19,6 +15,7 @@ public class ImageGroupInventory implements Serializable {
     private Integer imageCount;
     private String name;
     private String description;
+    private String status;
     private Timestamp createDate;
     private Timestamp lastOpDate;
     private String uuid;
@@ -26,6 +23,7 @@ public class ImageGroupInventory implements Serializable {
     protected ImageGroupInventory(ImageGroupVO vo) {
         this.setImageCount(vo.getImageCount());
         this.setName(vo.getName());
+        this.setStatus(vo.getStatus().toString());
         this.setDescription(vo.getDescription());
         this.setCreateDate(vo.getCreateDate());
         this.setLastOpDate(vo.getLastOpDate());
@@ -94,5 +92,13 @@ public class ImageGroupInventory implements Serializable {
 
     public void setUuid(String uuid) {
         this.uuid = uuid;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

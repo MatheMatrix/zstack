@@ -22,6 +22,9 @@ public class ImageGroupVO extends ResourceVO {
     @Column
     private String name;
     @Column
+    @Enumerated(EnumType.STRING)
+    private ImageStatus status;
+    @Column
     private String description;
     @Column
     private Timestamp createDate;
@@ -71,5 +74,13 @@ public class ImageGroupVO extends ResourceVO {
 
     public void setLastOpDate(Timestamp lastOpDate) {
         this.lastOpDate = lastOpDate;
+    }
+
+    public ImageStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ImageStatus status) {
+        this.status = status;
     }
 }

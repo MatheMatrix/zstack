@@ -195,6 +195,7 @@ CREATE VIEW `zstack`.`GuestVmScriptVO` AS SELECT uuid, name, description, platfo
 CREATE TABLE `zstack`.`ImageGroupVO` (
                                          `uuid` VARCHAR(32) NOT NULL UNIQUE,
                                          `name` VARCHAR(255) NOT NULL,
+                                         `status` varchar(32) NOT NULL,
                                          `description` VARCHAR(2048) DEFAULT NULL,
                                          `imageCount` int unsigned NOT NULL,
                                          `lastOpDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE current_timestamp(),

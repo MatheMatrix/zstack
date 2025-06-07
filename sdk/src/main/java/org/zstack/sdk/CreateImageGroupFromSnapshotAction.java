@@ -12,7 +12,7 @@ public class CreateImageGroupFromSnapshotAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.CreateImageGroupFromImageResult value;
+        public org.zstack.sdk.CreateImageGroupFromSnapshotResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -75,8 +75,8 @@ public class CreateImageGroupFromSnapshotAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.CreateImageGroupFromImageResult value = res.getResult(org.zstack.sdk.CreateImageGroupFromImageResult.class);
-        ret.value = value == null ? new org.zstack.sdk.CreateImageGroupFromImageResult() : value; 
+        org.zstack.sdk.CreateImageGroupFromSnapshotResult value = res.getResult(org.zstack.sdk.CreateImageGroupFromSnapshotResult.class);
+        ret.value = value == null ? new org.zstack.sdk.CreateImageGroupFromSnapshotResult() : value; 
 
         return ret;
     }

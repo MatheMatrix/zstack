@@ -646,6 +646,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                 ImageGroupVO vo = new ImageGroupVO();
                 vo.setUuid(groupUuid);
                 vo.setName(msg.getName());
+                vo.setStatus(ImageStatus.Ready);
                 vo.setDescription(msg.getDescription());
                 vo.setImageCount(1);
                 if (!CollectionUtils.isEmpty(dateVolumeTemplateUuids)) {
@@ -695,13 +696,44 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
         FlowChain chain = FlowChainBuilder.newShareFlowChain();
         chain.setName(String.format("create-image-group-from-snapshot-%s", msg.getRootVolumeSnapshotUuid()));
         chain.then(new ShareFlow() {
-            ImageGroupVO imageGroupVO;
+            ImageGroupVO imageGroupVO = new ImageGroupVO();
             String rootVolumeSnapshotUuid = msg.getRootVolumeSnapshotUuid();
             List<String> dataVolumeSnapshotUuids = msg.getDateVolumeSnapshotUuids();
             List<String> newImageUuids = new ArrayList<String>();
 
             @Override
             public void setup() {
+                flow(new Flow() {
+                    String __name__ = "prepare-db";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        imageGroupVO = new SQLBatchWithReturn<ImageGroupVO>() {
+                            @Override
+                            protected ImageGroupVO scripts() {
+                                String groupUuid = StringUtils.isEmpty(msg.getResourceUuid()) ? Platform.getUuid() : msg.getResourceUuid();
+                                ImageGroupVO vo = new ImageGroupVO();
+                                vo.setUuid(groupUuid);
+                                vo.setName(msg.getName());
+                                vo.setStatus(ImageStatus.Creating);
+                                vo.setDescription(msg.getDescription());
+                                vo.setImageCount(1);
+                                if (!CollectionUtils.isEmpty(dataVolumeSnapshotUuids)) {
+                                    vo.setImageCount(1 + dataVolumeSnapshotUuids.size());
+                                }
+                                vo = persist(vo);
+                                return vo;
+                            }
+                        }.execute();
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void rollback(FlowRollback trigger, Map data) {
+                        dbf.removeByPrimaryKey(imageGroupVO.getUuid(), ImageGroupVO.class);
+                        trigger.rollback();
+                    }
+                });
                 flow(new Flow() {
                     String __name__ = "create-root-template-from-snapshot";
 
@@ -818,16 +850,9 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                         imageGroupVO = new SQLBatchWithReturn<ImageGroupVO>() {
                             @Override
                             protected ImageGroupVO scripts() {
-                                String groupUuid = Platform.getUuid();
-                                ImageGroupVO vo = new ImageGroupVO();
-                                vo.setUuid(groupUuid);
-                                vo.setName(msg.getName());
-                                vo.setDescription(msg.getDescription());
-                                vo.setImageCount(1);
-                                if (!CollectionUtils.isEmpty(dataVolumeSnapshotUuids)) {
-                                    vo.setImageCount(1 + dataVolumeSnapshotUuids.size());
-                                }
-                                vo = persist(vo);
+                                ImageGroupVO vo = findByUuid(imageGroupVO.getUuid(), ImageGroupVO.class);
+                                vo.setStatus(ImageStatus.Ready);
+                                vo = merge(vo);
 
                                 new HashSet<String>(newImageUuids).forEach(
                                         resourceUuid -> {
@@ -836,7 +861,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                                                     .find();
 
                                             ImageGroupRefVO refVO = new ImageGroupRefVO();
-                                            refVO.setImageGroupUuid(groupUuid);
+                                            refVO.setImageGroupUuid(imageGroupVO.getUuid());
                                             refVO.setImageUuid(resourceUuid);
                                             refVO.setName(image.getName());
                                             refVO.setDescription(image.getDescription());
@@ -887,16 +912,15 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
         FlowChain chain = FlowChainBuilder.newShareFlowChain();
         chain.setName(String.format("create-image-group-from-vm-instance-%s", vmUuid));
         chain.then(new ShareFlow() {
-            ImageGroupVO imageGroupVO;
-            List<ImageGroupRefVO> imageGroupRefs = new ArrayList<ImageGroupRefVO>();
+            ImageGroupVO imageGroupVO = new ImageGroupVO();
             String rootVolumeUuid;
             List<String> dataVolumeUuids = new ArrayList<String>();
             List<String> newVolumeUuids = new ArrayList<String>();
 
             @Override
             public void setup() {
-                flow(new NoRollbackFlow() {
-                    String __name__ = "get-vm-instance-volume";
+                flow(new Flow() {
+                    String __name__ = "prepare-db";
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
@@ -918,7 +942,32 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                             trigger.fail(operr("vm instance[uuid:%s] has no root volume", vmUuid));
                             return;
                         }
+
+                        imageGroupVO = new SQLBatchWithReturn<ImageGroupVO>() {
+                            @Override
+                            protected ImageGroupVO scripts() {
+                                String groupUuid = StringUtils.isEmpty(msg.getResourceUuid()) ? Platform.getUuid() : msg.getResourceUuid();
+                                ImageGroupVO vo = new ImageGroupVO();
+                                vo.setUuid(groupUuid);
+                                vo.setName(msg.getName());
+                                vo.setStatus(ImageStatus.Creating);
+                                vo.setDescription(msg.getDescription());
+                                vo.setImageCount(1);
+                                if (!CollectionUtils.isEmpty(dataVolumeUuids)) {
+                                    vo.setImageCount(1 + dataVolumeUuids.size());
+                                }
+                                vo = persist(vo);
+                                return vo;
+                            }
+                        }.execute();
                         trigger.next();
+                    }
+
+                    @Override
+                    public void rollback(FlowRollback trigger, Map data) {
+                        //TODO: rootImageUuid
+                        dbf.removeByPrimaryKey(imageGroupVO.getUuid(), ImageGroupVO.class);
+                        trigger.rollback();
                     }
                 });
 
@@ -1038,21 +1087,14 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                 flow(new NoRollbackFlow() {
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        String __name__ = "create-image-group-in-database";
+                        String __name__ = "create-image-group-ref-in-database";
 
                         imageGroupVO = new SQLBatchWithReturn<ImageGroupVO>() {
                             @Override
                             protected ImageGroupVO scripts() {
-                                String groupUuid = StringUtils.isEmpty(msg.getResourceUuid()) ? Platform.getUuid() : msg.getResourceUuid();
-                                ImageGroupVO vo = new ImageGroupVO();
-                                vo.setUuid(groupUuid);
-                                vo.setName(msg.getName());
-                                vo.setDescription(msg.getDescription());
-                                vo.setImageCount(1);
-                                if (!CollectionUtils.isEmpty(dataVolumeUuids)) {
-                                    vo.setImageCount(1 + dataVolumeUuids.size());
-                                }
-                                vo = persist(vo);
+                                ImageGroupVO vo = findByUuid(imageGroupVO.getUuid(), ImageGroupVO.class);
+                                vo.setStatus(ImageStatus.Ready);
+                                vo = merge(vo);
 
                                 new HashSet<String>(newVolumeUuids).forEach(
                                         resourceUuid -> {
@@ -1061,7 +1103,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
                                                     .find();
 
                                             ImageGroupRefVO refVO = new ImageGroupRefVO();
-                                            refVO.setImageGroupUuid(groupUuid);
+                                            refVO.setImageGroupUuid(imageGroupVO.getUuid());
                                             refVO.setImageUuid(resourceUuid);
                                             refVO.setName(image.getName());
                                             refVO.setDescription(image.getDescription());
