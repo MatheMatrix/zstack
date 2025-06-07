@@ -927,9 +927,13 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
+                        VmInstanceVO vmVO = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, vmUuid).find();
                         CreateRootVolumeTemplateFromRootVolumeMsg crtMsg = new CreateRootVolumeTemplateFromRootVolumeMsg();
                         crtMsg.setRootVolumeUuid(rootVolumeUuid);
                         crtMsg.setName(String.format("%s-root", msg.getName()));
+                        crtMsg.setArchitecture(vmVO.getArchitecture());
+                        crtMsg.setPlatform(vmVO.getPlatform());
+                        crtMsg.setGuestOsType(vmVO.getPlatform());
                         crtMsg.setDescription(msg.getDescription());
                         crtMsg.setSession(msg.getSession());
                         bus.makeLocalServiceId(crtMsg, ImageConstant.SERVICE_ID);
