@@ -1448,7 +1448,7 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
 
     private void handle(final APICloneImageMsg msg) {
         APICloneImageEvent evt = new APICloneImageEvent(msg.getId());
-
+        Set<ImageBackupStorageRefVO> copiedRefs;
         ImageVO sourceImage = dbf.findByUuid(msg.getImageUuid(), ImageVO.class);
         if (sourceImage == null) {
             throw new OperationFailureException(operr("source image [%s] not existed", msg.getImageUuid()));
@@ -1483,22 +1483,30 @@ public class ImageManagerImpl extends AbstractService implements ImageManager, M
         vo.setArchitecture(sourceImage.getArchitecture());
         vo.setVirtio(sourceImage.getVirtio());
         vo.setAccountUuid(sourceImage.getAccountUuid());
-        if (sourceImage.getBackupStorageRefs() != null) {
-            Set<ImageBackupStorageRefVO> copiedRefs = new HashSet<>();
-            for (ImageBackupStorageRefVO ref : sourceImage.getBackupStorageRefs()) {
-                copiedRefs.add(copyImageBackupStorageRefVO(ref));
-            }
-            vo.setBackupStorageRefs(copiedRefs);
-        }
-
+        copiedRefs = sourceImage.getBackupStorageRefs();
 
         ImageFactory factory = getImageFacotry(ImageType.valueOf(sourceImage.getType()));
         final ImageVO ivo = new SQLBatchWithReturn<ImageVO>() {
             @Override
             protected ImageVO scripts() {
+                Set<ImageBackupStorageRefVO> rvos = new HashSet<>();
                 vo.setAccountUuid(sourceImage.getAccountUuid());
-                final ImageVO ivo = factory.createImage(vo);
                 tagMgr.createTagsFromAPICreateMessage(msg, vo.getUuid(), ImageVO.class.getSimpleName());
+                ImageVO ivo = factory.createImage(vo);
+                for (ImageBackupStorageRefVO ref : copiedRefs) {
+                    ImageBackupStorageRefVO rvo = new ImageBackupStorageRefVO();
+                    rvo.setBackupStorageUuid(ref.getBackupStorageUuid());
+                    rvo.setInstallPath(ref.getInstallPath());
+                    rvo.setStatus(ref.getStatus());
+                    rvo.setImageUuid(vo.getUuid());
+                    rvo.setExportMd5Sum(ref.getExportMd5Sum());
+                    rvo.setExportUrl(ref.getExportUrl());
+                    persist(rvo);
+                    rvos.add(rvo);
+                }
+                
+                ivo.setBackupStorageRefs(rvos);
+                ivo = merge(ivo);
                 return ivo;
             }
         }.execute();
