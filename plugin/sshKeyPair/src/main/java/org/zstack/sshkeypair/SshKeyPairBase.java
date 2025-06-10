@@ -25,7 +25,6 @@ import org.zstack.kvm.KVMHostAsyncHttpCallMsg;
 import org.zstack.kvm.KVMHostAsyncHttpCallReply;
 
 import java.sql.Timestamp;
-import java.util.Date;
 
 import static org.zstack.core.Platform.operr;
 
@@ -48,6 +47,16 @@ public class SshKeyPairBase {
     void handleMessage(Message msg) {
         if (msg instanceof APIMessage) {
             handleAPIMessage((APIMessage) msg);
+        } else {
+            handleLocalMessage(msg);
+        }
+    }
+
+    private void handleLocalMessage(Message msg) {
+        if (msg instanceof AttachSshKeyPairToVmInstanceMsg) {
+            handle((AttachSshKeyPairToVmInstanceMsg) msg);
+        } else if (msg instanceof DetachSshKeyPairFromVmInstanceMsg) {
+            handle((DetachSshKeyPairFromVmInstanceMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
@@ -161,61 +170,18 @@ public class SshKeyPairBase {
     }
 
     public void handle(APIAttachSshKeyPairToVmInstanceMsg msg) {
-        APIAttachSshKeyPairToVmInstanceEvent event = new APIAttachSshKeyPairToVmInstanceEvent(msg.getId());
-
-        SshKeyPairVO keyPair = dbf.findByUuid(msg.getSshKeyPairUuid(), SshKeyPairVO.class);
-        VmInstanceVO instance = dbf.findByUuid(msg.getVmInstanceUuid(), VmInstanceVO.class);
-        thdf.chainSubmit(new ChainTask(msg) {
+        AttachSshKeyPairToVmInstanceMsg attachSshKeyPairToVmInstanceMsg = new AttachSshKeyPairToVmInstanceMsg();
+        attachSshKeyPairToVmInstanceMsg.setSshKeyPairUuid(msg.getSshKeyPairUuid());
+        attachSshKeyPairToVmInstanceMsg.setVmInstanceUuid(msg.getVmInstanceUuid());
+        bus.makeTargetServiceIdByResourceUuid(attachSshKeyPairToVmInstanceMsg, SshKeyPairConstant.SERVICE_ID, msg.getSshKeyPairUuid());
+        bus.send(attachSshKeyPairToVmInstanceMsg, new CloudBusCallBack(msg) {
             @Override
-            public void run(SyncTaskChain chain) {
-                AttachSshKeyPairToVmInstanceCommand cmd = new AttachSshKeyPairToVmInstanceCommand();
-                cmd.setSshKeyPairUuid(keyPair.getUuid());
-                cmd.setVmInstanceUuid(instance.getUuid());
-                cmd.setPublicKey(keyPair.getPublicKey());
-
-                KVMHostAsyncHttpCallMsg smsg = new KVMHostAsyncHttpCallMsg();
-                smsg.setCommand(cmd);
-                smsg.setHostUuid(instance.getHostUuid());
-                smsg.setPath(SshKeyPairConstant.SSH_KEY_PAIR_ATTACH_TO_VM);
-
-                bus.makeTargetServiceIdByResourceUuid(smsg, HostConstant.SERVICE_ID, instance.getHostUuid());
-                bus.send(smsg, new CloudBusCallBack(chain) {
-                    @Override
-                    public void run(MessageReply reply) {
-                        if (reply.isSuccess()) {
-                            KVMHostAsyncHttpCallReply r = reply.castReply();
-                            AttachSshKeyPairToVmInstanceRsp rsp = r.toResponse(AttachSshKeyPairToVmInstanceRsp.class);
-                            if (rsp.isSuccess()) {
-                                attachSshKeyPairToVmInDB();
-                            } else {
-                                reply.setError(operr("operation error, because: %s", rsp.getError()));
-                                event.setError(reply.getError());
-                            }
-                        } else {
-                            event.setError(reply.getError());
-                        }
-                        bus.publish(event);
-                        chain.next();
-                    }
-                    void attachSshKeyPairToVmInDB() {
-                        SshKeyPairRefVO vo = new SshKeyPairRefVO();
-                        vo.setSshKeyPairUuid(msg.getSshKeyPairUuid());
-                        vo.setResourceUuid(msg.getVmInstanceUuid());
-                        vo.setResourceType(VmInstanceVO.class.getSimpleName());
-                        vo.setCreateDate(new Timestamp(new Date().getTime()));
-                        dbf.persist(vo);
-                    }
-                });
-            }
-
-            @Override
-            public String getSyncSignature() {
-                return String.format("%s-%s", SshKeyPairConstant.OPERATE_SSH_KEY_PAIR_THREAD_NAME, msg.getSshKeyPairUuid());
-            }
-
-            @Override
-            public String getName() {
-                return String.format("attach-sshKeyPair-%s", msg.getSshKeyPairUuid());
+            public void run(MessageReply reply) {
+                APIAttachSshKeyPairToVmInstanceEvent event = new APIAttachSshKeyPairToVmInstanceEvent(msg.getId());
+                if (!reply.isSuccess()) {
+                    event.setError(reply.getError());
+                }
+                bus.publish(event);
             }
         });
     }
@@ -257,17 +223,84 @@ public class SshKeyPairBase {
     }
 
     public void handle(APIDetachSshKeyPairFromVmInstanceMsg msg) {
-        APIDetachSshKeyPairFromVmInstanceEvent event = new APIDetachSshKeyPairFromVmInstanceEvent(msg.getId());
+        DetachSshKeyPairFromVmInstanceMsg detachSshKeyPairFromVmInstanceMsg = new DetachSshKeyPairFromVmInstanceMsg();
+        detachSshKeyPairFromVmInstanceMsg.setSshKeyPairUuid(msg.getSshKeyPairUuid());
+        detachSshKeyPairFromVmInstanceMsg.setVmInstanceUuid(msg.getVmInstanceUuid());
+        bus.makeTargetServiceIdByResourceUuid(detachSshKeyPairFromVmInstanceMsg, SshKeyPairConstant.SERVICE_ID, msg.getSshKeyPairUuid());
+        bus.send(detachSshKeyPairFromVmInstanceMsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply reply) {
+                APIDetachSshKeyPairFromVmInstanceEvent event = new APIDetachSshKeyPairFromVmInstanceEvent(msg.getId());
+                if (!reply.isSuccess()) {
+                    event.setError(reply.getError());
+                }
+                bus.publish(event);
+            }
+        });
+    }
 
+    private void handle(AttachSshKeyPairToVmInstanceMsg msg) {
+        AttachSshKeyPairToVmInstanceReply reply = new AttachSshKeyPairToVmInstanceReply();
         SshKeyPairVO keyPair = dbf.findByUuid(msg.getSshKeyPairUuid(), SshKeyPairVO.class);
         VmInstanceVO instance = dbf.findByUuid(msg.getVmInstanceUuid(), VmInstanceVO.class);
+        // **reuse the original attach logic via the same ChainTask**
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public void run(SyncTaskChain chain) {
+                AttachSshKeyPairToVmInstanceCommand cmd = new AttachSshKeyPairToVmInstanceCommand();
+                cmd.setSshKeyPairUuid(msg.getSshKeyPairUuid());
+                cmd.setVmInstanceUuid(msg.getVmInstanceUuid());
+                cmd.setPublicKey(keyPair.getPublicKey());
 
+                KVMHostAsyncHttpCallMsg smsg = new KVMHostAsyncHttpCallMsg();
+                smsg.setCommand(cmd);
+                smsg.setHostUuid(instance.getHostUuid());
+                smsg.setPath(SshKeyPairConstant.SSH_KEY_PAIR_ATTACH_TO_VM);
+
+                bus.makeTargetServiceIdByResourceUuid(smsg, HostConstant.SERVICE_ID, instance.getHostUuid());
+                bus.send(smsg, new CloudBusCallBack(chain) {
+                    @Override
+                    public void run(MessageReply rpy) {
+                        if (rpy.isSuccess()) {
+                            KVMHostAsyncHttpCallReply r = rpy.castReply();
+                            AttachSshKeyPairToVmInstanceRsp rsp = r.toResponse(AttachSshKeyPairToVmInstanceRsp.class);
+                            if (rsp.isSuccess()) {
+                                SshKeyPairRefVO ref = new SshKeyPairRefVO();
+                                ref.setSshKeyPairUuid(msg.getSshKeyPairUuid());
+                                ref.setResourceUuid(msg.getVmInstanceUuid());
+                                ref.setResourceType(VmInstanceVO.class.getSimpleName());
+                                ref.setCreateDate(new Timestamp(System.currentTimeMillis()));
+                                dbf.persist(ref);
+                            } else {
+                                reply.setError(operr("operation error, because: %s", rsp.getError()));
+                            }
+                        } else {
+                            reply.setError(rpy.getError());
+                        }
+                        bus.reply(msg, reply);
+                        chain.next();
+                    }
+                });
+            }
+            @Override public String getSyncSignature() {
+                return String.format("%s-%s", SshKeyPairConstant.OPERATE_SSH_KEY_PAIR_THREAD_NAME, msg.getSshKeyPairUuid());
+            }
+            @Override public String getName() {
+                return String.format("attach-sshKeyPair-%s", msg.getSshKeyPairUuid());
+            }
+        });
+    }
+
+    private void handle(DetachSshKeyPairFromVmInstanceMsg msg) {
+        DetachSshKeyPairFromVmInstanceReply reply = new DetachSshKeyPairFromVmInstanceReply();
+        SshKeyPairVO keyPair = dbf.findByUuid(msg.getSshKeyPairUuid(), SshKeyPairVO.class);
+        VmInstanceVO instance = dbf.findByUuid(msg.getVmInstanceUuid(), VmInstanceVO.class);
         thdf.chainSubmit(new ChainTask(msg) {
             @Override
             public void run(SyncTaskChain chain) {
                 DetachSshKeyPairFromVmInstanceCommand cmd = new DetachSshKeyPairFromVmInstanceCommand();
-                cmd.setSshKeyPairUuid(keyPair.getUuid());
-                cmd.setVmInstanceUuid(instance.getUuid());
+                cmd.setSshKeyPairUuid(msg.getSshKeyPairUuid());
+                cmd.setVmInstanceUuid(msg.getVmInstanceUuid());
                 cmd.setPublicKey(keyPair.getPublicKey());
 
                 KVMHostAsyncHttpCallMsg smsg = new KVMHostAsyncHttpCallMsg();
@@ -278,39 +311,31 @@ public class SshKeyPairBase {
                 bus.makeTargetServiceIdByResourceUuid(smsg, HostConstant.SERVICE_ID, instance.getHostUuid());
                 bus.send(smsg, new CloudBusCallBack(chain) {
                     @Override
-                    public void run(MessageReply reply) {
-                        if (reply.isSuccess()) {
-                            KVMHostAsyncHttpCallReply r = reply.castReply();
+                    public void run(MessageReply rpy) {
+                        if (rpy.isSuccess()) {
+                            KVMHostAsyncHttpCallReply r = rpy.castReply();
                             DetachSshKeyPairFromVmInstanceRsp rsp = r.toResponse(DetachSshKeyPairFromVmInstanceRsp.class);
                             if (rsp.isSuccess()) {
-                                detachSshKeyPairFromVmInDB();
+                                SQL.New(SshKeyPairRefVO.class)
+                                        .eq(SshKeyPairRefVO_.sshKeyPairUuid, msg.getSshKeyPairUuid())
+                                        .eq(SshKeyPairRefVO_.resourceUuid, msg.getVmInstanceUuid())
+                                        .eq(SshKeyPairRefVO_.resourceType, VmInstanceVO.class.getSimpleName())
+                                        .delete();
                             } else {
                                 reply.setError(operr("operation error, because: %s", rsp.getError()));
-                                event.setError(reply.getError());
                             }
                         } else {
-                            event.setError(reply.getError());
+                            reply.setError(rpy.getError());
                         }
-                        bus.publish(event);
+                        bus.reply(msg, reply);
                         chain.next();
-                    }
-                    void detachSshKeyPairFromVmInDB() {
-                        SQL.New(SshKeyPairRefVO.class)
-                                .eq(SshKeyPairRefVO_.sshKeyPairUuid, msg.getSshKeyPairUuid())
-                                .eq(SshKeyPairRefVO_.resourceUuid, msg.getVmInstanceUuid())
-                                .eq(SshKeyPairRefVO_.resourceType, VmInstanceVO.class.getSimpleName())
-                                .delete();
                     }
                 });
             }
-
-            @Override
-            public String getSyncSignature() {
+            @Override public String getSyncSignature() {
                 return String.format("%s-%s", SshKeyPairConstant.OPERATE_SSH_KEY_PAIR_THREAD_NAME, msg.getSshKeyPairUuid());
             }
-
-            @Override
-            public String getName() {
+            @Override public String getName() {
                 return String.format("detach-sshKeyPair-%s", msg.getSshKeyPairUuid());
             }
         });
