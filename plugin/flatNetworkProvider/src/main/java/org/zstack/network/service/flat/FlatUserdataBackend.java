@@ -165,16 +165,12 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
     private List<NetworkInterfaceDetails> getNetworkInterfaceDetails(String vmInstanceUuid) {
         String sql = "select DISTINCT nic.mac, nic.ip, nic.netmask, nic.gateway, ipr.networkCidr " +
                 "from VmNicVO nic " +
-                "join NetworkServiceL3NetworkRefVO ref on nic.l3NetworkUuid = ref.l3NetworkUuid " +
-                "join NetworkServiceProviderVO pro on ref.networkServiceProviderUuid = pro.uuid " +
                 "join IpRangeVO ipr on nic.l3NetworkUuid = ipr.l3NetworkUuid " + // 加入对IpRangeVO的JOIN
                 "where nic.vmInstanceUuid = :vmInstanceUuid " +
-                "and nic.ipVersion = :ipversion " +
-                "and pro.type = :proType";
+                "and nic.ipVersion = :ipversion " ;
 
         TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
         q.setParameter("vmInstanceUuid", vmInstanceUuid);
-        q.setParameter("proType", FlatNetworkServiceConstant.FLAT_NETWORK_SERVICE_TYPE_STRING);
         q.setParameter("ipversion", IPv6Constants.IPv4);
         List<Tuple> ts = q.getResultList();
 
@@ -187,6 +183,7 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
             details.netmask = t.get(2, String.class);
             details.gateway = t.get(3, String.class);
             details.vpcCidrBlock = t.get(4, String.class);
+            details.vSwitchCidrBlock = t.get(4, String.class);
             networkInterfaceDetailsList.add(details);
         }
 
@@ -623,6 +620,7 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
         public String macAddress;
         public String ip;
         public String vpcCidrBlock;
+        public String vSwitchCidrBlock;
         public String netmask;
         public String gateway;
     }
