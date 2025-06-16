@@ -675,7 +675,7 @@ public class L2NoVlanNetwork implements L2Network {
         }).start();
     }
 
-    private void prepareL2NetworkOnHosts(final List<HostInventory> hosts, String providerType, final Completion completion) {
+    protected void prepareL2NetworkOnHosts(final List<HostInventory> hosts, String providerType, final Completion completion) {
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
         chain.setName(String.format("prepare-l2-%s-on-hosts", self.getUuid()));
         chain.then(new NoRollbackFlow() {
@@ -1029,7 +1029,7 @@ public class L2NoVlanNetwork implements L2Network {
         deleteL2Bridge(null, completion);
     }
 
-    private void deleteL2Bridge(List<String> clusterUuids, Completion completion) {
+    protected void deleteL2Bridge(List<String> clusterUuids, Completion completion) {
         if (clusterUuids == null) {
             L2NetworkInventory l2NetworkInventory = getSelfInventory();
             clusterUuids = l2NetworkInventory.getAttachedClusterUuids();

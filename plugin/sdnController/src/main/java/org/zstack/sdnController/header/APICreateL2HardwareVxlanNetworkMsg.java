@@ -28,6 +28,9 @@ public class APICreateL2HardwareVxlanNetworkMsg extends APICreateL2NetworkMsg {
     @APIParam(required = true, resourceType = HardwareL2VxlanNetworkPoolVO.class)
     private String poolUuid;
 
+    @APIParam(required = false, numberRange = {1, 4095})
+    private Integer vlan;
+
     public Integer getVni() {
         return vni;
     }
@@ -47,6 +50,14 @@ public class APICreateL2HardwareVxlanNetworkMsg extends APICreateL2NetworkMsg {
 
     public void setPoolUuid(String poolUuid) {
         this.poolUuid = poolUuid;
+    }
+
+    public Integer getVlan() {
+        return vlan;
+    }
+
+    public void setVlan(Integer vlan) {
+        this.vlan = vlan;
     }
 
     public static APICreateL2HardwareVxlanNetworkMsg __example__() {

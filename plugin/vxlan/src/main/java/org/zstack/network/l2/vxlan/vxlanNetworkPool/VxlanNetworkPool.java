@@ -281,7 +281,7 @@ public class VxlanNetworkPool extends L2NoVlanNetwork implements L2VxlanNetworkP
         });
     }
 
-    private void handle(final PrepareL2NetworkOnHostMsg msg) {
+    protected void handle(final PrepareL2NetworkOnHostMsg msg) {
         final PrepareL2NetworkOnHostReply reply = new PrepareL2NetworkOnHostReply();
         prepareL2NetworkOnHosts(msg.getL2NetworkUuid(), Arrays.asList(msg.getHost()), new Completion(msg) {
             @Override
@@ -777,6 +777,8 @@ public class VxlanNetworkPool extends L2NoVlanNetwork implements L2VxlanNetworkP
                 });
             }
         }).then(new NoRollbackFlow() {
+            String __name__ = "after-detach-l2-vxlan-pool";
+
             @Override
             public void run(FlowTrigger trigger, Map data) {
                 afterDetachVxlanPoolFromCluster(msg);
@@ -987,11 +989,13 @@ public class VxlanNetworkPool extends L2NoVlanNetwork implements L2VxlanNetworkP
         logger.info(String.format("update l2 vxlan vni range[%s] name[%s]", msg.getUuid(), msg.getName()));
     }
 
-    private void prepareL2NetworkOnHosts(final String l2NetworkUuid, final List<HostInventory> hosts, final Completion completion) {
+    protected void prepareL2NetworkOnHosts(final String l2NetworkUuid, final List<HostInventory> hosts, final Completion completion) {
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
         List<String> vtepIpChanged = new ArrayList<>();
         chain.setName(String.format("prepare-l2-%s-on-hosts", self.getUuid()));
         chain.then(new NoRollbackFlow() {
+            String __name__ = "check-vtep-ip";
+
             @Override
             public void run(final FlowTrigger trigger, Map data) {
                 ErrorCodeList errList = new ErrorCodeList();
@@ -1052,6 +1056,8 @@ public class VxlanNetworkPool extends L2NoVlanNetwork implements L2VxlanNetworkP
                 });
             }
         }).then(new NoRollbackFlow() {
+            String __name__ = "realize-l2-network";
+
             private void realize(final Iterator<HostInventory> it, final FlowTrigger trigger) {
                 if (!it.hasNext()) {
                     trigger.next();

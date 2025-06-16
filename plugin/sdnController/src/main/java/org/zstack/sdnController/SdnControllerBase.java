@@ -19,7 +19,6 @@ import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
-import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.NopeCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
@@ -31,6 +30,7 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l2.DeleteL2NetworkMsg;
 import org.zstack.header.network.l2.L2NetworkConstant;
 import org.zstack.header.network.l2.SdnControllerDeleteExtensionPoint;
+import org.zstack.header.network.l3.SdnControllerL3;
 import org.zstack.network.hostNetworkInterface.HostNetworkInterfaceVO;
 import org.zstack.network.hostNetworkInterface.HostNetworkInterfaceVO_;
 import org.zstack.sdnController.header.*;
@@ -63,6 +63,8 @@ public class SdnControllerBase {
     SdnControllerManager sdnMgr;
     @Autowired
     private PluginRegistry pluginRgty;
+    @Autowired
+    private SdnControllerPingTracker sdnPingTracker;
 
     public SdnControllerVO self;
 
@@ -82,6 +84,11 @@ public class SdnControllerBase {
     protected SdnControllerL2 getSdnControllerL2() {
         SdnControllerFactory factory = sdnMgr.getSdnControllerFactory(self.getVendorType());
         return factory.getSdnControllerL2(self);
+    }
+
+    protected SdnControllerL3 getSdnControllerL3() {
+        SdnControllerFactory factory = sdnMgr.getSdnControllerFactory(self.getVendorType());
+        return factory.getSdnControllerL3(self);
     }
 
     public void handleMessage(SdnControllerMessage msg) {
@@ -694,6 +701,7 @@ public class SdnControllerBase {
             String __name__ = "delete-sdn-controller-on-db";
             @Override
             public void run(FlowTrigger trigger, Map data) {
+                sdnPingTracker.untrack(msg.getSdnControllerUuid());
                 dbf.removeByPrimaryKey(msg.getSdnControllerUuid(), SdnControllerVO.class);
                 trigger.next();
             }

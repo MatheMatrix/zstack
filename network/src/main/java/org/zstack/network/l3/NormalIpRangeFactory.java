@@ -137,6 +137,29 @@ public class NormalIpRangeFactory implements IpRangeFactory {
                     }
                 });
             }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "add-sdn-subnet";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                SdnControllerL3 sdnL3 = l3Mgr.getSdnControllerL3(iprs.get(0).getL3NetworkUuid());
+                if (sdnL3 == null) {
+                    trigger.next();
+                    return;
+                }
+
+                sdnL3.createIpRange(iprs.get(0), new Completion(trigger) {
+                    @Override
+                    public void success() {
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        trigger.fail(errorCode);
+                    }
+                });
+            }
         }).error(new FlowErrorHandler(completion) {
             @Override
             public void handle(ErrorCode errCode, Map data) {
