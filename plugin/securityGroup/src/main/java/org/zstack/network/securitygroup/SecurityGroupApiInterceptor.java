@@ -764,9 +764,11 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor, Globa
         }
 
         for (String ip : ipArray) {
-            ip = ip.trim();
             if (ip.isEmpty()) {
-                throw new ApiMessageInterceptionException(err(SecurityGroupErrors.RULE_IP_FIELD_ERROR, "invalid ips[%s]", ips));
+                throw new ApiMessageInterceptionException(err(SecurityGroupErrors.RULE_IP_FIELD_ERROR, "invalid ip[%s]", ip));
+            }
+            if (ip.equals(" ")) {
+                throw new ApiMessageInterceptionException(err(SecurityGroupErrors.RULE_IP_FIELD_ERROR, "invalid ip[%s]", ip));
             }
             if (ip.contains(SecurityGroupConstant.CIDR_SPLIT)) {
                 if (!NetworkUtils.isCidr(ip, ipVersion)) {
