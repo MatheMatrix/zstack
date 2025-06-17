@@ -86,6 +86,15 @@ doc {
 					values ("ext4","xfs")
 				}
 				column {
+					name "force"
+					enclosedIn ""
+					desc "强制格式化"
+					location "body"
+					type "boolean"
+					optional true
+					since "4.10.16"
+				}
+				column {
 					name "systemTags"
 					enclosedIn ""
 					desc "系统标签"

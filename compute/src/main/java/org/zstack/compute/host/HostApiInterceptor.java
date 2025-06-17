@@ -162,6 +162,26 @@ public class HostApiInterceptor implements ApiMessageInterceptor {
         }
         msg.setPassword(proxyHardware.getPassword());
         msg.setUsername(msg.getUsername() != null ? msg.getUsername() : proxyHardware.getUsername());
+
+
+
+    }
+
+    // 路径合法性验证
+    private void validatePath(String path) {
+        if (path == null || path.isEmpty()) {
+            throw new IllegalArgumentException("Path cannot be empty");
+        }
+
+        // 检查绝对路径
+        if (!path.startsWith("/")) {
+            throw new SecurityException("Only absolute paths are allowed");
+        }
+
+        // 检查路径遍历攻击
+        if (path.contains("..") || path.contains("//")) {
+            throw new SecurityException("Invalid path traversal detected");
+        }
     }
 
     private ProxyHardware getProxyHardware(String hostname) {
