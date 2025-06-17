@@ -28,6 +28,8 @@ public class APIMountBlockDeviceMsg extends APIMessage {
     private String mountPoint;
     @APIParam(required = false, maxLength = 255, validValues = {"ext4", "xfs"})
     private String filesystemType = "xfs";
+    @APIParam(required = false)
+    private boolean force = false;
 
     public static class mkfsCommd {
         public static String buildMkfsCommd(String filesystemType, String blockDevicePath) {
@@ -95,6 +97,14 @@ public class APIMountBlockDeviceMsg extends APIMessage {
 
     public void setFilesystemType(String filesystemType) {
         this.filesystemType = filesystemType;
+    }
+
+    public boolean isForce() {
+        return force;
+    }
+
+    public void setForce(boolean force) {
+        this.force = force;
     }
 
     public static APIMountBlockDeviceMsg __example__() {
