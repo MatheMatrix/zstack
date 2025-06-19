@@ -50,6 +50,8 @@ import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.*;
 
+// test log
+
 /**
  */
 public class SecurityGroupApiInterceptor implements ApiMessageInterceptor, GlobalApiMessageInterceptor {
@@ -740,6 +742,7 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor, Globa
     }
 
     private void validateIps(String ips, Integer ipVersion) {
+        // test
         if (ips.isEmpty() || ips.startsWith(SecurityGroupConstant.IP_SPLIT) || ips.endsWith(SecurityGroupConstant.IP_SPLIT)) {
             throw new ApiMessageInterceptionException(err(SecurityGroupErrors.RULE_IP_FIELD_ERROR, "invalid ips[%s]", ips));
         }
