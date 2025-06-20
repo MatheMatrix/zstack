@@ -3,8 +3,7 @@ package org.zstack.image;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
-import org.zstack.compute.vm.IsoOperator;
-import org.zstack.compute.vm.VmSystemTags;
+import org.zstack.compute.vm.*;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cascade.CascadeConstant;
 import org.zstack.core.cascade.CascadeFacade;
@@ -18,6 +17,10 @@ import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
+import org.zstack.core.workflow.ShareFlow;
+import org.zstack.header.cluster.APIDeleteClusterEvent;
+import org.zstack.header.cluster.ClusterInventory;
+import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.NoErrorCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
@@ -35,14 +38,17 @@ import org.zstack.header.image.GetImageEncryptedReply;
 import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.image.ImageDeletionPolicyManager.ImageDeletionPolicy;
 import org.zstack.header.message.*;
+import org.zstack.header.network.l3.*;
 import org.zstack.header.storage.backup.*;
-import org.zstack.header.vm.DetachIsoFromVmInstanceMsg;
-import org.zstack.header.vm.VmInstanceConstant;
+import org.zstack.header.vm.*;
 import org.zstack.header.volume.VolumeType;
+import org.zstack.header.volume.VolumeVO;
+import org.zstack.header.volume.VolumeVO_;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
+import org.zstack.utils.function.ForEachFunction;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
@@ -51,8 +57,8 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static org.zstack.core.Platform.*;
-import static org.zstack.utils.CollectionDSL.e;
-import static org.zstack.utils.CollectionDSL.map;
+import static org.zstack.utils.CollectionDSL.*;
+import static org.zstack.utils.CollectionDSL.list;
 
 /**
  * Created with IntelliJ IDEA.
@@ -463,6 +469,11 @@ public class ImageBase implements Image {
                 @Override
                 public void run(final FlowTrigger trigger, Map data) {
                     if (deletionPolicy == ImageDeletionPolicy.Direct) {
+                        long count = Q.New(ImageBackupStorageRefVO.class).eq(ImageBackupStorageRefVO_.installPath, ref.getInstallPath()).count();
+                        if (count > 1) {
+                            trigger.next();
+                        }
+
                         DeleteBitsOnBackupStorageMsg dmsg = new DeleteBitsOnBackupStorageMsg();
                         dmsg.setBackupStorageUuid(ref.getBackupStorageUuid());
                         dmsg.setInstallPath(ref.getInstallPath());
@@ -694,6 +705,73 @@ public class ImageBase implements Image {
         }
     }
 
+    private void handle(final APIExpungeImageMsg msg) {
+        List<String> bsUuids = new ArrayList<>();
+        if (msg.getBackupStorageUuids() == null || msg.getBackupStorageUuids().isEmpty()) {
+            bsUuids = CollectionUtils.transformToList(
+                    self.getBackupStorageRefs(),
+                    new Function<String, ImageBackupStorageRefVO>() {
+                        @Override
+                        public String call(ImageBackupStorageRefVO arg) {
+                            return ImageStatus.Deleted == arg.getStatus() ? arg.getBackupStorageUuid() : null;
+                        }
+                    }
+            );
+
+            if (bsUuids.isEmpty()) {
+                throw new OperationFailureException(operr("the image[uuid:%s, name:%s] is not deleted on any backup storage",
+                        self.getUuid(), self.getName()));
+            }
+        } else {
+            for (final String bsUuid : msg.getBackupStorageUuids()) {
+                ImageBackupStorageRefVO ref = CollectionUtils.find(
+                        self.getBackupStorageRefs(),
+                        new Function<ImageBackupStorageRefVO, ImageBackupStorageRefVO>() {
+                            @Override
+                            public ImageBackupStorageRefVO call(ImageBackupStorageRefVO arg) {
+                                return arg.getBackupStorageUuid().equals(bsUuid) ? arg : null;
+                            }
+                        }
+                );
+
+                if (ref == null) {
+                    throw new OperationFailureException(argerr("the image[uuid:%s, name:%s] is not on the backup storage[uuid:%s]",
+                            self.getUuid(), self.getName(), bsUuid));
+                }
+
+                if (ref.getStatus() != ImageStatus.Deleted) {
+                    throw new OperationFailureException(argerr("the image[uuid:%s, name:%s] is not deleted on the backup storage[uuid:%s]",
+                            self.getUuid(), self.getName(), bsUuid));
+                }
+
+                bsUuids.add(bsUuid);
+            }
+        }
+
+
+        new While<>(bsUuids).all((bsUuid, completion) -> {
+            ExpungeImageMsg emsg = new ExpungeImageMsg();
+            emsg.setBackupStorageUuid(bsUuid);
+            emsg.setImageUuid(self.getUuid());
+            bus.makeTargetServiceIdByResourceUuid(emsg, ImageConstant.SERVICE_ID, self.getUuid());
+            bus.send(emsg, new CloudBusCallBack(completion) {
+                @Override
+                public void run(MessageReply reply) {
+                    if (!reply.isSuccess()) {
+                        logger.warn(reply.getError().toString());
+                    }
+
+                    completion.done();
+                }
+            });
+        }).run(new WhileDoneCompletion(msg) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                bus.publish(new APIExpungeImageEvent(msg.getId()));
+            }
+        });
+    }
+
     private void handle(APISetImageBootModeMsg msg) {
         SystemTagCreator creator = ImageSystemTags.BOOT_MODE.newSystemTagCreator(self.getUuid());
         creator.setTagByTokens(map(
@@ -798,73 +876,6 @@ public class ImageBase implements Image {
         APIRecoverImageEvent evt = new APIRecoverImageEvent(msg.getId());
         evt.setInventory(getSelfInventory());
         bus.publish(evt);
-    }
-
-    private void handle(final APIExpungeImageMsg msg) {
-        List<String> bsUuids = new ArrayList<>();
-        if (msg.getBackupStorageUuids() == null || msg.getBackupStorageUuids().isEmpty()) {
-            bsUuids = CollectionUtils.transformToList(
-                    self.getBackupStorageRefs(),
-                    new Function<String, ImageBackupStorageRefVO>() {
-                        @Override
-                        public String call(ImageBackupStorageRefVO arg) {
-                            return ImageStatus.Deleted == arg.getStatus() ? arg.getBackupStorageUuid() : null;
-                        }
-                    }
-            );
-
-            if (bsUuids.isEmpty()) {
-                throw new OperationFailureException(operr("the image[uuid:%s, name:%s] is not deleted on any backup storage",
-                                self.getUuid(), self.getName()));
-            }
-        } else {
-            for (final String bsUuid : msg.getBackupStorageUuids()) {
-                ImageBackupStorageRefVO ref = CollectionUtils.find(
-                        self.getBackupStorageRefs(),
-                        new Function<ImageBackupStorageRefVO, ImageBackupStorageRefVO>() {
-                            @Override
-                            public ImageBackupStorageRefVO call(ImageBackupStorageRefVO arg) {
-                                return arg.getBackupStorageUuid().equals(bsUuid) ? arg : null;
-                            }
-                        }
-                );
-
-                if (ref == null) {
-                    throw new OperationFailureException(argerr("the image[uuid:%s, name:%s] is not on the backup storage[uuid:%s]",
-                                    self.getUuid(), self.getName(), bsUuid));
-                }
-
-                if (ref.getStatus() != ImageStatus.Deleted) {
-                    throw new OperationFailureException(argerr("the image[uuid:%s, name:%s] is not deleted on the backup storage[uuid:%s]",
-                                    self.getUuid(), self.getName(), bsUuid));
-                }
-
-                bsUuids.add(bsUuid);
-            }
-        }
-
-
-        new While<>(bsUuids).all((bsUuid, completion) -> {
-            ExpungeImageMsg emsg = new ExpungeImageMsg();
-            emsg.setBackupStorageUuid(bsUuid);
-            emsg.setImageUuid(self.getUuid());
-            bus.makeTargetServiceIdByResourceUuid(emsg, ImageConstant.SERVICE_ID, self.getUuid());
-            bus.send(emsg, new CloudBusCallBack(completion) {
-                @Override
-                public void run(MessageReply reply) {
-                    if (!reply.isSuccess()) {
-                        logger.warn(reply.getError().toString());
-                    }
-
-                    completion.done();
-                }
-            });
-        }).run(new WhileDoneCompletion(msg) {
-            @Override
-            public void done(ErrorCodeList errorCodeList) {
-                bus.publish(new APIExpungeImageEvent(msg.getId()));
-            }
-        });
     }
 
     private void updateImage(UpdateImageMsg msg) {

@@ -23,4 +23,10 @@ public class VolumeSnapshotGlobalConfig {
     @GlobalConfigValidation(validValues = {"true", "false"})
     @GlobalConfigDef(defaultValue = "false", type = Boolean.class, description = "effective count with detached volumes")
     public static GlobalConfig EFFECTIVE_COUNT_WITH_DETACHED_VOLUMES = new GlobalConfig(CATEGORY, "effectiveCount.withDetachedVolumes");
+
+    @GlobalConfigValidation(validValues = {"true", "false"})
+    public static GlobalConfig ENABLE_FAST_REVERT = new GlobalConfig(CATEGORY, "enable.fast.revert");
+
+    @GlobalConfigValidation(inNumberRange = {1, 10})
+    public static GlobalConfig SNAPSHOT_GROUP_REVERT_CONCURRENCY = new GlobalConfig(CATEGORY, "snapshot.group.revert.concurrency");
 }
