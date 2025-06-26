@@ -42,14 +42,14 @@ public class LocalStorageFstabDeviceToUuidUpdaterExtension implements Component,
         logger.debug("1111111111LocalStorageFstabDeviceToUuidUpdaterExtension1111111111111");
         if (LOCAL_FSTAB_DEVICE_TO_UUID_UPDATER) {
             logger.debug("1111111111LocalStorageFstabDeviceToUuidUpdaterExtension2222222222");
-            fstabDeviceToUuidUpdater();
+            localStorageFstabDeviceToUuidUpdater();
         }
         logger.debug("1111111111LocalStorageFstabDeviceToUuidUpdaterExtension333333333333333");
-        fstabDeviceToUuidUpdater();
+        localStorageFstabDeviceToUuidUpdater();
     }
 
     @AsyncThread
-    private void fstabDeviceToUuidUpdater() {
+    private void localStorageFstabDeviceToUuidUpdater() {
         List<Tuple> tuples = Q.New(PrimaryStorageVO.class)
                 .eq(PrimaryStorageVO_.type, LocalStorageConstants.LOCAL_STORAGE_TYPE)
                 .select(PrimaryStorageVO_.uuid, PrimaryStorageVO_.mountPath).listTuple();
