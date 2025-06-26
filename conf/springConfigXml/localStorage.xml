@@ -148,11 +148,4 @@
             <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint" order="-2"/>
         </zstack:plugin>
     </bean>
-
-    <bean id="LocalStorageFstabDeviceToUuidUpdaterExtension" class="org.zstack.storage.primary.local.LocalStorageFstabDeviceToUuidUpdaterExtension">
-        <zstack:plugin>
-            <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint" order="-1"/>
-            <zstack:extension interface="org.zstack.header.Component" order="-1"/>
-        </zstack:plugin>
-    </bean>
 </beans>
