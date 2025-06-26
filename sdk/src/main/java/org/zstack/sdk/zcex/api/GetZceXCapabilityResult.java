@@ -20,4 +20,12 @@ public class GetZceXCapabilityResult {
         return this.cluster;
     }
 
+    public java.lang.String version;
+    public void setVersion(java.lang.String version) {
+        this.version = version;
+    }
+    public java.lang.String getVersion() {
+        return this.version;
+    }
+
 }
