@@ -155,6 +155,8 @@ public class VolumeInventory implements Serializable {
 
     private Timestamp lastAttachDate;
     private String protocol;
+    private String resourceConfigs;
+    private String systemTags;
 
     public VolumeInventory() {
     }
@@ -436,5 +438,21 @@ public class VolumeInventory implements Serializable {
 
     public void setProtocol(String protocol) {
         this.protocol = protocol;
+    }
+
+    public String getSystemTags() {
+        return systemTags;
+    }
+
+    public void setSystemTags(String systemTags) {
+        this.systemTags = systemTags;
+    }
+
+    public String getResourceConfigs() {
+        return resourceConfigs;
+    }
+
+    public void setResourceConfigs(String resourceConfigs) {
+        this.resourceConfigs = resourceConfigs;
     }
 }

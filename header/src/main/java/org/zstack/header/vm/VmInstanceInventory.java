@@ -272,6 +272,9 @@ public class VmInstanceInventory implements Serializable, Cloneable {
 
     private String guestOsType;
 
+    private String resourceConfigs;
+    private String systemTags;
+
     protected VmInstanceInventory(VmInstanceVO vo) {
         this.setUuid(vo.getUuid());
         this.setName(vo.getName());
@@ -623,5 +626,21 @@ public class VmInstanceInventory implements Serializable, Cloneable {
 
     public void setGuestOsType(String guestOsType) {
         this.guestOsType = guestOsType;
+    }
+
+    public String getResourceConfigs() {
+        return resourceConfigs;
+    }
+
+    public void setResourceConfigs(String resourceConfigs) {
+        this.resourceConfigs = resourceConfigs;
+    }
+
+    public String getSystemTags() {
+        return systemTags;
+    }
+
+    public void setSystemTags(String systemTags) {
+        this.systemTags = systemTags;
     }
 }

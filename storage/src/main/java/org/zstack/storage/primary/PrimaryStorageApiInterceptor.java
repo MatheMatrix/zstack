@@ -17,17 +17,16 @@ import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.cluster.ClusterVO_;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.storage.primary.*;
-import org.zstack.header.storage.snapshot.group.APIRevertVmFromSnapshotGroupMsg;
+import org.zstack.header.storage.snapshot.group.*;
 import org.zstack.header.volume.APICreateVolumeSnapshotGroupMsg;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.header.zone.ZoneVO;
 import org.zstack.header.zone.ZoneVO_;
 import org.zstack.utils.network.NetworkUtils;
 
+import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.argerr;
@@ -70,6 +69,8 @@ public class PrimaryStorageApiInterceptor implements ApiMessageInterceptor {
             validate(((APIGetTrashOnPrimaryStorageMsg) msg));
         } else if (msg instanceof APICreateVolumeSnapshotGroupMsg) {
             validate((APICreateVolumeSnapshotGroupMsg) msg);
+        } else if (msg instanceof APIDeleteVolumeSnapshotGroupMsg) {
+            validate((APIDeleteVolumeSnapshotGroupMsg) msg);
         }
 
         setServiceId(msg);
@@ -220,5 +221,47 @@ public class PrimaryStorageApiInterceptor implements ApiMessageInterceptor {
             throw new ApiMessageInterceptionException(operr("primary storage(s) [uuid: %s] where volume(s) locate" +
                     " is not Enabled or Connected", psUuids));
         }
+
+        //检查当前虚拟机是否有未完成的快照组
+    }
+
+    private void validate(APIDeleteVolumeSnapshotGroupMsg msg) {
+        getVmResidualSnapshotGroupUuid(msg.getUuid());
+    }
+
+    public static String getVmResidualSnapshotGroupUuid(String groupUuid) {
+        String vmInstanceUuid = Q.New(VolumeSnapshotGroupVO.class).eq(VolumeSnapshotGroupVO_.uuid, groupUuid)
+                .select(VolumeSnapshotGroupVO_.vmInstanceUuid).findValue();
+        String vmResidualSnapshotGroupUuid = getVmResidualSnapshotGroupUuid(vmInstanceUuid);
+        if (vmResidualSnapshotGroupUuid == null) {
+            return;
+        }
+        if (Objects.equals(vmResidualSnapshotGroupUuid, msg.getUuid())) {
+            return;
+        }
+        throw new ApiMessageInterceptionException(operr("the vm[%s] currently has an incomplete snapshot group. " +
+                "please delete the snapshot group[%s].", vmInstanceUuid, vmResidualSnapshotGroupUuid));
+
+        List<Tuple> groupTuples = Q.New(VolumeSnapshotGroupVO.class)
+                .eq(VolumeSnapshotGroupVO_.vmInstanceUuid, vmInstanceUuid)
+                .select(VolumeSnapshotGroupVO_.uuid, VolumeSnapshotGroupVO_.snapshotCount).listTuple();
+        if (groupTuples.isEmpty()) {
+            return null;
+        }
+
+        List<String> groupUuids = groupTuples.stream().map(t -> t.get(0, String.class)).collect(Collectors.toList());
+
+        List<Tuple> refs = Q.New(VolumeSnapshotGroupRefVO.class)
+                .in(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, groupUuids)
+                .select(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, VolumeSnapshotGroupRefVO_.snapshotDeleted)
+                .listTuple();
+        Map<String, List<Tuple>> groupRefMap = refs.stream().collect(Collectors.groupingBy(t -> t.get(0, String.class)));
+
+        return groupTuples.stream().filter(tuple -> {
+            String groupUuid = tuple.get(0, String.class);
+            int snapshotCount = tuple.get(1, Integer.class);
+            List<Tuple> groupRefs = groupRefMap.get(groupUuid);
+            return snapshotCount != groupRefs.size() || groupRefs.stream().anyMatch(t -> t.get(1, Boolean.class));
+        }).findFirst().map(tuple -> tuple.get(0, String.class)).orElse(null);
     }
 }

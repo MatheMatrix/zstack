@@ -45,6 +45,7 @@
         </property>
         <property name="stopVmWorkFlowElements">
             <list>
+                <value>org.zstack.compute.vm.CheckVmVolumeSnapshotChainForStartVmFlow</value>
                 <value>org.zstack.compute.vm.BeforeVmStopOnHypervisorFlow</value>
                 <value>org.zstack.compute.vm.VmStopOnHypervisorFlow</value>
                 <value>org.zstack.compute.vm.VmReturnHostFlow</value>

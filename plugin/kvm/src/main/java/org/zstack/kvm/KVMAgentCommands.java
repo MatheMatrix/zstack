@@ -2650,6 +2650,7 @@ public class KVMAgentCommands {
         private List<VirtualDeviceInfo> virtualDeviceInfoList;
         private VirtualDeviceInfo memBalloonInfo;
         private VirtualizerInfoTO virtualizerInfo;
+        private String vmXml;
 
         public VirtualDeviceInfo getMemBalloonInfo() {
             return memBalloonInfo;
@@ -2681,6 +2682,14 @@ public class KVMAgentCommands {
 
         public void setVirtualizerInfo(VirtualizerInfoTO virtualizerInfo) {
             this.virtualizerInfo = virtualizerInfo;
+        }
+
+        public String getVmXml() {
+            return vmXml;
+        }
+
+        public void setVmXml(String vmXml) {
+            this.vmXml = vmXml;
         }
     }
 

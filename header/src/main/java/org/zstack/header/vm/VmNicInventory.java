@@ -46,6 +46,8 @@ public class VmNicInventory implements Serializable {
     private String state = VmNicState.enable.toString();
     private Timestamp createDate;
     private Timestamp lastOpDate;
+    private String resourceConfigs;
+    private String systemTags;
 
     public VmNicInventory() {
     }
@@ -243,5 +245,21 @@ public class VmNicInventory implements Serializable {
 
     public void setState(String state) {
         this.state = state;
+    }
+
+    public String getResourceConfigs() {
+        return resourceConfigs;
+    }
+
+    public void setResourceConfigs(String resourceConfigs) {
+        this.resourceConfigs = resourceConfigs;
+    }
+
+    public String getSystemTags() {
+        return systemTags;
+    }
+
+    public void setSystemTags(String systemTags) {
+        this.systemTags = systemTags;
     }
 }
