@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class GetAliyunInvocationsAction extends AbstractAction {
+public class GetGuestVmScriptExecutedRecordAndDetailsAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class GetAliyunInvocationsAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.GetAliyunInvocationsResult value;
+        public org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailsResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -66,8 +66,8 @@ public class GetAliyunInvocationsAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.GetAliyunInvocationsResult value = res.getResult(org.zstack.sdk.GetAliyunInvocationsResult.class);
-        ret.value = value == null ? new org.zstack.sdk.GetAliyunInvocationsResult() : value; 
+        org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailsResult value = res.getResult(org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailsResult.class);
+        ret.value = value == null ? new org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailsResult() : value; 
 
         return ret;
     }
@@ -97,7 +97,7 @@ public class GetAliyunInvocationsAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "GET";
-        info.path = "/scripts/aliyun-invocations";
+        info.path = "/scripts/records/with/details";
         info.needSession = true;
         info.needPoll = false;
         info.parameterName = "";
