@@ -7442,6 +7442,33 @@ abstract class ApiHelper {
     }
 
 
+    def cloneImage(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.CloneImageAction.class) Closure c) {
+        def a = new org.zstack.sdk.CloneImageAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def cloneModelService(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.CloneModelServiceAction.class) Closure c) {
         def a = new org.zstack.sdk.CloneModelServiceAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -9601,31 +9628,6 @@ abstract class ApiHelper {
         }
     }
 
-    def cloneImage(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.CloneImageAction.class) Closure c) {
-        def a = new org.zstack.sdk.CloneImageAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
 
     def createImageGroupFromImage(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.CreateImageGroupFromImageAction.class) Closure c) {
         def a = new org.zstack.sdk.CreateImageGroupFromImageAction()
@@ -20130,33 +20132,6 @@ abstract class ApiHelper {
     }
 
 
-    def getAliyunInvocations(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetAliyunInvocationsAction.class) Closure c) {
-        def a = new org.zstack.sdk.GetAliyunInvocationsAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-        
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-    
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-        
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-
     def getAliyunNasAccessGroupRemote(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetAliyunNasAccessGroupRemoteAction.class) Closure c) {
         def a = new org.zstack.sdk.GetAliyunNasAccessGroupRemoteAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -22022,6 +21997,33 @@ abstract class ApiHelper {
 
     def getGuestOsMetadata(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetGuestOsMetadataAction.class) Closure c) {
         def a = new org.zstack.sdk.GetGuestOsMetadataAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def getGuestVmScriptExecutedRecordAndDetails(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailsAction.class) Closure c) {
+        def a = new org.zstack.sdk.GetGuestVmScriptExecutedRecordAndDetailsAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a

@@ -2,7 +2,7 @@ package org.zstack.sdk;
 
 
 
-public class GetAliyunInvocationsResult {
+public class GetGuestVmScriptExecutedRecordAndDetailsResult {
     public java.util.List inventories;
     public void setInventories(java.util.List inventories) {
         this.inventories = inventories;
