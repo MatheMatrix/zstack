@@ -92,6 +92,15 @@ public class HardwareVxlanNetworkPool extends VxlanNetworkPool {
         //check interface 在物理机上是否存在
         //hardware vxlan pool可能已经创建了hardware vxlan网络, 那么在物理机上realize 这个网络
         //hardware vxlan pool可能已经创建了hardware vxlan网络, 那么在sdn 控制器上realize 这个网络
+        List<VxlanNetworkVO> vlxanVos = Q.New(VxlanNetworkVO.class)
+                .eq(VxlanNetworkVO_.poolUuid, self.getUuid()).list();
+        SdnControllerVO vo = dbf.findByUuid(getSelf1().getSdnControllerUuid(), SdnControllerVO.class);
+        SdnControllerFactory factory = sdnControllerManager.getSdnControllerFactory(vo.getVendorType());
+        if (factory == null) {
+            completion.fail(operr("there is no sdn controller factory for sdn controller type:%s", vo.getVendorType()));
+            return;
+        }
+
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
         chain.setName(String.format("prepare-l2-%s-on-hosts", self.getUuid()));
         chain.then(new NoRollbackFlow() {
@@ -141,8 +150,6 @@ public class HardwareVxlanNetworkPool extends VxlanNetworkPool {
 
             @Override
             public void run(final FlowTrigger trigger, Map data) {
-                List<VxlanNetworkVO> vlxanVos = Q.New(VxlanNetworkVO.class)
-                        .eq(VxlanNetworkVO_.poolUuid, self.getUuid()).list();
                 if (vlxanVos.isEmpty()) {
                     trigger.next();
                     return;
@@ -177,20 +184,46 @@ public class HardwareVxlanNetworkPool extends VxlanNetworkPool {
             }
 
         }).then(new NoRollbackFlow() {
-            String __name__ = "attach-vxlan-network-on-sdn";
+            String __name__ = "create-vxlan-network-on-sdn";
             @Override
             public void run(FlowTrigger trigger, Map data) {
-                List<VxlanNetworkVO> vlxanVos = Q.New(VxlanNetworkVO.class)
-                        .eq(VxlanNetworkVO_.poolUuid, self.getUuid()).list();
                 if (vlxanVos.isEmpty()) {
                     trigger.next();
                     return;
                 }
 
-                SdnControllerVO vo = dbf.findByUuid(getSelf1().getSdnControllerUuid(), SdnControllerVO.class);
-                SdnControllerFactory factory = sdnControllerManager.getSdnControllerFactory(vo.getVendorType());
-                if (factory == null) {
-                    trigger.fail(operr("there is no sdn controller factory for sdn controller type:%s", vo.getVendorType()));
+                SdnControllerL2 controller = factory.getSdnControllerL2(vo);
+                new While<>(vlxanVos).step((vxlan, whileCompletion) -> {
+                    controller.createL2Network(L2VxlanNetworkInventory.valueOf(vxlan), new ArrayList<>(), new Completion(whileCompletion) {
+                        @Override
+                        public void success() {
+                            whileCompletion.done();
+                        }
+
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            whileCompletion.addError(errorCode);
+                            whileCompletion.allDone();
+                        }
+                    });
+                },10).run(new WhileDoneCompletion(trigger) {
+                    @Override
+                    public void done(ErrorCodeList errorCodeList) {
+                        if (!errorCodeList.getCauses().isEmpty()) {
+                            trigger.fail(errorCodeList.getCauses().get(0));
+                        } else {
+                            trigger.next();
+                        }
+                    }
+
+                });
+            }
+        }).then(new NoRollbackFlow() {
+            String __name__ = "attach-vxlan-network-on-sdn";
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                if (vlxanVos.isEmpty()) {
+                    trigger.next();
                     return;
                 }
 
