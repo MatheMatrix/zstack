@@ -184,41 +184,6 @@ public class HardwareVxlanNetworkPool extends VxlanNetworkPool {
             }
 
         }).then(new NoRollbackFlow() {
-            String __name__ = "create-vxlan-network-on-sdn";
-            @Override
-            public void run(FlowTrigger trigger, Map data) {
-                if (vlxanVos.isEmpty()) {
-                    trigger.next();
-                    return;
-                }
-
-                SdnControllerL2 controller = factory.getSdnControllerL2(vo);
-                new While<>(vlxanVos).step((vxlan, whileCompletion) -> {
-                    controller.createL2Network(L2VxlanNetworkInventory.valueOf(vxlan), new ArrayList<>(), new Completion(whileCompletion) {
-                        @Override
-                        public void success() {
-                            whileCompletion.done();
-                        }
-
-                        @Override
-                        public void fail(ErrorCode errorCode) {
-                            whileCompletion.addError(errorCode);
-                            whileCompletion.allDone();
-                        }
-                    });
-                },10).run(new WhileDoneCompletion(trigger) {
-                    @Override
-                    public void done(ErrorCodeList errorCodeList) {
-                        if (!errorCodeList.getCauses().isEmpty()) {
-                            trigger.fail(errorCodeList.getCauses().get(0));
-                        } else {
-                            trigger.next();
-                        }
-                    }
-
-                });
-            }
-        }).then(new NoRollbackFlow() {
             String __name__ = "attach-vxlan-network-on-sdn";
             @Override
             public void run(FlowTrigger trigger, Map data) {
