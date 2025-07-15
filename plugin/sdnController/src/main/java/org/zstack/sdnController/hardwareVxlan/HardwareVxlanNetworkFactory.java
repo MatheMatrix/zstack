@@ -343,7 +343,8 @@ public class HardwareVxlanNetworkFactory implements L2NetworkFactory, VmInstance
                             dbf.persistCollection(refs);
                         }
 
-                        completion.success(L2VxlanNetworkInventory.valueOf(dbf.findByUuid(vo.getUuid(), VxlanNetworkVO.class)));
+                        completion.success(HardwareL2VxlanNetworkInventory.valueOf(dbf.findByUuid(vo.getUuid(),
+                                HardwareL2VxlanNetworkVO.class)));
                     }
                 });
                 error(new FlowErrorHandler(completion) {
