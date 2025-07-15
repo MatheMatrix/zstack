@@ -88,7 +88,7 @@ public class HardwareVxlanNetworkPool extends VxlanNetworkPool {
         super.afterDetachVxlanPoolFromCluster(msg);
     }
 
-    protected void prepareL2NetworkOnHosts(final String l2NetworkUuid, final List<HostInventory> hosts, final Completion completion) {
+    protected void prepareL2NetworkOnHosts(final String l2NetworkUuid, final List<HostInventory> hosts, boolean applyToSdn, final Completion completion) {
         //check interface 在物理机上是否存在
         //hardware vxlan pool可能已经创建了hardware vxlan网络, 那么在物理机上realize 这个网络
         //hardware vxlan pool可能已经创建了hardware vxlan网络, 那么在sdn 控制器上realize 这个网络
@@ -188,6 +188,11 @@ public class HardwareVxlanNetworkPool extends VxlanNetworkPool {
             @Override
             public void run(FlowTrigger trigger, Map data) {
                 if (vlxanVos.isEmpty()) {
+                    trigger.next();
+                    return;
+                }
+
+                if (!applyToSdn) {
                     trigger.next();
                     return;
                 }
