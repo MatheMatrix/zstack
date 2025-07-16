@@ -707,7 +707,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
     @Override
     public SdnControllerL3 getSdnControllerL3(String l2Uuid) {
-        String controllerUuid = L3NetworkHelper.getSdnControllerUuidFromL3Uuid(l2Uuid);
+        String controllerUuid = L3NetworkHelper.getSdnControllerUuidFromL2Uuid(l2Uuid);
         if (controllerUuid == null) {
             return null;
         }
