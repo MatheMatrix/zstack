@@ -149,7 +149,8 @@ public class NormalIpRangeFactory implements IpRangeFactory {
                     return;
                 }
 
-                sdnL3.createIpRange(iprs.get(0), new Completion(trigger) {
+                List<IpRangeVO> vos = (List<IpRangeVO>) data.get("IpRangeVO");
+                sdnL3.createIpRange(IpRangeInventory.valueOf(vos.get(0)), new Completion(trigger) {
                     @Override
                     public void success() {
                         trigger.next();
