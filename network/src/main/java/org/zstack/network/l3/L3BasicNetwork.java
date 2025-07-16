@@ -274,7 +274,7 @@ public class L3BasicNetwork implements L3Network {
             @Override
             @Deferred
             public void run(FlowTrigger trigger, Map data) {
-                SdnControllerL3 sdnL3 = l3NwMgr.getSdnControllerL3(self.getUuid());
+                SdnControllerL3 sdnL3 = l3NwMgr.getSdnControllerL3(self.getL2NetworkUuid());
                 if (sdnL3 == null) {
                     trigger.next();
                     return;
@@ -349,7 +349,7 @@ public class L3BasicNetwork implements L3Network {
                     @Override
                     @Deferred
                     public void run(FlowTrigger trigger, Map data) {
-                        SdnControllerL3 controllerL3 = l3NwMgr.getSdnControllerL3(self.getUuid());
+                        SdnControllerL3 controllerL3 = l3NwMgr.getSdnControllerL3(self.getL2NetworkUuid());
                         if (controllerL3 == null) {
                             trigger.next();
                             return;

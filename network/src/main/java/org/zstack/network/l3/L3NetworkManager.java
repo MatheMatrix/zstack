@@ -34,5 +34,5 @@ public interface L3NetworkManager {
 
     SdnControllerDhcp getSdnControllerDhcp(String l3Uuid);
 
-    SdnControllerL3 getSdnControllerL3(String l3Uuid);
+    SdnControllerL3 getSdnControllerL3(String l2Uuid);
 }
