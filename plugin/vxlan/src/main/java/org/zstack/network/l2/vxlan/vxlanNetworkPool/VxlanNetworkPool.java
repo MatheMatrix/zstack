@@ -989,7 +989,7 @@ public class VxlanNetworkPool extends L2NoVlanNetwork implements L2VxlanNetworkP
         logger.info(String.format("update l2 vxlan vni range[%s] name[%s]", msg.getUuid(), msg.getName()));
     }
 
-    protected void prepareL2NetworkOnHosts(final String l2NetworkUuid, final List<HostInventory> hosts, boolean applyToSdn, final Completion completion) {
+    public void prepareL2NetworkOnHosts(final String l2NetworkUuid, final List<HostInventory> hosts, boolean applyToSdn, final Completion completion) {
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
         List<String> vtepIpChanged = new ArrayList<>();
         chain.setName(String.format("prepare-l2-%s-on-hosts", self.getUuid()));
