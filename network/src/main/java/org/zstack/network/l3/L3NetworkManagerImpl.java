@@ -534,7 +534,7 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
             @Override
             @Deferred
             public void run(FlowTrigger trigger, Map data) {
-                SdnControllerL3 controllerL3 = getSdnControllerL3(vo.getUuid());
+                SdnControllerL3 controllerL3 = getSdnControllerL3(msg.getL2NetworkUuid());
                 if (controllerL3 == null) {
                     trigger.next();
                     return;
@@ -1041,9 +1041,9 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
     }
 
     @Override
-    public SdnControllerL3 getSdnControllerL3(String l3Uuid) {
+    public SdnControllerL3 getSdnControllerL3(String l2Uuid) {
         for (GetSdnControllerExtensionPoint exp : pluginRgty.getExtensionList(GetSdnControllerExtensionPoint.class)) {
-            return exp.getSdnControllerL3(l3Uuid);
+            return exp.getSdnControllerL3(l2Uuid);
         }
 
         return null;

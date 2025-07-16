@@ -706,16 +706,16 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
     }
 
     @Override
-    public SdnControllerL3 getSdnControllerL3(String l3Uuid) {
-        String controllerUuid = L3NetworkHelper.getSdnControllerUuidFromL3Uuid(l3Uuid);
+    public SdnControllerL3 getSdnControllerL3(String l2Uuid) {
+        String controllerUuid = L3NetworkHelper.getSdnControllerUuidFromL3Uuid(l2Uuid);
         if (controllerUuid == null) {
             return null;
         }
 
         SdnControllerVO vo = dbf.findByUuid(controllerUuid, SdnControllerVO.class);
         if (vo == null) {
-            throw new CloudRuntimeException(String.format("can not find sdn controller[uuid:%s] for l3 network[uuid:%s]",
-                    controllerUuid, l3Uuid));
+            throw new CloudRuntimeException(String.format("can not find sdn controller[uuid:%s] for l2 network[uuid:%s]",
+                    controllerUuid, l2Uuid));
         }
         SdnControllerFactory factory = getSdnControllerFactory(vo.getVendorType());
         return factory.getSdnControllerL3(vo);

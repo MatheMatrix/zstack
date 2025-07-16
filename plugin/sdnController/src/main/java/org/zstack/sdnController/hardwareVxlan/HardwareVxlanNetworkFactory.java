@@ -30,16 +30,19 @@ import org.zstack.header.zone.ZoneVO;
 import org.zstack.network.l2.L2NetworkCascadeFilterExtensionPoint;
 import org.zstack.network.l2.L2NetworkDefaultMtu;
 import org.zstack.network.l2.L2NetworkManager;
+import org.zstack.network.l2.L2NetworkSystemTags;
 import org.zstack.network.l2.vxlan.vxlanNetwork.L2VxlanNetworkInventory;
 import org.zstack.network.l2.vxlan.vxlanNetwork.VxlanNetworkVO;
 import org.zstack.network.l2.vxlan.vxlanNetworkPool.AllocateVniMsg;
 import org.zstack.network.l2.vxlan.vxlanNetworkPool.AllocateVniReply;
 import org.zstack.network.l2.vxlan.vxlanNetworkPool.VxlanNetworkPoolVO;
 import org.zstack.network.service.NetworkServiceGlobalConfig;
+import org.zstack.network.service.NetworkServiceSystemTag;
 import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.sdnController.SdnControllerL2;
 import org.zstack.sdnController.SdnControllerManager;
 import org.zstack.sdnController.header.*;
+import org.zstack.tag.SystemTagCreator;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
@@ -53,6 +56,8 @@ import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.CollectionDSL.e;
+import static org.zstack.utils.CollectionDSL.map;
 
 /**
  * Created by shixin.ruan on 09/17/2019.
@@ -149,6 +154,16 @@ public class HardwareVxlanNetworkFactory implements L2NetworkFactory, VmInstance
                                 dbf.persist(vo);
 
                                 tagMgr.createTagsFromAPICreateMessage(msg, vo.getUuid(), L2NetworkVO.class.getSimpleName());
+
+                                SystemTagCreator creator = L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID.newSystemTagCreator(vo.getUuid());
+                                creator.ignoreIfExisting = true;
+                                creator.inherent = false;
+                                creator.setTagByTokens(
+                                        map(
+                                                e(L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID_TOKEN, poolVO.getSdnControllerUuid())
+                                        )
+                                );
+                                creator.create();
 
                                 data.put(SdnControllerConstant.Params.VXLAN_NETWORK.toString(), vo);
                                 trigger.next();
