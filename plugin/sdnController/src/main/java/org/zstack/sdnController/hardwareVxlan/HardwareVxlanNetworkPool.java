@@ -158,8 +158,8 @@ public class HardwareVxlanNetworkPool extends VxlanNetworkPool {
 
                 new While<>(vlxanVos).step((vxlan, whileCompletion) -> {
                     HardwareVxlanNetwork nw = new HardwareVxlanNetwork(vxlan);
-                    nw.attachL2NetworkToCluster(L2VxlanNetworkInventory.valueOf(vxlan),
-                            new ArrayList<>(), new Completion(whileCompletion) {
+                    nw.attachL2NetworkToHosts(L2VxlanNetworkInventory.valueOf(vxlan),
+                            hosts, new Completion(whileCompletion) {
                         @Override
                         public void success() {
                             whileCompletion.done();

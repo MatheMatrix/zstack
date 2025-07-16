@@ -67,20 +67,7 @@ public class HardwareVxlanNetwork extends VxlanNetwork implements HardwareVxlanN
         ext.realize(inv, hostUuid, completion);
     }
 
-    @Override
-    public void attachL2NetworkToCluster(L2VxlanNetworkInventory vxlan, List<String> systemTags, Completion completion) {
-        List<String> clusterUuids = Q.New(L2NetworkClusterRefVO.class).eq(L2NetworkClusterRefVO_.l2NetworkUuid, vxlan.getPoolUuid())
-                .select(L2NetworkClusterRefVO_.clusterUuid).listValues();
-        if (clusterUuids == null || clusterUuids.isEmpty()) {
-            completion.success();
-            return;
-        }
-
-        List<HostVO> hosts = Q.New(HostVO.class).in(HostVO_.clusterUuid, clusterUuids)
-                .notIn(HostVO_.state, asList(HostState.PreMaintenance, HostState.Maintenance))
-                .eq(HostVO_.status, HostStatus.Connected).list();
-        List<HostInventory> hvinvs = HostInventory.valueOf(hosts);
-
+    public void attachL2NetworkToHosts(L2VxlanNetworkInventory vxlan, List<HostInventory> hvinvs, Completion completion) {
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
         chain.setName(String.format("attach-hardware-vxlan-%s-on-hosts", vxlan.getUuid()));
         chain.then(new NoRollbackFlow() {
@@ -121,6 +108,25 @@ public class HardwareVxlanNetwork extends VxlanNetwork implements HardwareVxlanN
                 completion.fail(errCode);
             }
         }).start();
+    }
+
+    @Override
+    public void attachL2NetworkToCluster(L2VxlanNetworkInventory vxlan, List<String> systemTags, Completion completion) {
+        List<String> clusterUuids = Q.New(L2NetworkClusterRefVO.class).eq(L2NetworkClusterRefVO_.l2NetworkUuid, vxlan.getPoolUuid())
+                .select(L2NetworkClusterRefVO_.clusterUuid).listValues();
+        if (clusterUuids == null || clusterUuids.isEmpty()) {
+            logger.debug(String.format("no cluster attached to hardware vxlan network[uuid:%s, name:%s]",
+                    vxlan.getUuid(), vxlan.getName()));
+            completion.success();
+            return;
+        }
+
+        List<HostVO> hosts = Q.New(HostVO.class).in(HostVO_.clusterUuid, clusterUuids)
+                .notIn(HostVO_.state, asList(HostState.PreMaintenance, HostState.Maintenance))
+                .eq(HostVO_.status, HostStatus.Connected).list();
+        List<HostInventory> hvinvs = HostInventory.valueOf(hosts);
+
+        attachL2NetworkToHosts(vxlan, hvinvs, completion);
     }
 
     @Override
