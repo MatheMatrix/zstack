@@ -40,6 +40,7 @@ import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.sdnController.SdnControllerL2;
 import org.zstack.sdnController.SdnControllerManager;
 import org.zstack.sdnController.header.*;
+import org.zstack.tag.TagManager;
 import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
@@ -70,6 +71,8 @@ public class HardwareVxlanNetworkFactory implements L2NetworkFactory, VmInstance
     private L2NetworkManager l2Mgr;
     @Autowired
     private ResourceConfigFacade rcf;
+    @Autowired
+    private TagManager tagMgr;
 
     @Override
     public L2NetworkType getType() {
@@ -144,6 +147,8 @@ public class HardwareVxlanNetworkFactory implements L2NetworkFactory, VmInstance
                                 vo.setVni(r.getVni());
                                 vo.setVirtualNetworkId(r.getVni());
                                 dbf.persist(vo);
+
+                                tagMgr.createTagsFromAPICreateMessage(msg, vo.getUuid(), L2NetworkVO.class.getSimpleName());
 
                                 data.put(SdnControllerConstant.Params.VXLAN_NETWORK.toString(), vo);
                                 trigger.next();
