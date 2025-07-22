@@ -29,6 +29,9 @@ public class APIRevertVmFromSnapshotGroupMsg extends APIMessage implements Volum
     @APIParam(resourceType = VolumeSnapshotGroupVO.class)
     private String uuid;
 
+    @APIParam(validValues = {"preserveOriginalConfig", "reallocateConfig"}, required = false)
+    private String restoreResourceConfigPolicy;
+
     @APINoSee
     private String vmInstanceUuid;
 

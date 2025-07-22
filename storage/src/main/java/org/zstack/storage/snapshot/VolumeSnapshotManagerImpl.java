@@ -17,10 +17,7 @@ import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.AbstractService;
-import org.zstack.header.core.Completion;
-import org.zstack.header.core.ExceptionSafe;
-import org.zstack.header.core.NopeCompletion;
-import org.zstack.header.core.WhileDoneCompletion;
+import org.zstack.header.core.*;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
@@ -39,6 +36,8 @@ import org.zstack.header.storage.snapshot.reference.VolumeSnapshotReferenceMessa
 import org.zstack.header.storage.snapshot.reference.VolumeSnapshotReferenceVO;
 import org.zstack.header.storage.snapshot.reference.VolumeSnapshotReferenceVO_;
 import org.zstack.header.vm.*;
+import org.zstack.header.vm.devices.VmInstanceDeviceAddressArchiveVO;
+import org.zstack.header.vm.devices.VmInstanceDeviceAddressArchiveVO_;
 import org.zstack.header.vm.devices.VmInstanceDeviceManager;
 import org.zstack.header.volume.*;
 import org.zstack.identity.AccountManager;
@@ -54,6 +53,7 @@ import org.zstack.tag.TagManager;
 import org.zstack.utils.DebugUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
+import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 import org.zstack.zql.ZQL;
 
@@ -1216,6 +1216,40 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
         }
 
         reply.setError(operr("this resource type %s does not support querying memory snapshot references", msg.getResourceType()));
+        bus.reply(msg, reply);
+    }
+
+    private void handle1(APICheckMemorySnapshotGroupVmNicMsg msg) {
+        APICehckMemorySnapshotGroupVmNickReply reply = new APICehckMemorySnapshotGroupVmNickReply();
+
+        List<VmInstanceDeviceAddressArchiveVO> vos = Q.New(VmInstanceDeviceAddressArchiveVO.class).eq(VmInstanceDeviceAddressArchiveVO_.metadataClass, ArchiveVmNicBundle.class.getCanonicalName()).list();
+        List<VmNicInventory> vmNics = vos.stream().map(vo -> JSONObjectUtil.toObject(vo.getMetadata(), ArchiveVmNicBundle.class).getVmNicInventory()).collect(Collectors.toList());
+
+        List<String> ips = vmNics.stream().map(VmNicInventory::getIp).collect(Collectors.toList());
+        List<String> macs = vmNics.stream().map(VmNicInventory::getMac).collect(Collectors.toList());
+
+        String vmInstanceUuid = Q.New(VolumeSnapshotGroupVO.class).eq(VolumeSnapshotGroupVO_.uuid, msg.getUuid())
+                .select(VolumeSnapshotGroupVO_.vmInstanceUuid).findValue();
+
+        List<VmNicVO> VmNicVOs = Q.New(VmNicVO.class).list();
+
+        List<APICehckMemorySnapshotGroupVmNickReply.VmNic> aaa = new ArrayList<>();
+        for (VmNicVO vmNicVO : VmNicVOs) {
+            if (Objects.equals(vmInstanceUuid, vmNicVO.getVmInstanceUuid())) {
+                continue;
+            }
+            APICehckMemorySnapshotGroupVmNickReply.VmNic vmNic = new APICehckMemorySnapshotGroupVmNickReply.VmNic();
+            if (ips.contains(vmNicVO.getIp())) {
+                vmNic.ip = vmNicVO.getIp();
+            }
+            if (macs.contains(vmNicVO.getMac())) {
+                vmNic.mac = vmNicVO.getMac();
+            }
+            vmNic.vmInstanceUuid = vmNicVO.getVmInstanceUuid();
+            aaa.add(vmNic);
+        }
+
+        reply.setInventories(aaa);
         bus.reply(msg, reply);
     }
 

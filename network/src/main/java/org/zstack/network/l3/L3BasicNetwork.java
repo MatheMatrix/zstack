@@ -375,9 +375,11 @@ public class L3BasicNetwork implements L3Network {
         CheckIpAvailabilityReply reply = new CheckIpAvailabilityReply();
 
         if (!self.getEnableIPAM()) {
-            if (Q.New(UsedIpVO.class).eq(UsedIpVO_.l3NetworkUuid, self.getUuid()).eq(UsedIpVO_.ip, ip).isExists()) {
+            UsedIpVO usedIpVO = Q.New(UsedIpVO.class).eq(UsedIpVO_.l3NetworkUuid, self.getUuid()).eq(UsedIpVO_.ip, ip).find();
+            if (usedIpVO!=null) {
                 reply.setAvailable(false);
                 reply.setReason(IpNotAvailabilityReason.USED.toString());
+                reply.setUsedIpInventory(UsedIpInventory.valueOf(usedIpVO));
                 return reply;
             } else {
                 reply.setAvailable(true);
@@ -426,12 +428,11 @@ public class L3BasicNetwork implements L3Network {
             }
             return reply;
         } else {
-            SimpleQuery<UsedIpVO> q = dbf.createQuery(UsedIpVO.class);
-            q.add(UsedIpVO_.l3NetworkUuid, Op.EQ, self.getUuid());
-            q.add(UsedIpVO_.ip, Op.EQ, ip);
-            if (q.isExists()) {
+            UsedIpVO usedIpVO = Q.New(UsedIpVO.class).eq(UsedIpVO_.l3NetworkUuid, self.getUuid()).eq(UsedIpVO_.ip, ip).find();
+            if (usedIpVO != null) {
                 reply.setAvailable(false);
                 reply.setReason(IpNotAvailabilityReason.USED.toString());
+                reply.setUsedIpInventory(UsedIpInventory.valueOf(usedIpVO));
             } else {
                 reply.setAvailable(true);
             }
