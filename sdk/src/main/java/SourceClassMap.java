@@ -335,6 +335,7 @@ public class SourceClassMap {
 			put("org.zstack.header.vm.VmCapabilities", "org.zstack.sdk.VmCapabilities");
 			put("org.zstack.header.vm.VmDnsInventory", "org.zstack.sdk.VmDnsInventory");
 			put("org.zstack.header.vm.VmInstanceInventory", "org.zstack.sdk.VmInstanceInventory");
+			put("org.zstack.header.vm.VmNicConflictEntry", "org.zstack.sdk.VmNicConflictEntry");
 			put("org.zstack.header.vm.VmNicInventory", "org.zstack.sdk.VmNicInventory");
 			put("org.zstack.header.vm.VmPriorityConfigInventory", "org.zstack.sdk.VmPriorityConfigInventory");
 			put("org.zstack.header.vm.VmPriorityLevel", "org.zstack.sdk.VmPriorityLevel");
@@ -1277,6 +1278,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.VmMemoryBillingInventory", "org.zstack.billing.generator.vm.memory.VmMemoryBillingInventory");
 			put("org.zstack.sdk.VmMemorySpendingDetails", "org.zstack.billing.spendingcalculator.vm.VmMemorySpendingDetails");
 			put("org.zstack.sdk.VmNicBandwidthSpendingDetails", "org.zstack.billing.spendingcalculator.vmnic.VmNicBandwidthSpendingDetails");
+			put("org.zstack.sdk.VmNicConflictEntry", "org.zstack.header.vm.VmNicConflictEntry");
 			put("org.zstack.sdk.VmNicInventory", "org.zstack.header.vm.VmNicInventory");
 			put("org.zstack.sdk.VmNicSecurityGroupRefInventory", "org.zstack.network.securitygroup.VmNicSecurityGroupRefInventory");
 			put("org.zstack.sdk.VmNicSecurityPolicyInventory", "org.zstack.network.securitygroup.VmNicSecurityPolicyInventory");
