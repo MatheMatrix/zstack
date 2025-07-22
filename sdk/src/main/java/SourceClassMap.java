@@ -328,6 +328,7 @@ public class SourceClassMap {
 			put("org.zstack.header.vm.CloneVmInstanceInventory", "org.zstack.sdk.CloneVmInstanceInventory");
 			put("org.zstack.header.vm.CloneVmInstanceResults", "org.zstack.sdk.CloneVmInstanceResults");
 			put("org.zstack.header.vm.CreateVmInstanceFromTemplatedVmInstanceResults", "org.zstack.sdk.CreateVmInstanceFromTemplatedVmInstanceResults");
+			put("org.zstack.header.vm.NetworkConflict", "org.zstack.sdk.NetworkConflict");
 			put("org.zstack.header.vm.TemplatedVmInstanceInventory", "org.zstack.sdk.TemplatedVmInstanceInventory");
 			put("org.zstack.header.vm.VdiPortInfo", "org.zstack.sdk.VdiPortInfo");
 			put("org.zstack.header.vm.VirtualizerInfo", "org.zstack.sdk.VirtualizerInfo");
@@ -1049,6 +1050,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.NasMountTargetInventory", "org.zstack.nas.NasMountTargetInventory");
 			put("org.zstack.sdk.NasProtocolType", "org.zstack.nas.NasProtocolType");
 			put("org.zstack.sdk.Neighbor", "org.zstack.header.protocol.Neighbor");
+			put("org.zstack.sdk.NetworkConflict", "org.zstack.header.vm.NetworkConflict");
 			put("org.zstack.sdk.NetworkReachablePair", "org.zstack.zops.NetworkReachablePair");
 			put("org.zstack.sdk.NetworkRouterAreaRefInventory", "org.zstack.header.protocol.NetworkRouterAreaRefInventory");
 			put("org.zstack.sdk.NetworkRouterFlowMeterRefInventory", "org.zstack.header.flowMeter.NetworkRouterFlowMeterRefInventory");

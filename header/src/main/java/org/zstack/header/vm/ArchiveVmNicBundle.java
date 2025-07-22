@@ -8,7 +8,6 @@ public class ArchiveVmNicBundle {
     long outboundBandwidth;
     long inboundBandwidth;
     boolean isVmDefaultL3Network = false;
-
     public ArchiveVmNicBundle() {
     }
 

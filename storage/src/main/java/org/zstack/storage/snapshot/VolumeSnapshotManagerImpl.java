@@ -17,10 +17,7 @@ import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.AbstractService;
-import org.zstack.header.core.Completion;
-import org.zstack.header.core.ExceptionSafe;
-import org.zstack.header.core.NopeCompletion;
-import org.zstack.header.core.WhileDoneCompletion;
+import org.zstack.header.core.*;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
@@ -39,6 +36,8 @@ import org.zstack.header.storage.snapshot.reference.VolumeSnapshotReferenceMessa
 import org.zstack.header.storage.snapshot.reference.VolumeSnapshotReferenceVO;
 import org.zstack.header.storage.snapshot.reference.VolumeSnapshotReferenceVO_;
 import org.zstack.header.vm.*;
+import org.zstack.header.vm.devices.VmInstanceDeviceAddressArchiveVO;
+import org.zstack.header.vm.devices.VmInstanceDeviceAddressArchiveVO_;
 import org.zstack.header.vm.devices.VmInstanceDeviceManager;
 import org.zstack.header.volume.*;
 import org.zstack.identity.AccountManager;
@@ -54,6 +53,7 @@ import org.zstack.tag.TagManager;
 import org.zstack.utils.DebugUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
+import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 import org.zstack.zql.ZQL;
 
@@ -1200,6 +1200,8 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
             handle((APICheckVolumeSnapshotGroupAvailabilityMsg) msg);
         } else if (msg instanceof APIGetMemorySnapshotGroupReferenceMsg) {
             handle((APIGetMemorySnapshotGroupReferenceMsg) msg);
+        } else if (msg instanceof APICheckMemorySnapshotGroupConflictMsg) {
+            handle((APICheckMemorySnapshotGroupConflictMsg) msg);
         } else  {
             bus.dealWithUnknownMessage(msg);
         }
@@ -1216,6 +1218,61 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
         }
 
         reply.setError(operr("this resource type %s does not support querying memory snapshot references", msg.getResourceType()));
+        bus.reply(msg, reply);
+    }
+
+    private void handle(APICheckMemorySnapshotGroupConflictMsg msg) {
+        APICheckMemorySnapshotGroupConflictReply reply = new APICheckMemorySnapshotGroupConflictReply();
+
+        // Retrieve all VM device address archives related to memory snapshot groups
+        List<VmInstanceDeviceAddressArchiveVO> vos = Q.New(VmInstanceDeviceAddressArchiveVO.class)
+                .eq(VmInstanceDeviceAddressArchiveVO_.metadataClass, ArchiveVmNicBundle.class.getCanonicalName()).list();
+        List<VmNicInventory> vmNics = vos.stream()
+                .map(vo -> JSONObjectUtil.toObject(vo.getMetadata(), ArchiveVmNicBundle.class).getVmNicInventory())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        // Collect IP and MAC addresses from memory snapshot network interfaces
+        Set<String> ips = vmNics.stream().map(VmNicInventory::getIp).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<String> macs = vmNics.stream().map(VmNicInventory::getMac).filter(Objects::nonNull).collect(Collectors.toSet());
+
+        String groupVmUuid = Q.New(VolumeSnapshotGroupVO.class).eq(VolumeSnapshotGroupVO_.uuid, msg.getUuid()).select(VolumeSnapshotGroupVO_.vmInstanceUuid).findValue();
+
+        // Retrieve all existing network interfaces in the system
+        List<Tuple> allVmNicTuples = Q.New(VmNicVO.class).select(VmNicVO_.vmInstanceUuid, VmNicVO_.ip, VmNicVO_.mac).listTuple();
+
+        List<NetworkConflict> networkConflicts = new ArrayList<>();
+        List<String> conflictVmUuids = new ArrayList<>();
+        for (Tuple t : allVmNicTuples) {
+            String vmUuid = t.get(0, String.class);
+            String ip = t.get(1, String.class);
+            String mac = t.get(2, String.class);
+
+            if (Objects.equals(groupVmUuid, vmUuid)) {
+                continue;
+            }
+
+            NetworkConflict networkConflict = new NetworkConflict();
+            if (ips.contains(ip)) {
+                networkConflict.ip = ip;
+            }
+
+            if (macs.contains(mac)) {
+                networkConflict.mac = mac;
+            }
+            networkConflict.vmInstanceUuid = vmUuid;
+            conflictVmUuids.add(vmUuid);
+            networkConflicts.add(networkConflict);
+        }
+
+        if (!conflictVmUuids.isEmpty()) {
+            List<Tuple> conflictVmNames = Q.New(VmInstanceVO.class).in(VmInstanceVO_.uuid, conflictVmUuids).select(VmInstanceVO_.uuid, VmInstanceVO_.name).listTuple();
+            Map<String, String> vmNameByUuid = conflictVmNames.stream()
+                    .collect(Collectors.toMap(t -> t.get(0, String.class), t -> t.get(1, String.class)));
+
+            networkConflicts.forEach(networkConflict -> networkConflict.vmName = vmNameByUuid.get(networkConflict.vmInstanceUuid));
+        }
+
+        reply.setNetworksConflict(networkConflicts);
         bus.reply(msg, reply);
     }
 
