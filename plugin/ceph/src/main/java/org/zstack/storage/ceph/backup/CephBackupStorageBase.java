@@ -292,7 +292,7 @@ public class CephBackupStorageBase extends BackupStorageBase {
     }
 
     public static class DownloadCmd extends AgentCommand implements HasThreadContext, Serializable {
-        @NoLogging(type = NoLogging.Type.Uri)
+        @NoLogging(type = NoLogging.LogMaskType.Uri)
         String url;
         String installPath;
         String imageUuid;

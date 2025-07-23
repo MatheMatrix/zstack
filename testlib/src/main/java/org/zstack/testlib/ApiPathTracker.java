@@ -25,13 +25,13 @@ public class ApiPathTracker {
 
     final List<Path> paths = new ArrayList<>();
 
-    private enum Type {
+    private enum ApiPathType {
         Message,
         HttpRPC,
     }
 
     private static class Path {
-        Type type;
+        ApiPathType type;
         String path;
     }
 
@@ -59,7 +59,7 @@ public class ApiPathTracker {
                 }
 
                 Path p = new Path();
-                p.type = Type.Message;
+                p.type = ApiPathType.Message;
                 p.path = msg.getClass().getName();
                 paths.add(p);
             }
@@ -75,7 +75,7 @@ public class ApiPathTracker {
                 }
 
                 Path p = new Path();
-                p.type = Type.HttpRPC;
+                p.type = ApiPathType.HttpRPC;
                 p.path = String.format("[url:%s, cmd: %s]", url, body.getClass().getName());
                 paths.add(p);
             }
@@ -89,7 +89,7 @@ public class ApiPathTracker {
                 }
 
                 Path p = new Path();
-                p.type = Type.HttpRPC;
+                p.type = ApiPathType.HttpRPC;
                 p.path = String.format("[url:%s, cmd body: %s]", url, body);
                 paths.add(p);
             }
