@@ -1,9 +1,7 @@
 package org.zstack.storage.primary.local;
 
 import com.google.common.collect.Lists;
-import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.compute.host.MigrateNetworkExtensionPoint;
 import org.zstack.compute.vm.*;
@@ -50,14 +48,12 @@ import org.zstack.kvm.KVMConstant;
 import org.zstack.storage.primary.PrimaryStorageCapacityChecker;
 import org.zstack.storage.snapshot.PostMarkRootVolumeAsSnapshotExtension;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
-import org.zstack.storage.volume.ChangeVolumeInstallPathExtensionPoint;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
 
-import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -788,8 +784,8 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, HostMaintenancePolicy> getHostMaintenanceVmOperationPolicy(HostInventory host) {
-        Map<String, HostMaintenancePolicy> result = new HashMap<>();
+    public Map<String, HostMaintenanceVmOperationPolicy> getHostMaintenanceVmOperationPolicy(HostInventory host) {
+        Map<String, HostMaintenanceVmOperationPolicy> result = new HashMap<>();
         String sql = "select vm.uuid" +
                 " from PrimaryStorageVO ps, PrimaryStorageClusterRefVO ref, VmInstanceVO vm, VolumeVO vol" +
                 " where ps.uuid = ref.primaryStorageUuid" +
@@ -801,7 +797,7 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
         q.setParameter("type", LocalStorageConstants.LOCAL_STORAGE_TYPE);
         q.setParameter("cuuid", host.getClusterUuid());
         List<String> vmUuids = q.getResultList();
-        vmUuids.forEach(it -> result.put(it, HostMaintenancePolicy.StopVm));
+        vmUuids.forEach(it -> result.put(it, HostMaintenanceVmOperationPolicy.StopVm));
         return result;
     }
 
