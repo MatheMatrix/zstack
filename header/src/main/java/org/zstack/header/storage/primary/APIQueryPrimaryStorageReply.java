@@ -11,7 +11,7 @@ import java.util.List;
 @RestResponse(allTo = "inventories")
 @MaskSensitiveInfo
 public class APIQueryPrimaryStorageReply extends APIQueryReply {
-    @NoLogging(behavior = NoLogging.Behavior.Auto)
+    @NoLogging(behavior = NoLogging.LogMaskBehavior.Auto)
     private List<PrimaryStorageInventory> inventories;
 
     public List<PrimaryStorageInventory> getInventories() {

@@ -32,7 +32,7 @@ public class LogSafeGson {
      */
     private static final Map<Class, Set<FieldNoLogging>> maskFields = new HashMap<>();
     /**
-     * field with annotation @NoLogging(behavior = NoLogging.Behavior.Auto) will be collect to this map
+     * field with annotation @NoLogging(behavior = NoLogging.LogMaskBehavior.Auto) will be collect to this map
      *
      * when serialize class with autoFields, the specific class will be found (for example, its super class) and
      * then execute serialize.
