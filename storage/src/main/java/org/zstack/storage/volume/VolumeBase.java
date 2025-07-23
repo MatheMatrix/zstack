@@ -3076,7 +3076,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
     }
 
     private void createSnapshotGroup(CreateVolumeSnapshotGroupMessage msg, ReturnValueCompletion<VolumeSnapshotGroupInventory> completion) {
-        VolumeSnapshotGroupOperationValidator.validate(msg.getVmInstance().getUuid(), VolumeSnapshotGroupOperationValidator.Operation.CREATE);
+        VolumeSnapshotGroupOperationValidator.validate(msg.getVmInstance().getUuid(), VolumeSnapshotGroupOperationValidator.SnapshotGroupOperation.CREATE);
         CreateVolumesSnapshotMsg cmsg = new CreateVolumesSnapshotMsg();
         List<CreateVolumesSnapshotsJobStruct> volumesSnapshotsJobs = new ArrayList<>();
         cmsg.setAccountUuid(msg.getSession().getAccountUuid());

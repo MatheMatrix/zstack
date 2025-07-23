@@ -17,7 +17,7 @@ public class VolumeSnapshotGroupOperationValidator extends ScatteredValidator {
     private static final List<Method> creationValidateMethods;
     private static final List<Method> reversionValidateMethods;
 
-    public enum Operation {
+    public enum SnapshotGroupOperation {
         CREATE,
         REVERT,
     }
@@ -32,10 +32,10 @@ public class VolumeSnapshotGroupOperationValidator extends ScatteredValidator {
     public @interface VolumeSnapshotGroupReversionValidatorMethod {
     }
 
-    public static List<Method> getInvokeMethods(Operation operation) {
-        if (Operation.CREATE.equals(operation)) {
+    public static List<Method> getInvokeMethods(SnapshotGroupOperation operation) {
+        if (SnapshotGroupOperation.CREATE.equals(operation)) {
             return creationValidateMethods;
-        } else if (Operation.REVERT.equals(operation)) {
+        } else if (SnapshotGroupOperation.REVERT.equals(operation)) {
             return reversionValidateMethods;
         }
 
@@ -48,7 +48,7 @@ public class VolumeSnapshotGroupOperationValidator extends ScatteredValidator {
         reversionValidateMethods = collectValidatorMethods(VolumeSnapshotGroupReversionValidatorMethod.class, String.class);
     }
 
-    public static void validate(String vmUuid, Operation operation) {
+    public static void validate(String vmUuid, SnapshotGroupOperation operation) {
         new VolumeSnapshotGroupOperationValidator().invokeValidatorMethods(getInvokeMethods(operation), vmUuid);
     }
 }
