@@ -717,7 +717,7 @@ public abstract class BackupStorageBase extends AbstractBackupStorage {
         detachHook(new Completion(msg) {
             @Transactional
             private BackupStorageVO updateDb(BackupStorageVO vo, String zoneUuid) {
-                dbf.entityForTranscationCallback(TransactionalCallback.Operation.REMOVE, BackupStorageZoneRefVO.class);
+                dbf.entityForTranscationCallback(TransactionalCallback.TransactionalOperation.REMOVE, BackupStorageZoneRefVO.class);
                 String sql = "delete from BackupStorageZoneRefVO bz where bz.zoneUuid = :zoneUuid and bz.backupStorageUuid = :bsUuid";
                 Query q = dbf.getEntityManager().createQuery(sql);
                 q.setParameter("zoneUuid", zoneUuid);
