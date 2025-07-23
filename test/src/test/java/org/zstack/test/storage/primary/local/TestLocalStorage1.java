@@ -11,7 +11,7 @@ import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.identity.SessionInventory;
 import org.zstack.header.storage.primary.PrimaryStorageInventory;
-import org.zstack.header.vm.VmInstanceConstant.Capability;
+import org.zstack.header.vm.VmInstanceConstant.VmCapability;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.header.volume.VolumeConstant;
 import org.zstack.storage.primary.local.*;
@@ -93,11 +93,11 @@ public class TestLocalStorage1 {
         Assert.assertEquals(vm.getRootVolume().getSize(), rref.getSize());
 
         Map<String, Object> cap = api.getVmCapabilities(vm.getUuid(), null);
-        Assert.assertFalse((Boolean) cap.get(Capability.LiveMigration.toString()));
-        Assert.assertTrue((Boolean) cap.get(Capability.VolumeMigration.toString()));
+        Assert.assertFalse((Boolean) cap.get(VmCapability.LiveMigration.toString()));
+        Assert.assertTrue((Boolean) cap.get(VmCapability.VolumeMigration.toString()));
 
         cap = api.getVolumeCapabilities(vm.getRootVolumeUuid(), null);
-        Assert.assertFalse((Boolean) cap.get(VolumeConstant.Capability.MigrationToOtherPrimaryStorage.toString()));
-        Assert.assertTrue((Boolean) cap.get(VolumeConstant.Capability.MigrationInCurrentPrimaryStorage.toString()));
+        Assert.assertFalse((Boolean) cap.get(VolumeConstant.VolumeCapability.MigrationToOtherPrimaryStorage.toString()));
+        Assert.assertTrue((Boolean) cap.get(VolumeConstant.VolumeCapability.MigrationInCurrentPrimaryStorage.toString()));
     }
 }
