@@ -23,7 +23,7 @@ public class APIAddLdapServerMsg extends APIMessage implements APIAuditor {
     private String description;
 
     @APIParam(maxLength = 1024)
-    @NoLogging(type = NoLogging.Type.Uri)
+    @NoLogging(type = NoLogging.LogMaskType.Uri)
     private String url;
 
     @APIParam(maxLength = 1024)

@@ -93,7 +93,7 @@ public class SftpBackupStorageCommands {
     public static class DownloadCmd extends AgentCommand implements Serializable, HasThreadContext {
         private String imageUuid;
         private String installPath;
-        @NoLogging(type = NoLogging.Type.Uri)
+        @NoLogging(type = NoLogging.LogMaskType.Uri)
         private String url;
         private long timeout;
         private String urlScheme;
