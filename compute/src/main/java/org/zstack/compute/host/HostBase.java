@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.compute.vm.VmSchedHistoryRecorder;
 import org.zstack.core.upgrade.UpgradeChecker;
-import org.zstack.core.upgrade.UpgradeGlobalConfig;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cascade.CascadeConstant;
 import org.zstack.core.cascade.CascadeFacade;
@@ -38,7 +37,7 @@ import org.zstack.header.host.*;
 import org.zstack.header.host.HostCanonicalEvents.HostDeletedData;
 import org.zstack.header.host.HostCanonicalEvents.HostStatusChangedData;
 import org.zstack.header.host.HostErrors.Opaque;
-import org.zstack.header.host.HostMaintenancePolicyExtensionPoint.HostMaintenancePolicy;
+import org.zstack.header.host.HostMaintenancePolicyExtensionPoint.HostMaintenanceVmOperationPolicy;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
@@ -372,11 +371,11 @@ public abstract class HostBase extends AbstractHost {
             ext.beforeCheckMaintenancePolicy(operateVmUuids);
         }
 
-        Map<HostMaintenancePolicy, Set<String>> policyVmMap = map(
-                e(HostMaintenancePolicy.MigrateVm, new HashSet<>(operateVmUuids)),
-                e(HostMaintenancePolicy.StopVm, new HashSet<>()));
+        Map<HostMaintenanceVmOperationPolicy, Set<String>> policyVmMap = map(
+                e(HostMaintenanceVmOperationPolicy.MigrateVm, new HashSet<>(operateVmUuids)),
+                e(HostMaintenanceVmOperationPolicy.StopVm, new HashSet<>()));
         for (HostMaintenancePolicyExtensionPoint ext : pluginRgty.getExtensionList(HostMaintenancePolicyExtensionPoint.class)) {
-            Map<String, HostMaintenancePolicy> vmUuidPolicyMap = ext.getHostMaintenanceVmOperationPolicy(getSelfInventory());
+            Map<String, HostMaintenanceVmOperationPolicy> vmUuidPolicyMap = ext.getHostMaintenanceVmOperationPolicy(getSelfInventory());
             logger.debug(String.format("HostMaintenancePolicyExtensionPoint[%s] preset maintenance policy for host[uuid:%s] to %s",
                     ext.getClass(), self.getUuid(), vmUuidPolicyMap));
             vmUuidPolicyMap.forEach((vmUuid, policy) -> policyVmMap.get(policy).add(vmUuid));
@@ -384,7 +383,7 @@ public abstract class HostBase extends AbstractHost {
 
         // default policy is migrate, but stop policy setting is high priority
         policyVmMap.values().forEach(vmUuids -> vmUuids.retainAll(operateVmUuids));
-        policyVmMap.get(HostMaintenancePolicy.MigrateVm).removeAll(policyVmMap.get(HostMaintenancePolicy.StopVm));
+        policyVmMap.get(HostMaintenanceVmOperationPolicy.MigrateVm).removeAll(policyVmMap.get(HostMaintenanceVmOperationPolicy.StopVm));
 
         final int quantity = getVmMigrateQuantity();
         DebugUtils.Assert(quantity != 0, "getVmMigrateQuantity() cannot return 0");
@@ -396,7 +395,7 @@ public abstract class HostBase extends AbstractHost {
 
                     @Override
                     public void run(final FlowTrigger trigger, Map data) {
-                        List<String> vmUuids = new ArrayList<>(policyVmMap.get(HostMaintenancePolicy.MigrateVm));
+                        List<String> vmUuids = new ArrayList<>(policyVmMap.get(HostMaintenanceVmOperationPolicy.MigrateVm));
                         if (vmUuids.isEmpty()) {
                             trigger.next();
                             return;
@@ -468,8 +467,8 @@ public abstract class HostBase extends AbstractHost {
 
                                     logger.warn(String.format("failed to migrate vm[uuids:%s] on host[uuid:%s, name:%s, ip:%s], will try stopping it.",
                                             vmFailedToMigrate.keySet(), self.getUuid(), self.getName(), self.getManagementIp()));
-                                    policyVmMap.get(HostMaintenancePolicy.StopVm).addAll(vmFailedToMigrate.keySet());
-                                    policyVmMap.get(HostMaintenancePolicy.MigrateVm).removeAll(vmFailedToMigrate.keySet());
+                                    policyVmMap.get(HostMaintenanceVmOperationPolicy.StopVm).addAll(vmFailedToMigrate.keySet());
+                                    policyVmMap.get(HostMaintenanceVmOperationPolicy.MigrateVm).removeAll(vmFailedToMigrate.keySet());
                                 }
                                 trigger.next();
                             }
@@ -482,13 +481,13 @@ public abstract class HostBase extends AbstractHost {
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        if (policyVmMap.get(HostMaintenancePolicy.StopVm).isEmpty()) {
+                        if (policyVmMap.get(HostMaintenanceVmOperationPolicy.StopVm).isEmpty()) {
                             trigger.next();
                             return;
                         }
 
                         List<String> vmUuids = Q.New(VmInstanceVO.class).select(VmInstanceVO_.uuid)
-                                .in(VmInstanceVO_.uuid, policyVmMap.get(HostMaintenancePolicy.StopVm)).listValues();
+                                .in(VmInstanceVO_.uuid, policyVmMap.get(HostMaintenanceVmOperationPolicy.StopVm)).listValues();
                         stopFailedToMigrateVms(vmUuids, trigger);
                     }
 
