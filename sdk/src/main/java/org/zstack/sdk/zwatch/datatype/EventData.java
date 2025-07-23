@@ -1,6 +1,6 @@
 package org.zstack.sdk.zwatch.datatype;
 
-import org.zstack.sdk.zwatch.datatype.EmergencyLevel;
+import org.zstack.sdk.zwatch.datatype.EventEmergencyLevel;
 
 public class EventData  {
 
@@ -28,11 +28,11 @@ public class EventData  {
         return this.labels;
     }
 
-    public EmergencyLevel emergencyLevel;
-    public void setEmergencyLevel(EmergencyLevel emergencyLevel) {
+    public EventEmergencyLevel emergencyLevel;
+    public void setEmergencyLevel(EventEmergencyLevel emergencyLevel) {
         this.emergencyLevel = emergencyLevel;
     }
-    public EmergencyLevel getEmergencyLevel() {
+    public EventEmergencyLevel getEmergencyLevel() {
         return this.emergencyLevel;
     }
 
