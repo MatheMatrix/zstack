@@ -32,7 +32,7 @@ public enum HostErrors {
         return code;
     }
 
-    public enum Opaque {
+    public enum HostErrorsOpaque {
         NO_RECONNECT_AFTER_PING_FAILURE;
     }
 }
