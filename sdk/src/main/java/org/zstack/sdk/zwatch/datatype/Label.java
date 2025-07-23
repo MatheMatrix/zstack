@@ -1,7 +1,5 @@
 package org.zstack.sdk.zwatch.datatype;
 
-import org.zstack.sdk.zwatch.datatype.Operator;
-
 public class Label  {
 
     public java.lang.String key;

@@ -7,6 +7,7 @@ import org.zstack.header.storage.primary.PrimaryStorageStateEvent
 import org.zstack.header.storage.primary.PrimaryStorageVO
 import org.zstack.header.vm.VmInstanceConstant
 import org.zstack.kvm.KvmVmSyncPingTask
+import org.zstack.sdk.*
 import org.zstack.storage.primary.local.LocalStorageKvmBackend
 import org.zstack.storage.primary.local.LocalStorageKvmMigrateVmFlow
 import org.zstack.test.integration.storage.Env
