@@ -6,15 +6,10 @@ import org.junit.Test;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.componentloader.ComponentLoader;
 import org.zstack.core.db.DatabaseFacade;
-import org.zstack.core.db.SimpleQuery;
-import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.identity.SessionInventory;
-import org.zstack.header.storage.primary.PrimaryStorageInventory;
-import org.zstack.header.vm.VmInstanceConstant.Capability;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.header.vm.VmInstanceVO;
-import org.zstack.header.volume.VolumeConstant;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.storage.primary.local.*;
 import org.zstack.storage.primary.local.LocalStorageSimulatorConfig.Capacity;
@@ -24,8 +19,6 @@ import org.zstack.test.DBUtil;
 import org.zstack.test.WebBeanConstructor;
 import org.zstack.test.deployer.Deployer;
 import org.zstack.utils.data.SizeUnit;
-
-import java.util.Map;
 
 /**
  * 1. use local storage
