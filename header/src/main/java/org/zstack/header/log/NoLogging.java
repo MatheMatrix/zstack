@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
 @Target({java.lang.annotation.ElementType.FIELD})
 @Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
 public @interface NoLogging {
-    enum Behavior {
+    enum LogMaskBehavior {
         Auto,
         Mask;
 
@@ -41,7 +41,7 @@ public @interface NoLogging {
         }
     }
 
-    Behavior behavior() default Behavior.Mask;
+    LogMaskBehavior behavior() default LogMaskBehavior.Mask;
 
     Type type() default Type.Simple;
 

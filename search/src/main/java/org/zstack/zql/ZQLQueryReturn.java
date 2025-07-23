@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ZQLQueryReturn implements Serializable {
-    @NoLogging(behavior = NoLogging.Behavior.Auto)
+    @NoLogging(behavior = NoLogging.LogMaskBehavior.Auto)
     public List inventories;
     public LinkedHashMap<Object, Long> inventoryCounts;
     public LinkedHashMap<Object, Object> inventoryAggregateFunctions;
