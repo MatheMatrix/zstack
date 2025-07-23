@@ -20,7 +20,7 @@ public enum BackupStorageErrors {
         return code;
     }
 
-    public enum Opaque {
+    public enum BackupStorageErrorOpaque {
         NEED_RECONNECT_CHECKING
     }
 }

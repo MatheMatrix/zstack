@@ -36,7 +36,7 @@ import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.*;
 import org.zstack.header.host.HostCanonicalEvents.HostDeletedData;
 import org.zstack.header.host.HostCanonicalEvents.HostStatusChangedData;
-import org.zstack.header.host.HostErrors.Opaque;
+import org.zstack.header.host.HostErrors.HostErrorsOpaque;
 import org.zstack.header.host.HostMaintenancePolicyExtensionPoint.HostMaintenanceVmOperationPolicy;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIMessage;
@@ -924,7 +924,7 @@ public abstract class HostBase extends AbstractHost {
                     reply.setError(errorCode);
                     reply.setSuccess(true);
 
-                    Boolean noReconnect = (Boolean) errorCode.getFromOpaque(Opaque.NO_RECONNECT_AFTER_PING_FAILURE.toString());
+                    Boolean noReconnect = (Boolean) errorCode.getFromOpaque(HostErrorsOpaque.NO_RECONNECT_AFTER_PING_FAILURE.toString());
                     reply.setNoReconnect(noReconnect != null && noReconnect);
 
                     if (!Q.New(HostVO.class).eq(HostVO_.uuid, msg.getHostUuid()).isExists()) {
