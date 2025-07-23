@@ -78,7 +78,7 @@ public interface VmInstanceConstant {
 
     String USER_VM_REGEX_PASSWORD = "[\\da-zA-Z-`=\\\\\\[\\];',./~!@#$%^&*()_+|{}:\"<>?]{1,}";
 
-    enum Capability {
+    enum VmCapability {
         LiveMigration,
         VolumeMigration,
         Reimage,

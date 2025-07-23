@@ -7,12 +7,6 @@ import org.zstack.header.storage.primary.PrimaryStorageStateEvent
 import org.zstack.header.storage.primary.PrimaryStorageVO
 import org.zstack.header.vm.VmInstanceConstant
 import org.zstack.kvm.KvmVmSyncPingTask
-import org.zstack.sdk.DiskOfferingInventory
-import org.zstack.sdk.GetVmCapabilitiesResult
-import org.zstack.sdk.LocalStorageMigrateVolumeAction
-import org.zstack.sdk.VmInstanceInventory
-import org.zstack.sdk.VolumeInventory
-import org.zstack.sdk.*
 import org.zstack.storage.primary.local.LocalStorageKvmBackend
 import org.zstack.storage.primary.local.LocalStorageKvmMigrateVmFlow
 import org.zstack.test.integration.storage.Env
@@ -63,8 +57,8 @@ class LocalStorageMigrateVolumeCase extends SubCase{
             uuid = vm.uuid
         }
 
-        assert !capRes.capabilities.get(VmInstanceConstant.Capability.LiveMigration.toString()) as Boolean
-        assert !capRes.capabilities.get(VmInstanceConstant.Capability.VolumeMigration.toString()) as Boolean
+        assert !capRes.capabilities.get(VmInstanceConstant.VmCapability.LiveMigration.toString()) as Boolean
+        assert !capRes.capabilities.get(VmInstanceConstant.VmCapability.VolumeMigration.toString()) as Boolean
 
         detachDataVolumeFromVm {
             uuid = volume.uuid
