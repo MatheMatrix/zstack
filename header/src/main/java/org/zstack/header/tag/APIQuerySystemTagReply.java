@@ -13,7 +13,7 @@ import static java.util.Arrays.asList;
  */
 @RestResponse(allTo = "inventories")
 public class APIQuerySystemTagReply extends APIQueryReply {
-    @NoLogging(behavior = NoLogging.Behavior.Auto)
+    @NoLogging(behavior = NoLogging.LogMaskBehavior.Auto)
     private List<SystemTagInventory> inventories;
 
     public List<SystemTagInventory> getInventories() {

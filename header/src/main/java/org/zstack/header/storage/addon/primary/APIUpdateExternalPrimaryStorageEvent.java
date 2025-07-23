@@ -13,7 +13,7 @@ import java.util.LinkedHashMap;
 @RestResponse(allTo = "inventory")
 @MaskSensitiveInfo
 public class APIUpdateExternalPrimaryStorageEvent extends APIEvent {
-    @NoLogging(behavior = NoLogging.Behavior.Auto)
+    @NoLogging(behavior = NoLogging.LogMaskBehavior.Auto)
     private ExternalPrimaryStorageInventory inventory;
 
     public APIUpdateExternalPrimaryStorageEvent(String id) {

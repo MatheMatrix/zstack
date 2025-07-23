@@ -48,7 +48,7 @@ public class APIDetachPrimaryStorageFromClusterEvent extends APIEvent {
     /**
      * @desc see :ref:`PrimaryStorageInventory`
      */
-    @NoLogging(behavior = NoLogging.Behavior.Auto)
+    @NoLogging(behavior = NoLogging.LogMaskBehavior.Auto)
     private PrimaryStorageInventory inventory;
 
     public PrimaryStorageInventory getInventory() {

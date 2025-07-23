@@ -13,7 +13,7 @@ import java.util.List;
 @MaskSensitiveInfo
 public class APIZQLQueryReply extends APIReply {
     @NoJsonSchema
-    @NoLogging(behavior = NoLogging.Behavior.Auto)
+    @NoLogging(behavior = NoLogging.LogMaskBehavior.Auto)
     private List<ZQLQueryReturn> results;
 
     public static APIZQLQueryReply __example__() {
