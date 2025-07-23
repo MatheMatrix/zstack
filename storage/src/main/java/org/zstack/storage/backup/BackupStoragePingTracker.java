@@ -194,7 +194,7 @@ public class BackupStoragePingTracker extends PingTracker implements ManagementN
         }
 
         if (r.getError() != null) {
-            boolean checkReconnect = (boolean) r.getError().getOpaque().getOrDefault(BackupStorageErrors.Opaque.NEED_RECONNECT_CHECKING.toString(), false);
+            boolean checkReconnect = (boolean) r.getError().getOpaque().getOrDefault(BackupStorageErrors.BackupStorageErrorOpaque.NEED_RECONNECT_CHECKING.toString(), false);
             if (checkReconnect) {
                 return ReconnectDecision.SubmitReconnectTask;
             }
