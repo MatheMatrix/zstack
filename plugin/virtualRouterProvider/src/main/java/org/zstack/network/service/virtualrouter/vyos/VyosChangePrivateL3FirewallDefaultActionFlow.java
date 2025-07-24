@@ -8,7 +8,6 @@ import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.timeout.ApiTimeoutManager;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.workflow.NoRollbackFlow;
-import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmNicInventory;
@@ -38,7 +37,7 @@ public class VyosChangePrivateL3FirewallDefaultActionFlow extends NoRollbackFlow
     public void run(FlowTrigger trigger, Map data) {
         String action = VyosGlobalConfig.PRIVATE_L3_FIREWALL_DEFAULT_ACTION.value(String.class);
 
-        final VirtualRouterVmInventory servedVm = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory servedVm = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         List<VirtualRouterCommands.NicInfo> infos = CollectionUtils.transformToList(servedVm.getGuestNics(), new Function<VirtualRouterCommands.NicInfo, VmNicInventory>() {
             @Override
             public VirtualRouterCommands.NicInfo call(VmNicInventory arg) {

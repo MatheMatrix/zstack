@@ -3,7 +3,6 @@ package org.zstack.network.service.virtualrouter.ha;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
-import org.zstack.appliancevm.ApplianceVmConstant;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
@@ -15,8 +14,6 @@ import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.network.service.VirtualRouterHaGroupExtensionPoint;
-import org.zstack.header.vm.VmInstanceConstant;
-import org.zstack.header.vm.VmInstanceSpec;
 import org.zstack.network.service.virtualrouter.VirtualRouterConstant;
 import org.zstack.network.service.virtualrouter.VirtualRouterVmInventory;
 
@@ -33,7 +30,7 @@ public class VirtualRouterHaSyncConfigToBackendFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger chain, Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         if (!vr.isHaEnabled()) {
             chain.next();
             return;

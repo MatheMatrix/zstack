@@ -20,8 +20,6 @@ import org.zstack.header.identity.SessionInventory;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.network.l3.UsedIpInventory;
-import org.zstack.header.network.l3.UsedIpVO;
-import org.zstack.header.network.l3.UsedIpVO_;
 import org.zstack.header.network.service.NetworkServiceProviderType;
 import org.zstack.header.network.service.NetworkServiceType;
 import org.zstack.header.vm.VmNicInventory;
@@ -59,10 +57,10 @@ public class VirtualRouterCreatePublicVipFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger chain, Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
-        VmNicInventory nic = (VmNicInventory) data.get(VirtualRouterConstant.Param.VR_NIC.toString());
-        Boolean snat = (Boolean) data.get(VirtualRouterConstant.Param.SNAT.toString());
-        boolean isNewCreated = data.containsKey(VirtualRouterConstant.Param.IS_NEW_CREATED.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
+        VmNicInventory nic = (VmNicInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR_NIC.toString());
+        Boolean snat = (Boolean) data.get(VirtualRouterConstant.VirtualRouterParam.SNAT.toString());
+        boolean isNewCreated = data.containsKey(VirtualRouterConstant.VirtualRouterParam.IS_NEW_CREATED.toString());
 
         /* this flow will be called when:
         *  1. virtual router post create flows, including ha virtual router, non-ha virtual router
@@ -155,7 +153,7 @@ public class VirtualRouterCreatePublicVipFlow implements Flow {
 
         List<VipInventory> vips = new ArrayList<>();
         /* use for rollback */
-        data.put(VirtualRouterConstant.Param.PUB_VIP_UUID.toString(), vips);
+        data.put(VirtualRouterConstant.VirtualRouterParam.PUB_VIP_UUID.toString(), vips);
         new While<>(msgs).each((msg, wcoml) -> {
             bus.send(msg, new CloudBusCallBack(wcoml) {
                 @Override
@@ -247,7 +245,7 @@ public class VirtualRouterCreatePublicVipFlow implements Flow {
 
     @Override
     public void rollback(FlowRollback chain, Map data) {
-        List<VipInventory> vips = (List<VipInventory>) data.get(VirtualRouterConstant.Param.PUB_VIP_UUID.toString());
+        List<VipInventory> vips = (List<VipInventory>) data.get(VirtualRouterConstant.VirtualRouterParam.PUB_VIP_UUID.toString());
         if (vips == null || vips.isEmpty()) {
             chain.rollback();
             return;

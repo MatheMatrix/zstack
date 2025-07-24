@@ -65,7 +65,6 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static org.codehaus.groovy.runtime.InvokerHelper.asList;
 import static org.zstack.core.Platform.err;
 import static org.zstack.utils.CollectionDSL.*;
 
@@ -1648,16 +1647,16 @@ public class L3BasicNetwork implements L3Network {
                         vo.setPrefix(msg.getPrefix());
                         vo.setNexthop(msg.getNexthop());
                         vo = dbf.persist(vo);
-                        data.put(L3NetworkConstant.Param.L3_HOSTROUTE_VO, vo);
-                        data.put(L3NetworkConstant.Param.L3_HOSTROUTE_SUCCESS, true);
+                        data.put(L3NetworkConstant.L3NetworkParam.L3_HOSTROUTE_VO, vo);
+                        data.put(L3NetworkConstant.L3NetworkParam.L3_HOSTROUTE_SUCCESS, true);
                         trigger.next();
                     }
 
                     @Override
                     public void rollback(FlowRollback trigger, Map data) {
-                        boolean flag = (boolean) data.get(L3NetworkConstant.Param.L3_HOSTROUTE_SUCCESS);
+                        boolean flag = (boolean) data.get(L3NetworkConstant.L3NetworkParam.L3_HOSTROUTE_SUCCESS);
                         if (flag) {
-                            L3NetworkHostRouteVO vo = (L3NetworkHostRouteVO) data.get(L3NetworkConstant.Param.L3_HOSTROUTE_VO);
+                            L3NetworkHostRouteVO vo = (L3NetworkHostRouteVO) data.get(L3NetworkConstant.L3NetworkParam.L3_HOSTROUTE_VO);
                             dbf.remove(vo);
                         }
                         trigger.rollback();

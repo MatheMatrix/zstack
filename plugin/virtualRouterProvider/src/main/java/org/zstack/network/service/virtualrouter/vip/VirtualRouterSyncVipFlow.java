@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.zstack.appliancevm.ApplianceVmConstant;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.header.core.Completion;
@@ -34,7 +33,7 @@ public class VirtualRouterSyncVipFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger chain, Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
 
         List<String> vrVips = proxy.getServiceUuidsByRouterUuid(vr.getUuid(), VipVO.class.getSimpleName());
         List<String> peerL3Vips = null;

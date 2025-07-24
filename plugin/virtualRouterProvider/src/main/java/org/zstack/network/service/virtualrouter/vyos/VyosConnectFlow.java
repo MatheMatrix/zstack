@@ -118,7 +118,7 @@ public class VyosConnectFlow extends NoRollbackFlow {
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         String vrUuid;
         VmNicInventory mgmtNic;
         if (vr != null) {
@@ -283,7 +283,7 @@ public class VyosConnectFlow extends NoRollbackFlow {
 
     @Override
     public void rollback(FlowRollback trigger, Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         final String vrUuid;
         VmNicInventory mgmtNic;
         if (vr != null) {

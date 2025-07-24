@@ -160,7 +160,7 @@ public class VirtualRouterSyncDHCPOnStartFlow implements Flow {
 	
     @Override
     public void run(final FlowTrigger chain, Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
 
         List<String> nwServed = vr.getGuestL3Networks();
         List<String> l3Uuids = vrMgr.selectL3NetworksNeedingSpecificNetworkService(nwServed, NetworkServiceType.DHCP);

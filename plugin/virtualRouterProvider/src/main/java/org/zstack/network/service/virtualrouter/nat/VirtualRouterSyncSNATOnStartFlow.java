@@ -63,7 +63,7 @@ public class VirtualRouterSyncSNATOnStartFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger chain, Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         VirtualRouterVmVO vrVO = Q.New(VirtualRouterVmVO.class).eq(VirtualRouterVmVO_.uuid, vr.getUuid()).find();
 
         List<String> nwServed = vr.getAllL3Networks();
@@ -173,7 +173,7 @@ public class VirtualRouterSyncSNATOnStartFlow implements Flow {
     }
 
     Vip getVipWithSnatService(Map data){
-        List<VipInventory> vips = (List<VipInventory>)data.get(VirtualRouterConstant.Param.PUB_VIP_UUID.toString());
+        List<VipInventory> vips = (List<VipInventory>)data.get(VirtualRouterConstant.VirtualRouterParam.PUB_VIP_UUID.toString());
         if (vips == null || vips.isEmpty()){
             return null;
         }
@@ -189,7 +189,7 @@ public class VirtualRouterSyncSNATOnStartFlow implements Flow {
             return null;
         }
 
-        VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         ModifyVipAttributesStruct struct = new ModifyVipAttributesStruct();
         struct.setUseFor(NetworkServiceType.SNAT.toString());
         struct.setServiceUuid(vr.getUuid());
