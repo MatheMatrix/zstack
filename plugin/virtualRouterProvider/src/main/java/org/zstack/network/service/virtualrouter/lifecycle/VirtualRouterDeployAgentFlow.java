@@ -26,7 +26,7 @@ import org.zstack.header.vm.VmNicInventory;
 import org.zstack.network.service.virtualrouter.VirtualRouterCommands.InitCommand;
 import org.zstack.network.service.virtualrouter.VirtualRouterCommands.InitRsp;
 import org.zstack.network.service.virtualrouter.*;
-import org.zstack.network.service.virtualrouter.VirtualRouterConstant.Param;
+import org.zstack.network.service.virtualrouter.VirtualRouterConstant.VirtualRouterParam;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.DebugUtils;
 import org.zstack.utils.Utils;
@@ -57,7 +57,7 @@ public class VirtualRouterDeployAgentFlow extends NoRollbackFlow {
     private final String agentPackageName = VirtualRouterGlobalProperty.AGENT_PACKAGE_NAME;
 
 	private void continueConnect(final VmNicInventory mgmtNic, final Map<String, Object> data, final FlowTrigger completion) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         final FlowChain chain = FlowChainBuilder.newShareFlowChain();
         chain.setName(String.format("virtual-router-%s-continue-connecting", mgmtNic.getVmInstanceUuid()));
         chain.then(new ShareFlow() {
@@ -179,7 +179,7 @@ public class VirtualRouterDeployAgentFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger chain, final Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         VmNicInventory mgmtNic = null;
         if (vr != null) {
             mgmtNic = vr.getManagementNic();
@@ -198,7 +198,7 @@ public class VirtualRouterDeployAgentFlow extends NoRollbackFlow {
             DebugUtils.Assert(mgmtNic!=null, String.format("cannot find management nic for virtual router[uuid:%s, name:%s]", spec.getVmInventory().getUuid(), spec.getVmInventory().getName()));
         }
 
-        boolean isReconnect = Boolean.parseBoolean((String) data.get(Param.IS_RECONNECT.toString()));
+        boolean isReconnect = Boolean.parseBoolean((String) data.get(VirtualRouterParam.IS_RECONNECT.toString()));
 
         if (CoreGlobalProperty.UNIT_TEST_ON) {
             continueConnect(mgmtNic, data, chain);

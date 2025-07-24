@@ -19,8 +19,6 @@ import org.zstack.core.config.GlobalConfig;
 import org.zstack.core.config.GlobalConfigUpdateExtensionPoint;
 import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
-import org.zstack.core.defer.Defer;
-import org.zstack.core.defer.Deferred;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.core.thread.AsyncThread;
 import org.zstack.core.thread.ChainTask;
@@ -71,7 +69,6 @@ import org.zstack.network.securitygroup.APIUpdateSecurityGroupRulePriorityMsg.Se
 import org.zstack.network.securitygroup.APIAddSecurityGroupRuleMsg.SecurityGroupRuleAO;
 import org.zstack.network.securitygroup.APISetVmNicSecurityGroupMsg.VmNicSecurityGroupRefAO;
 import org.zstack.query.QueryFacade;
-import org.zstack.tag.SystemTagCreator;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
@@ -93,7 +90,7 @@ import java.util.stream.Stream;
 import static java.util.Arrays.asList;
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.err;
-import static org.zstack.network.securitygroup.SecurityGroupConstant.Param.*;
+import static org.zstack.network.securitygroup.SecurityGroupConstant.SecurityGroupParam.*;
 import static org.zstack.network.securitygroup.SecurityGroupMembersTO.ACTION_CODE_DELETE_GROUP;
 import static org.zstack.utils.CollectionDSL.*;
 
@@ -1205,8 +1202,8 @@ public class SecurityGroupManagerImpl extends AbstractService implements Securit
                             }
                         }
 
-                        data.put(SecurityGroupConstant.Param.SECURITY_GROUP_UUIDS, sgUuids);
-                        data.put(SecurityGroupConstant.Param.SECURITY_GROUP_REFS, toDelete);
+                        data.put(SecurityGroupConstant.SecurityGroupParam.SECURITY_GROUP_UUIDS, sgUuids);
+                        data.put(SecurityGroupConstant.SecurityGroupParam.SECURITY_GROUP_REFS, toDelete);
 
                         trigger.next();
                     }
@@ -1241,7 +1238,7 @@ public class SecurityGroupManagerImpl extends AbstractService implements Securit
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        List<String> sgUuids = (List<String>)data.get(SecurityGroupConstant.Param.SECURITY_GROUP_UUIDS);
+                        List<String> sgUuids = (List<String>)data.get(SecurityGroupConstant.SecurityGroupParam.SECURITY_GROUP_UUIDS);
                         for (String sgUuid : sgUuids) {
                             RuleCalculator cal = new RuleCalculator();
                             HostSecurityGroupMembersTO groupMemberTO = cal.returnHostSecurityGroupMember(sgUuid);
@@ -1267,7 +1264,7 @@ public class SecurityGroupManagerImpl extends AbstractService implements Securit
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        List<VmNicSecurityGroupRefVO> toDelete = (List<VmNicSecurityGroupRefVO>) data.get(SecurityGroupConstant.Param.SECURITY_GROUP_REFS);
+                        List<VmNicSecurityGroupRefVO> toDelete = (List<VmNicSecurityGroupRefVO>) data.get(SecurityGroupConstant.SecurityGroupParam.SECURITY_GROUP_REFS);
                         List<String> sgUuids = toDelete.stream().map(VmNicSecurityGroupRefVO::getSecurityGroupUuid).distinct().collect(Collectors.toList());
                         sdnRemoveSecurityGroupFromVmNic(backend, sgUuids, Collections.singletonList(msg.getVmNicUuid()), new Completion(trigger) {
                             @Override

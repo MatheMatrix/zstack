@@ -13,17 +13,14 @@ import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.header.vm.VmInstanceSpec;
 import org.zstack.header.vm.VmNicInventory;
-import org.zstack.network.service.vip.VipVO;
-import org.zstack.network.service.virtualrouter.VirtualRouter;
 import org.zstack.network.service.virtualrouter.VirtualRouterConstant;
-import org.zstack.network.service.virtualrouter.VirtualRouterConstant.Param;
+import org.zstack.network.service.virtualrouter.VirtualRouterConstant.VirtualRouterParam;
 import org.zstack.network.service.virtualrouter.VirtualRouterVmInventory;
 import org.zstack.network.service.virtualrouter.VirtualRouterVmVO;
 import org.zstack.network.service.virtualrouter.vip.VipConfigProxy;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.function.Function;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -51,19 +48,19 @@ public class VirtualRouterAssembleDecoratorFlow extends NoRollbackFlow {
                 }
             });
             info.setManagementNic(mgmtNic);
-            data.put(Param.IS_NEW_CREATED.toString(), true);
+            data.put(VirtualRouterParam.IS_NEW_CREATED.toString(), true);
         } else {
             info = (ApplianceVmPostLifeCycleInfo) data.get(ApplianceVmConstant.Params.applianceVmInfoForPostLifeCycle.toString());
         }
 
         VirtualRouterVmInventory vrInv = VirtualRouterVmInventory.valueOf(dbf.findByUuid(spec.getVmInventory().getUuid(), VirtualRouterVmVO.class));
         if (spec.getCurrentVmOperation() == VmOperation.Destroy) {
-            data.put(Param.VR_UUID.toString(), spec.getVmInventory().getUuid());
-            data.put(Param.IS_HA_ROUTER.toString(), vrInv.isHaEnabled());
-            data.put(VirtualRouterConstant.Param.VR.toString(), spec.getVmInventory());
+            data.put(VirtualRouterParam.VR_UUID.toString(), spec.getVmInventory().getUuid());
+            data.put(VirtualRouterConstant.VirtualRouterParam.IS_HA_ROUTER.toString(), vrInv.isHaEnabled());
+            data.put(VirtualRouterParam.VR.toString(), spec.getVmInventory());
         } else {
-            data.put(VirtualRouterConstant.Param.VR.toString(), vrInv);
-            data.put(VirtualRouterConstant.Param.VR_NIC.toString(), vrInv.getPublicNic());
+            data.put(VirtualRouterParam.VR.toString(), vrInv);
+            data.put(VirtualRouterConstant.VirtualRouterParam.VR_NIC.toString(), vrInv.getPublicNic());
         }
 
         trigger.next();
