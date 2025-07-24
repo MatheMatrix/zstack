@@ -34,11 +34,11 @@ public class VirtualRouterAssembleDecoratorFlow extends NoRollbackFlow {
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         ApplianceVmPostLifeCycleInfo info;
         if (spec.getCurrentVmOperation() == VmOperation.NewCreate) {
-            final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.Params.applianceVmSpec.toString(), ApplianceVmSpec.class);
+            final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.ApplianceVmParams.applianceVmSpec.toString(), ApplianceVmSpec.class);
             info = new ApplianceVmPostLifeCycleInfo();
             info.setDefaultRouteL3Network(aspec.getDefaultRouteL3Network());
             VmNicInventory mgmtNic = CollectionUtils.find(spec.getDestNics(), new Function<VmNicInventory, VmNicInventory>() {
@@ -50,7 +50,7 @@ public class VirtualRouterAssembleDecoratorFlow extends NoRollbackFlow {
             info.setManagementNic(mgmtNic);
             data.put(VirtualRouterParam.IS_NEW_CREATED.toString(), true);
         } else {
-            info = (ApplianceVmPostLifeCycleInfo) data.get(ApplianceVmConstant.Params.applianceVmInfoForPostLifeCycle.toString());
+            info = (ApplianceVmPostLifeCycleInfo) data.get(ApplianceVmConstant.ApplianceVmParams.applianceVmInfoForPostLifeCycle.toString());
         }
 
         VirtualRouterVmInventory vrInv = VirtualRouterVmInventory.valueOf(dbf.findByUuid(spec.getVmInventory().getUuid(), VirtualRouterVmVO.class));

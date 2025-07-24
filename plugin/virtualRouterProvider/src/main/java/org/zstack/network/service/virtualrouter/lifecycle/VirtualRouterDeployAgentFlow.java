@@ -61,8 +61,8 @@ public class VirtualRouterDeployAgentFlow extends NoRollbackFlow {
         final FlowChain chain = FlowChainBuilder.newShareFlowChain();
         chain.setName(String.format("virtual-router-%s-continue-connecting", mgmtNic.getVmInstanceUuid()));
         chain.then(new ShareFlow() {
-            Long timeout = data.get(ApplianceVmConstant.Params.timeout.toString()) == null ?
-                    null : (Long)data.get(ApplianceVmConstant.Params.timeout.toString());
+            Long timeout = data.get(ApplianceVmConstant.ApplianceVmParams.timeout.toString()) == null ?
+                    null : (Long)data.get(ApplianceVmConstant.ApplianceVmParams.timeout.toString());
             @Override
             public void setup() {
                 flow(new NoRollbackFlow() {
@@ -184,8 +184,8 @@ public class VirtualRouterDeployAgentFlow extends NoRollbackFlow {
         if (vr != null) {
             mgmtNic = vr.getManagementNic();
         } else {
-            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
-            final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.Params.applianceVmSpec.toString(), ApplianceVmSpec.class);
+            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
+            final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.ApplianceVmParams.applianceVmSpec.toString(), ApplianceVmSpec.class);
             mgmtNic = CollectionUtils.find(spec.getDestNics(), new Function<VmNicInventory, VmNicInventory>() {
                 @Override
                 public VmNicInventory call(VmNicInventory arg) {

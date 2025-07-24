@@ -40,15 +40,12 @@ import org.zstack.network.l2.L2NetworkManager;
 import org.zstack.network.service.MtuGetter;
 import org.zstack.header.vm.hooks.VmInstanceAfterCreateHook;
 import org.zstack.header.vm.hooks.VmInstanceAfterDestroyHook;
-import org.zstack.header.vm.hooks.VmInstanceBeforeCreateHook;
 import org.zstack.header.vm.hooks.VmInstanceBeforeDestroyHook;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.DebugUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
-import org.zstack.utils.zsha2.ZSha2Helper;
-import org.zstack.utils.zsha2.ZSha2Info;
 
 import javax.persistence.Query;
 import java.util.*;
@@ -343,7 +340,7 @@ public class ApplianceVmFacadeImpl extends AbstractService implements ApplianceV
         String defaultL3Uuid;
         String applianceVmSubType;
         if (spec.getCurrentVmOperation() == VmInstanceConstant.VmOperation.NewCreate) {
-            ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.Params.applianceVmSpec.toString(), ApplianceVmSpec.class);
+            ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.ApplianceVmParams.applianceVmSpec.toString(), ApplianceVmSpec.class);
             for (VmNicInventory nic : spec.getDestNics()) {
                 if (nic.getL3NetworkUuid().equals(aspec.getManagementNic().getL3NetworkUuid())) {
                     mgmtNic = nic;
@@ -353,7 +350,7 @@ public class ApplianceVmFacadeImpl extends AbstractService implements ApplianceV
 
             DebugUtils.Assert(mgmtNic!=null, String.format("cannot find management nic for appliance vm[uuid:%s]", aspec.getUuid()));
             defaultL3Uuid = aspec.getDefaultRouteL3Network() != null ? aspec.getDefaultRouteL3Network().getUuid() : mgmtNic.getL3NetworkUuid();
-            applianceVmSubType = spec.getExtensionData(ApplianceVmConstant.Params.applianceVmSubType.toString(), String.class);
+            applianceVmSubType = spec.getExtensionData(ApplianceVmConstant.ApplianceVmParams.applianceVmSubType.toString(), String.class);
         } else {
             ApplianceVmVO avo = dbf.findByUuid(spec.getVmInventory().getUuid(), ApplianceVmVO.class);
             applianceVmSubType = avo.getApplianceVmType();
@@ -363,7 +360,7 @@ public class ApplianceVmFacadeImpl extends AbstractService implements ApplianceV
         }
 
         Map<String, Object> ret = new HashMap<String, Object>();
-        ret.put(ApplianceVmConstant.Params.applianceVmSubType.toString(), applianceVmSubType);
+        ret.put(ApplianceVmConstant.ApplianceVmParams.applianceVmSubType.toString(), applianceVmSubType);
         ApplianceVmNicTO mto = new ApplianceVmNicTO(mgmtNic);
         mto.setDeviceName(String.format("eth0"));
         if (mgmtNic.getL3NetworkUuid().equals(defaultL3Uuid)) {

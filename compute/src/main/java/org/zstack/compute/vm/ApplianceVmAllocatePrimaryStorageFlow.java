@@ -52,7 +52,7 @@ public class ApplianceVmAllocatePrimaryStorageFlow implements Flow {
     @Override
     public void run(final FlowTrigger trigger, final Map data) {
         final List<AllocatePrimaryStorageSpaceMsg> msgs = new ArrayList<>();
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         HostInventory destHost = spec.getDestHost();
         final ImageInventory iminv = spec.getImageSpec().getInventory();
 
@@ -150,7 +150,7 @@ public class ApplianceVmAllocatePrimaryStorageFlow implements Flow {
 
     @Override
     public void rollback(FlowRollback chain, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         for (VolumeSpec vspec : spec.getVolumeSpecs()) {
             if (vspec.isVolumeCreated()) {
                 // don't return capacity as it has been returned when the volume is deleted

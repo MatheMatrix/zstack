@@ -25,8 +25,8 @@ public class DetachIsoOnHypervisorFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
-        final String isoUuid = (String) data.get(VmInstanceConstant.Params.DetachingIsoUuid.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
+        final String isoUuid = (String) data.get(VmInstanceConstant.VmInstanceParams.DetachingIsoUuid.toString());
 
         DetachIsoOnHypervisorMsg msg = new DetachIsoOnHypervisorMsg();
         msg.setHostUuid(spec.getDestHost().getUuid());

@@ -22,7 +22,7 @@ public class VmReleaseResourceOnDetachingNicFlow extends NoRollbackFlow {
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         VmNicInventory nic = spec.getDestNics().get(0);
 
         Iterator<ReleaseNetworkServiceOnDetachingNicExtensionPoint> it = pluginRgty.getExtensionList(ReleaseNetworkServiceOnDetachingNicExtensionPoint.class).iterator();

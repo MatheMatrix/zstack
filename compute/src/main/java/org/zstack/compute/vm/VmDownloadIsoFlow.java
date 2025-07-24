@@ -42,8 +42,8 @@ public class VmDownloadIsoFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
-        final ImageInventory iso = (ImageInventory) data.get(VmInstanceConstant.Params.AttachingIsoInventory.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
+        final ImageInventory iso = (ImageInventory) data.get(VmInstanceConstant.VmInstanceParams.AttachingIsoInventory.toString());
         final VmInstanceSpec.IsoSpec isoSpec = spec.getDestIsoList().stream()
                 .filter(s -> s.getImageUuid().equals(iso.getUuid()))
                 .findAny()
