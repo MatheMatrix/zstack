@@ -23,7 +23,7 @@ public interface VmInstanceConstant {
     String L2_TF_VSWITCH_TYPE = "TfL2Network";
     String TF_VIRTUAL_NIC_TYPE = "TFVNIC";
 
-    enum Params {
+    enum VmInstanceParams {
         VmInstanceSpec,
         AttachingVolumeInventory,
         AttachedDataVolumeInventories,

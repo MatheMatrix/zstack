@@ -62,7 +62,7 @@ public class VmAllocateNicFlow implements Flow {
     public void run(final FlowTrigger trigger, final Map data) {
         taskProgress("create nics");
 
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         List<VmNicSpec> l3Networks = spec.getL3Networks();
         for (VmNicSpec l3Network : l3Networks) {
             for (VmPreAttachL3NetworkExtensionPoint ext : pluginRgty.getExtensionList(VmPreAttachL3NetworkExtensionPoint.class)) {
@@ -72,7 +72,7 @@ public class VmAllocateNicFlow implements Flow {
             }
         }
         final Map<String, NicIpAddressInfo> nicNetworkInfoMap =
-                Optional.ofNullable(data.get(VmInstanceConstant.Params.VmAllocateNicFlow_nicNetworkInfo.toString()))
+                Optional.ofNullable(data.get(VmInstanceConstant.VmInstanceParams.VmAllocateNicFlow_nicNetworkInfo.toString()))
                 .map(obj -> (Map<String, NicIpAddressInfo>) obj)
                 .orElse(new StaticIpOperator().getNicNetworkInfoByVmUuid(spec.getVmInventory().getUuid()));
 
@@ -88,7 +88,7 @@ public class VmAllocateNicFlow implements Flow {
         }
 
         List<VmNicInventory> nics = new ArrayList<>();
-        data.put(VmInstanceConstant.Params.VmAllocateNicFlow_nics.toString(), nics);
+        data.put(VmInstanceConstant.VmInstanceParams.VmAllocateNicFlow_nics.toString(), nics);
         List<ErrorCode> errs = new ArrayList<>();
 
         new While<>(VmNicSpec.getFirstL3NetworkInventoryOfSpec(spec.getL3Networks())).each((nicSpec, wcomp) -> {
@@ -238,7 +238,7 @@ public class VmAllocateNicFlow implements Flow {
 
     @Override
     public void rollback(final FlowRollback chain, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         final List<VmNicInventory> destNics = spec.getDestNics();
         if (destNics == null || destNics.isEmpty()) {
             chain.rollback();

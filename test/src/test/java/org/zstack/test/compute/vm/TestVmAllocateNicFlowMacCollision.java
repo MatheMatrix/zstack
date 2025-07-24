@@ -33,8 +33,6 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static java.util.Arrays.asList;
-
 public class TestVmAllocateNicFlowMacCollision {
     Deployer deployer;
     Api api;
@@ -92,12 +90,12 @@ public class TestVmAllocateNicFlowMacCollision {
                 nicSpecs.add(new VmNicSpec(inv));
             }
             spec.setL3Networks(nicSpecs);
-            chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+            chain.getData().put(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString(), spec);
             chain.done(new FlowDoneHandler(null) {
                 @Override
                 public void handle(Map data) {
                     try {
-                        VmInstanceSpec ret = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+                        VmInstanceSpec ret = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
                         Assert.assertEquals(l3Networks.size(), ret.getDestNics().size());
                         for (VmNicInventory nic : ret.getDestNics()) {
                             UsedIpVO ip = dbf.findByUuid(nic.getUsedIpUuid(), UsedIpVO.class);

@@ -33,7 +33,7 @@ public class ApplianceVmConstant {
         additionalL3Uuids,
     }
 
-    public static enum Params {
+    public static enum ApplianceVmParams {
         applianceVmSubType,
         applianceVmSpec,
         applianceVmInfoForPostLifeCycle,

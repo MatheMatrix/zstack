@@ -124,7 +124,7 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger next, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         final String srcHostUuid = spec.getVmInventory().getHostUuid();
         final String dstHostUuid = spec.getDestHost().getUuid();
 

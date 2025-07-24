@@ -42,7 +42,7 @@ public class VmAllocateNicForStartingVmFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         final VmInstanceInventory vm = spec.getVmInventory();
 
         if (!VmInstanceConstant.USER_VM_TYPE.equals(vm.getType())) {

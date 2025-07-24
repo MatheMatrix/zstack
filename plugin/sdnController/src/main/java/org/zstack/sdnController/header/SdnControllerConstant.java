@@ -35,13 +35,13 @@ public class SdnControllerConstant {
         Delete
     }
 
-    public enum ResourceTypes{
+    public enum SdnControllerResourceTypes {
         SdnController,
         VxlanNetworkPool,
         VxlanNetwork
     }
 
-    public enum Params {
+    public enum SdnControllerParams {
         HARDWARE_VXLAN_POOLS,
         VXLAN_NETWORK
     }

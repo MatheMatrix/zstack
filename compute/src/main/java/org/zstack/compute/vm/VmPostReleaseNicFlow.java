@@ -23,7 +23,7 @@ public class VmPostReleaseNicFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, final Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         for (VmNicInventory vmNic : spec.getVmInventory().getVmNics()) {
             for (VmDetachNicExtensionPoint ext : pluginRgty.getExtensionList(VmDetachNicExtensionPoint.class)) {
                 ext.afterDetachNic(vmNic);
