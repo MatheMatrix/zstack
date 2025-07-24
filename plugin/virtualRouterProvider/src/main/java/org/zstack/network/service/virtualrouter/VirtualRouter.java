@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.appliancevm.*;
-import org.zstack.appliancevm.ApplianceVmConstant.Params;
+import org.zstack.appliancevm.ApplianceVmConstant.ApplianceVmParams;
 import org.zstack.core.upgrade.UpgradeChecker;
 import org.zstack.core.upgrade.UpgradeGlobalConfig;
 import org.zstack.core.asyncbatch.While;
@@ -499,15 +499,15 @@ public class VirtualRouter extends ApplianceVmBase {
         FlowChain chain = getProvisionConfigChain();
         chain.setName(String.format("virtual-router-%s-provision-config", self.getUuid()));
         chain.getData().put(VirtualRouterParam.VR.toString(), vr);
-        chain.getData().put(Params.isReconnect.toString(), Boolean.TRUE.toString());
-        chain.getData().put(Params.managementNicIp.toString(), vr.getManagementNic().getIp());
-        chain.getData().put(Params.applianceVmUuid.toString(), self.getUuid());
+        chain.getData().put(ApplianceVmParams.isReconnect.toString(), Boolean.TRUE.toString());
+        chain.getData().put(ApplianceVmParams.managementNicIp.toString(), vr.getManagementNic().getIp());
+        chain.getData().put(ApplianceVmParams.applianceVmUuid.toString(), self.getUuid());
 
         SimpleQuery<ApplianceVmFirewallRuleVO> q = dbf.createQuery(ApplianceVmFirewallRuleVO.class);
         q.add(ApplianceVmFirewallRuleVO_.applianceVmUuid, Op.EQ, getSelf().getUuid());
         List<ApplianceVmFirewallRuleVO> vos = q.list();
         List<ApplianceVmFirewallRuleInventory> rules = ApplianceVmFirewallRuleInventory.valueOf(vos);
-        chain.getData().put(ApplianceVmConstant.Params.applianceVmFirewallRules.toString(), rules);
+        chain.getData().put(ApplianceVmParams.applianceVmFirewallRules.toString(), rules);
         chain.done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map data) {
@@ -883,16 +883,16 @@ public class VirtualRouter extends ApplianceVmBase {
         chain.setName(String.format("reconnect-virtual-router-%s", self.getUuid()));
         chain.getData().put(VirtualRouterParam.VR.toString(), vr);
         chain.getData().put(VirtualRouterConstant.VirtualRouterParam.IS_RECONNECT.toString(), Boolean.TRUE.toString());
-        chain.getData().put(Params.isReconnect.toString(), Boolean.TRUE.toString());
-        chain.getData().put(Params.managementNicIp.toString(), vr.getManagementNic().getIp());
-        chain.getData().put(Params.applianceVmUuid.toString(), self.getUuid());
-        chain.getData().put(Params.fromApi.toString(), fromApi.toString());
+        chain.getData().put(ApplianceVmParams.isReconnect.toString(), Boolean.TRUE.toString());
+        chain.getData().put(ApplianceVmParams.managementNicIp.toString(), vr.getManagementNic().getIp());
+        chain.getData().put(ApplianceVmParams.applianceVmUuid.toString(), self.getUuid());
+        chain.getData().put(ApplianceVmParams.fromApi.toString(), fromApi.toString());
 
         SimpleQuery<ApplianceVmFirewallRuleVO> q = dbf.createQuery(ApplianceVmFirewallRuleVO.class);
         q.add(ApplianceVmFirewallRuleVO_.applianceVmUuid, Op.EQ, getSelf().getUuid());
         List<ApplianceVmFirewallRuleVO> vos = q.list();
         List<ApplianceVmFirewallRuleInventory> rules = ApplianceVmFirewallRuleInventory.valueOf(vos);
-        chain.getData().put(ApplianceVmConstant.Params.applianceVmFirewallRules.toString(), rules);
+        chain.getData().put(ApplianceVmParams.applianceVmFirewallRules.toString(), rules);
         chain.insert(new Flow() {
             String __name__ = "change-appliancevm-status-to-connecting";
 

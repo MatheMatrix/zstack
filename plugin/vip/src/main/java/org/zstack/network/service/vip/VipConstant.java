@@ -12,7 +12,7 @@ public interface VipConstant {
     public static final int MAX_PORT = 65535;
 
 
-    public static enum Params {
+    public static enum VipParams {
         VIP,
         VIP_USE_FOR,
         VIP_SERVICE_PROVIDER_TYPE,

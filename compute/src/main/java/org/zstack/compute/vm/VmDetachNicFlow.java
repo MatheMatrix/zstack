@@ -36,7 +36,7 @@ public class VmDetachNicFlow extends NoRollbackFlow {
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         final VmNicInventory nic = spec.getDestNics().get(0);
         String defaultL3Uuid = dbf.findByUuid(spec.getVmInventory().getUuid(), VmInstanceVO.class).getDefaultL3NetworkUuid();
 
@@ -56,7 +56,7 @@ public class VmDetachNicFlow extends NoRollbackFlow {
 
         vidm.deleteVmDeviceAddress(nic.getUuid(), spec.getVmInventory().getUuid());
 
-        boolean releaseNic = (boolean) data.get(VmInstanceConstant.Params.ReleaseNicAfterDetachNic.toString());
+        boolean releaseNic = (boolean) data.get(VmInstanceConstant.VmInstanceParams.ReleaseNicAfterDetachNic.toString());
         if (!releaseNic) {
             UpdateQuery.New(VmNicVO.class)
                     .eq(VmNicVO_.uuid, nic.getUuid())

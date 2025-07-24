@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.compute.allocator.HostAllocatorManager;
-import org.zstack.core.Platform;
 import org.zstack.core.asyncbatch.AsyncLoop;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
@@ -18,7 +17,6 @@ import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.host.HostInventory;
-import org.zstack.header.image.ImageInventory;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.storage.backup.BackupStorageVO;
 import org.zstack.header.storage.backup.BackupStorageVO_;
@@ -56,7 +54,7 @@ public class VmAllocatePrimaryStorageFlow implements Flow {
     @Override
     public void run(final FlowTrigger trigger, final Map data) {
         final List<AllocatePrimaryStorageSpaceMsg> msgs = new ArrayList<>();
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         HostInventory destHost = spec.getDestHost();
 
         // allocate ps for root volume
@@ -151,7 +149,7 @@ public class VmAllocatePrimaryStorageFlow implements Flow {
 
     @Override
     public void rollback(FlowRollback chain, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         for (VolumeSpec vspec : spec.getVolumeSpecs()) {
             if (vspec.isVolumeCreated()) {
                 // don't return capacity as it has been returned when the volume is deleted

@@ -19,7 +19,7 @@ import java.util.Map;
 public class PortForwardingReturnVipFlow extends NoRollbackFlow {
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        VipInventory v = (VipInventory) data.get(VipConstant.Params.VIP.toString());
+        VipInventory v = (VipInventory) data.get(VipConstant.VipParams.VIP.toString());
         ModifyVipAttributesStruct struct = new ModifyVipAttributesStruct();
         struct.setUseFor( PortForwardingConstant.PORTFORWARDING_NETWORK_SERVICE_TYPE);
         //TODO add services uuid

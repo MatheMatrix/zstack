@@ -22,7 +22,6 @@ import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.host.HostVO_;
-import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.storage.backup.BackupStorageVO;
 import org.zstack.header.storage.backup.BackupStorageVO_;
@@ -125,7 +124,7 @@ public class LocalStorageDefaultAllocateCapacityFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         String localStorageUuid = getRequiredStorageUuid(spec.getDestHost().getUuid(), spec.getRequiredPrimaryStorageUuidForRootVolume());
 
@@ -284,7 +283,7 @@ public class LocalStorageDefaultAllocateCapacityFlow implements Flow {
 
     @Override
     public void rollback(FlowRollback trigger, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         if (spec.getVolumeSpecs().isEmpty()) {
             trigger.rollback();

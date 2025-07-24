@@ -134,7 +134,7 @@ public class VmImageSelectBackupStorageFlow extends NoRollbackFlow {
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         if (VmOperation.NewCreate == spec.getCurrentVmOperation()
                 || VmOperation.ChangeImage == spec.getCurrentVmOperation()) {

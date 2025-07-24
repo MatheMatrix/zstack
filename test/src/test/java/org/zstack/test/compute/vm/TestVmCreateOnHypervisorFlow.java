@@ -56,7 +56,7 @@ public class TestVmCreateOnHypervisorFlow {
         spec.setVmInventory(vminv);
         spec.setDestHost(hinv);
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain().then(new VmCreateOnHypervisorFlow());
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.done(new FlowDoneHandler(null) {
             @Override
             public void handle(Map data) {

@@ -16,13 +16,11 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmInstanceSpec;
-import org.zstack.header.vm.VmNicHelper;
 import org.zstack.header.vm.VmNicSpec;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.function.Function;
 
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -37,7 +35,7 @@ public class VmAllocateHostForAbnormallyStartedVmFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger chain, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         DesignatedAllocateHostMsg msg = new DesignatedAllocateHostMsg();
         msg.setVmInstance(spec.getVmInventory());
@@ -75,7 +73,7 @@ public class VmAllocateHostForAbnormallyStartedVmFlow implements Flow {
 
     @Override
     public void rollback(FlowRollback chain, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         HostInventory host = spec.getDestHost();
         if (host != null) {
             ReturnHostCapacityMsg msg = new ReturnHostCapacityMsg();

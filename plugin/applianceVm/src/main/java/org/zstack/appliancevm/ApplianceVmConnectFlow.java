@@ -55,10 +55,10 @@ public class ApplianceVmConnectFlow extends NoRollbackFlow {
             return;
         }
 
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         VmNicInventory mgmtNic;
         if (spec.getCurrentVmOperation() == VmInstanceConstant.VmOperation.NewCreate) {
-            final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.Params.applianceVmSpec.toString(), ApplianceVmSpec.class);
+            final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.ApplianceVmParams.applianceVmSpec.toString(), ApplianceVmSpec.class);
             mgmtNic = CollectionUtils.find(spec.getDestNics(), new Function<VmNicInventory, VmNicInventory>() {
                 @Override
                 public VmNicInventory call(VmNicInventory arg) {
