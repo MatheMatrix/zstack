@@ -1,6 +1,6 @@
 package org.zstack.sdk.zwatch.alarm;
 
-import org.zstack.sdk.zwatch.datatype.LabelMatchOperator;
+import org.zstack.sdk.zwatch.datatype.Operator;
 
 public class EventSubscriptionLabelInventory  {
 
@@ -20,11 +20,11 @@ public class EventSubscriptionLabelInventory  {
         return this.key;
     }
 
-    public LabelMatchOperator operator;
-    public void setOperator(LabelMatchOperator operator) {
+    public Operator operator;
+    public void setOperator(Operator operator) {
         this.operator = operator;
     }
-    public LabelMatchOperator getOperator() {
+    public Operator getOperator() {
         return this.operator;
     }
 

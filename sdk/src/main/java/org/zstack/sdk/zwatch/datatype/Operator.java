@@ -1,6 +1,6 @@
 package org.zstack.sdk.zwatch.datatype;
 
-public enum LabelMatchOperator {
+public enum Operator {
 	Regex,
 	Filter,
 	NotEqual,
