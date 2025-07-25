@@ -1613,8 +1613,8 @@ public class SourceClassMap {
 			put("org.zstack.sdk.zwatch.datatype.EventData", "org.zstack.zwatch.datatype.EventData");
 			put("org.zstack.sdk.zwatch.datatype.EventEmergencyLevel", "org.zstack.zwatch.datatype.EventFamily$EventEmergencyLevel");
 			put("org.zstack.sdk.zwatch.datatype.Label", "org.zstack.zwatch.datatype.Label");
-			put("org.zstack.sdk.zwatch.datatype.Operator", "org.zstack.zwatch.datatype.Label$Operator");
 			put("org.zstack.sdk.zwatch.datatype.MetricDatum", "org.zstack.zwatch.datatype.MetricDatum");
+			put("org.zstack.sdk.zwatch.datatype.Operator", "org.zstack.zwatch.datatype.Label$Operator");
 			put("org.zstack.sdk.zwatch.influxdb.InfluxEventData", "org.zstack.zwatch.influxdb.InfluxEventData");
 			put("org.zstack.sdk.zwatch.influxdb.InfluxEventDataV1", "org.zstack.zwatch.influxdb.InfluxEventDataV1");
 			put("org.zstack.sdk.zwatch.influxdb.InfluxEventDataV2", "org.zstack.zwatch.influxdb.InfluxEventDataV2");
