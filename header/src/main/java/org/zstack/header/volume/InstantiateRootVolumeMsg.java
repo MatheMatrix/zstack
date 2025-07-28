@@ -7,6 +7,7 @@ import org.zstack.header.vm.VmInstanceSpec.ImageSpec;
  */
 public class InstantiateRootVolumeMsg extends InstantiateVolumeMsg implements VolumeMessage {
     private ImageSpec templateSpec;
+    private boolean allowEmpty;
 
     public ImageSpec getTemplateSpec() {
         return templateSpec;
@@ -14,5 +15,13 @@ public class InstantiateRootVolumeMsg extends InstantiateVolumeMsg implements Vo
 
     public void setTemplateSpec(ImageSpec templateSpec) {
         this.templateSpec = templateSpec;
+    }
+
+    public boolean isAllowEmpty() {
+        return allowEmpty;
+    }
+
+    public void setAllowEmpty(boolean allowEmpty) {
+        this.allowEmpty = allowEmpty;
     }
 }

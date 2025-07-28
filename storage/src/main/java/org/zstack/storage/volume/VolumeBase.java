@@ -605,6 +605,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
                         InstantiateRootVolumeFromTemplateOnPrimaryStorageMsg imsg = new InstantiateRootVolumeFromTemplateOnPrimaryStorageMsg();
                         prepareMsg(msg, imsg);
                         imsg.setTemplateSpec(msg.getTemplateSpec());
+                        imsg.setAllowEmpty(msg.isAllowEmpty());
                         doInstantiateVolume(imsg, trigger);
                     }
 

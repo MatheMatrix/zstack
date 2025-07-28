@@ -201,6 +201,9 @@ public class InstantiateVolumeForNewCreatedVmExtension implements PreVmInstantia
             recovering = image.getSelectedBackupStorage().getInstallPath().startsWith("nbd://");
         } catch (NullPointerException ignored) {
         }
+
+        boolean allowEmpty = spec.getRootVolumeSystemTags() != null
+                && spec.getRootVolumeSystemTags().contains(VolumeSystemTags.ALLOW_EMPTY_ROOT_VOLUME.getTagFormat());
         if (recovering) {
             InstantiateVolumeMsg cmsg = fillMsg(new InstantiateRootVolumeForRecoveryMsg(), spec.getDestRootVolume(), spec);
             ((InstantiateRootVolumeForRecoveryMsg) cmsg).setSelectedBackupStorage(image.getSelectedBackupStorage());
@@ -208,6 +211,7 @@ public class InstantiateVolumeForNewCreatedVmExtension implements PreVmInstantia
         } else if (image.getInventory() != null && ImageMediaType.RootVolumeTemplate.toString().equals(image.getInventory().getMediaType())) {
             InstantiateVolumeMsg rmsg = fillMsg(new InstantiateRootVolumeMsg(), spec.getDestRootVolume(), spec);
             ((InstantiateRootVolumeMsg) rmsg).setTemplateSpec(image);
+            ((InstantiateRootVolumeMsg) rmsg).setAllowEmpty(allowEmpty);
             msgs.add(rmsg);
         } else {
             msgs.add(fillMsg(new InstantiateVolumeMsg(), spec.getDestRootVolume(), spec));

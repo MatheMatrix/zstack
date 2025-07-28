@@ -1720,7 +1720,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         cmd.skipIfExisting = msg.isSkipIfExisting();
 
         final InstantiateVolumeOnPrimaryStorageReply reply = new InstantiateVolumeOnPrimaryStorageReply();
-        
+
         httpCall(CREATE_VOLUME_PATH, cmd, CreateEmptyVolumeRsp.class, new ReturnValueCompletion<CreateEmptyVolumeRsp>(msg) {
             @Override
             public void fail(ErrorCode err) {
@@ -2493,6 +2493,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         chain.setName(String.format("create-root-volume-%s", msg.getVolume().getUuid()));
         chain.then(new ShareFlow() {
             String cloneInstallPath;
+            String dummyVolumeInstallPath = makeVolumeInstallPathByTargetPool(Platform.getUuid(), targetCephPoolName);
             String volumePath = makeVolumeInstallPathByTargetPool(msg.getVolume().getUuid(), targetCephPoolName);
             ImageCacheInventory cache;
             Long actualSize;
@@ -2501,6 +2502,11 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
             public void setup() {
                 flow(new NoRollbackFlow() {
                     String __name__ = "download-image-to-cache";
+
+                    @Override
+                    public boolean skip(Map data) {
+                        return msg.isAllowEmpty();
+                    }
 
                     @Override
                     public void run(final FlowTrigger trigger, Map data) {
@@ -2525,6 +2531,52 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                     }
                 });
 
+                flow(new Flow() {
+                    String __name__ = "create-empty-volume";
+
+                    @Override
+                    public boolean skip(Map data) {
+                        return !msg.isAllowEmpty();
+                    }
+
+                    @Override
+                    public void run(final FlowTrigger trigger, Map data) {
+                        final CreateEmptyVolumeCmd cmd = new CreateEmptyVolumeCmd();
+                        cmd.installPath = dummyVolumeInstallPath;
+                        cmd.size = msg.getVolume().getSize();
+                        cmd.setShareable(msg.getVolume().isShareable());
+                        cmd.skipIfExisting = msg.isSkipIfExisting();
+                        httpCall(CREATE_VOLUME_PATH, cmd, CreateEmptyVolumeRsp.class, new ReturnValueCompletion<CreateEmptyVolumeRsp>(msg) {
+                            @Override
+                            public void fail(ErrorCode err) {
+                                trigger.fail(err);
+                            }
+
+                            @Override
+                            public void success(CreateEmptyVolumeRsp ret) {
+                                cloneInstallPath = dummyVolumeInstallPath;
+                                trigger.next();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void rollback(FlowRollback trigger, Map data) {
+                        deleteVolumeOnPrimaryStorage(dummyVolumeInstallPath, new Completion(trigger) {
+                            @Override
+                            public void success() {
+                                logger.debug(String.format("successfully deleted %s", dummyVolumeInstallPath));
+                                trigger.rollback();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                logger.warn(String.format("unable to delete %s, %s. Need a cleanup", dummyVolumeInstallPath, errorCode));
+                                trigger.rollback();
+                            }
+                        });
+                    }
+                });
 
                 flow(new NoRollbackFlow() {
                     String __name__ = "clone-image";
@@ -2622,6 +2674,32 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                     }
                 });
 
+                flow(new NoRollbackFlow() {
+                    String __name__ = "delete-dummy-volume-on-primary-storage";
+
+                    @Override
+                    public boolean skip(Map data) {
+                        return !msg.isAllowEmpty();
+                    }
+
+                    @Override
+                    public void run(final FlowTrigger trigger, Map data) {
+                        deleteVolumeOnPrimaryStorage(dummyVolumeInstallPath, new Completion(msg) {
+                            @Override
+                            public void success() {
+                                logger.debug(String.format("successfully deleted %s", dummyVolumeInstallPath));
+                                trigger.next();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                logger.warn(String.format("unable to delete %s, %s. Need a cleanup", dummyVolumeInstallPath, errorCode));
+                                trigger.next();
+                            }
+                        });
+                    }
+                });
+
                 done(new FlowDoneHandler(msg) {
                     @Override
                     public void handle(Map data) {
@@ -2630,6 +2708,11 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                         vol.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
                         vol.setActualSize(actualSize);
                         reply.setVolume(vol);
+
+                        if (msg.isAllowEmpty()) {
+                            bus.reply(msg, reply);
+                            return;
+                        }
 
                         ImageCacheVolumeRefVO ref = new ImageCacheVolumeRefVO();
                         ref.setImageCacheId(cache.getId());
@@ -2650,6 +2733,22 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                 });
             }
         }).start();
+    }
+
+    protected void deleteVolumeOnPrimaryStorage(final String installPath, final Completion completion) {
+        DeleteCmd cmd = new DeleteCmd();
+        cmd.installPath = installPath;
+        httpCall(DELETE_PATH, cmd, DeleteRsp.class, new ReturnValueCompletion<DeleteRsp>(completion) {
+            @Override
+            public void fail(ErrorCode err) {
+                completion.fail(err);
+            }
+
+            @Override
+            public void success(DeleteRsp ret) {
+                completion.success();
+            }
+        });
     }
 
     @Override
