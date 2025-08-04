@@ -2,7 +2,6 @@ package org.zstack.header.storage.primary;
 
 import org.springframework.http.HttpMethod;
 import org.zstack.header.log.NoLogging;
-import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
@@ -24,7 +23,7 @@ public class APIUpdatePrimaryStorageMsg extends APIMessage implements PrimarySto
     @APIParam(maxLength = 2048, required = false)
     private String description;
     @APIParam(maxLength = 2048, required = false)
-    @NoLogging(type = NoLogging.Type.Uri)
+    @NoLogging(type = NoLogging.LogMaskType.Uri)
     private String url;
 
     public String getUrl() {

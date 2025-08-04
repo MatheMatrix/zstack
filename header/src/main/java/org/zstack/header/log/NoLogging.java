@@ -23,7 +23,7 @@ public @interface NoLogging {
         }
     }
 
-    enum Type {
+    enum LogMaskType {
         Simple,
         Tag,
         Uri;
@@ -43,7 +43,7 @@ public @interface NoLogging {
 
     Behavior behavior() default Behavior.Mask;
 
-    Type type() default Type.Simple;
+    LogMaskType type() default LogMaskType.Simple;
 
     String classNameField() default "";
 }

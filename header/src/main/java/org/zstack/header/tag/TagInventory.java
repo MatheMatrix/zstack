@@ -11,7 +11,7 @@ public class TagInventory implements Serializable {
     private String uuid;
     private String resourceUuid;
     private String resourceType;
-    @NoLogging(type = NoLogging.Type.Tag)
+    @NoLogging(type = NoLogging.LogMaskType.Tag)
     private String tag;
     private String type;
     private Timestamp createDate;
