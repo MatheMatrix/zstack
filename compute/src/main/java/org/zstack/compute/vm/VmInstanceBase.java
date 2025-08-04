@@ -2157,6 +2157,7 @@ public class VmInstanceBase extends AbstractVmInstance {
 
         class SetCustomMacSystemTag {
             private boolean isSet = false;
+            private boolean allowDupicatedMac = false;
 
             void set () {
                 if (msg instanceof VmAttachNicMsg || msg instanceof APIAttachL3NetworkToVmMsg) {
@@ -2166,6 +2167,12 @@ public class VmInstanceBase extends AbstractVmInstance {
                         tagMgr.createNonInherentSystemTags(msg1.getSystemTags(), self.getUuid(), VmInstanceVO.class.getSimpleName());
                         isSet = true;
                     }
+
+                    if (msg instanceof VmAttachNicMsg) {
+                        VmAttachNicMsg nicMsg = (VmAttachNicMsg) msg;
+                        allowDupicatedMac = nicMsg.isAllowDuplicatedAddress();
+                    }
+
                 }
             }
 
@@ -2229,6 +2236,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         flowChain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
         flowChain.getData().put(VmInstanceConstant.Params.VmAllocateNicFlow_allowDuplicatedAddress.toString(), setStaticIp.allowDupicatedAddress);
         flowChain.getData().put(VmInstanceConstant.Params.VmAllocateNicFlow_nicNetworkInfo.toString(), setStaticIp.nicNetworkInfo);
+        flowChain.getData().put(VmInstanceConstant.Params.VmAllocateNicFlow_allowDuplicatedMac.toString(), setCustomMacSystemTag.allowDupicatedMac);
         for (VmNicPrepareResourceExtensionPoint exp : pluginRgty.getExtensionList(VmNicPrepareResourceExtensionPoint.class)) {
             flowChain.then(exp.getPreparationFlow());
         }
