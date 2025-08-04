@@ -14,7 +14,7 @@ import org.zstack.header.rest.RestRequest;
 )
 public class APIDiscoverExternalPrimaryStorageMsg extends APIMessage {
     @APIParam
-    @NoLogging(type = NoLogging.Type.Uri)
+    @NoLogging(type = NoLogging.LogMaskType.Uri)
     private String url;
     @APIParam(required = false)
     private String identity;

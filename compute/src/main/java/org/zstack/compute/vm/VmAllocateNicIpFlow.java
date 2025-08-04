@@ -52,16 +52,16 @@ public class VmAllocateNicIpFlow implements Flow {
     public void run(final FlowTrigger trigger, final Map data) {
         taskProgress("allocate nics ip");
 
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
-        final List<VmNicInventory> nics = (List<VmNicInventory>) data.get(VmInstanceConstant.Params.VmAllocateNicFlow_nics.toString());
-        Boolean allowDuplicatedAddress = (Boolean) data.get(VmInstanceConstant.Params.VmAllocateNicFlow_allowDuplicatedAddress.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
+        final List<VmNicInventory> nics = (List<VmNicInventory>) data.get(VmInstanceConstant.VmInstanceParams.VmAllocateNicFlow_nics.toString());
+        Boolean allowDuplicatedAddress = (Boolean) data.get(VmInstanceConstant.VmInstanceParams.VmAllocateNicFlow_allowDuplicatedAddress.toString());
         Map<String, List<String>> vmStaticIps = new StaticIpOperator().getStaticIpbyVmUuid(spec.getVmInventory().getUuid());
         List<ErrorCode> errs = new ArrayList<>();
         Set<UsedIpVO> ipVOS = new HashSet<>();
         List<VmNicVO> nicsWithIp = new ArrayList<>();
         List<UsedIpInventory> ips = new ArrayList<>();
-        data.put(VmInstanceConstant.Params.VmAllocateNicFlow_nics.toString(), nicsWithIp);
-        data.put(VmInstanceConstant.Params.VmAllocateNicFlow_ips.toString(), ips);
+        data.put(VmInstanceConstant.VmInstanceParams.VmAllocateNicFlow_nics.toString(), nicsWithIp);
+        data.put(VmInstanceConstant.VmInstanceParams.VmAllocateNicFlow_ips.toString(), ips);
 
         final Map<String, VmNicInventory> nicsL3 = new HashMap<>();
         nics.forEach(nic -> {
@@ -193,7 +193,7 @@ public class VmAllocateNicIpFlow implements Flow {
 
     @Override
     public void rollback(final FlowRollback chain, Map data) {
-        List<UsedIpInventory> ips = (List<UsedIpInventory>) data.get(VmInstanceConstant.Params.VmAllocateNicFlow_ips.toString());
+        List<UsedIpInventory> ips = (List<UsedIpInventory>) data.get(VmInstanceConstant.VmInstanceParams.VmAllocateNicFlow_ips.toString());
         List<ReturnIpMsg> msgs = new ArrayList<>();
         for (UsedIpInventory ip : ips) {
             ReturnIpMsg msg = new ReturnIpMsg();

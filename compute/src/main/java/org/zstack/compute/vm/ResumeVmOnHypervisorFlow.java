@@ -9,11 +9,8 @@ import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.workflow.NoRollbackFlow;
 import org.zstack.header.host.HostConstant;
-import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
-import org.zstack.header.message.OverriddenApiParam;
 import org.zstack.header.vm.ResumeVmOnHypervisorMsg;
-import org.zstack.header.vm.VmInstance;
 import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmInstanceSpec;
 
@@ -31,7 +28,7 @@ public class ResumeVmOnHypervisorFlow extends NoRollbackFlow{
 
     @Override
     public void run(final FlowTrigger chain, Map data){
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         ResumeVmOnHypervisorMsg msg = new ResumeVmOnHypervisorMsg();
         msg.setVmInventory(spec.getVmInventory());
         bus.makeTargetServiceIdByResourceUuid(msg, HostConstant.SERVICE_ID,spec.getVmInventory().getHostUuid());

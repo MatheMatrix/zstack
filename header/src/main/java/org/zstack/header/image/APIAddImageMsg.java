@@ -29,7 +29,7 @@ public class APIAddImageMsg extends APICreateMessage implements APIAuditor, AddI
     @APIParam(required = false, maxLength = 2048)
     private String description;
     @APIParam(maxLength = 1024)
-    @NoLogging(type = NoLogging.Type.Uri)
+    @NoLogging(type = NoLogging.LogMaskType.Uri)
     private String url;
     @APIParam(required = false, validValues = {"RootVolumeTemplate", "ISO", "DataVolumeTemplate"})
     private String mediaType;

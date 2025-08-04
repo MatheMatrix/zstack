@@ -9,7 +9,7 @@ import org.zstack.utils.gson.JSONObjectUtil;
  * Created by xing5 on 2016/7/21.
  */
 public class OverlayMessage extends NeedReplyMessage {
-    @NoLogging(behavior = NoLogging.Behavior.Auto)
+    @NoLogging(behavior = NoLogging.LogMaskBehavior.Auto)
     protected Object message;
     protected String messageClassName;
 

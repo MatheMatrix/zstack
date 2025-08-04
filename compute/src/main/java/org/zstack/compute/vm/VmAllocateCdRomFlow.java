@@ -43,7 +43,7 @@ public class VmAllocateCdRomFlow implements Flow {
     public void run(final FlowTrigger trigger, final Map data) {
         taskProgress("create cdRoms");
 
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         List<CdRomSpec> cdRomSpecs = spec.getCdRomSpecs();
 
         if (cdRomSpecs.isEmpty()) {
@@ -84,7 +84,7 @@ public class VmAllocateCdRomFlow implements Flow {
 
     @Override
     public void rollback(final FlowRollback chain, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         List<CdRomSpec> cdRomSpecs = spec.getCdRomSpecs();
 
         if (!cdRomSpecs.isEmpty()) {

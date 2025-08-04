@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.appliancevm.*;
-import org.zstack.appliancevm.ApplianceVmConstant.Params;
+import org.zstack.appliancevm.ApplianceVmConstant.ApplianceVmParams;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.ansible.AnsibleFacade;
 import org.zstack.core.db.DatabaseFacade;
@@ -85,7 +85,7 @@ public class VyosDeployAgentFlow extends NoRollbackFlow {
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        final String vrUuid = (String) data.get(VmInstanceConstant.Params.vmInstanceUuid.toString());
+        final String vrUuid = (String) data.get(VmInstanceConstant.VmInstanceParams.vmInstanceUuid.toString());
         if (CoreGlobalProperty.UNIT_TEST_ON) {
             // update vyos agent version when open grayScaleUpgrade
             upgradeChecker.updateAgentVersion(vrUuid, VirtualRouterConstant.VIRTUAL_ROUTER_PROVIDER_TYPE, new VirtualRouterMetadataOperator().getManagementVersion(), new VirtualRouterMetadataOperator().getManagementVersion());
@@ -93,8 +93,8 @@ public class VyosDeployAgentFlow extends NoRollbackFlow {
             return;
         }
 
-        boolean fromApi = Boolean.parseBoolean(String.valueOf(data.get(Params.fromApi.toString())));
-        boolean isReconnect = Boolean.parseBoolean(String.valueOf(data.get(Params.isReconnect.toString())));
+        boolean fromApi = Boolean.parseBoolean(String.valueOf(data.get(ApplianceVmParams.fromApi.toString())));
+        boolean isReconnect = Boolean.parseBoolean(String.valueOf(data.get(ApplianceVmParams.isReconnect.toString())));
         if (!fromApi && upgradeChecker.skipInnerDeployOrInitOnCurrentAgent(vrUuid)) {
             trigger.next();
             return;
@@ -119,9 +119,9 @@ public class VyosDeployAgentFlow extends NoRollbackFlow {
         String mgmtNicIp;
         if (!isReconnect) {
             VmNicInventory mgmtNic;
-            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
             if (spec.getCurrentVmOperation() == VmOperation.NewCreate) {
-                final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.Params.applianceVmSpec.toString(), ApplianceVmSpec.class);
+                final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmParams.applianceVmSpec.toString(), ApplianceVmSpec.class);
                 mgmtNic = CollectionUtils.find(spec.getDestNics(), new Function<VmNicInventory, VmNicInventory>() {
                     @Override
                     public VmNicInventory call(VmNicInventory arg) {
@@ -135,7 +135,7 @@ public class VyosDeployAgentFlow extends NoRollbackFlow {
             }
             mgmtNicIp = mgmtNic.getIp();
         } else {
-            mgmtNicIp = (String) data.get(Params.managementNicIp.toString());
+            mgmtNicIp = (String) data.get(ApplianceVmParams.managementNicIp.toString());
         }
 
         int timeoutInSeconds = ApplianceVmGlobalConfig.CONNECT_TIMEOUT.value(Integer.class);
@@ -308,14 +308,14 @@ public class VyosDeployAgentFlow extends NoRollbackFlow {
 
     @Override
     public void rollback(FlowRollback trigger, Map data) {
-        boolean isReconnect = Boolean.parseBoolean((String) data.get(Params.isReconnect.toString()));
+        boolean isReconnect = Boolean.parseBoolean((String) data.get(ApplianceVmParams.isReconnect.toString()));
 
         String mgmtNicIp;
         if (!isReconnect) {
             VmNicInventory mgmtNic;
-            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
             if (spec.getCurrentVmOperation() == VmOperation.NewCreate) {
-                final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.Params.applianceVmSpec.toString(), ApplianceVmSpec.class);
+                final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmParams.applianceVmSpec.toString(), ApplianceVmSpec.class);
                 mgmtNic = CollectionUtils.find(spec.getDestNics(), new Function<VmNicInventory, VmNicInventory>() {
                     @Override
                     public VmNicInventory call(VmNicInventory arg) {
@@ -329,7 +329,7 @@ public class VyosDeployAgentFlow extends NoRollbackFlow {
             }
             mgmtNicIp = mgmtNic.getIp();
         } else {
-            mgmtNicIp = (String) data.get(Params.managementNicIp.toString());
+            mgmtNicIp = (String) data.get(ApplianceVmParams.managementNicIp.toString());
         }
 
         debug(mgmtNicIp, 30, data);

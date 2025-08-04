@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.appliancevm.ApplianceVmCommands.InitCmd;
 import org.zstack.appliancevm.ApplianceVmCommands.InitRsp;
-import org.zstack.appliancevm.ApplianceVmConstant.Params;
+import org.zstack.appliancevm.ApplianceVmConstant.ApplianceVmParams;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.ansible.AnsibleFacade;
 import org.zstack.core.ansible.AnsibleGlobalProperty;
@@ -131,15 +131,15 @@ public class ApplianceVmDeployAgentFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        boolean isReconnect = Boolean.parseBoolean((String) data.get(Params.isReconnect.toString()));
+        boolean isReconnect = Boolean.parseBoolean((String) data.get(ApplianceVmParams.isReconnect.toString()));
         final String apvmUuid;
 
         String mgmtNicIp = null;
         if (!isReconnect) {
             VmNicInventory mgmtNic;
-            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
             if (spec.getCurrentVmOperation() == VmOperation.NewCreate) {
-                final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.Params.applianceVmSpec.toString(), ApplianceVmSpec.class);
+                final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmParams.applianceVmSpec.toString(), ApplianceVmSpec.class);
                 mgmtNic = CollectionUtils.find(spec.getDestNics(), new Function<VmNicInventory, VmNicInventory>() {
                     @Override
                     public VmNicInventory call(VmNicInventory arg) {
@@ -157,8 +157,8 @@ public class ApplianceVmDeployAgentFlow extends NoRollbackFlow {
                 mgmtNicIp = mgmtNic.getIp();
             }
         } else {
-            mgmtNicIp = (String) data.get(Params.managementNicIp.toString());
-            apvmUuid = (String) data.get(Params.applianceVmUuid.toString());
+            mgmtNicIp = (String) data.get(ApplianceVmParams.managementNicIp.toString());
+            apvmUuid = (String) data.get(ApplianceVmParams.applianceVmUuid.toString());
         }
 
         final String mgmtIp = mgmtNicIp;

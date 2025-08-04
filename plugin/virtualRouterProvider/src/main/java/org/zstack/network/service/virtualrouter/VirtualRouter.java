@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.appliancevm.*;
-import org.zstack.appliancevm.ApplianceVmConstant.Params;
+import org.zstack.appliancevm.ApplianceVmConstant.ApplianceVmParams;
 import org.zstack.core.upgrade.UpgradeChecker;
 import org.zstack.core.upgrade.UpgradeGlobalConfig;
 import org.zstack.core.asyncbatch.While;
@@ -44,7 +44,7 @@ import org.zstack.network.service.MtuGetter;
 import org.zstack.network.service.vip.*;
 import org.zstack.network.service.virtualrouter.VirtualRouterCommands.PingCmd;
 import org.zstack.network.service.virtualrouter.VirtualRouterCommands.PingRsp;
-import org.zstack.network.service.virtualrouter.VirtualRouterConstant.Param;
+import org.zstack.network.service.virtualrouter.VirtualRouterConstant.VRouterParam;
 import org.zstack.network.service.virtualrouter.ha.VirtualRouterHaBackend;
 import org.zstack.network.service.virtualrouter.lifecycle.TrackVirtualRouterVmFlow;
 import org.zstack.network.service.virtualrouter.vip.VirtualRouterCreatePublicVipFlow;
@@ -498,16 +498,16 @@ public class VirtualRouter extends ApplianceVmBase {
 
         FlowChain chain = getProvisionConfigChain();
         chain.setName(String.format("virtual-router-%s-provision-config", self.getUuid()));
-        chain.getData().put(VirtualRouterConstant.Param.VR.toString(), vr);
-        chain.getData().put(Params.isReconnect.toString(), Boolean.TRUE.toString());
-        chain.getData().put(Params.managementNicIp.toString(), vr.getManagementNic().getIp());
-        chain.getData().put(Params.applianceVmUuid.toString(), self.getUuid());
+        chain.getData().put(VRouterParam.VR.toString(), vr);
+        chain.getData().put(ApplianceVmParams.isReconnect.toString(), Boolean.TRUE.toString());
+        chain.getData().put(ApplianceVmParams.managementNicIp.toString(), vr.getManagementNic().getIp());
+        chain.getData().put(ApplianceVmParams.applianceVmUuid.toString(), self.getUuid());
 
         SimpleQuery<ApplianceVmFirewallRuleVO> q = dbf.createQuery(ApplianceVmFirewallRuleVO.class);
         q.add(ApplianceVmFirewallRuleVO_.applianceVmUuid, Op.EQ, getSelf().getUuid());
         List<ApplianceVmFirewallRuleVO> vos = q.list();
         List<ApplianceVmFirewallRuleInventory> rules = ApplianceVmFirewallRuleInventory.valueOf(vos);
-        chain.getData().put(ApplianceVmConstant.Params.applianceVmFirewallRules.toString(), rules);
+        chain.getData().put(ApplianceVmParams.applianceVmFirewallRules.toString(), rules);
         chain.done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map data) {
@@ -881,18 +881,18 @@ public class VirtualRouter extends ApplianceVmBase {
 
         FlowChain chain = getReconnectChain();
         chain.setName(String.format("reconnect-virtual-router-%s", self.getUuid()));
-        chain.getData().put(VirtualRouterConstant.Param.VR.toString(), vr);
-        chain.getData().put(Param.IS_RECONNECT.toString(), Boolean.TRUE.toString());
-        chain.getData().put(Params.isReconnect.toString(), Boolean.TRUE.toString());
-        chain.getData().put(Params.managementNicIp.toString(), vr.getManagementNic().getIp());
-        chain.getData().put(Params.applianceVmUuid.toString(), self.getUuid());
-        chain.getData().put(Params.fromApi.toString(), fromApi.toString());
+        chain.getData().put(VRouterParam.VR.toString(), vr);
+        chain.getData().put(VRouterParam.IS_RECONNECT.toString(), Boolean.TRUE.toString());
+        chain.getData().put(ApplianceVmParams.isReconnect.toString(), Boolean.TRUE.toString());
+        chain.getData().put(ApplianceVmParams.managementNicIp.toString(), vr.getManagementNic().getIp());
+        chain.getData().put(ApplianceVmParams.applianceVmUuid.toString(), self.getUuid());
+        chain.getData().put(ApplianceVmParams.fromApi.toString(), fromApi.toString());
 
         SimpleQuery<ApplianceVmFirewallRuleVO> q = dbf.createQuery(ApplianceVmFirewallRuleVO.class);
         q.add(ApplianceVmFirewallRuleVO_.applianceVmUuid, Op.EQ, getSelf().getUuid());
         List<ApplianceVmFirewallRuleVO> vos = q.list();
         List<ApplianceVmFirewallRuleInventory> rules = ApplianceVmFirewallRuleInventory.valueOf(vos);
-        chain.getData().put(ApplianceVmConstant.Params.applianceVmFirewallRules.toString(), rules);
+        chain.getData().put(ApplianceVmParams.applianceVmFirewallRules.toString(), rules);
         chain.insert(new Flow() {
             String __name__ = "change-appliancevm-status-to-connecting";
 
@@ -948,13 +948,13 @@ public class VirtualRouter extends ApplianceVmBase {
     public class virtualRouterAfterAttachNicFlow extends NoRollbackFlow {
         @Override
         public void run(FlowTrigger trigger, Map data) {
-            boolean applyToVirtualRouter = (boolean)data.get(Param.APPLY_TO_VIRTUALROUTER.toString());
+            boolean applyToVirtualRouter = (boolean)data.get(VRouterParam.APPLY_TO_VIRTUALROUTER.toString());
             if (!applyToVirtualRouter) {
                 trigger.next();
                 return;
             }
 
-            VmNicInventory nicInventory = (VmNicInventory) data.get(Param.VR_NIC.toString());
+            VmNicInventory nicInventory = (VmNicInventory) data.get(VRouterParam.VR_NIC.toString());
             L3NetworkVO l3NetworkVO = Q.New(L3NetworkVO.class).eq(L3NetworkVO_.uuid, nicInventory.getL3NetworkUuid()).find();
 
             VirtualRouterCommands.ConfigureNicCmd cmd = new VirtualRouterCommands.ConfigureNicCmd();
@@ -1045,8 +1045,8 @@ public class VirtualRouter extends ApplianceVmBase {
 
         @Override
         public void run(FlowTrigger trigger, Map data) {
-            VmNicInventory nicInv = (VmNicInventory) data.get(Param.VR_NIC.toString());
-            boolean applyToVirtualRouter = (boolean)data.get(Param.APPLY_TO_VIRTUALROUTER.toString());
+            VmNicInventory nicInv = (VmNicInventory) data.get(VRouterParam.VR_NIC.toString());
+            boolean applyToVirtualRouter = (boolean)data.get(VRouterParam.APPLY_TO_VIRTUALROUTER.toString());
             if (!applyToVirtualRouter) {
                 trigger.next();
                 return;
@@ -1088,7 +1088,7 @@ public class VirtualRouter extends ApplianceVmBase {
 
         @Override
         public void rollback(FlowRollback trigger, Map data) {
-            VmNicInventory nicInv = (VmNicInventory) data.get(Param.VR_NIC.toString());
+            VmNicInventory nicInv = (VmNicInventory) data.get(VRouterParam.VR_NIC.toString());
             Iterator<VirtualRouterAfterAttachNicExtensionPoint> it = pluginRgty.getExtensionList(VirtualRouterAfterAttachNicExtensionPoint.class).iterator();
             virtualRouterApplyServicesAfterAttachNicRollback(it, nicInv, new NoErrorCompletion() {
                 @Override
@@ -1143,10 +1143,10 @@ public class VirtualRouter extends ApplianceVmBase {
 
         VirtualRouterVmVO vrVo = dbf.findByUuid(self.getUuid(), VirtualRouterVmVO.class);
         Map<String, Object> data = new HashMap<String, Object>();
-        data.put(Param.VR_NIC.toString(), VmNicInventory.valueOf(vo));
-        data.put(Param.SNAT.toString(), Boolean.FALSE);
-        data.put(Param.VR.toString(), VirtualRouterVmInventory.valueOf(vrVo));
-        data.put(Param.APPLY_TO_VIRTUALROUTER.toString(), applyToBackend);
+        data.put(VRouterParam.VR_NIC.toString(), VmNicInventory.valueOf(vo));
+        data.put(VRouterParam.SNAT.toString(), Boolean.FALSE);
+        data.put(VRouterParam.VR.toString(), VirtualRouterVmInventory.valueOf(vrVo));
+        data.put(VRouterParam.APPLY_TO_VIRTUALROUTER.toString(), applyToBackend);
 
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
         chain.setName(String.format("apply-services-after-attach-nic-%s-from-virtualrouter-%s", nicInventory.getUuid(), nicInventory.getVmInstanceUuid()));
@@ -1239,7 +1239,7 @@ public class VirtualRouter extends ApplianceVmBase {
 
         @Override
         public void run(FlowTrigger trigger, Map data) {
-            VmNicInventory nic = (VmNicInventory) data.get(Param.VR_NIC.toString());
+            VmNicInventory nic = (VmNicInventory) data.get(VRouterParam.VR_NIC.toString());
             if (!VirtualRouterNicMetaData.GUEST_NIC_MASK_STRING_LIST.contains(nic.getMetaData())) {
                 trigger.next();
                 return;
@@ -1306,7 +1306,7 @@ public class VirtualRouter extends ApplianceVmBase {
         String __name__ = "virtualRouter-beforeDetachNic";
         @Override
         public void run(FlowTrigger trigger, Map data) {
-            VmNicInventory nicInventory = (VmNicInventory) data.get(Param.VR_NIC.toString());
+            VmNicInventory nicInventory = (VmNicInventory) data.get(VRouterParam.VR_NIC.toString());
             VirtualRouterCommands.RemoveNicCmd cmd = new VirtualRouterCommands.RemoveNicCmd();
             VirtualRouterCommands.NicInfo info = new VirtualRouterCommands.NicInfo();
             info.setIp(nicInventory.getIp());
@@ -1375,7 +1375,7 @@ public class VirtualRouter extends ApplianceVmBase {
 
         @Override
         public void run(FlowTrigger trigger, Map data) {
-            VmNicInventory nicInv = (VmNicInventory) data.get(Param.VR_NIC.toString());
+            VmNicInventory nicInv = (VmNicInventory) data.get(VRouterParam.VR_NIC.toString());
             Iterator<VirtualRouterBeforeDetachNicExtensionPoint> it = pluginRgty.getExtensionList(VirtualRouterBeforeDetachNicExtensionPoint.class).iterator();
             virtualRouterReleaseServices(it, nicInv, new Completion(trigger) {
                 @Override
@@ -1407,7 +1407,7 @@ public class VirtualRouter extends ApplianceVmBase {
 
         @Override
         public void rollback(FlowRollback trigger, Map data) {
-            VmNicInventory nicInv = (VmNicInventory) data.get(Param.VR_NIC.toString());
+            VmNicInventory nicInv = (VmNicInventory) data.get(VRouterParam.VR_NIC.toString());
             Iterator<VirtualRouterBeforeDetachNicExtensionPoint> it = pluginRgty.getExtensionList(VirtualRouterBeforeDetachNicExtensionPoint.class).iterator();
             virtualRouterReleaseServicesRollback(it, nicInv, new NoErrorCompletion(trigger) {
                 @Override
@@ -1421,8 +1421,8 @@ public class VirtualRouter extends ApplianceVmBase {
     @Override
     protected void beforeDetachNic(VmNicInventory nicInventory, Completion completion) {
         Map data = new HashMap();
-        data.put(Param.VR_NIC.toString(), nicInventory);
-        data.put(Param.VR.toString(), vr);
+        data.put(VRouterParam.VR_NIC.toString(), nicInventory);
+        data.put(VRouterParam.VR.toString(), vr);
         ApplianceVmVO appvm = Q.New(ApplianceVmVO.class)
                 .eq(ApplianceVmVO_.uuid, nicInventory.getVmInstanceUuid()).find();
         if (appvm.getStatus().equals(ApplianceVmStatus.Disconnected)) {

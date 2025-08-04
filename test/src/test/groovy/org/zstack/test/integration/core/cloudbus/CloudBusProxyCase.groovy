@@ -33,11 +33,11 @@ class CloudBusProxyCase extends SubCase{
         bus = bean(CloudBus.class)
         aop = bean(CloudBusAopProxy.class)
 
-        aop.addMessage(NeedReplyMessage.class, CloudBusAopProxy.Behavior.FAIL)
+        aop.addMessage(NeedReplyMessage.class, CloudBusAopProxy.CloudBusBehavior.FAIL)
         testBusSendMsgsWhenCloudBusAopProxyBehaviorFAIL()
         testBusSendCallBackMgsWhenCloudBusAopProxyBehaviorFAIL()
 
-        aop.addMessage(NeedReplyMessage.class, CloudBusAopProxy.Behavior.TIMEOUT)
+        aop.addMessage(NeedReplyMessage.class, CloudBusAopProxy.CloudBusBehavior.TIMEOUT)
         testBusSenMsgsWhenCloudBusAopProxyBehaviorTIMEOUT()
     }
 

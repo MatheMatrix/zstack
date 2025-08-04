@@ -1,7 +1,7 @@
 package org.zstack.core.db;
 
 public interface TransactionalCallback {
-    public static enum Operation {
+    public static enum TransactionalOperation {
         PERSIST,
         UPDATE,
         REMOVE,
@@ -13,11 +13,11 @@ public interface TransactionalCallback {
 
     void flush(Class<?>...entityClass);
 
-    void beforeCommit(Operation op, boolean readOnly, Class<?>...entityClass);
+    void beforeCommit(TransactionalOperation op, boolean readOnly, Class<?>...entityClass);
 
-    void beforeCompletion(Operation op, Class<?>...entityClass);
+    void beforeCompletion(TransactionalOperation op, Class<?>...entityClass);
 
-    void afterCommit(Operation op, Class<?>...entityClass);
+    void afterCommit(TransactionalOperation op, Class<?>...entityClass);
 
-    void afterCompletion(Operation op, int status, Class<?>...entityClass);
+    void afterCompletion(TransactionalOperation op, int status, Class<?>...entityClass);
 }

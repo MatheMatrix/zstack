@@ -51,7 +51,7 @@ import org.zstack.header.vm.ChangeVmMetaDataMsg.AtomicHostUuid;
 import org.zstack.header.vm.ChangeVmMetaDataMsg.AtomicVmState;
 import org.zstack.header.vm.VmAbnormalLifeCycleStruct.VmAbnormalLifeCycleOperation;
 import org.zstack.header.vm.VmCanonicalEvents.VmStateChangedData;
-import org.zstack.header.vm.VmInstanceConstant.Params;
+import org.zstack.header.vm.VmInstanceConstant.VmInstanceParams;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.header.vm.VmInstanceDeletionPolicyManager.VmInstanceDeletionPolicy;
 import org.zstack.header.vm.VmInstanceSpec.CdRomSpec;
@@ -215,8 +215,8 @@ public class VmInstanceBase extends AbstractVmInstance {
         }
 
         chain.setName(String.format("destroy-vm-%s", self.getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
-        chain.getData().put(Params.DeletionPolicy, deletionPolicy);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.DeletionPolicy, deletionPolicy);
         chain.done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map data) {
@@ -1088,7 +1088,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         spec.setDestNics(list(VmNicInventory.valueOf(targetNic)));
         L3NetworkVO l3VO = dbf.findByUuid(l3Uuid, L3NetworkVO.class);
         spec.setL3Networks(list(new VmNicSpec(L3NetworkInventory.valueOf(l3VO))));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.then(new ShareFlow() {
             @Override
             public void setup() {
@@ -1200,7 +1200,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                             @Override
                             public void done(ErrorCodeList errorCodeList) {
                                 VmNicVO nicVO = dbf.findByUuid(targetNic.getUuid(), VmNicVO.class);
-                                data.put(VmInstanceConstant.Params.VmNicInventory.toString(), nicVO);
+                                data.put(VmInstanceParams.VmNicInventory.toString(), nicVO);
 
                                 trigger.next();
                             }
@@ -1302,8 +1302,8 @@ public class VmInstanceBase extends AbstractVmInstance {
         setFlowMarshaller(chain);
         setAdditionalFlow(chain, spec);
         chain.setName(String.format("expunge-vm-%s", self.getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
-        chain.getData().put(Params.DeletionPolicy, VmInstanceDeletionPolicy.Direct);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.DeletionPolicy, VmInstanceDeletionPolicy.Direct);
         chain.done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map data) {
@@ -1584,7 +1584,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                 self.getUuid(), currentHostUuid, operation, originalState, currentState, originalHostUuid, currentHostUuid));
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
         chain.setName(String.format("handle-abnormal-lifecycle-of-vm-%s", self.getUuid()));
-        chain.getData().put(Params.AbnormalLifeCycleStruct, struct);
+        chain.getData().put(VmInstanceParams.AbnormalLifeCycleStruct, struct);
         chain.allowEmptyFlow();
         for (VmAbnormalLifeCycleExtensionPoint ext : exts) {
             Flow flow = ext.createVmAbnormalLifeCycleHandlingFlow(struct);
@@ -1753,7 +1753,7 @@ public class VmInstanceBase extends AbstractVmInstance {
 
                 FlowChain fchain = FlowChainBuilder.newSimpleFlowChain();
                 fchain.setName(String.format("update-vmNic-%s-to-backend", msg.getVmInstanceUuid()));
-                fchain.getData().put(Params.VmInstanceSpec.toString(), spec);
+                fchain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
                 fchain.then(new VmInstantiateResourceOnAttachingNicFlow());
                 fchain.then(new VmUpdateNicOnHypervisorFlow());
                 fchain.done(new FlowDoneHandler(msg) {
@@ -1809,7 +1809,7 @@ public class VmInstanceBase extends AbstractVmInstance {
 
                 FlowChain fchain = FlowChainBuilder.newSimpleFlowChain();
                 fchain.setName(String.format("update-vmNic-%s-to-backend", msg.getVmInstanceUuid()));
-                fchain.getData().put(Params.VmInstanceSpec.toString(), spec);
+                fchain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
                 fchain.then(new VmReleaseResourceOnDetachingNicFlow());
                 fchain.done(new FlowDoneHandler(msg) {
                     @Override
@@ -2269,9 +2269,9 @@ public class VmInstanceBase extends AbstractVmInstance {
         FlowChain flowChain = FlowChainBuilder.newSimpleFlowChain();
         setFlowMarshaller(flowChain);
         flowChain.setName(String.format("attachNic-vm-%s-l3-%s", self.getUuid(), l3Uuids.get(0)));
-        flowChain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
-        flowChain.getData().put(VmInstanceConstant.Params.VmAllocateNicFlow_allowDuplicatedAddress.toString(), setStaticIp.allowDupicatedAddress);
-        flowChain.getData().put(VmInstanceConstant.Params.VmAllocateNicFlow_nicNetworkInfo.toString(), setStaticIp.nicNetworkInfo);
+        flowChain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
+        flowChain.getData().put(VmInstanceParams.VmAllocateNicFlow_allowDuplicatedAddress.toString(), setStaticIp.allowDupicatedAddress);
+        flowChain.getData().put(VmInstanceParams.VmAllocateNicFlow_nicNetworkInfo.toString(), setStaticIp.nicNetworkInfo);
         for (VmNicPrepareResourceExtensionPoint exp : pluginRgty.getExtensionList(VmNicPrepareResourceExtensionPoint.class)) {
             flowChain.then(exp.getPreparationFlow());
         }
@@ -2381,7 +2381,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                 FlowChain flowChain = FlowChainBuilder.newSimpleFlowChain();
                 setFlowMarshaller(flowChain);
                 flowChain.setName(String.format("attachNic-vm-%s-nic-%s", self.getUuid(), vmNicVO.getUuid()));
-                flowChain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+                flowChain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
 
                 flowChain.then(new Flow() {
                     String __name__ = "update-nic";
@@ -3076,7 +3076,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             public Flow marshalTheNextFlow(String previousFlowClassName, String nextFlowClassName, FlowChain chain, Map data) {
                 Flow nflow = null;
                 for (MarshalVmOperationFlowExtensionPoint mext : pluginRgty.getExtensionList(MarshalVmOperationFlowExtensionPoint.class)) {
-                    VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+                    VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceParams.VmInstanceSpec.toString());
                     nflow = mext.marshalVmOperationFlow(previousFlowClassName, nextFlowClassName, chain, spec);
                     if (nflow != null) {
                         logger.debug(String.format("a VM[uuid: %s, operation: %s] operation flow[%s] is changed to the flow[%s] by %s",
@@ -3544,8 +3544,8 @@ public class VmInstanceBase extends AbstractVmInstance {
                 nic -> nic.getL3NetworkUuid().equals(msg.getL3NetworkUuid())).findFirst().get();
         spec.setL3Networks(list(new VmNicSpec(
                 L3NetworkInventory.valueOf(dbf.findByUuid(msg.getL3NetworkUuid(), L3NetworkVO.class)))));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
-        chain.getData().put(VmInstanceConstant.Params.VmNicInventory.toString(), vmNicVO);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.VmNicInventory.toString(), vmNicVO);
         chain.then(new ShareFlow() {
             @Override
             public void setup() {
@@ -3776,7 +3776,7 @@ public class VmInstanceBase extends AbstractVmInstance {
     private void setVmHostName(String vmInstanceUuid, Completion completion) {
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain().setName(String.format("set-hostname-%s", vmInstanceUuid));
         chain.allowEmptyFlow();
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceUuid.toString(), vmInstanceUuid);
+        chain.getData().put(VmInstanceParams.VmInstanceUuid.toString(), vmInstanceUuid);
 
         final List<SetVmHostNameFlowInterface> exts = pluginRgty.getExtensionList(SetVmHostNameFlowInterface.class);
         for (SetVmHostNameFlowInterface ext : exts) {
@@ -4605,8 +4605,8 @@ public class VmInstanceBase extends AbstractVmInstance {
 
         FlowChain chain = getDetachIsoWorkFlowChain(spec.getVmInventory());
         chain.setName(String.format("detach-iso-%s-from-vm-%s", isoUuid, self.getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
-        chain.getData().put(VmInstanceConstant.Params.DetachingIsoUuid.toString(), isoUuid);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.DetachingIsoUuid.toString(), isoUuid);
 
         setFlowMarshaller(chain);
         setAdditionalFlow(chain, spec);
@@ -4929,8 +4929,8 @@ public class VmInstanceBase extends AbstractVmInstance {
 
         FlowChain chain = getAttachIsoWorkFlowChain(spec.getVmInventory());
         chain.setName(String.format("attach-iso-%s-to-vm-%s", isoUuid, self.getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
-        chain.getData().put(Params.AttachingIsoInventory.toString(), iso);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.AttachingIsoInventory.toString(), iso);
 
         setFlowMarshaller(chain);
         setAdditionalFlow(chain, spec);
@@ -4939,7 +4939,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void handle(Map data) {
                 // new IsoOperator().attachIsoToVm(self.getUuid(), isoUuid);
-                final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+                final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceParams.VmInstanceSpec.toString());
                 final VmInstanceSpec.IsoSpec isoSpec = spec.getDestIsoList().stream()
                         .filter(s -> s.getImageUuid().equals(isoUuid))
                         .findAny()
@@ -5280,8 +5280,8 @@ public class VmInstanceBase extends AbstractVmInstance {
             spec.setL3Networks(list(new VmNicSpec(l3Inv)));
         }
 
-        flowChain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
-        flowChain.getData().put(Params.ReleaseNicAfterDetachNic.toString(), releaseNic);
+        flowChain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
+        flowChain.getData().put(VmInstanceParams.ReleaseNicAfterDetachNic.toString(), releaseNic);
         setAdditionalFlow(flowChain, spec);
         if (!dbOnly) {
             flowChain.then(new VmDetachNicOnHypervisorFlow());
@@ -5430,7 +5430,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         FlowChain chain = new SimpleFlowChain();
         chain.setName(String.format("update-vm-instance-%s-in-database", self.getUuid()));
 
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.then(new NoRollbackFlow() {
             String __name__ = "update-vm-properties-without-cpu-and-memory";
             @Override
@@ -6177,8 +6177,8 @@ public class VmInstanceBase extends AbstractVmInstance {
                 spec.setDestNics(list(nic));
                 L3NetworkVO l3VO = dbf.findByUuid(nic.getL3NetworkUuid(), L3NetworkVO.class);
                 spec.setL3Networks(list(new VmNicSpec(L3NetworkInventory.valueOf(l3VO))));
-                flowChain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
-                flowChain.getData().put(VmInstanceConstant.Params.L3NetworkInventory.toString(), destL3);
+                flowChain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
+                flowChain.getData().put(VmInstanceParams.L3NetworkInventory.toString(), destL3);
 
                 flowChain.then(new NoRollbackFlow() {
                     String __name__ = "before-change-nic-network-extension";
@@ -6203,7 +6203,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                         allocateIp(destL3, nic, new ReturnValueCompletion<List<UsedIpInventory>>(chain) {
                             @Override
                             public void success(List<UsedIpInventory> returnValue) {
-                                data.put(VmInstanceConstant.Params.VmAllocateNicFlow_ips.toString(), returnValue);
+                                data.put(VmInstanceParams.VmAllocateNicFlow_ips.toString(), returnValue);
                                 trigger.next();
                             }
 
@@ -6314,8 +6314,8 @@ public class VmInstanceBase extends AbstractVmInstance {
                         dbf.persistCollection(voNewList);
                         dbf.updateAndRefresh(nicVO);
                         dbf.removeCollection(voOldList, UsedIpVO.class);
-                        data.put(VmInstanceConstant.Params.VmNicInventory.toString(), nicVO);
-                        data.put(VmInstanceConstant.Params.vmInventory.toString(), getSelfInventory());
+                        data.put(VmInstanceParams.VmNicInventory.toString(), nicVO);
+                        data.put(VmInstanceParams.vmInventory.toString(), getSelfInventory());
                         trigger.next();
                     }
                 });
@@ -6334,7 +6334,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                         }
                         self = dbf.updateAndRefresh(self);
                         VmNicVO nicVO = dbf.findByUuid(nic.getUuid(), VmNicVO.class);
-                        List<UsedIpInventory> allocateIps = (List<UsedIpInventory>) data.get(VmInstanceConstant.Params.VmAllocateNicFlow_ips.toString());
+                        List<UsedIpInventory> allocateIps = (List<UsedIpInventory>) data.get(VmInstanceParams.VmAllocateNicFlow_ips.toString());
                         List<UsedIpVO> ipVOS = new ArrayList<>();
                         for (UsedIpInventory ip : allocateIps) {
                             /* update usedIpVo */
@@ -6359,8 +6359,8 @@ public class VmInstanceBase extends AbstractVmInstance {
                         }
                         dbf.updateAndRefresh(nicVO);
                         dbf.updateCollection(ipVOS);
-                        data.put(VmInstanceConstant.Params.VmNicInventory.toString(), nicVO);
-                        data.put(VmInstanceConstant.Params.vmInventory.toString(), getSelfInventory());
+                        data.put(VmInstanceParams.VmNicInventory.toString(), nicVO);
+                        data.put(VmInstanceParams.vmInventory.toString(), getSelfInventory());
                         trigger.next();
                     }
                 });
@@ -6376,7 +6376,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                             return;
                         }
 
-                        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+                        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceParams.VmInstanceSpec.toString());
                         HostInventory dest = spec.getDestHost();
                         VmInstanceInventory vm = getSelfInventory();
 
@@ -6447,7 +6447,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                 flowChain.done(new FlowDoneHandler(chain) {
                     @Override
                     public void handle(Map data) {
-                        VmNicVO nicVO = (VmNicVO) data.get(VmInstanceConstant.Params.VmNicInventory.toString());
+                        VmNicVO nicVO = (VmNicVO) data.get(VmInstanceParams.VmNicInventory.toString());
                         completion.success(VmNicInventory.valueOf(nicVO));
                         chain.next();
                     }
@@ -6455,13 +6455,13 @@ public class VmInstanceBase extends AbstractVmInstance {
                     @Override
                     public void handle(ErrorCode errCode, Map data) {
                         setStaticIp.rollback();
-                        if (data.get(VmInstanceConstant.Params.VmAllocateNicFlow_ips.toString()) == null) {
+                        if (data.get(VmInstanceParams.VmAllocateNicFlow_ips.toString()) == null) {
                             completion.fail(errCode);
                             chain.next();
                             return;
                         }
 
-                        List<UsedIpInventory> allocateIps = (List<UsedIpInventory>) data.get(VmInstanceConstant.Params.VmAllocateNicFlow_ips.toString());
+                        List<UsedIpInventory> allocateIps = (List<UsedIpInventory>) data.get(VmInstanceParams.VmAllocateNicFlow_ips.toString());
                         List<ReturnIpMsg> msgs = new ArrayList<ReturnIpMsg>();
                         for (UsedIpInventory ip : allocateIps) {
                             ReturnIpMsg msg = new ReturnIpMsg();
@@ -6766,9 +6766,9 @@ public class VmInstanceBase extends AbstractVmInstance {
         attachedVolumes.removeIf(it -> it.getDeviceId() == null || it.getUuid().equals(volume.getUuid()));
 
         chain.setName(String.format("vm-%s-attach-volume-%s", self.getUuid(), volume.getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
-        chain.getData().put(VmInstanceConstant.Params.AttachingVolumeInventory.toString(), volume);
-        chain.getData().put(Params.AttachedDataVolumeInventories.toString(), attachedVolumes);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.AttachingVolumeInventory.toString(), volume);
+        chain.getData().put(VmInstanceParams.AttachedDataVolumeInventories.toString(), attachedVolumes);
         chain.done(new FlowDoneHandler(msg, completion) {
             @Override
             public void handle(Map data) {
@@ -6887,7 +6887,7 @@ public class VmInstanceBase extends AbstractVmInstance {
 
         String lastHostUuid = self.getHostUuid();
         chain.setName(String.format("do-migrate-vm-%s", self.getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.then(new NoRollbackFlow() {
             final String __name__ = String.format("sync-vm-%s-stat-after-migrate", self.getUuid());
 
@@ -7088,14 +7088,14 @@ public class VmInstanceBase extends AbstractVmInstance {
         String vmHostUuid = self.getHostUuid();
         String vmLastHostUuid = self.getLastHostUuid();
         chain.setName(String.format("start-vm-%s", self.getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.done(new FlowDoneHandler(completion) {
             @Override
             public void handle(final Map data) {
                 provisionAfterStartVm(spec, new NoErrorCompletion(completion) {
                     @Override
                     public void done() {
-                        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+                        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceParams.VmInstanceSpec.toString());
                         self = changeVmStateInDb(VmInstanceStateEvent.running, () -> new SQLBatch() {
                             @Override
                             protected void scripts() {
@@ -7126,7 +7126,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                 // reload to avoid JPA EntityNotFoundException
                 self = dbf.reload(self);
                 extEmitter.failedToStartVm(VmInstanceInventory.valueOf(self), errCode);
-                VmInstanceSpec spec = (VmInstanceSpec) data.get(Params.VmInstanceSpec.toString());
+                VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceParams.VmInstanceSpec.toString());
 
                 // update vm state to origin state before checking state
                 // avoid sending redundant vm state change event
@@ -7361,13 +7361,13 @@ public class VmInstanceBase extends AbstractVmInstance {
         setFlowMarshaller(chain);
 
         chain.setName(String.format("create-vm-%s", self.getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.then(new NoRollbackFlow() {
             String __name__ = "after-started-vm-" + self.getUuid();
 
             @Override
             public void run(FlowTrigger trigger, Map data) {
-                VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+                VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceParams.VmInstanceSpec.toString());
                 changeVmStateInDb(struct.getStrategy() == VmCreationStrategy.InstantStart ?
                         VmInstanceStateEvent.running : VmInstanceStateEvent.paused, () -> {
                     self.setLastHostUuid(spec.getDestHost().getUuid());
@@ -7798,7 +7798,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         setAdditionalFlow(chain, spec);
 
         chain.setName(String.format("reboot-vm-%s", self.getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
 
         chain.done(new FlowDoneHandler(completion) {
             @Override
@@ -7968,7 +7968,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         }
 
         chain.setName(String.format("stop-vm-%s", self.getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map data) {
@@ -8080,7 +8080,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         setFlowMarshaller(chain);
 
         chain.setName(String.format("pause-vm-%s", self.getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map Data) {
@@ -8211,7 +8211,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         setFlowMarshaller(chain);
 
         chain.setName(String.format("resume-vm-%s", self.getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map Data) {

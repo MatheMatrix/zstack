@@ -8,7 +8,7 @@ import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.network.l3.L3NetworkInventory;
-import org.zstack.network.service.portforwarding.PortForwardingConstant.Params;
+import org.zstack.network.service.portforwarding.PortForwardingConstant.PFParams;
 import org.zstack.network.service.vip.ModifyVipAttributesStruct;
 import org.zstack.network.service.vip.Vip;
 import org.zstack.network.service.vip.VipConstant;
@@ -27,10 +27,10 @@ public class PortForwardingPrepareVipFlow implements Flow {
     private static final String SUCCESS = PortForwardingPrepareVipFlow.class.getName();
 
     public void run(final FlowTrigger trigger, final Map data) {
-        final VipInventory v = (VipInventory) data.get(VipConstant.Params.VIP.toString());
-        final String serviceProviderType = (String) data.get(VipConstant.Params.VIP_SERVICE_PROVIDER_TYPE.toString());
-        final L3NetworkInventory peerL3 = (L3NetworkInventory) data.get(VipConstant.Params.GUEST_L3NETWORK_VIP_FOR.toString());
-        boolean needLockVip = data.containsKey(Params.NEED_LOCK_VIP.toString());
+        final VipInventory v = (VipInventory) data.get(VipConstant.VipParams.VIP.toString());
+        final String serviceProviderType = (String) data.get(VipConstant.VipParams.VIP_SERVICE_PROVIDER_TYPE.toString());
+        final L3NetworkInventory peerL3 = (L3NetworkInventory) data.get(VipConstant.VipParams.GUEST_L3NETWORK_VIP_FOR.toString());
+        boolean needLockVip = data.containsKey(PFParams.NEED_LOCK_VIP.toString());
 
         ModifyVipAttributesStruct struct = new ModifyVipAttributesStruct();
         struct.setUseFor( PortForwardingConstant.PORTFORWARDING_NETWORK_SERVICE_TYPE);
@@ -57,7 +57,7 @@ public class PortForwardingPrepareVipFlow implements Flow {
             return;
         }
 
-        VipInventory v = (VipInventory) data.get(VipConstant.Params.VIP.toString());
+        VipInventory v = (VipInventory) data.get(VipConstant.VipParams.VIP.toString());
         ModifyVipAttributesStruct struct = new ModifyVipAttributesStruct();
         struct.setUseFor( PortForwardingConstant.PORTFORWARDING_NETWORK_SERVICE_TYPE);
         //TODO add services uuid

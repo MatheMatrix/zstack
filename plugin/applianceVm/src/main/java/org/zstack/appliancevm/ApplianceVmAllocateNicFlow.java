@@ -3,7 +3,6 @@ package org.zstack.appliancevm;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
-import org.springframework.transaction.annotation.Transactional;
 import org.zstack.compute.vm.MacOperator;
 import org.zstack.compute.vm.VmInstanceManager;
 import org.zstack.compute.vm.VmNicManager;
@@ -12,7 +11,6 @@ import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.db.DatabaseFacade;
-import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
 import org.zstack.core.db.SQLBatch;
 import org.zstack.header.core.WhileDoneCompletion;
@@ -21,17 +19,11 @@ import org.zstack.header.core.workflow.FlowException;
 import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.errorcode.ErrorCodeList;
-import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.image.ImagePlatform;
 import org.zstack.header.message.MessageReply;
-import org.zstack.header.network.l2.L2NetworkVO;
-import org.zstack.header.network.l2.VSwitchType;
 import org.zstack.header.network.l3.*;
-import org.zstack.header.tag.SystemTagVO;
-import org.zstack.header.tag.SystemTagVO_;
 import org.zstack.header.vm.*;
 import org.zstack.network.l3.L3NetworkManager;
-import org.zstack.network.service.NetworkServiceGlobalConfig;
 import org.zstack.utils.network.IPv6Constants;
 import org.zstack.utils.network.NetworkUtils;
 
@@ -147,8 +139,8 @@ public class ApplianceVmAllocateNicFlow implements Flow {
 
     @Override
     public void run(FlowTrigger chain, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
-        ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.Params.applianceVmSpec.toString(), ApplianceVmSpec.class);
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
+        ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.ApplianceVmParams.applianceVmSpec.toString(), ApplianceVmSpec.class);
         int[] deviceId = {0};
 
         List<VmNicInventory> nics = new ArrayList();
@@ -188,7 +180,7 @@ public class ApplianceVmAllocateNicFlow implements Flow {
 
     @Override
     public void rollback(FlowRollback chain, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         List<VmNicInventory> nics = spec.getDestNics();
         if (nics.isEmpty()) {
             chain.rollback();

@@ -26,7 +26,7 @@ public class VmMigratePostCallExtensionFlow implements Flow {
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         final HostInventory destHost = spec.getDestHost();
         extEmitter.postMigrateVm(spec.getVmInventory(), destHost.getUuid(), new Completion(trigger) {

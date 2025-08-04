@@ -60,7 +60,7 @@ public class VmInstantiateResourcePreFlow implements Flow {
 
     @Override
     public void run(FlowTrigger chain, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         for (PreVmInstantiateResourceExtensionPoint extp : extensions) {
             try {
                 extp.preBeforeInstantiateVmResource(spec);
@@ -96,7 +96,7 @@ public class VmInstantiateResourcePreFlow implements Flow {
 
     @Override
     public void rollback(FlowRollback chain, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         rollbackExtensions(extensions.iterator(), spec, chain);
     }
 }

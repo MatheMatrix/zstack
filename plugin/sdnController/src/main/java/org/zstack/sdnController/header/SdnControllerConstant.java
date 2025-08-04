@@ -41,7 +41,7 @@ public class SdnControllerConstant {
         VxlanNetwork
     }
 
-    public enum Params {
+    public enum SdnParams {
         HARDWARE_VXLAN_POOLS,
         VXLAN_NETWORK
     }

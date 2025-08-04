@@ -109,8 +109,8 @@ public class HostSortorChain implements HostSortorStrategy {
 
     private void reserveHost(HostInventory host, Completion cmpl){
         Map data = new HashMap();
-        data.put(HostAllocatorConstant.Param.HOST, host);
-        data.put(HostAllocatorConstant.Param.SPEC, allocationSpec);
+        data.put(HostAllocatorConstant.HostAllocatorParam.HOST, host);
+        data.put(HostAllocatorConstant.HostAllocatorParam.SPEC, allocationSpec);
 
         FlowChain chain = FlowChainBuilder.newShareFlowChain();
         chain.setData(data);
@@ -124,7 +124,7 @@ public class HostSortorChain implements HostSortorStrategy {
                     boolean success = false;
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        HostInventory host = (HostInventory) data.get(HostAllocatorConstant.Param.HOST);
+                        HostInventory host = (HostInventory) data.get(HostAllocatorConstant.HostAllocatorParam.HOST);
                         try {
                             reserveCapacity(host);
                             success = true;
@@ -140,7 +140,7 @@ public class HostSortorChain implements HostSortorStrategy {
                     @Override
                     public void rollback(FlowRollback trigger, Map data) {
                         if (success) {
-                            HostInventory host = (HostInventory) data.get(HostAllocatorConstant.Param.HOST);
+                            HostInventory host = (HostInventory) data.get(HostAllocatorConstant.HostAllocatorParam.HOST);
                             rollbackCapacity(host);
                         }
                         trigger.rollback();

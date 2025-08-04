@@ -43,7 +43,7 @@ public class TestCreateVmFailure1 {
 
     @Test
     public void test() throws ApiSenderException, InterruptedException {
-        busProxy.addMessage(CreateVmOnHypervisorMsg.class, CloudBusAopProxy.Behavior.FAIL);
+        busProxy.addMessage(CreateVmOnHypervisorMsg.class, CloudBusAopProxy.CloudBusBehavior.FAIL);
         VmInstanceInventory vm = deployer.vms.get("TestVm");
 
         boolean s = false;

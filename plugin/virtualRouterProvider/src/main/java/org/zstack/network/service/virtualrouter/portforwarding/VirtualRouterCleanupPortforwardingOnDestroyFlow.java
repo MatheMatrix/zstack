@@ -8,7 +8,7 @@ import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.workflow.NoRollbackFlow;
-import org.zstack.network.service.virtualrouter.VirtualRouterConstant.Param;
+import org.zstack.network.service.virtualrouter.VirtualRouterConstant.VRouterParam;
 
 import java.util.List;
 import java.util.Map;
@@ -22,7 +22,7 @@ public class VirtualRouterCleanupPortforwardingOnDestroyFlow extends NoRollbackF
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        final String vrUuid = (String) data.get(Param.VR_UUID.toString());
+        final String vrUuid = (String) data.get(VRouterParam.VR_UUID.toString());
         SimpleQuery<VirtualRouterPortForwardingRuleRefVO> q = dbf.createQuery(VirtualRouterPortForwardingRuleRefVO.class);
         q.add(VirtualRouterPortForwardingRuleRefVO_.virtualRouterVmUuid, Op.EQ, vrUuid);
         List<VirtualRouterPortForwardingRuleRefVO> refs = q.list();

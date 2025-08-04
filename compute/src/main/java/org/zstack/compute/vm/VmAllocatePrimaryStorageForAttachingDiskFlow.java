@@ -37,8 +37,8 @@ public class VmAllocatePrimaryStorageForAttachingDiskFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger chain, final Map data) {
-        final VolumeInventory volume = (VolumeInventory) data.get(VmInstanceConstant.Params.AttachingVolumeInventory.toString());
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VolumeInventory volume = (VolumeInventory) data.get(VmInstanceConstant.VmInstanceParams.AttachingVolumeInventory.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         String hostUuid = spec.getVmInventory().getHostUuid() == null ? spec.getVmInventory().getLastHostUuid() : spec.getVmInventory().getHostUuid();
 
         if(hostUuid == null){
@@ -70,8 +70,8 @@ public class VmAllocatePrimaryStorageForAttachingDiskFlow implements Flow {
                 if (reply.isSuccess()) {
                     AllocatePrimaryStorageSpaceReply ar = (AllocatePrimaryStorageSpaceReply) reply;
                     data.put(ALLOCATED_INSTALL_URL, ar.getAllocatedInstallUrl());
-                    data.put(VmInstanceConstant.Params.DestPrimaryStorageInventoryForAttachingVolume.toString(), ar.getPrimaryStorageInventory());
-                    data.put(VmInstanceConstant.Params.AllocatedUrlForAttachingVolume.toString(), ar.getAllocatedInstallUrl());
+                    data.put(VmInstanceConstant.VmInstanceParams.DestPrimaryStorageInventoryForAttachingVolume.toString(), ar.getPrimaryStorageInventory());
+                    data.put(VmInstanceConstant.VmInstanceParams.AllocatedUrlForAttachingVolume.toString(), ar.getAllocatedInstallUrl());
                     data.put(VmAllocatePrimaryStorageForAttachingDiskFlow.class, ar.getSize());
                     chain.next();
                 } else {
@@ -85,7 +85,7 @@ public class VmAllocatePrimaryStorageForAttachingDiskFlow implements Flow {
     public void rollback(FlowRollback chain, Map data) {
         Long size = (Long) data.get(VmAllocatePrimaryStorageForAttachingDiskFlow.class);
         if (size != null) {
-            PrimaryStorageInventory pri = (PrimaryStorageInventory) data.get(VmInstanceConstant.Params.DestPrimaryStorageInventoryForAttachingVolume.toString());
+            PrimaryStorageInventory pri = (PrimaryStorageInventory) data.get(VmInstanceConstant.VmInstanceParams.DestPrimaryStorageInventoryForAttachingVolume.toString());
             ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
             rmsg.setAllocatedInstallUrl((String)data.get(ALLOCATED_INSTALL_URL));
             rmsg.setPrimaryStorageUuid(pri.getUuid());

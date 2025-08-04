@@ -13,7 +13,6 @@ import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.core.workflow.Flow;
 import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
-import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.message.MessageReply;
@@ -65,7 +64,7 @@ public class LocalStorageAllocateCapacityForAttachingVolumeFlow implements Flow 
 
     @Override
     public void run(final FlowTrigger trigger, final Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         VolumeInventory volume = spec.getDestDataVolumes().get(0);
 
         SimpleQuery<LocalStorageResourceRefVO> q = dbf.createQuery(LocalStorageResourceRefVO.class);
@@ -107,8 +106,8 @@ public class LocalStorageAllocateCapacityForAttachingVolumeFlow implements Flow 
                 spec.setDestHost(HostInventory.valueOf(dbf.findByUuid(hostUuid, HostVO.class)));
                 AllocatePrimaryStorageSpaceReply ar = (AllocatePrimaryStorageSpaceReply) reply;
                 allocatedInstallUrl = ar.getAllocatedInstallUrl();
-                data.put(VmInstanceConstant.Params.DestPrimaryStorageInventoryForAttachingVolume.toString(), ar.getPrimaryStorageInventory());
-                data.put(VmInstanceConstant.Params.AllocatedUrlForAttachingVolume.toString(),allocatedInstallUrl);
+                data.put(VmInstanceConstant.VmInstanceParams.DestPrimaryStorageInventoryForAttachingVolume.toString(), ar.getPrimaryStorageInventory());
+                data.put(VmInstanceConstant.VmInstanceParams.AllocatedUrlForAttachingVolume.toString(),allocatedInstallUrl);
                 data.put(LocalStorageAllocateCapacityForAttachingVolumeFlow.class, ar.getSize());
                 trigger.next();
             }
@@ -120,7 +119,7 @@ public class LocalStorageAllocateCapacityForAttachingVolumeFlow implements Flow 
         Long size = (Long) data.get(LocalStorageAllocateCapacityForAttachingVolumeFlow.class);
         if (size != null) {
             PrimaryStorageInventory pri = (PrimaryStorageInventory) data.get(
-                    VmInstanceConstant.Params.DestPrimaryStorageInventoryForAttachingVolume.toString());
+                    VmInstanceConstant.VmInstanceParams.DestPrimaryStorageInventoryForAttachingVolume.toString());
 
             ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
             rmsg.setAllocatedInstallUrl(allocatedInstallUrl);

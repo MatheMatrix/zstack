@@ -40,7 +40,7 @@ public class VmAllocateHostForStoppedVmFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger chain, final Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         AllocateHostMsg amsg;
 
@@ -125,7 +125,7 @@ public class VmAllocateHostForStoppedVmFlow implements Flow {
 
     @Override
     public void rollback(FlowRollback chain, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         if (data.containsKey(SUCCESS)) {
             VmInstanceVO vm = dbf.findByUuid(spec.getVmInventory().getUuid(), VmInstanceVO.class);
             vm.setHostUuid(null);

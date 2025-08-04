@@ -4,17 +4,13 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.cloudbus.CloudBus;
-import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.db.DatabaseFacade;
-import org.zstack.core.db.SimpleQuery;
-import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.workflow.NoRollbackFlow;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.vm.VmInstanceInventory;
-import org.zstack.network.service.virtualrouter.VirtualRouterConstant.Param;
-import org.zstack.network.service.virtualrouter.VirtualRouterVmInventory;
+import org.zstack.network.service.virtualrouter.VirtualRouterConstant.VRouterParam;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
@@ -35,7 +31,7 @@ public class VirtualRouterCleanupHaOnDestroyFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        final VmInstanceInventory vrInv = (VmInstanceInventory) data.get(Param.VR.toString());
+        final VmInstanceInventory vrInv = (VmInstanceInventory) data.get(VRouterParam.VR.toString());
         haBackend.cleanupHaNetworkService(vrInv, new Completion(trigger) {
             @Override
             public void success() {

@@ -5,7 +5,6 @@ import org.zstack.core.db.SQL
 import org.zstack.core.gc.GCCompletion
 import org.zstack.core.gc.GCGlobalConfig
 import org.zstack.core.gc.GCStatus
-import org.zstack.core.gc.GarbageCollector
 import org.zstack.core.gc.GarbageCollectorVO
 import org.zstack.core.gc.GarbageCollectorManagerImpl
 import org.zstack.core.gc.TimeBasedGarbageCollector
@@ -24,7 +23,7 @@ class TimeBasedGarbageCollectorCase extends SubCase {
     GarbageCollectorManagerImpl gcMgr
     String adminSessionUuid
 
-    static enum Behavior {
+    static enum CollectBehavior {
         SUCCESS,
         FAILURE,
         CANCEL
@@ -40,11 +39,11 @@ class TimeBasedGarbageCollectorCase extends SubCase {
         @Override
         protected void triggerNow(GCCompletion completion) {
             def ret = triggerNowLogic()
-            if (ret == Behavior.SUCCESS) {
+            if (ret == CollectBehavior.SUCCESS) {
                 completion.success()
-            } else if (ret == Behavior.FAILURE) {
+            } else if (ret == CollectBehavior.FAILURE) {
                 completion.fail(operr("failure"))
-            } else if (ret == Behavior.CANCEL) {
+            } else if (ret == CollectBehavior.CANCEL) {
                 completion.cancel()
             } else {
                 assert false: "unknown behavior $ret"
@@ -52,17 +51,17 @@ class TimeBasedGarbageCollectorCase extends SubCase {
         }
     }
 
-    static Closure<Behavior> triggerNowLogicInDb
+    static Closure<CollectBehavior> triggerNowLogicInDb
 
     static class TimeBasedGCInDb extends TimeBasedGarbageCollector {
         @Override
         protected void triggerNow(GCCompletion completion) {
             def ret = triggerNowLogicInDb()
-            if (ret == Behavior.SUCCESS) {
+            if (ret == CollectBehavior.SUCCESS) {
                 completion.success()
-            } else if (ret == Behavior.FAILURE) {
+            } else if (ret == CollectBehavior.FAILURE) {
                 completion.fail(operr("failure"))
-            } else if (ret == Behavior.CANCEL) {
+            } else if (ret == CollectBehavior.CANCEL) {
                 completion.cancel()
             } else {
                 assert false: "unknown behavior $ret"
@@ -90,7 +89,7 @@ class TimeBasedGarbageCollectorCase extends SubCase {
         gc.NAME = "testGCSuccess"
         gc.triggerNowLogic = {
             count ++
-            return Behavior.SUCCESS
+            return CollectBehavior.SUCCESS
         }
         gc.submit(500, TimeUnit.MILLISECONDS)
 
@@ -111,7 +110,7 @@ class TimeBasedGarbageCollectorCase extends SubCase {
         gc.NAME = "testGCFail"
         gc.triggerNowLogic = {
             count ++
-            return Behavior.FAILURE
+            return CollectBehavior.FAILURE
         }
         gc.submit(500, TimeUnit.MILLISECONDS)
 
@@ -131,7 +130,7 @@ class TimeBasedGarbageCollectorCase extends SubCase {
         gc.NAME = "testGCCancel"
         gc.triggerNowLogic = {
             called = true
-            return Behavior.CANCEL
+            return CollectBehavior.CANCEL
         }
         gc.submit(500, TimeUnit.MILLISECONDS)
 
@@ -177,7 +176,7 @@ class TimeBasedGarbageCollectorCase extends SubCase {
 
         triggerNowLogicInDb = {
             called = true
-            return Behavior.SUCCESS
+            return CollectBehavior.SUCCESS
         }
 
         gcMgr.managementNodeReady()
@@ -200,7 +199,7 @@ class TimeBasedGarbageCollectorCase extends SubCase {
         dbf.update(vo)
 
         triggerNowLogicInDb = {
-            return Behavior.FAILURE
+            return CollectBehavior.FAILURE
         }
 
         gcMgr.managementNodeReady()
@@ -226,7 +225,7 @@ class TimeBasedGarbageCollectorCase extends SubCase {
 
         triggerNowLogicInDb = {
             called = true
-            return Behavior.CANCEL
+            return CollectBehavior.CANCEL
         }
 
         gcMgr.managementNodeReady()
@@ -254,7 +253,7 @@ class TimeBasedGarbageCollectorCase extends SubCase {
 
         triggerNowLogicInDb = {
             called = true
-            return Behavior.SUCCESS
+            return CollectBehavior.SUCCESS
         }
 
         retryInSecs {
@@ -277,7 +276,7 @@ class TimeBasedGarbageCollectorCase extends SubCase {
 
         triggerNowLogicInDb = {
             called = true
-            return Behavior.SUCCESS
+            return CollectBehavior.SUCCESS
         }
 
         triggerGCJob {
@@ -301,7 +300,7 @@ class TimeBasedGarbageCollectorCase extends SubCase {
 
         triggerNowLogicInDb = {
             called = true
-            return Behavior.SUCCESS
+            return CollectBehavior.SUCCESS
         }
 
         triggerGCJob {
@@ -322,7 +321,7 @@ class TimeBasedGarbageCollectorCase extends SubCase {
         gc.NAME = "testQueryGCJob"
         gc.triggerNowLogic = {
             count ++
-            return Behavior.SUCCESS
+            return CollectBehavior.SUCCESS
         }
         gc.submit(500, TimeUnit.DAYS)
 
@@ -348,15 +347,15 @@ class TimeBasedGarbageCollectorCase extends SubCase {
                 contextInGC1 = TaskContext.getTaskContextItem("test")
                 TaskContext.putTaskContextItem("test", "test trigger")
                 count ++
-                return Behavior.FAILURE
+                return CollectBehavior.FAILURE
             } else if (count == 1) {
                 contextInGC2 = TaskContext.getTaskContextItem("test")
                 count ++
-                return Behavior.FAILURE
+                return CollectBehavior.FAILURE
             }
 
             count ++
-            return Behavior.SUCCESS
+            return CollectBehavior.SUCCESS
         }
         gc.submit(500, TimeUnit.MILLISECONDS)
 

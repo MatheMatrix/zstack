@@ -32,8 +32,8 @@ public class VmAfterInstantiateVolumeInAttachingVolumeFlow extends NoRollbackFlo
 
     @Override
     public void run(FlowTrigger chain, Map ctx) {
-        final VolumeInventory volume = (VolumeInventory) ctx.get(VmInstanceConstant.Params.AttachingVolumeInventory.toString());
-        final VmInstanceSpec spec = (VmInstanceSpec) ctx.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VolumeInventory volume = (VolumeInventory) ctx.get(VmInstanceConstant.VmInstanceParams.AttachingVolumeInventory.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) ctx.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         extEmitter.afterInstantiateVolume(spec.getVmInventory(), volume, new NoErrorCompletion() {
             @Override

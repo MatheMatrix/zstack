@@ -792,9 +792,9 @@ public class SourceClassMap {
 			put("org.zstack.zwatch.datatype.Datapoint", "org.zstack.sdk.zwatch.datatype.Datapoint");
 			put("org.zstack.zwatch.datatype.EmergencyLevel", "org.zstack.sdk.zwatch.datatype.EmergencyLevel");
 			put("org.zstack.zwatch.datatype.EventData", "org.zstack.sdk.zwatch.datatype.EventData");
-			put("org.zstack.zwatch.datatype.EventFamily$EmergencyLevel", "org.zstack.sdk.zwatch.datatype.EmergencyLevel");
+			put("org.zstack.zwatch.datatype.EventFamily$EmergencyFamilyLevel", "org.zstack.sdk.zwatch.datatype.EmergencyFamilyLevel");
 			put("org.zstack.zwatch.datatype.Label", "org.zstack.sdk.zwatch.datatype.Label");
-			put("org.zstack.zwatch.datatype.Label$Operator", "org.zstack.sdk.zwatch.datatype.Operator");
+			put("org.zstack.zwatch.datatype.Label$LabelOperator", "org.zstack.sdk.zwatch.datatype.LabelOperator");
 			put("org.zstack.zwatch.datatype.MetricDatum", "org.zstack.sdk.zwatch.datatype.MetricDatum");
 			put("org.zstack.zwatch.influxdb.InfluxEventData", "org.zstack.sdk.zwatch.influxdb.InfluxEventData");
 			put("org.zstack.zwatch.influxdb.InfluxEventDataV1", "org.zstack.sdk.zwatch.influxdb.InfluxEventDataV1");
@@ -1609,12 +1609,12 @@ public class SourceClassMap {
 			put("org.zstack.sdk.zwatch.datatype.AuditDataV2", "org.zstack.zwatch.datatype.AuditDataV2");
 			put("org.zstack.sdk.zwatch.datatype.AuditType", "org.zstack.zwatch.datatype.AuditType");
 			put("org.zstack.sdk.zwatch.datatype.Datapoint", "org.zstack.zwatch.datatype.Datapoint");
+			put("org.zstack.sdk.zwatch.datatype.EmergencyFamilyLevel", "org.zstack.zwatch.datatype.EventFamily$EmergencyFamilyLevel");
 			put("org.zstack.sdk.zwatch.datatype.EmergencyLevel", "org.zstack.zwatch.datatype.EmergencyLevel");
-			put("org.zstack.sdk.zwatch.datatype.EmergencyLevel", "org.zstack.zwatch.datatype.EventFamily$EmergencyLevel");
 			put("org.zstack.sdk.zwatch.datatype.EventData", "org.zstack.zwatch.datatype.EventData");
 			put("org.zstack.sdk.zwatch.datatype.Label", "org.zstack.zwatch.datatype.Label");
+			put("org.zstack.sdk.zwatch.datatype.LabelOperator", "org.zstack.zwatch.datatype.Label$LabelOperator");
 			put("org.zstack.sdk.zwatch.datatype.MetricDatum", "org.zstack.zwatch.datatype.MetricDatum");
-			put("org.zstack.sdk.zwatch.datatype.Operator", "org.zstack.zwatch.datatype.Label$Operator");
 			put("org.zstack.sdk.zwatch.influxdb.InfluxEventData", "org.zstack.zwatch.influxdb.InfluxEventData");
 			put("org.zstack.sdk.zwatch.influxdb.InfluxEventDataV1", "org.zstack.zwatch.influxdb.InfluxEventDataV1");
 			put("org.zstack.sdk.zwatch.influxdb.InfluxEventDataV2", "org.zstack.zwatch.influxdb.InfluxEventDataV2");

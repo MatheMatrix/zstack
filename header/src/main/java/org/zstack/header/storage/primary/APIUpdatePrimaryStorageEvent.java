@@ -13,7 +13,7 @@ import java.util.Collections;
 @RestResponse(allTo = "inventory")
 @MaskSensitiveInfo
 public class APIUpdatePrimaryStorageEvent extends APIEvent {
-    @NoLogging(behavior = NoLogging.Behavior.Auto)
+    @NoLogging(behavior = NoLogging.LogMaskBehavior.Auto)
     private PrimaryStorageInventory inventory;
 
     public PrimaryStorageInventory getInventory() {

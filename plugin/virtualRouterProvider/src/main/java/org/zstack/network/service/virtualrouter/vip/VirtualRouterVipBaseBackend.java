@@ -275,7 +275,7 @@ public class VirtualRouterVipBaseBackend extends VipBaseBackend {
 
                 if (!StringUtils.isEmpty(specificVrUuid)) {
                     VirtualRouterVmVO virtualRouterVmVO = Q.New(VirtualRouterVmVO.class).eq(VirtualRouterVmVO_.uuid, specificVrUuid).find();
-                    data.put(VirtualRouterConstant.Param.VR.toString(), VirtualRouterVmInventory.valueOf(virtualRouterVmVO));
+                    data.put(VirtualRouterConstant.VRouterParam.VR.toString(), VirtualRouterVmInventory.valueOf(virtualRouterVmVO));
                     trigger.next();
                     return;
                 }
@@ -306,7 +306,7 @@ public class VirtualRouterVipBaseBackend extends VipBaseBackend {
                 vrMgr.acquireVirtualRouterVm(s, new ReturnValueCompletion<VirtualRouterVmInventory>(trigger){
                     @Override
                     public void success(VirtualRouterVmInventory returnValue) {
-                        data.put(VirtualRouterConstant.Param.VR.toString(), returnValue);
+                        data.put(VirtualRouterConstant.VRouterParam.VR.toString(), returnValue);
                         trigger.next();
                     }
 
@@ -319,7 +319,7 @@ public class VirtualRouterVipBaseBackend extends VipBaseBackend {
         }).then(new NoRollbackFlow() {
             @Override
             public void run(final FlowTrigger trigger, Map data) {
-                final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+                final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VRouterParam.VR.toString());
                 createVipOnVirtualRouterVm(vr, Arrays.asList(getSelfInventory()), new Completion(trigger) {
                     @Override
                     public void success() {
@@ -335,7 +335,7 @@ public class VirtualRouterVipBaseBackend extends VipBaseBackend {
         }).done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map data) {
-                final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+                final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VRouterParam.VR.toString());
                 proxy.attachNetworkService(vr.getUuid(), VipVO.class.getSimpleName(), asList(self.getUuid()));
                 CollectionUtils.safeForEach(pluginRgty.getExtensionList(AfterAcquireVipExtensionPoint.class),
                         new ForEachFunction<AfterAcquireVipExtensionPoint>() {

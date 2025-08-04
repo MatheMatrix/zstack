@@ -6,8 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.transaction.annotation.Transactional;
-import org.stringtemplate.v4.ST;
-import org.zstack.compute.vm.VmInstanceManager;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
@@ -16,19 +14,16 @@ import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.tag.SystemTagVO;
-import org.zstack.header.tag.SystemTagVO_;
 import org.zstack.header.vm.*;
 import org.zstack.network.service.lb.*;
 import org.zstack.network.service.vip.VipInventory;
 import org.zstack.network.service.vip.VipVO;
 import org.zstack.network.service.vip.VipVO_;
 import org.zstack.network.service.virtualrouter.*;
-import org.zstack.network.service.virtualrouter.VirtualRouterConstant.Param;
+import org.zstack.network.service.virtualrouter.VirtualRouterConstant.VRouterParam;
 import org.zstack.network.service.virtualrouter.vip.VirtualRouterVipBackend;
 import org.zstack.network.service.virtualrouter.vyos.VyosConstants;
 import org.zstack.utils.CollectionUtils;
-import org.zstack.utils.function.Function;
 import org.zstack.utils.function.ListFunction;
 
 import javax.persistence.TypedQuery;
@@ -58,7 +53,7 @@ public class VirtualRouterSyncLbOnStartFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger outterTrigger, final Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VRouterParam.VR.toString());
         final List<VmNicInventory> guestNics = vr.getGuestNics();
         if (guestNics == null || guestNics.isEmpty()) {
             outterTrigger.next();
@@ -98,7 +93,7 @@ public class VirtualRouterSyncLbOnStartFlow implements Flow {
 
                 TypedQuery<LoadBalancerVO>  vq = dbf.getEntityManager().createQuery(sql, LoadBalancerVO.class);
 
-                if (!data.containsKey(Param.IS_NEW_CREATED.toString())) {
+                if (!data.containsKey(VRouterParam.IS_NEW_CREATED.toString())) {
                     // start/reboot the vr, handle the case that it is the separate lb vr
                     List<String> lbuuids = proxy.getServiceUuidsByRouterUuid(vr.getUuid(), LoadBalancerVO.class.getSimpleName());
 
@@ -236,7 +231,7 @@ public class VirtualRouterSyncLbOnStartFlow implements Flow {
 
     @Override
     public void rollback(FlowRollback trigger, Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VRouterParam.VR.toString());
         List<String> lbUuids = (List<String>) data.get(VirtualRouterSyncLbOnStartFlow.class);
         if (lbUuids != null) {
             proxy.detachNetworkService(vr.getUuid(), LoadBalancerVO.class.getSimpleName(), lbUuids);
