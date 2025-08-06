@@ -398,7 +398,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
     @Override
     protected VmInstanceSpec buildSpecFromInventory(VmInstanceInventory inv, VmOperation operation) {
         VmInstanceSpec spec = super.buildSpecFromInventory(inv, operation);
-        spec.putExtensionData(ApplianceVmConstant.Params.applianceVmSubType.toString(), getSelf().getApplianceVmType());
+        spec.putExtensionData(ApplianceVmConstant.ApplianceVmParams.applianceVmSubType.toString(), getSelf().getApplianceVmType());
         return spec;
     }
 
@@ -408,7 +408,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
         L3NetworkVO defaultRouteL3VO = dbf.findByUuid(ainv.getDefaultRouteL3NetworkUuid(), L3NetworkVO.class);
         info.setDefaultRouteL3Network(L3NetworkInventory.valueOf(defaultRouteL3VO));
         info.setManagementNic(ainv.getManagementNic());
-        chain.getData().put(ApplianceVmConstant.Params.applianceVmInfoForPostLifeCycle.toString(), info);
+        chain.getData().put(ApplianceVmConstant.ApplianceVmParams.applianceVmInfoForPostLifeCycle.toString(), info);
     }
 
     private void prepareFirewallInfo(FlowChain chain) {
@@ -416,7 +416,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
         q.add(ApplianceVmFirewallRuleVO_.applianceVmUuid, Op.EQ, getSelf().getUuid());
         List<ApplianceVmFirewallRuleVO> vos = q.list();
         List<ApplianceVmFirewallRuleInventory> rules = ApplianceVmFirewallRuleInventory.valueOf(vos);
-        chain.getData().put(ApplianceVmConstant.Params.applianceVmFirewallRules.toString(), rules);
+        chain.getData().put(ApplianceVmConstant.ApplianceVmParams.applianceVmFirewallRules.toString(), rules);
     }
 
     @Override
@@ -548,7 +548,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
         }
 
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.setName(String.format("provision-appliancevm-after-reboot-%s", spec.getVmInventory().getUuid()));
         chain.insert(new Flow() {
             String __name__ = "change-appliancevm-status-to-disconnected";
@@ -611,7 +611,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
         }
 
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.setName(String.format("provision-appliancevm-after-start-%s", spec.getVmInventory().getUuid()));
         chain.insert(new ApplianceVmSyncConfigToHaGroupFlow());
         chain.insert(new Flow() {
@@ -813,8 +813,8 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
 
         chain.setName(String.format("provision-appliancevm-after-create-%s", spec.getVmInventory().getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
-        chain.getData().put(ApplianceVmConstant.Params.applianceVmFirewallRules.toString(), aspec.getFirewallRules());
+        chain.getData().put(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString(), spec);
+        chain.getData().put(ApplianceVmConstant.ApplianceVmParams.applianceVmFirewallRules.toString(), aspec.getFirewallRules());
 
         addBootstrapFlows(chain, htype);
 
@@ -921,10 +921,10 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             ImageVO imvo = dbf.findByUuid(spec.getVmInventory().getImageUuid(), ImageVO.class);
             spec.getImageSpec().setInventory(ImageInventory.valueOf(imvo));
 
-            spec.putExtensionData(ApplianceVmConstant.Params.timeout.toString(), msg.getTimeout());
-            spec.putExtensionData(ApplianceVmConstant.Params.applianceVmSpec.toString(), aspec);
+            spec.putExtensionData(ApplianceVmConstant.ApplianceVmParams.timeout.toString(), msg.getTimeout());
+            spec.putExtensionData(ApplianceVmConstant.ApplianceVmParams.applianceVmSpec.toString(), aspec);
             spec.setCurrentVmOperation(VmInstanceConstant.VmOperation.NewCreate);
-            spec.putExtensionData(ApplianceVmConstant.Params.applianceVmSubType.toString(), getSelf().getApplianceVmType());
+            spec.putExtensionData(ApplianceVmConstant.ApplianceVmParams.applianceVmSubType.toString(), getSelf().getApplianceVmType());
             spec.setBootOrders(list(VmBootDevice.HardDisk.toString()));
 
             changeVmStateInDb(VmInstanceStateEvent.starting);
@@ -935,8 +935,8 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
             setFlowMarshaller(chain);
 
             chain.setName(String.format("create-appliancevm-%s", msg.getVmInstanceUuid()));
-            chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
-            chain.getData().put(ApplianceVmConstant.Params.applianceVmFirewallRules.toString(), aspec.getFirewallRules());
+            chain.getData().put(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString(), spec);
+            chain.getData().put(ApplianceVmConstant.ApplianceVmParams.applianceVmFirewallRules.toString(), aspec.getFirewallRules());
 
             chain.then(setApplianceStateRunningFlow());
             if (ApplianceVmGlobalConfig.AUTO_ROLLBACK.value(Boolean.class)) {
@@ -971,7 +971,7 @@ public abstract class ApplianceVmBase extends VmInstanceBase implements Applianc
                     provisionApplianceVmAfterCreate(spec, aspec, htype, new NoErrorCompletion(taskChain) {
                         @Override
                         public void done() {
-                            VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+                            VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
                             changeVmStateInDb(VmInstanceStateEvent.running, () -> new SQLBatch() {
                                 @Override
                                 protected void scripts() {

@@ -3,7 +3,7 @@ package org.zstack.appliancevm;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
-import org.zstack.appliancevm.ApplianceVmConstant.Params;
+import org.zstack.appliancevm.ApplianceVmConstant.ApplianceVmParams;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.workflow.NoRollbackFlow;
 import org.zstack.header.core.Completion;
@@ -59,17 +59,17 @@ public class ApplianceVmSetFirewallFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
-        List<ApplianceVmFirewallRuleInventory> rules = (List<ApplianceVmFirewallRuleInventory>) data.get(ApplianceVmConstant.Params.applianceVmFirewallRules.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
+        List<ApplianceVmFirewallRuleInventory> rules = (List<ApplianceVmFirewallRuleInventory>) data.get(ApplianceVmParams.applianceVmFirewallRules.toString());
         if (rules == null || rules.isEmpty()) {
             trigger.next();
             return;
         }
 
-        boolean isReconnect = Boolean.parseBoolean((String) data.get(Params.isReconnect.toString()));
+        boolean isReconnect = Boolean.parseBoolean((String) data.get(ApplianceVmParams.isReconnect.toString()));
         Map<String, List<ApplianceVmFirewallRuleInventory>> networkFirewallRules = normalize(rules);
         if (isReconnect) {
-            setFirewall((String) data.get(Params.applianceVmUuid.toString()), networkFirewallRules.entrySet().iterator(), trigger);
+            setFirewall((String) data.get(ApplianceVmParams.applianceVmUuid.toString()), networkFirewallRules.entrySet().iterator(), trigger);
         } else {
             setFirewall(spec.getVmInventory().getUuid(), networkFirewallRules.entrySet().iterator(), trigger);
         }

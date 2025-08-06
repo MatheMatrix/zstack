@@ -37,7 +37,7 @@ public class VmAllocateHostForMigrateVmFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger chain, final Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         String destHostUuid = null;
         DesignatedAllocateHostMsg msg = new DesignatedAllocateHostMsg();
@@ -94,7 +94,7 @@ public class VmAllocateHostForMigrateVmFlow implements Flow {
     @Override
     public void rollback(FlowRollback chain, Map data) {
         if (data.containsKey(SUCCESS)) {
-            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
             ReturnHostCapacityMsg msg = new ReturnHostCapacityMsg();
             msg.setHostUuid(spec.getDestHost().getUuid());
             msg.setCpuCapacity(spec.getVmInventory().getCpuNum());

@@ -36,7 +36,7 @@ public class VmStartOnHypervisorFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger chain, final Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         fireExtensions(spec);
 
@@ -63,7 +63,7 @@ public class VmStartOnHypervisorFlow implements Flow {
             return;
         }
 
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         StopVmOnHypervisorMsg msg = new StopVmOnHypervisorMsg();
         msg.setVmInventory(spec.getVmInventory());
         msg.getVmInventory().setHostUuid(spec.getDestHost().getUuid());

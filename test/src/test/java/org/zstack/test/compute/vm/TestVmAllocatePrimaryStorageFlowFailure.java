@@ -126,7 +126,7 @@ public class TestVmAllocatePrimaryStorageFlowFailure {
 
         spec.setDestHost(hinv);
 
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.done(new FlowDoneHandler(null) {
             @Override
             public void handle(Map data) {

@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.zstack.core.Platform;
 import org.zstack.core.componentloader.PluginRegistry;
-import org.zstack.core.db.TransactionalCallback.Operation;
+import org.zstack.core.db.TransactionalCallback.TransactionalOperation;
 import org.zstack.header.Component;
 import org.zstack.header.core.ExceptionSafe;
 import org.zstack.header.exception.CloudRuntimeException;
@@ -574,7 +574,7 @@ public class DatabaseFacadeImpl implements DatabaseFacade, Component {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     private <T> T doPersist(T entity, boolean isRefresh) {
-        this.entityForTranscationCallback(Operation.PERSIST, entity.getClass());
+        this.entityForTranscationCallback(TransactionalCallback.TransactionalOperation.PERSIST, entity.getClass());
         getEntityManager().persist(entity);
 
         if (isRefresh) {
@@ -619,7 +619,7 @@ public class DatabaseFacadeImpl implements DatabaseFacade, Component {
     }
 
     @Override
-    public void entityForTranscationCallback(Operation op, Class<?>... entityClass) {
+    public void entityForTranscationCallback(TransactionalOperation op, Class<?>... entityClass) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             for (TransactionalSyncCallback cb : getTransactionSyncCallbacks()) {
                 TransactionSynchronizationSyncImpl tsi = new TransactionSynchronizationSyncImpl(cb, op, entityClass);
@@ -708,7 +708,7 @@ public class DatabaseFacadeImpl implements DatabaseFacade, Component {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void persistCollection(Collection entities) {
         for (Object e : entities) {
-            this.entityForTranscationCallback(Operation.PERSIST, e.getClass());
+            this.entityForTranscationCallback(TransactionalCallback.TransactionalOperation.PERSIST, e.getClass());
             this.getEntityManager().persist(e);
         }
     }

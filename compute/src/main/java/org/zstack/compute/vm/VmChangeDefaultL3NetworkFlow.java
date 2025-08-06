@@ -4,26 +4,16 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.cloudbus.CloudBus;
-import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
-import org.zstack.core.db.Q;
 import org.zstack.core.errorcode.ErrorFacade;
-import org.zstack.header.core.workflow.Flow;
-import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.workflow.NoRollbackFlow;
-import org.zstack.header.message.JsonSchemaBuilder;
-import org.zstack.header.message.MessageReply;
-import org.zstack.header.network.l3.*;
 import org.zstack.header.vm.*;
 import org.zstack.network.l3.L3NetworkManager;
 import org.zstack.utils.Utils;
-import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
-import org.zstack.utils.network.IPv6Constants;
 
-import javax.json.JsonObject;
 import java.util.Map;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
@@ -42,7 +32,7 @@ public class VmChangeDefaultL3NetworkFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, final Map data) {
-        final VmNicInventory nic = (VmNicInventory) data.get(VmInstanceConstant.Params.VmNicInventory.toString());
+        final VmNicInventory nic = (VmNicInventory) data.get(VmInstanceConstant.VmInstanceParams.VmNicInventory.toString());
 
         if (nic.getVmInstanceUuid() == null) {
             trigger.next();

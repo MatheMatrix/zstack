@@ -138,7 +138,7 @@ public class BackupStoragePingTracker extends PingTracker implements ManagementN
 
     }
 
-    enum ReconnectDecision {
+    enum BackupStorageReconnectDecision {
         DoNothing,
         SubmitReconnectTask,
         StopReconnectTask
@@ -165,38 +165,38 @@ public class BackupStoragePingTracker extends PingTracker implements ManagementN
         });
     }
 
-    private void decideWhatToDoNext(String resUuid, ReconnectDecision decision) {
-        if (decision == ReconnectDecision.SubmitReconnectTask) {
+    private void decideWhatToDoNext(String resUuid, BackupStorageReconnectDecision decision) {
+        if (decision == BackupStorageReconnectDecision.SubmitReconnectTask) {
             submitReconnectTask(resUuid);
-        } else if (decision == ReconnectDecision.StopReconnectTask) {
+        } else if (decision == BackupStorageReconnectDecision.StopReconnectTask) {
             cancel(resUuid);
-        } else if (decision == ReconnectDecision.DoNothing) {
+        } else if (decision == BackupStorageReconnectDecision.DoNothing) {
             logger.debug(String.format("[Backup storage Tracker]: do not track backup storage[uuid:%s].", resUuid));
         } else {
             throw new CloudRuntimeException("should not be here");
         }
     }
 
-    private ReconnectDecision makeReconnectDecision(String uuid, MessageReply reply) {
+    private BackupStorageReconnectDecision makeReconnectDecision(String uuid, MessageReply reply) {
         PingBackupStorageReply r = reply.castReply();
         boolean autoReconnect = BackupStorageGlobalConfig.AUTO_RECONNECT_ON_ERROR.value(Boolean.class);
 
         if (!autoReconnect) {
             logger.debug(String.format("[Backup storage Tracker]: stop pinging backup storage[uuid: %s] because it's disconnected and connection.autoReconnectOnError is false.", uuid));
-            return ReconnectDecision.StopReconnectTask;
+            return BackupStorageReconnectDecision.StopReconnectTask;
         }
 
         AtomicInteger disconnectCount = backupStorageDisconnectCount.get(uuid);
         int threshold = BackupStorageGlobalConfig.AUTO_RECONNECT_ON_ERROR_MAX_ATTEMPT_NUM.value(Integer.class);
         if (threshold > 0 && disconnectCount != null && disconnectCount.get() >= threshold) {
             logger.warn(String.format("[Backup storage Tracker]: stop pinging backup storage[uuid: %s] because it fail to reconnect too many times.", uuid));
-            return ReconnectDecision.StopReconnectTask;
+            return BackupStorageReconnectDecision.StopReconnectTask;
         }
 
         if (r.getError() != null) {
-            boolean checkReconnect = (boolean) r.getError().getOpaque().getOrDefault(BackupStorageErrors.Opaque.NEED_RECONNECT_CHECKING.toString(), false);
+            boolean checkReconnect = (boolean) r.getError().getOpaque().getOrDefault(BackupStorageErrors.BackupStorageErrorOpaque.NEED_RECONNECT_CHECKING.toString(), false);
             if (checkReconnect) {
-                return ReconnectDecision.SubmitReconnectTask;
+                return BackupStorageReconnectDecision.SubmitReconnectTask;
             }
         }
 
@@ -205,10 +205,10 @@ public class BackupStoragePingTracker extends PingTracker implements ManagementN
                 .eq(BackupStorageVO_.status, BackupStorageStatus.Disconnected).isExists();
 
         if (r.isSuccess() && isDisconnected) {
-            return ReconnectDecision.SubmitReconnectTask;
+            return BackupStorageReconnectDecision.SubmitReconnectTask;
         }
 
-        return ReconnectDecision.DoNothing;
+        return BackupStorageReconnectDecision.DoNothing;
     }
 
     private void submitReconnectTask(String uuid) {

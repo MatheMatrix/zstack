@@ -341,12 +341,12 @@ public class InventoryIndexManagerImpl extends AbstractService implements Invent
     }
 
     @Override
-    public void beforeCommit(Operation op, boolean readOnly, Class<?>... entityClass) {
+    public void beforeCommit(TransactionalOperation op, boolean readOnly, Class<?>... entityClass) {
 
     }
 
     @Override
-    public void beforeCompletion(Operation op, Class<?>... entityClass) {
+    public void beforeCompletion(TransactionalOperation op, Class<?>... entityClass) {
     }
 
     private void sendBulk(final String requestBody, final String inventoryName) {
@@ -456,9 +456,9 @@ public class InventoryIndexManagerImpl extends AbstractService implements Invent
         return ret;
     }
 
-    private Map<String, Set<String>> getUuidsOfVOToIndexFromInsertVOUpdateVO(Class<?> triggeredVO, Operation op) {
+    private Map<String, Set<String>> getUuidsOfVOToIndexFromInsertVOUpdateVO(Class<?> triggeredVO, TransactionalOperation op) {
         Map<String, Set<String>> ret = new HashMap<String, Set<String>>();
-        if (op == Operation.PERSIST) {
+        if (op == TransactionalOperation.PERSIST) {
             List<InsertVO> ivos = takeInsertVO(triggeredVO);
             for (InsertVO ivo : ivos) {
                 Set<String> self = ret.get(ivo.getVoName());
@@ -477,7 +477,7 @@ public class InventoryIndexManagerImpl extends AbstractService implements Invent
                     foreign.add(ivo.getForeignVOUuid());
                 }
             }
-        } else if (op == Operation.UPDATE) {
+        } else if (op == TransactionalOperation.UPDATE) {
             List<UpdateVO> uvos = takeUpdateVO(triggeredVO);
             for (UpdateVO uvo : uvos) {
                 Set<String> self = ret.get(uvo.getVoName());
@@ -677,7 +677,7 @@ public class InventoryIndexManagerImpl extends AbstractService implements Invent
     }
 
     @Override
-    public void afterCommit(Operation op, Class<?>... entityClass) {
+    public void afterCommit(TransactionalOperation op, Class<?>... entityClass) {
         ESBulkBuilder bbuilder = new ESBulkBuilder();
 
         for (Class<?> vo : entityClass) {
@@ -686,10 +686,10 @@ public class InventoryIndexManagerImpl extends AbstractService implements Invent
                 continue;
             }
 
-            if (op == Operation.PERSIST || op == Operation.UPDATE) {
+            if (op == TransactionalOperation.PERSIST || op == TransactionalOperation.UPDATE) {
                 Map<String, Set<String>> vmap = getUuidsOfVOToIndexFromInsertVOUpdateVO(vo, op);
                 bbuilder = addDocToIndexToESBuilder(bbuilder, vmap);
-            } else if (op == Operation.REMOVE) {
+            } else if (op == TransactionalOperation.REMOVE) {
                 Pair<Map<String, Set<String>>, Map<String, Set<String>>> pair = getVOUuidsToDeleteOrIndexFromDeleteVO(vo);
                 Map<String, Set<String>> toIndex = pair.second();
                 bbuilder = addDocToIndexToESBuilder(bbuilder, toIndex);
@@ -704,7 +704,7 @@ public class InventoryIndexManagerImpl extends AbstractService implements Invent
     }
 
     @Override
-    public void afterCompletion(Operation op, int status, Class<?>... entityClass) {
+    public void afterCompletion(TransactionalOperation op, int status, Class<?>... entityClass) {
     }
 
     public void setElasticSearchBaseUrl(String elasticSearchBaseUrl) {

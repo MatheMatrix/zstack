@@ -37,7 +37,7 @@ public class ApplianceVmManagementIpChecker implements VmBeforeCreateOnHyperviso
 
         VmNicInventory mgmtNic;
         if (isNewCreated) {
-            final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.Params.applianceVmSpec.toString(), ApplianceVmSpec.class);
+            final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.ApplianceVmParams.applianceVmSpec.toString(), ApplianceVmSpec.class);
             mgmtNic = CollectionUtils.find(spec.getDestNics(), new Function<VmNicInventory, VmNicInventory>() {
                 @Override
                 public VmNicInventory call(VmNicInventory arg) {

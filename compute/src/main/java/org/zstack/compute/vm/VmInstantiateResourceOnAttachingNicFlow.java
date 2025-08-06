@@ -14,10 +14,7 @@ import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.vm.*;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
 
 /**
  * Created by frank on 7/18/2015.
@@ -30,7 +27,7 @@ public class VmInstantiateResourceOnAttachingNicFlow implements Flow {
     @Override
     public void run(FlowTrigger trigger, Map data) {
         Iterator<InstantiateResourceOnAttachingNicExtensionPoint> it = pluginRgty.getExtensionList(InstantiateResourceOnAttachingNicExtensionPoint.class).iterator();
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         L3NetworkInventory l3 = VmNicSpec.getL3NetworkInventoryOfSpec(spec.getL3Networks()).get(0);
         instantiateResource(it, spec, l3, trigger);
     }
@@ -58,7 +55,7 @@ public class VmInstantiateResourceOnAttachingNicFlow implements Flow {
     @Override
     public void rollback(FlowRollback trigger, Map data) {
         Iterator<InstantiateResourceOnAttachingNicExtensionPoint> it = pluginRgty.getExtensionList(InstantiateResourceOnAttachingNicExtensionPoint.class).iterator();
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         L3NetworkInventory l3 = VmNicSpec.getL3NetworkInventoryOfSpec(spec.getL3Networks()).get(0);
         releaseResource(it, spec, l3, trigger);
     }

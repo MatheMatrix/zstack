@@ -3,7 +3,7 @@ package org.zstack.storage.volume;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.db.DatabaseFacade;
-import org.zstack.core.db.TransactionalCallback.Operation;
+import org.zstack.core.db.TransactionalCallback.TransactionalOperation;
 import org.zstack.header.core.Completion;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.header.vm.VmInstanceInventory;
@@ -20,7 +20,7 @@ public class DetachDataVolumeOnVmDestroyedExtension implements VmReleaseResource
     
     @Transactional
     private void detachDataVolume(VmInstanceInventory inv) {
-        dbf.entityForTranscationCallback(Operation.UPDATE, VolumeVO.class);
+        dbf.entityForTranscationCallback(TransactionalOperation.UPDATE, VolumeVO.class);
         
         String sql = "update VolumeVO vol set vol.vmInstanceUuid = NULL, vol.deviceId = NULL where vol.vmInstanceUuid = :vmUuid and vol.type = :volType";
         Query q = dbf.getEntityManager().createQuery(sql);

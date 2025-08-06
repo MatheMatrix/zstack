@@ -12,7 +12,7 @@ public interface VolumeConstant {
     int DEFAULT_MAX_DATA_VOLUME_NUMBER = 24;
     String BLOCK_VOLUME_TYPE = "blockVolume";
 
-    enum Capability {
+    enum VolumeCapability {
         MigrationInCurrentPrimaryStorage,
         MigrationToOtherPrimaryStorage
     }
