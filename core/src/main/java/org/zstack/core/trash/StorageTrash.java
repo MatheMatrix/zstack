@@ -9,6 +9,7 @@ import java.util.List;
  */
 public interface StorageTrash {
     InstallPathRecycleInventory createTrash(TrashType type, boolean isFolder, Object o);
+    boolean createIsExit(TrashType type, Object o);
 
     List<InstallPathRecycleInventory> getTrashList(String storageUuid);
     List<InstallPathRecycleInventory> getTrashList(String storageUuid, List<TrashType> types);

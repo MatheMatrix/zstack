@@ -311,6 +311,11 @@ public class VolumeBase extends AbstractVolume implements Volume {
 
                     @Override
                     public void run(final FlowTrigger trigger, Map data) {
+                        if (trash.createIsExit(TrashType.ReimageVolume, rootVolumeInventory)) {
+                            trigger.next();
+                            return;
+                        }
+
                         trash.createTrash(TrashType.ReimageVolume, false, rootVolumeInventory);
                         trigger.next();
                     }

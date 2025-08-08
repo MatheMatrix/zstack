@@ -91,6 +91,13 @@ public class StorageRecycleImpl implements StorageTrash, VolumeSnapshotAfterDele
         return InstallPathRecycleInventory.valueOf(vo);
     }
 
+    private boolean volumeRecycleIsExit(TrashType type, final VolumeInventory vol) {
+        return Q.New(InstallPathRecycleVO.class)
+                .eq(InstallPathRecycleVO_.installPath, vol.getInstallPath())
+                .eq(InstallPathRecycleVO_.trashType, type.toString())
+                .eq(InstallPathRecycleVO_.resourceUuid, vol.getUuid()).isExists();
+    }
+
     private InstallPathRecycleInventory createRecycleFromImage(TrashType type, boolean isFolder, final ImageInventory image) {
         InstallPathRecycleVO vo = new InstallPathRecycleVO();
         vo.setFolder(isFolder);
@@ -105,6 +112,13 @@ public class StorageRecycleImpl implements StorageTrash, VolumeSnapshotAfterDele
 
         vo = dbf.persistAndRefresh(vo);
         return InstallPathRecycleInventory.valueOf(vo);
+    }
+
+    private boolean imageRecycleIsExit(TrashType type, final ImageInventory vol) {
+        return Q.New(InstallPathRecycleVO.class)
+                .eq(InstallPathRecycleVO_.installPath, vol.getUrl())
+                .eq(InstallPathRecycleVO_.trashType, type.toString())
+                .eq(InstallPathRecycleVO_.resourceUuid, vol.getUuid()).isExists();
     }
 
     private InstallPathRecycleInventory createRecycleFromVolumeSnapshot(TrashType type, boolean isFolder, final VolumeSnapshotInventory snapshot) {
@@ -127,6 +141,13 @@ public class StorageRecycleImpl implements StorageTrash, VolumeSnapshotAfterDele
         return InstallPathRecycleInventory.valueOf(vo);
     }
 
+    private boolean volumeSnapshotRecycleIsExit(TrashType type, final VolumeSnapshotInventory vol) {
+        return Q.New(InstallPathRecycleVO.class)
+                .eq(InstallPathRecycleVO_.installPath, vol.getPrimaryStorageInstallPath())
+                .eq(InstallPathRecycleVO_.trashType, type.toString())
+                .eq(InstallPathRecycleVO_.resourceUuid, vol.getUuid()).isExists();
+    }
+
     @Override
     public InstallPathRecycleInventory createTrash(TrashType type, boolean isFolder, Object o) {
         if (o instanceof VolumeInventory) {
@@ -139,6 +160,20 @@ public class StorageRecycleImpl implements StorageTrash, VolumeSnapshotAfterDele
             throw new OperationFailureException(inerr("non support resourceType to create trash"));
         }
     }
+
+    @Override
+    public boolean createIsExit(TrashType type, Object o) {
+        if (o instanceof VolumeInventory) {
+            return volumeRecycleIsExit(type,(VolumeInventory) o);
+        } else if (o instanceof ImageInventory) {
+            return imageRecycleIsExit(type,(ImageInventory) o);
+        } else if (o instanceof VolumeSnapshotInventory) {
+            return volumeSnapshotRecycleIsExit(type,(VolumeSnapshotInventory) o);
+        } else {
+            throw new OperationFailureException(inerr("non support resourceType to create trash"));
+        }
+    }
+
 
     @Override
     public List<InstallPathRecycleInventory> getTrashList(String storageUuid) {
