@@ -45,7 +45,7 @@ public class VmCreateOnHypervisorFlow implements Flow {
     public void run(final FlowTrigger chain, final Map data) {
         taskProgress("start on the hypervisor");
 
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         fireExtensions(spec);
 
@@ -66,7 +66,7 @@ public class VmCreateOnHypervisorFlow implements Flow {
 
     @Override
     public void rollback(final FlowRollback trigger, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         DestroyVmOnHypervisorMsg msg = new DestroyVmOnHypervisorMsg();
         msg.setVmInventory(spec.getVmInventory());
         msg.getVmInventory().setHostUuid(spec.getDestHost().getUuid());

@@ -125,12 +125,12 @@ public class TestVmAllocatePrimaryStorageFlow2 {
 
         spec.setDestHost(hinv);
 
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.done(new FlowDoneHandler(null) {
             @Override
             public void handle(Map data) {
                 try {
-                    VmInstanceSpec ret = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+                    VmInstanceSpec ret = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
                     List<VolumeSpec> vspecs = ret.getVolumeSpecs();
                     for (VolumeSpec vspec : vspecs) {
                         if (!vspec.getType().equals(VolumeType.Root.toString())) {

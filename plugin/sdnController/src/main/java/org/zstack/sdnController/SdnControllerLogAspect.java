@@ -9,9 +9,10 @@ import org.springframework.stereotype.Component;
 
 import org.zstack.network.l2.vxlan.vxlanNetwork.L2VxlanNetworkInventory;
 import org.zstack.sdnController.header.APIAddSdnControllerMsg;
+import org.zstack.sdnController.header.SdnControllerConstant;
 import org.zstack.sdnController.header.SdnControllerConstant.Processes;
 import org.zstack.sdnController.header.SdnControllerConstant.Operations;
-import org.zstack.sdnController.header.SdnControllerConstant.ResourceTypes;
+import org.zstack.sdnController.header.SdnControllerConstant.SdnControllerResourceTypes;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
@@ -56,7 +57,7 @@ public class SdnControllerLogAspect {
                operation = op.toString();
             }
         }
-        for (ResourceTypes type : ResourceTypes.values()) {
+        for (SdnControllerResourceTypes type : SdnControllerConstant.SdnControllerResourceTypes.values()) {
             if (parseName.contains(type.toString().toUpperCase(Locale.ROOT))){
                 resourceType = type.toString();
             }

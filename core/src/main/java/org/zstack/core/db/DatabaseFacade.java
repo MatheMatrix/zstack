@@ -1,6 +1,5 @@
 package org.zstack.core.db;
 
-import org.zstack.core.db.TransactionalCallback.Operation;
 import org.zstack.header.message.APIListMessage;
 
 import javax.persistence.EntityManager;
@@ -50,7 +49,7 @@ public interface DatabaseFacade {
 
     long count(Class<?> entityClass);
     
-    void entityForTranscationCallback(Operation op, Class<?>...entityClass);
+    void entityForTranscationCallback(TransactionalCallback.TransactionalOperation op, Class<?>...entityClass);
     
     long generateSequenceNumber(Class<?> seqTable);
 

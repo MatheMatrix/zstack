@@ -1,16 +1,15 @@
 package org.zstack.header.host;
 
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Created by frank on 10/25/2015.
  */
 public interface HostMaintenancePolicyExtensionPoint {
-    public static enum HostMaintenancePolicy {
+    public static enum HostMaintenanceVmOperationPolicy {
         MigrateVm,
         StopVm
     }
 
-    Map<String, HostMaintenancePolicy> getHostMaintenanceVmOperationPolicy(HostInventory host);
+    Map<String, HostMaintenanceVmOperationPolicy> getHostMaintenanceVmOperationPolicy(HostInventory host);
 }

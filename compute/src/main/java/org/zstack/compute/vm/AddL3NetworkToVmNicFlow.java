@@ -29,9 +29,9 @@ public class AddL3NetworkToVmNicFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, final Map data) {
-        final VmInstanceInventory vm = (VmInstanceInventory) data.get(VmInstanceConstant.Params.vmInventory.toString());
-        final VmNicInventory nic = (VmNicInventory) data.get(VmInstanceConstant.Params.VmNicInventory.toString());
-        final L3NetworkInventory l3Inv = (L3NetworkInventory)data.get(VmInstanceConstant.Params.L3NetworkInventory.toString());
+        final VmInstanceInventory vm = (VmInstanceInventory) data.get(VmInstanceConstant.VmInstanceParams.vmInventory.toString());
+        final VmNicInventory nic = (VmNicInventory) data.get(VmInstanceConstant.VmInstanceParams.VmNicInventory.toString());
+        final L3NetworkInventory l3Inv = (L3NetworkInventory)data.get(VmInstanceConstant.VmInstanceParams.L3NetworkInventory.toString());
 
         if (!vm.getState().equals(VmInstanceState.Running.toString())) {
             trigger.next();

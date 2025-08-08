@@ -7,16 +7,10 @@ import org.zstack.appliancevm.ApplianceVmConstant;
 import org.zstack.appliancevm.ApplianceVmInventory;
 import org.zstack.appliancevm.ApplianceVmSpec;
 import org.zstack.appliancevm.ApplianceVmVO;
-import org.zstack.core.CoreGlobalProperty;
-import org.zstack.core.Platform;
 import org.zstack.core.db.DatabaseFacade;
-import org.zstack.core.workflow.FlowChainBuilder;
-import org.zstack.core.workflow.ShareFlow;
-import org.zstack.header.core.Completion;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.rest.JsonAsyncRESTCallback;
 import org.zstack.header.rest.RESTFacade;
 import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmInstanceSpec;
@@ -27,10 +21,8 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
-import org.zstack.utils.network.NetworkUtils;
 
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import static org.zstack.core.Platform.operr;
 
@@ -51,7 +43,7 @@ public class VyosGetVersionFlow extends NoRollbackFlow {
 
     @Override
     public void run(FlowTrigger flowTrigger, Map flowData) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) flowData.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) flowData.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         String vrUuid;
         VmNicInventory mgmtNic;
 
@@ -59,10 +51,10 @@ public class VyosGetVersionFlow extends NoRollbackFlow {
             mgmtNic = vr.getManagementNic();
             vrUuid = vr.getUuid();
         } else {
-            final VmInstanceSpec spec = (VmInstanceSpec) flowData.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+            final VmInstanceSpec spec = (VmInstanceSpec) flowData.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
             vrUuid = spec.getVmInventory().getUuid();
             if (spec.getCurrentVmOperation() == VmInstanceConstant.VmOperation.NewCreate) {
-                final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.Params.applianceVmSpec.toString(), ApplianceVmSpec.class);
+                final ApplianceVmSpec aspec = spec.getExtensionData(ApplianceVmConstant.ApplianceVmParams.applianceVmSpec.toString(), ApplianceVmSpec.class);
                 mgmtNic = CollectionUtils.find(spec.getDestNics(), new Function<VmNicInventory, VmNicInventory>() {
                     @Override
                     public VmNicInventory call(VmNicInventory arg) {
@@ -76,7 +68,7 @@ public class VyosGetVersionFlow extends NoRollbackFlow {
             }
         }
 
-        flowData.put(VmInstanceConstant.Params.vmInstanceUuid.toString(), vrUuid);
+        flowData.put(VmInstanceConstant.VmInstanceParams.vmInstanceUuid.toString(), vrUuid);
         vyosVersionManager.vyosRouterVersionCheck(vrUuid, new ReturnValueCompletion<VyosVersionCheckResult>(flowTrigger) {
             @Override
             public void fail(ErrorCode errorCode) {
@@ -87,9 +79,9 @@ public class VyosGetVersionFlow extends NoRollbackFlow {
             public void success(VyosVersionCheckResult returnValue) {
                 if (returnValue.isNeedReconnect()) {
                     logger.warn(String.format("virtual router [uuid:%s] need to be reconnect: %s", vrUuid, JSONObjectUtil.toJsonString(returnValue)));
-                    flowData.put(ApplianceVmConstant.Params.isReconnect.toString(), Boolean.TRUE.toString());
-                    flowData.put(ApplianceVmConstant.Params.managementNicIp.toString(), mgmtNic.getIp());
-                    flowData.put(ApplianceVmConstant.Params.rebuildSnat.toString(), returnValue.isRebuildSnat());
+                    flowData.put(ApplianceVmConstant.ApplianceVmParams.isReconnect.toString(), Boolean.TRUE.toString());
+                    flowData.put(ApplianceVmConstant.ApplianceVmParams.managementNicIp.toString(), mgmtNic.getIp());
+                    flowData.put(ApplianceVmConstant.ApplianceVmParams.rebuildSnat.toString(), returnValue.isRebuildSnat());
                 }
                 flowTrigger.next();
             }

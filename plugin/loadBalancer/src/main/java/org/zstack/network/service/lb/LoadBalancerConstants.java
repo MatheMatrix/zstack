@@ -137,7 +137,7 @@ public class LoadBalancerConstants {
         HTTP_MODES.add(HTTP_MODE_HTTPCLOSE);
     }
 
-    public static enum Param {
+    public static enum LoadBalancerParam {
         LOAD_BALANCER_VO,
         LOAD_BALANCER_LISTENER_LOAD_BALANCER_SERVERGROUP,
     }

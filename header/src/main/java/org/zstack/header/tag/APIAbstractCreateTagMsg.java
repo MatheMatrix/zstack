@@ -13,7 +13,7 @@ public abstract class APIAbstractCreateTagMsg extends APIMessage {
     @APIParam(checkAccount = true, resourceType = ResourceVO.class)
     private String resourceUuid;
     @APIParam
-    @NoLogging(type = NoLogging.Type.Tag)
+    @NoLogging(type = NoLogging.LogMaskType.Tag)
     private String tag;
 
     public String getResourceType() {

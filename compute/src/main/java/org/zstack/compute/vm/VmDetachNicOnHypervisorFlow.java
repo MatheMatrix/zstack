@@ -28,7 +28,7 @@ public class VmDetachNicOnHypervisorFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         final String hostUuid = spec.getVmInventory().getHostUuid() == null ?
                 spec.getVmInventory().getLastHostUuid() :
                 spec.getVmInventory().getHostUuid();

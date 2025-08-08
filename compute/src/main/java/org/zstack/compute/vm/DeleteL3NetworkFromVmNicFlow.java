@@ -10,7 +10,6 @@ import org.zstack.core.db.DatabaseFacade;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.workflow.NoRollbackFlow;
 import org.zstack.header.message.MessageReply;
-import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.network.l3.UsedIpInventory;
 import org.zstack.header.vm.*;
 import org.zstack.utils.Utils;
@@ -30,9 +29,9 @@ public class DeleteL3NetworkFromVmNicFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, final Map data) {
-        final VmInstanceInventory vm = (VmInstanceInventory) data.get(VmInstanceConstant.Params.vmInventory.toString());
-        final VmNicInventory nic = (VmNicInventory) data.get(VmInstanceConstant.Params.VmNicInventory.toString());
-        final UsedIpInventory ip = (UsedIpInventory) data.get(VmInstanceConstant.Params.UsedIPInventory.toString());
+        final VmInstanceInventory vm = (VmInstanceInventory) data.get(VmInstanceConstant.VmInstanceParams.vmInventory.toString());
+        final VmNicInventory nic = (VmNicInventory) data.get(VmInstanceConstant.VmInstanceParams.VmNicInventory.toString());
+        final UsedIpInventory ip = (UsedIpInventory) data.get(VmInstanceConstant.VmInstanceParams.UsedIPInventory.toString());
 
         if (!vm.getState().equals(VmInstanceState.Running.toString())) {
             trigger.next();

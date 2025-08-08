@@ -32,7 +32,7 @@ public class LogSafeGson {
      */
     private static final Map<Class, Set<FieldNoLogging>> maskFields = new HashMap<>();
     /**
-     * field with annotation @NoLogging(behavior = NoLogging.Behavior.Auto) will be collect to this map
+     * field with annotation @NoLogging(behavior = NoLogging.LogMaskBehavior.Auto) will be collect to this map
      *
      * when serialize class with autoFields, the specific class will be found (for example, its super class) and
      * then execute serialize.
@@ -310,13 +310,13 @@ public class LogSafeGson {
         return results;
     }
 
-    public static Map<String, NoLogging.Type> getSensitiveFields(Class<?> clz) {
-        Map<String, NoLogging.Type> paths = new HashMap<>();
+    public static Map<String, NoLogging.LogMaskType> getSensitiveFields(Class<?> clz) {
+        Map<String, NoLogging.LogMaskType> paths = new HashMap<>();
         List<Field> fs = FieldUtils.getAllFields(clz);
         for (Field f : fs) {
             NoLogging an = f.getAnnotation(NoLogging.class);
-            if (an != null && an.type() == NoLogging.Type.Simple) {
-                paths.put(f.getName(), NoLogging.Type.Simple);
+            if (an != null && an.type() == NoLogging.LogMaskType.Simple) {
+                paths.put(f.getName(), NoLogging.LogMaskType.Simple);
             } else if (mayHasSensitiveInfo(f.getType()) && !f.getType().isEnum() && !f.getType().isAssignableFrom(clz)) {
                 String path = f.getName();
                 getSensitiveFields(f.getType()).forEach((k, v) -> paths.put(path + '.' + k, v));

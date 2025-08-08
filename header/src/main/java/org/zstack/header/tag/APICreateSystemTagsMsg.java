@@ -22,7 +22,7 @@ public class APICreateSystemTagsMsg extends APIMessage {
     @APIParam(checkAccount = true, resourceType = ResourceVO.class)
     private String resourceUuid;
     @APIParam(nonempty = true)
-    @NoLogging(type = NoLogging.Type.Tag)
+    @NoLogging(type = NoLogging.LogMaskType.Tag)
     private List<String> tags;
 
     public String getResourceType() {
