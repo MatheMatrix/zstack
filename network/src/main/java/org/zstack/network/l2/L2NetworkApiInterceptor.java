@@ -90,6 +90,25 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
                             otherL2s.get(0), l2.getPhysicalInterface()));
                 }
             }
+            Long bondedCount = SQL.New(
+                            "SELECT count(*) " +
+                                    "FROM HostNetworkInterfaceVO hni " +
+                                    "JOIN HostVO h ON hni.hostUuid = h.uuid " +
+                                    "WHERE hni.interfaceName = :physicalInterface " +
+                                    "AND h.clusterUuid = :clusterUuid " +
+                                    "AND hni.bondingUuid IS NOT NULL"
+                    )
+                    .param("physicalInterface", l2.getPhysicalInterface())
+                    .param("clusterUuid", msg.getClusterUuid())
+                    .find();
+
+            if (bondedCount != null && bondedCount > 0) {
+                throw new ApiMessageInterceptionException(argerr(
+                        "Can not attach L2 network to cluster[uuid:%s]: physical interface[%s] is used in a bond on one or more hosts",
+                        msg.getClusterUuid(),
+                        l2.getPhysicalInterface()
+                ));
+            }
         }
     }
 
