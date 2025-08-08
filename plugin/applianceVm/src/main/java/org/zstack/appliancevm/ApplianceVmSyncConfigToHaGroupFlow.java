@@ -38,7 +38,7 @@ public class ApplianceVmSyncConfigToHaGroupFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger chain, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         List<ApplianceVmSyncConfigToHaGroupExtensionPoint> exps = pluginRgty.getExtensionList(ApplianceVmSyncConfigToHaGroupExtensionPoint.class);
         if (exps == null || exps.isEmpty()) {
@@ -93,15 +93,15 @@ public class ApplianceVmSyncConfigToHaGroupFlow implements Flow {
             exp.applianceVmSyncConfigToHa(ApplianceVmInventory.valueOf(applianceVmVO), haUuid);
         }
 
-        data.put(VmInstanceConstant.Params.ApplianceVmSyncHaConfig_applianceVm.toString(), applianceVmVO);
-        data.put(VmInstanceConstant.Params.ApplianceVmSyncHaConfig_haUuid.toString(), haUuid);
+        data.put(VmInstanceConstant.VmInstanceParams.ApplianceVmSyncHaConfig_applianceVm.toString(), applianceVmVO);
+        data.put(VmInstanceConstant.VmInstanceParams.ApplianceVmSyncHaConfig_haUuid.toString(), haUuid);
         chain.next();
     }
 
     @Override
     public void rollback(FlowRollback trigger, Map data) {
-        ApplianceVmVO applianceVmVO = (ApplianceVmVO)data.get(VmInstanceConstant.Params.ApplianceVmSyncHaConfig_applianceVm.toString());
-        String haUuid = (String)data.get(VmInstanceConstant.Params.ApplianceVmSyncHaConfig_haUuid.toString());
+        ApplianceVmVO applianceVmVO = (ApplianceVmVO)data.get(VmInstanceConstant.VmInstanceParams.ApplianceVmSyncHaConfig_applianceVm.toString());
+        String haUuid = (String)data.get(VmInstanceConstant.VmInstanceParams.ApplianceVmSyncHaConfig_haUuid.toString());
 
         if (haUuid == null || applianceVmVO == null) {
             trigger.rollback();

@@ -82,8 +82,8 @@ class LiveMigrateVmCase extends SubCase {
             uuid = vm1.getUuid()
         } as GetVmCapabilitiesResult
 
-        assert !capRes.capabilities.get(VmInstanceConstant.Capability.LiveMigration.toString()) as Boolean
-        assert capRes.capabilities.get(VmInstanceConstant.Capability.VolumeMigration.toString()) as Boolean
+        assert !capRes.capabilities.get(VmInstanceConstant.VmCapability.LiveMigration.toString()) as Boolean
+        assert capRes.capabilities.get(VmInstanceConstant.VmCapability.VolumeMigration.toString()) as Boolean
 
         startVmInstance {
             uuid = vm1.uuid
@@ -96,15 +96,15 @@ class LiveMigrateVmCase extends SubCase {
         capRes = getVmCapabilities {
             uuid = vm1.getUuid()
         } as GetVmCapabilitiesResult
-        assert !capRes.capabilities.get(VmInstanceConstant.Capability.LiveMigration.toString()) as Boolean
-        assert !capRes.capabilities.get(VmInstanceConstant.Capability.VolumeMigration.toString()) as Boolean
+        assert !capRes.capabilities.get(VmInstanceConstant.VmCapability.LiveMigration.toString()) as Boolean
+        assert !capRes.capabilities.get(VmInstanceConstant.VmCapability.VolumeMigration.toString()) as Boolean
 
         // set true
         LocalStoragePrimaryStorageGlobalConfig.ALLOW_LIVE_MIGRATION.updateValue(Boolean.TRUE.toString())
         GetVmCapabilitiesResult capRes2 = getVmCapabilities {
             uuid = vm1.getUuid()
         } as GetVmCapabilitiesResult
-        assert capRes2.capabilities.get(VmInstanceConstant.Capability.LiveMigration.toString()) as Boolean
+        assert capRes2.capabilities.get(VmInstanceConstant.VmCapability.LiveMigration.toString()) as Boolean
 
         // record create empty volume cmd
         LocalStorageKvmBackend.CreateEmptyVolumeCmd cmd = null

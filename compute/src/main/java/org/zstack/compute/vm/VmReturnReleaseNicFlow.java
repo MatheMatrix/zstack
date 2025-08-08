@@ -37,7 +37,7 @@ public class VmReturnReleaseNicFlow extends NoRollbackFlow {
 
     @Override
     public void run(FlowTrigger chain, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         if (spec.getVmInventory().getVmNics().isEmpty()) {
             chain.next();
             return;
@@ -89,8 +89,8 @@ public class VmReturnReleaseNicFlow extends NoRollbackFlow {
     }
 
     private VmInstanceDeletionPolicy getDeletionPolicy(VmInstanceSpec spec, Map data) {
-        if (data.containsKey(VmInstanceConstant.Params.DeletionPolicy)) {
-            return (VmInstanceDeletionPolicy) data.get(VmInstanceConstant.Params.DeletionPolicy);
+        if (data.containsKey(VmInstanceConstant.VmInstanceParams.DeletionPolicy)) {
+            return (VmInstanceDeletionPolicy) data.get(VmInstanceConstant.VmInstanceParams.DeletionPolicy);
         }
 
         return deletionPolicyMgr.getDeletionPolicy(spec.getVmInventory().getUuid());

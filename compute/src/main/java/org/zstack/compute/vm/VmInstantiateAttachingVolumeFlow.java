@@ -37,13 +37,13 @@ public class VmInstantiateAttachingVolumeFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger chain, final Map ctx) {
-        final VolumeInventory volume = (VolumeInventory) ctx.get(VmInstanceConstant.Params.AttachingVolumeInventory.toString());
-        final VmInstanceSpec spec = (VmInstanceSpec) ctx.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VolumeInventory volume = (VolumeInventory) ctx.get(VmInstanceConstant.VmInstanceParams.AttachingVolumeInventory.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) ctx.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         assert volume != null;
         assert spec != null;
 
-        final PrimaryStorageInventory pinv = (PrimaryStorageInventory) ctx.get(VmInstanceConstant.Params.DestPrimaryStorageInventoryForAttachingVolume.toString());
-        final String allocatedUrl = (String) ctx.get(VmInstanceConstant.Params.AllocatedUrlForAttachingVolume.toString());
+        final PrimaryStorageInventory pinv = (PrimaryStorageInventory) ctx.get(VmInstanceConstant.VmInstanceParams.DestPrimaryStorageInventoryForAttachingVolume.toString());
+        final String allocatedUrl = (String) ctx.get(VmInstanceConstant.VmInstanceParams.AllocatedUrlForAttachingVolume.toString());
 
         PrimaryStorageHostStatus status = Q.New(PrimaryStorageHostRefVO.class)
                 .eq(PrimaryStorageHostRefVO_.hostUuid, spec.getDestHost().getUuid())
@@ -70,7 +70,7 @@ public class VmInstantiateAttachingVolumeFlow extends NoRollbackFlow {
                 if (!reply.isSuccess()) {
                     chain.fail(reply.getError());
                 } else {
-                    ctx.put(VmInstanceConstant.Params.AttachingVolumeInventory.toString(), ((InstantiateVolumeReply)reply).getVolume());
+                    ctx.put(VmInstanceConstant.VmInstanceParams.AttachingVolumeInventory.toString(), ((InstantiateVolumeReply)reply).getVolume());
                     chain.next();
                 }
             }

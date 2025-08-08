@@ -13,8 +13,6 @@ import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.core.workflow.Flow;
 import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
-import org.zstack.header.errorcode.OperationFailureException;
-import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmInstanceSpec;
 import org.zstack.header.volume.VolumeInventory;
@@ -54,19 +52,19 @@ public class VmAssignDeviceIdToAttachingVolumeFlow implements Flow {
 
     @Override
     public void run(FlowTrigger chain, Map ctx) {
-        final VolumeInventory volume = (VolumeInventory) ctx.get(VmInstanceConstant.Params.AttachingVolumeInventory.toString());
-        final VmInstanceSpec spec = (VmInstanceSpec) ctx.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VolumeInventory volume = (VolumeInventory) ctx.get(VmInstanceConstant.VmInstanceParams.AttachingVolumeInventory.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) ctx.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         VolumeVO dvol = dbf.findByUuid(volume.getUuid(), VolumeVO.class);
         dvol.setDeviceId(volume.getDeviceId() != null ? volume.getDeviceId() : new NextVolumeDeviceIdGetter().getNextVolumeDeviceId(spec.getVmInventory().getUuid()));
         dvol = dbf.updateAndRefresh(dvol);
-        ctx.put(VmInstanceConstant.Params.AttachingVolumeInventory.toString(), VolumeInventory.valueOf(dvol));
+        ctx.put(VmInstanceConstant.VmInstanceParams.AttachingVolumeInventory.toString(), VolumeInventory.valueOf(dvol));
         chain.next();
     }
 
     @Override
     public void rollback(FlowRollback chain, Map data) {
-        final VolumeInventory volume = (VolumeInventory) data.get(VmInstanceConstant.Params.AttachingVolumeInventory.toString());
+        final VolumeInventory volume = (VolumeInventory) data.get(VmInstanceConstant.VmInstanceParams.AttachingVolumeInventory.toString());
         VolumeVO dvol = dbf.findByUuid(volume.getUuid(), VolumeVO.class);
         dvol.setDeviceId(null);
         dbf.update(dvol);

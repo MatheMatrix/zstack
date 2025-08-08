@@ -21,7 +21,6 @@ import org.zstack.network.service.portforwarding.*;
 import org.zstack.network.service.virtualrouter.*;
 import org.zstack.network.service.virtualrouter.VirtualRouterCommands.SyncPortForwardingRuleCmd;
 import org.zstack.network.service.virtualrouter.VirtualRouterCommands.SyncPortForwardingRuleRsp;
-import org.zstack.network.service.virtualrouter.VirtualRouterConstant.Param;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
@@ -147,7 +146,7 @@ public class VirtualRouterSyncPortForwardingRulesOnStartFlow implements Flow {
     
     @Override
     public void run(final FlowTrigger chain, Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         List<VmNicInventory> guestNics = vr.getGuestNics();
         if (guestNics == null || guestNics.isEmpty()) {
             chain.next();
@@ -166,7 +165,7 @@ public class VirtualRouterSyncPortForwardingRulesOnStartFlow implements Flow {
 
         new VirtualRouterRoleManager().makePortForwardingRole(vr.getUuid());
 
-        boolean isNewCreated = data.containsKey(Param.IS_NEW_CREATED.toString());
+        boolean isNewCreated = data.containsKey(VirtualRouterConstant.VirtualRouterParam.IS_NEW_CREATED.toString());
 
         List<PortForwardingRuleVO> ruleVOs = findRulesForThisRouter(vr, data, isNewCreated);
         if (ruleVOs.isEmpty()) {
@@ -217,7 +216,7 @@ public class VirtualRouterSyncPortForwardingRulesOnStartFlow implements Flow {
 
     @Override
     public void rollback(FlowRollback chain, Map data) {
-        VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         List<String> ruleUuids = (List<String>) data.get(VirtualRouterSyncPortForwardingRulesOnStartFlow.class.getName());
         if (ruleUuids != null) {
             proxy.detachNetworkService(vr.getUuid(), PortForwardingRuleVO.class.getSimpleName(), ruleUuids);

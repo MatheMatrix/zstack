@@ -61,7 +61,7 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
         reScanHost();
     }
 
-    enum ReconnectDecision {
+    enum HostReconnectDecision {
         DoNothing,
         ReconnectNow,
         SubmitReconnectTask,
@@ -142,49 +142,49 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
                     decideWhatToDoNext(makeReconnectDecision(reply));
                 }
 
-                private ReconnectDecision makeReconnectDecision(MessageReply reply) {
+                private HostReconnectDecision makeReconnectDecision(MessageReply reply) {
                     if (!reply.isSuccess()) {
                         logger.warn(String.format("[Host Tracker]: unable track host[uuid:%s], %s", uuid, reply.getError()));
-                        return ReconnectDecision.DoNothing;
+                        return HostReconnectDecision.DoNothing;
                     }
 
                     PingHostReply r = reply.castReply();
                     if (r.isNoReconnect()) {
-                        return ReconnectDecision.DoNothing;
+                        return HostReconnectDecision.DoNothing;
                     }
 
                     AtomicInteger disconnectCount = hostDisconnectCount.get(uuid);
                     int threshold = HostGlobalConfig.AUTO_RECONNECT_ON_ERROR_MAX_ATTEMPT_NUM.value(Integer.class);
                     if (threshold > 0 && disconnectCount != null && disconnectCount.get() >= threshold) {
                         logger.warn(String.format("stop pinging host[uuid:%s, hypervisorType:%s] because it fail to reconnect too many times", uuid, hypervisorType));
-                        return ReconnectDecision.StopPing;
+                        return HostReconnectDecision.StopPing;
                     }
 
                     boolean autoReconnect = HostGlobalConfig.AUTO_RECONNECT_ON_ERROR.value(Boolean.class);
                     if (!r.isConnected() && autoReconnect) {
-                        return ReconnectDecision.SubmitReconnectTask;
+                        return HostReconnectDecision.SubmitReconnectTask;
                     }
 
                     // host can be successfully pinged
                     if (r.getCurrentHostStatus().equals(HostStatus.Disconnected.toString())) {
                         if (autoReconnect) {
-                            return ReconnectDecision.ReconnectNow;
+                            return HostReconnectDecision.ReconnectNow;
                         } else {
                             logger.warn(String.format("stop pinging host[uuid:%s, hypervisorType:%s] because it's disconnected and connection.autoReconnectOnError is false", uuid, hypervisorType));
-                            return ReconnectDecision.StopPing;
+                            return HostReconnectDecision.StopPing;
                         }
                     }
 
                     // host can be pinged and the current status is Connected
-                    return ReconnectDecision.DoNothing;
+                    return HostReconnectDecision.DoNothing;
                 }
             });
         }
 
-        private void decideWhatToDoNext(ReconnectDecision decision) {
-            if (decision == ReconnectDecision.DoNothing) {
+        private void decideWhatToDoNext(HostReconnectDecision decision) {
+            if (decision == HostReconnectDecision.DoNothing) {
                 continueToRunThisTimer();
-            } else if (decision == ReconnectDecision.ReconnectNow) {
+            } else if (decision == HostReconnectDecision.ReconnectNow) {
                 reconnectNow(uuid, new Completion(new NoErrorCompletion() {
                     @Override
                     public void done() {
@@ -201,9 +201,9 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
                         submitReconnectTask(errorCode);
                     }
                 });
-            } else if (decision == ReconnectDecision.StopPing) {
+            } else if (decision == HostReconnectDecision.StopPing) {
                 cancel();
-            } else if (decision == ReconnectDecision.SubmitReconnectTask) {
+            } else if (decision == HostReconnectDecision.SubmitReconnectTask) {
                 submitReconnectTask(null);
             } else {
                 throw new CloudRuntimeException("should not be here");

@@ -54,7 +54,7 @@ public class VirtualRouterSyncDnsOnStartFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger chain, final Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
 
         if (!VyosConstants.VYOS_VM_TYPE.equals(vr.getApplianceVmType()) && !VirtualRouterConstant.VIRTUAL_ROUTER_VM_TYPE.equals(vr.getApplianceVmType())) {
             chain.next();

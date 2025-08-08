@@ -7,8 +7,6 @@ import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.componentloader.ComponentLoader;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.header.identity.SessionInventory;
-import org.zstack.header.image.ImageConstant;
-import org.zstack.header.image.ImageVO;
 import org.zstack.header.vm.*;
 import org.zstack.storage.primary.local.*;
 import org.zstack.test.Api;
@@ -63,8 +61,8 @@ public class TestGetVmCapabilities {
 
         Map<String, Object> cap = api.getVmCapabilities(vm.getUuid(), null);
 
-        Assert.assertFalse((Boolean) cap.get(VmInstanceConstant.Capability.LiveMigration.toString()));
-        Assert.assertTrue((Boolean) cap.get(VmInstanceConstant.Capability.VolumeMigration.toString()));
-        Assert.assertTrue((Boolean) cap.get(VmInstanceConstant.Capability.Reimage.toString()));
+        Assert.assertFalse((Boolean) cap.get(VmInstanceConstant.VmCapability.LiveMigration.toString()));
+        Assert.assertTrue((Boolean) cap.get(VmInstanceConstant.VmCapability.VolumeMigration.toString()));
+        Assert.assertTrue((Boolean) cap.get(VmInstanceConstant.VmCapability.Reimage.toString()));
     }
 }

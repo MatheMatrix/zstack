@@ -20,8 +20,6 @@ import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.exception.CloudRuntimeException;
-import org.zstack.header.image.ImageConstant;
-import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmInstanceSpec;
@@ -58,7 +56,7 @@ public class VmAllocateVolumeFlow implements Flow {
     protected List<CreateVolumeMsg> prepareMsg(Map<String, Object> ctx) {
         taskProgress("create volumes");
 
-        VmInstanceSpec spec = (VmInstanceSpec) ctx.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) ctx.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         String accountUuid = acntMgr.getOwnerAccountUuidOfResource(spec.getVmInventory().getUuid());
         if (accountUuid == null) {
@@ -134,7 +132,7 @@ public class VmAllocateVolumeFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger trigger, final Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         List<CreateVolumeMsg> msgs = prepareMsg(data);
         bus.send(msgs, 1, new CloudBusListCallBack(trigger) {
             @Override
@@ -176,7 +174,7 @@ public class VmAllocateVolumeFlow implements Flow {
 
     @Override
     public void rollback(final FlowRollback chain, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         List<VolumeInventory> destVolumes = new ArrayList<>(spec.getDestDataVolumes().size() + 1);
         if (spec.getDestRootVolume() != null) {
             destVolumes.add(spec.getDestRootVolume());

@@ -23,7 +23,7 @@ public class VmReturnHostFlow extends NoRollbackFlow {
     
     @Override
     public void run(FlowTrigger chain, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         if (spec.getVmInventory().getHostUuid() == null) {
             // the vm failed because no host available at that time or the vm is stopped

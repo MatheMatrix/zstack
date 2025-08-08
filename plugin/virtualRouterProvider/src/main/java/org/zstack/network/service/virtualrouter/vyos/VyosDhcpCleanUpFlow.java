@@ -15,7 +15,7 @@ import java.util.Map;
 public class VyosDhcpCleanUpFlow extends NoRollbackFlow {
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        final VmInstanceInventory vrInv = (VmInstanceInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VmInstanceInventory vrInv = (VmInstanceInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         for (VmNicInventory nic : vrInv.getVmNics()) {
             String uuid = L3NetworkSystemTags.PUBLIC_NETWORK_DHCP_SERVER_UUID.getTokenByResourceUuid(nic.getL3NetworkUuid(), L3NetworkSystemTags.PUBLIC_NETWORK_DHCP_SERVER_UUID_TOKEN);
             if (uuid == null) {

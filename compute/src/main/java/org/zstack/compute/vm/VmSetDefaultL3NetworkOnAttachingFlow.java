@@ -12,9 +12,7 @@ import org.zstack.header.vm.*;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Created by frank on 7/19/2015.
@@ -27,7 +25,7 @@ public class VmSetDefaultL3NetworkOnAttachingFlow implements Flow {
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         if (spec.getVmInventory().getDefaultL3NetworkUuid() != null) {
             trigger.next();
             return;
@@ -45,7 +43,7 @@ public class VmSetDefaultL3NetworkOnAttachingFlow implements Flow {
     @Override
     public void rollback(FlowRollback trigger, Map data) {
         if (data.containsKey(VmSetDefaultL3NetworkOnAttachingFlow.class)) {
-            VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+            VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
             VmInstanceVO vm = dbf.findByUuid(spec.getVmInventory().getUuid(), VmInstanceVO.class);
             vm.setDefaultL3NetworkUuid(null);
             dbf.update(vm);

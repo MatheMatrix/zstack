@@ -118,14 +118,14 @@ public class VyosConnectFlow extends NoRollbackFlow {
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         String vrUuid;
         VmNicInventory mgmtNic;
         if (vr != null) {
             mgmtNic = vr.getManagementNic();
             vrUuid = vr.getUuid();
         } else {
-            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
             vrUuid = spec.getVmInventory().getUuid();
             ApplianceVmInventory applianceVm = ApplianceVmInventory.valueOf(dbf.findByUuid(vrUuid, ApplianceVmVO.class));
             mgmtNic = applianceVm.getManagementNic();
@@ -283,14 +283,14 @@ public class VyosConnectFlow extends NoRollbackFlow {
 
     @Override
     public void rollback(FlowRollback trigger, Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VirtualRouterParam.VR.toString());
         final String vrUuid;
         VmNicInventory mgmtNic;
         if (vr != null) {
             mgmtNic = vr.getManagementNic();
             vrUuid = vr.getUuid();
         } else {
-            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+            final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
             ApplianceVmInventory applianceVm = ApplianceVmInventory.valueOf(dbf.findByUuid(spec.getVmInventory().getUuid(), ApplianceVmVO.class));
             mgmtNic = applianceVm.getManagementNic();
             vrUuid = spec.getVmInventory().getUuid();
