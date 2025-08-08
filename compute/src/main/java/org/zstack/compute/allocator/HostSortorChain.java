@@ -195,7 +195,7 @@ public class HostSortorChain implements HostSortorStrategy {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (selectedHost.get() == null) {
-                    completion.fail(errorCodeList);
+                    completion.fail(errorCodeList.getCauses().get(0));
                     return;
                 }
                 completion.success(selectedHost.get());
