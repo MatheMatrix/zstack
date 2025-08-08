@@ -190,6 +190,16 @@ public class AccountBase extends AbstractAccount {
                     }
                 });
 
+                flow(new NoRollbackFlow() {
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        List<RemoveResourceExtensionPoint> exts = pluginRgty.getExtensionList(RemoveResourceExtensionPoint.class);
+                        for(RemoveResourceExtensionPoint ext : exts) {
+                            ext.removeAssociatedResourceConfig(self.getUuid());
+                        }
+                    }
+                });
+
                 done(new FlowDoneHandler(completion) {
                     @Override
                     public void handle(Map data) {
