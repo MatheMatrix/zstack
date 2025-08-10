@@ -561,7 +561,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     throw new ApiMessageInterceptionException(argerr("ip address [%s] already set to vmNic [uuid:%s]",
                             ip, vmNicVO.getUuid()));
                 }
-                if (!l3NetworkVO.enableIpAllocation()) {
+                if (!l3NetworkVO.getEnableIPAM()) {
                     continue;
                 }
                 // check if the ip is in the ip range when ipam is enabled
@@ -589,7 +589,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     throw new ApiMessageInterceptionException(argerr("ip address [%s] already set to vmNic [uuid:%s]",
                             ip, vmNicVO.getUuid()));
                 }
-                if (!l3NetworkVO.enableIpAllocation()) {
+                if (!l3NetworkVO.getEnableIPAM()) {
                     continue;
                 }
                 NormalIpRangeVO rangeVO = dbf.findByUuid(ipVo.getIpRangeUuid(), NormalIpRangeVO.class);
@@ -604,7 +604,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
     private void validate(APISetVmStaticIpMsg msg) {
         L3NetworkVO l3NetworkVO = Q.New(L3NetworkVO.class).eq(L3NetworkVO_.uuid, msg.getL3NetworkUuid()).find();
         if (msg.getIp() == null && msg.getIp6() == null) {
-            if(l3NetworkVO.enableIpAllocation()) {
+            if (l3NetworkVO.getEnableIPAM()) {
                 throw new ApiMessageInterceptionException(argerr("could not set ip address, due to no ip address is specified"));
             }
         }
@@ -635,7 +635,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 msg.setIp6(ip6);
             }
         }
-        if (msg.getIp() != null && !l3NetworkVO.enableIpAllocation()) {
+        if (msg.getIp() != null && !l3NetworkVO.getEnableIPAM()) {
             l3Found = true;
             if (msg.getNetmask() == null) {
                 if (ipv4Ranges.isEmpty()) {
@@ -652,7 +652,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 }
             }
         }
-        if (msg.getIp6() != null && !l3NetworkVO.enableIpAllocation()) {
+        if (msg.getIp6() != null && !l3NetworkVO.getEnableIPAM()) {
             l3Found = true;
             if (msg.getIpv6Prefix() == null) {
                 if (ipv6Ranges.isEmpty()) {
