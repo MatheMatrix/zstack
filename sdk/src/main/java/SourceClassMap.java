@@ -279,7 +279,6 @@ public class SourceClassMap {
 			put("org.zstack.header.identity.QuotaInventory", "org.zstack.sdk.QuotaInventory");
 			put("org.zstack.header.identity.SessionInventory", "org.zstack.sdk.SessionInventory");
 			put("org.zstack.header.identity.SharedResourceInventory", "org.zstack.sdk.SharedResourceInventory");
-			put("org.zstack.header.identity.StatementEffect", "org.zstack.sdk.PolicyStatementEffect");
 			put("org.zstack.header.identity.UserGroupInventory", "org.zstack.sdk.UserGroupInventory");
 			put("org.zstack.header.identity.UserInventory", "org.zstack.sdk.UserInventory");
 			put("org.zstack.header.identity.login.LoginAuthenticationProcedureDesc", "org.zstack.sdk.LoginAuthenticationProcedureDesc");
@@ -456,7 +455,6 @@ public class SourceClassMap {
 			put("org.zstack.iam2.entity.IAM2VirtualIDInventory", "org.zstack.sdk.iam2.entity.IAM2VirtualIDInventory");
 			put("org.zstack.iam2.entity.OrganizationType", "org.zstack.sdk.iam2.entity.OrganizationType");
 			put("org.zstack.iam2.entity.ProjectState", "org.zstack.sdk.iam2.entity.ProjectState");
-			put("org.zstack.iam2.entity.State", "org.zstack.sdk.iam2.entity.State");
 			put("org.zstack.iam2.entity.StateEvent", "org.zstack.sdk.iam2.entity.StateEvent");
 			put("org.zstack.iam2.project.template.Template", "org.zstack.sdk.iam2.project.template.Template");
 			put("org.zstack.imagereplicator.ImageReplicationGroupBackupStorageRefInventory", "org.zstack.sdk.ImageReplicationGroupBackupStorageRefInventory");
@@ -799,9 +797,6 @@ public class SourceClassMap {
 			put("org.zstack.zwatch.datatype.AlarmData", "org.zstack.sdk.zwatch.datatype.AlarmData");
 			put("org.zstack.zwatch.datatype.AlarmDataV1", "org.zstack.sdk.zwatch.datatype.AlarmDataV1");
 			put("org.zstack.zwatch.datatype.AlarmDataV2", "org.zstack.sdk.zwatch.datatype.AlarmDataV2");
-			put("org.zstack.zwatch.datatype.AuditData", "org.zstack.sdk.zwatch.datatype.AuditData");
-			put("org.zstack.zwatch.datatype.AuditDataV1", "org.zstack.sdk.zwatch.datatype.AuditDataV1");
-			put("org.zstack.zwatch.datatype.AuditDataV2", "org.zstack.sdk.zwatch.datatype.AuditDataV2");
 			put("org.zstack.zwatch.datatype.AuditType", "org.zstack.sdk.zwatch.datatype.AuditType");
 			put("org.zstack.zwatch.datatype.Datapoint", "org.zstack.sdk.zwatch.datatype.Datapoint");
 			put("org.zstack.zwatch.datatype.EmergencyLevel", "org.zstack.sdk.zwatch.datatype.EmergencyLevel");
@@ -882,6 +877,9 @@ public class SourceClassMap {
 			put("org.zstack.sdk.ApplicationDevelopmentServiceInventory", "org.zstack.ai.entity.ApplicationDevelopmentServiceInventory");
 			put("org.zstack.sdk.AttachTagResult", "org.zstack.tag2.AttachTagResult");
 			put("org.zstack.sdk.AttributePurpose", "org.zstack.sso.header.AttributePurpose");
+			put("org.zstack.sdk.AuditData", "org.zstack.header.zwatch.AuditData");
+			put("org.zstack.sdk.AuditDataV1", "org.zstack.header.zwatch.AuditDataV1");
+			put("org.zstack.sdk.AuditDataV2", "org.zstack.header.zwatch.AuditDataV2");
 			put("org.zstack.sdk.AutoScalingGroupActivityInventory", "org.zstack.autoscaling.group.activity.AutoScalingGroupActivityInventory");
 			put("org.zstack.sdk.AutoScalingGroupInstanceInventory", "org.zstack.autoscaling.group.instance.AutoScalingGroupInstanceInventory");
 			put("org.zstack.sdk.AutoScalingGroupInventory", "org.zstack.autoscaling.group.AutoScalingGroupInventory");
@@ -1560,7 +1558,6 @@ public class SourceClassMap {
 			put("org.zstack.sdk.iam2.entity.IAM2VirtualIDInventory", "org.zstack.iam2.entity.IAM2VirtualIDInventory");
 			put("org.zstack.sdk.iam2.entity.OrganizationType", "org.zstack.iam2.entity.OrganizationType");
 			put("org.zstack.sdk.iam2.entity.ProjectState", "org.zstack.iam2.entity.ProjectState");
-			put("org.zstack.sdk.iam2.entity.State", "org.zstack.iam2.entity.State");
 			put("org.zstack.sdk.iam2.entity.StateEvent", "org.zstack.iam2.entity.StateEvent");
 			put("org.zstack.sdk.iam2.project.template.Template", "org.zstack.iam2.project.template.Template");
 			put("org.zstack.sdk.identity.role.RoleInventory", "org.zstack.header.identity.role.RoleInventory");
