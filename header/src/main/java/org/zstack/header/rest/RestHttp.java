@@ -160,6 +160,14 @@ public class RestHttp<T> {
         return callWithErrorCode(HttpMethod.DELETE);
     }
 
+    public T patch() {
+        return call(HttpMethod.PATCH);
+    }
+
+    public ErrorableValue<T> patchWithErrorCode() {
+        return callWithErrorCode(HttpMethod.PATCH);
+    }
+
     public T call(HttpMethod method) {
         this.method = method;
         DebugUtils.Assert(this.handler != null, "handler cannot be null");
