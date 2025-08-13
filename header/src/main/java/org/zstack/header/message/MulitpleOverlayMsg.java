@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MulitpleOverlayMsg extends NeedReplyMessage {
-    @NoLogging(behavior = NoLogging.Behavior.Auto)
+    @NoLogging(behavior = NoLogging.LogMaskBehavior.Auto)
     protected List<Object> messages;
     protected String messageClassName;
 

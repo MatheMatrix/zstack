@@ -60,7 +60,7 @@ public class VmAllocateHostAndPrimaryStorageFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger trigger, final Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         if (spec.getImageSpec().relyOnImageCache()) {
             String imageUuid = spec.getImageSpec().getInventory().getUuid();
@@ -191,18 +191,18 @@ public class VmAllocateHostAndPrimaryStorageFlow implements Flow {
 
     @Override
     public void rollback(final FlowRollback chain, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         FlowChain rollbackChain = FlowChainBuilder.newShareFlowChain();
         rollbackChain.setName(String.format("rollback-allocate-host-and-ps-for-vm-%s", spec.getVmInventory().getUuid()));
-        rollbackChain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        rollbackChain.getData().put(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString(), spec);
         rollbackChain.then(new ShareFlow() {
             @Override
             public void setup() {
                 flow(new NoRollbackFlow() {
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+                        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
                         for (VmInstanceSpec.VolumeSpec vspec : spec.getVolumeSpecs()) {
                             if (vspec.isVolumeCreated()) {
                                 // don't return capacity as it has been returned when the volume is deleted
@@ -222,7 +222,7 @@ public class VmAllocateHostAndPrimaryStorageFlow implements Flow {
                 flow(new NoRollbackFlow() {
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+                        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
                         HostInventory host = spec.getDestHost();
 
                         // if ChangeImage, then no need to ReturnHostCapacity, and resume vm info
@@ -269,7 +269,7 @@ public class VmAllocateHostAndPrimaryStorageFlow implements Flow {
             public Flow marshalTheNextFlow(String previousFlowClassName, String nextFlowClassName, FlowChain chain, Map data) {
                 Flow nflow = null;
                 for (MarshalVmOperationFlowExtensionPoint mext : pluginRgty.getExtensionList(MarshalVmOperationFlowExtensionPoint.class)) {
-                    VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+                    VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
                     nflow = mext.marshalVmOperationFlow(previousFlowClassName, nextFlowClassName, chain, spec);
                     if (nflow != null) {
                         logger.debug(String.format("a VM[uuid: %s, operation: %s] operation flow[%s] is changed to the flow[%s] by %s",
@@ -387,7 +387,7 @@ public class VmAllocateHostAndPrimaryStorageFlow implements Flow {
     private FlowChain buildAllocateHostAndPrimaryStorageFlowChain(final FlowTrigger trigger, VmInstanceSpec spec) {
         FlowChain chain = FlowChainBuilder.newShareFlowChain();
         chain.setName(String.format("allocate-host-and-ps-for-vm-%s", spec.getVmInventory().getUuid()));
-        chain.getData().put(VmInstanceConstant.Params.VmInstanceSpec.toString(), spec);
+        chain.getData().put(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString(), spec);
         chain.then(new ShareFlow() {
             @Override
             public void setup() {

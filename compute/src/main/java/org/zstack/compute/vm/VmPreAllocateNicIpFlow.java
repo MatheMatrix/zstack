@@ -24,8 +24,8 @@ public class VmPreAllocateNicIpFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, final Map data) {
-        final L3NetworkInventory l3 = (L3NetworkInventory) data.get(VmInstanceConstant.Params.L3NetworkInventory.toString());
-        final VmInstanceInventory vm = (VmInstanceInventory) data.get(VmInstanceConstant.Params.vmInventory.toString());
+        final L3NetworkInventory l3 = (L3NetworkInventory) data.get(VmInstanceConstant.VmInstanceParams.L3NetworkInventory.toString());
+        final VmInstanceInventory vm = (VmInstanceInventory) data.get(VmInstanceConstant.VmInstanceParams.vmInventory.toString());
 
         /* vmnic is not bound to vm instance */
         if (vm == null) {

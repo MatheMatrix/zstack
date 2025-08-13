@@ -13,8 +13,7 @@ import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.vm.VmInstanceConstant;
-import org.zstack.header.vm.VmInstanceConstant.Params;
+import org.zstack.header.vm.VmInstanceConstant.VmInstanceParams;
 import org.zstack.header.vm.VmInstanceDeletionPolicyManager.VmInstanceDeletionPolicy;
 import org.zstack.header.vm.VmInstanceSpec;
 import org.zstack.header.volume.*;
@@ -43,7 +42,7 @@ public class VmDeleteVolumeFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceParams.VmInstanceSpec.toString());
         final boolean deleteDataDisk = VmGlobalConfig.DELETE_DATA_VOLUME_ON_VM_DESTROY.value(Boolean.class);
 
         /* data volume must be detached anyway no matter if it is going to be deleted */
@@ -51,7 +50,7 @@ public class VmDeleteVolumeFlow extends NoRollbackFlow {
             detachDataVolumes(spec);
         }
 
-        final VmInstanceDeletionPolicy deletionPolicy = (VmInstanceDeletionPolicy) data.get(Params.DeletionPolicy);
+        final VmInstanceDeletionPolicy deletionPolicy = (VmInstanceDeletionPolicy) data.get(VmInstanceParams.DeletionPolicy);
 
         if (deletionPolicy.equals(VmInstanceDeletionPolicy.KeepVolume)) {
             trigger.next();

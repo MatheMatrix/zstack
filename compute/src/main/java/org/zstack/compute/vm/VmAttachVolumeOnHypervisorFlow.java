@@ -16,11 +16,9 @@ import org.zstack.header.core.ExceptionSafe;
 import org.zstack.header.core.workflow.Flow;
 import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
-import org.zstack.header.host.*;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.devices.VirtualDeviceInfo;
-import org.zstack.header.vm.devices.VmInstanceDeviceManager;
 import org.zstack.header.volume.VolumeInventory;
 
 import java.util.List;
@@ -41,9 +39,9 @@ public class VmAttachVolumeOnHypervisorFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger chain, Map ctx) {
-        final VolumeInventory volume = (VolumeInventory) ctx.get(VmInstanceConstant.Params.AttachingVolumeInventory.toString());
-        final List<VolumeInventory> attachedDataVolumes = (List<VolumeInventory>) ctx.get(VmInstanceConstant.Params.AttachedDataVolumeInventories.toString());
-        final VmInstanceSpec spec = (VmInstanceSpec) ctx.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VolumeInventory volume = (VolumeInventory) ctx.get(VmInstanceConstant.VmInstanceParams.AttachingVolumeInventory.toString());
+        final List<VolumeInventory> attachedDataVolumes = (List<VolumeInventory>) ctx.get(VmInstanceConstant.VmInstanceParams.AttachedDataVolumeInventories.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) ctx.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         assert volume != null;
         assert spec != null;
         assert attachedDataVolumes != null;

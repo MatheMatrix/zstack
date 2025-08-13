@@ -36,10 +36,10 @@ public class ManInTheMiddleService extends AbstractService {
     @Override
     public void handleMessage(Message msg) {
         String behavior = msg.getHeaderEntry(CloudBusAopProxy.MESSAGE_BEHAVIOR);
-        if (CloudBusAopProxy.Behavior.FAIL.toString().equals(behavior)) {
+        if (CloudBusAopProxy.CloudBusBehavior.FAIL.toString().equals(behavior)) {
             ErrorCode err = operr("unit test asks it to fail");
             bus.replyErrorByMessageType(msg, err);
-        } else if (CloudBusAopProxy.Behavior.TIMEOUT.toString().equals(behavior)) {
+        } else if (CloudBusAopProxy.CloudBusBehavior.TIMEOUT.toString().equals(behavior)) {
             logger.debug(String.format("drop message[%s, %s] as unit test ask it to time out", msg.getMessageName(), msg.getId()));
         } else {
             bus.dealWithUnknownMessage(msg);

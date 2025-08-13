@@ -6,15 +6,11 @@ import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.db.DatabaseFacade;
-import org.zstack.core.errorcode.ErrorFacade;
-import org.zstack.header.core.workflow.Flow;
-import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.workflow.NoRollbackFlow;
 import org.zstack.header.host.HostConstant;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.vm.RebootVmOnHypervisorMsg;
-import org.zstack.header.vm.VmBootDevice;
 import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmInstanceSpec;
 
@@ -29,7 +25,7 @@ public class VmRebootOnHypervisorFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger chain, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         RebootVmOnHypervisorMsg msg = new RebootVmOnHypervisorMsg();
         msg.setVmInventory(spec.getVmInventory());
         msg.setBootOrders(spec.getBootOrders());

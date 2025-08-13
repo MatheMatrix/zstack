@@ -19,7 +19,7 @@ public class VyosRefreshDchpServerFlow extends NoRollbackFlow {
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VRouterParam.VR.toString());
 
         dhcpBackend.refreshDhcpServer(vr.getUuid(), new Completion(trigger) {
             @Override

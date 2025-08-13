@@ -37,7 +37,7 @@ public class TestCloudBusProxy {
 
     @Test
     public void test() throws InterruptedException {
-        aop.addMessage(NeedReplyMessage.class, CloudBusAopProxy.Behavior.FAIL);
+        aop.addMessage(NeedReplyMessage.class, CloudBusAopProxy.CloudBusBehavior.FAIL);
 
         List<FakeNeedReplyMessage> msgs = new ArrayList<FakeNeedReplyMessage>(2);
         FakeNeedReplyMessage msg = new FakeNeedReplyMessage();
@@ -67,7 +67,7 @@ public class TestCloudBusProxy {
 
         Assert.assertTrue(isSuccess);
 
-        aop.addMessage(NeedReplyMessage.class, CloudBusAopProxy.Behavior.TIMEOUT);
+        aop.addMessage(NeedReplyMessage.class, CloudBusAopProxy.CloudBusBehavior.TIMEOUT);
         msgs.clear();
         msg = new FakeNeedReplyMessage();
         msg.setServiceId("A fake service id not needed");

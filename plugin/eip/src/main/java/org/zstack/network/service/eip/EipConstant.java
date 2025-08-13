@@ -1,7 +1,6 @@
 package org.zstack.network.service.eip;
 
 import org.zstack.header.network.service.NetworkServiceType;
-import org.zstack.header.vm.VmInstance;
 import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmInstanceState;
 
@@ -19,7 +18,7 @@ public interface EipConstant {
 
     public static final NetworkServiceType EIP_TYPE = new NetworkServiceType(EIP_NETWORK_SERVICE_TYPE);
 
-    public static enum Params {
+    public static enum EipParams {
         NETWORK_SERVICE_PROVIDER_TYPE,
         EIP_STRUCT,
         NEED_LOCK_VIP,

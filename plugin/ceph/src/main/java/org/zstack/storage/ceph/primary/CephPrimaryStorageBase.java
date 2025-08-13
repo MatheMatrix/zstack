@@ -874,7 +874,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         public String hostUuid;
         public String userKey;
         int storageCheckerTimeout;
-        @NoLogging(type = NoLogging.Type.Uri)
+        @NoLogging(type = NoLogging.LogMaskType.Uri)
         public List<String> monUrls;
 
         public List<String> getPoolNames() {
@@ -968,7 +968,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         public int maxAttempts;
         public int storageCheckerTimeout;
         public String userKey;
-        @NoLogging(type = NoLogging.Type.Uri)
+        @NoLogging(type = NoLogging.LogMaskType.Uri)
         public List<String> monUrls;
         public String strategy;
         public String manufacturer;

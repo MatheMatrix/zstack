@@ -35,7 +35,6 @@ import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.image.CancelDownloadImageMsg;
 import org.zstack.header.image.ImageConstant;
-import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
@@ -43,7 +42,7 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.rest.RESTFacade;
 import org.zstack.header.storage.backup.*;
 import org.zstack.header.storage.backup.BackupStorageCanonicalEvents.BackupStorageStatusChangedData;
-import org.zstack.header.storage.backup.BackupStorageErrors.Opaque;
+import org.zstack.header.storage.backup.BackupStorageErrors.BackupStorageErrorsOpaque;
 import org.zstack.utils.CollectionDSL;
 import org.zstack.utils.SizeUtils;
 import org.zstack.utils.Utils;
@@ -298,7 +297,7 @@ public abstract class BackupStorageBase extends AbstractBackupStorage {
                 if (changeStatus(BackupStorageStatus.Disconnected)) {
                     fireDisconnectedCanonicalEvent(errorCode);
                 }
-                errorCode.putToOpaque(Opaque.NEED_RECONNECT_CHECKING.toString(), true);
+                errorCode.putToOpaque(BackupStorageErrorsOpaque.NEED_RECONNECT_CHECKING.toString(), true);
                 reply.setError(errorCode);
                 bus.reply(msg, reply);
             }
@@ -718,7 +717,7 @@ public abstract class BackupStorageBase extends AbstractBackupStorage {
         detachHook(new Completion(msg) {
             @Transactional
             private BackupStorageVO updateDb(BackupStorageVO vo, String zoneUuid) {
-                dbf.entityForTranscationCallback(TransactionalCallback.Operation.REMOVE, BackupStorageZoneRefVO.class);
+                dbf.entityForTranscationCallback(TransactionalCallback.TransactionalOperation.REMOVE, BackupStorageZoneRefVO.class);
                 String sql = "delete from BackupStorageZoneRefVO bz where bz.zoneUuid = :zoneUuid and bz.backupStorageUuid = :bsUuid";
                 Query q = dbf.getEntityManager().createQuery(sql);
                 q.setParameter("zoneUuid", zoneUuid);

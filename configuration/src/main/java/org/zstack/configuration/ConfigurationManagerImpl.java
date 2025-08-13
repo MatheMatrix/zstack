@@ -479,7 +479,7 @@ public class ConfigurationManagerImpl extends AbstractService implements Configu
 
         StringBuilder sb = new StringBuilder();
         List<Field> fs = FieldUtils.getAllFields(clazz);
-        Map<String, NoLogging.Type> sensitiveFields = new HashMap<>();
+        Map<String, NoLogging.LogMaskType> sensitiveFields = new HashMap<>();
         for (Field f : fs) {
             APINoSee nosee = f.getAnnotation(APINoSee.class);
             if (nosee != null && !f.getName().equals("timeout") && !f.getName().equals("session")) {
@@ -555,7 +555,7 @@ public class ConfigurationManagerImpl extends AbstractService implements Configu
     }
 
     private String classToApiEventPythonClass(Class<?> clazz) {
-        Map<String, NoLogging.Type> sensitiveFields = LogSafeGson.getSensitiveFields(clazz);
+        Map<String, NoLogging.LogMaskType> sensitiveFields = LogSafeGson.getSensitiveFields(clazz);
         if (sensitiveFields.isEmpty()) {
             return "";
         }

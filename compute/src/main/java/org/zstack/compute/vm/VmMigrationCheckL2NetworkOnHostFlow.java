@@ -32,7 +32,7 @@ public class VmMigrationCheckL2NetworkOnHostFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         boolean allowUnknown = spec.getMessage() instanceof MigrateVmMessage && ((MigrateVmMessage) spec.getMessage()).isAllowUnknown();
 
         List<CheckL2NetworkOnHostMsg> cmsgs = new ArrayList<CheckL2NetworkOnHostMsg>();

@@ -47,10 +47,10 @@ public class VmCapabilities {
 
     public Map<String, Object> toMap() {
         Map<String, Object> map = new HashedMap();
-        map.put(VmInstanceConstant.Capability.LiveMigration.toString(), isSupportLiveMigration());
-        map.put(VmInstanceConstant.Capability.VolumeMigration.toString(), isSupportVolumeMigration());
-        map.put(VmInstanceConstant.Capability.Reimage.toString(), isSupportReimage());
-        map.put(VmInstanceConstant.Capability.MemorySnapshot.toString(), isSupportMemorySnapshot());
+        map.put(VmInstanceConstant.VmCapability.LiveMigration.toString(), isSupportLiveMigration());
+        map.put(VmInstanceConstant.VmCapability.VolumeMigration.toString(), isSupportVolumeMigration());
+        map.put(VmInstanceConstant.VmCapability.Reimage.toString(), isSupportReimage());
+        map.put(VmInstanceConstant.VmCapability.MemorySnapshot.toString(), isSupportMemorySnapshot());
 
         return map;
     }

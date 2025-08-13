@@ -41,7 +41,7 @@ import org.zstack.header.tag.SystemTagVO_;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.devices.VmInstanceDeviceManager;
 import org.zstack.header.volume.*;
-import org.zstack.header.volume.VolumeConstant.Capability;
+import org.zstack.header.volume.VolumeConstant.VolumeCapability;
 import org.zstack.header.volume.VolumeDeletionPolicyManager.VolumeDeletionPolicy;
 import org.zstack.identity.AccountManager;
 import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageMsg;
@@ -2194,8 +2194,8 @@ public class VolumeBase extends AbstractVolume implements Volume {
         String type = q.findValue();
 
         PrimaryStorageType psType = PrimaryStorageType.valueOf(type);
-        ret.put(Capability.MigrationInCurrentPrimaryStorage.toString(), psType.isSupportVolumeMigrationInCurrentPrimaryStorage());
-        ret.put(Capability.MigrationToOtherPrimaryStorage.toString(), psType.isSupportVolumeMigrationToOtherPrimaryStorage());
+        ret.put(VolumeCapability.MigrationInCurrentPrimaryStorage.toString(), psType.isSupportVolumeMigrationInCurrentPrimaryStorage());
+        ret.put(VolumeCapability.MigrationToOtherPrimaryStorage.toString(), psType.isSupportVolumeMigrationToOtherPrimaryStorage());
     }
 
     private void syncVolumeVolumeSize(final ReturnValueCompletion<VolumeSize> completion) {
@@ -3081,7 +3081,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
     }
 
     private void createSnapshotGroup(CreateVolumeSnapshotGroupMessage msg, ReturnValueCompletion<VolumeSnapshotGroupInventory> completion) {
-        VolumeSnapshotGroupOperationValidator.validate(msg.getVmInstance().getUuid(), VolumeSnapshotGroupOperationValidator.Operation.CREATE);
+        VolumeSnapshotGroupOperationValidator.validate(msg.getVmInstance().getUuid(), VolumeSnapshotGroupOperationValidator.VolumeSnapsOperation.CREATE);
         CreateVolumesSnapshotMsg cmsg = new CreateVolumesSnapshotMsg();
         List<CreateVolumesSnapshotsJobStruct> volumesSnapshotsJobs = new ArrayList<>();
         cmsg.setAccountUuid(msg.getSession().getAccountUuid());

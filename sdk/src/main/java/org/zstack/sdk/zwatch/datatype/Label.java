@@ -1,6 +1,6 @@
 package org.zstack.sdk.zwatch.datatype;
 
-import org.zstack.sdk.zwatch.datatype.Operator;
+import org.zstack.sdk.zwatch.datatype.LabelOperator;
 
 public class Label  {
 
@@ -20,11 +20,11 @@ public class Label  {
         return this.value;
     }
 
-    public Operator op;
-    public void setOp(Operator op) {
+    public LabelOperator op;
+    public void setOp(LabelOperator op) {
         this.op = op;
     }
-    public Operator getOp() {
+    public LabelOperator getOp() {
         return this.op;
     }
 

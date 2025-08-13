@@ -33,8 +33,8 @@ public class VirtualRouterHaBackendImpl implements VirtualRouterHaBackend, Compo
         return new NoRollbackFlow() {
             @Override
             public void run(FlowTrigger trigger, Map data) {
-                VmNicInventory nic = (VmNicInventory) data.get(VirtualRouterConstant.Param.VR_NIC.toString());
-                boolean applyToVirtualRouter = (boolean)data.get(VirtualRouterConstant.Param.APPLY_TO_VIRTUALROUTER.toString());
+                VmNicInventory nic = (VmNicInventory) data.get(VirtualRouterConstant.VRouterParam.VR_NIC.toString());
+                boolean applyToVirtualRouter = (boolean)data.get(VirtualRouterConstant.VRouterParam.APPLY_TO_VIRTUALROUTER.toString());
                 List<VirtualRouterHaGroupExtensionPoint> exps = pluginRgty.getExtensionList(VirtualRouterHaGroupExtensionPoint.class);
                 if (exps.isEmpty()) {
                     trigger.next();

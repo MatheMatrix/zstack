@@ -1,14 +1,14 @@
 package org.zstack.core.db;
 
 import org.springframework.transaction.support.TransactionSynchronization;
-import org.zstack.core.db.TransactionalCallback.Operation;
+import org.zstack.core.db.TransactionalCallback.TransactionalOperation;
 
 public class TransactionSynchronizationSyncImpl implements TransactionSynchronization {
     private final Class<?>[] clazzs;
     private final TransactionalSyncCallback callback;
-    private final Operation op;
+    private final TransactionalOperation op;
     
-    TransactionSynchronizationSyncImpl(TransactionalSyncCallback cb, Operation op, Class<?>...clazzs) {
+    TransactionSynchronizationSyncImpl(TransactionalSyncCallback cb, TransactionalOperation op, Class<?>...clazzs) {
         this.clazzs = clazzs;
         this.callback = cb;
         this.op = op;

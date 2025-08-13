@@ -8,7 +8,7 @@ import org.zstack.utils.gson.JSONObjectUtil;
 
 public abstract class KVMHostHttpCallMsg extends NeedReplyMessage implements HostMessage, CarrierMessage {
     private String path;
-    @NoLogging(behavior = NoLogging.Behavior.Auto, classNameField = "commandClassName")
+    @NoLogging(behavior = NoLogging.LogMaskBehavior.Auto, classNameField = "commandClassName")
     private String command;
     private String hostUuid;
     private boolean noStatusCheck;

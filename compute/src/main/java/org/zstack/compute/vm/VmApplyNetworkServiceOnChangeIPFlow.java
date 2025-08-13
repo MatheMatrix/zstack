@@ -3,14 +3,11 @@ package org.zstack.compute.vm;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
-import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.header.core.workflow.Flow;
-import org.zstack.header.core.workflow.FlowException;
 import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.Completion;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.network.service.NetworkServiceExtensionPoint;
 import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.header.vm.VmInstanceSpec;
@@ -24,8 +21,6 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 import static org.zstack.utils.CollectionDSL.*;
 
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
@@ -36,12 +31,12 @@ public class VmApplyNetworkServiceOnChangeIPFlow implements Flow {
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
-        VmNicVO vmNicVO =  (VmNicVO) data.get(VmInstanceConstant.Params.VmNicInventory.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
+        VmNicVO vmNicVO =  (VmNicVO) data.get(VmInstanceConstant.VmInstanceParams.VmNicInventory.toString());
 
         if (spec.getCurrentVmOperation() == VmOperation.ChangeNicNetwork) {
-            L3NetworkInventory l3Inv = (L3NetworkInventory) data.get(VmInstanceConstant.Params.L3NetworkInventory.toString());
-            VmInstanceInventory vm = (VmInstanceInventory) data.get(VmInstanceConstant.Params.vmInventory.toString());
+            L3NetworkInventory l3Inv = (L3NetworkInventory) data.get(VmInstanceConstant.VmInstanceParams.L3NetworkInventory.toString());
+            VmInstanceInventory vm = (VmInstanceInventory) data.get(VmInstanceConstant.VmInstanceParams.vmInventory.toString());
 
             spec.setVmInventory(vm);
             spec.setL3Networks(list(new VmNicSpec(l3Inv)));

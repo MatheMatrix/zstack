@@ -7,7 +7,7 @@ import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.workflow.NoRollbackFlow;
-import org.zstack.network.service.virtualrouter.VirtualRouterConstant.Param;
+import org.zstack.network.service.virtualrouter.VirtualRouterConstant.VRouterParam;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
@@ -24,7 +24,7 @@ public class VirtualRouterCleanupLoadBalancerOnDestroyFlow extends NoRollbackFlo
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
-        final String vrUuid = (String) data.get(Param.VR_UUID.toString());
+        final String vrUuid = (String) data.get(VRouterParam.VR_UUID.toString());
         List<VirtualRouterLoadBalancerRefVO> refs = Q.New(VirtualRouterLoadBalancerRefVO.class).eq(VirtualRouterLoadBalancerRefVO_.virtualRouterVmUuid, vrUuid).list();
         if (!refs.isEmpty()){
             dbf.removeCollection(refs, VirtualRouterLoadBalancerRefVO.class);

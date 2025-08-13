@@ -22,7 +22,7 @@ public interface HostAllocatorConstant {
             "some allocator flow cannot find candidate hosts; given it's still in pagination process, will continue allocating"
     );
 
-    enum Param {
+    enum HostAllocatorParam {
         HOST,
         SPEC,
     }

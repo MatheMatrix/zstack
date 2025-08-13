@@ -11,7 +11,6 @@ import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.Completion;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.vm.VmNicInventory;
 import org.zstack.network.service.eip.EipConstant;
 import org.zstack.network.service.portforwarding.PortForwardingConstant;
@@ -41,7 +40,7 @@ public class VirtualRouterSyncVipForNewCreateFlow implements Flow {
 
     @Override
     public void run(final FlowTrigger chain, Map data) {
-        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.Param.VR.toString());
+        final VirtualRouterVmInventory vr = (VirtualRouterVmInventory) data.get(VirtualRouterConstant.VRouterParam.VR.toString());
         final List<VmNicInventory> guestNics = vr.getGuestNics();
         final VmNicInventory publicNic = vr.getPublicNic();
         List<String> l3Uuids = guestNics.stream().map(n -> n.getL3NetworkUuid()).collect(Collectors.toList());

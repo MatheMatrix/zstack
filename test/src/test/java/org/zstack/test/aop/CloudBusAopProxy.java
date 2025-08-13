@@ -13,7 +13,7 @@ import java.util.Map;
 public class CloudBusAopProxy {
     private static final CLogger logger = Utils.getLogger(CloudBusAopProxy.class);
 
-    public static enum Behavior {
+    public static enum CloudBusBehavior {
         FAIL,
         TIMEOUT,
     }
@@ -21,9 +21,9 @@ public class CloudBusAopProxy {
     public static final String MESSAGE_ORIGINAL_SERVICE_ID = "OriginalServiceId";
     public static final String MESSAGE_BEHAVIOR = "behavior";
 
-    private Map<Class<? extends Message>, Behavior> messages = new HashMap<Class<? extends Message>, Behavior>();
+    private Map<Class<? extends Message>, CloudBusBehavior> messages = new HashMap<Class<? extends Message>, CloudBusBehavior>();
 
-    public void addMessage(Class<? extends Message> clazz, Behavior bh) {
+    public void addMessage(Class<? extends Message> clazz, CloudBusBehavior bh) {
         messages.put(clazz, bh);
     }
 
@@ -33,7 +33,7 @@ public class CloudBusAopProxy {
 
     @SuppressWarnings("unused")
     private Object singleMessageAdvice(ProceedingJoinPoint pjp, Message msg) throws Throwable {
-        Behavior bh = messages.get(msg.getClass());
+        CloudBusBehavior bh = messages.get(msg.getClass());
         if (bh == null) {
             return pjp.proceed(new Object[]{msg});
         }
@@ -46,7 +46,7 @@ public class CloudBusAopProxy {
 
     @SuppressWarnings("unused")
     private Object singleCallbackMessageAdvice(ProceedingJoinPoint pjp, Message msg, CloudBusCallBack callback) throws Throwable {
-        Behavior bh = messages.get(msg.getClass());
+        CloudBusBehavior bh = messages.get(msg.getClass());
         if (bh == null) {
             return pjp.proceed(new Object[]{msg, callback});
         }
@@ -60,7 +60,7 @@ public class CloudBusAopProxy {
     @SuppressWarnings("unused")
     private <T extends Message> Object listMessageAdvice(ProceedingJoinPoint pjp, List<T> msgs) throws Throwable {
         for (Message msg : msgs) {
-            Behavior bh = messages.get(msg.getClass());
+            CloudBusBehavior bh = messages.get(msg.getClass());
             if (bh == null) {
                 logger.warn(String.format("Cannot find behavior for message[%s], however, it's in a message list sent out all in one call, that means you may forget specifying behavior of this message", msg.getMessageName()));
                 continue;

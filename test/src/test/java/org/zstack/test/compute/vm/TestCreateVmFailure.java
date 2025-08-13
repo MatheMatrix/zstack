@@ -65,7 +65,7 @@ public class TestCreateVmFailure {
         List<String> disks = new ArrayList<String>(1);
         disks.add(dinvs.get(1).getUuid());
 
-        busProxy.addMessage(CreateVmOnHypervisorMsg.class, CloudBusAopProxy.Behavior.FAIL);
+        busProxy.addMessage(CreateVmOnHypervisorMsg.class, CloudBusAopProxy.CloudBusBehavior.FAIL);
         try {
             api.createVmByFullConfig(vm, dinvs.get(0).getUuid(), nws, disks);
         } catch (ApiSenderException e) {

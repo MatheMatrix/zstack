@@ -28,7 +28,7 @@ import java.util.List;
 )
 public class APIAddCephPrimaryStorageMsg extends APIAddPrimaryStorageMsg {
     @APIParam(nonempty = false, emptyString = false)
-    @NoLogging(type = NoLogging.Type.Uri)
+    @NoLogging(type = NoLogging.LogMaskType.Uri)
     private List<String> monUrls;
     @APIParam(required = false, maxLength = 255)
     private String rootVolumePoolName;

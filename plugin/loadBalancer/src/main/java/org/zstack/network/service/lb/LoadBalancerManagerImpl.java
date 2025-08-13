@@ -220,13 +220,13 @@ public class LoadBalancerManagerImpl extends AbstractService implements LoadBala
                         vo = dbf.updateAndRefresh(vo);
 
                         /* put vo to data for rollback */
-                        data.put(LoadBalancerConstants.Param.LOAD_BALANCER_VO, vo);
+                        data.put(LoadBalancerConstants.LBParam.LOAD_BALANCER_VO, vo);
                         trigger.next();
                     }
 
                     @Override
                     public void rollback(FlowRollback trigger, Map data) {
-                        LoadBalancerVO vo = (LoadBalancerVO)data.get(LoadBalancerConstants.Param.LOAD_BALANCER_VO);
+                        LoadBalancerVO vo = (LoadBalancerVO)data.get(LoadBalancerConstants.LBParam.LOAD_BALANCER_VO);
                         if (vo != null) {
                             dbf.removeByPrimaryKey(vo.getServerGroupUuid(), LoadBalancerServerGroupVO.class);
                             f.deleteLoadBalancer(vo);
@@ -281,7 +281,7 @@ public class LoadBalancerManagerImpl extends AbstractService implements LoadBala
                         }
 
                         new While<>(vipUuidsAcquireSuccess).step((vipUuid, whileCompletion) -> {
-                            LoadBalancerVO vo = (LoadBalancerVO)data.get(LoadBalancerConstants.Param.LOAD_BALANCER_VO);
+                            LoadBalancerVO vo = (LoadBalancerVO)data.get(LoadBalancerConstants.LBParam.LOAD_BALANCER_VO);
                             ModifyVipAttributesStruct struct = new ModifyVipAttributesStruct();
                             struct.setUseFor(f.getNetworkServiceType());
                             struct.setServiceUuid(vo.getUuid());

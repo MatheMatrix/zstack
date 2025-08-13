@@ -15,8 +15,7 @@ import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.service.NetworkServiceType;
 import org.zstack.network.service.vip.*;
-import org.zstack.network.service.virtualrouter.VirtualRouterConstant;
-import org.zstack.network.service.virtualrouter.VirtualRouterConstant.Param;
+import org.zstack.network.service.virtualrouter.VirtualRouterConstant.VRouterParam;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
@@ -37,8 +36,8 @@ public class VirtualRouterCleanupVipOnDestroyFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        final String vrUuid = (String) data.get(Param.VR_UUID.toString());
-        boolean isHaRouter = (boolean) data.get(VirtualRouterConstant.Param.IS_HA_ROUTER.toString());
+        final String vrUuid = (String) data.get(VRouterParam.VR_UUID.toString());
+        boolean isHaRouter = (boolean) data.get(VRouterParam.IS_HA_ROUTER.toString());
 
         if (isHaRouter) {
             logger.debug("skip ha virtual router");

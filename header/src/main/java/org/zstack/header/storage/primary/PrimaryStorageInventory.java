@@ -74,7 +74,7 @@ public class PrimaryStorageInventory implements Serializable {
      * @desc depending on primary storage type, url may have various formats. For example,
      * nfs primary storage uses url as *server_ip:/share_path*
      */
-    @NoLogging(type = NoLogging.Type.Uri)
+    @NoLogging(type = NoLogging.LogMaskType.Uri)
     private String url;
     /**
      * @desc max length of 2048 characters

@@ -3,7 +3,6 @@ package org.zstack.test;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.junit.Test;
-import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.test.UnitTestSuiteConfig.Import;
 import org.zstack.test.UnitTestSuiteConfig.TestCase;
 import org.zstack.utils.DebugUtils;
@@ -52,7 +51,7 @@ public class UnitTestSuite {
         }
     }
 
-    private enum Action {
+    private enum UTAction {
         RUN_CASES,
         LIST_CASES
     }
@@ -62,7 +61,7 @@ public class UnitTestSuite {
         private List<UnitTestSuiteConfig> suiteConfigs = new ArrayList<UnitTestSuiteConfig>();
         private List<CaseInfo> testCases = new ArrayList<CaseInfo>();
         private File errLogFolder;
-        private Action action;
+        private UTAction action;
 
         private void parseUnitTestSuiteConfig(String configPath) throws JAXBException {
             Unmarshaller unmarshaller = context.createUnmarshaller();
@@ -92,9 +91,9 @@ public class UnitTestSuite {
 
             String listCases = System.getProperty("list");
             if (listCases != null) {
-                action = Action.LIST_CASES;
+                action = UTAction.LIST_CASES;
             } else {
-                action = Action.RUN_CASES;
+                action = UTAction.RUN_CASES;
             }
 
             context = JAXBContext.newInstance("org.zstack.test");
@@ -318,9 +317,9 @@ public class UnitTestSuite {
 
             parse();
 
-            if (action == Action.LIST_CASES) {
+            if (action == UTAction.LIST_CASES) {
                 listCases();
-            } else if (action == Action.RUN_CASES) {
+            } else if (action == UTAction.RUN_CASES) {
                 prepareLogFolder();
                 runCases();
             }

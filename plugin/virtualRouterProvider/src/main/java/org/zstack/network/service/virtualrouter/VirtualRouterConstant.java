@@ -77,7 +77,7 @@ public interface VirtualRouterConstant {
 
 	public static final String VR_HA_MASTER_DEMOTE = "/keepalived/demote";
 
-	public static enum Param {
+	public static enum VRouterParam {
         VR,
         VR_UUID,
         IS_NEW_CREATED,

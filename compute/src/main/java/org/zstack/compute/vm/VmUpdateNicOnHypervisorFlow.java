@@ -24,7 +24,7 @@ public class VmUpdateNicOnHypervisorFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         HostInventory dest = spec.getDestHost();
         VmInstanceInventory vm = spec.getVmInventory();
 

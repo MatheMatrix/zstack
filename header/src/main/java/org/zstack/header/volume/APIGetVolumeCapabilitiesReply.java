@@ -24,8 +24,8 @@ public class APIGetVolumeCapabilitiesReply extends APIReply {
     public static APIGetVolumeCapabilitiesReply __example__() {
         APIGetVolumeCapabilitiesReply reply = new APIGetVolumeCapabilitiesReply();
         Map<String, Object> ret = new HashMap<String, Object>();
-        ret.put(VolumeConstant.Capability.MigrationInCurrentPrimaryStorage.toString(), true);
-        ret.put(VolumeConstant.Capability.MigrationToOtherPrimaryStorage.toString(), true);
+        ret.put(VolumeConstant.VolumeCapability.MigrationInCurrentPrimaryStorage.toString(), true);
+        ret.put(VolumeConstant.VolumeCapability.MigrationToOtherPrimaryStorage.toString(), true);
         reply.setCapabilities(ret);
 
         return reply;

@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.core.Completion;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.host.HostErrors.Opaque;
+import org.zstack.header.host.HostErrors.HostErrorsOpaque;
 import org.zstack.kvm.KVMHostInventory;
 import org.zstack.kvm.KVMPingAgentExtensionPoint;
 
@@ -25,7 +25,7 @@ public class KVMPingAgentExtensionForTest implements KVMPingAgentExtensionPoint 
             completion.success();
         } else {
             ErrorCode err = operr("on purpose");
-            err.putToOpaque(Opaque.NO_RECONNECT_AFTER_PING_FAILURE.toString(), true);
+            err.putToOpaque(HostErrorsOpaque.NO_RECONNECT_AFTER_PING_FAILURE.toString(), true);
             completion.fail(err);
         }
     }

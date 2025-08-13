@@ -32,7 +32,7 @@ public class VmInstantiateResourcePostFlow implements Flow {
 
 
     public void run(FlowTrigger trigger, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         for (PostVmInstantiateResourceExtensionPoint ext : extensions) {
             ext.postBeforeInstantiateVmResource(spec);
         }
@@ -63,7 +63,7 @@ public class VmInstantiateResourcePostFlow implements Flow {
 
     @Override
     public void rollback(FlowRollback trigger, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         rollbackExtensions(extensions.iterator(), spec, trigger);
     }
 

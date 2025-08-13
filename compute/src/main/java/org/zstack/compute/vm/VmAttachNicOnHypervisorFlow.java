@@ -32,7 +32,7 @@ public class VmAttachNicOnHypervisorFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
-        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
         VmNicInventory nic = spec.getDestNics().get(0);
         final String hostUuid = spec.getVmInventory().getHostUuid() == null ?
                 spec.getVmInventory().getLastHostUuid() :

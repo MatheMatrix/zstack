@@ -30,7 +30,7 @@ public class VmStopOnHypervisorFlow extends NoRollbackFlow {
 
     @Override
     public void run(final FlowTrigger chain, Map data) {
-        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
+        final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.VmInstanceParams.VmInstanceSpec.toString());
 
         StopVmOnHypervisorMsg msg = new StopVmOnHypervisorMsg();
         msg.setVmInventory(spec.getVmInventory());
