@@ -77,7 +77,11 @@ public class VirtualPciDeviceKvmExtensionPoint implements KVMStartVmExtensionPoi
     public void afterReceiveVmDeviceInfoResponse(VmInstanceInventory vm, KVMAgentCommands.VmDevicesInfoResponse rsp, VmInstanceSpec spec) {
         String vmUuid = spec != null ? spec.getVmInventory().getUuid() : vm.getUuid();
 
-        vidManager.saveVmXmlMetadata(rsp.getVmXml(), vmUuid);
+        try {
+            vidManager.saveVmXmlMetadata(rsp.getVmXml(), vmUuid);
+        } catch (Throwable t) {
+            logger.warn(String.format("failed to save VM XML metadata for vmUuid=%s, ignore and continue", vmUuid), t);
+        }
 
         // only update pci address, metadata is not mandatory in normal usage
         // check its usage when create snapshot or backup

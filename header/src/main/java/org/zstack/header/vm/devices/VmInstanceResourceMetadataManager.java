@@ -115,9 +115,9 @@ public interface VmInstanceResourceMetadataManager {
      */
     List<VmInstanceResourceMetadataVO> revertResourceMetadataFromArchive(String vmInstanceUuid, String archiveForResourceUuid);
 
-    List<VmInstanceResourceMetadataVO> revertExistingDeviceAddressFromArchive(String vmInstanceUuid, String archiveForResourceUuid);
+    List<VmInstanceResourceMetadataVO> revertExistingResourceMetadataFromArchive(String vmInstanceUuid, String archiveForResourceUuid);
 
-    List<VmInstanceResourceMetadataVO> revertRequestedDeviceAddressFromArchive(String vmInstanceUuid, String archiveForResourceUuid, List<String> needRevertResourceUuidList);
+    List<VmInstanceResourceMetadataVO> revertRequestedResourceMetadataFromArchive(String vmInstanceUuid, String archiveForResourceUuid, List<String> needRevertResourceUuidList);
     /**
      * create device address from archive
      *
@@ -150,5 +150,5 @@ public interface VmInstanceResourceMetadataManager {
      */
     List<VmInstanceResourceMetadataArchiveVO> getArchivedResourceMetadataInfoFromArchiveForResourceUuid(String vmInstanceUuid, String archiveForResourceUuid, String metadataClass);
 
-    void updateVmResourceMetadataDeviceAddress(String vmInstanceUuid, String resourceUuid, String deviceAddress);
+    void updateVmResourceMetadataDeviceAddress(String vmInstanceUuid, String resourceUuid, DeviceAddress deviceAddress);
 }

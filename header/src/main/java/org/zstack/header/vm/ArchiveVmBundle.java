@@ -35,6 +35,10 @@ public class ArchiveVmBundle extends ArchiveBundle {
     }
 
     public UpdateVmInstanceMsg getUpdateVmMessage() {
+        if (getVmInventory() == null) {
+            throw new IllegalStateException("vmInventory is null; getUpdateVmMessage() requires a non-null VmInstanceInventory. " +
+                    "If this ArchiveVmBundle is intended only for XML archiving, avoid calling this method.");
+        }
         UpdateVmInstanceMsg umsg = new UpdateVmInstanceMsg();
         umsg.setUuid(getVmInventory().getUuid());
         umsg.setName(getVmInventory().getName());

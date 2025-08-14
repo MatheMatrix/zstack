@@ -265,7 +265,8 @@ public class VmInstanceResourceMetadataManagerImpl implements VmInstanceResource
         }
 
         for (VmInstanceResourceMetadataArchiveVO archive : group.getAddressList()) {
-            VmInstanceResourceMetadataVO vo = createOrUpdateVmResourceMetadata(archive.getResourceUuid(), DeviceAddress.fromString(archive.getDeviceAddress()), vmInstanceUuid, archive.getMetadata(), archive.getMetadataClass());
+            DeviceAddress deviceAddress = archive.getDeviceAddress() == null ? null : DeviceAddress.fromString(archive.getDeviceAddress());
+            VmInstanceResourceMetadataVO vo = createOrUpdateVmResourceMetadata(archive.getResourceUuid(), deviceAddress, vmInstanceUuid, archive.getMetadata(), archive.getMetadataClass());
             createdAddressList.add(vo);
         }
 
@@ -273,7 +274,7 @@ public class VmInstanceResourceMetadataManagerImpl implements VmInstanceResource
     }
 
     @Override
-    public List<VmInstanceResourceMetadataVO> revertExistingDeviceAddressFromArchive(String vmInstanceUuid, String archiveForResourceUuid) {
+    public List<VmInstanceResourceMetadataVO> revertExistingResourceMetadataFromArchive(String vmInstanceUuid, String archiveForResourceUuid) {
         VmInstanceResourceMetadataGroupVO group = Q.New(VmInstanceResourceMetadataGroupVO.class)
                 .eq(VmInstanceResourceMetadataGroupVO_.resourceUuid, archiveForResourceUuid)
                 .find();
@@ -288,7 +289,8 @@ public class VmInstanceResourceMetadataManagerImpl implements VmInstanceResource
                 continue;
             }
 
-            VmInstanceResourceMetadataVO vo = createOrUpdateVmResourceMetadata(archive.getResourceUuid(), DeviceAddress.fromString(archive.getDeviceAddress()), vmInstanceUuid, archive.getMetadata(), archive.getMetadataClass());
+            DeviceAddress deviceAddress = archive.getDeviceAddress() == null ? null : DeviceAddress.fromString(archive.getDeviceAddress());
+            VmInstanceResourceMetadataVO vo = createOrUpdateVmResourceMetadata(archive.getResourceUuid(), deviceAddress, vmInstanceUuid, archive.getMetadata(), archive.getMetadataClass());
             createdAddressList.add(vo);
         }
 
@@ -296,7 +298,7 @@ public class VmInstanceResourceMetadataManagerImpl implements VmInstanceResource
     }
 
     @Override
-    public List<VmInstanceResourceMetadataVO> revertRequestedDeviceAddressFromArchive(String vmInstanceUuid, String archiveForResourceUuid, List<String> needRevertResourceUuidList) {
+    public List<VmInstanceResourceMetadataVO> revertRequestedResourceMetadataFromArchive(String vmInstanceUuid, String archiveForResourceUuid, List<String> needRevertResourceUuidList) {
         VmInstanceResourceMetadataGroupVO group = Q.New(VmInstanceResourceMetadataGroupVO.class)
                 .eq(VmInstanceResourceMetadataGroupVO_.resourceUuid, archiveForResourceUuid)
                 .find();
@@ -311,7 +313,8 @@ public class VmInstanceResourceMetadataManagerImpl implements VmInstanceResource
                 continue;
             }
 
-            VmInstanceResourceMetadataVO vo = createOrUpdateVmResourceMetadata(archive.getResourceUuid(), DeviceAddress.fromString(archive.getDeviceAddress()), vmInstanceUuid, archive.getMetadata(), archive.getMetadataClass());
+            DeviceAddress deviceAddress = archive.getDeviceAddress() == null ? null : DeviceAddress.fromString(archive.getDeviceAddress());
+            VmInstanceResourceMetadataVO vo = createOrUpdateVmResourceMetadata(archive.getResourceUuid(), deviceAddress, vmInstanceUuid, archive.getMetadata(), archive.getMetadataClass());
             createdAddressList.add(vo);
         }
 
@@ -341,7 +344,8 @@ public class VmInstanceResourceMetadataManagerImpl implements VmInstanceResource
                 continue;
             }
 
-            VmInstanceResourceMetadataVO vo = createOrUpdateVmResourceMetadata(matchedResourceUuid, DeviceAddress.fromString(archive.getDeviceAddress()), vmInstanceUuid, archive.getMetadata(), archive.getMetadataClass());
+            DeviceAddress deviceAddress = archive.getDeviceAddress() == null ? null : DeviceAddress.fromString(archive.getDeviceAddress());
+            VmInstanceResourceMetadataVO vo = createOrUpdateVmResourceMetadata(matchedResourceUuid, deviceAddress, vmInstanceUuid, archive.getMetadata(), archive.getMetadataClass());
             createdAddressList.add(vo);
         }
 
@@ -349,11 +353,11 @@ public class VmInstanceResourceMetadataManagerImpl implements VmInstanceResource
     }
 
     @Override
-    public void updateVmResourceMetadataDeviceAddress(String vmInstanceUuid, String resourceUuid, String deviceAddress) {
+    public void updateVmResourceMetadataDeviceAddress(String vmInstanceUuid, String resourceUuid, DeviceAddress deviceAddress) {
         if (deviceAddress == null) {
             return;
         }
-        createOrUpdateVmResourceMetadata(resourceUuid, DeviceAddress.fromString(deviceAddress), vmInstanceUuid, null, null);
+        createOrUpdateVmResourceMetadata(resourceUuid, deviceAddress, vmInstanceUuid, null, null);
     }
 
     @Override

@@ -502,6 +502,9 @@ public class TagManagerImpl extends AbstractService implements TagManager,
 
     @Override
     public SystemTag findMatchingSystemTag(String tag) {
+        if (tag == null) {
+            return null;
+        }
         return systemTags.parallelStream().filter(t -> t.isMatch(tag)).findFirst().orElse(null);
     }
 
