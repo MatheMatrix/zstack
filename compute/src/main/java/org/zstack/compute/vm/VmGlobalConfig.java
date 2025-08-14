@@ -133,4 +133,8 @@ public class VmGlobalConfig {
     @GlobalConfigValidation(validValues = {"None", "AuthenticAMD"})
     @BindResourceConfig(value = {VmInstanceVO.class})
     public static GlobalConfig VM_CPUID_VENDOR = new GlobalConfig(CATEGORY, "vm.cpuid.vendor");
+
+    @GlobalConfigValidation
+    @BindResourceConfig({VmInstanceVO.class})
+    public static GlobalConfig CONFIG_IPADDRESS_WITH_HOSTNAME = new GlobalConfig(CATEGORY, "configure.ip.with.hostname");
 }
