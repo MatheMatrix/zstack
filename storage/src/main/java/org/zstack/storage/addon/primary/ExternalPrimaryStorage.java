@@ -31,6 +31,7 @@ import org.zstack.header.host.HostVO_;
 import org.zstack.header.image.ImageConstant;
 import org.zstack.header.image.ImageInventory;
 import org.zstack.header.image.ImageVO;
+import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
@@ -60,6 +61,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.core.progress.ProgressReportService.reportProgress;
 import static org.zstack.storage.addon.primary.ExternalPrimaryStorageNameHelper.*;
 
 
@@ -937,6 +939,8 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
 
             long templateSize;
 
+            VolumeSnapshotInventory snapshot;
+
             @Override
             public void setup() {
                 flow(new Flow() {
@@ -971,7 +975,8 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                                 if (!reply.isSuccess()) {
                                     trigger.fail(reply.getError());
                                 } else {
-                                    snapshotPath = ((CreateVolumeSnapshotReply) reply).getInventory().getPrimaryStorageInstallPath();
+                                    snapshot = ((CreateVolumeSnapshotReply) reply).getInventory();
+                                    snapshotPath = snapshot.getPrimaryStorageInstallPath();
                                     trigger.next();
                                 }
                             }
@@ -1087,6 +1092,37 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                                 trigger.next();
                             }
                         });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "delete-snapshot";
+
+                    @Override
+                    public boolean skip(Map data) {
+                        return snapshot == null;
+                    }
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        VolumeSnapshotDeletionMsg dmsg = new VolumeSnapshotDeletionMsg();
+                        dmsg.setTreeUuid(snapshot.getTreeUuid());
+                        dmsg.setVolumeUuid(snapshot.getVolumeUuid());
+                        dmsg.setSnapshotUuid(snapshot.getUuid());
+                        dmsg.setScope(DeleteVolumeSnapshotScope.Single.toString());
+                        dmsg.setDirection(DeleteVolumeSnapshotDirection.Commit.toString());
+                        bus.makeTargetServiceIdByResourceUuid(dmsg, VolumeSnapshotConstant.SERVICE_ID, snapshot.getUuid());
+                        bus.send(dmsg, new CloudBusCallBack(msg) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (!reply.isSuccess()) {
+                                    trigger.fail(reply.getError());
+                                    return;
+                                }
+                                trigger.next();
+                            }
+                        });
+
                     }
                 });
 
