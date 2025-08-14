@@ -83,11 +83,7 @@ public abstract class ImageCacheCleaner {
         return PrimaryStorageGlobalConfig.IMAGE_CACHE_GARBAGE_COLLECTOR_INTERVAL;
     }
 
-    public void cleanup(boolean needDestinationCheck) {
-        cleanup(null, needDestinationCheck);
-    }
-
-    public void cleanup(String psUuid, boolean needDestinationCheck) {
+    public void cleanup(String psUuid, ImageCacheCleanParam param) {
         ImageCacheCleaner self = this;
         thdf.chainSubmit(new ChainTask(null) {
             @Override
@@ -97,7 +93,7 @@ public abstract class ImageCacheCleaner {
 
             @Override
             public void run(SyncTaskChain chain) {
-                doCleanup(psUuid, needDestinationCheck, new NoErrorCompletion() {
+                doCleanup(psUuid, param, new NoErrorCompletion() {
                     @Override
                     public void done() {
                         chain.next();
@@ -112,19 +108,18 @@ public abstract class ImageCacheCleaner {
         });
     }
 
-    private void cleanUpVolumeCache(String psUuid, boolean needDestinationCheck, NoErrorCompletion completion) {
-        List<ImageCacheShadowVO> shadowVOs = createShadowImageCacheVOs(psUuid);
+    protected void cleanUpVolumeCache(String psUuid, ImageCacheCleanParam param, NoErrorCompletion completion) {
+        List<ImageCacheShadowVO> shadowVOs = createShadowImageCacheVOs(psUuid, param);
         if (shadowVOs == null || shadowVOs.isEmpty()) {
             completion.done();
             return;
         }
 
-        new While<>(shadowVOs).each((vo, whileCompletion) -> {
-            if (needDestinationCheck && !destMaker.isManagedByUs(vo.getImageUuid())) {
-                whileCompletion.done();
-                return;
-            }
+        if (!param.triggerByApi) {
+            shadowVOs.removeIf(vo -> !destMaker.isManagedByUs(vo.getImageUuid()));
+        }
 
+        new While<>(shadowVOs).each((vo, whileCompletion) -> {
             DeleteImageCacheOnPrimaryStorageMsg msg = new DeleteImageCacheOnPrimaryStorageMsg();
             msg.setImageUuid(vo.getImageUuid());
             msg.setInstallPath(vo.getInstallUrl());
@@ -178,7 +173,7 @@ public abstract class ImageCacheCleaner {
         });
     }
 
-    protected void doCleanup(String psUuid, boolean needDestinationCheck, NoErrorCompletion completion) {
+    protected void doCleanup(String psUuid, ImageCacheCleanParam param, NoErrorCompletion completion) {
         List<String> psUuids = new ArrayList<>();
         if (psUuid == null) {
             psUuids.addAll(listPrimaryStoragesBySelfType());
@@ -191,7 +186,7 @@ public abstract class ImageCacheCleaner {
         chain.then(new NoRollbackFlow() {
             @Override
             public void run(FlowTrigger trigger, Map data) {
-                cleanUpVolumeCache(psUuid, needDestinationCheck, new NoErrorCompletion() {
+                cleanUpVolumeCache(psUuid, param, new NoErrorCompletion() {
                     @Override
                     public void done() {
                         trigger.next();
@@ -282,13 +277,13 @@ public abstract class ImageCacheCleaner {
 
             @Override
             public void run() {
-                cleanup(true);
+                cleanup(null, new ImageCacheCleanParam(false, false));
             }
         });
     }
 
     @Transactional
-    protected List<Long> getStaleImageCacheIds(String psUuid) {
+    protected boolean volumeFindMissingImageUuid(String psUuid) {
         String sql;
         if (psUuid == null) {
             sql = "select count(*) from VolumeVO vol, PrimaryStorageVO pri where vol.primaryStorageUuid = pri.uuid" +
@@ -311,11 +306,55 @@ public abstract class ImageCacheCleaner {
                     "1. zstack-ctl stop_node\n" +
                     "2. zstack-ctl start_node -DfixImageCacheUuid=true -DrootVolumeFindMissingImageUuid=true\n" +
                     "to fix the problem. For the data safety, we won't clean the image cache of the primary storage", count, getPrimaryStorageType()));
+            return true;
+        }
+
+        return false;
+    }
+
+    /***
+     *
+     * @param psUuid image cache to be cleaned up on the primary storage, if null, clean up same type of primary storage
+     * @return image cache ids whose image is expunged
+     */
+    @Transactional
+    protected List<Long> getStaleImageCacheIds(String psUuid, boolean includeReadyImage) {
+        if (volumeFindMissingImageUuid(psUuid)) {
             return null;
         }
 
+        List<Long> ids;
+        if (includeReadyImage) {
+            ids = queryCacheOfAllImage(psUuid);
+        } else {
+            ids = queryCacheOfExpungedImage(psUuid);
+        }
+
+        return ids;
+    }
+
+    private List<Long> queryCacheOfAllImage(String psUuid) {
         if (psUuid == null) {
-            sql = "select c.id from ImageCacheVO c, PrimaryStorageVO pri, ImageEO i where c.primaryStorageUuid = pri.uuid and i.uuid = c.imageUuid and i.deleted is not null and pri.type = :ptype";
+            String sql = "select c.id from ImageCacheVO c, PrimaryStorageVO pri" +
+                    " where c.primaryStorageUuid = pri.uuid" +
+                    " and pri.type = :ptype";
+            return SQL.New(sql, Long.class)
+                    .param("ptype", getPrimaryStorageType())
+                    .list();
+        } else {
+            return Q.New(ImageCacheVO.class).eq(ImageCacheVO_.primaryStorageUuid, psUuid)
+                    .select(ImageCacheVO_.id).listValues();
+        }
+    }
+
+    private List<Long> queryCacheOfExpungedImage(String psUuid) {
+        String sql;
+        if (psUuid == null) {
+            sql = "select c.id from ImageCacheVO c, PrimaryStorageVO pri, ImageEO i" +
+                    " where c.primaryStorageUuid = pri.uuid" +
+                    " and i.uuid = c.imageUuid" +
+                    " and i.deleted is not null" +
+                    " and pri.type = :ptype";
         } else  {
             sql = "select c.id from ImageCacheVO c, PrimaryStorageVO pri, ImageEO i where c.primaryStorageUuid = pri.uuid and i.uuid = c.imageUuid and i.deleted is not null and pri.type = :ptype and pri.uuid = :psUuid";
         }
@@ -341,11 +380,6 @@ public abstract class ImageCacheCleaner {
             cq.setParameter("psUuid", psUuid);
         }
         deleted.addAll(cq.getResultList());
-
-        if (deleted.isEmpty()) {
-            return null;
-        }
-
         return deleted;
     }
 
@@ -399,8 +433,8 @@ public abstract class ImageCacheCleaner {
     }
 
     @Transactional
-    protected List<ImageCacheShadowVO> createShadowImageCacheVOsForNewDeletedAndOld(String psUuid) {
-        List<Long> staleImageCacheIds = getStaleImageCacheIds(psUuid);
+    protected List<ImageCacheShadowVO> createShadowImageCacheVOsForNewDeletedAndOld(String psUuid, ImageCacheCleanParam param) {
+        List<Long> staleImageCacheIds = getStaleImageCacheIds(psUuid, false);
         if (staleImageCacheIds == null || staleImageCacheIds.isEmpty()) {
             return null;
         }
@@ -429,8 +463,8 @@ public abstract class ImageCacheCleaner {
     }
 
     @Transactional
-    protected List<ImageCacheShadowVO> createShadowImageCacheVOs(String psUuid) {
-        List<ImageCacheShadowVO> newDeletedAndOld = createShadowImageCacheVOsForNewDeletedAndOld(psUuid);
+    protected List<ImageCacheShadowVO> createShadowImageCacheVOs(String psUuid, ImageCacheCleanParam param) {
+        List<ImageCacheShadowVO> newDeletedAndOld = createShadowImageCacheVOsForNewDeletedAndOld(psUuid, param);
         if (newDeletedAndOld == null) {
             // no new deleted images, let's check if there any old that failed to be deleted last time
             String sql = "select s from ImageCacheShadowVO s, PrimaryStorageVO p where p.uuid = s.primaryStorageUuid and p.type = :ptype";

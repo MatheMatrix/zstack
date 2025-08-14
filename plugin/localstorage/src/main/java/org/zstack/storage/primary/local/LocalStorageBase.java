@@ -40,6 +40,7 @@ import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.vm.*;
 import org.zstack.header.vo.ResourceVO;
 import org.zstack.header.volume.*;
+import org.zstack.storage.primary.ImageCacheCleanParam;
 import org.zstack.storage.primary.PrimaryStorageBase;
 import org.zstack.storage.primary.PrimaryStorageCapacityUpdater;
 import org.zstack.storage.primary.PrimaryStoragePhysicalCapacityManager;
@@ -898,10 +899,9 @@ public class LocalStorageBase extends PrimaryStorageBase {
 
     @Override
     protected void handle(APICleanUpImageCacheOnPrimaryStorageMsg msg) {
-            APICleanUpImageCacheOnPrimaryStorageEvent evt = new APICleanUpImageCacheOnPrimaryStorageEvent(msg.getId());
-            imageCacheCleaner.setForce(msg.isForce());
-            imageCacheCleaner.cleanup(msg.getUuid(), false);
-            bus.publish(evt);
+        APICleanUpImageCacheOnPrimaryStorageEvent evt = new APICleanUpImageCacheOnPrimaryStorageEvent(msg.getId());
+        imageCacheCleaner.cleanup(msg.getUuid(), new ImageCacheCleanParam(true, msg.isForce()));
+        bus.publish(evt);
     }
 
 
