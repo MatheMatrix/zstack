@@ -1,10 +1,10 @@
 package org.zstack.sdnController.header;
 
 public enum SdnControllerTableState {
-    ENABLED("Enabled"),
-    DISABLED("Disabled");
+    Enabled("Enabled"),
+    Disabled("Disabled");
 
-    private String value;
+    public final String value;
     private SdnControllerTableState(String value) {
         this.value = value;
     }
@@ -13,5 +13,19 @@ public enum SdnControllerTableState {
     @Override
     public String toString() {
         return value;
+    }
+
+    public static SdnControllerTableState fromValue(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        for (SdnControllerTableState state : SdnControllerTableState.values()) {
+            if (state.value.equals(value)) {
+                return state;
+            }
+        }
+
+        throw new IllegalArgumentException("unknown: '" + value + "'");
     }
 }
