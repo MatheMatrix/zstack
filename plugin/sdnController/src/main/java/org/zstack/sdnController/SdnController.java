@@ -1,6 +1,7 @@
 package org.zstack.sdnController;
 
 import org.zstack.header.core.Completion;
+import org.zstack.header.vm.VmNicInventory;
 import org.zstack.sdnController.header.*;
 
 
@@ -20,6 +21,9 @@ public interface SdnController {
 
     default void addHost(APISdnControllerAddHostMsg msg, Completion completion) {completion.success();};
     default void removeHost(SdnControllerRemoveHostMsg msg, Completion completion) {completion.success();};
+
+    default void attachVmNicToHost(String hostUuid, VmNicInventory nic, Completion completion) {completion.success();};
+    default void deattachVmNicFromHost(String hostUuid, VmNicInventory nic, Completion completion) {completion.success();};
 
     default void changeHost(SdnControllerHostRefVO oldRef, SdnControllerHostRefVO newRef, Completion completion) {completion.success();};
 }

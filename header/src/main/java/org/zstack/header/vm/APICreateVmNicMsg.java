@@ -31,6 +31,9 @@ public class APICreateVmNicMsg extends APICreateMessage implements APIAuditor {
     @APIParam(required = false)
     private String ip;
 
+    @APIParam(required = false)
+    private String name;
+
     public String getL3NetworkUuid() {
         return l3NetworkUuid;
     }
@@ -45,6 +48,14 @@ public class APICreateVmNicMsg extends APICreateMessage implements APIAuditor {
 
     public void setIp(String ip) {
         this.ip = ip;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public static APICreateVmNicMsg __example__() {

@@ -911,6 +911,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 nicVO.setMac(nic.getMac());
                 nicVO.setAccountUuid(msg.getSession().getAccountUuid());
                 nicVO.setType(nic.getType());
+                nicVO.setInternalName(msg.getName());
 
                 int tries = 5;
                 while (tries-- > 0) {

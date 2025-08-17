@@ -4699,6 +4699,8 @@ public class KVMAgentCommands {
     public static class InstallOvsPackageCmd extends AgentCommand {
         @GrayVersion(value = "5.4.0")
         public String ovnControllerIp;
+        @GrayVersion(value = "5.4.0")
+        private String vSwitchType;
 
         public String getOvnControllerIp() {
             return ovnControllerIp;
@@ -4706,6 +4708,14 @@ public class KVMAgentCommands {
 
         public void setOvnControllerIp(String ovnControllerIp) {
             this.ovnControllerIp = ovnControllerIp;
+        }
+
+        public String getvSwitchType() {
+            return vSwitchType;
+        }
+
+        public void setvSwitchType(String vSwitchType) {
+            this.vSwitchType = vSwitchType;
         }
     }
 
