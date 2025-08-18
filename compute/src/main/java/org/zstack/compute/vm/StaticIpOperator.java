@@ -349,16 +349,27 @@ public class StaticIpOperator {
             return;
         }
 
+        CheckIpAvailabilityResult result = checkIpAvailabilityStruct(l3, ip);
+
+        if (!result.isAvailable()) {
+            throw new ApiMessageInterceptionException(argerr("IP[%s] is not available on the L3 network[uuid:%s] because: %s", ip, l3.getUuid(), result.getReason()));
+        }
+    }
+
+    private CheckIpAvailabilityResult checkIpAvailabilityStruct(L3NetworkVO l3, String ip) {
         L3NetworkFactory factory = l3Mgr.getL3NetworkFactory(L3NetworkType.valueOf(l3.getType()));
         L3Network nw = factory.getL3Network(l3);
         CheckIpAvailabilityStruct struct = new CheckIpAvailabilityStruct();
         struct.setIp(ip);
         struct.setL3NetworkUuid(l3.getUuid());
-        CheckIpAvailabilityResult result = nw.checkIpAvailability(struct);
+        return nw.checkIpAvailability(struct);
+    }
 
-        if (!result.isAvailable()) {
-            throw new ApiMessageInterceptionException(argerr("IP[%s] is not available on the L3 network[uuid:%s] because: %s", ip, l3.getUuid(), result.getReason()));
+    public boolean isIpAvailable(L3NetworkVO l3, String ip) {
+        if (!l3.getEnableIPAM()) {
+            return true;
         }
+        return checkIpAvailabilityStruct(l3, ip).isAvailable();
     }
 
     public void validateStaticIpTagsInApiMessage(APIMessage msg) {
