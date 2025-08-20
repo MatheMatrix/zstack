@@ -10,6 +10,7 @@ import org.zstack.header.storage.primary.PrimaryStorageVO
 import org.zstack.header.storage.primary.PrimaryStorageVO_
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO_
+import org.zstack.header.volume.VolumeType
 import org.zstack.header.volume.VolumeVO
 import org.zstack.header.volume.VolumeVO_
 import org.zstack.kvm.KVMAgentCommands
@@ -389,6 +390,14 @@ class NfsPrimaryStorageSpec extends PrimaryStorageSpec {
 
             VFS.vfsHook(NfsPrimaryStorageKVMBackend.GET_VOLUME_SIZE_PATH, xspec) { NfsPrimaryStorageKVMBackendCommands.GetVolumeActualSizeRsp rsp, HttpEntity<String> e, EnvSpec spec ->
                 def cmd = JSONObjectUtil.toObject(e.body, NfsPrimaryStorageKVMBackendCommands.GetVolumeActualSizeCmd.class)
+
+//                VolumeVO memoryVolumeVO = Q.New(VolumeVO.class).eq(VolumeVO_.installPath, cmd.installPath).eq(VolumeVO_.type, VolumeType.Memory).find();
+//                if (memoryVolumeVO != null) {
+//                    rsp.size = memoryVolumeVO.getSize()
+//                    rsp.actualSize = memoryVolumeVO.getActualSize()
+//                    return rsp
+//                }
+
                 VFS vfs = vfs(cmd, spec)
                 Qcow2 file = vfs.getFile(cmd.installPath)
                 rsp.size = file.virtualSize
