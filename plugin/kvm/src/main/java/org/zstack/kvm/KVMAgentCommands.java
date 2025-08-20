@@ -4009,6 +4009,7 @@ public class KVMAgentCommands {
         private String top;
         @GrayVersion(value = "5.0.0")
         private String base;
+        @GrayVersion(value = "5.3.40")
         private List<String> topChildrenInstallPathInDb = new ArrayList<>();
 
         public String getVmUuid() {
@@ -4053,9 +4054,6 @@ public class KVMAgentCommands {
     }
 
     public static class BlockCommitResponse extends AgentResponse {
-        @Validation
-        @GrayVersion(value = "5.0.0")
-        private String newVolumeInstallPath;
         @Validation(notZero = true)
         @GrayVersion(value = "5.0.0")
         private long size;
@@ -4070,8 +4068,11 @@ public class KVMAgentCommands {
     }
 
     public static class BlockPullCmd extends AgentCommand implements HasThreadContext {
+        @GrayVersion(value = "5.3.40")
         private String vmUuid;
+        @GrayVersion(value = "5.3.40")
         private VolumeTO volume;
+        @GrayVersion(value = "5.3.40")
         private String base;
 
         public String getVmUuid() {
@@ -4100,6 +4101,7 @@ public class KVMAgentCommands {
     }
 
     public static class BlockPullResponse extends AgentResponse {
+        @GrayVersion(value = "5.3.40")
         private long size;
 
         public long getSize() {
