@@ -30,11 +30,11 @@ import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.identity.*;
 import org.zstack.header.identity.Quota.QuotaPair;
-import org.zstack.header.identity.quota.QuotaDefinition;
-import org.zstack.header.identity.quota.QuotaMessageHandler;
 import org.zstack.header.identity.login.LogInMsg;
 import org.zstack.header.identity.login.LogInReply;
 import org.zstack.header.identity.login.LoginManager;
+import org.zstack.header.identity.quota.QuotaDefinition;
+import org.zstack.header.identity.quota.QuotaMessageHandler;
 import org.zstack.header.managementnode.PrepareDbInitialValueExtensionPoint;
 import org.zstack.header.message.*;
 import org.zstack.header.rest.RestAuthenticationBackend;
@@ -893,7 +893,6 @@ public class AccountManagerImpl extends AbstractService implements AccountManage
                                     }
                                 }
                             });
-                            
                             needPersistQuotas.forEach(this::persist);
                         });
             }
@@ -1739,12 +1738,28 @@ public class AccountManagerImpl extends AbstractService implements AccountManage
                 .eq(QuotaVO_.name, msg.getName())
                 .find();
         if (quota == null) {
-            throw new OperationFailureException(argerr("cannot find Quota[name: %s] for the account[uuid: %s]", msg.getName(), msg.getIdentityUuid()));
+            Query query = dbf.getEntityManager().createNativeQuery("select resourceType from ResourceVO where uuid = :uuid");
+            query.setParameter("uuid", msg.getIdentityUuid());
+            Object resourceType =  query.getSingleResult();
+            if (resourceType == null) {
+                throw new OperationFailureException(argerr("cannot find Resource[uuid: %s]", msg.getIdentityUuid()));
+            }
+
+            quota = new QuotaVO();
+            quota.setUuid(Platform.getUuid());
+            quota.setAccountUuid(msg.getAccountUuid());
+            quota.setName(msg.getName());
+            quota.setValue(msg.getValue());
+            quota.setIdentityUuid(msg.getIdentityUuid());
+            quota.setIdentityType(resourceType.toString());
+            dbf.persist(quota);
         }
 
+        String identityType = quota.getIdentityType();
         List<QuotaUpdateChecker> checkers = quotaChangeCheckers.stream()
-                .filter(checker -> checker.type().contains(quota.getIdentityType())).collect(Collectors.toList());
+                .filter(checker -> checker.type().contains(identityType)).collect(Collectors.toList());
         if (checkers.isEmpty()) {
+            dbf.remove(quota);
             throw new ApiMessageInterceptionException(
                     argerr("can not find quota update checker for quota[uuid:%s, type:%s]", quota.getIdentityUuid(), quota.getIdentityType()));
         }
@@ -1754,6 +1769,7 @@ public class AccountManagerImpl extends AbstractService implements AccountManage
                     quota.getIdentityUuid(), quota.getIdentityType(), checker.getClass().getSimpleName()));
             ErrorCode errorCode = checker.check(quota, msg.getValue());
             if (errorCode != null) {
+                dbf.remove(quota);
                 throw new ApiMessageInterceptionException(
                         operr(errorCode, "cannot update Quota[name: %s] for the account[uuid: %s]", msg.getName(), msg.getIdentityUuid()));
             }
