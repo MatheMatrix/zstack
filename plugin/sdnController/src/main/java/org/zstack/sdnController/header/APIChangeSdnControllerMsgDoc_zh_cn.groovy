@@ -31,12 +31,21 @@ doc {
 					since "5.3.28"
 				}
 				column {
+					name "name"
+					enclosedIn "changeSdnController"
+					desc "New name for the SDN controller"
+					location "body"
+					type "String"
+					optional true
+					since "5.3.28"
+				}
+				column {
 					name "password"
 					enclosedIn "changeSdnController"
 					desc "New password for the SDN controller"
 					location "body"
 					type "String"
-					optional false
+					optional true
 					since "5.3.28"
 				}
 				column {
