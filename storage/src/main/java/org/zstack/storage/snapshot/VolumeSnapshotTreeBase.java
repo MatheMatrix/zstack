@@ -466,7 +466,9 @@ public class VolumeSnapshotTreeBase {
             }
         });
 
-        if (Objects.equals(msg.getScope(), DeleteVolumeSnapshotScope.Chain.toString())) {
+        if (Objects.equals(msg.getScope(), DeleteVolumeSnapshotScope.Single.toString())) {
+            deleteSingleFlows();
+        } else {
             if (msg.getScope() == null) {
                 logger.warn("snapshot deletion scope is null, default to Chain scope");
             }
@@ -481,8 +483,6 @@ public class VolumeSnapshotTreeBase {
             requiredSize = Math.min(size, volume.getSize());
 
             deleteChainFlows();
-        } else {
-            deleteSingleFlows();
         }
 
         done();

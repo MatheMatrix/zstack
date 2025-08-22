@@ -749,13 +749,13 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
 
     public static class OfflineCommitSnapshotRsp extends AgentResponse {
         @GrayVersion(value = "5.3.40")
-        private Long actualSize;
+        private long actualSize;
 
-        public Long getActualSize() {
+        public long getActualSize() {
             return actualSize;
         }
 
-        public void setActualSize(Long actualSize) {
+        public void setActualSize(long actualSize) {
             this.actualSize = actualSize;
         }
     }

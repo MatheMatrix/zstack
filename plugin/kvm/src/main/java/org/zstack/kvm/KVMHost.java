@@ -983,7 +983,8 @@ public class KVMHost extends HostBase implements Host {
     }
 
     private void handle(CommitVolumeSnapshotOnHypervisorMsg msg) {
-        inQueue().name(String.format("commit-volume-snapshot-on-kvm-%s", self.getUuid()))
+        inQueue(KVMGlobalConfig.HOST_SNAPSHOT_SYNC_LEVEL.value(Integer.class))
+                .name(String.format("commit-volume-snapshot-on-kvm-%s", self.getUuid()))
                 .asyncBackup(msg)
                 .run(chain -> commitVolumeSnapshot(msg, new NoErrorCompletion(chain) {
                     @Override
@@ -1097,7 +1098,8 @@ public class KVMHost extends HostBase implements Host {
     }
 
     private void handle(final PullVolumeSnapshotOnHypervisorMsg msg) {
-        inQueue().name(String.format("pull-volume-snapshot-on-kvm-%s", self.getUuid()))
+        inQueue(KVMGlobalConfig.HOST_SNAPSHOT_SYNC_LEVEL.value(Integer.class))
+                .name(String.format("pull-volume-snapshot-on-kvm-%s", self.getUuid()))
                 .asyncBackup(msg)
                 .run(chain -> pullVolumeSnapshot(msg, new NoErrorCompletion(chain) {
                     @Override
@@ -2732,7 +2734,8 @@ public class KVMHost extends HostBase implements Host {
     }
 
     private void handle(final MergeVolumeSnapshotOnKvmMsg msg) {
-        inQueue().name(String.format("merge-volume-snapshot-on-kvm-%s", self.getUuid()))
+        inQueue(KVMGlobalConfig.HOST_SNAPSHOT_SYNC_LEVEL.value(Integer.class))
+                .name(String.format("merge-volume-snapshot-on-kvm-%s", self.getUuid()))
                 .asyncBackup(msg)
                 .run(chain -> mergeVolumeSnapshot(msg, new NoErrorCompletion(chain) {
                     @Override

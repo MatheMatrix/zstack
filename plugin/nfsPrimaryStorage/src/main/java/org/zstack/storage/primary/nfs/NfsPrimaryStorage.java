@@ -1938,10 +1938,13 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
 
     private String getHostUuidFromVolume(String volumeUuid) {
         VolumeVO vol = dbf.findByUuid(volumeUuid, VolumeVO.class);
+        if (vol == null) {
+            throw new OperationFailureException(operr("volume[uuid:%s] not found", volumeUuid));
+        }
 
         String hostUuid = "";
-        List<HostInventory> connectedHost = factory.getConnectedHostForOperation(getSelfInventory());
-        if (connectedHost.isEmpty()) {
+        List<HostInventory> connectedHosts = factory.getConnectedHostForOperation(getSelfInventory());
+        if (CollectionUtils.isEmpty(connectedHosts)) {
             return hostUuid;
         }
         String connectedHostUuid = factory.getConnectedHostForOperation(getSelfInventory()).get(0).getUuid();

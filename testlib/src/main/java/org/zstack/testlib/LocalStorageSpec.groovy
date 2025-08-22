@@ -526,6 +526,7 @@ class LocalStorageSpec extends PrimaryStorageSpec {
                 if (cmd.fullRebase) {
                     dst.rebase((String) null)
                 } else {
+                    vfs.Assert(vfs.exists(cmd.srcPath), String.format("cannot find source snapshot[%s] on VFS", cmd.srcPath))
                     dst.rebase(cmd.srcPath)
                 }
                 rsp.actualSize = 1

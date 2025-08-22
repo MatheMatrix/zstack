@@ -41,8 +41,12 @@ public class PullVolumeSnapshotOnPrimaryStorageMsg extends NeedReplyMessage impl
     public void setDstSnapshot(VolumeSnapshotInventory dstSnapshot) {
         this.dstSnapshot = dstSnapshot;
     }
+
     @Override
     public String getPrimaryStorageUuid() {
+        if (volume == null) {
+            throw new IllegalArgumentException("volume cannot be null");
+        }
         return volume.getPrimaryStorageUuid();
     }
 }
