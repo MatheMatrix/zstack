@@ -372,21 +372,36 @@ public class VolumeSnapshotTreeBase {
             return;
         }
 
-        FlowChain chain = FlowChainBuilder.newShareFlowChain();
+        FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
         chain.setName(String.format("delete-snapshot-%s", currentRoot.getUuid()));
-        chain.allowEmptyFlow();
+        checkSnapshotDeletion(msg).forEach(chain::then);
 
-        VolumeVO volume = dbf.findByUuid(msg.getVolumeUuid(), VolumeVO.class);
+        if (msg.getScope() == null) {
+            logger.warn("snapshot deletion scope is null, default to Chain scope");
+        }
+        if (Objects.equals(msg.getScope(), DeleteVolumeSnapshotScope.Single.toString())) {
+            deleteSingleSnapshot(msg).forEach(chain::then);
+        } else {
+            deleteSnapshotChain(msg).forEach(chain::then);
+        }
+
+        chain.done(deleteSnapshotDone(msg, completion));
+        chain.error(new FlowErrorHandler(msg, completion) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                reply.setError(errCode);
+                bus.reply(msg, reply);
+                completion.done();
+            }
+        });
+    }
+
+    private List<Flow> checkSnapshotDeletion(final VolumeSnapshotDeletionMsg msg) {
         String primaryStorageType = Q.New(PrimaryStorageVO.class).select(PrimaryStorageVO_.type)
                 .eq(PrimaryStorageVO_.uuid, getSelfInventory().getPrimaryStorageUuid()).findValue();
 
-    chain.then(new ShareFlow() {
-        boolean ancestorOfLatest;
-        long requiredSize;
-
-        @Override
-        public void setup() {
-        flow(new NoRollbackFlow() {
+        List<Flow> flows = new ArrayList<>();
+        flows.add(new NoRollbackFlow() {
             String __name__ = "check-snapshot-reference";
 
             @Override
@@ -405,7 +420,7 @@ public class VolumeSnapshotTreeBase {
                 trigger.fail(operr("snapshot or its desendant has reference volume[uuids:%s]", refVolUuids));
             }
         });
-        flow(new NoRollbackFlow() {
+        flows.add(new NoRollbackFlow() {
             String __name__ = "run snapshot protector";
 
             @Override
@@ -453,7 +468,7 @@ public class VolumeSnapshotTreeBase {
                             whileCompletion.done();
                         }
                     });
-                }).run(new WhileDoneCompletion(completion) {
+                }).run(new WhileDoneCompletion(trigger) {
                     @Override
                     public void done(ErrorCodeList errorCodeList) {
                         if (errList.getCauses().isEmpty()) {
@@ -465,32 +480,25 @@ public class VolumeSnapshotTreeBase {
                 });
             }
         });
+        return flows;
+    }
 
-        if (Objects.equals(msg.getScope(), DeleteVolumeSnapshotScope.Chain.toString())) {
-            if (msg.getScope() == null) {
-                logger.warn("snapshot deletion scope is null, default to Chain scope");
+    private List<Flow> deleteSnapshotChain(final VolumeSnapshotDeletionMsg msg) {
+        List<Flow> flows = new ArrayList<>();
+
+        VolumeVO volume = dbf.findByUuid(msg.getVolumeUuid(), VolumeVO.class);
+        boolean ancestorOfLatest = false;
+
+        long size = 0;
+        for (VolumeSnapshotInventory inv : currentLeaf.getDescendants()) {
+            if (inv.isLatest()) {
+                ancestorOfLatest = true;
             }
-
-            long size = 0;
-            for (VolumeSnapshotInventory inv : currentLeaf.getDescendants()) {
-                if (inv.isLatest()) {
-                    ancestorOfLatest = true;
-                }
-                size += inv.getSize();
-            }
-            requiredSize = Math.min(size, volume.getSize());
-
-            deleteChainFlows();
-        } else {
-            deleteSingleFlows();
+            size += inv.getSize();
         }
+        long requiredSize = Math.min(size, volume.getSize());
 
-        done();
-        error();
-        }
-
-    private void deleteChainFlows() {
-        flow(new Flow() {
+        flows.add(new Flow() {
             String __name__ = String.format("change-volume-snapshot-status-%s", VolumeSnapshotStatus.Deleting);
 
             public void run(final FlowTrigger trigger, Map data) {
@@ -532,7 +540,7 @@ public class VolumeSnapshotTreeBase {
 
             boolean needMerge = onCurrentTree && ancestorOfLatest && currentRoot.getPrimaryStorageUuid() != null && VolumeSnapshotConstant.HYPERVISOR_SNAPSHOT_TYPE.toString().equals(currentRoot.getType());
             if (needMerge) {
-                flow(new Flow() {
+                flows.add(new Flow() {
                     String __name__ = "allocate-primary-storage";
 
                     boolean success;
@@ -575,7 +583,7 @@ public class VolumeSnapshotTreeBase {
                         trigger.rollback();
                     }
                 });
-                flow(new NoRollbackFlow() {
+                flows.add(new NoRollbackFlow() {
                     String __name__ = "merge-volume-snapshots-to-volume";
 
                     @Override
@@ -607,7 +615,7 @@ public class VolumeSnapshotTreeBase {
                 });
             }
 
-            flow(new NoRollbackFlow() {
+            flows.add(new NoRollbackFlow() {
                 String __name__ = "delete-volume-snapshots-from-backup-storage";
 
                 @Override
@@ -636,7 +644,7 @@ public class VolumeSnapshotTreeBase {
             });
         }
 
-        flow(new NoRollbackFlow() {
+        flows.add(new NoRollbackFlow() {
             String __name__ = "delete-volume-snapshots-from-primary-storage";
 
             @Override
@@ -690,10 +698,14 @@ public class VolumeSnapshotTreeBase {
                 });
             }
         });
+        return flows;
     }
 
-    private void done() {
-        done(new FlowDoneHandler(msg, completion) {
+    private FlowDoneHandler deleteSnapshotDone(VolumeSnapshotDeletionMsg msg, NoErrorCompletion completion) {
+        boolean ancestorOfLatest = currentLeaf.getDescendants().stream().anyMatch(VolumeSnapshotInventory::isLatest);
+        final VolumeSnapshotDeletionReply reply = new VolumeSnapshotDeletionReply();
+
+        return new FlowDoneHandler(msg, completion) {
             @Override
             public void handle(Map data) {
                 if (Objects.equals(msg.getScope(), DeleteVolumeSnapshotScope.Single.toString())) {
@@ -756,31 +768,35 @@ public class VolumeSnapshotTreeBase {
                     completion.done();
                 }
             }
-        });
+        };
     }
 
-    private void error() {
-        error(new FlowErrorHandler(msg, completion) {
-            @Override
-            public void handle(ErrorCode errCode, Map data) {
-                reply.setError(errCode);
-                bus.reply(msg, reply);
-                completion.done();
-            }
-        });
-    }
+    private List<Flow> deleteSingleSnapshot(final VolumeSnapshotDeletionMsg msg) {
+        List<Flow> flows = new ArrayList<>();
+        VolumeVO volume = dbf.findByUuid(msg.getVolumeUuid(), VolumeVO.class);
 
-    private void deleteSingleFlows() {
-        flow(new NoRollbackFlow() {
+        flows.add(new NoRollbackFlow() {
             VmInstanceState vmState;
-            String srcSnapshotParentPath;
 
             String __name__ = "delete-single-volume-snapshot";
 
             public void run(final FlowTrigger trigger, Map data) {
+                if (volume.getVmInstanceUuid() != null) {
+                    vmState = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, volume.getVmInstanceUuid()).select(VmInstanceVO_.state).findValue();
+                    if (vmState != VmInstanceState.Running &&
+                            vmState != VmInstanceState.Paused &&
+                            vmState != VmInstanceState.Destroyed &&
+                            vmState != VmInstanceState.Stopped &&
+                            vmState != VmInstanceState.Destroying) {
+                        trigger.fail(operr("vm[uuid:%s] is not Running, Paused or Destroyed, Stopped, Destroying, " +
+                                "current state[%s]", volume.getVmInstanceUuid(), vmState));
+                        return;
+                    }
+                }
+
                 if (VolumeSnapshotConstant.STORAGE_SNAPSHOT_TYPE.toString().equals(currentRoot.getType())
                         || Objects.equals(currentRoot.getVolumeType(), VolumeType.Memory.toString())) {
-                    deleteVolumeSnapshotAndSyncVolumeSize(new Completion(completion) {
+                    deleteVolumeSnapshotAndSyncVolumeSize(volume.toInventory(), new Completion(trigger) {
                         @Override
                         public void success() {
                             trigger.next();
@@ -794,17 +810,7 @@ public class VolumeSnapshotTreeBase {
                     return;
                 }
 
-                if (volume.getVmInstanceUuid() != null) {
-                    vmState = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, volume.getVmInstanceUuid()).select(VmInstanceVO_.state).findValue();
-                    if (vmState != VmInstanceState.Running && vmState != VmInstanceState.Paused
-                            && vmState != VmInstanceState.Destroyed && vmState != VmInstanceState.Stopped && vmState != VmInstanceState.Destroying) {
-                        trigger.fail(operr("vm[uuid:%s] is not Running, Paused or Destroyed, Stopped, Destroying, " +
-                                "current state[%s]", volume.getVmInstanceUuid(), vmState));
-                        return;
-                    }
-                }
-
-                stepDelete(new Completion(msg, completion) {
+                stepDelete(new Completion(msg, trigger) {
                     @Override
                     public void success() {
                         trigger.next();
@@ -825,7 +831,7 @@ public class VolumeSnapshotTreeBase {
                 List<VolumeTree.VolumeSnapshotLeaf> children = volumeTree.getSnapshotLeaf(currentRoot.getUuid()).getChildren();
 
                 if (children.isEmpty()) {
-                    deleteVolumeSnapshotAndSyncVolumeSize(completion);
+                    deleteVolumeSnapshotAndSyncVolumeSize(volume.toInventory(), completion);
                     return;
                 }
 
@@ -850,477 +856,468 @@ public class VolumeSnapshotTreeBase {
                             msg.getDirection(), currentRoot.isLatest(), vmState);
                     boolean online = volumeTree.isOnline(current, currentRoot.getUuid(), child.getUuid(), vmState);
                     if (Objects.equals(direction, DeleteVolumeSnapshotDirection.Commit)) {
-                        commit(child, volumeTree, online, comp);
+                        commit(volume.toInventory(), child, volumeTree, online, comp);
                     } else {
-                        pull(child, volumeTree, online, comp);
+                        pull(volume.toInventory(), child, volumeTree, online, comp);
                     }
                 } else {
                     if (onlineChild != null && Objects.equals(child.getUuid(), onlineChild.getUuid())) {
                         child = children.get(1);
                     }
                     boolean online = volumeTree.isOnline(current, currentRoot.getUuid(), child.getUuid(), vmState);
-                    pull(child, volumeTree, online, comp);
+                    pull(volume.toInventory(), child, volumeTree, online, comp);
                 }
             }
+        });
+        return flows;
+    }
 
-            private void commit(VolumeTree.VolumeSnapshotLeaf child, VolumeTree volumeTree, boolean online, Completion completion) {
-                FlowChain chain = FlowChainBuilder.newShareFlowChain();
-                chain.setName(String.format("delete-single-volume-snapshot-%s-by-commit", currentRoot.getUuid()));
-                chain.then(new ShareFlow() {
-                    final VolumeSnapshotInventory srcSnapshotInv = child.getInventory();
-                    final VolumeTree.VolumeSnapshotLeaf srcSnapshotLeaf = child;
-                    final VolumeSnapshotInventory dstSnapshotInv = VolumeSnapshotInventory.valueOf(currentRoot);
-                    long size = srcSnapshotInv.getSize();
-                    String allocatedInstall;
+    private void commit(VolumeInventory volume, VolumeTree.VolumeSnapshotLeaf child, VolumeTree volumeTree, boolean online, Completion completion) {
+        final VolumeSnapshotInventory srcSnapshotInv = child.getInventory();
+        final VolumeTree.VolumeSnapshotLeaf srcSnapshotLeaf = child;
+        final VolumeSnapshotInventory dstSnapshotInv = VolumeSnapshotInventory.valueOf(currentRoot);
+        final long[] size = {srcSnapshotInv.getSize()};
+        final String[] allocatedInstall = new String[1];
+        final long[] newInstallPathSize = new long[1];
 
-                    @Override
-                    public void setup() {
-                        if (Objects.equals(srcSnapshotInv.getUuid(), volume.getUuid())) {
-                            flow(new NoRollbackFlow() {
-                                String __name__ = String.format("get-volume-%s-current-size", volume.getUuid());
+        FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
+        chain.setName(String.format("delete-single-volume-snapshot-%s-by-commit", currentRoot.getUuid()));
+        if (Objects.equals(srcSnapshotInv.getUuid(), volume.getUuid())) {
+            chain.then(new NoRollbackFlow() {
+                String __name__ = String.format("get-volume-%s-current-size", volume.getUuid());
 
-                                @Override
-                                public void run(FlowTrigger trigger, Map data) {
-                                    SyncVolumeSizeOnPrimaryStorageMsg smsg = new SyncVolumeSizeOnPrimaryStorageMsg();
-                                    smsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
-                                    smsg.setVolumeUuid(volume.getUuid());
-                                    smsg.setInstallPath(volume.getInstallPath());
-                                    bus.makeTargetServiceIdByResourceUuid(smsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
-                                    bus.send(smsg, new CloudBusCallBack(completion) {
-                                        @Override
-                                        public void run(MessageReply reply) {
-                                            if (!reply.isSuccess()) {
-                                                trigger.fail(operr(String.format("failed to get volume[uuid:%s, installPath:%s] size " +
-                                                                "on primary storage[uuid:%s], %s", volume.getUuid(), volume.getInstallPath(),
-                                                        volume.getPrimaryStorageUuid(), reply.getError().getDetails())));
-                                                return;
-                                            }
+                @Override
+                public void run(FlowTrigger trigger, Map data) {
+                    SyncVolumeSizeOnPrimaryStorageMsg smsg = new SyncVolumeSizeOnPrimaryStorageMsg();
+                    smsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+                    smsg.setVolumeUuid(volume.getUuid());
+                    smsg.setInstallPath(volume.getInstallPath());
+                    bus.makeTargetServiceIdByResourceUuid(smsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                    bus.send(smsg, new CloudBusCallBack(completion) {
+                        @Override
+                        public void run(MessageReply reply) {
+                            if (!reply.isSuccess()) {
+                                trigger.fail(operr(String.format("failed to get volume[uuid:%s, installPath:%s] size " +
+                                                "on primary storage[uuid:%s], %s", volume.getUuid(), volume.getInstallPath(),
+                                        volume.getPrimaryStorageUuid(), reply.getError().getDetails())));
+                                return;
+                            }
 
-                                            SyncVolumeSizeOnPrimaryStorageReply r = reply.castReply();
-                                            size = r.getActualSize();
-                                            srcSnapshotInv.setSize(size);
-                                            trigger.next();
-                                        }
-                                    });
-                                }
-                            });
+                            SyncVolumeSizeOnPrimaryStorageReply r = reply.castReply();
+                            size[0] = r.getActualSize();
+                            srcSnapshotInv.setSize(size[0]);
+                            trigger.next();
                         }
+                    });
+                }
+            });
+        }
 
-                        flow(new Flow() {
-                            String __name__ = "allocate-primary-storage-capacity";
+        chain.then(new Flow() {
+            String __name__ = "allocate-primary-storage-capacity";
 
-                            @Override
-                            public void run(FlowTrigger trigger, Map data) {
-                                AllocatePrimaryStorageSpaceMsg amsg = new AllocatePrimaryStorageSpaceMsg();
-                                amsg.setRequiredPrimaryStorageUuid(volume.getPrimaryStorageUuid());
-                                amsg.setSize(size);
-                                amsg.setNoOverProvisioning(true);
-                                amsg.setRequiredInstallUri(String.format("volume://%s", volume.getUuid()));
-                                bus.makeTargetServiceIdByResourceUuid(amsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
-                                bus.send(amsg, new CloudBusCallBack(trigger) {
-                                    @Override
-                                    public void run(MessageReply reply) {
-                                        if (!reply.isSuccess()) {
-                                            trigger.fail(reply.getError());
-                                            return;
-                                        }
-                                        AllocatePrimaryStorageSpaceReply r = reply.castReply();
-                                        allocatedInstall = r.getAllocatedInstallUrl();
-                                        trigger.next();
-                                    }
-                                });
-                            }
-
-                            @Override
-                            public void rollback(FlowRollback trigger, Map data) {
-                                if (allocatedInstall == null) {
-                                    trigger.rollback();
-                                    return;
-                                }
-                                ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
-                                rmsg.setDiskSize(size);
-                                rmsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
-                                rmsg.setNoOverProvisioning(true);
-                                rmsg.setAllocatedInstallUrl(allocatedInstall);
-                                bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
-                                bus.send(rmsg);
-                                trigger.rollback();
-                            }
-                        });
-
-                        flow(new NoRollbackFlow() {
-                            String __name__ = "commit-volume-snapshot-on-primary-storage";
-
-                            long newInstallPathSize;
-
-                            @Override
-                            public void run(FlowTrigger trigger, Map data) {
-                                List<String> childrenInstallPath = child.getChildren().stream().map(c ->
-                                        c.getInventory().getPrimaryStorageInstallPath()).collect(Collectors.toList());
-
-                                if (online) {
-                                    String hostUuid = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, volume.getVmInstanceUuid())
-                                            .select(VmInstanceVO_.hostUuid).findValue();
-                                    CommitVolumeSnapshotOnHypervisorMsg cmsg = new CommitVolumeSnapshotOnHypervisorMsg();
-                                    cmsg.setHostUuid(hostUuid);
-                                    cmsg.setVolume(VolumeInventory.valueOf(volume));
-                                    cmsg.setSrcSnapshot(srcSnapshotInv);
-                                    cmsg.setDstSnapshot(dstSnapshotInv);
-                                    cmsg.setSrcChildrenInstallPathInDb(childrenInstallPath);
-                                    bus.makeTargetServiceIdByResourceUuid(cmsg, HostConstant.SERVICE_ID, hostUuid);
-                                    bus.send(cmsg, new CloudBusCallBack(trigger) {
-                                        @Override
-                                        public void run(MessageReply r) {
-                                            if (!r.isSuccess()) {
-                                                trigger.fail(r.getError());
-                                                return;
-                                            }
-                                            CommitVolumeSnapshotOnHypervisorReply re = r.castReply();
-                                            newInstallPathSize = re.getSize();
-                                            updateDatabase();
-                                            trigger.next();
-                                        }
-                                    });
-                                } else {
-                                    CommitVolumeSnapshotOnPrimaryStorageMsg cmsg = new CommitVolumeSnapshotOnPrimaryStorageMsg();
-                                    cmsg.setVolume(VolumeInventory.valueOf(volume));
-                                    cmsg.setSrcSnapshot(srcSnapshotInv);
-                                    cmsg.setDstSnapshot(dstSnapshotInv);
-                                    cmsg.setSrcChildrenInstallPathInDb(childrenInstallPath);
-                                    bus.makeTargetServiceIdByResourceUuid(cmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
-                                    bus.send(cmsg, new CloudBusCallBack(trigger) {
-                                        @Override
-                                        public void run(MessageReply r) {
-                                            if (!r.isSuccess()) {
-                                                trigger.fail(r.getError());
-                                                return;
-                                            }
-                                            CommitVolumeSnapshotOnPrimaryStorageReply re = r.castReply();
-                                            newInstallPathSize = re.getSize();
-                                            updateDatabase();
-                                            trigger.next();
-                                        }
-                                    });
-                                }
-                            }
-
-                            private void updateDatabase() {
-                                ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
-                                rmsg.setDiskSize(size);
-                                rmsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
-                                rmsg.setAllocatedInstallUrl(allocatedInstall);
-                                rmsg.setNoOverProvisioning(true);
-                                bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
-                                bus.send(rmsg);
-
-                                if (Objects.equals(srcSnapshotInv.getUuid(), volume.getUuid())) {
-                                    markSnapshotAsVolume(VolumeInventory.valueOf(volume), size, dstSnapshotInv.getPrimaryStorageInstallPath(), newInstallPathSize);
-                                    return;
-                                }
-
-                                volumeTree.updateDatabaseAfterCommit(srcSnapshotLeaf, dstSnapshotInv, newInstallPathSize);
-                            }
-                        });
-
-                        done(new FlowDoneHandler(completion) {
-                            @Override
-                            public void handle(Map data) {
-                                completion.success();
-                            }
-                        });
-
-                        error(new FlowErrorHandler(completion) {
-                            @Override
-                            public void handle(ErrorCode errCode, Map data) {
-                                completion.fail(errCode);
-                            }
-                        });
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                AllocatePrimaryStorageSpaceMsg amsg = new AllocatePrimaryStorageSpaceMsg();
+                amsg.setRequiredPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+                amsg.setSize(size[0]);
+                amsg.setNoOverProvisioning(true);
+                amsg.setRequiredInstallUri(String.format("volume://%s", volume.getUuid()));
+                bus.makeTargetServiceIdByResourceUuid(amsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                bus.send(amsg, new CloudBusCallBack(trigger) {
+                    @Override
+                    public void run(MessageReply reply) {
+                        if (!reply.isSuccess()) {
+                            trigger.fail(reply.getError());
+                            return;
+                        }
+                        AllocatePrimaryStorageSpaceReply r = reply.castReply();
+                        allocatedInstall[0] = r.getAllocatedInstallUrl();
+                        trigger.next();
                     }
-                }).start();
+                });
             }
 
-            private void pull(VolumeTree.VolumeSnapshotLeaf child, VolumeTree volumeTree, boolean online, Completion completion) {
-                FlowChain chain = FlowChainBuilder.newShareFlowChain();
-                chain.setName(String.format("delete-single-volume-snapshot-%s-by-pull", currentRoot.getUuid()));
-                chain.then(new ShareFlow() {
-                    final VolumeSnapshotInventory srcSnapshotInv = VolumeSnapshotInventory.valueOf(currentRoot);
-                    final VolumeSnapshotInventory dstSnapshotInv = child.getInventory();
-                    final VolumeTree.VolumeSnapshotLeaf dstSnapshotLeaf = child;
-                    String hostUuid;
-                    long newInstallPathSize;
-                    String allocatedInstall;
-
-                    @Override
-                    public void setup() {
-                        if (volume.getVmInstanceUuid() != null && (vmState == VmInstanceState.Running || vmState == VmInstanceState.Paused)) {
-                            hostUuid = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, volume.getVmInstanceUuid())
-                                    .select(VmInstanceVO_.hostUuid).findValue();
-                        }
-
-                        flow(new NoRollbackFlow() {
-                            String __name__ = "get-snapshot-backing-chain";
-
-                            @Override
-                            public boolean skip(Map data) {
-                                return srcSnapshotParentPath != null;
-                            }
-
-                            @Override
-                            public void run(FlowTrigger trigger, Map data) {
-                                GetVolumeBackingChainFromPrimaryStorageMsg gmsg = new GetVolumeBackingChainFromPrimaryStorageMsg();
-                                gmsg.setVolumeUuid(volume.getUuid());
-                                gmsg.setRootInstallPaths(Collections.singletonList(srcSnapshotInv.getPrimaryStorageInstallPath()));
-                                gmsg.setPrimaryStorageUuid(srcSnapshotInv.getPrimaryStorageUuid());
-                                gmsg.setHostUuid(hostUuid);
-                                gmsg.setVolumeFormat(volume.getFormat());
-                                bus.makeTargetServiceIdByResourceUuid(gmsg, PrimaryStorageConstant.SERVICE_ID, gmsg.getPrimaryStorageUuid());
-                                bus.send(gmsg, new CloudBusCallBack(trigger) {
-                                    @Override
-                                    public void run(MessageReply reply) {
-                                        if (!reply.isSuccess()) {
-                                            trigger.fail(reply.getError());
-                                            return;
-                                        }
-
-                                        GetVolumeBackingChainFromPrimaryStorageReply gr = reply.castReply();
-                                        List<String> backingChainInstallPath = gr.getBackingChainInstallPath().get(srcSnapshotInv.getPrimaryStorageInstallPath());
-                                        if (!backingChainInstallPath.isEmpty()) {
-                                            srcSnapshotParentPath = backingChainInstallPath.get(0);
-                                        }
-                                        trigger.next();
-                                    }
-                                });
-                            }
-                        });
-
-                        flow(new Flow() {
-                            String __name__ = "allocate-primary-storage-capacity";
-
-                            @Override
-                            public void run(FlowTrigger trigger, Map data) {
-                                AllocatePrimaryStorageSpaceMsg amsg = new AllocatePrimaryStorageSpaceMsg();
-                                amsg.setRequiredPrimaryStorageUuid(volume.getPrimaryStorageUuid());
-                                amsg.setSize(srcSnapshotInv.getSize());
-                                amsg.setNoOverProvisioning(true);
-                                amsg.setRequiredInstallUri(String.format("volume://%s", volume.getUuid()));
-                                bus.makeTargetServiceIdByResourceUuid(amsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
-                                bus.send(amsg, new CloudBusCallBack(trigger) {
-                                    @Override
-                                    public void run(MessageReply reply) {
-                                        if (!reply.isSuccess()) {
-                                            trigger.fail(reply.getError());
-                                            return;
-                                        }
-                                        AllocatePrimaryStorageSpaceReply r = reply.castReply();
-                                        allocatedInstall = r.getAllocatedInstallUrl();
-                                        trigger.next();
-                                    }
-                                });
-                            }
-
-                            @Override
-                            public void rollback(FlowRollback trigger, Map data) {
-                                if (allocatedInstall == null) {
-                                    trigger.rollback();
-                                    return;
-                                }
-                                ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
-                                rmsg.setDiskSize(srcSnapshotInv.getSize());
-                                rmsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
-                                rmsg.setNoOverProvisioning(true);
-                                rmsg.setAllocatedInstallUrl(allocatedInstall);
-                                bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
-                                bus.send(rmsg);
-                                trigger.rollback();
-                            }
-                        });
-
-                        if (Objects.equals(dstSnapshotInv.getUuid(), volume.getUuid())) {
-                            flow(new NoRollbackFlow() {
-                                String __name__ = String.format("get-volume-%s-current-size", volume.getUuid());
-
-                                @Override
-                                public void run(FlowTrigger trigger, Map data) {
-                                    SyncVolumeSizeOnPrimaryStorageMsg smsg = new SyncVolumeSizeOnPrimaryStorageMsg();
-                                    smsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
-                                    smsg.setVolumeUuid(volume.getUuid());
-                                    smsg.setInstallPath(volume.getInstallPath());
-                                    bus.makeTargetServiceIdByResourceUuid(smsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
-                                    bus.send(smsg, new CloudBusCallBack(completion) {
-                                        @Override
-                                        public void run(MessageReply reply) {
-                                            if (!reply.isSuccess()) {
-                                                trigger.fail(operr(String.format("failed to get volume[uuid:%s, installPath:%s] size on primary storage[uuid:%s], because %s",
-                                                        volume.getUuid(), volume.getInstallPath(), volume.getPrimaryStorageUuid(), reply.getError().getDetails())));
-                                                return;
-                                            }
-
-                                            SyncVolumeSizeOnPrimaryStorageReply r = reply.castReply();
-                                            dstSnapshotInv.setSize(r.getActualSize());
-                                            trigger.next();
-                                        }
-                                    });
-                                }
-                            });
-                        }
-
-                        flow(new NoRollbackFlow() {
-                            String __name__ = "pull-volume-snapshot-on-primary-storage";
-
-                            @Override
-                            public void run(FlowTrigger trigger, Map data) {
-                                if (online) {
-                                    PullVolumeSnapshotOnHypervisorMsg pmsg = new PullVolumeSnapshotOnHypervisorMsg();
-                                    pmsg.setHostUuid(hostUuid);
-                                    pmsg.setVolume(VolumeInventory.valueOf(volume));
-                                    pmsg.setSrcSnapshotParentPath(srcSnapshotParentPath);
-                                    pmsg.setSrcSnapshot(srcSnapshotInv);
-                                    pmsg.setDstSnapshot(dstSnapshotInv);
-                                    bus.makeTargetServiceIdByResourceUuid(pmsg, HostConstant.SERVICE_ID, hostUuid);
-                                    bus.send(pmsg, new CloudBusCallBack(completion) {
-                                        @Override
-                                        public void run(MessageReply r) {
-                                            if (!r.isSuccess()) {
-                                                trigger.fail(r.getError());
-                                                return;
-                                            }
-
-                                            PullVolumeSnapshotOnHypervisorReply re = r.castReply();
-                                            newInstallPathSize = re.getSize();
-                                            updateDatabase();
-                                            trigger.next();
-                                        }
-                                    });
-                                } else {
-                                    PullVolumeSnapshotOnPrimaryStorageMsg pmsg = new PullVolumeSnapshotOnPrimaryStorageMsg();
-                                    pmsg.setVolume(VolumeInventory.valueOf(volume));
-                                    pmsg.setSrcSnapshotParentPath(srcSnapshotParentPath);
-                                    pmsg.setSrcSnapshot(srcSnapshotInv);
-                                    pmsg.setDstSnapshot(dstSnapshotInv);
-                                    bus.makeTargetServiceIdByResourceUuid(pmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
-                                    bus.send(pmsg, new CloudBusCallBack(trigger) {
-                                        @Override
-                                        public void run(MessageReply r) {
-                                            if (!r.isSuccess()) {
-                                                trigger.fail(r.getError());
-                                                return;
-                                            }
-                                            PullVolumeSnapshotOnPrimaryStorageReply re = r.castReply();
-                                            newInstallPathSize = re.getSize();
-                                            updateDatabase();
-                                            trigger.next();
-                                        }
-                                    });
-                                }
-                            }
-
-                            private void updateDatabase() {
-                                ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
-                                rmsg.setDiskSize(dstSnapshotInv.getSize());
-                                rmsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
-                                rmsg.setAllocatedInstallUrl(allocatedInstall);
-                                rmsg.setNoOverProvisioning(true);
-                                bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
-                                bus.send(rmsg);
-
-                                if (Objects.equals(dstSnapshotInv.getUuid(), volume.getUuid())) {
-                                    volumeTree.updateDatabaseAfterPullToVolume(srcSnapshotInv);
-                                    return;
-                                }
-                                volumeTree.updateDatabaseAfterPull(srcSnapshotInv, dstSnapshotLeaf, newInstallPathSize);
-                            }
-                        });
-
-                        done(new FlowDoneHandler(completion) {
-                            @Override
-                            public void handle(Map data) {
-                                completion.success();
-                            }
-                        });
-
-                        error(new FlowErrorHandler(completion) {
-                            @Override
-                            public void handle(ErrorCode errCode, Map data) {
-                                completion.fail(errCode);
-                            }
-                        });
-
-                    }
-                }).start();
-            }
-
-            private void deleteVolumeSnapshotAndSyncVolumeSize(Completion completion) {
-                FlowChain chain = FlowChainBuilder.newShareFlowChain();
-                chain.setName("delete-volume-snapshot-and-sync-volume-size");
-                chain.then(new ShareFlow() {
-                    @Override
-                    public void setup() {
-                        flow(new NoRollbackFlow() {
-                            String __name__ = String.format("delete-snapshot-%s-on-primary-storage", currentRoot.getUuid());
-
-                            @Override
-                            public void run(FlowTrigger trigger, Map data) {
-                                VolumeSnapshotPrimaryStorageDeletionMsg pmsg = new VolumeSnapshotPrimaryStorageDeletionMsg();
-                                pmsg.setUuid(currentRoot.getUuid());
-                                bus.makeTargetServiceIdByResourceUuid(pmsg, VolumeSnapshotConstant.SERVICE_ID, currentRoot.getPrimaryStorageUuid());
-                                bus.send(pmsg, new CloudBusCallBack(trigger) {
-                                    @Override
-                                    public void run(MessageReply reply) {
-                                        if (!reply.isSuccess()) {
-                                            //TODO add gc
-                                            logger.warn(String.format("failed to delete snapshot[uuid:%s] on primary storage[uuid:%s], " +
-                                                    "%s", currentRoot.getUuid(), currentRoot.getPrimaryStorageUuid(), reply.getError().getDetails()));
-                                        }
-                                        VolumeSnapshotVO vo = dbf.findByUuid(currentRoot.getUuid(), VolumeSnapshotVO.class);
-                                        cleanupInQueue(VolumeSnapshotInventory.valueOf(vo), new NoErrorCompletion() {
-                                            @Override
-                                            public void done() {
-                                                trigger.next();
-                                            }
-                                        });
-                                    }
-                                });
-                            }
-                        });
-
-                        flow(new NoRollbackFlow() {
-                            String __name__ = String.format("sync-volume-%s-size", volume.getUuid());
-
-                            @Override
-                            public void run(FlowTrigger trigger, Map data) {
-                                SyncVolumeSizeMsg msg = new SyncVolumeSizeMsg();
-                                msg.setVolumeUuid(volume.getUuid());
-                                bus.makeTargetServiceIdByResourceUuid(msg, VolumeConstant.SERVICE_ID, currentRoot.getPrimaryStorageUuid());
-                                bus.send(msg, new CloudBusCallBack(trigger) {
-                                    @Override
-                                    public void run(MessageReply reply) {
-                                        if (!reply.isSuccess()) {
-                                            logger.warn(String.format("failed to sync volume[%s] size, because %s", volume.getUuid(), reply.getError()));
-                                        }
-                                        trigger.next();
-                                    }
-                                });
-                            }
-                        });
-
-                        done(new FlowDoneHandler(completion) {
-                            @Override
-                            public void handle(Map data) {
-                                completion.success();
-                            }
-                        });
-
-                        error(new FlowErrorHandler(completion) {
-                            @Override
-                            public void handle(ErrorCode errCode, Map data) {
-                                completion.fail(errCode);
-                            }
-                        });
-                    }
-                }).start();
+            @Override
+            public void rollback(FlowRollback trigger, Map data) {
+                if (allocatedInstall[0] == null) {
+                    trigger.rollback();
+                    return;
+                }
+                ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
+                rmsg.setDiskSize(size[0]);
+                rmsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+                rmsg.setNoOverProvisioning(true);
+                rmsg.setAllocatedInstallUrl(allocatedInstall[0]);
+                bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                bus.send(rmsg);
+                trigger.rollback();
             }
         });
+
+        chain.then(new NoRollbackFlow() {
+            String __name__ = "commit-volume-snapshot-on-primary-storage";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                List<String> childrenInstallPath = child.getChildren().stream().map(c ->
+                        c.getInventory().getPrimaryStorageInstallPath()).collect(Collectors.toList());
+
+                if (online) {
+                    String hostUuid = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, volume.getVmInstanceUuid())
+                            .select(VmInstanceVO_.hostUuid).findValue();
+                    CommitVolumeSnapshotOnHypervisorMsg cmsg = new CommitVolumeSnapshotOnHypervisorMsg();
+                    cmsg.setHostUuid(hostUuid);
+                    cmsg.setVolume(volume);
+                    cmsg.setSrcSnapshot(srcSnapshotInv);
+                    cmsg.setDstSnapshot(dstSnapshotInv);
+                    cmsg.setSrcChildrenInstallPathInDb(childrenInstallPath);
+                    bus.makeTargetServiceIdByResourceUuid(cmsg, HostConstant.SERVICE_ID, hostUuid);
+                    bus.send(cmsg, new CloudBusCallBack(trigger) {
+                        @Override
+                        public void run(MessageReply r) {
+                            if (!r.isSuccess()) {
+                                trigger.fail(r.getError());
+                                return;
+                            }
+                            CommitVolumeSnapshotOnHypervisorReply re = r.castReply();
+                            newInstallPathSize[0] = re.getSize();
+                            trigger.next();
+                        }
+                    });
+                } else {
+                    CommitVolumeSnapshotOnPrimaryStorageMsg cmsg = new CommitVolumeSnapshotOnPrimaryStorageMsg();
+                    cmsg.setVolume(volume);
+                    cmsg.setSrcSnapshot(srcSnapshotInv);
+                    cmsg.setDstSnapshot(dstSnapshotInv);
+                    cmsg.setSrcChildrenInstallPathInDb(childrenInstallPath);
+                    bus.makeTargetServiceIdByResourceUuid(cmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                    bus.send(cmsg, new CloudBusCallBack(trigger) {
+                        @Override
+                        public void run(MessageReply r) {
+                            if (!r.isSuccess()) {
+                                trigger.fail(r.getError());
+                                return;
+                            }
+                            CommitVolumeSnapshotOnPrimaryStorageReply re = r.castReply();
+                            newInstallPathSize[0] = re.getSize();
+                            trigger.next();
+                        }
+                    });
+                }
+            }
+        });
+
+        chain.done(new FlowDoneHandler(completion) {
+            @Override
+            public void handle(Map data) {
+                ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
+                rmsg.setDiskSize(size[0]);
+                rmsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+                rmsg.setAllocatedInstallUrl(allocatedInstall[0]);
+                rmsg.setNoOverProvisioning(true);
+                bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                bus.send(rmsg);
+
+                if (Objects.equals(srcSnapshotInv.getUuid(), volume.getUuid())) {
+                    markSnapshotAsVolume(volume, size[0], dstSnapshotInv.getPrimaryStorageInstallPath(), newInstallPathSize[0]);
+                    completion.success();
+                    return;
+                }
+
+                volumeTree.updateDatabaseAfterCommit(srcSnapshotLeaf, dstSnapshotInv, newInstallPathSize[0]);
+                completion.success();
+            }
+        });
+
+        chain.error(new FlowErrorHandler(completion) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                completion.fail(errCode);
+            }
+        });
+        chain.start();
     }
+
+    private void pull(VolumeInventory volume, VolumeTree.VolumeSnapshotLeaf child, VolumeTree volumeTree, boolean online, Completion completion) {
+        VmInstanceState vmState = Q.New(VmInstanceVO.class)
+                .eq(VmInstanceVO_.uuid, volume.getVmInstanceUuid())
+                .select(VmInstanceVO_.state)
+                .findValue();
+        final String[] srcSnapshotParentPath = new String[1];
+
+        FlowChain chain = FlowChainBuilder.newShareFlowChain();
+        chain.setName(String.format("delete-single-volume-snapshot-%s-by-pull", currentRoot.getUuid()));
+        chain.then(new ShareFlow() {
+            final VolumeSnapshotInventory srcSnapshotInv = VolumeSnapshotInventory.valueOf(currentRoot);
+            final VolumeSnapshotInventory dstSnapshotInv = child.getInventory();
+            final VolumeTree.VolumeSnapshotLeaf dstSnapshotLeaf = child;
+            String hostUuid;
+            long newInstallPathSize;
+            String allocatedInstall;
+
+            @Override
+            public void setup() {
+                if (volume.getVmInstanceUuid() != null && (vmState == VmInstanceState.Running || vmState == VmInstanceState.Paused)) {
+                    hostUuid = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, volume.getVmInstanceUuid())
+                            .select(VmInstanceVO_.hostUuid).findValue();
+                }
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "get-snapshot-backing-chain";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        GetVolumeBackingChainFromPrimaryStorageMsg gmsg = new GetVolumeBackingChainFromPrimaryStorageMsg();
+                        gmsg.setVolumeUuid(volume.getUuid());
+                        gmsg.setRootInstallPaths(Collections.singletonList(srcSnapshotInv.getPrimaryStorageInstallPath()));
+                        gmsg.setPrimaryStorageUuid(srcSnapshotInv.getPrimaryStorageUuid());
+                        gmsg.setHostUuid(hostUuid);
+                        gmsg.setVolumeFormat(volume.getFormat());
+                        bus.makeTargetServiceIdByResourceUuid(gmsg, PrimaryStorageConstant.SERVICE_ID, gmsg.getPrimaryStorageUuid());
+                        bus.send(gmsg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (!reply.isSuccess()) {
+                                    trigger.fail(reply.getError());
+                                    return;
+                                }
+
+                                GetVolumeBackingChainFromPrimaryStorageReply gr = reply.castReply();
+                                List<String> backingChainInstallPath = gr.getBackingChainInstallPath().get(srcSnapshotInv.getPrimaryStorageInstallPath());
+                                if (!CollectionUtils.isEmpty(backingChainInstallPath)) {
+                                    srcSnapshotParentPath[0] = backingChainInstallPath.get(0);
+                                }
+                                trigger.next();
+                            }
+                        });
+                    }
+                });
+
+                flow(new Flow() {
+                    String __name__ = "allocate-primary-storage-capacity";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        AllocatePrimaryStorageSpaceMsg amsg = new AllocatePrimaryStorageSpaceMsg();
+                        amsg.setRequiredPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+                        amsg.setSize(srcSnapshotInv.getSize());
+                        amsg.setNoOverProvisioning(true);
+                        amsg.setRequiredInstallUri(String.format("volume://%s", volume.getUuid()));
+                        bus.makeTargetServiceIdByResourceUuid(amsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                        bus.send(amsg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (!reply.isSuccess()) {
+                                    trigger.fail(reply.getError());
+                                    return;
+                                }
+                                AllocatePrimaryStorageSpaceReply r = reply.castReply();
+                                allocatedInstall = r.getAllocatedInstallUrl();
+                                trigger.next();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void rollback(FlowRollback trigger, Map data) {
+                        if (allocatedInstall == null) {
+                            trigger.rollback();
+                            return;
+                        }
+                        ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
+                        rmsg.setDiskSize(srcSnapshotInv.getSize());
+                        rmsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+                        rmsg.setNoOverProvisioning(true);
+                        rmsg.setAllocatedInstallUrl(allocatedInstall);
+                        bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                        bus.send(rmsg);
+                        trigger.rollback();
+                    }
+                });
+
+                if (Objects.equals(dstSnapshotInv.getUuid(), volume.getUuid())) {
+                    flow(new NoRollbackFlow() {
+                        String __name__ = String.format("get-volume-%s-current-size", volume.getUuid());
+
+                        @Override
+                        public void run(FlowTrigger trigger, Map data) {
+                            SyncVolumeSizeOnPrimaryStorageMsg smsg = new SyncVolumeSizeOnPrimaryStorageMsg();
+                            smsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+                            smsg.setVolumeUuid(volume.getUuid());
+                            smsg.setInstallPath(volume.getInstallPath());
+                            bus.makeTargetServiceIdByResourceUuid(smsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                            bus.send(smsg, new CloudBusCallBack(completion) {
+                                @Override
+                                public void run(MessageReply reply) {
+                                    if (!reply.isSuccess()) {
+                                        trigger.fail(operr(String.format("failed to get volume[uuid:%s, installPath:%s] size on primary storage[uuid:%s], because %s",
+                                                volume.getUuid(), volume.getInstallPath(), volume.getPrimaryStorageUuid(), reply.getError().getDetails())));
+                                        return;
+                                    }
+
+                                    SyncVolumeSizeOnPrimaryStorageReply r = reply.castReply();
+                                    dstSnapshotInv.setSize(r.getActualSize());
+                                    trigger.next();
+                                }
+                            });
+                        }
+                    });
+                }
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "pull-volume-snapshot-on-primary-storage";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        if (online) {
+                            PullVolumeSnapshotOnHypervisorMsg pmsg = new PullVolumeSnapshotOnHypervisorMsg();
+                            pmsg.setHostUuid(hostUuid);
+                            pmsg.setVolume(volume);
+                            pmsg.setSrcSnapshotParentPath(srcSnapshotParentPath[0]);
+                            pmsg.setSrcSnapshot(srcSnapshotInv);
+                            pmsg.setDstSnapshot(dstSnapshotInv);
+                            bus.makeTargetServiceIdByResourceUuid(pmsg, HostConstant.SERVICE_ID, hostUuid);
+                            bus.send(pmsg, new CloudBusCallBack(completion) {
+                                @Override
+                                public void run(MessageReply r) {
+                                    if (!r.isSuccess()) {
+                                        trigger.fail(r.getError());
+                                        return;
+                                    }
+
+                                    PullVolumeSnapshotOnHypervisorReply re = r.castReply();
+                                    newInstallPathSize = re.getSize();
+                                    updateDatabase();
+                                    trigger.next();
+                                }
+                            });
+                        } else {
+                            PullVolumeSnapshotOnPrimaryStorageMsg pmsg = new PullVolumeSnapshotOnPrimaryStorageMsg();
+                            pmsg.setVolume(volume);
+                            pmsg.setSrcSnapshotParentPath(srcSnapshotParentPath[0]);
+                            pmsg.setSrcSnapshot(srcSnapshotInv);
+                            pmsg.setDstSnapshot(dstSnapshotInv);
+                            bus.makeTargetServiceIdByResourceUuid(pmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                            bus.send(pmsg, new CloudBusCallBack(trigger) {
+                                @Override
+                                public void run(MessageReply r) {
+                                    if (!r.isSuccess()) {
+                                        trigger.fail(r.getError());
+                                        return;
+                                    }
+                                    PullVolumeSnapshotOnPrimaryStorageReply re = r.castReply();
+                                    newInstallPathSize = re.getSize();
+                                    updateDatabase();
+                                    trigger.next();
+                                }
+                            });
+                        }
+                    }
+
+                    private void updateDatabase() {
+                        ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
+                        rmsg.setDiskSize(srcSnapshotInv.getSize());
+                        rmsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+                        rmsg.setAllocatedInstallUrl(allocatedInstall);
+                        rmsg.setNoOverProvisioning(true);
+                        bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+                        bus.send(rmsg);
+
+                        if (Objects.equals(dstSnapshotInv.getUuid(), volume.getUuid())) {
+                            volumeTree.updateDatabaseAfterPullToVolume(srcSnapshotInv);
+                            return;
+                        }
+                        volumeTree.updateDatabaseAfterPull(srcSnapshotInv, dstSnapshotLeaf, newInstallPathSize);
+                    }
+                });
+
+                done(new FlowDoneHandler(completion) {
+                    @Override
+                    public void handle(Map data) {
+                        completion.success();
+                    }
+                });
+
+                error(new FlowErrorHandler(completion) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        completion.fail(errCode);
+                    }
+                });
+
+            }
+        }).start();
+    }
+
+    private void deleteVolumeSnapshotAndSyncVolumeSize(VolumeInventory volume, Completion completion) {
+        FlowChain chain = FlowChainBuilder.newShareFlowChain();
+        chain.setName("delete-volume-snapshot-and-sync-volume-size");
+        chain.then(new ShareFlow() {
+            @Override
+            public void setup() {
+                flow(new NoRollbackFlow() {
+                    String __name__ = String.format("delete-snapshot-%s-on-primary-storage", currentRoot.getUuid());
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        VolumeSnapshotPrimaryStorageDeletionMsg pmsg = new VolumeSnapshotPrimaryStorageDeletionMsg();
+                        pmsg.setUuid(currentRoot.getUuid());
+                        bus.makeTargetServiceIdByResourceUuid(pmsg, VolumeSnapshotConstant.SERVICE_ID, currentRoot.getPrimaryStorageUuid());
+                        bus.send(pmsg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (!reply.isSuccess()) {
+                                    //TODO add gc
+                                    logger.warn(String.format("failed to delete snapshot[uuid:%s] on primary storage[uuid:%s], " +
+                                            "%s", currentRoot.getUuid(), currentRoot.getPrimaryStorageUuid(), reply.getError().getDetails()));
+                                }
+                                VolumeSnapshotVO vo = dbf.findByUuid(currentRoot.getUuid(), VolumeSnapshotVO.class);
+                                cleanupInQueue(VolumeSnapshotInventory.valueOf(vo), new NoErrorCompletion() {
+                                    @Override
+                                    public void done() {
+                                        trigger.next();
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = String.format("sync-volume-%s-size", volume.getUuid());
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        SyncVolumeSizeMsg msg = new SyncVolumeSizeMsg();
+                        msg.setVolumeUuid(volume.getUuid());
+                        bus.makeTargetServiceIdByResourceUuid(msg, VolumeConstant.SERVICE_ID, volume.getUuid());
+                        bus.send(msg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (!reply.isSuccess()) {
+                                    logger.warn(String.format("failed to sync volume[%s] size, because %s", volume.getUuid(), reply.getError()));
+                                }
+                                trigger.next();
+                            }
+                        });
+                    }
+                });
+
+                done(new FlowDoneHandler(completion) {
+                    @Override
+                    public void handle(Map data) {
+                        completion.success();
+                    }
+                });
+
+                error(new FlowErrorHandler(completion) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        completion.fail(errCode);
+                    }
+                });
+            }
         }).start();
     }
 
@@ -2928,7 +2925,7 @@ public class VolumeSnapshotTreeBase {
     private void markSnapshotAsVolume(VolumeInventory volume,long volumeInstallPathSize, String newInstallPath, long newInstallPathSize) {
                 refreshVO();
                 if (!currentRoot.isLatest()) {
-                    throw new RuntimeException(String.format("current snapshot:%s is not latest snapshot, cannot mark as volume", currentRoot.getUuid()));
+                    throw new RuntimeException(String.format("current snapshot[uuid:%s] is not the latest snapshot, cannot mark it as volume", currentRoot.getUuid()));
                 }
 
                 new SQLBatch() {
