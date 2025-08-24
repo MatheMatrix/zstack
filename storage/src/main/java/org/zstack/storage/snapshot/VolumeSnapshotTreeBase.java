@@ -466,7 +466,9 @@ public class VolumeSnapshotTreeBase {
             }
         });
 
-        if (Objects.equals(msg.getScope(), DeleteVolumeSnapshotScope.Chain.toString())) {
+        if (Objects.equals(msg.getScope(), DeleteVolumeSnapshotScope.Single.toString())) {
+            deleteSingleFlows();
+        } else {
             if (msg.getScope() == null) {
                 logger.warn("snapshot deletion scope is null, default to Chain scope");
             }
@@ -481,8 +483,6 @@ public class VolumeSnapshotTreeBase {
             requiredSize = Math.min(size, volume.getSize());
 
             deleteChainFlows();
-        } else {
-            deleteSingleFlows();
         }
 
         done();
@@ -1084,7 +1084,7 @@ public class VolumeSnapshotTreeBase {
 
                                         GetVolumeBackingChainFromPrimaryStorageReply gr = reply.castReply();
                                         List<String> backingChainInstallPath = gr.getBackingChainInstallPath().get(srcSnapshotInv.getPrimaryStorageInstallPath());
-                                        if (!backingChainInstallPath.isEmpty()) {
+                                        if (!CollectionUtils.isEmpty(backingChainInstallPath)) {
                                             srcSnapshotParentPath = backingChainInstallPath.get(0);
                                         }
                                         trigger.next();
@@ -1216,7 +1216,7 @@ public class VolumeSnapshotTreeBase {
 
                             private void updateDatabase() {
                                 ReleasePrimaryStorageSpaceMsg rmsg = new ReleasePrimaryStorageSpaceMsg();
-                                rmsg.setDiskSize(dstSnapshotInv.getSize());
+                                rmsg.setDiskSize(srcSnapshotInv.getSize());
                                 rmsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
                                 rmsg.setAllocatedInstallUrl(allocatedInstall);
                                 rmsg.setNoOverProvisioning(true);
@@ -1290,7 +1290,7 @@ public class VolumeSnapshotTreeBase {
                             public void run(FlowTrigger trigger, Map data) {
                                 SyncVolumeSizeMsg msg = new SyncVolumeSizeMsg();
                                 msg.setVolumeUuid(volume.getUuid());
-                                bus.makeTargetServiceIdByResourceUuid(msg, VolumeConstant.SERVICE_ID, currentRoot.getPrimaryStorageUuid());
+                                bus.makeTargetServiceIdByResourceUuid(msg, VolumeConstant.SERVICE_ID, volume.getUuid());
                                 bus.send(msg, new CloudBusCallBack(trigger) {
                                     @Override
                                     public void run(MessageReply reply) {
