@@ -230,6 +230,17 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
     }
 
     @Override
+    public void createSdnControllerDb(APIAddSdnControllerMsg msg, SdnControllerVO vo, Completion completion) {
+        dbf.persist(vo);
+        completion.success();
+    }
+
+    @Override
+    public void deleteSdnControllerDb(SdnControllerVO vo) {
+        dbf.removeByPrimaryKey(vo.getUuid(), SdnControllerVO.class);
+    }
+
+    @Override
     @SdnControllerLog
     public void initSdnController(APIAddSdnControllerMsg msg, Completion completion) {
         getH3cControllerToken(new Completion(completion) {
