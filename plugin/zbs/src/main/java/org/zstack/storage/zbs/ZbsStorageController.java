@@ -13,6 +13,8 @@ import org.zstack.core.asyncbatch.While;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
+import org.zstack.core.errorcode.ErrorFacade;
+import org.zstack.core.thread.AsyncThread;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.HasThreadContext;
@@ -50,6 +52,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
@@ -69,6 +72,8 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     protected RESTFacade restf;
     @Autowired
     private ResourceConfigFacade rcf;
+    @Autowired
+    protected ErrorFacade errf;
 
     private ExternalPrimaryStorageVO self;
     private AddonInfo addonInfo;
@@ -234,9 +239,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         AddonInfo newAddonInfo = new AddonInfo();
         Config current = JSONObjectUtil.toObject(cfg, Config.class);
         List<MdsInfo> mdsInfos = parseMdsInfos(current.getMdsUrls());
-        newAddonInfo.setMdsInfos(mdsInfos);
-        final List<ZbsPrimaryStorageMdsBase> mdsList = CollectionUtils.transformAndRemoveNull(newAddonInfo.getMdsInfos(),
-                ZbsPrimaryStorageMdsBase::new);
+        final List<ZbsPrimaryStorageMdsBase> mdsList = CollectionUtils.transformAndRemoveNull(mdsInfos, ZbsPrimaryStorageMdsBase::new);
 
         class Connector {
             private final ErrorCodeList errorCodes = new ErrorCodeList();
@@ -244,6 +247,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
             void connect(final FlowTrigger trigger) {
                 if (!it.hasNext()) {
+                    addonInfo = newAddonInfo;
                     if (errorCodes.getCauses().size() == mdsList.size()) {
                         if (errorCodes.getCauses().isEmpty()) {
                             trigger.fail(operr("unable to connect to the ZBS primary storage[uuid:%s]," +
@@ -269,12 +273,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 base.connect(new Completion(trigger) {
                     @Override
                     public void success() {
+                        newAddonInfo.getMdsInfos().add(base.getSelf());
                         connect(trigger);
                     }
 
                     @Override
                     public void fail(ErrorCode errorCode) {
                         errorCodes.getCauses().add(errorCode);
+                        newAddonInfo.getMdsInfos().add(base.getSelf());
                         connect(trigger);
                     }
                 });
@@ -292,7 +298,6 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
                         new Connector().connect(trigger);
-                        addonInfo = newAddonInfo;
                     }
                 });
 
@@ -380,38 +385,83 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     @Override
     public void ping(Completion completion) {
         reloadDbInfo();
-        final List<ZbsPrimaryStorageMdsBase> mds = CollectionUtils.transformAndRemoveNull(addonInfo.getMdsInfos(), ZbsPrimaryStorageMdsBase::new);
-        new While<>(mds).each((m, comp) -> {
-            m.ping(new Completion(comp) {
-                @Override
-                public void success() {
-                    m.getSelf().setStatus(MdsStatus.Connected);
-                    comp.done();
-                }
+        final List<ZbsPrimaryStorageMdsBase> mds = CollectionUtils.transformAndRemoveNull(addonInfo.getMdsInfos(), ZbsPrimaryStorageMdsBase::new)
+                .stream().filter(m -> m.getSelf().getStatus() != MdsStatus.Connecting).collect(Collectors.toList());
 
+        new While<>(mds).each((m, comp) -> {
+            FlowChain chain = FlowChainBuilder.newShareFlowChain();
+            chain.setName("ping-mds");
+            chain.then(new ShareFlow() {
                 @Override
-                public void fail(ErrorCode errorCode) {
-                    m.getSelf().setStatus(MdsStatus.Disconnected);
-                    comp.done();
+                public void setup() {
+                    flow(new NoRollbackFlow() {
+                        String __name__ = "connect-mds";
+
+                        @Override
+                        public boolean skip(Map data) {
+                            return m.getSelf().getStatus() != MdsStatus.Disconnected;
+                        }
+
+                        @Override
+                        public void run(FlowTrigger trigger, Map data) {
+                            m.connect(new Completion(comp) {
+                                @Override
+                                public void success() {
+                                    logger.debug(String.format("successfully reconnected the mon[addr:%s] of the ceph primary" +
+                                            " storage[uuid:%s, name:%s]", m.getSelf().getAddr(), self.getUuid(), self.getName()));
+                                    comp.done();
+                                }
+
+                                @Override
+                                public void fail(ErrorCode errorCode) {
+                                    logger.warn(String.format("failed to reconnect the mon[addr:%s] server of the ceph primary" +
+                                            " storage[uuid:%s, name:%s], %s", m.getSelf().getAddr(), self.getUuid(), self.getName(), errorCode));
+                                    comp.allDone();
+                                }
+                            });
+                        }
+                    });
+
+                    flow(new NoRollbackFlow() {
+                        String __name__ = "resize-volume";
+
+                        @Override
+                        public void run(FlowTrigger trigger, Map data) {
+                            m.ping(new Completion(comp) {
+                                @Override
+                                public void success() {
+                                    comp.done();
+                                }
+
+                                @Override
+                                public void fail(ErrorCode errorCode) {
+                                    logger.warn(String.format("cannot ping mon[addr:%s] of the ceph primary storage[uuid:%s, name:%s], %s",
+                                            m.getSelf().getAddr(), self.getUuid(), self.getName(), errorCode.getDetails()));
+                                    m.getSelf().setStatus(MdsStatus.Disconnected);
+                                    comp.done();
+                                }
+                            });
+                        }
+                    });
+
+                    done(new FlowDoneHandler(comp) {
+                        @Override
+                        public void handle(Map data) {
+                            comp.done();
+                        }
+                    });
+
+                    error(new FlowErrorHandler(comp) {
+                        @Override
+                        public void handle(ErrorCode errCode, Map data) {
+                            comp.done();
+                        }
+                    });
                 }
-            });
+            }).start();
         }).run(new WhileDoneCompletion(completion) {
             @Override
             public void done(ErrorCodeList errorCodeList) {
-                SQL.New(ExternalPrimaryStorageVO.class).eq(ExternalPrimaryStorageVO_.uuid, self.getUuid())
-                        .set(ExternalPrimaryStorageVO_.addonInfo, JSONObjectUtil.toJsonString(addonInfo))
-                        .update();
-
-                boolean isConnected = addonInfo.getMdsInfos().stream().anyMatch(mdsInfo -> MdsStatus.Connected.equals(mdsInfo.getStatus()));
-                if (!isConnected) {
-                    String notConnectedIps = addonInfo.getMdsInfos().stream()
-                            .filter(mdsInfo -> !MdsStatus.Connected.equals(mdsInfo.getStatus()))
-                            .map(MdsInfo::getAddr)
-                            .collect(Collectors.joining(", "));
-
-                    completion.fail(operr("no MDS is Connected, the following MDS[%s] are not Connected.", notConnectedIps));
-                    return;
-                }
                 completion.success();
             }
         });

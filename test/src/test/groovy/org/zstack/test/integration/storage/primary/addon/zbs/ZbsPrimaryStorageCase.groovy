@@ -1,6 +1,7 @@
 package org.zstack.test.integration.storage.primary.addon.zbs
 
 import org.springframework.http.HttpEntity
+import org.zstack.cbd.AddonInfo
 import org.zstack.core.db.Q
 import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageVO
 import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageVO_
@@ -151,10 +152,11 @@ class ZbsPrimaryStorageCase extends SubCase {
             testUpdateExternalPrimaryStorage()
             testLifecycle()
             testDataVolumeLifecycle()
-            testMdsPing()
+            testMdsConnect()
             testNegativeScenario()
             testDataVolumeNegativeScenario()
             testDecodeMdsUriWithSpecialPassword()
+            testUpdateMdsStatus()
         }
     }
 
@@ -258,7 +260,7 @@ class ZbsPrimaryStorageCase extends SubCase {
         }
     }
 
-    void testMdsPing() {
+    void testMdsConnect() {
         PrimaryStorageGlobalConfig.PING_INTERVAL.updateValue(1)
 
         Q.New(ExternalPrimaryStorageVO.class).select(ExternalPrimaryStorageVO_.status).eq(ExternalPrimaryStorageVO_.uuid, ps.uuid).findValue() == PrimaryStorageStatus.Connected
@@ -267,15 +269,16 @@ class ZbsPrimaryStorageCase extends SubCase {
 
         assert addonInfo == "{\"mdsInfos\":[{\"username\":\"root\",\"password\":\"password\",\"port\":22,\"addr\":\"127.0.1.1\",\"externalAddr\":\"127.0.0.1\",\"status\":\"Connected\"},{\"username\":\"root\",\"password\":\"password\",\"port\":22,\"addr\":\"127.0.1.2\",\"externalAddr\":\"127.0.0.1\",\"status\":\"Connected\"},{\"username\":\"root\",\"password\":\"password\",\"port\":22,\"addr\":\"127.0.1.3\",\"externalAddr\":\"127.0.0.1\",\"status\":\"Connected\"}],\"logicalPoolInfos\":[{\"physicalPoolID\":1,\"redundanceAndPlaceMentPolicy\":{\"copysetNum\":300,\"replicaNum\":3,\"zoneNum\":3},\"logicalPoolID\":1,\"usedSize\":322961408,\"quota\":0,\"createTime\":1735875794,\"type\":0,\"rawWalUsedSize\":0,\"allocateStatus\":0,\"rawUsedSize\":968884224,\"physicalPoolName\":\"pool1\",\"capacity\":579933831168,\"logicalPoolName\":\"lpool1\",\"userPolicy\":\"eyJwb2xpY3kiIDogMX0=\",\"allocatedSize\":3221225472}]}"
 
-        env.afterSimulator(ZbsPrimaryStorageMdsBase.PING_PATH) { rsp, HttpEntity<String> e ->
-            def cmd = JSONObjectUtil.toObject(e.body, ZbsPrimaryStorageMdsBase.PingCmd.class)
-            ZbsPrimaryStorageMdsBase.PingRsp pingRsp = new ZbsPrimaryStorageMdsBase.PingRsp()
-            if (cmd.addr.equals("127.0.1.1")) {
-                pingRsp.success = false
-                pingRsp.error = "on purpose"
+        // mock failed to connect mds
+        env.simulator(ZbsPrimaryStorageMdsBase.SYNC_METADATA_PATH) { HttpEntity<String> e, EnvSpec spec ->
+            def cmd = JSONObjectUtil.toObject(e.body, ZbsPrimaryStorageMdsBase.SyncMetadataCmd.class)
+            ZbsPrimaryStorageMdsBase.SyncMetadataRsp rsp = new ZbsPrimaryStorageMdsBase.SyncMetadataRsp()
+            if (cmd.getAddr() == "127.0.1.1") {
+                throw new HttpError(404, "on purpose")
+            } else {
+                rsp.success = true
             }
-
-            return pingRsp
+            return rsp
         }
 
         sleep(2000)
@@ -286,21 +289,8 @@ class ZbsPrimaryStorageCase extends SubCase {
 
         assert Q.New(ExternalPrimaryStorageVO.class).select(ExternalPrimaryStorageVO_.status).eq(ExternalPrimaryStorageVO_.uuid, ps.uuid).findValue() == PrimaryStorageStatus.Connected
 
-        env.afterSimulator(ZbsPrimaryStorageMdsBase.PING_PATH) { rsp, HttpEntity<String> e ->
-            def cmd = JSONObjectUtil.toObject(e.body, ZbsPrimaryStorageMdsBase.PingCmd.class)
-            ZbsPrimaryStorageMdsBase.PingRsp pingRsp = new ZbsPrimaryStorageMdsBase.PingRsp()
-            if (cmd.addr.equals("127.0.1.1")) {
-                pingRsp.success = false
-                pingRsp.error = "on purpose"
-            } else if (cmd.addr.equals("127.0.1.2")) {
-                pingRsp.success = false
-                pingRsp.error = "on purpose"
-            } else if (cmd.addr.equals("127.0.1.3")) {
-                pingRsp.success = false
-                pingRsp.error = "on purpose"
-            }
-
-            return pingRsp
+        env.simulator(ZbsPrimaryStorageMdsBase.SYNC_METADATA_PATH) { HttpEntity<String> e, EnvSpec spec ->
+            throw new HttpError(404, "on purpose")
         }
 
         sleep(2000)
@@ -448,6 +438,54 @@ class ZbsPrimaryStorageCase extends SubCase {
         assert uri.password == specialPassword
     }
 
+    void testUpdateMdsStatus() {
+        env.cleanSimulatorAndMessageHandlers()
+
+        // failed to connect
+        env.simulator(ZbsPrimaryStorageMdsBase.SYNC_METADATA_PATH) { HttpEntity<String> e, EnvSpec spec ->
+            def cmd = JSONObjectUtil.toObject(e.body, ZbsPrimaryStorageMdsBase.SyncMetadataCmd.class)
+            ZbsPrimaryStorageMdsBase.SyncMetadataRsp rsp = new ZbsPrimaryStorageMdsBase.SyncMetadataRsp()
+            if (cmd.getAddr() == "127.0.1.1") {
+                throw new HttpError(404, "on purpose")
+            } else {
+                rsp.success = true
+            }
+            return rsp
+        }
+
+        String info = Q.New(ExternalPrimaryStorageVO.class).select(ExternalPrimaryStorageVO_.addonInfo).eq(ExternalPrimaryStorageVO_.uuid, ps.uuid).findValue()
+        AddonInfo addonInfo = JSONObjectUtil.toObject(info, AddonInfo.class)
+        addonInfo.getMdsInfos().forEach { it ->
+            assert it.getStatus().toString() == "Connected"
+        }
+
+        reconnectPrimaryStorage {
+            uuid = ps.uuid
+        }
+
+        info = Q.New(ExternalPrimaryStorageVO.class).select(ExternalPrimaryStorageVO_.addonInfo).eq(ExternalPrimaryStorageVO_.uuid, ps.uuid).findValue()
+        addonInfo = JSONObjectUtil.toObject(info, AddonInfo.class)
+        addonInfo.getMdsInfos().forEach { it ->
+            if (it.getAddr() == "127.0.1.1") {
+                assert it.getStatus().toString() == "Disconnected"
+            } else {
+                assert it.getStatus().toString() == "Connected"
+            }
+        }
+
+        // reset mds status
+        env.cleanSimulatorAndMessageHandlers()
+        reconnectPrimaryStorage {
+            uuid = ps.uuid
+        }
+        info = Q.New(ExternalPrimaryStorageVO.class).select(ExternalPrimaryStorageVO_.addonInfo).eq(ExternalPrimaryStorageVO_.uuid, ps.uuid).findValue()
+        addonInfo = JSONObjectUtil.toObject(info, AddonInfo.class)
+        addonInfo.getMdsInfos().forEach { it ->
+            assert it.getStatus().toString() == "Connected"
+        }
+
+        env.cleanSimulatorAndMessageHandlers()
+    }
 
     void deleteVolume(String volUuid) {
         deleteDataVolume {
