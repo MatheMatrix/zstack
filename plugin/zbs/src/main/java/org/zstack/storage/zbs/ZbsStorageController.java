@@ -234,9 +234,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         AddonInfo newAddonInfo = new AddonInfo();
         Config current = JSONObjectUtil.toObject(cfg, Config.class);
         List<MdsInfo> mdsInfos = parseMdsInfos(current.getMdsUrls());
-        newAddonInfo.setMdsInfos(mdsInfos);
-        final List<ZbsPrimaryStorageMdsBase> mdsList = CollectionUtils.transformAndRemoveNull(newAddonInfo.getMdsInfos(),
-                ZbsPrimaryStorageMdsBase::new);
+        final List<ZbsPrimaryStorageMdsBase> mdsList = CollectionUtils.transformAndRemoveNull(mdsInfos, ZbsPrimaryStorageMdsBase::new);
 
         class Connector {
             private final ErrorCodeList errorCodes = new ErrorCodeList();
@@ -244,6 +242,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
             void connect(final FlowTrigger trigger) {
                 if (!it.hasNext()) {
+                    addonInfo = newAddonInfo;
                     if (errorCodes.getCauses().size() == mdsList.size()) {
                         if (errorCodes.getCauses().isEmpty()) {
                             trigger.fail(operr("unable to connect to the ZBS primary storage[uuid:%s]," +
@@ -269,12 +268,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 base.connect(new Completion(trigger) {
                     @Override
                     public void success() {
+                        newAddonInfo.getMdsInfos().add(base.getSelf());
                         connect(trigger);
                     }
 
                     @Override
                     public void fail(ErrorCode errorCode) {
                         errorCodes.getCauses().add(errorCode);
+                        newAddonInfo.getMdsInfos().add(base.getSelf());
                         connect(trigger);
                     }
                 });
@@ -292,7 +293,6 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
                         new Connector().connect(trigger);
-                        addonInfo = newAddonInfo;
                     }
                 });
 
@@ -385,33 +385,17 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             m.ping(new Completion(comp) {
                 @Override
                 public void success() {
-                    m.getSelf().setStatus(MdsStatus.Connected);
                     comp.done();
                 }
 
                 @Override
                 public void fail(ErrorCode errorCode) {
-                    m.getSelf().setStatus(MdsStatus.Disconnected);
                     comp.done();
                 }
             });
         }).run(new WhileDoneCompletion(completion) {
             @Override
             public void done(ErrorCodeList errorCodeList) {
-                SQL.New(ExternalPrimaryStorageVO.class).eq(ExternalPrimaryStorageVO_.uuid, self.getUuid())
-                        .set(ExternalPrimaryStorageVO_.addonInfo, JSONObjectUtil.toJsonString(addonInfo))
-                        .update();
-
-                boolean isConnected = addonInfo.getMdsInfos().stream().anyMatch(mdsInfo -> MdsStatus.Connected.equals(mdsInfo.getStatus()));
-                if (!isConnected) {
-                    String notConnectedIps = addonInfo.getMdsInfos().stream()
-                            .filter(mdsInfo -> !MdsStatus.Connected.equals(mdsInfo.getStatus()))
-                            .map(MdsInfo::getAddr)
-                            .collect(Collectors.joining(", "));
-
-                    completion.fail(operr("no MDS is Connected, the following MDS[%s] are not Connected.", notConnectedIps));
-                    return;
-                }
                 completion.success();
             }
         });
