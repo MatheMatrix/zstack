@@ -234,9 +234,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         AddonInfo newAddonInfo = new AddonInfo();
         Config current = JSONObjectUtil.toObject(cfg, Config.class);
         List<MdsInfo> mdsInfos = parseMdsInfos(current.getMdsUrls());
-        newAddonInfo.setMdsInfos(mdsInfos);
-        final List<ZbsPrimaryStorageMdsBase> mdsList = CollectionUtils.transformAndRemoveNull(newAddonInfo.getMdsInfos(),
-                ZbsPrimaryStorageMdsBase::new);
+        final List<ZbsPrimaryStorageMdsBase> mdsList = CollectionUtils.transformAndRemoveNull(mdsInfos, ZbsPrimaryStorageMdsBase::new);
 
         class Connector {
             private final ErrorCodeList errorCodes = new ErrorCodeList();
@@ -269,12 +267,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 base.connect(new Completion(trigger) {
                     @Override
                     public void success() {
+                        newAddonInfo.getMdsInfos().add(base.getSelf());
                         connect(trigger);
                     }
 
                     @Override
                     public void fail(ErrorCode errorCode) {
                         errorCodes.getCauses().add(errorCode);
+                        newAddonInfo.getMdsInfos().add(base.getSelf());
                         connect(trigger);
                     }
                 });
@@ -292,7 +292,6 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
                         new Connector().connect(trigger);
-                        addonInfo = newAddonInfo;
                     }
                 });
 
