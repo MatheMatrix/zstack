@@ -9,3 +9,5 @@ CREATE VIEW `zstack`.`L3NetworkVO` AS SELECT uuid, name, internalId, description
 
 ALTER TABLE SecurityGroupRuleVO MODIFY COLUMN `dstPortRange` varchar(1024) DEFAULT NULL;
 ALTER TABLE SecurityGroupRuleVO MODIFY COLUMN `srcPortRange` varchar(1024) DEFAULT NULL;
+
+UPDATE AliyunNasAccessGroupVO SET type = 'Vpc' WHERE BINARY type = 'VPC';
