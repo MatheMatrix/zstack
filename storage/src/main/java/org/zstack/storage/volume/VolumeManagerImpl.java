@@ -605,7 +605,10 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
                 if (VolumeSystemTags.VOLUME_QOS.isMatch(tag)) {
                     vo.setVolumeQos(VolumeSystemTags.VOLUME_QOS.getTokenByTag(tag, VolumeSystemTags.VOLUME_QOS_TOKEN));
                     iterators.remove();
-                    break;
+                }
+                if (VolumeSystemTags.THIN_PROVISIONING_INITIALIZE_SIZE.isMatch(tag)) {
+                    vo.setActualSize(Long.valueOf(VolumeSystemTags.THIN_PROVISIONING_INITIALIZE_SIZE.getTokenByTag(tag, VolumeSystemTags.THIN_PROVISIONING_INITIALIZE_SIZE_TOKEN)));
+                    iterators.remove();
                 }
             }
         }

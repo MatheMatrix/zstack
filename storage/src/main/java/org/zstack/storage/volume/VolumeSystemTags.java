@@ -50,4 +50,7 @@ public class VolumeSystemTags {
 
     public static String VOLUME_QOS_TOKEN = "qos";
     public static PatternedSystemTag VOLUME_QOS = new PatternedSystemTag(String.format("%s::{%s}", VOLUME_QOS_TOKEN, VOLUME_QOS_TOKEN), VolumeVO.class);
+
+    public static String THIN_PROVISIONING_INITIALIZE_SIZE_TOKEN = "thinProvisioningInitializeSize";
+    public static PatternedSystemTag THIN_PROVISIONING_INITIALIZE_SIZE = new PatternedSystemTag(String.format("thinProvisioningInitializeSize::{%s}", THIN_PROVISIONING_INITIALIZE_SIZE_TOKEN), VolumeVO.class);
 }
