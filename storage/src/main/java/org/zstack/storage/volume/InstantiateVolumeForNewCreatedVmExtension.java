@@ -208,6 +208,7 @@ public class InstantiateVolumeForNewCreatedVmExtension implements PreVmInstantia
         } else if (image.getInventory() != null && ImageMediaType.RootVolumeTemplate.toString().equals(image.getInventory().getMediaType())) {
             InstantiateVolumeMsg rmsg = fillMsg(new InstantiateRootVolumeMsg(), spec.getDestRootVolume(), spec);
             ((InstantiateRootVolumeMsg) rmsg).setTemplateSpec(image);
+            rmsg.setSystemTags(spec.getRootVolumeSystemTags());
             msgs.add(rmsg);
         } else {
             msgs.add(fillMsg(new InstantiateVolumeMsg(), spec.getDestRootVolume(), spec));
