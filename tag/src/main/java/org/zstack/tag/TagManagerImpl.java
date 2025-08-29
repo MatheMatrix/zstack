@@ -63,6 +63,7 @@ public class TagManagerImpl extends AbstractService implements TagManager,
     private List<SystemTag> systemTags = new ArrayList<>();
     private List<SystemTag> adminOnlySystemTags = new ArrayList<>();
     private List<PatternedSystemTag> sensitiveTags = new ArrayList<>();
+    private List<PatternedSystemTag> notPersistTags = new ArrayList<>();
     private List<SystemTag> nonCloneableTags = new ArrayList<>();
     private Map<String, List<SystemTag>> resourceTypeSystemTagMap = new HashMap<>();
     private ResourceConfigSystemTag resourceConfigSystemTag;
@@ -124,6 +125,11 @@ public class TagManagerImpl extends AbstractService implements TagManager,
                 if (f.isAnnotationPresent(SensitiveTag.class) && stag instanceof PatternedSystemTag) {
                     sensitiveTags.add((PatternedSystemTag) stag);
                     ((PatternedSystemTag) stag).annotation = f.getAnnotation(SensitiveTag.class);
+                }
+
+                if (f.isAnnotationPresent(NotPersistTag.class) && stag instanceof PatternedSystemTag) {
+                    notPersistTags.add((PatternedSystemTag) stag);
+                    ((PatternedSystemTag) stag).setNotPersistAnnotation(f.getAnnotation(NotPersistTag.class));
                 }
 
                 stag.setTagMgr(this);
@@ -287,6 +293,10 @@ public class TagManagerImpl extends AbstractService implements TagManager,
             return null;
         }
 
+        if (isNotPersistTag(tag)) {
+            return null;
+        }
+
         if (resourceConfigSystemTag.isMatch(tag)) {
             return createResourceConfigFromTag(resourceUuid, tag);
         }
@@ -355,6 +365,11 @@ public class TagManagerImpl extends AbstractService implements TagManager,
             if (TagConstant.isEphemeralTag(tag)) {
                 continue;
             }
+
+            if (isNotPersistTag(tag)) {
+                continue;
+            }
+
             createNonInherentSystemTag(resourceUuid, tag, resourceType);
         }
     }
@@ -818,6 +833,10 @@ public class TagManagerImpl extends AbstractService implements TagManager,
     public boolean isCloneable(String tag, String resourceType) {
         return nonCloneableTags.stream().noneMatch(it -> resourceType.equals(it.resourceClass.getSimpleName())
                 && it.isMatch(tag));
+    }
+
+    public boolean isNotPersistTag(String tag) {
+        return notPersistTags.stream().anyMatch(it -> it.isMatch(tag));
     }
 
     @Override

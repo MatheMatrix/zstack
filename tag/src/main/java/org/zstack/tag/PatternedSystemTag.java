@@ -4,6 +4,7 @@ import org.zstack.core.Platform;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
+import org.zstack.header.tag.NotPersistTag;
 import org.zstack.header.tag.SystemTagInventory;
 import org.zstack.header.tag.SystemTagVO;
 import org.zstack.header.tag.SystemTagVO_;
@@ -23,6 +24,16 @@ public class PatternedSystemTag extends SystemTag {
     private static final CLogger logger = Utils.getLogger(SystemTag.class);
 
     public SensitiveTag annotation;
+
+    private NotPersistTag notPersistAnnotation;
+
+    NotPersistTag getNotPersistAnnotation() {
+        return notPersistAnnotation;
+    }
+
+    void setNotPersistAnnotation(NotPersistTag ann) {
+        this.notPersistAnnotation = ann;
+    }
 
     public PatternedSystemTag(String tagFormat, Class resourceClass) {
         super(tagFormat, resourceClass);
