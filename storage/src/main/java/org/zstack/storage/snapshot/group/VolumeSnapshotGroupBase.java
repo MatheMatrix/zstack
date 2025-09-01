@@ -15,6 +15,8 @@ import org.zstack.core.db.SQL;
 import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
+import org.zstack.core.workflow.ShareFlow;
+import org.zstack.core.workflow.ShareFlowChain;
 import org.zstack.core.workflow.SimpleFlowChain;
 import org.zstack.header.core.NoErrorCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
@@ -31,6 +33,8 @@ import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.storage.snapshot.group.*;
 import org.zstack.header.vm.RestoreVmInstanceMsg;
 import org.zstack.header.vm.VmInstanceConstant;
+import org.zstack.header.vm.VmInstanceVO;
+import org.zstack.header.vm.VmInstanceVO_;
 import org.zstack.header.vm.devices.VmInstanceResourceMetadataManager;
 import org.zstack.header.volume.VolumeType;
 import org.zstack.header.volume.VolumeVO;
@@ -209,28 +213,101 @@ public class VolumeSnapshotGroupBase implements VolumeSnapshotGroup {
             logger.debug(String.format("skip snapshots not belong to origin vm[uuid:%s]", self.getVmInstanceUuid()));
         }
 
-        new While<>(snapshots).all((snapshot, compl) -> {
-            DeleteVolumeSnapshotMsg rmsg = new DeleteVolumeSnapshotMsg();
-            rmsg.setSnapshotUuid(snapshot.getUuid());
-            rmsg.setVolumeUuid(snapshot.getVolumeUuid());
-            rmsg.setTreeUuid(snapshot.getTreeUuid());
-            rmsg.setDeletionMode(msg.getDeletionMode());
-            rmsg.setScope(msg.getScope());
-            rmsg.setDirection(msg.getDirection());
-            bus.makeTargetServiceIdByResourceUuid(rmsg, VolumeSnapshotConstant.SERVICE_ID, getResourceIdToRouteMsg(snapshot));
-            bus.send(rmsg, new CloudBusCallBack(compl) {
-                @Override
-                public void run(MessageReply r) {
-                    reply.addResult(new DeleteSnapshotGroupResult(rmsg.getSnapshotUuid(), rmsg.getVolumeUuid(), r.getError()));
-                    compl.done();
-                }
-            });
-        }).run(new WhileDoneCompletion(msg) {
+        String vmUuid = self.getVmInstanceUuid();
+        String rootVolumeUuid = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, vmUuid)
+                .select(VmInstanceVO_.rootVolumeUuid).findValue();
+
+        VolumeSnapshotVO rootVolumeSnapshot = snapshots.stream().filter(s -> s.getVolumeUuid().equals(rootVolumeUuid)).findFirst().orElse(null);
+        snapshots.removeIf(s -> s.getVolumeUuid().equals(rootVolumeUuid));
+
+        FlowChain chain = new ShareFlowChain();
+        chain.then(new ShareFlow() {
+            boolean skipDeleteRootVolumeSnapshot = false;
+
             @Override
-            public void done(ErrorCodeList errorCodeList) {
-                bus.reply(msg, reply);
+            public void setup() {
+                flow(new NoRollbackFlow() {
+                    String __name__ = "delete-data-volume-snapshots";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        new While<>(snapshots).all((snapshot, compl) -> {
+                            DeleteVolumeSnapshotMsg rmsg = buildDeleteVolumeSnapshotMsg(snapshot, msg);
+                            bus.makeTargetServiceIdByResourceUuid(rmsg, VolumeSnapshotConstant.SERVICE_ID, getResourceIdToRouteMsg(snapshot));
+                            bus.send(rmsg, new CloudBusCallBack(compl) {
+                                @Override
+                                public void run(MessageReply r) {
+                                    if (r.getError() != null) {
+                                        skipDeleteRootVolumeSnapshot = true;
+                                    }
+                                    reply.addResult(new DeleteSnapshotGroupResult(rmsg.getSnapshotUuid(), rmsg.getVolumeUuid(), r.getError()));
+                                    compl.done();
+                                }
+                            });
+                        }).run(new WhileDoneCompletion(msg) {
+                            @Override
+                            public void done(ErrorCodeList errorCodeList) {
+                                trigger.next();
+                            }
+                        });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "delete-root-volume-snapshot";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        if (rootVolumeSnapshot == null) {
+                            trigger.next();
+                            return;
+                        }
+
+                        if (skipDeleteRootVolumeSnapshot) {
+                            // skip delete root volume snapshot if delete data volume snapshot failed
+                            logger.debug(String.format("skip delete root volume snapshot[uuid:%s] if delete data volume snapshot failed", rootVolumeSnapshot.getUuid()));
+                            trigger.next();
+                            return;
+                        }
+
+                        DeleteVolumeSnapshotMsg rmsg = buildDeleteVolumeSnapshotMsg(rootVolumeSnapshot, msg);
+                        bus.makeTargetServiceIdByResourceUuid(rmsg, VolumeSnapshotConstant.SERVICE_ID, getResourceIdToRouteMsg(rootVolumeSnapshot));
+                        bus.send(rmsg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply r) {
+                                reply.addResult(new DeleteSnapshotGroupResult(rmsg.getSnapshotUuid(), rmsg.getVolumeUuid(), r.getError()));
+                                trigger.next();
+                            }
+                        });
+                    }
+                });
+
+                done(new FlowDoneHandler(msg) {
+                    @Override
+                    public void handle(Map data) {
+                        bus.reply(msg, reply);
+                    }
+                });
+
+                error(new FlowErrorHandler(msg) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        bus.reply(msg, reply);
+                    }
+                });
             }
-        });
+
+            private DeleteVolumeSnapshotMsg buildDeleteVolumeSnapshotMsg(VolumeSnapshotVO snapshot, DeleteVolumeSnapshotGroupInnerMsg msg) {
+                DeleteVolumeSnapshotMsg rmsg = new DeleteVolumeSnapshotMsg();
+                rmsg.setSnapshotUuid(snapshot.getUuid());
+                rmsg.setVolumeUuid(snapshot.getVolumeUuid());
+                rmsg.setTreeUuid(snapshot.getTreeUuid());
+                rmsg.setDeletionMode(msg.getDeletionMode());
+                rmsg.setScope(msg.getScope());
+                rmsg.setDirection(msg.getDirection());
+                return rmsg;
+            }
+        }).start();
     }
 
     private void handle(APIRevertVmFromSnapshotGroupMsg msg) {
