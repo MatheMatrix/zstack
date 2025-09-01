@@ -743,6 +743,7 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
         logger.info(String.format("take snapshots for volumes[%s] on %s",
                 msg.getLockedVolumeUuids(), getClass().getCanonicalName()));
 
+        List<VolumeSnapshotInventory> inventories = Collections.synchronizedList(new ArrayList<>());
         ErrorCodeList errList = new ErrorCodeList();
         new While<>(cephStructs).all((struct, whileCompletion) -> {
             VolumeSnapshotVO vo = Q.New(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, struct.getResourceUuid()).find();
@@ -780,6 +781,7 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
                     dbf.update(vo);
 
                     struct.getVolumeSnapshotStruct().setCurrent(treply.getInventory());
+                    inventories.add(treply.getInventory());
                     whileCompletion.done();
                 }
             });
@@ -788,6 +790,17 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
             public void done(ErrorCodeList errorCodeList) {
                 if (!errList.getCauses().isEmpty()) {
                     completion.fail(errList.getCauses().get(0));
+
+                    inventories.forEach(snapshot -> {
+                        VolumeSnapshotDeletionMsg msg = new VolumeSnapshotDeletionMsg();
+                        msg.setSnapshotUuid(snapshot.getUuid());
+                        msg.setTreeUuid(snapshot.getTreeUuid());
+                        msg.setVolumeUuid(snapshot.getVolumeUuid());
+                        msg.setScope(DeleteVolumeSnapshotScope.Single.toString());
+                        msg.setDirection(DeleteVolumeSnapshotDirection.Commit.toString());
+                        bus.makeTargetServiceIdByResourceUuid(msg, VolumeSnapshotConstant.SERVICE_ID, snapshot.getUuid());
+                        bus.send(msg);
+                    });
                     return;
                 }
                 completion.success();

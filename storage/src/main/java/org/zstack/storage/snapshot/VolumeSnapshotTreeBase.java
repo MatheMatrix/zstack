@@ -2088,21 +2088,37 @@ public class VolumeSnapshotTreeBase {
         List<String> uuids = snapshots.stream().map(VolumeSnapshotInventory::getUuid).collect(Collectors.toList());
         SQL.New(VolumeSnapshotGroupRefVO.class).in(VolumeSnapshotGroupRefVO_.volumeSnapshotUuid, uuids)
                 .set(VolumeSnapshotGroupRefVO_.snapshotDeleted, true).update();
-        if (currentRoot.getVolumeType().equals(VolumeType.Root.toString())) {
-            List<String> groupUuids = new ArrayList<>();
-            for (VolumeSnapshotInventory snapshot : snapshots) {
-                String groupUuid = snapshot.getGroupUuid();
-                if (groupUuid != null) {
-                    logger.debug(String.format("root volume snapshot[uuid:%s, name:%s] has been deleted, " +
-                            "ungroup snapshot group[uuid:%s]", snapshot.getUuid(), snapshot.getName(), groupUuid));
-                    groupUuids.add(groupUuid);
-                }
 
-            }
-
-            groupUuids.forEach(groupUuid -> vidm.deleteArchiveVmInstanceResourceMetadataGroup(groupUuid));
-            dbf.removeByPrimaryKeys(groupUuids, VolumeSnapshotGroupVO.class);
+        List<String> groupUuids = snapshots.stream().map(VolumeSnapshotInventory::getGroupUuid).filter(Objects::nonNull).collect(Collectors.toList());
+        if (groupUuids.isEmpty()) {
+            return;
         }
+
+        List<VolumeSnapshotGroupVO> groupVOs = Q.New(VolumeSnapshotGroupVO.class).in(VolumeSnapshotGroupVO_.uuid, groupUuids).list();
+        groupVOs.forEach(groupVO -> {
+            new RunInQueue(String.format("ungroup-volumeSnapshotGroup-%s", groupVO.getUuid()), thdf, 1)
+                    .name("ungroup-volumeSnapshotGroup-in-queue").asyncBackup(null)
+                    .run(chain -> ungroupAfterDeleted(groupVO, new NoErrorCompletion(chain) {
+                                @Override
+                                public void done() {
+                                    chain.next();
+                                }
+                            })
+                    );
+        });
+    }
+
+    private void ungroupAfterDeleted(VolumeSnapshotGroupVO groupVO, NoErrorCompletion completion) {
+        if (!groupVO.getVolumeSnapshotRefs().stream().allMatch(VolumeSnapshotGroupRefVO::isSnapshotDeleted)) {
+            logger.debug(String.format("skipping ungroup operation for snapshot group[uuid:%s]: " +
+                    "no group meet deletion criteria (due to remaining volume snapshots).", groupVO.getUuid()));
+            completion.done();
+            return;
+        }
+        logger.debug(String.format("snapshot group[uuid:%s] all volume snapshot has been deleted, delete snapshot group", groupVO.getUuid()));
+        vidm.deleteArchiveVmInstanceResourceMetadataGroup(groupVO.getUuid());
+        dbf.removeByPrimaryKey(groupVO.getUuid(), VolumeSnapshotGroupVO.class);
+        completion.done();
     }
 
     private List<VolumeSnapshotBackupStorageDeletionMsg> makeVolumeSnapshotBackupStorageDeletionMsg(List<String> bsUuids) {
