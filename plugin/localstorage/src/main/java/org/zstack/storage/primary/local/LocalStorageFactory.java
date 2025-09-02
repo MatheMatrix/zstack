@@ -416,43 +416,7 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
             }
         }
 
-        if (VmAllocatePrimaryStorageFlow.class.getName().equals(nextFlowName)) {
-            if (spec.getCurrentVmOperation() == VmOperation.NewCreate) {
-                List<String> localStorageUuids = getAvailableLocalStorageInCluster(spec.getDestHost().getClusterUuid());
-                if (isEmpty(localStorageUuids)) {
-                    return null;
-                }
-
-                boolean requireNoneLocalStorage = spec.getRequiredPrimaryStorageUuidForRootVolume() != null && Q.New(PrimaryStorageVO.class)
-                        .eq(PrimaryStorageVO_.uuid, spec.getRequiredPrimaryStorageUuidForRootVolume())
-                        .notEq(PrimaryStorageVO_.type, LocalStorageConstants.LOCAL_STORAGE_TYPE)
-                        .isExists();
-                requireNoneLocalStorage = requireNoneLocalStorage && (isEmpty(spec.getDeprecatedDisksSpecs()) ||
-                        spec.getRequiredPrimaryStorageUuidForDataVolume() != null && Q.New(PrimaryStorageVO.class)
-                        .eq(PrimaryStorageVO_.uuid, spec.getRequiredPrimaryStorageUuidForDataVolume())
-                        .notEq(PrimaryStorageVO_.type, LocalStorageConstants.LOCAL_STORAGE_TYPE)
-                        .isExists());
-                if (requireNoneLocalStorage) {
-                    return null;
-                }
-
-                boolean isOnlyLocalStorage = SQL.New("select pri.uuid" +
-                                " from PrimaryStorageVO pri, PrimaryStorageClusterRefVO ref" +
-                                " where pri.uuid = ref.primaryStorageUuid" +
-                                " and ref.clusterUuid = :cuuid" +
-                                " and pri.type != :ptype", String.class)
-                        .param("cuuid", spec.getDestHost().getClusterUuid())
-                        .param("ptype", LocalStorageConstants.LOCAL_STORAGE_TYPE)
-                        .list().isEmpty();
-
-                if (!isOnlyLocalStorage && (spec.getRequiredPrimaryStorageUuidForRootVolume() != null ||
-                        spec.getRequiredPrimaryStorageUuidForDataVolume() != null)) {
-                    return new LocalStorageDesignatedAllocateCapacityFlow();
-                } else {
-                    return new LocalStorageDefaultAllocateCapacityFlow();
-                }
-            }
-        } else if (spec.getCurrentVmOperation() == VmOperation.AttachVolume) {
+        if (spec.getCurrentVmOperation() == VmOperation.AttachVolume) {
             VolumeInventory volume = spec.getDestDataVolumes().get(0);
             if (VolumeStatus.NotInstantiated.toString().equals(volume.getStatus())
                     && VmAllocatePrimaryStorageForAttachingDiskFlow.class.getName().equals(nextFlowName)) {
