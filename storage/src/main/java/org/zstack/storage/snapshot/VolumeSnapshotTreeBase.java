@@ -60,7 +60,6 @@ import org.zstack.storage.primary.PrimaryStorageCapacityUpdater;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
 import org.zstack.storage.volume.FireSnapShotCanonicalEvent;
 import org.zstack.tag.TagManager;
-import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.TimeUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
@@ -685,6 +684,95 @@ public class VolumeSnapshotTreeBase {
                         }
                     }
                 });
+            }
+        });
+
+        flow(new NoRollbackFlow() {
+            String __name__ = "delete-volume-snapshots-from-primary-storage";
+
+            @Override
+            public boolean skip(Map data) {
+                return currentLeaf.getInventory().getGroupUuid() == null;
+            }
+
+            @Override
+            public void run(final FlowTrigger trigger, Map data) {
+                new RunInQueue(String.format("cleanup-snapshot-on-volumeSnapshotGroup-%s", currentLeaf.getInventory().getGroupUuid()), thdf, 1)
+                        .name("delete-memory-snapshot-on-volumeSnapshotGroup-in-queue")
+                        .asyncBackup(trigger)
+                        .run(c -> deleteMemorySnapshot(new NoErrorCompletion(c) {
+                            @Override
+                            public void done() {
+                                c.next();
+                                trigger.next();
+                            }
+                        }));
+            }
+
+            private void deleteMemorySnapshot(NoErrorCompletion noErrorCompletion) {
+                List<VolumeSnapshotInventory> memorySnapshotsOfDescendants = getMemorySnapshotsOfDescendants();
+                if (memorySnapshotsOfDescendants.isEmpty()) {
+                    logger.info(String.format("memory snapshot of volumeSnapshotGroup[uuid:%s] is empty, skip delete", currentLeaf.getInventory().getGroupUuid()));
+                    noErrorCompletion.done();
+                }
+
+                new While<>(memorySnapshotsOfDescendants).step((tuple, com) -> {
+                    VolumeSnapshotPrimaryStorageDeletionMsg dmsg = new VolumeSnapshotPrimaryStorageDeletionMsg();
+                    dmsg.setUuid(tuple.getUuid());
+                    dmsg.setVolumeDelete(msg.isVolumeDeletion());
+                    bus.makeTargetServiceIdByResourceUuid(dmsg, VolumeSnapshotConstant.SERVICE_ID, tuple.getPrimaryStorageUuid());
+                    bus.send(dmsg, new CloudBusCallBack(com) {
+                        @Override
+                        public void run(MessageReply reply) {
+                            if (!reply.isSuccess()) {
+                                logger.warn(String.format("failed to delete memory snapshot[uuid:%s]", tuple.getUuid()));
+                            } else {
+                                cleanUpMemorySnapshots(memorySnapshotsOfDescendants);
+                                logger.info(String.format("successfully deleted memory snapshot[uuid:%s]", tuple.getUuid()));
+                            }
+                            com.done();
+                        }
+                    });
+                }, memorySnapshotsOfDescendants.size()).run(new WhileDoneCompletion(msg) {
+                    @Override
+                    public void done(ErrorCodeList errorCodeList) {
+                        noErrorCompletion.done();
+                    }
+                });
+            }
+
+            private void cleanUpMemorySnapshots(List<VolumeSnapshotInventory> memorySnapshotsOfDescendants) {
+                new SQLBatch() {
+                    @Override
+                    protected void scripts() {
+                        List<String> memorySnapshotUuids = memorySnapshotsOfDescendants.stream().map(VolumeSnapshotInventory::getUuid).collect(Collectors.toList());
+                        List<String> memorySnapshotTreeUuids = memorySnapshotsOfDescendants.stream().map(VolumeSnapshotInventory::getTreeUuid).collect(Collectors.toList());
+                        sql(VolumeSnapshotVO.class).in(VolumeSnapshotVO_.uuid, memorySnapshotUuids).hardDelete();
+                        sql(VolumeSnapshotTreeVO.class).in(VolumeSnapshotTreeVO_.uuid, memorySnapshotTreeUuids).hardDelete();
+                    }
+                }.execute();
+            }
+
+            private List<VolumeSnapshotInventory> getMemorySnapshotsOfDescendants() {
+                List<String> groupUuids = currentLeaf.getDescendants().stream()
+                        .filter(inv -> !Objects.equals(inv.getUuid(), currentLeaf.getUuid()))
+                        .map(VolumeSnapshotInventory::getGroupUuid).filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+                if (groupUuids.isEmpty()) {
+                    return new ArrayList<>();
+                }
+
+                List<String> memorySnapshotUuids = Q.New(VolumeSnapshotGroupRefVO.class)
+                        .in(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, groupUuids)
+                        .eq(VolumeSnapshotGroupRefVO_.volumeType, VolumeType.Memory.toString())
+                        .eq(VolumeSnapshotGroupRefVO_.snapshotDeleted, false)
+                        .select(VolumeSnapshotGroupRefVO_.volumeSnapshotUuid).listValues();
+                if (memorySnapshotUuids.isEmpty()) {
+                    return new ArrayList<>();
+                }
+
+                List<VolumeSnapshotVO> memorySnapshots = Q.New(VolumeSnapshotVO.class).in(VolumeSnapshotVO_.uuid, memorySnapshotUuids).list();
+                return VolumeSnapshotInventory.valueOf(memorySnapshots);
             }
         });
     }
