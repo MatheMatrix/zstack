@@ -11,6 +11,7 @@ import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.cloudbus.MessageSafe;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
+import org.zstack.core.db.Q;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.core.Completion;
@@ -25,6 +26,9 @@ import org.zstack.header.storage.primary.IncreasePrimaryStorageCapacityMsg;
 import org.zstack.header.storage.primary.PrimaryStorageConstant;
 import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.storage.snapshot.VolumeSnapshotStatus.StatusEvent;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefVO;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefVO_;
+import org.zstack.header.volume.VolumeType;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.ExceptionDSL;
 import org.zstack.utils.Utils;
@@ -32,7 +36,9 @@ import org.zstack.utils.function.ForEachFunction;
 import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.PersistenceException;
+import javax.persistence.Tuple;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  */
@@ -305,6 +311,53 @@ public class VolumeSnapshotBase implements VolumeSnapshot {
                         bus.makeTargetServiceIdByResourceUuid(imsg, PrimaryStorageConstant.SERVICE_ID, imsg.getPrimaryStorageUuid());
                         bus.send(imsg);
                         trigger.next();
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "delete-memory-snapshot-from-primary-storage";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        VolumeSnapshotInventory snapshot = getSelfInventory();
+                        if (snapshot.getGroupUuid() == null) {
+                            trigger.next();
+                            return;
+                        }
+
+                        Tuple memorySnapshotTuples = Q.New(VolumeSnapshotGroupRefVO.class)
+                                .eq(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, snapshot.getGroupUuid())
+                                .eq(VolumeSnapshotGroupRefVO_.volumeType, VolumeType.Memory.toString())
+                                .select(VolumeSnapshotGroupRefVO_.volumeSnapshotUuid, VolumeSnapshotGroupRefVO_.volumeUuid).findTuple();
+                        if (memorySnapshotTuples == null) {
+                            trigger.next();
+                            return;
+                        }
+
+                        String volumeSnapshotUuid = memorySnapshotTuples.get(0, String.class);
+                        String volumeUuid = memorySnapshotTuples.get(1, String.class);
+
+                        if (Objects.equals(volumeSnapshotUuid, snapshot.getUuid())) {
+                            trigger.next();
+                            return;
+                        }
+
+                        VolumeSnapshotDeletionMsg dmsg = new VolumeSnapshotDeletionMsg();
+                        dmsg.setSnapshotUuid(volumeSnapshotUuid);
+                        dmsg.setVolumeUuid(volumeUuid);
+                        dmsg.setDirection(DeleteVolumeSnapshotDirection.Commit.toString());
+                        dmsg.setScope(DeleteVolumeSnapshotScope.Single.toString());
+                        bus.makeTargetServiceIdByResourceUuid(dmsg, VolumeSnapshotConstant.SERVICE_ID, volumeSnapshotUuid);
+                        bus.send(dmsg, new CloudBusCallBack(trigger) {
+                            @Override
+                            public void run(MessageReply reply) {
+                                if (!reply.isSuccess()) {
+                                    logger.warn(String.format("failed to delete memory snapshot[uuid:%s] " +
+                                            "on primary storage[uuid:%s], continue", volumeSnapshotUuid, self.getPrimaryStorageUuid()));
+                                }
+                                trigger.next();
+                            }
+                        });
                     }
                 });
 
