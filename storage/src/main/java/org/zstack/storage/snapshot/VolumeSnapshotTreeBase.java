@@ -60,7 +60,6 @@ import org.zstack.storage.primary.PrimaryStorageCapacityUpdater;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
 import org.zstack.storage.volume.FireSnapShotCanonicalEvent;
 import org.zstack.tag.TagManager;
-import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.TimeUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
@@ -646,7 +645,9 @@ public class VolumeSnapshotTreeBase {
 
             @Override
             public void run(final FlowTrigger trigger, Map data) {
-                final List<VolumeSnapshotPrimaryStorageDeletionMsg> pmsgs = transformAndRemoveNull(currentLeaf.getDescendants(), arg -> {
+                List<VolumeSnapshotInventory> snapshotsToDelete = currentLeaf.getDescendants();
+                snapshotsToDelete.addAll(getMemorySnapshotsOfDescendants());
+                final List<VolumeSnapshotPrimaryStorageDeletionMsg> pmsgs = transformAndRemoveNull(snapshotsToDelete, arg -> {
                     if (arg.getPrimaryStorageUuid() == null) {
                         return null;
                     }
@@ -1319,6 +1320,28 @@ public class VolumeSnapshotTreeBase {
         });
     }
         }).start();
+    }
+
+    private List<VolumeSnapshotInventory> getMemorySnapshotsOfDescendants() {
+        List<String> groupUuids = currentLeaf.getDescendants().stream()
+                .filter(inv -> !Objects.equals(inv.getUuid(), currentLeaf.getUuid()))
+                .map(VolumeSnapshotInventory::getGroupUuid).filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        if (groupUuids.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<String> memorySnapshotUuids = Q.New(VolumeSnapshotGroupRefVO.class)
+                .in(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, groupUuids)
+                .eq(VolumeSnapshotGroupRefVO_.volumeType, VolumeType.Memory.toString())
+                .eq(VolumeSnapshotGroupRefVO_.snapshotDeleted, false)
+                .select(VolumeSnapshotGroupRefVO_.volumeSnapshotUuid).listValues();
+        if (memorySnapshotUuids.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<VolumeSnapshotVO> memorySnapshots = Q.New(VolumeSnapshotVO.class).in(VolumeSnapshotVO_.uuid, memorySnapshotUuids).list();
+        return VolumeSnapshotInventory.valueOf(memorySnapshots);
     }
 
     private void cleanupInQueue(VolumeSnapshotInventory volumeSnapshotInv, NoErrorCompletion completion) {
@@ -2046,6 +2069,7 @@ public class VolumeSnapshotTreeBase {
     private boolean cleanup() {
 
         List<VolumeSnapshotInventory> snapshots = currentLeaf.getDescendants();
+        snapshots.addAll(getMemorySnapshotsOfDescendants());
         boolean cleanup = new SQLBatchWithReturn<Boolean>() {
             @Override
             protected Boolean scripts() {
