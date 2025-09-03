@@ -68,6 +68,7 @@ import org.zstack.utils.logging.CLogger;
 import org.zstack.utils.message.OperationChecker;
 
 import javax.persistence.Query;
+import javax.persistence.Tuple;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -601,6 +602,57 @@ public class VolumeSnapshotTreeBase {
                                 } else {
                                     trigger.next();
                                 }
+                            }
+                        });
+                    }
+                });
+                flow(new NoRollbackFlow() {
+                    String __name__ = "delete-memory-snapshot";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        List<String> groupUuids = currentLeaf.getDescendants().stream()
+                                .filter(inv -> !Objects.equals(inv.getUuid(), currentLeaf.getUuid()))
+                                .map(VolumeSnapshotInventory::getGroupUuid).filter(Objects::nonNull)
+                                .collect(Collectors.toList());
+                        if (groupUuids.isEmpty()) {
+                            trigger.next();
+                            return;
+                        }
+
+                        List<Tuple> memorySnapshotTuples = Q.New(VolumeSnapshotGroupRefVO.class)
+                                .in(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, groupUuids)
+                                .eq(VolumeSnapshotGroupRefVO_.volumeType, VolumeType.Memory.toString())
+                                .select(VolumeSnapshotGroupRefVO_.volumeSnapshotUuid, VolumeSnapshotGroupRefVO_.volumeUuid).listTuple();
+                        if (memorySnapshotTuples.isEmpty()) {
+                            trigger.next();
+                            return;
+                        }
+
+                        new While<>(memorySnapshotTuples).step((tuple, com) -> {
+                            String volumeSnapshotUuid = tuple.get(0, String.class);
+                            String volumeUuid = tuple.get(1, String.class);
+                            VolumeSnapshotDeletionMsg dmsg = new VolumeSnapshotDeletionMsg();
+                            dmsg.setSnapshotUuid(volumeSnapshotUuid);
+                            dmsg.setVolumeUuid(volumeUuid);
+                            dmsg.setDirection(DeleteVolumeSnapshotDirection.Commit.toString());
+                            dmsg.setScope(DeleteVolumeSnapshotScope.Single.toString());
+                            bus.makeTargetServiceIdByResourceUuid(dmsg, VolumeSnapshotConstant.SERVICE_ID, volumeSnapshotUuid);
+                            bus.send(dmsg, new CloudBusCallBack(trigger) {
+                                @Override
+                                public void run(MessageReply reply) {
+                                    if (!reply.isSuccess()) {
+                                        logger.warn(String.format("failed to delete memory snapshot[uuid:%s]", volumeSnapshotUuid));
+                                    } else {
+                                        logger.info(String.format("successfully deleted memory snapshot[uuid:%s]", volumeSnapshotUuid));
+                                    }
+                                    com.done();
+                                }
+                            });
+                        }, memorySnapshotTuples.size()).run(new WhileDoneCompletion(msg) {
+                            @Override
+                            public void done(ErrorCodeList errorCodeList) {
+                                trigger.next();
                             }
                         });
                     }
