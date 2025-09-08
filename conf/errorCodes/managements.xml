@@ -17,6 +17,36 @@
     </code>
 
     <code>
+        <id>2002</id>
+        <description>Invalid ZSphere HA2 tools</description>
+    </code>
+
+    <code>
+        <id>2003</id>
+        <description>Unexpected HA2 Script Output</description>
+    </code>
+
+    <code>
+        <id>2010</id>
+        <description>Unexpected HA2 Network Status</description>
+    </code>
+
+    <code>
+        <id>2011</id>
+        <description>Other Node is Unavailable (HA2)</description>
+    </code>
+
+    <code>
+        <id>2012</id>
+        <description>HA2 VIP is Occupied</description>
+    </code>
+
+    <code>
+        <id>2013</id>
+        <description>Different Gateway Ip between ZSphere HA2 Nodes</description>
+    </code>
+
+    <code>
         <id>2101</id>
         <description>Failed to get ZSphere HA2 status</description>
     </code>
