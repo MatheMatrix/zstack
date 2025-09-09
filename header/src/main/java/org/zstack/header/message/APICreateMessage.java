@@ -1,8 +1,12 @@
 package org.zstack.header.message;
 
-import org.zstack.header.tag.TagPatternType;
+import org.zstack.header.exception.CloudRuntimeException;
+import org.zstack.header.rest.RestRequest;
+import org.zstack.header.search.Inventory;
 import org.zstack.header.tag.TagPatternVO;
+import org.zstack.header.tag.TagResourceType;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,5 +43,36 @@ public class APICreateMessage extends APIMessage {
 
     public void setTagUuids(List<String> tagUuids) {
         this.tagUuids = tagUuids;
+    }
+
+    public Class<?> resourceType() {
+        return findResourceType(getClass());
+    }
+
+    public static Class<?> findResourceType(Class<? extends APICreateMessage> myClass) {
+        final TagResourceType annotation = myClass.getAnnotation(TagResourceType.class);
+        if (annotation != null) {
+            return annotation.value();
+        }
+
+        RestRequest restRequest = myClass.getAnnotation(RestRequest.class);
+        if (restRequest == null) {
+            throw new CloudRuntimeException("failed to find resource type for class " + myClass.getName());
+        }
+
+        Class<?> responseClass = restRequest.responseClass();
+
+        // field responseClass.inventory
+        try {
+            final Field inventory = responseClass.getField("inventory");
+            Class<?> inventoryClass = inventory.getType();
+
+            Inventory inventoryAnnotation = inventoryClass.getAnnotation(Inventory.class);
+            if (inventoryAnnotation != null) {
+                return inventoryAnnotation.mappingVOClass();
+            }
+        } catch (NoSuchFieldException ignored) {}
+
+        throw new CloudRuntimeException("failed to find resource type for class " + myClass.getName());
     }
 }

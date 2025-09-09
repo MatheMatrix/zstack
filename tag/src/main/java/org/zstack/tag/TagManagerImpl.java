@@ -143,6 +143,7 @@ public class TagManagerImpl extends AbstractService implements TagManager,
         }
     }
 
+    @SuppressWarnings("unchecked")
     void init() {
         for (EntityType<?> entity : dbf.getEntityManager().getMetamodel().getEntities()) {
             Class type = entity.getJavaType();
@@ -163,14 +164,15 @@ public class TagManagerImpl extends AbstractService implements TagManager,
 
         registrySensitiveTagHider();
 
-        Set<Class<?>> createMessageClass = BeanUtils.reflections.getTypesAnnotatedWith(TagResourceType.class)
-                .stream().filter(i->i.isAnnotationPresent(TagResourceType.class)).collect(Collectors.toSet());
-        for (Class cmsgClz : createMessageClass) {
-            TagResourceType at = (TagResourceType) cmsgClz.getAnnotation(TagResourceType.class);
-            Class resType = at.value();
+        for (Class<?> cmsgClz : APIMessage.apiMessageClasses) {
+            if (!APICreateMessage.class.isAssignableFrom(cmsgClz)) {
+                continue;
+            }
+
+            Class<?> resType = APICreateMessage.findResourceType((Class<? extends APICreateMessage>) cmsgClz);
             if (!resourceTypeClassMap.containsValue(resType)) {
                 throw new CloudRuntimeException(String.format(
-                        "tag resource type[%s] defined in @TagResourceType of class[%s] is not a VO entity",
+                        "resource type[%s] of class[%s] is not a VO entity",
                         resType.getName(), cmsgClz.getName()));
             }
             resourceTypeCreateMessageMap.put(cmsgClz, resType);
