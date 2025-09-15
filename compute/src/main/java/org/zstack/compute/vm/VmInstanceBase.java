@@ -1,6 +1,7 @@
 package org.zstack.compute.vm;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.logging.log4j.ThreadContext;
 import org.apache.logging.log4j.util.Strings;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,8 @@ import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.cluster.ClusterVO_;
 import org.zstack.header.configuration.*;
 import org.zstack.header.core.*;
+import org.zstack.header.core.progress.ChainInfo;
+import org.zstack.header.core.progress.RunningTaskInfo;
 import org.zstack.header.core.progress.TaskProgressRange;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
@@ -93,6 +96,7 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.asList;
 import static org.zstack.core.Platform.*;
 import static org.zstack.core.progress.ProgressReportService.*;
+import static org.zstack.header.Constants.THREAD_CONTEXT_API;
 import static org.zstack.utils.CollectionDSL.*;
 
 public class VmInstanceBase extends AbstractVmInstance {
@@ -8959,6 +8963,29 @@ public class VmInstanceBase extends AbstractVmInstance {
 
             @Override
             public void run(SyncTaskChain chain) {
+                String apiId = ThreadContext.get(THREAD_CONTEXT_API);
+                if (StringUtils.isNotBlank(apiId)) {
+                    for (VolumeVO vol : self.getAllVolumes()) {
+                        ChainInfo chainInfo = thdf.getChainTaskInfo(String.format("volume-%s", vol.getUuid()));
+                        for (RunningTaskInfo runningTaskInfo : chainInfo.getRunningTask()) {
+                            if (StringUtils.isNotBlank(runningTaskInfo.getApiId()) && apiId.equals(runningTaskInfo.getApiId())) {
+                                String name = msg.getMessage().getMessageName();
+                                logger.debug(name);
+                                if (name.contains("ResizeVolumeMsg") || name.contains("ResizeRootVolumeMsg")
+                                    || name.contains("ResizeDataVolumeMsg") || name.contains("ResizeVolumeOnPrimaryStorageMsg")) {
+                                    continue;
+                                }
+                                logger.debug(String.format("You should not overlay the volume first and then the vmInstance. apiId: %s\n %s",
+                                        apiId, runningTaskInfo.toString()));
+                                MessageReply reply = new MessageReply();
+                                reply.setError(operr("check task queue error."));
+                                bus.reply(msg, reply);
+                                chain.next();
+                                return;
+                            }
+                        }
+                    }
+                }
                 doOverlayMessage(msg, new NoErrorCompletion(chain) {
                     @Override
                     public void done() {
