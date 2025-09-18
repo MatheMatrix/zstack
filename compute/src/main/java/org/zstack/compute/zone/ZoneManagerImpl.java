@@ -5,10 +5,7 @@ import org.zstack.core.Platform;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.MessageSafe;
 import org.zstack.core.componentloader.PluginRegistry;
-import org.zstack.core.db.DatabaseFacade;
-import org.zstack.core.db.DbEntityLister;
-import org.zstack.core.db.SQL;
-import org.zstack.core.db.SQLBatch;
+import org.zstack.core.db.*;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.SyncTaskChain;
@@ -160,6 +157,11 @@ public class ZoneManagerImpl extends AbstractService implements ZoneManager {
     }
 
     private void createZone(APICreateZoneMsg msg, ReturnValueCompletion<ZoneInventory> completion) {
+        Long existCount = Q.New(ZoneVO.class).count();
+        if (existCount == 0) {
+            msg.setDefault(true);
+        }
+
         if (msg.getDefault() == null || !msg.getDefault()) {
             completion.success(createZoneFromApiMessage(msg));
             return;
