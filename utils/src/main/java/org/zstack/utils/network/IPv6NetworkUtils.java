@@ -439,4 +439,8 @@ public class IPv6NetworkUtils {
         }
         return ipv6.toLowerCase().startsWith("fe80");
     }
+
+    public static boolean isFullCidr(String cidr) {
+        return cidr.equals("::/0");
+    }
 }

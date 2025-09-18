@@ -2088,7 +2088,7 @@ public class VolumeSnapshotTreeBase {
                     public void run(FlowTrigger trigger, Map data) {
                         if (!VolumeSnapshotGlobalConfig.SNAPSHOT_BEFORE_REVERTVOLUME.value(Boolean.class)) {
                             VolumeInventory vol = VolumeInventory.valueOf(volume);
-                            vol.setSize(actualSize);
+                            vol.setActualSize(actualSize);
                             vol.setInstallPath(oldVolumeInstallPath);
                             vol.setPrimaryStorageUuid(getSelfInventory().getPrimaryStorageUuid());
                             trashId = trash.createTrash(TrashType.RevertVolume, false, vol).getTrashId();

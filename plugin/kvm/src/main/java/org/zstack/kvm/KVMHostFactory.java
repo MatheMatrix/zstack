@@ -7,10 +7,9 @@ import org.zstack.compute.host.HostGlobalConfig;
 import org.zstack.compute.vm.CrashStrategy;
 import org.zstack.compute.vm.VmGlobalConfig;
 import org.zstack.compute.vm.VmNicManager;
-import org.zstack.compute.vm.VmNicManagerImpl;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.network.l2.L2NetworkRealizationExtensionPoint;
-import org.zstack.header.network.l2.VSwitchType;
+import org.zstack.core.config.*;
+import org.zstack.core.config.schema.GuestOsCharacter;
 import org.zstack.header.tag.SystemTagInventory;
 import org.zstack.header.tag.SystemTagLifeCycleListener;
 import org.zstack.header.tag.SystemTagValidator;
@@ -22,12 +21,7 @@ import org.zstack.core.Platform;
 import org.zstack.core.ansible.AnsibleFacade;
 import org.zstack.core.cloudbus.*;
 import org.zstack.core.componentloader.PluginRegistry;
-import org.zstack.core.config.GlobalConfig;
-import org.zstack.core.config.GlobalConfigException;
-import org.zstack.core.config.GlobalConfigUpdateExtensionPoint;
-import org.zstack.core.config.GlobalConfigValidatorExtensionPoint;
 import org.zstack.core.config.schema.GuestOsCategory;
-import org.zstack.core.config.schema.GuestOsCharacter;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
@@ -56,12 +50,11 @@ import org.zstack.header.vm.*;
 import org.zstack.header.volume.*;
 import org.zstack.kvm.KVMAgentCommands.ReconnectMeCmd;
 import org.zstack.kvm.KVMAgentCommands.TransmitVmOperationToMnCmd;
-import org.zstack.resourceconfig.ResourceConfigUpdateExtensionPoint;
-import org.zstack.resourceconfig.ResourceConfigValidatorExtensionPoint;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.IpRangeSet;
 import org.zstack.utils.SizeUtils;
 import org.zstack.utils.Utils;
+import org.zstack.utils.data.SizeUnit;
 import org.zstack.utils.form.Form;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.function.ValidateFunction;
@@ -110,6 +103,7 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
     public static Map<String, GuestOsCharacter.Config> allGuestOsCharacter = new ConcurrentHashMap<>();
 
     private final Map<SocketChannel, Long> socketTimeoutMap = new ConcurrentHashMap<>();
+    public static final Map<String, Object> configs = Collections.synchronizedMap(new HashMap<>());
 
     static {
         RAW_FORMAT.newFormatInputOutputMapping(hypervisorType, QCOW2_FORMAT.toString());
@@ -141,8 +135,10 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
     private VmInstanceDeviceManager vidm;
     @Autowired
     private VmNicManager vmNicManager;
-
+    @Autowired
+    private GlobalConfigFacade gcf;
     private Future<Void> checkSocketChannelTimeoutThread;
+    public static int skipHostPingTimeWhenKvmagentBusy = 300;
 
     @Override
     public HostVO createHost(HostVO vo, AddHostMessage msg) {
@@ -355,6 +351,21 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
         asf.deployModule(KVMConstant.ANSIBLE_MODULE_PATH, KVMConstant.ANSIBLE_PLAYBOOK_NAME);
     }
 
+
+    private void processKvmagentPhysicalMemUsageAbnormal(KVMAgentCommands.HostProcessPhysicalMemoryUsageAlarmCmd cmd) {
+        if (cmd.getMemoryUsage() <= gcf.getConfigValue(KVMGlobalConfig.CATEGORY,
+                KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_HARD_LIMIT.getName(), Long.class)) {
+            return;
+        }
+
+        logger.debug("The zstack-kvmagent service has exceeded the hard limit for physical memory usage, " +
+                "and we will try restart it later");
+        RestartKvmAgentMsg restartKvmAgentMsg = new RestartKvmAgentMsg();
+        restartKvmAgentMsg.setHostUuid(cmd.getHostUuid());
+        bus.makeTargetServiceIdByResourceUuid(restartKvmAgentMsg, HostConstant.SERVICE_ID, restartKvmAgentMsg.getHostUuid());
+        bus.send(restartKvmAgentMsg);
+    }
+
     @Override
     public boolean start() {
         deployAnsibleModule();
@@ -400,6 +411,20 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
                 }
             }
         });
+        configs.put(KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_ALARM_THRESHOLD.getName(), KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_ALARM_THRESHOLD.value(Long.class));
+        KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_ALARM_THRESHOLD.installUpdateExtension(new GlobalConfigUpdateExtensionPoint() {
+            @Override
+            public void updateGlobalConfig(GlobalConfig oldConfig, GlobalConfig newConfig) {
+                configs.put(newConfig.getName(), newConfig.value(Long.class));
+            }
+        });
+        configs.put(KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_HARD_LIMIT.getName(), KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_HARD_LIMIT.value(Long.class));
+        KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_HARD_LIMIT.installUpdateExtension(new GlobalConfigUpdateExtensionPoint() {
+            @Override
+            public void updateGlobalConfig(GlobalConfig oldConfig, GlobalConfig newConfig) {
+                configs.put(newConfig.getName(), newConfig.value(Long.class));
+            }
+        });
         ResourceConfig resourceConfig = rcf.getResourceConfig(KVMGlobalConfig.VM_CPU_HYPERVISOR_FEATURE.getIdentity());
         resourceConfig.installValidatorExtension((resourceUuid, oldValue, newValue) -> {
             if (Boolean.TRUE.toString().equals(newValue)) {
@@ -409,6 +434,22 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             ResourceConfig cpuMode = rcf.getResourceConfig(KVMGlobalConfig.NESTED_VIRTUALIZATION.getIdentity());
             if (CPU_MODE_NONE.equals(cpuMode.getResourceConfigValue(resourceUuid, String.class))) {
                 throw new GlobalConfigException("Can not disable cpu hypervisor feature with vm.cpuMode none");
+            }
+        });
+
+        resourceConfig = rcf.getResourceConfig(KVMGlobalConfig.NESTED_VIRTUALIZATION.getIdentity());
+        resourceConfig.installValidatorExtension((resourceUuid, oldValue, newValue) -> {
+            if (oldValue.equals(newValue)) {
+                return;
+            }
+
+            VmInstanceState vmState = Q.New(VmInstanceVO.class).select(VmInstanceVO_.state)
+                    .eq(VmInstanceVO_.uuid, resourceUuid)
+                    .findValue();
+            if (vmState != null
+                    && vmState != VmInstanceState.Starting  // some configs are set while vm is starting
+                    && !VmInstanceState.offlineStates.contains(vmState)) {
+                throw new GlobalConfigException("Can not change vm.cpuMode while VM is living.");
             }
         });
 
@@ -499,6 +540,43 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
                 evf.fire(HostCanonicalEvents.HOST_PHYSICAL_NIC_STATUS_UP, cData);
             } else {
                 evf.fire(HostCanonicalEvents.HOST_PHYSICAL_NIC_STATUS_DOWN, cData);
+            }
+            return null;
+        });
+
+
+        restf.registerSyncHttpCallHandler(KVMConstant.HOST_PROCESS_PHYSICAL_MEMORY_USAGE_ALARM_PATH, KVMAgentCommands.HostProcessPhysicalMemoryUsageAlarmCmd.class, cmd -> {
+            HostCanonicalEvents.HostProcessPhysicalMemoryUsageAlarmData data = new HostCanonicalEvents.HostProcessPhysicalMemoryUsageAlarmData();
+            data.setHostUuid(cmd.getHostUuid());
+            data.setPid(cmd.getPid());
+            data.setMemoryUsage(String.format("%s MB", cmd.getMemoryUsage() / 1048576));
+            data.setProcessName(cmd.getProcessName());
+            evf.fire(HostCanonicalEvents.HOST_PROCESS_PHYSICAL_MEMORY_USAGE_ABNORMAL, data);
+
+            switch (data.getProcessName()) {
+                case "zstack-kvmagent":
+                    processKvmagentPhysicalMemUsageAbnormal(cmd);
+                    break;
+                default:
+                    logger.debug(String.format("unknown process name[%s] in host[uuid:%s]", cmd.getProcessName(), cmd.getHostUuid()));
+            }
+
+            return null;
+        });
+
+        restf.registerSyncHttpCallHandler(KVMConstant.HOST_KVMAGENT_STATUS_PATH, KVMAgentCommands.HostKvmagentStatusCmd.class, cmd -> {
+            if ("busy".equals(cmd.getStatus())) {
+                HostCanonicalEvents.HostPingSkipData data = new HostCanonicalEvents.HostPingSkipData();
+                data.setHostUuid(cmd.getHostUuid());
+                // this will skip host ping sometime if kvmagent busy
+                data.setSkipTimeInSec(skipHostPingTimeWhenKvmagentBusy * (int)(cmd.getMemoryUsage() / SizeUnit.GIGABYTE.toByte(4) + 1));
+                evf.fire(HostCanonicalEvents.HOST_PING_SKIP, data);
+            } else if ("available".equals(cmd.getStatus())) {
+                HostCanonicalEvents.HostPingSkipData data = new HostCanonicalEvents.HostPingSkipData();
+                data.setHostUuid(cmd.getHostUuid());
+                evf.fire(HostCanonicalEvents.HOST_PING_CANCEL_SKIP, data);
+            } else {
+                logger.debug("unknown kvmagent status: " + cmd.getStatus());
             }
             return null;
         });

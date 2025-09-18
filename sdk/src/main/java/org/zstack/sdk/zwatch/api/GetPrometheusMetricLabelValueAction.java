@@ -1,10 +1,10 @@
-package org.zstack.sdk;
+package org.zstack.sdk.zwatch.api;
 
 import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class UpdatePreconfigurationTemplateAction extends AbstractAction {
+public class GetPrometheusMetricLabelValueAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class UpdatePreconfigurationTemplateAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.UpdatePreconfigurationTemplateResult value;
+        public org.zstack.sdk.zwatch.api.GetPrometheusMetricLabelValueResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -26,22 +26,22 @@ public class UpdatePreconfigurationTemplateAction extends AbstractAction {
     }
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String uuid;
+    public java.lang.String namespace;
 
-    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String name;
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String metricName;
 
-    @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String description;
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, numberRange = {0L,253402271999L}, noTrim = false)
+    public java.lang.Long startTime;
 
-    @Param(required = false, maxLength = 64, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String distribution;
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, numberRange = {0L,253402271999L}, noTrim = false)
+    public java.lang.Long endTime;
 
-    @Param(required = false, validValues = {"kickstart","preseed","autoyast","autoinstall"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String type;
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.util.List labelNames;
 
-    @Param(required = false, maxLength = 16777215, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String content;
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.util.List filterLabels;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -61,12 +61,6 @@ public class UpdatePreconfigurationTemplateAction extends AbstractAction {
     @Param(required = false)
     public String requestIp;
 
-    @NonAPIParam
-    public long timeout = -1;
-
-    @NonAPIParam
-    public long pollingInterval = -1;
-
 
     private Result makeResult(ApiResult res) {
         Result ret = new Result();
@@ -75,8 +69,8 @@ public class UpdatePreconfigurationTemplateAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.UpdatePreconfigurationTemplateResult value = res.getResult(org.zstack.sdk.UpdatePreconfigurationTemplateResult.class);
-        ret.value = value == null ? new org.zstack.sdk.UpdatePreconfigurationTemplateResult() : value; 
+        org.zstack.sdk.zwatch.api.GetPrometheusMetricLabelValueResult value = res.getResult(org.zstack.sdk.zwatch.api.GetPrometheusMetricLabelValueResult.class);
+        ret.value = value == null ? new org.zstack.sdk.zwatch.api.GetPrometheusMetricLabelValueResult() : value; 
 
         return ret;
     }
@@ -105,11 +99,11 @@ public class UpdatePreconfigurationTemplateAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "PUT";
-        info.path = "/baremetal/preconfigurations/{uuid}/actions";
+        info.httpMethod = "GET";
+        info.path = "/zwatch/metrics/prometheus/label-values";
         info.needSession = true;
-        info.needPoll = true;
-        info.parameterName = "updatePreconfigurationTemplate";
+        info.needPoll = false;
+        info.parameterName = "";
         return info;
     }
 

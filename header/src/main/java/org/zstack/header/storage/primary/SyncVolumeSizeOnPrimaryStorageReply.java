@@ -8,7 +8,7 @@ import org.zstack.header.message.MessageReply;
 public class SyncVolumeSizeOnPrimaryStorageReply extends MessageReply {
     private long actualSize;
     private long size;
-    private boolean withInternalSnapshot;
+    private boolean supportExternalSnapshot = true;
 
     public long getSize() {
         return size;
@@ -26,11 +26,11 @@ public class SyncVolumeSizeOnPrimaryStorageReply extends MessageReply {
         this.actualSize = actualSize;
     }
 
-    public void setWithInternalSnapshot(boolean withInternalSnapshot) {
-        this.withInternalSnapshot = withInternalSnapshot;
+    public void setSupportExternalSnapshot(boolean supportExternalSnapshot) {
+        this.supportExternalSnapshot = supportExternalSnapshot;
     }
 
-    public boolean isWithInternalSnapshot() {
-        return withInternalSnapshot;
+    public boolean isSupportExternalSnapshot() {
+        return supportExternalSnapshot;
     }
 }

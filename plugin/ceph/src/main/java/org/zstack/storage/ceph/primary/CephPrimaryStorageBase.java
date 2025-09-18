@@ -76,10 +76,7 @@ import org.zstack.storage.volume.VolumeErrors;
 import org.zstack.storage.volume.VolumeSystemTags;
 import org.zstack.tag.SystemTag;
 import org.zstack.tag.SystemTagCreator;
-import org.zstack.utils.CollectionDSL;
-import org.zstack.utils.CollectionUtils;
-import org.zstack.utils.DebugUtils;
-import org.zstack.utils.Utils;
+import org.zstack.utils.*;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
@@ -1017,6 +1014,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
     }
 
     public static class DeleteVolumeChainRsp extends AgentResponse {
+        public List<String> undeletedInstallPaths;
     }
 
     public static class CleanTrashCmd extends AgentCommand {
@@ -1747,7 +1745,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         cmd.skipIfExisting = msg.isSkipIfExisting();
 
         final InstantiateVolumeOnPrimaryStorageReply reply = new InstantiateVolumeOnPrimaryStorageReply();
-        
+
         httpCall(CREATE_VOLUME_PATH, cmd, CreateEmptyVolumeRsp.class, new ReturnValueCompletion<CreateEmptyVolumeRsp>(msg) {
             @Override
             public void fail(ErrorCode err) {
@@ -1834,13 +1832,9 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         chain.done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map data) {
-                IncreasePrimaryStorageCapacityMsg imsg = new IncreasePrimaryStorageCapacityMsg();
-                imsg.setPrimaryStorageUuid(self.getUuid());
-                imsg.setDiskSize(inv.getSize());
-                bus.makeTargetServiceIdByResourceUuid(imsg, PrimaryStorageConstant.SERVICE_ID, self.getUuid());
-                bus.send(imsg);
-                logger.info(String.format("Returned space[size:%s] to PS %s after volume migration", inv.getSize(), self.getUuid()));
                 trash.removeFromDb(trashId);
+                trash.increaseCapacityAfterRemoveTrash(Collections.singletonList(inv));
+                logger.info(String.format("Returned space[size:%s] to PS %s after volume migration", inv.getSize(), self.getUuid()));
 
                 completion.success(new TrashCleanupResult(inv.getResourceUuid(), inv.getTrashId(), inv.getSize()));
             }
@@ -1929,15 +1923,10 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
             chain.done(new FlowDoneHandler(coml) {
                 @Override
                 public void handle(Map data) {
-                    IncreasePrimaryStorageCapacityMsg imsg = new IncreasePrimaryStorageCapacityMsg();
-                    imsg.setPrimaryStorageUuid(self.getUuid());
-                    imsg.setDiskSize(inv.getSize());
-                    bus.makeTargetServiceIdByResourceUuid(imsg, PrimaryStorageConstant.SERVICE_ID, self.getUuid());
-                    bus.send(imsg);
-                    logger.info(String.format("Returned space[size:%s] to PS %s after volume migration", inv.getSize(), self.getUuid()));
-
                     results.add(new TrashCleanupResult(inv.getResourceUuid(), inv.getTrashId(), inv.getSize()));
                     trash.removeFromDb(inv.getTrashId());
+                    trash.increaseCapacityAfterRemoveTrash(Collections.singletonList(inv));
+                    logger.info(String.format("Returned space[size:%s] to PS %s after volume migration", inv.getSize(), self.getUuid()));
                     coml.done();
                 }
             }).error(new FlowErrorHandler(coml) {
@@ -2383,10 +2372,29 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                             cvo = dbf.persistAndRefresh(cvo);
 
                             ImageCacheVO finalCvo = cvo;
-                            pluginRgty.getExtensionList(AfterCreateImageCacheExtensionPoint.class)
-                                    .forEach(exp -> exp.saveEncryptAfterCreateImageCache(null, ImageCacheInventory.valueOf(finalCvo)));
 
-                            completion.success(cvo);
+                            new While<>(pluginRgty.getExtensionList(AfterCreateImageCacheExtensionPoint.class)).each((ext, whileCompletion) -> {
+                                ext.saveEncryptAfterCreateImageCache(null, ImageCacheInventory.valueOf(finalCvo), new Completion(whileCompletion) {
+                                    @Override
+                                    public void success() {
+                                        whileCompletion.done();
+                                    }
+
+                                    @Override
+                                    public void fail(ErrorCode errorCode) {
+                                        whileCompletion.addError(errorCode);
+                                        whileCompletion.allDone();
+                                    }
+                                });
+                            }).run(new WhileDoneCompletion(completion) {
+                                @Override
+                                public void done(ErrorCodeList errorCodeList) {
+                                    if (!errorCodeList.getCauses().isEmpty()) {
+                                        logger.warn(String.format("failed to saveEncryptAfterCreateImageCache: %s", errorCodeList.getCauses().get(0)));
+                                    }
+                                    completion.success(finalCvo);
+                                }
+                            });
                         }
                     });
 
@@ -3296,7 +3304,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                         .findValue();
                 reply.setActualSize(asize);
                 reply.setSize(rsp.size);
-                reply.setWithInternalSnapshot(true);
+                reply.setSupportExternalSnapshot(false);
                 bus.reply(msg, reply);
             }
 
@@ -5351,6 +5359,11 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
 
             @Override
             public void fail(ErrorCode errorCode) {
+                CephDeleteVolumeSnapshotGC snapshotGC = new CephDeleteVolumeSnapshotGC();
+                snapshotGC.NAME = String.format("gc-ceph-%s-volumesnapshot-path-%s", self.getUuid(), cmd.snapshotPath);
+                snapshotGC.primaryStorageUuid = self.getUuid();
+                snapshotGC.volumeSnapshot = msg.getSnapshot();
+                snapshotGC.deduplicateSubmit(CephGlobalConfig.GC_INTERVAL.value(Long.class), TimeUnit.SECONDS);
                 reply.setError(errorCode);
                 bus.reply(msg, reply);
                 completion.done();
@@ -5933,14 +5946,31 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         DeleteVolumeChainOnPrimaryStorageReply reply = new DeleteVolumeChainOnPrimaryStorageReply();
         DeleteVolumeChainCmd cmd = new DeleteVolumeChainCmd();
         cmd.installPaths = msg.getInstallPaths();
-        new HttpCaller<>(DELETE_VOLUME_CHAIN_PATH, cmd, AgentResponse.class, new ReturnValueCompletion<AgentResponse>(msg) {
+        new HttpCaller<>(DELETE_VOLUME_CHAIN_PATH, cmd, DeleteVolumeChainRsp.class, new ReturnValueCompletion<DeleteVolumeChainRsp>(msg) {
+            private void submitGcForUndeletedInstallPaths(List<String> undeletedInstallPaths) {
+                CephDeleteVolumeChainGC volumeChainGC = new CephDeleteVolumeChainGC();
+                volumeChainGC.primaryStorageUuid = self.getUuid();
+                volumeChainGC.installPaths = undeletedInstallPaths;
+                volumeChainGC.NAME = String.format("gc-ceph-%s-volume-chain-%s", self.getUuid(), msg.getChainTop());
+                volumeChainGC.chainTop = msg.getChainTop();
+                volumeChainGC.deduplicateSubmit(CephGlobalConfig.GC_INTERVAL.value(Long.class), TimeUnit.SECONDS);
+                logger.debug(String.format("unable to delete installPaths %s, now add GC to delete", undeletedInstallPaths));
+            }
+
             @Override
-            public void success(AgentResponse rsp) {
+            public void success(DeleteVolumeChainRsp rsp) {
+                if (CollectionUtils.isEmpty(rsp.undeletedInstallPaths)) {
+                    bus.reply(msg, reply);
+                    return;
+                }
+                submitGcForUndeletedInstallPaths(rsp.undeletedInstallPaths);
+                reply.setUndeletedInstallPaths(rsp.undeletedInstallPaths);
                 bus.reply(msg, reply);
             }
 
             @Override
             public void fail(ErrorCode errorCode) {
+                submitGcForUndeletedInstallPaths(cmd.installPaths);
                 reply.setError(errorCode);
                 bus.reply(msg, reply);
             }
