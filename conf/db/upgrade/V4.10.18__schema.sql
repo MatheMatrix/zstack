@@ -19,3 +19,4 @@ CREATE TABLE IF NOT EXISTS `zstack`.`VmCustomSpecificationVO` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 DELETE FROM `zstack`.`ResourceConfigVO` WHERE category='sharedblock'  AND name='qcow2.allocation' AND value='metadata';
+UPDATE `zstack`.`GlobalConfigVO` SET value='none' WHERE category='sharedblock' AND name='qcow2.allocation';
