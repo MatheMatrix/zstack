@@ -48,6 +48,8 @@ public class APICreateVolumeSnapshotGroupMsg extends APICreateMessage implements
     @APIParam(required = false, maxLength = 2048)
     private String description;
 
+    // use global config: VolumeGlobalConfig.SNAPSHOT_GROUP_WITH_MEMORY_SWITCH.value(Boolean.class)
+    @Deprecated
     @APIParam(required = false)
     private boolean withMemory = false;
 

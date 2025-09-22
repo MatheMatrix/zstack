@@ -201,6 +201,10 @@ public class VolumeApiInterceptor implements ApiMessageInterceptor, Component, G
     }
 
     private void validate(APICreateVolumeSnapshotGroupMsg msg) {
+        Boolean withMemory = VolumeGlobalConfig.SNAPSHOT_GROUP_WITH_MEMORY_SWITCH.value(Boolean.class);
+        // use global config override param
+        msg.setWithMemory(withMemory);
+
         VmInstanceVO vmvo = SQL.New("select vm from VmInstanceVO vm, VolumeVO vol" +
                 " where vol.uuid = :volUuid" +
                 " and vol.type = :volType" +

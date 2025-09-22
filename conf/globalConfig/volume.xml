@@ -62,4 +62,12 @@
 		<type>java.lang.Integer</type>
 	</config>
 
+    <config>
+        <name>snapshot.group.with.memory.switch</name>
+        <description>create volume snapshot group use memory snapshot</description>
+        <category>volume</category>
+        <defaultValue>false</defaultValue>
+        <type>java.lang.Boolean</type>
+    </config>
+
 </globalConfig>

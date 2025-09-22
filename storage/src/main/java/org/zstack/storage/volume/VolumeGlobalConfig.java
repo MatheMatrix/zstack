@@ -41,4 +41,6 @@ public class VolumeGlobalConfig {
     public static GlobalConfig VOLUME_PHYSICAL_BLOCK_SIZE = new GlobalConfig(CATEGORY, "physical.block.size");
 
     public static GlobalConfig AUTO_SNAPSHOT_BEFORE_CHANGE_OPERATION = new GlobalConfig(CATEGORY, "auto.snapshot.before.change");
+
+    public static GlobalConfig SNAPSHOT_GROUP_WITH_MEMORY_SWITCH = new GlobalConfig(CATEGORY, "snapshot.group.with.memory.switch");
 }
