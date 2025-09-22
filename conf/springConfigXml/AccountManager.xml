@@ -50,6 +50,7 @@
             <zstack:extension interface="org.zstack.header.apimediator.ApiMessageInterceptor"/>
             <zstack:extension interface="org.zstack.header.rest.RestAuthenticationBackend"/>
             <zstack:extension interface="org.zstack.header.managementnode.PrepareDbInitialValueExtensionPoint" order="9999"/>
+            <zstack:extension interface="org.zstack.identity.BeforeLoginInAccountPoint" />
         </zstack:plugin>
     </bean>
 

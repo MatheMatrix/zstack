@@ -63,7 +63,8 @@ import static org.zstack.core.Platform.*;
 import static org.zstack.header.identity.AccountConstant.ACCOUNT_REST_AUTHENTICATION_TYPE;
 
 public class AccountManagerImpl extends AbstractService implements AccountManager, SoftDeleteEntityExtensionPoint,
-        HardDeleteEntityExtensionPoint, ApiMessageInterceptor, RestAuthenticationBackend, PrepareDbInitialValueExtensionPoint {
+        HardDeleteEntityExtensionPoint, ApiMessageInterceptor, RestAuthenticationBackend, PrepareDbInitialValueExtensionPoint,
+        BeforeLoginInAccountPoint {
     private static final CLogger logger = Utils.getLogger(AccountManagerImpl.class);
 
     @Autowired
@@ -526,6 +527,10 @@ public class AccountManagerImpl extends AbstractService implements AccountManage
 
     private void handle(APILogInByAccountMsg msg) {
         APILogInReply reply = new APILogInReply();
+
+        pluginRgty.getExtensionList(BeforeLoginInAccountPoint.class).forEach(point->{
+            point.beforeLogin(msg);
+        });
 
         LogInMsg logInMsg = new LogInMsg();
         logInMsg.setVerifyCode(msg.getVerifyCode());
@@ -1789,5 +1794,21 @@ public class AccountManagerImpl extends AbstractService implements AccountManage
         SessionInventory session = new SessionInventory();
         session.setUuid(params.authKey);
         return session;
+    }
+
+    @Override
+    public void beforeLogin(APISessionMessage sessionMessage) {
+        String name = sessionMessage.getUsername();
+        AccountType thirdPartyType = AccountType.ThirdParty;
+
+        AccountVO account = Q.New(AccountVO.class).eq(AccountVO_.name, name).find();
+
+        if (account == null) {
+            return;
+        }
+
+        if (account.getType() == thirdPartyType) {
+            throw new CloudRuntimeException(String.format("Account [name=%s] [type=%s] cannot local login", name, thirdPartyType));
+        }
     }
 }
