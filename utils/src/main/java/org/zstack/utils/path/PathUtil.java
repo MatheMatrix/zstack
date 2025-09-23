@@ -19,6 +19,14 @@ public class PathUtil {
     private static final CLogger logger = Utils.getLogger(PathUtil.class);
     public static String HOME_DIR_PROPERTY_NAME = "user.home";
 
+    public static class DirectoryUsage {
+        public long totalBytes;
+        public long availableBytes;
+
+        DirectoryUsage() {
+        }
+    }
+
     public static String join(String... paths) {
         assert paths != null && paths.length > 0;
 
@@ -446,5 +454,18 @@ public class PathUtil {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static DirectoryUsage getDirectoryUsage(String directoryPath) {
+        Path path = Paths.get(directoryPath);
+        DirectoryUsage usgae = new DirectoryUsage();
+        try {
+            FileStore store = Files.getFileStore(path);
+            usgae.totalBytes = store.getTotalSpace();
+            usgae.availableBytes = store.getUsableSpace();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return usgae;
     }
 }
