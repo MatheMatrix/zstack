@@ -1,6 +1,7 @@
 package org.zstack.compute.host;
 
 import org.zstack.header.host.HostVO;
+import org.zstack.header.longjob.LongJobVO;
 import org.zstack.header.tag.TagDefinition;
 import org.zstack.tag.PatternedSystemTag;
 import org.zstack.tag.SystemTag;
@@ -113,4 +114,7 @@ public class HostSystemTags {
 
     public static String MEMORY_SLOTS_MAXIMUM_TOKEN = "memorySlotsMaximum";
     public static PatternedSystemTag MEMORY_SLOTS_MAXIMUM = new PatternedSystemTag(String.format("memorySlotsMaximum::{%s}", MEMORY_SLOTS_MAXIMUM_TOKEN), HostVO.class);
+
+    public static String FILE_ID = "fileId";
+    public static PatternedSystemTag UPLOAD_FILE_INFO = new PatternedSystemTag(String.format("uploadFile::{%s}", FILE_ID), LongJobVO.class);
 }
