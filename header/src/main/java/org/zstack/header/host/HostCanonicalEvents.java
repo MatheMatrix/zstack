@@ -31,6 +31,42 @@ public class HostCanonicalEvents {
     public static final String HOST_PHYSICAL_HBA_STATE_ABNORMAL = "/host/physicalHBA/state/abnormal";
     public static final String HOST_PHYSICAL_VOLUME_STATE_ABNORMAL = "/host/physicalVolume/state/abnormal";
 
+    public static final String FILE_TRACK_RESULT_PATH = "/file/track/result";
+
+    @NeedJsonSchema
+    public static class FileTrackData {
+        private boolean success = true;
+        private ErrorCode error;
+        private UploadFileToHostReply reply;
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public void setSuccess(boolean success) {
+            this.success = success;
+        }
+
+        public ErrorCode getError() {
+            return error;
+        }
+
+        public void setError(ErrorCode error) {
+            this.error = error;
+            if (error != null) {
+                this.success = false;
+            }
+        }
+
+        public UploadFileToHostReply getReply() {
+            return reply;
+        }
+
+        public void setReply(UploadFileToHostReply reply) {
+            this.reply = reply;
+        }
+    }
+
     @NeedJsonSchema
     public static class HostPhysicalHbaPortStateAbnormalData {
         private String hostUuid;
