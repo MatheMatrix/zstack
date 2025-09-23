@@ -59,4 +59,10 @@ public class HostGlobalConfig {
     @GlobalConfigValidation
     @GlobalConfigDef(type = String.class, defaultValue = "10501:10999", description = "nbd port range")
     public static GlobalConfig NBD_PORT_RANGE = new GlobalConfig(CATEGORY, "nbd.port.range");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig UPLOAD_FAILURE_TOLERANCE_COUNT = new GlobalConfig(CATEGORY, "upload.failure.tolerance.count");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig UPLOAD_MAX_IDLE_IN_SECONDS = new GlobalConfig(CATEGORY, "upload.max.idle.duration.in.seconds");
 }

@@ -2,6 +2,7 @@ package org.zstack.compute.host;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
+import org.zstack.compute.cluster.arch.ClusterResourceConfigInitializer;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.Platform;
 import org.zstack.core.asyncbatch.While;
@@ -21,7 +22,10 @@ import org.zstack.header.allocator.HostCpuOverProvisioningManager;
 import org.zstack.header.cluster.ClusterInventory;
 import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.cluster.ClusterVO_;
-import org.zstack.header.core.*;
+import org.zstack.header.core.Completion;
+import org.zstack.header.core.NopeWhileDoneCompletion;
+import org.zstack.header.core.ReturnValueCompletion;
+import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
@@ -41,7 +45,6 @@ import org.zstack.header.storage.primary.PrimaryStorageHostStatus;
 import org.zstack.header.vo.FindSameNodeExtensionPoint;
 import org.zstack.header.vo.ResourceInventory;
 import org.zstack.header.zone.ZoneVO;
-import org.zstack.compute.cluster.arch.ClusterResourceConfigInitializer;
 import org.zstack.resourceconfig.ResourceConfig;
 import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.tag.TagManager;
@@ -60,7 +63,8 @@ import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.*;
 import static org.zstack.header.host.APIMountBlockDeviceMsg.mkfsCommd.buildMkfsCommd;
-import static org.zstack.header.host.BlockDevicesParser.*;
+import static org.zstack.header.host.BlockDevicesParser.blockDevicesExample;
+import static org.zstack.header.host.BlockDevicesParser.getBlockDevicesCommand;
 import static org.zstack.longjob.LongJobUtils.noncancelableErr;
 
 public class HostManagerImpl extends AbstractService implements HostManager, ManagementNodeChangeListener,
@@ -124,6 +128,8 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
             handle((APIGetHostBlockDevicesMsg) msg);
         }  else if (msg instanceof APIGetHostSensorsMsg){
             handle((APIGetHostSensorsMsg) msg);
+        }  else if (msg instanceof APIUploadFileMsg) {
+             handle((APIUploadFileMsg) msg);
         } else if (msg instanceof HostMessage) {
             HostMessage hmsg = (HostMessage) msg;
             passThrough(hmsg);
@@ -646,6 +652,30 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
                     reply.setSensors(gr.getSensors());
                 }
                 bus.reply(msg, reply);
+            }
+        });
+    }
+
+    private void handle(final APIUploadFileMsg msg) {
+        APIUploadFileEvent event = new APIUploadFileEvent(msg.getId());
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            bus.publish(event);
+            return;
+        }
+
+        UploadFileMsg umsg = new UploadFileMsg();
+        umsg.setHostUuid(msg.getUuid());
+        umsg.setUrl(msg.getUrl());
+        umsg.setInstallPath(msg.getInstallPath());
+
+        bus.makeTargetServiceIdByResourceUuid(umsg, HostConstant.SERVICE_ID, msg.getUuid());
+        bus.send(umsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply r) {
+                if (!r.isSuccess()) {
+                    event.setError(r.getError());
+                }
+                bus.publish(event);
             }
         });
     }
