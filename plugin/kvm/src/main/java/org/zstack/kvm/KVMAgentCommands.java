@@ -4397,6 +4397,37 @@ public class KVMAgentCommands {
         }
     }
 
+    public static class DownloadFileCmd extends AgentCommand implements HasThreadContext {
+        public String taskUuid;
+        public String installPath;
+        @NoLogging(type = NoLogging.Type.Uri)
+        public String url;
+        public long timeout;
+        public String urlScheme;
+    }
+
+    public static class DownloadFileResponse extends AgentResponse {
+        public String taskUuid;
+        public String md5sum;
+    }
+
+    public static class GetDownloadFileProgressCmd extends AgentCommand implements HasThreadContext {
+        public String url;
+        public String installPath;
+    }
+
+    public static class GetDownloadFileProgressResponse extends AgentResponse {
+        public boolean completed;
+        public int progress;
+        public long size;
+        public long actualSize;
+        public String installPath;
+        public String format;
+        public long lastOpTime;
+        public long downloadSize;
+    }
+
+
     public static class TakeVmConsoleScreenshotCmd extends AgentCommand {
         private String vmUuid;
 

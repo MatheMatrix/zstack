@@ -1,5 +1,6 @@
 package org.zstack.compute.host;
 
+import org.apache.commons.codec.binary.Hex;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.CoreGlobalProperty;
@@ -53,6 +54,9 @@ import org.zstack.utils.ssh.Ssh;
 import org.zstack.utils.ssh.SshResult;
 
 import javax.persistence.Tuple;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -124,6 +128,8 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
             handle((APIGetHostBlockDevicesMsg) msg);
         }  else if (msg instanceof APIGetHostSensorsMsg){
             handle((APIGetHostSensorsMsg) msg);
+        }  else if (msg instanceof APIUploadFileMsg) {
+            handle((APIUploadFileMsg) msg);
         } else if (msg instanceof HostMessage) {
             HostMessage hmsg = (HostMessage) msg;
             passThrough(hmsg);
@@ -646,6 +652,32 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
                     reply.setSensors(gr.getSensors());
                 }
                 bus.reply(msg, reply);
+            }
+        });
+    }
+
+    private void handle(final APIUploadFileMsg msg) {
+        APIUploadFileEvent event = new APIUploadFileEvent();
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            bus.publish(event);
+            return;
+        }
+
+        UploadFileMsg umsg = new UploadFileMsg();
+        umsg.setHostUuid(msg.getUuid());
+        umsg.setUrl(msg.getUrl());
+        umsg.setInstallPath(msg.getInstallPath());
+
+        bus.makeTargetServiceIdByResourceUuid(umsg, HostConstant.SERVICE_ID, msg.getUuid());
+        bus.send(umsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply r) {
+                if (!r.isSuccess()) {
+                    event.setError(r.getError());
+                } else {
+                    bus.publish(event);
+                }
+                bus.publish(event);
             }
         });
     }
