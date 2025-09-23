@@ -1,0 +1,66 @@
+package org.zstack.header.host;
+
+import org.springframework.http.HttpMethod;
+import org.zstack.header.log.NoLogging;
+import org.zstack.header.message.APIMessage;
+import org.zstack.header.message.APIParam;
+import org.zstack.header.message.DefaultTimeout;
+import org.zstack.header.rest.RestRequest;
+
+import java.util.concurrent.TimeUnit;
+
+@RestRequest(
+        path = "/hosts/{uuid}/upload-file",
+        method = HttpMethod.POST,
+        responseClass = APIUploadFileToHostEvent.class,
+        parameterName = "params"
+)
+@DefaultTimeout(timeunit = TimeUnit.HOURS, value = 72)
+public class APIUploadFileToHostMsg extends APIMessage implements HostMessage {
+    @APIParam(nonempty = true, resourceType = HostVO.class)
+    private String uuid;
+
+    @APIParam(nonempty = true)
+    @NoLogging(type = NoLogging.Type.Uri)
+    private String url;
+
+    @APIParam(nonempty = true)
+    private String installPath;
+
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+
+    public String getInstallPath() {
+        return installPath;
+    }
+
+    public void setInstallPath(String installPath) {
+        this.installPath = installPath;
+    }
+
+    @Override
+    public String getHostUuid() {
+        return uuid;
+    }
+
+    public static APIUploadFileToHostMsg __example__() {
+        APIUploadFileToHostMsg msg = new APIUploadFileToHostMsg();
+        msg.setUuid(uuid(HostVO.class));
+        msg.setUrl("http://192.168.1.1/disk/images/test.qcow2");
+        msg.setInstallPath("/root/sds/storage.tar.gz");
+        return msg;
+    }
+}

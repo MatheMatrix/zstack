@@ -16,6 +16,7 @@ public enum HostErrors {
     HOST_IS_DISCONNECTED(1010),
     OPERATION_FAILURE_GC_ELIGIBLE(1011),
     HOST_PASSWORD_HAS_BEEN_CHANGED(1012),
+    UPLOAD_FILE_INTERRUPTED(1013),
     ;
     private String code;
 
