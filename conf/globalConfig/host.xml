@@ -135,4 +135,20 @@
         <type>java.lang.Integer</type>
     </config>
 
+    <config>
+        <category>host</category>
+        <name>upload.failure.tolerance.count</name>
+        <description>number of errors can be tolerated when uploading file</description>
+        <defaultValue>3</defaultValue>
+        <type>java.lang.Integer</type>
+    </config>
+
+    <config>
+        <category>host</category>
+        <name>upload.max.idle.duration.in.seconds</name>
+        <description>the max duration can be tolerated when uploading file, in seconds</description>
+        <defaultValue>60</defaultValue>
+        <type>java.lang.Long</type>
+    </config>
+
 </globalConfig>
