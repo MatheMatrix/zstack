@@ -651,5 +651,21 @@ class KVMSimulator implements Simulator {
             def rsp = new KVMAgentCommands.UpdateHostNqnRsp()
             return rsp
         }
+
+        spec.simulator(KVMConstant.KVM_HOST_FILE_DOWNLOAD_PATH) {
+            DownloadFileResponse rsp = new DownloadFileResponse()
+            rsp.md5sum = "00df1327d49e4631a21f4467aa729c11"
+            rsp.size = 1024
+            return rsp
+        }
+
+        spec.simulator(KVMConstant.KVM_HOST_FILE_DOWNLOAD_PROGRESS_PATH) {
+            GetDownloadFileProgressResponse rsp = new GetDownloadFileProgressResponse()
+            rsp.completed = false
+            rsp.downloadSize = 1
+            rsp.size = 1024
+            rsp.lastOpTime = System.currentTimeMillis()
+            return rsp
+        }
     }
 }
