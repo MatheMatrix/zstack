@@ -237,6 +237,7 @@ public class SourceClassMap {
 			put("org.zstack.header.identityzone.IdentityZoneProperty", "org.zstack.sdk.IdentityZoneProperty");
 			put("org.zstack.header.image.APICreateDataVolumeTemplateFromVolumeSnapshotEvent$Failure", "org.zstack.sdk.CreateDataVolumeTemplateFromVolumeSnapshotFailure");
 			put("org.zstack.header.image.APICreateRootVolumeTemplateFromVolumeSnapshotEvent$Failure", "org.zstack.sdk.CreateRootVolumeTemplateFromVolumeSnapshotFailure");
+			put("org.zstack.header.image.JobDetails", "org.zstack.sdk.JobDetails");
 			put("org.zstack.header.image.APIGetUploadImageJobDetailsReply$JobDetails", "org.zstack.sdk.JobDetails");
 			put("org.zstack.header.image.ImageBackupStorageRefInventory", "org.zstack.sdk.ImageBackupStorageRefInventory");
 			put("org.zstack.header.image.ImageInventory", "org.zstack.sdk.ImageInventory");
@@ -681,7 +682,9 @@ public class SourceClassMap {
 			put("org.zstack.zstone.entity.ZStonePoolSummaryView", "org.zstack.sdk.zstone.entity.ZStonePoolSummaryView");
 			put("org.zstack.zsv.core.entity.NodeRolesItemView", "org.zstack.sdk.zsv.core.entity.NodeRolesItemView");
 			put("org.zstack.zsv.core.entity.NodeRolesView", "org.zstack.sdk.zsv.core.entity.NodeRolesView");
+			put("org.zstack.zsv.storage.api.JobDetails", "org.zstack.sdk.zsv.storage.api.JobDetails");
 			put("org.zstack.zsv.storage.entity.CephPluginConnectionView", "org.zstack.sdk.zsv.storage.entity.CephPluginConnectionView");
+			put("org.zstack.zsv.storage.entity.StoragePackageInventory", "org.zstack.sdk.zsv.storage.entity.StoragePackageInventory");
 			put("org.zstack.zwatch.alarm.APICreateAlarmMsg$ActionParam", "org.zstack.sdk.zwatch.alarm.ActionParam");
 			put("org.zstack.zwatch.alarm.AlarmActionInventory", "org.zstack.sdk.zwatch.alarm.AlarmActionInventory");
 			put("org.zstack.zwatch.alarm.AlarmDataAckInventory", "org.zstack.sdk.zwatch.alarm.AlarmDataAckInventory");
@@ -1422,7 +1425,9 @@ public class SourceClassMap {
 			put("org.zstack.sdk.zstone.entity.ZStonePoolSummaryView", "org.zstack.zstone.entity.ZStonePoolSummaryView");
 			put("org.zstack.sdk.zsv.core.entity.NodeRolesItemView", "org.zstack.zsv.core.entity.NodeRolesItemView");
 			put("org.zstack.sdk.zsv.core.entity.NodeRolesView", "org.zstack.zsv.core.entity.NodeRolesView");
+			put("org.zstack.sdk.zsv.storage.api.JobDetails", "org.zstack.zsv.storage.api.JobDetails");
 			put("org.zstack.sdk.zsv.storage.entity.CephPluginConnectionView", "org.zstack.zsv.storage.entity.CephPluginConnectionView");
+			put("org.zstack.sdk.zsv.storage.entity.StoragePackageInventory", "org.zstack.zsv.storage.entity.StoragePackageInventory");
 			put("org.zstack.sdk.zwatch.alarm.ActionParam", "org.zstack.zwatch.alarm.APICreateAlarmMsg$ActionParam");
 			put("org.zstack.sdk.zwatch.alarm.AlarmActionInventory", "org.zstack.zwatch.alarm.AlarmActionInventory");
 			put("org.zstack.sdk.zwatch.alarm.AlarmDataAckInventory", "org.zstack.zwatch.alarm.AlarmDataAckInventory");
