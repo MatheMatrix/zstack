@@ -14,6 +14,7 @@ import org.zstack.compute.host.*;
 import org.zstack.compute.vm.*;
 import org.zstack.core.timeout.TimeHelper;
 import org.zstack.header.core.*;
+import org.zstack.header.image.*;
 import org.zstack.header.vm.devices.VirtualDeviceInfo;
 import org.zstack.header.vm.devices.VmInstanceResourceMetadataManager;
 import org.zstack.core.CoreGlobalProperty;
@@ -49,11 +50,6 @@ import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.*;
 import org.zstack.header.host.MigrateVmOnHypervisorMsg.StorageMigrationPolicy;
-import org.zstack.header.image.ImageArchitecture;
-import org.zstack.header.image.ImageBootMode;
-import org.zstack.header.image.ImageInventory;
-import org.zstack.header.image.ImagePlatform;
-import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
@@ -97,6 +93,8 @@ import org.zstack.utils.tester.ZTester;
 
 import javax.persistence.TypedQuery;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -221,6 +219,8 @@ public class KVMHost extends HostBase implements Host {
     private String updateVmCpuQuotaPath;
     private String getBlockDevicesPath;
     private String getSensorsPath;
+    private String fileDownloadPath;
+    private String fileDownloadProgressPath;
 
     public KVMHost(KVMHostVO self, KVMHostContext context) {
         super(self);
@@ -459,6 +459,14 @@ public class KVMHost extends HostBase implements Host {
         ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
         ub.path(KVMConstant.KVM_HOST_GET_SENSORS_PATH);
         getSensorsPath = ub.build().toString();
+
+        ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
+        ub.path(KVMConstant.KVM_HOST_FILE_DOWNLOAD_PATH);
+        fileDownloadPath = ub.build().toString();
+
+        ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
+        ub.path(KVMConstant.KVM_HOST_FILE_DOWNLOAD_PROGRESS_PATH);
+        fileDownloadProgressPath = ub.build().toString();
     }
 
     static {
@@ -709,6 +717,10 @@ public class KVMHost extends HostBase implements Host {
             handle((GetHostSensorsMsg) msg);
         } else if (msg instanceof UpdateHostNqnMsg) {
             handle((UpdateHostNqnMsg) msg);
+        } else if (msg instanceof UploadFileMsg) {
+            handle((UploadFileMsg) msg);
+        } else if (msg instanceof GetFileDownloadProgressMsg) {
+            handle((GetFileDownloadProgressMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
@@ -6865,6 +6877,108 @@ public class KVMHost extends HostBase implements Host {
                 reply.setError(errorCode);
                 bus.reply(msg, reply);
                 completion.done();
+            }
+        });
+    }
+
+    private void handle(UploadFileMsg msg) {
+        inQueue().name(String.format("upload-file-to-host-%s", self.getUuid())).asyncBackup(msg)
+                .run(chain -> uploadFile(msg, new NoErrorCompletion(chain) {
+                    @Override
+                    public void done() {
+                        chain.next();
+                    }
+                }));
+    }
+
+    private static boolean isUpload(final String url) {
+        return url.startsWith("upload://");
+    }
+
+    private void uploadFile(UploadFileMsg msg, NoErrorCompletion completion) {
+        UploadFileReply reply = new UploadFileReply();
+        String scheme;
+        try {
+            URI uri = new URI(msg.getUrl());
+            scheme = uri.getScheme();
+        } catch (URISyntaxException e) {
+            throw new CloudRuntimeException(e);
+        }
+
+        DownloadFileCmd cmd = new DownloadFileCmd();
+        cmd.url = msg.getUrl();
+        cmd.urlScheme = scheme;
+        cmd.installPath = msg.getInstallPath();
+        cmd.timeout = timeoutManager.getTimeout();
+        UploadFileTracker tracker = new UploadFileTracker();
+        new Http<>(fileDownloadPath, cmd, DownloadFileResponse.class).call(new ReturnValueCompletion<DownloadFileResponse>(msg) {
+            @Override
+            public void success(DownloadFileResponse rsp) {
+                if (isUpload(msg.getUrl())) {
+                    tracker.addTrackTask(rsp.taskUuid, self.getManagementIp(), cmd.url);
+                    tracker.runTrackTask(rsp.taskUuid, new Completion(msg) {
+                        @Override
+                        public void success() {
+                            bus.reply(msg, reply);
+                            completion.done();
+                        }
+
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            reply.setError(operr("failed to upload file, because:%s", errorCode));
+                            bus.reply(msg, reply);
+                            completion.done();
+                        }
+                    });
+                    return;
+                }
+
+                if (!rsp.isSuccess()) {
+                    reply.setError(operr("failed to upload file, because:%s", rsp.getError()));
+                    bus.reply(msg, reply);
+                    completion.done();
+                    return;
+                }
+                bus.reply(msg, reply);
+                completion.done();
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+                completion.done();
+            }
+        });
+    }
+
+    private void handle(GetFileDownloadProgressMsg msg) {
+        GetFileDownloadProgressReply r = new GetFileDownloadProgressReply();
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            bus.reply(msg, r);
+            return;
+        }
+
+        GetDownloadFileProgressCmd cmd = new GetDownloadFileProgressCmd();
+        cmd.taskUuid = msg.getTaskUuid();
+        new Http<>(fileDownloadProgressPath, cmd, GetDownloadFileProgressResponse.class).call(new ReturnValueCompletion<GetDownloadFileProgressResponse>(msg) {
+            @Override
+            public void success(GetDownloadFileProgressResponse resp) {
+                r.setCompleted(resp.completed);
+                r.setProgress(resp.progress);
+                r.setActualSize(resp.actualSize);
+                r.setSize(resp.size);
+                r.setInstallPath(resp.installPath);
+                r.setDownloadSize(resp.downloadSize);
+                r.setLastOpTime(resp.lastOpTime);
+                r.setSupportSuspend(true);
+                bus.reply(msg, r);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                r.setError(errorCode);
+                bus.reply(msg, r);
             }
         });
     }
