@@ -2,6 +2,7 @@ package org.zstack.header.host;
 
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
+import org.zstack.header.image.ImageInventory;
 import org.zstack.header.message.NeedJsonSchema;
 
 /**
@@ -30,6 +31,41 @@ public class HostCanonicalEvents {
     public static final String HOST_PHYSICAL_RAID_STATUS_ABNORMAL = "/host/physicalRaid/status/abnormal";
     public static final String HOST_PHYSICAL_HBA_STATE_ABNORMAL = "/host/physicalHBA/state/abnormal";
     public static final String HOST_PHYSICAL_VOLUME_STATE_ABNORMAL = "/host/physicalVolume/state/abnormal";
+
+    public static String FILE_TRACK_RESULT_PATH = "/file/track/result";
+
+    public static class FileTrackData {
+        private boolean success = true;
+        private ErrorCode error;
+        private UploadFileReply reply;
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public void setSuccess(boolean success) {
+            this.success = success;
+        }
+
+        public ErrorCode getError() {
+            return error;
+        }
+
+        public void setError(ErrorCode error) {
+            this.error = error;
+            if (error != null) {
+                this.success = false;
+            }
+        }
+
+        public UploadFileReply getReply() {
+            return reply;
+        }
+
+        public void setReply(UploadFileReply reply) {
+            this.reply = reply;
+        }
+    }
 
     @NeedJsonSchema
     public static class HostPhysicalHbaPortStateAbnormalData {
