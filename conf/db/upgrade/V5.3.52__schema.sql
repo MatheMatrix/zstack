@@ -12,3 +12,7 @@ CREATE TABLE  `zstack`.`PodVO` (
 
 CALL ADD_COLUMN('GpuDeviceVO', 'gpuType', 'VARCHAR(255)', 1, NULL);
 CALL ADD_COLUMN('GpuDeviceSpecVO', 'gpuType', 'VARCHAR(255)', 1, NULL);
+
+UPDATE ModelServiceInstanceGroupVO
+SET yaml = REGEXP_REPLACE(yaml, 'env:[[:space:][:graph:][:cntrl:]]*environmentParameters:', 'environmentParameters:')
+WHERE yaml REGEXP 'env:[[:space:][:graph:][:cntrl:]]*environmentParameters:';
