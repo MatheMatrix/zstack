@@ -4,6 +4,7 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import java.net.URI;
+import java.util.Arrays;
 
 public class IscsiRemoteTarget extends BlockRemoteTarget {
     private final static CLogger logger = Utils.getLogger(IscsiRemoteTarget.class);
@@ -87,12 +88,9 @@ public class IscsiRemoteTarget extends BlockRemoteTarget {
             }
 
             IscsiRemoteTarget target = new IscsiRemoteTarget();
-            if (uri.getHost() == null || uri.getPort() == -1) {
-                logger.info("Invalid URI. Missing host or port.");
-                return null;
-            }
-            target.setIp(uri.getHost());
-            target.setPort(uri.getPort());
+            String[] serverHostNames = uri.getAuthority().split(":")[0].split(",");
+            target.setIp(serverHostNames[0]);
+            target.setPort(Integer.parseInt(uri.getAuthority().split(":")[1]));
 
             // parse: /{iqn}/{diskIdType}_{diskId}
             String path = uri.getPath();
