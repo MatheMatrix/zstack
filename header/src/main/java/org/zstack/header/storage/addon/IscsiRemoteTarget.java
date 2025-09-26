@@ -1,6 +1,13 @@
 package org.zstack.header.storage.addon;
 
+import org.zstack.utils.Utils;
+import org.zstack.utils.logging.CLogger;
+
+import java.net.URI;
+import java.util.Arrays;
+
 public class IscsiRemoteTarget extends BlockRemoteTarget {
+    private final static CLogger logger = Utils.getLogger(IscsiRemoteTarget.class);
     private String transport = "tcp";
 
     private String iqn;
@@ -69,5 +76,46 @@ public class IscsiRemoteTarget extends BlockRemoteTarget {
     public enum DiskIdType {
         wwn,
         serial
+    }
+
+    public static IscsiRemoteTarget fromUri(String uriString) {
+        try {
+            URI uri = URI.create(uriString);
+
+            if (!"iscsi".equals(uri.getScheme())) {
+                logger.info("Invalid URI scheme. Expected 'iscsi', got: " + uri.getScheme());
+                return null;
+            }
+
+            IscsiRemoteTarget target = new IscsiRemoteTarget();
+            String[] serverHostNames = uri.getAuthority().split(":")[0].split(",");
+            target.setIp(serverHostNames[0]);
+            target.setPort(Integer.parseInt(uri.getAuthority().split(":")[1]));
+
+            // parse: /{iqn}/{diskIdType}_{diskId}
+            String path = uri.getPath();
+            if (path != null && path.startsWith("/")) {
+                String[] pathParts = path.substring(1).split("/");
+                if (pathParts.length >= 2) {
+                    target.setIqn(pathParts[0]);
+                    String[] diskParts = pathParts[1].split("_", 2);
+                    if (diskParts.length == 2) {
+                        target.setDiskIdType(diskParts[0]);
+                        target.setDiskId(diskParts[1]);
+                    } else {
+                        logger.info("Invalid diskId format in URI path: " + pathParts[1]);
+                        return null;
+                    }
+                } else {
+                    logger.info("Invalid URI path format: " + path);
+                    return null;
+                }
+            }
+
+            return target;
+        } catch (Exception e) {
+            logger.error("Failed to parse URI: " + uriString, e);
+            return null;
+        }
     }
 }

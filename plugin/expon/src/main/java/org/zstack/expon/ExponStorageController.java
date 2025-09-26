@@ -37,10 +37,7 @@ import org.zstack.header.storage.addon.primary.*;
 import org.zstack.header.storage.primary.ImageCacheInventory;
 import org.zstack.header.storage.primary.VolumeSnapshotCapability;
 import org.zstack.header.storage.snapshot.VolumeSnapshotStats;
-import org.zstack.header.volume.VolumeConstant;
-import org.zstack.header.volume.VolumeInventory;
-import org.zstack.header.volume.VolumeProtocol;
-import org.zstack.header.volume.VolumeStats;
+import org.zstack.header.volume.*;
 import org.zstack.iscsi.IscsiUtils;
 import org.zstack.iscsi.kvm.IscsiHeartbeatVolumeTO;
 import org.zstack.iscsi.kvm.IscsiVolumeTO;
@@ -237,7 +234,13 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     }
 
     private synchronized ActiveVolumeTO activeIscsiVolume(HostInventory h, BaseVolumeInfo vol, boolean shareable) {
-        String clientIqn = IscsiUtils.getHostInitiatorName(h.getUuid());
+        String clientIqn;
+        if (h.getHypervisorType().equals("baremetal2")) {
+            VolumeVO volume = dbf.findByUuid(vol.getUuid(), VolumeVO.class);
+            clientIqn = String.format("iqn.2015-01.io.zstack:initiator.instance.%s", volume.getVmInstanceUuid());
+        } else {
+            clientIqn = IscsiUtils.getHostInitiatorName(h.getUuid());
+        }
         if (clientIqn == null) {
             throw new RuntimeException(String.format("cannot get host[uuid:%s] initiator name", h.getUuid()));
         }
@@ -749,7 +752,15 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
 }
 
     private void deactivateIscsi(String installPath, HostInventory h) {
-        String iqn = IscsiUtils.getHostInitiatorName(h.getUuid());
+        String iqn;
+        if (h.getHypervisorType().equals("baremetal2")) {
+            String[] parts = installPath.split("/");
+            String volumeUuid = parts[parts.length - 1];
+            VolumeVO volume = dbf.findByUuid(volumeUuid, VolumeVO.class);
+            iqn = String.format("iqn.2015-01.io.zstack:initiator.instance.%s", volume.getVmInstanceUuid());
+        } else {
+            iqn = IscsiUtils.getHostInitiatorName(h.getUuid());
+        }
         if (iqn == null) {
             throw new RuntimeException(String.format("cannot get host[uuid:%s] initiator name", h.getUuid()));
         }
