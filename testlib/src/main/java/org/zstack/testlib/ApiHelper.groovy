@@ -45283,6 +45283,33 @@ abstract class ApiHelper {
     }
 
 
+    def installZceX(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zcex.api.InstallZceXAction.class) Closure c) {
+        def a = new org.zstack.sdk.zcex.api.InstallZceXAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def queryZceX(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zcex.api.QueryZceXAction.class) Closure c) {
         def a = new org.zstack.sdk.zcex.api.QueryZceXAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -45476,6 +45503,33 @@ abstract class ApiHelper {
     }
 
 
+    def installZStone(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zstone.api.InstallZStoneAction.class) Closure c) {
+        def a = new org.zstack.sdk.zstone.api.InstallZStoneAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def queryZStone(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zstone.api.QueryZStoneAction.class) Closure c) {
         def a = new org.zstack.sdk.zstone.api.QueryZStoneAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -45660,6 +45714,60 @@ abstract class ApiHelper {
                 Test.apiPaths[a.class.name] = path.join(" --->\n")
             }
         
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def cleanStoragePackage(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zsv.storage.api.CleanStoragePackageAction.class) Closure c) {
+        def a = new org.zstack.sdk.zsv.storage.api.CleanStoragePackageAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def uploadStoragePackage(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zsv.storage.api.UploadStoragePackageAction.class) Closure c) {
+        def a = new org.zstack.sdk.zsv.storage.api.UploadStoragePackageAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+
             return out
         } else {
             return errorOut(a.call())
