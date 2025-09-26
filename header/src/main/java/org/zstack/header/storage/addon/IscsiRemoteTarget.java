@@ -87,6 +87,10 @@ public class IscsiRemoteTarget extends BlockRemoteTarget {
             }
 
             IscsiRemoteTarget target = new IscsiRemoteTarget();
+            if (uri.getHost() == null || uri.getPort() == -1) {
+                logger.info("Invalid URI. Missing host or port.");
+                return null;
+            }
             target.setIp(uri.getHost());
             target.setPort(uri.getPort());
 
