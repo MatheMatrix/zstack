@@ -455,6 +455,10 @@ public class ExternalPrimaryStorageFactory implements PrimaryStorageFactory, Com
         }
 
         HostInventory host = HostInventory.valueOf(dbf.findByUuid(vm.getHostUuid(), HostVO.class));
+        if (host.getHypervisorType().equals("baremetal2")) {
+            completion.success();
+            return;
+        }
         svc.activate(BaseVolumeInfo.valueOf(volume), host, volume.isShareable(), new ReturnValueCompletion<ActiveVolumeTO>(completion) {
             @Override
             public void success(ActiveVolumeTO returnValue) {

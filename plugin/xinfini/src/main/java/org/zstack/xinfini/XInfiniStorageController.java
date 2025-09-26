@@ -1030,6 +1030,11 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
         return SizeUnit.MEGABYTE.toByte(convertBytesToMegaBytes(size));
     }
 
+    @Override
+    public String getVolumeLunId(String volInstallPath) {
+        return null;
+    }
+
     public void cleanActiveRecord(VolumeInventory vol) {
 
     }
