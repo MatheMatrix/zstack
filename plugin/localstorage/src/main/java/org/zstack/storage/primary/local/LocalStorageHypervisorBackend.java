@@ -11,6 +11,7 @@ import org.zstack.header.volume.*;
 import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageMsg;
 import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageReply;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
@@ -106,9 +107,9 @@ public abstract class LocalStorageHypervisorBackend extends LocalStorageBase {
 
     abstract void deleteBits(String path, String hostUuid, Completion completion);
 
-    abstract void createEmptyVolume(VolumeInventory volume, String hostUuid, ReturnValueCompletion<VolumeStats> completion);
+    abstract void createEmptyVolume(VolumeInventory volume, String hostUuid, LinkedHashMap<String, Object> addons, ReturnValueCompletion<VolumeStats> completion);
 
-    abstract void createEmptyVolumeWithBackingFile(VolumeInventory volume, String hostUuid, String backingFile, ReturnValueCompletion<VolumeStats> completion);
+    abstract void createEmptyVolumeWithBackingFile(VolumeInventory volume, String hostUuid, String backingFile, LinkedHashMap<String, Object> addons, ReturnValueCompletion<VolumeStats> completion);
 
     abstract void checkHostAttachedPSMountPath(String hostUuid, ReturnValueCompletion<LocalStorageKvmBackend.CheckInitializedFileRsp> completion);
 

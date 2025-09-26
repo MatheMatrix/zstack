@@ -641,7 +641,7 @@ public class KvmBackend extends HypervisorBackend {
         } else if (msg instanceof InstantiateMemoryVolumeOnPrimaryStorageMsg) {
             createMemoryVolume((InstantiateMemoryVolumeOnPrimaryStorageMsg) msg, completion);
         } else {
-            createEmptyVolume(msg.getVolume(), msg.getDestHost().getUuid(), completion);
+            createEmptyVolume(msg.getVolume(), msg.getDestHost().getUuid(), msg.getAddons(), completion);
         }
     }
 
@@ -1038,10 +1038,10 @@ public class KvmBackend extends HypervisorBackend {
             volume.setInstallPath(makeTemporaryDataVolumeInstallUrl(volume.getUuid(), msg.getOriginVolumeUuid()));
         }
         volume.setInstallPath(makeTemporaryRootVolumeInstallUrl(volume, msg.getOriginVolumeUuid()));
-        createEmptyVolume(msg.getVolume(), msg.getDestHost().getUuid(), completion);
+        createEmptyVolume(msg.getVolume(), msg.getDestHost().getUuid(), msg.getAddons(), completion);
     }
 
-    private void createEmptyVolume(final VolumeInventory volume, String hostUuid, final ReturnValueCompletion<InstantiateVolumeOnPrimaryStorageReply> completion) {
+    private void createEmptyVolume(final VolumeInventory volume, String hostUuid, final LinkedHashMap<String, Object> addons, final ReturnValueCompletion<InstantiateVolumeOnPrimaryStorageReply> completion) {
         final CreateEmptyVolumeCmd cmd = new CreateEmptyVolumeCmd();
 
         if (StringUtils.isNotEmpty(volume.getInstallPath())) {
@@ -1056,6 +1056,7 @@ public class KvmBackend extends HypervisorBackend {
         cmd.name = volume.getName();
         cmd.size = volume.getSize();
         cmd.volumeUuid = volume.getUuid();
+        cmd.kvmHostAddons = addons;
 
         new Do(hostUuid).go(CREATE_EMPTY_VOLUME_PATH, cmd, CreateEmptyVolumeRsp.class, new ReturnValueCompletion<AgentRsp>(completion) {
             @Override
@@ -1091,7 +1092,7 @@ public class KvmBackend extends HypervisorBackend {
         final ImageInventory image = ispec.getInventory();
 
         if (!ImageMediaType.RootVolumeTemplate.toString().equals(image.getMediaType())) {
-            createEmptyVolume(msg.getVolume(), msg.getDestHost().getUuid(), completion);
+            createEmptyVolume(msg.getVolume(), msg.getDestHost().getUuid(), msg.getAddons(), completion);
             return;
         }
 

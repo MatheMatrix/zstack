@@ -1338,7 +1338,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
     }
 
     private void createEmptyVolume(InstantiateVolumeOnPrimaryStorageMsg msg, ReturnValueCompletion<InstantiateVolumeOnPrimaryStorageReply> completion) {
-        createEmptyVolume(msg.getVolume(), msg.getDestHost().getUuid(), new ReturnValueCompletion<VolumeStats>(completion) {
+        createEmptyVolume(msg.getVolume(), msg.getDestHost().getUuid(), msg.getAddons(), new ReturnValueCompletion<VolumeStats>(completion) {
             @Override
             public void success(VolumeStats returnValue) {
                 InstantiateVolumeOnPrimaryStorageReply r = new InstantiateVolumeOnPrimaryStorageReply();
@@ -1361,11 +1361,11 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         });
     }
 
-    public void createEmptyVolume(final VolumeInventory volume, final String hostUuid, final ReturnValueCompletion<VolumeStats> completion) {
-        createEmptyVolumeWithBackingFile(volume, hostUuid, null, completion);
+    public void createEmptyVolume(final VolumeInventory volume, final String hostUuid, final LinkedHashMap<String, Object> addons, final ReturnValueCompletion<VolumeStats> completion) {
+        createEmptyVolumeWithBackingFile(volume, hostUuid, null, addons, completion);
     }
 
-    public void createEmptyVolumeWithBackingFile(final VolumeInventory volume, final String hostUuid, final String backingFile, final ReturnValueCompletion<VolumeStats> completion) {
+    public void createEmptyVolumeWithBackingFile(final VolumeInventory volume, final String hostUuid, final String backingFile, final LinkedHashMap<String, Object> addons, final ReturnValueCompletion<VolumeStats> completion) {
         final CreateEmptyVolumeCmd cmd = new CreateEmptyVolumeCmd();
         cmd.setAccountUuid(acntMgr.getOwnerAccountUuidOfResource(volume.getUuid()));
         if (volume.getInstallPath() != null && !volume.getInstallPath().equals("")) {
@@ -1385,6 +1385,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         cmd.setSize(volume.getSize());
         cmd.setVolumeUuid(volume.getUuid());
         cmd.setBackingFile(backingFile);
+        cmd.kvmHostAddons = addons;
 
         httpCall(CREATE_EMPTY_VOLUME_PATH, hostUuid, cmd, CreateEmptyVolumeRsp.class, new ReturnValueCompletion<CreateEmptyVolumeRsp>(completion) {
             @Override
@@ -1736,7 +1737,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         final ImageInventory image = ispec.getInventory();
 
         if (!ImageMediaType.RootVolumeTemplate.toString().equals(image.getMediaType())) {
-            createEmptyVolume(msg.getVolume(), msg.getDestHost().getUuid(), new ReturnValueCompletion<VolumeStats>(completion) {
+            createEmptyVolume(msg.getVolume(), msg.getDestHost().getUuid(), msg.getAddons(), new ReturnValueCompletion<VolumeStats>(completion) {
                 @Override
                 public void success(VolumeStats returnValue) {
                     InstantiateVolumeOnPrimaryStorageReply r = new InstantiateVolumeOnPrimaryStorageReply();
@@ -2383,7 +2384,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
 
     @Override
     void handle(LocalStorageCreateEmptyVolumeMsg msg, final ReturnValueCompletion<LocalStorageCreateEmptyVolumeReply> completion) {
-        createEmptyVolumeWithBackingFile(msg.getVolume(), msg.getHostUuid(), msg.getBackingFile(), new ReturnValueCompletion<VolumeStats>(completion) {
+        createEmptyVolumeWithBackingFile(msg.getVolume(), msg.getHostUuid(), msg.getBackingFile(), null, new ReturnValueCompletion<VolumeStats>(completion) {
             @Override
             public void success(VolumeStats returnValue) {
                 LocalStorageCreateEmptyVolumeReply reply = new LocalStorageCreateEmptyVolumeReply();

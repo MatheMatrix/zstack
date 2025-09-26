@@ -13,7 +13,6 @@ import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.cloudbus.EventFacade;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
-import org.zstack.core.db.SQL;
 import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.errorcode.ErrorFacade;
@@ -43,10 +42,17 @@ import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmInstanceVO_;
 import org.zstack.header.volume.*;
 import org.zstack.identity.AccountManager;
-import org.zstack.kvm.*;
+import org.zstack.kvm.GetKVMHostDownloadCredentialMsg;
+import org.zstack.kvm.GetKVMHostDownloadCredentialReply;
+import org.zstack.kvm.KVMAgentCommands;
 import org.zstack.kvm.KVMAgentCommands.AgentResponse;
-import org.zstack.storage.primary.*;
+import org.zstack.kvm.*;
+import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageMsg;
+import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageReply;
+import org.zstack.storage.primary.ImageCacheUtil;
 import org.zstack.storage.primary.PrimaryStorageBase.PhysicalCapacityUsage;
+import org.zstack.storage.primary.PrimaryStorageCapacityUpdater;
+import org.zstack.storage.primary.PrimaryStorageSystemTags;
 import org.zstack.storage.primary.nfs.NfsPrimaryStorageKVMBackendCommands.*;
 import org.zstack.storage.volume.VolumeErrors;
 import org.zstack.storage.volume.VolumeSystemTags;
@@ -911,6 +917,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
         cmd.filtPaths = trash.findTrashInstallPath(msg.getSrcFolderPath(), msg.getSrcPrimaryStorageUuid());
         cmd.isMounted = mounted;
         cmd.volumeInstallPath = msg.getVolumeInstallPath();
+        cmd.kvmHostAddons = msg.getAddons();
 
         if (!mounted) {
             cmd.options = NfsSystemTags.MOUNT_OPTIONS.getTokenByResourceUuid(dstPsInv.getUuid(), NfsSystemTags.MOUNT_OPTIONS_TOKEN);
@@ -1099,7 +1106,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
     }
 
     @Override
-    public void instantiateVolume(final PrimaryStorageInventory pinv, HostInventory hostInventory, final VolumeInventory volume, final ReturnValueCompletion<VolumeInventory> complete) {
+    public void instantiateVolume(final PrimaryStorageInventory pinv, HostInventory hostInventory, final VolumeInventory volume, LinkedHashMap<String, Object> addons, final ReturnValueCompletion<VolumeInventory> complete) {
         String accounUuid = acntMgr.getOwnerAccountUuidOfResource(volume.getUuid());
 
         final CreateEmptyVolumeCmd cmd = new CreateEmptyVolumeCmd();
@@ -1109,6 +1116,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
         cmd.setName(volume.getName());
         cmd.setSize(volume.getSize());
         cmd.setVolumeUuid(volume.getUuid());
+        cmd.kvmHostAddons = addons;
         if (StringUtils.isNotEmpty(volume.getInstallPath())) {
             cmd.setInstallUrl(volume.getInstallPath());
         } else if (volume.getType().equals(VolumeType.Root.toString())) {

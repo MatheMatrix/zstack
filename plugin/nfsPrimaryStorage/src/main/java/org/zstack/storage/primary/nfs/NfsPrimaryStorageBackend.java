@@ -15,6 +15,8 @@ import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageMsg;
 import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageReply;
 import org.zstack.storage.primary.PrimaryStorageBase.PhysicalCapacityUsage;
 
+import java.util.LinkedHashMap;
+
 public interface NfsPrimaryStorageBackend {
     HypervisorType getHypervisorType();
 
@@ -62,7 +64,7 @@ public interface NfsPrimaryStorageBackend {
 
     void createMemoryVolume(PrimaryStorageInventory pinv, VolumeInventory volume, ReturnValueCompletion<String> completion);
 
-    void instantiateVolume(PrimaryStorageInventory pinv, HostInventory hostInventory, VolumeInventory volume, ReturnValueCompletion<VolumeInventory> complete);
+    void instantiateVolume(PrimaryStorageInventory pinv, HostInventory hostInventory, VolumeInventory volume, LinkedHashMap<String, Object> addons, ReturnValueCompletion<VolumeInventory> complete);
 
     void deleteImageCache(ImageCacheInventory imageCache);
 

@@ -1,7 +1,8 @@
 package org.zstack.storage.primary.nfs;
 
-import org.zstack.header.message.NeedReplyMessage;
-import org.zstack.header.storage.primary.PrimaryStorageMessage;
+import java.util.*;
+import org.zstack.header.message.*;
+import org.zstack.header.storage.primary.*;
 
 /**
  * Created by GuoYi on 10/19/17.
@@ -14,6 +15,7 @@ public class NfsToNfsMigrateBitsMsg extends NeedReplyMessage implements PrimaryS
     private String primaryStorageUuid;
     private String independentPath;
     private String volumeInstallPath;
+    private LinkedHashMap<String, Object> addons;
 
     public String getVolumeInstallPath() {
         return volumeInstallPath;
@@ -70,5 +72,12 @@ public class NfsToNfsMigrateBitsMsg extends NeedReplyMessage implements PrimaryS
 
     public void setIndependentPath(String independentPath) {
         this.independentPath = independentPath;
+    }
+
+    public LinkedHashMap<String, Object> getAddons() {
+        if (addons == null) {
+            addons = new LinkedHashMap<>();
+        }
+        return addons;
     }
 }

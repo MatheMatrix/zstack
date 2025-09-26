@@ -37,7 +37,6 @@ import org.zstack.header.storage.backup.BackupStorageType;
 import org.zstack.header.storage.backup.BackupStorageVO;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.primary.VolumeSnapshotCapability.VolumeSnapshotArrangementType;
-import org.zstack.header.storage.snapshot.DeleteVolumeSnapshotDirection;
 import org.zstack.header.storage.snapshot.ShrinkVolumeSnapshotOnPrimaryStorageMsg;
 import org.zstack.header.storage.snapshot.VolumeSnapshotConstant;
 import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
@@ -46,7 +45,7 @@ import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmInstanceVO_;
 import org.zstack.header.volume.*;
-import org.zstack.kvm.*;
+import org.zstack.kvm.KVMConstant;
 import org.zstack.storage.primary.*;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
 import org.zstack.storage.volume.VolumeErrors;
@@ -923,7 +922,7 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
 
         VolumeInventory vol = msg.getVolume();
         final InstantiateVolumeOnPrimaryStorageReply reply = new InstantiateVolumeOnPrimaryStorageReply();
-        backend.instantiateVolume(PrimaryStorageInventory.valueOf(self), msg.getDestHost(), vol, new ReturnValueCompletion<VolumeInventory>(msg) {
+        backend.instantiateVolume(PrimaryStorageInventory.valueOf(self), msg.getDestHost(), vol, msg.getAddons(), new ReturnValueCompletion<VolumeInventory>(msg) {
             @Override
             public void success(VolumeInventory returnValue) {
                 reply.setVolume(returnValue);
