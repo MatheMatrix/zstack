@@ -62,6 +62,7 @@ import static org.zstack.storage.addon.primary.ExternalPrimaryStorageNameHelper.
 import static org.zstack.xinfini.XInfiniIscsiHelper.buildIscsiClientGroupName;
 import static org.zstack.xinfini.XInfiniIscsiHelper.iscsiHeartbeatVolumeName;
 import static org.zstack.xinfini.XInfiniPathHelper.*;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class XInfiniStorageController implements PrimaryStorageControllerSvc, PrimaryStorageNodeSvc {
@@ -157,7 +158,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
             return;
         }
 
-        comp.fail(operr("not supported protocol[%s]", v.getProtocol()));
+        comp.fail(operr(ORG_ZSTACK_XINFINI_10000, "not supported protocol[%s]", v.getProtocol()));
     }
 
     private ActiveVolumeTO activeVhostVolume(HostInventory h, BaseVolumeInfo vol) {
@@ -165,7 +166,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
         BdcModule bdc = apiHelper.queryBdcByIp(h.getManagementIp());
         VolumeModule volModule = getVolumeModule(vol);
         if (volModule == null) {
-            throw new OperationFailureException(operr("cannot get volume[%s] details, maybe it has been deleted", vol.getInstallPath()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10001, "cannot get volume[%s] details, maybe it has been deleted", vol.getInstallPath()));
         }
 
         VhostVolumeTO to = new VhostVolumeTO();
@@ -212,7 +213,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
             return;
         }
 
-        comp.fail(operr("not supported protocol[%s] for deactivate", protocol));
+        comp.fail(operr(ORG_ZSTACK_XINFINI_10002, "not supported protocol[%s] for deactivate", protocol));
     }
 
     private void deactivateIscsi(String installPath, HostInventory h) {
@@ -328,7 +329,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
             return target.getResourceURI();
         }
 
-        throw new OperationFailureException(operr("not supported protocol[%s]", v.getProtocol()));
+        throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10003, "not supported protocol[%s]", v.getProtocol()));
     }
 
     @Override
@@ -342,7 +343,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
             info.setShareable(shareable);
         } else {
             // TODO support other protocols
-            throw new OperationFailureException(operr("not supported get volume info from [%s]", activePath));
+            throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10004, "not supported get volume info from [%s]", activePath));
         }
 
         VolumeModule vol = apiHelper.queryVolumeByName(buildVolumeName(volUuid));
@@ -398,7 +399,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
                 return c;
             }).collect(Collectors.toList());
         } else {
-            throw new OperationFailureException(operr("not supported protocol[%s] for active", protocol));
+            throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10005, "not supported protocol[%s] for active", protocol));
         }
     }
 
@@ -518,19 +519,19 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
 
         List<NodeModule> nodes = apiHelper.queryNodes();
         if (CollectionUtils.isEmpty(nodes)) {
-            comp.fail(operr("no node found"));
+            comp.fail(operr(ORG_ZSTACK_XINFINI_10006, "no node found"));
             return;
         }
 
         xConfig.getNodes().forEach(it -> nodes.stream()
                 .filter(it1 -> it1.getSpec().getAdminIp().equals(it.getIp()) && it1.getSpec().isRoleAfaAdmin())
                 .findAny()
-                .orElseThrow(() -> new OperationFailureException(operr("fail to get node %s details, check ip address and role config", it.getIp()))));
+                .orElseThrow(() -> new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10007, "fail to get node %s details, check ip address and role config", it.getIp()))));
         info.setNodes(nodes.stream().map(XInfiniAddonInfo.Node::valueOf).collect(Collectors.toList()));
 
         List<PoolModule> pools = apiHelper.queryPools();
         if (CollectionUtils.isEmpty(pools)) {
-            comp.fail(operr("no pool found"));
+            comp.fail(operr(ORG_ZSTACK_XINFINI_10008, "no pool found"));
             return;
         }
 
@@ -538,7 +539,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
             xConfig.getPools().forEach(it -> pools.stream()
                     .filter(it1 -> it1.getSpec().getId() == it.getId())
                     .findAny()
-                    .orElseThrow(() -> new OperationFailureException(operr("fail to get pool[id:%d, name:%s] %s details", it.getId(), it.getName()))));
+                    .orElseThrow(() -> new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10009, "fail to get pool[id:%d, name:%s] %s details", it.getId(), it.getName()))));
         }
         info.setPools(pools.stream().map(this::getPoolAddonInfo).collect(Collectors.toList()));
         vhostSocketDir = String.format("/var/run/bdc-%s/", apiHelper.getClusterUuid());
@@ -667,7 +668,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
     public String allocateSpace(AllocateSpaceSpec aspec) {
         PoolModule pool = allocateFreePool(aspec.getSize());
         if (pool == null) {
-            throw new OperationFailureException(operr("no available pool with enough space[%d] and healthy status", aspec.getSize()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10010, "no available pool with enough space[%d] and healthy status", aspec.getSize()));
         }
 
         return buildXInfiniPath(pool.getSpec().getId(), null);
@@ -691,7 +692,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
         if (v.getAllocatedUrl() == null) {
             PoolModule pool = allocateFreePool(v.getSize());
             if (pool == null) {
-                comp.fail(operr("no available pool with enough space[%d] and healthy status", v.getSize()));
+                comp.fail(operr(ORG_ZSTACK_XINFINI_10011, "no available pool with enough space[%d] and healthy status", v.getSize()));
                 return;
             }
             poolId = pool.getSpec().getId();
@@ -837,7 +838,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
                 || (v.getQos().getWriteBandwidth() != null && v.getQos().getWriteBandwidth() > 0)
                 || (v.getQos().getReadIOPS() != null && v.getQos().getReadIOPS() > 0)
                 || v.getQos().getWriteIOPS() != null && v.getQos().getWriteIOPS() > 0) {
-            throw new OperationFailureException(operr("xinfini only support set total qos"));
+            throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10012, "xinfini only support set total qos"));
         }
 
         apiHelper.setVolumeQos(getVolIdFromPath(v.getInstallPath()), XinfiniVolumeQos.valueOf(v.getQos()));
@@ -854,7 +855,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
     public void export(ExportSpec espec, VolumeProtocol protocol, ReturnValueCompletion<RemoteTarget> comp) {
         if (protocol == VolumeProtocol.NVMEoF) {
             // TODO
-            comp.fail(operr("not support export nvmeof yet"));
+            comp.fail(operr(ORG_ZSTACK_XINFINI_10013, "not support export nvmeof yet"));
         } else if (protocol == VolumeProtocol.iSCSI) {
             IscsiRemoteTarget target = exportIscsi(espec);
             comp.success(target);
@@ -916,7 +917,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
                         .collect(Collectors.toList());
 
         if (groupRelatedGateways.isEmpty()) {
-            throw new OperationFailureException(operr("no active gateway found for client[%s]", clientIqn));
+            throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10014, "no active gateway found for client[%s]", clientIqn));
         }
 
         // refresh client
@@ -935,11 +936,11 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
     @Override
     public void unexport(ExportSpec espec, RemoteTarget remoteTarget, VolumeProtocol protocol, Completion comp) {
         if (protocol == VolumeProtocol.NVMEoF) {
-            comp.fail(operr("not support unexport nvmeof yet"));
+            comp.fail(operr(ORG_ZSTACK_XINFINI_10015, "not support unexport nvmeof yet"));
         } else if (protocol == VolumeProtocol.iSCSI) {
             unexportIscsi(espec.getInstallPath(), espec.getClientQualifiedName());
         } else {
-            comp.fail(operr("unsupported protocol %s", protocol.name()));
+            comp.fail(operr(ORG_ZSTACK_XINFINI_10016, "unsupported protocol %s", protocol.name()));
             return;
         }
         comp.success();

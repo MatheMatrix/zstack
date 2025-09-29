@@ -59,6 +59,7 @@ import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
 import static org.zstack.storage.addon.primary.ExternalPrimaryStorageNameHelper.*;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE, dependencyCheck = true)
@@ -149,7 +150,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                 .eq(BlockVolumeVO_.uuid, msg.getVolumeUuid()).find();
         if (blockVolumeVO == null) {
             GetAccessPathReply reply = new GetAccessPathReply();
-            reply.setError(operr("can not found block volume, access path only for block volume"));
+            reply.setError(operr(ORG_ZSTACK_STORAGE_ADDON_PRIMARY_10005, "can not found block volume, access path only for block volume"));
             return;
         }
         BlockExternalPrimaryStorageBackend backend = getBlockBackend(blockVolumeVO.getVendor());
@@ -456,7 +457,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
         }
 
         if (CollectionUtils.isEmpty(preferBsTypes)) {
-            reply.setError(operr("no backup storage type specified support to primary storage[uuid:%s]", self.getUuid()));
+            reply.setError(operr(ORG_ZSTACK_STORAGE_ADDON_PRIMARY_10006, "no backup storage type specified support to primary storage[uuid:%s]", self.getUuid()));
             bus.reply(msg, reply);
             return;
         }
@@ -1995,7 +1996,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                                     });
                                     trigger.next();
                                 } else {
-                                    trigger.fail(operr("storage is not healthy:%s", capacity.getHealthy().toString()));
+                                    trigger.fail(operr(ORG_ZSTACK_STORAGE_ADDON_PRIMARY_10007, "storage is not healthy:%s", capacity.getHealthy().toString()));
                                 }
                             }
 

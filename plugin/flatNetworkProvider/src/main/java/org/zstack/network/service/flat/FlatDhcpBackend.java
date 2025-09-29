@@ -86,6 +86,7 @@ import static org.zstack.network.service.NetworkServiceHelper.getL3NetworkHostRo
 import static org.zstack.network.service.flat.IpStatisticConstants.ResourceType;
 import static org.zstack.network.service.flat.IpStatisticConstants.SortBy;
 import static org.zstack.utils.CollectionDSL.*;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * Created by frank on 9/15/2015.
@@ -302,7 +303,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
 
                     String dhcpIp = allocateDhcpIp(msg.getL3NetworkUuid(), IPv6Constants.IPv4, allocate_ip, msg.getDhcpServerIp(), null);
                     if (dhcpIp == null || !dhcpIp.equals(msg.getDhcpServerIp())) {
-                        trigger.fail(operr("change dhcp server ip to [%s], but got [%s]", msg.getDhcpServerIp(), dhcpIp));
+                        trigger.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10023, "change dhcp server ip to [%s], but got [%s]", msg.getDhcpServerIp(), dhcpIp));
                         return;
                     }
                 }
@@ -318,7 +319,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
 
                     String dhcpIp = allocateDhcpIp(msg.getL3NetworkUuid(), IPv6Constants.IPv6, allocate_ip, msg.getDhcpv6ServerIp(), null);
                     if (dhcpIp == null || !dhcpIp.equals(msg.getDhcpv6ServerIp())) {
-                        trigger.fail(operr("change dhcp server ip to [%s], but got [%s]", msg.getDhcpv6ServerIp(), dhcpIp));
+                        trigger.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10024, "change dhcp server ip to [%s], but got [%s]", msg.getDhcpv6ServerIp(), dhcpIp));
                     }
                 }
                 trigger.next();
@@ -889,7 +890,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
         APIGetL3NetworkDhcpIpAddressReply reply = new APIGetL3NetworkDhcpIpAddressReply();
 
         if (msg.getL3NetworkUuid() == null) {
-            reply.setError(argerr("l3 network uuid cannot be null"));
+            reply.setError(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10025, "l3 network uuid cannot be null"));
             bus.reply(msg, reply);
             return;
         }
@@ -1288,7 +1289,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
                 if (rsp == null) {
                     return null;
                 }
-                return rsp.isSuccess() ? null : operr("operation error, because:%s", rsp.getError());
+                return rsp.isSuccess() ? null : operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10026, "operation error, because:%s", rsp.getError());
             }, new SteppingSendCallback<KvmResponseWrapper>() {
                 @Override
                 public void success(KvmResponseWrapper w) {
@@ -1393,7 +1394,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
 
             @Override
             public void fail(ErrorCode errorCode) {
-                completion.fail(operr("cannot configure DHCP for vm[uuid:%s] on the destination host[uuid:%s]",
+                completion.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10027, "cannot configure DHCP for vm[uuid:%s] on the destination host[uuid:%s]",
                         inv.getUuid(), destHostUuid).causedBy(errorCode));
             }
         });
@@ -2171,7 +2172,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
         KvmCommandSender sender = new KvmCommandSender(vm.getHostUuid());
         sender.send(cmd, RESET_DEFAULT_GATEWAY_PATH, wrapper -> {
             ResetDefaultGatewayRsp rsp = wrapper.getResponse(ResetDefaultGatewayRsp.class);
-            return rsp.isSuccess() ? null : operr(rsp.getError(), "operation error, because:%s", rsp.getError());
+            return rsp.isSuccess() ? null : operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10028, rsp.getError(), "operation error, because:%s", rsp.getError());
         }, new ReturnValueCompletion<KvmResponseWrapper>(completion) {
             @Override
             public void success(KvmResponseWrapper returnValue) {
@@ -2280,7 +2281,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
         }
 
         if (inv.getPrefixLen() < IPv6Constants.IPV6_PREFIX_LEN_MIN_DNSMASQ) {
-            throw new ApiMessageInterceptionException(argerr("minimum ip range prefix length of flat network is %d",
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10029, "minimum ip range prefix length of flat network is %d",
                     IPv6Constants.IPV6_PREFIX_LEN_MIN_DNSMASQ));
         }
     }
@@ -2301,37 +2302,37 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
 
             if (inv.getIpVersion() == IPv6Constants.IPv4) {
                 if (!NetworkUtils.isIpv4Address(dhcpServerIp)) {
-                    throw new ApiMessageInterceptionException(argerr("DHCP server ip [%s] is not a IPv4 address", dhcpServerIp));
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10030, "DHCP server ip [%s] is not a IPv4 address", dhcpServerIp));
                 }
 
                 if (!NetworkUtils.isIpv4InCidr(dhcpServerIp, inv.getNetworkCidr())) {
-                    throw new ApiMessageInterceptionException(argerr("DHCP server ip [%s] is not in the cidr [%s]", dhcpServerIp, inv.getNetworkCidr()));
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10031, "DHCP server ip [%s] is not in the cidr [%s]", dhcpServerIp, inv.getNetworkCidr()));
                 }
             } else {
                 if (!IPv6NetworkUtils.isIpv6Address(dhcpServerIp)) {
-                    throw new ApiMessageInterceptionException(argerr("DHCP server ip [%s] is not a IPv6 address", dhcpServerIp));
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10032, "DHCP server ip [%s] is not a IPv6 address", dhcpServerIp));
                 }
 
                 if (!IPv6NetworkUtils.isIpv6InCidrRange(dhcpServerIp, inv.getNetworkCidr())) {
-                    throw new ApiMessageInterceptionException(argerr("DHCP server ip [%s] is not in the cidr [%s]", dhcpServerIp, inv.getNetworkCidr()));
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10033, "DHCP server ip [%s] is not in the cidr [%s]", dhcpServerIp, inv.getNetworkCidr()));
                 }
             }
 
             Map<String, String> oldDhcpServerMap = getExistingDhcpServerIp(inv.getL3NetworkUuid(), inv.getIpVersion());
             if (!oldDhcpServerMap.isEmpty()) {
                 Map.Entry<String, String> entry = oldDhcpServerMap.entrySet().iterator().next();
-                throw new ApiMessageInterceptionException(argerr("DHCP server ip [%s] is already existed in l3 network [%s]",
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10034, "DHCP server ip [%s] is already existed in l3 network [%s]",
                         entry.getKey(), inv.getL3NetworkUuid()));
             }
 
             if (dhcpServerIp.equals(inv.getGateway())) {
-                throw new ApiMessageInterceptionException(argerr("DHCP server ip [%s] can not be equaled to gateway ip",
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10035, "DHCP server ip [%s] can not be equaled to gateway ip",
                         dhcpServerIp));
             }
 
             L3NetworkVO l3Vo = Q.New(L3NetworkVO.class).eq(L3NetworkVO_.uuid, inv.getL3NetworkUuid()).find();
             if (l3Vo.isSystem()) {
-                throw new ApiMessageInterceptionException(argerr("DHCP server ip [%s] can not be configured to system l3",
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10036, "DHCP server ip [%s] can not be configured to system l3",
                         dhcpServerIp));
             }
         }
@@ -2371,7 +2372,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
             UsedIpVO vo = dbf.findByUuid(uuid, UsedIpVO.class);
             Map<String, String> dhcpMap = getExistingDhcpServerIp(vo.getL3NetworkUuid(), vo.getIpVersion());
             if (!dhcpMap.isEmpty()) {
-                throw new ApiMessageInterceptionException(argerr("could delete ip address, " +
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10037, "could delete ip address, " +
                         "because ip [%s] is dhcp server ip", vo.getIp()));
             }
         }
@@ -2380,7 +2381,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
     private void validate(APIAttachNetworkServiceToL3NetworkMsg msg) {
         String owner = acntMgr.getOwnerAccountUuidOfResource(msg.getL3NetworkUuid());
         if (!acntMgr.isAdmin(msg.getSession()) && !msg.getSession().getAccountUuid().equals(owner)) {
-            throw new ApiMessageInterceptionException(argerr("could change dhcp server ip, because %s is not the owner of l3 network[uuid:%s]",
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10038, "could change dhcp server ip, because %s is not the owner of l3 network[uuid:%s]",
                     msg.getSession().getAccountUuid(), msg.getL3NetworkUuid()));
         }
 
@@ -2408,23 +2409,23 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
         }
 
         if (dhcpIp != null && ipv4Ranges.isEmpty()) {
-            throw new ApiMessageInterceptionException(argerr("could set dhcp v4 server ip, because there is no ipv4 range"));
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10039, "could set dhcp v4 server ip, because there is no ipv4 range"));
         }
 
         if (dhcpIp != null) {
             if (!NetworkUtils.isIpv4InCidr(dhcpIp, ipv4Ranges.get(0).getNetworkCidr())) {
-                throw new ApiMessageInterceptionException(argerr("could set dhcp v4 server ip, because ip[%s] is not the cidr of l3 [%s]",
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10040, "could set dhcp v4 server ip, because ip[%s] is not the cidr of l3 [%s]",
                 dhcpIp, ipv4Ranges.get(0).getNetworkCidr()));
             }
         }
 
         if (dhcp6Ip != null && ipv6Ranges.isEmpty()) {
-            throw new ApiMessageInterceptionException(argerr("could set dhcp v6 server ip, because there is no ipv6 range"));
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10041, "could set dhcp v6 server ip, because there is no ipv6 range"));
         }
 
         if (dhcp6Ip != null) {
             if (!IPv6NetworkUtils.isIpv6InCidrRange(dhcp6Ip, ipv6Ranges.get(0).getNetworkCidr())) {
-                throw new ApiMessageInterceptionException(argerr("could set dhcp v6 server ip, because ip[%s] is not the cidr of l3 [%s]",
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10042, "could set dhcp v6 server ip, because ip[%s] is not the cidr of l3 [%s]",
                         dhcpIp, ipv6Ranges.get(0).getNetworkCidr()));
             }
         }
@@ -2433,19 +2434,19 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
     private void validate(APIDetachNetworkServiceFromL3NetworkMsg msg) {
         String owner = acntMgr.getOwnerAccountUuidOfResource(msg.getL3NetworkUuid());
         if (!acntMgr.isAdmin(msg.getSession()) && !msg.getSession().getAccountUuid().equals(owner)) {
-            throw new ApiMessageInterceptionException(argerr("could change dhcp server ip, because %s is not the owner of l3 network[uuid:%s]",
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10043, "could change dhcp server ip, because %s is not the owner of l3 network[uuid:%s]",
                     msg.getSession().getAccountUuid(), msg.getL3NetworkUuid()));
         }
     }
 
     private void validate(APIChangeL3NetworkDhcpIpAddressMsg msg) {
         if (!isAllocateDhcpServerIp(msg.getL3NetworkUuid())) {
-            throw new ApiMessageInterceptionException(argerr("could change dhcp server ip, because flat dhcp is not enabled"));
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10044, "could change dhcp server ip, because flat dhcp is not enabled"));
         }
 
         String owner = acntMgr.getOwnerAccountUuidOfResource(msg.getL3NetworkUuid());
         if (!acntMgr.isAdmin(msg.getSession()) && !msg.getSession().getAccountUuid().equals(owner)) {
-            throw new ApiMessageInterceptionException(argerr("could change dhcp server ip, because %s is not the owner of l3 network[uuid:%s]",
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10045, "could change dhcp server ip, because %s is not the owner of l3 network[uuid:%s]",
                     msg.getSession().getAccountUuid(), msg.getL3NetworkUuid()));
         }
 
@@ -2454,23 +2455,23 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
         List<IpRangeVO> ipv6Ranges = l3VO.getIpRanges().stream().filter(ipr -> ipr.getIpVersion() == IPv6Constants.IPv6).collect(Collectors.toList());
 
         if (msg.getDhcpServerIp() != null && ipv4Ranges.isEmpty()) {
-            throw new ApiMessageInterceptionException(argerr("could change dhcp v4 server ip, because there is no ipv4 range"));
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10046, "could change dhcp v4 server ip, because there is no ipv4 range"));
         }
 
         if (msg.getDhcpServerIp() != null) {
             if (!NetworkUtils.isIpv4InCidr(msg.getDhcpServerIp(), ipv4Ranges.get(0).getNetworkCidr())) {
-                throw new ApiMessageInterceptionException(argerr("could set dhcp v4 server ip, because ip[%s] is not the cidr of l3 [%s]",
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10047, "could set dhcp v4 server ip, because ip[%s] is not the cidr of l3 [%s]",
                         msg.getDhcpServerIp(), ipv4Ranges.get(0).getNetworkCidr()));
             }
         }
 
         if (msg.getDhcpv6ServerIp() != null && ipv6Ranges.isEmpty()) {
-            throw new ApiMessageInterceptionException(argerr("could change dhcp v6 server ip, because there is no ipv6 range"));
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10048, "could change dhcp v6 server ip, because there is no ipv6 range"));
         }
 
         if (msg.getDhcpv6ServerIp() != null) {
             if (!IPv6NetworkUtils.isIpv6InCidrRange(msg.getDhcpv6ServerIp(), ipv6Ranges.get(0).getNetworkCidr())) {
-                throw new ApiMessageInterceptionException(argerr("could set dhcp v6 server ip, because ip[%s] is not the cidr of l3 [%s]",
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10049, "could set dhcp v6 server ip, because ip[%s] is not the cidr of l3 [%s]",
                         msg.getDhcpv6ServerIp(), ipv6Ranges.get(0).getNetworkCidr()));
             }
         }
@@ -2478,7 +2479,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
         if (msg.getDhcpServerIp() != null) {
             if (Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, msg.getDhcpServerIp())
                     .eq(UsedIpVO_.l3NetworkUuid, msg.getL3NetworkUuid()).isExists()) {
-                throw new ApiMessageInterceptionException(argerr("could set dhcp server ip, because ip[%s] is used",
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10050, "could set dhcp server ip, because ip[%s] is used",
                         msg.getDhcpServerIp()));
             }
         }
@@ -2486,7 +2487,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
         if (msg.getDhcpv6ServerIp() != null) {
             if (Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, msg.getDhcpv6ServerIp())
                     .eq(UsedIpVO_.l3NetworkUuid, msg.getL3NetworkUuid()).isExists()) {
-                throw new ApiMessageInterceptionException(argerr("could set dhcp v6 server ip, because ip[%s] is used",
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10051, "could set dhcp v6 server ip, because ip[%s] is used",
                         msg.getDhcpServerIp()));
             }
         }
@@ -2742,7 +2743,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
             }
             dhcpIp = allocateDhcpIp(l3VO.getUuid(), IPv6Constants.IPv4, allocate_ip, dhcpIp, null);
             if (dhcpIp == null) {
-                completion.fail(argerr("allocated dhcp server ip failed"));
+                completion.fail(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10052, "allocated dhcp server ip failed"));
                 return;
             }
         }
@@ -2761,7 +2762,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
             }
             dhcp6Ip = allocateDhcpIp(l3VO.getUuid(), IPv6Constants.IPv6, allocate_ip, dhcp6Ip, null);
             if (dhcp6Ip == null) {
-                completion.fail(argerr("allocated dhcp server ip failed"));
+                completion.fail(argerr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10053, "allocated dhcp server ip failed"));
                 return;
             }
         }
@@ -2814,7 +2815,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
                 if (rsp == null) {
                     return null;
                 }
-                return rsp.isSuccess() ? null : operr("operation error, because:%s", rsp.getError());
+                return rsp.isSuccess() ? null : operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10054, "operation error, because:%s", rsp.getError());
             }, new SteppingSendCallback<KvmResponseWrapper>() {
                 @Override
                 public void success(KvmResponseWrapper w) {
@@ -2880,7 +2881,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
         KvmCommandSender sender = new KvmCommandSender(host.getUuid());
         sender.send(cmd, ARPING_NAMESPACE_PATH, wrapper -> {
             ArpingRsp rsp = wrapper.getResponse(ArpingRsp.class);
-            return rsp.isSuccess() ? null : operr("operation error, because:%s", rsp.getError());
+            return rsp.isSuccess() ? null : operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10055, "operation error, because:%s", rsp.getError());
         }, new ReturnValueCompletion<KvmResponseWrapper>(completion) {
             @Override
             public void success(KvmResponseWrapper returnValue) {

@@ -65,6 +65,7 @@ import static org.zstack.expon.ExponIscsiHelper.*;
 import static org.zstack.expon.ExponNameHelper.*;
 import static org.zstack.iscsi.IscsiUtils.getHostMnIpFromInitiatorName;
 import static org.zstack.storage.addon.primary.ExternalPrimaryStorageNameHelper.*;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class ExponStorageController implements PrimaryStorageControllerSvc, PrimaryStorageNodeSvc {
@@ -181,7 +182,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
             return;
         }
 
-        comp.fail(operr("not supported protocol[%s]", v.getProtocol()));
+        comp.fail(operr(ORG_ZSTACK_EXPON_10004, "not supported protocol[%s]", v.getProtocol()));
     }
 
 
@@ -460,7 +461,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
             return target.getResourceURI();
         }
 
-        throw new OperationFailureException(operr("not supported protocol[%s]", v.getProtocol()));
+        throw new OperationFailureException(operr(ORG_ZSTACK_EXPON_10005, "not supported protocol[%s]", v.getProtocol()));
     }
 
     @Override
@@ -535,7 +536,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
                 return c;
             }).collect(Collectors.toList());
         } else {
-            throw new OperationFailureException(operr("not supported protocol[%s] for active", protocol));
+            throw new OperationFailureException(operr(ORG_ZSTACK_EXPON_10006, "not supported protocol[%s] for active", protocol));
         }
     }
 
@@ -572,7 +573,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
             return;
         }
 
-        comp.fail(operr("not supported protocol[%s] for deactivate", protocol));
+        comp.fail(operr(ORG_ZSTACK_EXPON_10007, "not supported protocol[%s] for deactivate", protocol));
     }
 
     @Override
@@ -836,7 +837,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
 
         List<FailureDomainModule> pools = apiHelper.queryPools();
         if (CollectionUtils.isEmpty(pools)) {
-            comp.fail(operr("no pool found"));
+            comp.fail(operr(ORG_ZSTACK_EXPON_10008, "no pool found"));
             return;
         }
 
@@ -987,7 +988,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         // TODO allocate pool
         FailureDomainModule pool = allocateFreePool(aspec.getSize());
         if (pool == null) {
-            throw new OperationFailureException(operr("no available pool with enough space[%d] and healthy status", aspec.getSize()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_EXPON_10009, "no available pool with enough space[%d] and healthy status", aspec.getSize()));
         }
 
         return buildExponPath(pool.getFailureDomainName(), "");
@@ -1009,7 +1010,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         if (v.getAllocatedUrl() == null) {
             FailureDomainModule pool = allocateFreePool(v.getSize());
             if (pool == null) {
-                comp.fail(operr("no available pool with enough space[%d] and healthy status", v.getSize()));
+                comp.fail(operr(ORG_ZSTACK_EXPON_10010, "no available pool with enough space[%d] and healthy status", v.getSize()));
                 return;
             }
             poolName = pool.getFailureDomainName();
@@ -1211,7 +1212,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         } else if (protocol == VolumeProtocol.iSCSI) {
             unexportIscsi(espec.getInstallPath(), espec.getClientMnIp());
         } else {
-            comp.fail(operr("unsupported protocol %s", protocol.name()));
+            comp.fail(operr(ORG_ZSTACK_EXPON_10011, "unsupported protocol %s", protocol.name()));
             return;
         }
         comp.success();

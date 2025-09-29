@@ -29,6 +29,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * Created with IntelliJ IDEA.
@@ -409,7 +410,7 @@ public class DhcpExtension extends AbstractNetworkServiceExtension implements Co
 
         NetworkServiceDhcpBackend bkd = dhcpBackends.get(providerType);
         if (bkd == null) {
-            completion.fail(operr("unable to find NetworkServiceDhcpBackend[provider type: %s]", providerType));
+            completion.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_10013, "unable to find NetworkServiceDhcpBackend[provider type: %s]", providerType));
             return;
         }
 
@@ -432,7 +433,7 @@ public class DhcpExtension extends AbstractNetworkServiceExtension implements Co
 
         NetworkServiceDhcpBackend bkd = dhcpBackends.get(providerType);
         if (bkd == null) {
-            completion.fail(operr("unable to find NetworkServiceDhcpBackend[provider type: %s]", providerType));
+            completion.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_10014, "unable to find NetworkServiceDhcpBackend[provider type: %s]", providerType));
             return;
         }
 

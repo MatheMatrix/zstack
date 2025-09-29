@@ -59,6 +59,7 @@ import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
 import static org.zstack.storage.zbs.ZbsHelper.*;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * @author Xingwei Yu
@@ -125,7 +126,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             return;
         }
 
-        comp.fail(operr("not supported protocol[%s]", v.getProtocol()));
+        comp.fail(operr(ORG_ZSTACK_STORAGE_ZBS_10000, "not supported protocol[%s]", v.getProtocol()));
     }
 
     @Override
@@ -163,7 +164,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             List<ActiveVolumeClient> clients = new ArrayList<>();
 
             if (!rsp.isSuccess()) {
-                throw new OperationFailureException(operr(rsp.getError()));
+                throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_ZBS_10001, rsp.getError()));
             }
 
             if (rsp.getClients() != null) {
@@ -175,7 +176,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             }
             return clients;
         } else {
-            throw new OperationFailureException(operr("not supported protocol[%s] for active", protocol));
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_ZBS_10002, "not supported protocol[%s] for active", protocol));
         }
     }
 
@@ -188,7 +189,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     public void deployClient(HostInventory h, Completion comp) {
         KVMHostVO host = org.zstack.core.db.Q.New(KVMHostVO.class).eq(KVMHostVO_.uuid, h.getUuid()).find();
         if (host == null) {
-            comp.fail(operr("cannot found kvm host[uuid:%s], unable to deploy client", h.getUuid()));
+            comp.fail(operr(ORG_ZSTACK_STORAGE_ZBS_10003, "cannot found kvm host[uuid:%s], unable to deploy client", h.getUuid()));
             return;
         }
 
@@ -276,17 +277,17 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 if (!it.hasNext()) {
                     if (errorCodes.getCauses().size() == mdsList.size()) {
                         if (errorCodes.getCauses().isEmpty()) {
-                            trigger.fail(operr("unable to connect to the ZBS primary storage[uuid:%s]," +
+                            trigger.fail(operr(ORG_ZSTACK_STORAGE_ZBS_10004, "unable to connect to the ZBS primary storage[uuid:%s]," +
                                     " failed to connect all MDS", self.getUuid()));
                         } else {
-                            trigger.fail(operr(errorCodes, "unable to connect to the ZBS primary storage[uuid:%s]," +
+                            trigger.fail(operr(ORG_ZSTACK_STORAGE_ZBS_10005, errorCodes, "unable to connect to the ZBS primary storage[uuid:%s]," +
                                             " failed to connect all MDS",
                                     self.getUuid()));
                         }
                     } else {
                         ExternalPrimaryStorageVO vo = dbf.reload(self);
                         if (vo == null) {
-                            trigger.fail(operr("ZBS primary storage[uuid:%s] may have been deleted", self.getUuid()));
+                            trigger.fail(operr(ORG_ZSTACK_STORAGE_ZBS_10006, "ZBS primary storage[uuid:%s] may have been deleted", self.getUuid()));
                         } else {
                             self = vo;
                             trigger.next();
@@ -374,7 +375,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                         new While<>(hosts).each((h, comp) -> {
                             KVMHostVO host = org.zstack.core.db.Q.New(KVMHostVO.class).eq(KVMHostVO_.uuid, h.getUuid()).find();
                             if (host == null) {
-                                comp.addError(operr("cannot found kvm host[uuid:%s], unable to deploy client", h.getUuid()));
+                                comp.addError(operr(ORG_ZSTACK_STORAGE_ZBS_10007, "cannot found kvm host[uuid:%s], unable to deploy client", ((HostVO) h).getUuid()));
                                 comp.allDone();
                                 return;
                             }
@@ -461,7 +462,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                             .map(MdsInfo::getAddr)
                             .collect(Collectors.joining(", "));
 
-                    completion.fail(operr("no MDS is Connected, the following MDS[%s] are not Connected.", notConnectedIps));
+                    completion.fail(operr(ORG_ZSTACK_STORAGE_ZBS_10008, "no MDS is Connected, the following MDS[%s] are not Connected.", notConnectedIps));
                     return;
                 }
                 completion.success();
@@ -549,7 +550,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         // TODO allocate pool
         LogicalPoolInfo logicalPoolInfo = allocateFreePool(aspec.getSize());
         if (logicalPoolInfo == null) {
-            throw new OperationFailureException(operr("no available logical pool with enough space[%d]", aspec.getSize()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_ZBS_10009, "no available logical pool with enough space[%d]", aspec.getSize()));
         }
 
         return buildVolumePath("", config.getLogicalPoolName(), "");
@@ -839,7 +840,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         }
 
         if (protocol != VolumeProtocol.NBD) {
-            comp.fail(operr("unsupported protocol %s", protocol.name()));
+            comp.fail(operr(ORG_ZSTACK_STORAGE_ZBS_10010, "unsupported protocol %s", protocol.name()));
             return;
         }
 
@@ -871,7 +872,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         }
 
         if (protocol != VolumeProtocol.NBD) {
-            comp.fail(operr("unsupported protocol %s", protocol.name()));
+            comp.fail(operr(ORG_ZSTACK_STORAGE_ZBS_10011, "unsupported protocol %s", protocol.name()));
             return;
         }
 
@@ -899,7 +900,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 }
             }).setTargetMds(uri.getHost()).call();
         } catch (URISyntaxException e) {
-            comp.fail(operr("invalid URI syntax: %s", e.getMessage()));
+            comp.fail(operr(ORG_ZSTACK_STORAGE_ZBS_10012, "invalid URI syntax: %s", e.getMessage()));
         }
     }
 
@@ -982,14 +983,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         }
 
         if (current.getMdsUrls().isEmpty()) {
-            throw new OperationFailureException(operr("ensure at least one MDS is configured"));
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_ZBS_10013, "ensure at least one MDS is configured"));
         }
 
         List<MdsInfo> newMdsInfos = parseMdsInfos(current.getMdsUrls());
         List<MdsInfo> duplicateMdsInfos = newMdsInfos.stream().collect(Collectors.groupingBy(MdsInfo::getAddr))
                 .values().stream().filter(addr -> addr.size() > 1).flatMap(List::stream).collect(Collectors.toList());
         if (!duplicateMdsInfos.isEmpty()) {
-            throw new OperationFailureException(operr("do not allow to add duplicate MDS[%s]",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_ZBS_10014, "do not allow to add duplicate MDS[%s]",
                     duplicateMdsInfos.stream().map(MdsInfo::getAddr).distinct().collect(Collectors.joining(", "))
             ));
         }
@@ -1123,7 +1124,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             mdsInfos.removeIf(it -> !it.getAddr().equals(mdsAddr));
             if (mdsInfos.isEmpty()) {
                 throw new OperationFailureException(operr(
-                        "not found MDS[%s] of zbs primary storage[uuid:%s] node", mdsAddr, self.getUuid())
+                ORG_ZSTACK_STORAGE_ZBS_10015,         "not found MDS[%s] of zbs primary storage[uuid:%s] node", mdsAddr, self.getUuid())
                 );
             }
 
@@ -1142,7 +1143,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             mds.removeIf(it -> it.getStatus() != MdsStatus.Connected);
             if (mds.isEmpty()) {
                 throw new OperationFailureException(operr(
-                        "all MDS of ZBS primary storage[uuid:%s] are not in Connected state", self.getUuid())
+                ORG_ZSTACK_STORAGE_ZBS_10016,         "all MDS of ZBS primary storage[uuid:%s] are not in Connected state", self.getUuid())
                 );
             }
 
@@ -1155,7 +1156,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
         private T doSyncCall() {
             if (!it.hasNext()) {
-                throw new OperationFailureException(operr(errorCodes, "all MDS cannot execute http call[%s]", path));
+                throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_ZBS_10017, errorCodes, "all MDS cannot execute http call[%s]", path));
             }
 
             ZbsPrimaryStorageMdsBase base = it.next();
@@ -1165,11 +1166,11 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             if (!ret.isSuccess()) {
                 logger.warn(String.format("failed to execute http call[%s] on MDS[%s], error is: %s",
                         path, base.getSelf().getAddr(), JSONObjectUtil.toJsonString(ret.getError())));
-                errorCodes.getCauses().add(operr(ret.getError()));
+                errorCodes.getCauses().add(operr(ORG_ZSTACK_STORAGE_ZBS_10018, ret.getError()));
                 if (tryNext) {
                     return doSyncCall();
                 } else {
-                    throw new OperationFailureException(operr(errorCodes, "all MDS cannot execute http call[%s]", path));
+                    throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_ZBS_10019, errorCodes, "all MDS cannot execute http call[%s]", path));
                 }
             }
 
@@ -1178,7 +1179,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
         private void doCall() {
             if (!it.hasNext()) {
-                callback.fail(operr(errorCodes, "all MDS cannot execute http call[%s]", path));
+                callback.fail(operr(ORG_ZSTACK_STORAGE_ZBS_10020, errorCodes, "all MDS cannot execute http call[%s]", path));
                 return;
             }
 
