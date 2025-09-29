@@ -1025,6 +1025,8 @@ public class KVMHost extends HostBase implements Host {
             if (state != VmInstanceState.Running && state != VmInstanceState.Stopped && state != VmInstanceState.Paused) {
                 throw new OperationFailureException(operr("vm[uuid:%s] is not Running or Stopped, current state[%s]", msg.getVmUuid(), state));
             }
+
+            cmd.setLive(state == VmInstanceState.Running || state == VmInstanceState.Paused);
         }
 
         cmd.setVmUuid(msg.getVmUuid());
