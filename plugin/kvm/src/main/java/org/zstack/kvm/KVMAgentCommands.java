@@ -3826,6 +3826,15 @@ public class KVMAgentCommands {
         private VolumeTO volume;
         private String top;
         private String base;
+        private boolean live;
+
+        public boolean isLive() {
+            return live;
+        }
+
+        public void setLive(boolean live) {
+            this.live = live;
+        }
 
         public String getVmUuid() {
             return vmUuid;
