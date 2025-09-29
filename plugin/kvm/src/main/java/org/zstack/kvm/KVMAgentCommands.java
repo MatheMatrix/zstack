@@ -4008,6 +4008,15 @@ public class KVMAgentCommands {
         private String top;
         @GrayVersion(value = "5.0.0")
         private String base;
+        private boolean live;
+
+        public boolean isLive() {
+            return live;
+        }
+
+        public void setLive(boolean live) {
+            this.live = live;
+        }
 
         public String getVmUuid() {
             return vmUuid;
