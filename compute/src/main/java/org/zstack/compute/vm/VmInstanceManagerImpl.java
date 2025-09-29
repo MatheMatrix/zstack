@@ -98,6 +98,7 @@ import static org.zstack.core.Platform.*;
 import static org.zstack.utils.CollectionDSL.*;
 import static org.zstack.utils.CollectionUtils.merge;
 import static org.zstack.utils.CollectionUtils.transformToList;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class VmInstanceManagerImpl extends AbstractService implements
         VmInstanceManager,
@@ -304,7 +305,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
         if (StringUtils.isNotEmpty(certificateStr)) {
             reply.setCertificateStr(certificateStr);
         } else {
-            reply.setError(operr("Spice certificate does not exist, Please check if spice tls is enabled"));
+            reply.setError(operr(ORG_ZSTACK_COMPUTE_VM_10222, "Spice certificate does not exist, Please check if spice tls is enabled"));
         }
         bus.reply(msg, reply);
     }
@@ -527,7 +528,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
         }
 
         if (bss.isEmpty()) {
-            throw new OperationFailureException(argerr("the image[uuid:%s] is not on any backup storage that has been attached to the zone[uuid:%s]",
+            throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10223, "the image[uuid:%s] is not on any backup storage that has been attached to the zone[uuid:%s]",
                             msg.getImageUuid(), msg.getZoneUuid()));
         }
 
@@ -599,7 +600,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
         if (l3s.isEmpty()) {
             if (psUuids.isEmpty()) {
                 if (raiseException) {
-                    throw new OperationFailureException(argerr("no primary storage accessible to the backup storage[uuid:%s, type:%s] is found",
+                    throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10224, "no primary storage accessible to the backup storage[uuid:%s, type:%s] is found",
                             bss.get(0).getUuid(), bss.get(0).getType()));
                 }
                 logger.warn(String.format("no primary storage accessible to the backup storage[uuid:%s, type:%s] is found",
@@ -620,7 +621,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
 
             if (clusterNum == null || clusterNum == 0) {
                 if (raiseException) {
-                    throw new OperationFailureException(argerr("the primary storages[uuids:%s] has not attached any cluster on the zone[uuid:%s]",
+                    throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10225, "the primary storages[uuids:%s] has not attached any cluster on the zone[uuid:%s]",
                             psUuids, zoneUuid));
                 }
                 logger.warn(String.format("the primary storages[uuids:%s] has not attached any cluster on the zone[uuid:%s]", psUuids, zoneUuid));
@@ -639,7 +640,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                     .find();
             if (l2Num == null || l2Num == 0) {
                 if (raiseException) {
-                    throw new OperationFailureException(argerr("no l2Networks found in clusters that have attached to primary storages[uuids:%s]",
+                    throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10226, "no l2Networks found in clusters that have attached to primary storages[uuids:%s]",
                             psUuids));
                 }
                 logger.warn(String.format("no l2Networks found in clusters that have attached to primary storages[uuids:%s]", psUuids));
@@ -712,7 +713,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
             amsg.setRequiredBackupStorageUuid(image.getBackupStorageRefs().iterator().next().getBackupStorageUuid());
         } else {
             if (msg.getZoneUuid() == null) {
-                throw new OperationFailureException(argerr("zoneUuid must be set because the image[name:%s, uuid:%s] is on multiple backup storage",
+                throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10227, "zoneUuid must be set because the image[name:%s, uuid:%s] is on multiple backup storage",
                                 image.getName(), image.getUuid()));
             }
 
@@ -1145,7 +1146,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
     private List<ErrorCode> extEmitterHandleSystemTag(final CreateVmInstanceMsg msg, final APICreateMessage cmsg, VmInstanceVO finalVo) {
         List<ErrorCode> result = Collections.emptyList();
         if (msg == null) {
-            result.add(operr("CreateVmInstanceMsg cannot be null"));
+            result.add(operr(ORG_ZSTACK_COMPUTE_VM_10228, "CreateVmInstanceMsg cannot be null"));
             return result;
         } else if (cmsg != null && cmsg.getSystemTags() != null && !cmsg.getSystemTags().isEmpty()) {
             return extEmitter.handleSystemTag(finalVo.getUuid(), cmsg.getSystemTags());
@@ -1158,7 +1159,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
     private List<ErrorCode> extEmitterHandleSshKeyPair(final CreateVmInstanceMsg msg, final APICreateMessage cmsg, VmInstanceVO finalVo) {
         List<ErrorCode> result = Collections.emptyList();
         if (msg == null) {
-            result.add(operr("CreateVmInstanceMsg cannot be null"));
+            result.add(operr(ORG_ZSTACK_COMPUTE_VM_10229, "CreateVmInstanceMsg cannot be null"));
             return result;
         } else if (msg.getSshKeyPairUuids() != null && !msg.getSshKeyPairUuids().isEmpty()) {
             return extEmitter.associateSshKeyPair(finalVo.getUuid(), msg.getSshKeyPairUuids());
@@ -1234,7 +1235,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                         try {
                             instantiateTagsForCreateMessage(msg, cmsg, finalVo);
                         } catch (Exception e) {
-                            errorCodes.add(operr("instantiate system tag for vm failed because %s", e.getMessage()));
+                            errorCodes.add(operr(ORG_ZSTACK_COMPUTE_VM_10230, "instantiate system tag for vm failed because %s", e.getMessage()));
                         }
                         if (!errorCodes.isEmpty()) {
                             trigger.fail(errorCodes.get(0));
@@ -1243,7 +1244,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
 
                         errorCodes = extEmitterHandleSystemTag(msg, cmsg, finalVo);
                         if (!errorCodes.isEmpty()) {
-                            trigger.fail(operr("handle system tag fail when creating vm because [%s]",
+                            trigger.fail(operr(ORG_ZSTACK_COMPUTE_VM_10231, "handle system tag fail when creating vm because [%s]",
                                     StringUtils.join(errorCodes.stream().map(ErrorCode::getDescription).collect(Collectors.toList()),
                                             ", ")));
                             return;
@@ -1268,7 +1269,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                     public void run(FlowTrigger trigger, Map data) {
                         errorCodes = extEmitterHandleSshKeyPair(msg, cmsg, finalVo);
                         if (!errorCodes.isEmpty()) {
-                            trigger.fail(operr("handle sshkeypair fail when creating vm because [%s]",
+                            trigger.fail(operr(ORG_ZSTACK_COMPUTE_VM_10232, "handle sshkeypair fail when creating vm because [%s]",
                                     StringUtils.join(errorCodes.stream().map(ErrorCode::getDetails).collect(Collectors.toList()),
                                             ", ")));
                             return;
@@ -1715,7 +1716,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 }
                 for (Tuple tuple: tuples) {
                     if (tuple.get(2, Long.class) > 1) {
-                        throw new ApiMessageInterceptionException(operr("unable to enable this function. There are multi nics of L3 network[uuid:%s] in the vm[uuid: %s]",
+                        throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_COMPUTE_VM_10233, "unable to enable this function. There are multi nics of L3 network[uuid:%s] in the vm[uuid: %s]",
                                     tuple.get(0, String.class), tuple.get(1, String.class)));
                     }
                 }
@@ -1749,7 +1750,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
             private void validateHostname(String tag, String hostname) {
                 DomainValidator domainValidator = DomainValidator.getInstance(true);
                 if (!domainValidator.isValid(hostname)) {
-                    throw new ApiMessageInterceptionException(argerr("hostname[%s] specified in system tag[%s] is not a valid domain name", hostname, tag));
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10234, "hostname[%s] specified in system tag[%s] is not a valid domain name", hostname, tag));
                 }
             }
 
@@ -1761,7 +1762,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 for (String sysTag : msg.getSystemTags()) {
                     if (VmSystemTags.HOSTNAME.isMatch(sysTag)) {
                         if (++hostnameCount > 1) {
-                            throw new ApiMessageInterceptionException(argerr("only one hostname system tag is allowed, but %s got", hostnameCount));
+                            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10235, "only one hostname system tag is allowed, but %s got", hostnameCount));
                         }
 
                         String hostname = VmSystemTags.HOSTNAME.getTokenByTag(sysTag, VmSystemTags.HOSTNAME_TOKEN);
@@ -1790,7 +1791,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
 
                 if (!vos.isEmpty()) {
                     SystemTagVO sameTag = vos.get(0);
-                    throw new ApiMessageInterceptionException(argerr("conflict hostname in system tag[%s];" +
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10236, "conflict hostname in system tag[%s];" +
                                     " there has been a VM[uuid:%s] having hostname[%s] on L3 network[uuid:%s]",
                             tag, sameTag.getResourceUuid(), hostname, l3Uuid));
                 }
@@ -1817,7 +1818,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                     try {
                         VmBootDevice.valueOf(o);
                     } catch (IllegalArgumentException e) {
-                        throw new OperationFailureException(argerr("invalid boot device[%s] in boot order[%s]", o, order));
+                        throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10237, "invalid boot device[%s] in boot order[%s]", o, order));
                     }
                 }
             }
@@ -1833,7 +1834,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
             try {
                 Integer.valueOf(sockets);
             } catch (NumberFormatException e) {
-                throw new ApiMessageInterceptionException(argerr("cpuSockets must be an integer"));
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10238, "cpuSockets must be an integer"));
             }
         });
 
@@ -1842,7 +1843,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
             try {
                 Integer.valueOf(cores);
             } catch (NumberFormatException e) {
-                throw new ApiMessageInterceptionException(argerr("cpuCores must be an integer"));
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10239, "cpuCores must be an integer"));
             }
         });
 
@@ -1851,7 +1852,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
             try {
                 Integer.valueOf(threads);
             } catch (NumberFormatException e) {
-                throw new ApiMessageInterceptionException(argerr("cpuThreads must be an integer"));
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10240, "cpuThreads must be an integer"));
             }
         });
     }
@@ -1863,7 +1864,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 int existUserdataTagCount = VmSystemTags.USERDATA.getTags(resourceUuid, resourceType).size();
                 if (existUserdataTagCount > 0) {
                     throw new OperationFailureException(argerr(
-                            "Already have one userdata systemTag for vm[uuid: %s].",
+                    ORG_ZSTACK_COMPUTE_VM_10241,         "Already have one userdata systemTag for vm[uuid: %s].",
                             resourceUuid));
                 }
             }
@@ -1896,7 +1897,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                     if (VmSystemTags.USERDATA.isMatch(sysTag)) {
                         if (userdataTagCount > 0) {
                             throw new OperationFailureException(argerr(
-                                    "Shouldn't be more than one userdata systemTag for one vm."));
+                            ORG_ZSTACK_COMPUTE_VM_10242,         "Shouldn't be more than one userdata systemTag for one vm."));
                         }
                         userdataTagCount++;
 
@@ -1941,7 +1942,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 for (String systemTag : msg.getSystemTags()) {
                     if (VmSystemTags.BOOT_MODE.isMatch(systemTag)) {
                         if (++bootModeCount > 1) {
-                            throw new ApiMessageInterceptionException(argerr("only one bootMode system tag is allowed, but %d got", bootModeCount));
+                            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10243, "only one bootMode system tag is allowed, but %d got", bootModeCount));
                         }
 
                         String bootMode = VmSystemTags.BOOT_MODE.getTokenByTag(systemTag, VmSystemTags.BOOT_MODE_TOKEN);
@@ -1960,7 +1961,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 }
                 if (!valid) {
                     throw new ApiMessageInterceptionException(argerr(
-                            "[%s] specified in system tag [%s] is not a valid boot mode", bootMode, systemTag)
+                    ORG_ZSTACK_COMPUTE_VM_10244,         "[%s] specified in system tag [%s] is not a valid boot mode", bootMode, systemTag)
                     );
                 }
             }
@@ -1996,7 +1997,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
 
                 if (!VmInstanceConstant.USER_VM_TYPE.equals(vmType)) {
                     throw new ApiMessageInterceptionException(argerr(
-                            "clean traffic is not supported for vm type [%s]", vmType)
+                    ORG_ZSTACK_COMPUTE_VM_10245,         "clean traffic is not supported for vm type [%s]", vmType)
                     );
                 }
             }
@@ -2026,7 +2027,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
 
                 String type = VmSystemTags.MACHINE_TYPE.getTokenByTag(systemTag, VmSystemTags.MACHINE_TYPE_TOKEN);
                 if (VmMachineType.get(type) == null) {
-                    throw new ApiMessageInterceptionException(argerr("vm machine type requires [q35, pc, virt], but get [%s]", type));
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10246, "vm machine type requires [q35, pc, virt], but get [%s]", type));
                 }
             }
         }
@@ -2086,10 +2087,10 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 if (VmSystemTags.SECURITY_ELEMENT_ENABLE.isMatch(systemTag)) {
                     SecurityElementEnableTokenByTag = VmSystemTags.SECURITY_ELEMENT_ENABLE.getTokenByTag(systemTag, VmSystemTags.SECURITY_ELEMENT_ENABLE_TOKEN);
                 } else {
-                    throw new OperationFailureException(argerr("invalid securityElementEnable[%s], %s is not securityElementEnable tag", systemTag, SecurityElementEnableTokenByTag));
+                    throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10247, "invalid securityElementEnable[%s], %s is not securityElementEnable tag", systemTag, SecurityElementEnableTokenByTag));
                 }
                 if (!isBoolean(SecurityElementEnableTokenByTag)) {
-                    throw new OperationFailureException(argerr("invalid securityElementEnable[%s], %s is not boolean class", systemTag, SecurityElementEnableTokenByTag));
+                    throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10248, "invalid securityElementEnable[%s], %s is not boolean class", systemTag, SecurityElementEnableTokenByTag));
                 }
             }
             private boolean isBoolean(String param) {
@@ -2117,10 +2118,10 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 if (VmSystemTags.USB_REDIRECT.isMatch(systemTag)) {
                     usbRedirectTokenByTag = VmSystemTags.USB_REDIRECT.getTokenByTag(systemTag, VmSystemTags.USB_REDIRECT_TOKEN);
                 } else {
-                    throw new OperationFailureException(argerr("invalid usbRedirect[%s], %s is not usbRedirect tag", systemTag, usbRedirectTokenByTag));
+                    throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10249, "invalid usbRedirect[%s], %s is not usbRedirect tag", systemTag, usbRedirectTokenByTag));
                 }
                 if (!isBoolean(usbRedirectTokenByTag)) {
-                    throw new OperationFailureException(argerr("invalid usbRedirect[%s], %s is not boolean class", systemTag, usbRedirectTokenByTag));
+                    throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10250, "invalid usbRedirect[%s], %s is not boolean class", systemTag, usbRedirectTokenByTag));
                 }
             }
             private boolean isBoolean(String param) {
@@ -2336,7 +2337,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                         } else if (msg.getRootDiskSize() != null) {
                             allVolumeSizeAsked += msg.getRootDiskSize();
                         } else {
-                            throw new ApiMessageInterceptionException(argerr("rootDiskOfferingUuid cannot be null when image mediaType is ISO"));
+                            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10251, "rootDiskOfferingUuid cannot be null when image mediaType is ISO"));
                         }
                     } else {
                         if (msg.getRootDiskOfferingUuid() != null) {
@@ -2344,7 +2345,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                         } else if (msg.getRootDiskSize() != null) {
                             allVolumeSizeAsked += msg.getRootDiskSize();
                         } else {
-                            throw new ApiMessageInterceptionException(argerr("rootDiskOfferingUuid cannot be null when create vm without image"));
+                            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10252, "rootDiskOfferingUuid cannot be null when create vm without image"));
                         }
                     }
 
@@ -2660,7 +2661,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
         vq.add(VolumeVO_.uuid, Op.EQ, ref.getResourceUuid());
         vq.add(VolumeVO_.type, Op.EQ, VolumeType.Root);
         if (vq.isExists()) {
-            throw new OperationFailureException(operr("the resource[uuid:%s] is a ROOT volume, you cannot change its owner, instead," +
+            throw new OperationFailureException(operr(ORG_ZSTACK_COMPUTE_VM_10253, "the resource[uuid:%s] is a ROOT volume, you cannot change its owner, instead," +
                             "change the owner of the VM the root volume belongs to", ref.getResourceUuid()));
         }
     }

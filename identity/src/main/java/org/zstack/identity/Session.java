@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.*;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class Session implements Component {
     private static final CLogger logger = Utils.getLogger(Session.class);
@@ -79,7 +80,7 @@ public class Session implements Component {
             @Override
             protected SessionInventory scripts() {
                 if (q(SessionVO.class).eq(SessionVO_.userUuid, userUuid).count() >= IdentityGlobalConfig.MAX_CONCURRENT_SESSION.value(Integer.class)) {
-                    throw new OperationFailureException(err(IdentityErrors.MAX_CONCURRENT_SESSION_EXCEEDED, "Login sessions hit limit of max allowed concurrent login sessions"));
+                    throw new OperationFailureException(err(ORG_ZSTACK_IDENTITY_10019, IdentityErrors.MAX_CONCURRENT_SESSION_EXCEEDED, "Login sessions hit limit of max allowed concurrent login sessions"));
                 }
 
                 SessionVO vo = new SessionVO();
@@ -202,7 +203,7 @@ public class Session implements Component {
             protected ErrorCode scripts() {
                 SessionInventory s = getSession(uuid);
                 if (s == null) {
-                    return err(IdentityErrors.INVALID_SESSION, "Session expired");
+                    return err(ORG_ZSTACK_IDENTITY_10020, IdentityErrors.INVALID_SESSION, "Session expired");
                 }
 
                 Timestamp curr = getCurrentSqlDate();
@@ -221,7 +222,7 @@ public class Session implements Component {
                     }
 
                     logout(s.getUuid());
-                    return err(IdentityErrors.INVALID_SESSION, "Session expired");
+                    return err(ORG_ZSTACK_IDENTITY_10021, IdentityErrors.INVALID_SESSION, "Session expired");
                 }
 
                 return null;

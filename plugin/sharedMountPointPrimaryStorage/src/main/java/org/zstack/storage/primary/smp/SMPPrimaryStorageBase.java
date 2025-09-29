@@ -58,6 +58,7 @@ import static org.zstack.core.Platform.operr;
 import static org.zstack.storage.primary.smp.SMPPrimaryStorageFactory.type;
 import static org.zstack.utils.CollectionDSL.e;
 import static org.zstack.utils.CollectionDSL.map;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * Created by xing5 on 2016/3/26.
@@ -143,7 +144,7 @@ public class SMPPrimaryStorageBase extends PrimaryStorageBase implements KVMTake
         if (msg.getDestHost() == null) {
             String hostUuid = getAvailableHostUuidForOperation();
             if (hostUuid == null) {
-                throw new OperationFailureException(operr("the shared mount point primary storage[uuid:%s, name:%s] cannot find any " +
+                throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_SMP_10021, "the shared mount point primary storage[uuid:%s, name:%s] cannot find any " +
                                 "available host in attached clusters for instantiating the volume", self.getUuid(), self.getName()));
             }
 
@@ -542,7 +543,7 @@ public class SMPPrimaryStorageBase extends PrimaryStorageBase implements KVMTake
                 hookToKVMHostConnectedEventToChangeStatusToConnected();
             }
 
-            completion.fail(err(PrimaryStorageErrors.DISCONNECTED,
+            completion.fail(err(ORG_ZSTACK_STORAGE_PRIMARY_SMP_10022, PrimaryStorageErrors.DISCONNECTED,
                     "the SMP primary storage[uuid:%s, name:%s] has not attached to any clusters, " +
                             "or no hosts in the attached clusters are connected", self.getUuid(), self.getName()
             ));
@@ -602,7 +603,7 @@ public class SMPPrimaryStorageBase extends PrimaryStorageBase implements KVMTake
 
     @Override
     protected void syncPhysicalCapacity(ReturnValueCompletion<PhysicalCapacityUsage> completion) {
-        completion.fail(operr("not supported operation"));
+        completion.fail(operr(ORG_ZSTACK_STORAGE_PRIMARY_SMP_10023, "not supported operation"));
     }
 
     @Override
@@ -1125,7 +1126,7 @@ public class SMPPrimaryStorageBase extends PrimaryStorageBase implements KVMTake
             return HypervisorType.valueOf(type);
         }
 
-        throw new OperationFailureException(operr("cannot find proper hypervisorType for primary storage[uuid:%s] to handle image format or volume format[%s]", psUuid, imageFormat));
+        throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_SMP_10024, "cannot find proper hypervisorType for primary storage[uuid:%s] to handle image format or volume format[%s]", psUuid, imageFormat));
     }
 
     @Override
@@ -1138,10 +1139,10 @@ public class SMPPrimaryStorageBase extends PrimaryStorageBase implements KVMTake
                     .param("vmUuid", msg.getVmInstanceUuid())
                     .find();
             if (hostStatus == null && getAvailableHostUuidForOperation() == null) {
-                reply.setError(err(HostErrors.HOST_IS_DISCONNECTED, "cannot find available host for operation on" +
+                reply.setError(err(ORG_ZSTACK_STORAGE_PRIMARY_SMP_10025, HostErrors.HOST_IS_DISCONNECTED, "cannot find available host for operation on" +
                         " primary storage[uuid:%s].", self.getUuid()));
             } else if (hostStatus != HostStatus.Connected && hostStatus != null) {
-                reply.setError(err(HostErrors.HOST_IS_DISCONNECTED, "host where vm[uuid:%s] locate is not Connected.", msg.getVmInstanceUuid()));
+                reply.setError(err(ORG_ZSTACK_STORAGE_PRIMARY_SMP_10026, HostErrors.HOST_IS_DISCONNECTED, "host where vm[uuid:%s] locate is not Connected.", msg.getVmInstanceUuid()));
             }
         }
 
@@ -1155,7 +1156,7 @@ public class SMPPrimaryStorageBase extends PrimaryStorageBase implements KVMTake
         }
 
         List<String> infos = refVols.stream().map(v -> String.format("uuid:%s, name:%s", v.getUuid(), v.getName())).collect(Collectors.toList());
-        return operr("volume[uuid:%s] has reference volume[%s], can not change volume type before flatten " +
+        return operr(ORG_ZSTACK_STORAGE_PRIMARY_SMP_10027, "volume[uuid:%s] has reference volume[%s], can not change volume type before flatten " +
                 "them and their descendants", volumeUuid, infos.toString());
     }
 

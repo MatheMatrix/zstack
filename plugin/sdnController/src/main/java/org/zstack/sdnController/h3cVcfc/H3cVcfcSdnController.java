@@ -30,6 +30,7 @@ import java.util.*;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.CollectionDSL.e;
 import static org.zstack.utils.CollectionDSL.map;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
@@ -87,7 +88,7 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
             H3cVcfcCommands.GetH3cVniRangeRsp rsp = new H3cVcfcHttpClient<>(getGetH3cVniRangeRspClass())
                     .syncCall(HttpMethod.GET.name(), self.getIp(), getH3cVcfcVniRangesPath(), cmd, getH3cHeaders(token));
             if (rsp == null) {
-                completion.fail(operr("Could not retrieve VNI ranges because the SDN controller [ip:%s] did not respond", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10010, "Could not retrieve VNI ranges because the SDN controller [ip:%s] did not respond", self.getIp()));
                 return;
             }
 
@@ -111,13 +112,13 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
             }
 
             if (count == 0) {
-                completion.fail(operr("Could not initialize SDN controller because no VNI ranges are configured on controller [ip:%s]", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10011, "Could not initialize SDN controller because no VNI ranges are configured on controller [ip:%s]", self.getIp()));
                 return;
             }
 
             completion.success();
         } catch (Exception e) {
-            completion.fail(operr("Could not retrieve VNI ranges from SDN controller [ip:%s] because %s", self.getIp(), e.getLocalizedMessage()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10012, "Could not retrieve VNI ranges from SDN controller [ip:%s] because %s", self.getIp(), e.getLocalizedMessage()));
         }
     }
 
@@ -127,7 +128,7 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
             H3cVcfcCommands.GetH3cTenantsRsp rsp = new H3cVcfcHttpClient<>(getGetH3cTenantsRspClass())
                     .syncCall(HttpMethod.GET.name(), self.getIp(), getH3cVcfcTenantsPath(), cmd, getH3cHeaders(token));
             if (rsp == null) {
-                completion.fail(operr("Could not retrieve tenants because the SDN controller [ip:%s] did not respond", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10013, "Could not retrieve tenants because the SDN controller [ip:%s] did not respond", self.getIp()));
                 return;
             }
 
@@ -150,13 +151,13 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
             }
 
             if (!found) {
-                completion.fail(operr("Could not initialize SDN controller because no default tenant is configured on controller [ip:%s]", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10014, "Could not initialize SDN controller because no default tenant is configured on controller [ip:%s]", self.getIp()));
                 return;
             }
 
             completion.success();
         } catch (Exception e) {
-            completion.fail(operr("Could not retrieve default tenant from SDN controller [ip:%s] because of a communication error", self.getIp()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10015, "Could not retrieve default tenant from SDN controller [ip:%s] because of a communication error", self.getIp()));
         }
     }
 
@@ -307,7 +308,7 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
             H3cVcfcCommands.CreateH3cNetworksRsp rsp = new H3cVcfcHttpClient<>(getCreateH3cNetworksRspClass())
                     .syncCall(HttpMethod.POST.name(), leaderIp, getH3cVcfcL2NetworksPath(), cmd, getH3cHeaders(token));
             if (rsp == null) {
-                completion.fail(operr("Could not create VXLAN network because the SDN controller [ip:%s] did not respond", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10016, "Could not create VXLAN network because the SDN controller [ip:%s] did not respond", self.getIp()));
                 return;
             }
             H3cVcfcCommands.NetworkCmd network = rsp.networks.get(0);
@@ -323,7 +324,7 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
 
             completion.success();
         } catch (Exception e) {
-            completion.fail(operr("Could not create VXLAN network on SDN controller [ip:%s] because %s", self.getIp(), e.getMessage()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10017, "Could not create VXLAN network on SDN controller [ip:%s] because %s", self.getIp(), e.getMessage()));
         }
     }
 
@@ -402,13 +403,13 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
             H3cVcfcCommands.DeleteH3cNetworksRsp rsp = new H3cVcfcHttpClient<>(getDeleteH3cNetworksRspClass())
                     .syncCall(HttpMethod.DELETE.name(), leaderIp, String.format("%s/%s", getH3cVcfcL2NetworksPath(), h3cL2NetworkUuid), cmd, getH3cHeaders(token));
             if (rsp == null) {
-                completion.fail(operr("Could not delete VXLAN network because the SDN controller [ip:%s] did not respond", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10018, "Could not delete VXLAN network because the SDN controller [ip:%s] did not respond", self.getIp()));
                 return;
             }
 
             completion.success();
         } catch (Exception e) {
-            completion.fail(operr("Could not delete VXLAN network on SDN controller [ip:%s] because %s", self.getIp(), e.getMessage()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10019, "Could not delete VXLAN network on SDN controller [ip:%s] because %s", self.getIp(), e.getMessage()));
         }
     }
 
@@ -465,14 +466,14 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
             H3cVcfcCommands.GetH3cTeamLederIpReply rsp = new H3cVcfcHttpClient<>(getGetH3cTeamLederIpReplyClass())
                     .syncCall(HttpMethod.GET.name(), self.getIp(), getH3cVcfcTeamLeaderIpPath(), cmd, getH3cHeaders(token));
             if (rsp == null) {
-                completion.fail(operr("Could not determine cluster leader because the SDN controller [ip:%s] did not respond", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10020, "Could not determine cluster leader because the SDN controller [ip:%s] did not respond", self.getIp()));
                 return;
             }
 
             leaderIp = rsp.ip;
             completion.success();
         } catch (Exception e) {
-            completion.fail(operr("Could not determine cluster leader for SDN controller [ip:%s] because %s", self.getIp(), e.getMessage()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10021, "Could not determine cluster leader for SDN controller [ip:%s] because %s", self.getIp(), e.getMessage()));
         }
     }
 
@@ -487,7 +488,7 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
             H3cVcfcCommands.LoginRsp rsp = new H3cVcfcHttpClient<>(getLoginRspClass())
                     .syncCall(HttpMethod.POST.name(), self.getIp(), getH3cVcfcGetTokenPath(), cmd, getH3cHeaders());
             if (rsp == null) {
-                completion.fail(operr("Could not authenticate with SDN controller because controller [ip:%s] did not respond", self.getIp()));
+                completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10022, "Could not authenticate with SDN controller because controller [ip:%s] did not respond", self.getIp()));
                 return;
             }
 
@@ -495,7 +496,7 @@ public class H3cVcfcSdnController implements SdnController, SdnControllerL2 {
 
             completion.success();
         } catch (Exception e) {
-            completion.fail(operr("Could not authenticate with SDN controller [ip:%s] because %s", self.getIp(), e.getMessage()));
+            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_H3CVCFC_10023, "Could not authenticate with SDN controller [ip:%s] because %s", self.getIp(), e.getMessage()));
         }
     }
 

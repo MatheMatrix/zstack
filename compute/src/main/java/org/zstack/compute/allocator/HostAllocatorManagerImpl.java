@@ -53,6 +53,7 @@ import java.util.concurrent.Callable;
 
 import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.CollectionDSL.list;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class HostAllocatorManagerImpl extends AbstractService implements HostAllocatorManager, VmAbnormalLifeCycleExtensionPoint {
     private static final CLogger logger = Utils.getLogger(HostAllocatorManagerImpl.class);
@@ -945,7 +946,7 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
 
                     trigger.next();
                 } catch (UnableToReserveHostCapacityException e) {
-                    trigger.fail(operr(e.getMessage()));
+                    trigger.fail(operr(ORG_ZSTACK_COMPUTE_ALLOCATOR_10021, e.getMessage()));
                 }
             }
 
@@ -968,7 +969,7 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
 
                     trigger.next();
                 } catch (UnableToReserveHostCapacityException e) {
-                    trigger.fail(operr(e.getMessage()));
+                    trigger.fail(operr(ORG_ZSTACK_COMPUTE_ALLOCATOR_10022, e.getMessage()));
                 }
             }
 
