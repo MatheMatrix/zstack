@@ -99,7 +99,7 @@ public class KvmAgentCommandDispatcher {
                 KVMHostAsyncHttpCallReply r = reply.castReply();
                 final T rsp = r.toResponse(rspType);
                 if (!rsp.success) {
-                    completion.fail(operr("operation error, because:%s", rsp.error));
+                    completion.fail(operr("operation error, because:%s", (String) rsp.error));
                     return;
                 }
 

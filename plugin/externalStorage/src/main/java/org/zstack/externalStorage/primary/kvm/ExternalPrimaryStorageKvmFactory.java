@@ -196,7 +196,7 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
                     } else {
                         status = PrimaryStorageHostStatus.Disconnected;
                         err = operr("external primary storage[uuid:%s, name:%s] returns unhealthy status: %s",
-                                extPs.getUuid(), extPs.getName(), returnValue.getHealthy());
+                                ((ExternalPrimaryStorageVO) extPs).getUuid(), ((ExternalPrimaryStorageVO) extPs).getName(), returnValue.getHealthy());
                         compl.addError(err);
                     }
 

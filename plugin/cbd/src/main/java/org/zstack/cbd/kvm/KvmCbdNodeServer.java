@@ -213,7 +213,7 @@ public class KvmCbdNodeServer implements Component, KvmSetupSelfFencerExtensionP
                 KVMHostAsyncHttpCallReply rep = reply.castReply();
                 final T rsp = rep.toResponse(respType);
                 if (!rsp.success) {
-                    completion.fail(operr("operation error, because:%s", rsp.error));
+                    completion.fail(operr("operation error, because:%s", (String) rsp.error));
                     return;
                 }
                 completion.success(rsp);

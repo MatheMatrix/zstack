@@ -375,7 +375,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                         new While<>(hosts).each((h, comp) -> {
                             KVMHostVO host = org.zstack.core.db.Q.New(KVMHostVO.class).eq(KVMHostVO_.uuid, h.getUuid()).find();
                             if (host == null) {
-                                comp.addError(operr("cannot found kvm host[uuid:%s], unable to deploy client", h.getUuid()));
+                                comp.addError(operr("cannot found kvm host[uuid:%s], unable to deploy client", ((HostVO) h).getUuid()));
                                 comp.allDone();
                                 return;
                             }
