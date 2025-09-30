@@ -101,6 +101,7 @@ import static org.zstack.network.service.virtualrouter.vyos.VyosConstants.VYOS_V
 import static org.zstack.utils.CollectionDSL.e;
 import static org.zstack.utils.CollectionDSL.map;
 import static org.zstack.utils.VipUseForList.SNAT_NETWORK_SERVICE_TYPE;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class VirtualRouterManagerImpl extends AbstractService implements VirtualRouterManager,
         PrepareDbInitialValueExtensionPoint, L2NetworkCreateExtensionPoint,
@@ -283,7 +284,7 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
                         pubEndIp = pubIprange.getEndIp();
 
                         if(NetworkUtils.isIpv4RangeOverlap(priStartIp,priEndIp,pubStartIp,pubEndIp)){
-                            throw new OperationFailureException(argerr("cannot create virtual Router vm while virtual router network overlaps with private network in ip "));
+                            throw new OperationFailureException(argerr(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10021, "cannot create virtual Router vm while virtual router network overlaps with private network in ip "));
                         }
 
                     }
@@ -302,7 +303,7 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
                 }.call());
 
                 if (neededService.contains(NetworkServiceType.SNAT.toString()) && offering.getPublicNetworkUuid() == null) {
-                    ErrorCode err = err(VirtualRouterErrors.NO_PUBLIC_NETWORK_IN_OFFERING, "L3Network[uuid:%s, name:%s] requires SNAT service, but default virtual router offering[uuid:%s, name:%s] doesn't have a public network", l3Network.getUuid(), l3Network.getName(), offering.getUuid(), offering.getName());
+                    ErrorCode err = err(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10022, VirtualRouterErrors.NO_PUBLIC_NETWORK_IN_OFFERING, "L3Network[uuid:%s, name:%s] requires SNAT service, but default virtual router offering[uuid:%s, name:%s] doesn't have a public network", l3Network.getUuid(), l3Network.getName(), offering.getUuid(), offering.getName());
                     logger.warn(err.getDetails());
                     failAndReply(err);
                     return;
@@ -728,11 +729,11 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
                 String offeringUuid = VirtualRouterSystemTags.VIRTUAL_ROUTER_OFFERING.getTokenByTag(sysTag, VirtualRouterSystemTags.VIRTUAL_ROUTER_OFFERING_TOKEN);
                 VirtualRouterOfferingVO offeringVO = dbf.findByUuid(offeringUuid, VirtualRouterOfferingVO.class);
                 if (offeringVO == null) {
-                    throw new ApiMessageInterceptionException(argerr("No virtual router instance offering with uuid:%s is found", offeringUuid));
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10023, "No virtual router instance offering with uuid:%s is found", offeringUuid));
                 }
 
                 if (resourceUuid != null && resourceUuid.equals(offeringVO.getPublicNetworkUuid())) {
-                    throw new ApiMessageInterceptionException(argerr("the network of virtual router instance offering with uuid:%s can't be same with private l3 network uuid:%s", offeringUuid, resourceUuid));
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10024, "the network of virtual router instance offering with uuid:%s can't be same with private l3 network uuid:%s", offeringUuid, resourceUuid));
                 }
             }
 
@@ -1160,7 +1161,7 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
 
         List<VirtualRouterOfferingInventory> offerings = findOfferingByGuestL3Network(l3Nw);
         if (offerings == null) {
-            ErrorCode err = err(VirtualRouterErrors.NO_DEFAULT_OFFERING, "unable to find a virtual router offering for l3Network[uuid:%s] in zone[uuid:%s], please at least create a default virtual router offering in that zone",
+            ErrorCode err = err(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10025, VirtualRouterErrors.NO_DEFAULT_OFFERING, "unable to find a virtual router offering for l3Network[uuid:%s] in zone[uuid:%s], please at least create a default virtual router offering in that zone",
                     l3Nw.getUuid(), l3Nw.getZoneUuid());
             logger.warn(err.getDetails());
             completion.fail(err);
@@ -1237,7 +1238,7 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
                     @Override
                     public void fail(ErrorCode errorCode) {
                         lock.unlock();
-                        completion.fail(operr("Failed to start vr l3[uuid: %s]", struct.getL3Network().getUuid()).causedBy(errorCode));
+                        completion.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10026, "Failed to start vr l3[uuid: %s]", struct.getL3Network().getUuid()).causedBy(errorCode));
                         chain.next();
                     }
                 });
@@ -1451,12 +1452,12 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
 
     void validateIpv6Range(String l3NetworkUuid) {
         if (Q.New(VirtualRouterOfferingVO.class).eq(VirtualRouterOfferingVO_.managementNetworkUuid, l3NetworkUuid).isExists()) {
-            throw new ApiMessageInterceptionException(argerr("cannot add ip range, because l3 network[uuid:%s] is " +
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10027, "cannot add ip range, because l3 network[uuid:%s] is " +
                     "management network of virtual router offering",l3NetworkUuid));
         }
 
         if (Q.New(VmNicVO.class).eq(VmNicVO_.l3NetworkUuid, l3NetworkUuid).in(VmNicVO_.metaData, VirtualRouterNicMetaData.MANAGEMENT_NIC_MASK_STRING_LIST).isExists()) {
-            throw new ApiMessageInterceptionException(argerr("cannot add ip range, because l3 network[uuid:%s] is " +
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10028, "cannot add ip range, because l3 network[uuid:%s] is " +
                     "management network of virtual router", l3NetworkUuid));
         }
     }
@@ -1483,7 +1484,7 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
             try {
                 ApplianceVmType.valueOf(type);
             } catch (Exception e) {
-                throw new ApiMessageInterceptionException(argerr("couldn't add image, because systemTag [%s] " +
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10029, "couldn't add image, because systemTag [%s] " +
                         "includes invalid appliance image type [%s]", tag, type));
             }
         }
@@ -1521,11 +1522,11 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
         }
 
         if (!snat && eip) {
-            throw new ApiMessageInterceptionException(argerr("failed tot attach virtual router network services to l3Network[uuid:%s]. When eip is selected, snat must be selected too", msg.getL3NetworkUuid()));
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10030, "failed tot attach virtual router network services to l3Network[uuid:%s]. When eip is selected, snat must be selected too", msg.getL3NetworkUuid()));
         }
 
         if (!snat && portForwarding) {
-            throw new ApiMessageInterceptionException(argerr("failed tot attach virtual router network services to l3Network[uuid:%s]. When port forwarding is selected, snat must be selected too", msg.getL3NetworkUuid()));
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10031, "failed tot attach virtual router network services to l3Network[uuid:%s]. When port forwarding is selected, snat must be selected too", msg.getL3NetworkUuid()));
         }
     }
 
@@ -2467,7 +2468,7 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
                 VirtualRouterAsyncHttpCallReply re = reply.castReply();
                 VirtualRouterCommands.SetSNATRsp ret = re.toResponse(VirtualRouterCommands.SetSNATRsp.class);
                 if (!ret.isSuccess()) {
-                    ErrorCode err = operr("update virtual router [uuid:%s] default network failed, because %s",
+                    ErrorCode err = operr(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10032, "update virtual router [uuid:%s] default network failed, because %s",
                             vrUuid, ret.getError());
                     completion.fail(err);
                 } else {
@@ -2567,7 +2568,7 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
             ApplianceVmType.valueOf(ss[1]);
             return String.format("has ('applianceType::%s')", ss[1]);
         } catch (Exception e) {
-            throw new OperationFailureException(argerr("invalid ApplianceVmType %s", ss[1]));
+            throw new OperationFailureException(argerr(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10033, "invalid ApplianceVmType %s", ss[1]));
         }
     }
 
@@ -2692,7 +2693,7 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
                 VirtualRouterAsyncHttpCallReply re = reply.castReply();
                 CreateVipRsp ret = re.toResponse(CreateVipRsp.class);
                 if (!ret.isSuccess()) {
-                    ErrorCode err = operr("failed to sync vips[ips: %s] on virtual router[uuid:%s]" +
+                    ErrorCode err = operr(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_10034, "failed to sync vips[ips: %s] on virtual router[uuid:%s]" +
                                     " for vr hot mirage, because %s",
                             vips.stream().map(VipTO::getIp).collect(Collectors.toList()),
                             inv.getUuid(), ret.getError());

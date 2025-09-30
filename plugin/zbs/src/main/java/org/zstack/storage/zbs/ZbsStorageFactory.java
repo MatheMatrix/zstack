@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import static org.zstack.storage.zbs.ZbsHelper.*;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * @author Xingwei Yu
@@ -57,7 +58,7 @@ public class ZbsStorageFactory implements ExternalPrimaryStorageSvcBuilder, Back
 
     @Override
     public void discover(String url, String config, ReturnValueCompletion<LinkedHashMap> completion) {
-        completion.fail(operr("zbs not support discover yet"));
+        completion.fail(operr(ORG_ZSTACK_STORAGE_ZBS_10023, "zbs not support discover yet"));
     }
 
     public void setPreferBackupStorageTypes(List<String> preferBackupStorageTypes) {

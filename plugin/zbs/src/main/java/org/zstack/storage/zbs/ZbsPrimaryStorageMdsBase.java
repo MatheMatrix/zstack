@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * @author Xingwei Yu
@@ -168,7 +169,7 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
                                         .setHostname(getSelf().getAddr())
                                         .setPort(getSelf().getPort()).runErrorByExceptionAndClose();
                             } catch (SshException ex) {
-                                throw new OperationFailureException(operr(ex.toString()));
+                                throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_ZBS_10021, ex.toString()));
                             }
 
                             trigger.next();
@@ -326,7 +327,7 @@ public class ZbsPrimaryStorageMdsBase extends ZbsMdsBase {
                                 return;
                             }
 
-                            comp.addError(operr("%s", rsp.getError()));
+                            comp.addError(operr(ORG_ZSTACK_STORAGE_ZBS_10022, "%s", rsp.getError()));
 
                             if (step.equals(MAX_PING_CNT)) {
                                 comp.allDone();

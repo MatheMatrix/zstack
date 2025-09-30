@@ -69,6 +69,7 @@ import static org.zstack.core.Platform.*;
 import static org.zstack.storage.volume.VolumeSystemTags.VOLUME_PROVISIONING_STRATEGY;
 import static org.zstack.storage.volume.VolumeSystemTags.VOLUME_PROVISIONING_STRATEGY_TOKEN;
 import static org.zstack.utils.CollectionDSL.*;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * Created with IntelliJ IDEA.
@@ -204,7 +205,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
 
                         boolean imageExists = Q.New(ImageVO.class).eq(ImageVO_.uuid, self.getRootImageUuid()).isExists();
                         if (!cacheExists && !imageExists) {
-                            trigger.fail(operr("cannot find image cache[imageUuid: %s] for reinit volume", self.getRootImageUuid()));
+                            trigger.fail(operr(ORG_ZSTACK_STORAGE_VOLUME_10090, "cannot find image cache[imageUuid: %s] for reinit volume", self.getRootImageUuid()));
                             return;
                         }
 
@@ -893,7 +894,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
         }
 
         if (self.getStatus() != VolumeStatus.Deleted) {
-            completion.fail(operr("the volume[uuid:%s, name:%s] is not deleted yet, can't expunge it",
+            completion.fail(operr(ORG_ZSTACK_STORAGE_VOLUME_10091, "the volume[uuid:%s, name:%s] is not deleted yet, can't expunge it",
                             self.getUuid(), self.getName()));
             return;
         }
@@ -1846,7 +1847,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
                                 VolumeVO oldRootVolumeVO = vm.getRootVolume();
                                 VolumeVO newRootVolumeVO = vm.getAllVolumes().stream().filter(it -> it.getUuid().equals(msg.getVolumeUuid()))
                                         .findFirst().orElseThrow(() -> new OperationFailureException(
-                                                operr("volume[uuid%s] should be attached.")
+                                                operr(ORG_ZSTACK_STORAGE_VOLUME_10092, "volume[uuid%s] should be attached.")
                                         ));
 
                                 oldRootVolOldAndNewInstallPaths.put(oldRootVolumeVO.getInstallPath(), oldRootVol.getInstallPath());
@@ -1949,7 +1950,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
     private void handle(ChangeVolumeTypeMsg msg) {
         if (self.isAttached()) {
             ChangeVolumeTypeReply reply = new ChangeVolumeTypeReply();
-            reply.setError(operr("only support detached volume, use SetVmBootVolumeMsg instead."));
+            reply.setError(operr(ORG_ZSTACK_STORAGE_VOLUME_10093, "only support detached volume, use SetVmBootVolumeMsg instead."));
             bus.reply(msg, reply);
             return;
         }
@@ -2705,7 +2706,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
 
             @Override
             public void fail(ErrorCode errorCode) {
-                evt.setError(err(SysErrors.DELETE_RESOURCE_ERROR, errorCode, errorCode.getDetails()));
+                evt.setError(err(ORG_ZSTACK_STORAGE_VOLUME_10094, SysErrors.DELETE_RESOURCE_ERROR, errorCode, errorCode.getDetails()));
                 bus.publish(evt);
             }
         });
@@ -3223,7 +3224,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
 
                     @Override
                     public void fail(ErrorCode errorCode) {
-                        reply.setError(err(VolumeErrors.FLATTEN_ERROR, errorCode, "failed to flatten volume[uuid:%s]", self.getUuid()));
+                        reply.setError(err(ORG_ZSTACK_STORAGE_VOLUME_10095, VolumeErrors.FLATTEN_ERROR, errorCode, "failed to flatten volume[uuid:%s]", self.getUuid()));
                         bus.reply(msg, reply);
                         chain.next();
                     }
@@ -3276,7 +3277,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
                 .eq(VolumeVO_.vmInstanceUuid, vmUuid)
                 .count();
         if (vmDataVolumeUsage + 1 > maxDataVolumeNum) {
-            throw new OperationFailureException(operr("hypervisor[%s] only allows max %s data volumes to be attached to a single vm; there have been %s data volumes attached to vm[uuid:%s]",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_VOLUME_10096, "hypervisor[%s] only allows max %s data volumes to be attached to a single vm; there have been %s data volumes attached to vm[uuid:%s]",
                     hypervisorType, maxDataVolumeNum, vmDataVolumeUsage, vmUuid));
         }
     }

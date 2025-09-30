@@ -94,6 +94,7 @@ import static java.util.Arrays.asList;
 import static org.zstack.core.Platform.*;
 import static org.zstack.core.progress.ProgressReportService.*;
 import static org.zstack.utils.CollectionDSL.*;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class VmInstanceBase extends AbstractVmInstance {
     protected static final CLogger logger = Utils.getLogger(VmInstanceBase.class);
@@ -266,7 +267,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         }
 
         if (self == null) {
-            throw new OperationFailureException(operr("vm[uuid:%s, name:%s] has been deleted", vo.getUuid(), vo.getName()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_COMPUTE_VM_10244, "vm[uuid:%s, name:%s] has been deleted", vo.getUuid(), vo.getName()));
         }
 
         originalCopy = ObjectUtils.newAndCopy(vo, vo.getClass());
@@ -431,7 +432,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                                 it.getKey(), it.getValue().getRunningTask().get(0).getName()))
                         .collect(Collectors.toList());
                 if (!hasTaskVols.isEmpty()) {
-                    bus.replyErrorByMessageType((Message) msg, operr(Strings.join(hasTaskVols, ';')));
+                    bus.replyErrorByMessageType((Message) msg, operr(ORG_ZSTACK_COMPUTE_VM_10245, Strings.join(hasTaskVols, ';')));
                     return;
                 }
 
@@ -642,7 +643,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void fail(ErrorCode errorCode) {
                 ExecuteCrashStrategyReply reply = new ExecuteCrashStrategyReply();
-                reply.setError(err(VmErrors.REBOOT_ERROR, errorCode, errorCode.getDetails()));
+                reply.setError(err(ORG_ZSTACK_COMPUTE_VM_10246, VmErrors.REBOOT_ERROR, errorCode, errorCode.getDetails()));
                 bus.reply(msg, reply);
                 chain.next();
             }
@@ -664,14 +665,14 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void run(MessageReply reply) {
                 if (!reply.isSuccess()) {
-                    completion.fail(operr("failed to check state of the vm[uuid:%s] on the host[uuid:%s], %s", vmInv.getUuid(), vmInv.getHostUuid(), reply.getError()));
+                    completion.fail(operr(ORG_ZSTACK_COMPUTE_VM_10247, "failed to check state of the vm[uuid:%s] on the host[uuid:%s], %s", vmInv.getUuid(), vmInv.getHostUuid(), reply.getError()));
                     return;
                 }
 
                 CheckVmStateOnHypervisorReply r = reply.castReply();
                 String state = r.getStates().get(vmInv.getUuid());
                 if (state == null) {
-                    completion.fail(operr("got an unrecognized state of the vm[uuid:%s] on the host[uuid:%s]", vmInv.getUuid(), vmInv.getHostUuid()));
+                    completion.fail(operr(ORG_ZSTACK_COMPUTE_VM_10248, "got an unrecognized state of the vm[uuid:%s] on the host[uuid:%s]", vmInv.getUuid(), vmInv.getHostUuid()));
                     return;
                 }
                 if (!state.equals(VmInstanceState.Crashed.toString())) {
@@ -1059,7 +1060,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         });
 
         if (targetNic == null) {
-            throw new OperationFailureException(operr("the vm[uuid:%s] has no nic on the L3 network[uuid:%s]", self.getUuid(), l3Uuid));
+            throw new OperationFailureException(operr(ORG_ZSTACK_COMPUTE_VM_10249, "the vm[uuid:%s] has no nic on the L3 network[uuid:%s]", self.getUuid(), l3Uuid));
         }
 
         /* if static ip is same to nic, do nothing */
@@ -1421,7 +1422,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         final VmStateChangedOnHostReply reply = new VmStateChangedOnHostReply();
         if (refreshVO(true) == null) {
             // the vm has been deleted
-            reply.setError(operr("the vm has been deleted"));
+            reply.setError(operr(ORG_ZSTACK_COMPUTE_VM_10250, "the vm has been deleted"));
             bus.reply(msg, reply);
             completion.done();
             return;
@@ -2752,7 +2753,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void fail(ErrorCode errorCode) {
                 RebootVmInstanceReply reply = new RebootVmInstanceReply();
-                reply.setError(err(VmErrors.REBOOT_ERROR, errorCode, errorCode.getDetails()));
+                reply.setError(err(ORG_ZSTACK_COMPUTE_VM_10251, VmErrors.REBOOT_ERROR, errorCode, errorCode.getDetails()));
                 bus.reply(msg, reply);
                 chain.next();
             }
@@ -2792,7 +2793,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void fail(ErrorCode errorCode) {
                 StopVmInstanceReply reply = new StopVmInstanceReply();
-                reply.setError(err(VmErrors.STOP_ERROR, errorCode, errorCode.getDetails()));
+                reply.setError(err(ORG_ZSTACK_COMPUTE_VM_10252, VmErrors.STOP_ERROR, errorCode, errorCode.getDetails()));
                 bus.reply(msg, reply);
                 chain.next();
             }
@@ -2844,7 +2845,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                     msg.getRootVolumeInventory().getPrimaryStorageUuid());
             bus.send(cmsg, new CloudBusCallBack(chain) {
                 private void fail(ErrorCode errorCode) {
-                    reply.setError(operr(errorCode, "failed to create template from root volume[uuid:%s] on primary storage[uuid:%s]",
+                    reply.setError(operr(ORG_ZSTACK_COMPUTE_VM_10253, errorCode, "failed to create template from root volume[uuid:%s] on primary storage[uuid:%s]",
                             msg.getRootVolumeInventory().getUuid(), msg.getRootVolumeInventory().getPrimaryStorageUuid()));
                     logger.warn(reply.getError().getDetails());
                     bus.reply(msg, reply);
@@ -2915,7 +2916,7 @@ public class VmInstanceBase extends AbstractVmInstance {
 
                 AttachNicToVmReply r = new AttachNicToVmReply();
                 if (!reply.isSuccess()) {
-                    r.setError(err(VmErrors.ATTACH_NETWORK_ERROR, r.getError(), r.getError().getDetails()));
+                    r.setError(err(ORG_ZSTACK_COMPUTE_VM_10254, VmErrors.ATTACH_NETWORK_ERROR, r.getError(), r.getError().getDetails()));
                 }
                 bus.reply(msg, r);
             }
@@ -3914,7 +3915,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         APIGetVmDeviceAddressReply reply = new APIGetVmDeviceAddressReply();
         GetVmDeviceAddressMsg gmsg = new GetVmDeviceAddressMsg();
         if (self.getHostUuid() == null || self.getState() != VmInstanceState.Running) {
-            reply.setError(operr("VM[uuid:%s] state is not Running.", msg.getUuid()));
+            reply.setError(operr(ORG_ZSTACK_COMPUTE_VM_10255, "VM[uuid:%s] state is not Running.", msg.getUuid()));
             bus.reply(msg, reply);
             return;
         }
@@ -5000,7 +5001,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             }
         }
 
-        throw new OperationFailureException(operr("the ISO[uuid:%s] is on backup storage that is not compatible of the primary storage[uuid:%s]" +
+        throw new OperationFailureException(operr(ORG_ZSTACK_COMPUTE_VM_10256, "the ISO[uuid:%s] is on backup storage that is not compatible of the primary storage[uuid:%s]" +
                 " where the VM[name:%s, uuid:%s] is on", isoUuid, psUuid, self.getName(), self.getUuid()));
     }
 
@@ -5393,7 +5394,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void run(MessageReply innerReply) {
                 if (!innerReply.isSuccess()) {
-                    completion.fail(Platform.operr(innerReply.getError(),
+                    completion.fail(Platform.operr(ORG_ZSTACK_COMPUTE_VM_10257, innerReply.getError(),
                             "Failed to update vm[uuid=%s] on hypervisor.", self.getUuid()));
                     return;
                 }
@@ -5411,7 +5412,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                 }
                 final ErrorCodeList list = new ErrorCodeList();
                 list.getCauses().addAll(casedReply.getIgnoredErrors());
-                completion.fail(Platform.operr(list,
+                completion.fail(Platform.operr(ORG_ZSTACK_COMPUTE_VM_10258, list,
                         "Failed to update vm[uuid=%s] on hypervisor: The modification of some properties failed",
                         self.getUuid()));
             }
@@ -5441,7 +5442,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                     Boolean unique = VmGlobalConfig.UNIQUE_VM_NAME.value(Boolean.class);
                     boolean exists = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.name, msg.getName()).notEq(VmInstanceVO_.uuid, self.getUuid()).isExists();
                     if (unique && exists) {
-                        trigger.fail(operr("could not create vm, a vm with the name [%s] already exists", msg.getName()));
+                        trigger.fail(operr(ORG_ZSTACK_COMPUTE_VM_10259, "could not create vm, a vm with the name [%s] already exists", msg.getName()));
                         return;
                     }
                     self.setName(msg.getName());
@@ -5541,7 +5542,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                     @Override
                     public void run(MessageReply innerReply) {
                         if (!innerReply.isSuccess()) {
-                            trigger.fail(Platform.operr(innerReply.getError(),
+                            trigger.fail(Platform.operr(ORG_ZSTACK_COMPUTE_VM_10260, innerReply.getError(),
                                     "failed to update vm[uuid=%s] on hypervisor", self.getUuid()));
                             return;
                         }
@@ -5555,7 +5556,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                         }
                         final ErrorCodeList list = new ErrorCodeList();
                         list.getCauses().addAll(casedReply.getIgnoredErrors());
-                        trigger.fail(Platform.operr(list,
+                        trigger.fail(Platform.operr(ORG_ZSTACK_COMPUTE_VM_10261, list,
                                 "failed to update vm[uuid=%s] on hypervisor: The modification of some properties failed",
                                 self.getUuid()));
                     }
@@ -5664,7 +5665,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         String vmUuid = self.getUuid();
         List<String> isoList = IsoOperator.getIsoUuidByVmUuid(vmUuid);
         if (!isoList.contains(isoUuid)) {
-            throw new OperationFailureException(operr("ISO[uuid:%s] is not attached to VM[uuid:%s]", isoUuid, self.getUuid()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_COMPUTE_VM_10262, "ISO[uuid:%s] is not attached to VM[uuid:%s]", isoUuid, self.getUuid()));
         }
 
         List<VmCdRomVO> cdRomVOS = Q.New(VmCdRomVO.class)
@@ -6582,7 +6583,7 @@ public class VmInstanceBase extends AbstractVmInstance {
 
         ErrorCode allowed = validateOperationByState(msg, self.getState(), VmErrors.DETACH_VOLUME_ERROR);
         if (allowed != null) {
-            completion.fail(operr("Detaching volume is not allowed when VM[uuid=%s] is in state[%s]",
+            completion.fail(operr(ORG_ZSTACK_COMPUTE_VM_10263, "Detaching volume is not allowed when VM[uuid=%s] is in state[%s]",
                     self.getUuid(), self.getState()));
             return;
         }
@@ -6700,7 +6701,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         }).error(new FlowErrorHandler(completion) {
             @Override
             public void handle(ErrorCode errCode, Map data) {
-                completion.fail(operr(errCode, "Failed to detach volume[uuid=%s] of VM[uuid=%s]",
+                completion.fail(operr(ORG_ZSTACK_COMPUTE_VM_10264, errCode, "Failed to detach volume[uuid=%s] of VM[uuid=%s]",
                         msg.getVolume().getUuid(), self.getUuid()));
             }
         }).start();
@@ -6791,7 +6792,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void handle(final ErrorCode errCode, Map data) {
                 extEmitter.failedToAttachVolume(getSelfInventory(), volume, errCode, data);
-                reply.setError(err(VmErrors.ATTACH_VOLUME_ERROR, errCode, errCode.getDetails()));
+                reply.setError(err(ORG_ZSTACK_COMPUTE_VM_10265, VmErrors.ATTACH_VOLUME_ERROR, errCode, errCode.getDetails()));
                 bus.reply(msg, reply);
                 completion.done();
             }
@@ -7189,7 +7190,7 @@ public class VmInstanceBase extends AbstractVmInstance {
 
                     if (l3 == null) {
                         throw new OperationFailureException(operr(
-                                "Unable to find L3Network[uuid:%s] to start the current vm, it may have been deleted, " +
+                        ORG_ZSTACK_COMPUTE_VM_10266,         "Unable to find L3Network[uuid:%s] to start the current vm, it may have been deleted, " +
                                         "Operation suggestion: delete this vm, recreate a new vm", inv.getUuid()));
                     }
                     l3s.add(l3);
@@ -7338,7 +7339,7 @@ public class VmInstanceBase extends AbstractVmInstance {
 
         int max = VmGlobalConfig.MAXIMUM_CD_ROM_NUM.value(Integer.class);
         if (cdRomSpecs.size() > max) {
-            throw new OperationFailureException(operr("One vm cannot create %s CDROMs, vm can only add %s CDROMs", cdRomSpecs.size(), max));
+            throw new OperationFailureException(operr(ORG_ZSTACK_COMPUTE_VM_10267, "One vm cannot create %s CDROMs, vm can only add %s CDROMs", cdRomSpecs.size(), max));
         }
 
         return cdRomSpecs;
@@ -7429,7 +7430,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                     logger.warn(e.getMessage());
                 }
 
-                completion.fail(operr(errCode, errCode.getDetails()));
+                completion.fail(operr(ORG_ZSTACK_COMPUTE_VM_10268, errCode, errCode.getDetails()));
             }
         }).start();
     }
@@ -7448,7 +7449,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void fail(ErrorCode errorCode) {
                 StartVmInstanceReply reply = new StartVmInstanceReply();
-                reply.setError(err(VmErrors.START_ERROR, errorCode, errorCode.getDetails()));
+                reply.setError(err(ORG_ZSTACK_COMPUTE_VM_10269, VmErrors.START_ERROR, errorCode, errorCode.getDetails()));
                 bus.reply(msg, reply);
                 taskChain.next();
             }
@@ -7472,7 +7473,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void fail(ErrorCode errorCode) {
                 APIStartVmInstanceEvent evt = new APIStartVmInstanceEvent(msg.getId());
-                evt.setError(err(VmErrors.START_ERROR, errorCode, errorCode.getDetails()));
+                evt.setError(err(ORG_ZSTACK_COMPUTE_VM_10270, VmErrors.START_ERROR, errorCode, errorCode.getDetails()));
                 bus.publish(evt);
                 taskChain.next();
             }
@@ -7584,7 +7585,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         }).error(new FlowErrorHandler(msg) {
             @Override
             public void handle(ErrorCode errCode, Map data) {
-                completion.fail(err(SysErrors.DELETE_RESOURCE_ERROR, errCode, errCode.getDetails()));
+                completion.fail(err(ORG_ZSTACK_COMPUTE_VM_10271, SysErrors.DELETE_RESOURCE_ERROR, errCode, errCode.getDetails()));
             }
         }).start();
     }
@@ -7618,7 +7619,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                         .listValues();
 
                 if (resultList.isEmpty()) {
-                    throw new OperationFailureException(operr("no way to get image size of %s, report exception.", spec.getVmInventory().getImageUuid()));
+                    throw new OperationFailureException(operr(ORG_ZSTACK_COMPUTE_VM_10272, "no way to get image size of %s, report exception.", spec.getVmInventory().getImageUuid()));
                 }
             }
 
@@ -7882,7 +7883,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void fail(ErrorCode errorCode) {
                 APIRebootVmInstanceEvent evt = new APIRebootVmInstanceEvent(msg.getId());
-                evt.setError(err(VmErrors.REBOOT_ERROR, errorCode, errorCode.getDetails()));
+                evt.setError(err(ORG_ZSTACK_COMPUTE_VM_10273, VmErrors.REBOOT_ERROR, errorCode, errorCode.getDetails()));
                 bus.publish(evt);
                 taskChain.next();
             }
@@ -7899,7 +7900,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void run(MessageReply reply) {
                 if (!reply.isSuccess()) {
-                    evt.setError(err(VmErrors.REBOOT_ERROR, reply.getError(), reply.getError().getDetails()));
+                    evt.setError(err(ORG_ZSTACK_COMPUTE_VM_10274, VmErrors.REBOOT_ERROR, reply.getError(), reply.getError().getDetails()));
                 } else {
                     refreshVO();
                     evt.setInventory(getSelfInventory());
@@ -7924,7 +7925,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void fail(ErrorCode errorCode) {
                 APIStopVmInstanceEvent evt = new APIStopVmInstanceEvent(msg.getId());
-                evt.setError(err(VmErrors.STOP_ERROR, errorCode, errorCode.getDetails()));
+                evt.setError(err(ORG_ZSTACK_COMPUTE_VM_10275, VmErrors.STOP_ERROR, errorCode, errorCode.getDetails()));
                 bus.publish(evt);
                 taskChain.next();
             }
@@ -8061,7 +8062,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void fail(ErrorCode errorCode) {
                 APIPauseVmInstanceEvent evt = new APIPauseVmInstanceEvent(msg.getId());
-                evt.setError(err(VmErrors.SUSPEND_ERROR, errorCode, errorCode.getDetails()));
+                evt.setError(err(ORG_ZSTACK_COMPUTE_VM_10276, VmErrors.SUSPEND_ERROR, errorCode, errorCode.getDetails()));
                 bus.publish(evt);
                 taskChain.next();
             }
@@ -8141,7 +8142,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void fail(ErrorCode errorCode) {
                 APIResumeVmInstanceEvent evt = new APIResumeVmInstanceEvent(msg.getId());
-                evt.setError(err(VmErrors.RESUME_ERROR, errorCode, errorCode.getDetails()));
+                evt.setError(err(ORG_ZSTACK_COMPUTE_VM_10277, VmErrors.RESUME_ERROR, errorCode, errorCode.getDetails()));
                 bus.publish(evt);
                 taskChain.next();
             }
@@ -8162,7 +8163,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void fail(ErrorCode errorCode) {
                 CheckAndStartVmInstanceReply reply = new CheckAndStartVmInstanceReply();
-                reply.setError(err(VmErrors.START_ERROR, errorCode, errorCode.getDetails()));
+                reply.setError(err(ORG_ZSTACK_COMPUTE_VM_10278, VmErrors.START_ERROR, errorCode, errorCode.getDetails()));
                 bus.reply(msg, reply);
                 taskChain.next();
             }
@@ -8362,7 +8363,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                 .count();
         int max = VmGlobalConfig.MAXIMUM_CD_ROM_NUM.value(Integer.class);
         if (max <= vmCdRomNum) {
-            completion.fail(operr("VM[uuid:%s] can only add %s CDROMs", msg.getVmInstanceUuid(), max));
+            completion.fail(operr(ORG_ZSTACK_COMPUTE_VM_10279, "VM[uuid:%s] can only add %s CDROMs", msg.getVmInstanceUuid(), max));
             return;
         }
 
@@ -8372,7 +8373,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                     .eq(VmCdRomVO_.isoUuid, msg.getIsoUuid())
                     .isExists();
             if (targetIsoUsed) {
-                completion.fail(operr("VM[uuid:%s] already has an ISO[uuid:%s] attached", msg.getVmInstanceUuid(), msg.getIsoUuid()));
+                completion.fail(operr(ORG_ZSTACK_COMPUTE_VM_10280, "VM[uuid:%s] already has an ISO[uuid:%s] attached", msg.getVmInstanceUuid(), msg.getIsoUuid()));
                 return;
             }
         }
@@ -8385,7 +8386,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         deviceIds.forEach(full::set);
         int targetDeviceId = full.nextClearBit(0);
         if (targetDeviceId >= max) {
-            completion.fail(operr("VM[uuid:%s] can only add %s CDROMs", msg.getVmInstanceUuid(), max));
+            completion.fail(operr(ORG_ZSTACK_COMPUTE_VM_10281, "VM[uuid:%s] can only add %s CDROMs", msg.getVmInstanceUuid(), max));
             return;
         }
 
@@ -8489,7 +8490,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void run(MessageReply reply) {
                 if (!reply.isSuccess()) {
-                    ErrorCode err = operr("update vm[%s] priority to [%s] failed,because %s",
+                    ErrorCode err = operr(ORG_ZSTACK_COMPUTE_VM_10282, "update vm[%s] priority to [%s] failed,because %s",
                             self.getUuid(), msg.getPriority(), reply.getError());
                     completion.fail(err);
                     return;
@@ -8703,7 +8704,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         {
             if (self.getState() != VmInstanceState.Stopped) {
                 throw new ApiMessageInterceptionException(err(
-                        VmErrors.RE_IMAGE_VM_NOT_IN_STOPPED_STATE,
+                ORG_ZSTACK_COMPUTE_VM_10283,         VmErrors.RE_IMAGE_VM_NOT_IN_STOPPED_STATE,
                         "unable to reset volume[uuid:%s] to origin image[uuid:%s]," +
                                 " the vm[uuid:%s] volume attached to is not in Stopped state, current state is %s",
                         self.getRootVolumeUuid(), self.getImageUuid(),
@@ -8721,7 +8722,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             ImageConstant.ImageMediaType imageMediaType = q.findValue();
             if (imageMediaType == null) {
                 throw new OperationFailureException(err(
-                        VmErrors.RE_IMAGE_CANNOT_FIND_IMAGE_CACHE,
+                ORG_ZSTACK_COMPUTE_VM_10284,         VmErrors.RE_IMAGE_CANNOT_FIND_IMAGE_CACHE,
                         "unable to reset volume[uuid:%s] to origin image[uuid:%s]," +
                                 " cannot find image cache.",
                         rootVolume.getUuid(), rootVolume.getRootImageUuid()
@@ -8729,7 +8730,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             }
             if (imageMediaType.toString().equals("ISO")) {
                 throw new OperationFailureException(err(
-                        VmErrors.RE_IMAGE_IMAGE_MEDIA_TYPE_SHOULD_NOT_BE_ISO,
+                ORG_ZSTACK_COMPUTE_VM_10285,         VmErrors.RE_IMAGE_IMAGE_MEDIA_TYPE_SHOULD_NOT_BE_ISO,
                         "unable to reset volume[uuid:%s] to origin image[uuid:%s]," +
                                 " for image type is ISO",
                         rootVolume.getUuid(), rootVolume.getRootImageUuid()

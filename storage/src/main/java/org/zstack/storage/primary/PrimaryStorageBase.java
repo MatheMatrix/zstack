@@ -63,6 +63,7 @@ import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.err;
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE, dependencyCheck = true)
 public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
@@ -237,7 +238,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
                 .isExists()){
 
             throw new OperationFailureException(operr(
-                    "cannot attach ISO to a primary storage[uuid:%s] which is disabled",
+            ORG_ZSTACK_STORAGE_PRIMARY_10000,         "cannot attach ISO to a primary storage[uuid:%s] which is disabled",
                     self.getUuid()));
         }
     }
@@ -453,7 +454,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
     }
 
     protected void handle(CleanUpStorageTrashOnPrimaryStorageMsg msg) {
-        throw new OperationFailureException(operr("operation not supported"));
+        throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_10001, "operation not supported"));
     }
 
     protected void handle(final CleanUpTrashOnPrimaryStroageMsg msg) {
@@ -720,7 +721,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
     private void handleBase(CheckVolumeSnapshotOperationOnPrimaryStorageMsg msg) {
         if (self.getStatus() != PrimaryStorageStatus.Connected) {
             CheckVolumeSnapshotOperationOnPrimaryStorageReply reply = new CheckVolumeSnapshotOperationOnPrimaryStorageReply();
-            reply.setError(err(PrimaryStorageErrors.DISCONNECTED, "primary storage[uuid:%s] is not Connected", self.getUuid()));
+            reply.setError(err(ORG_ZSTACK_STORAGE_PRIMARY_10002, PrimaryStorageErrors.DISCONNECTED, "primary storage[uuid:%s] is not Connected", self.getUuid()));
             bus.reply(msg, reply);
             return;
         }
@@ -776,7 +777,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
         q.setParameter("zoneUuid", self.getZoneUuid());
         q.setParameter("bsUuid", bsUuid);
         if (q.getResultList().isEmpty()) {
-            throw new OperationFailureException(operr("backup storage[uuid:%s] is not attached to zone[uuid:%s] the primary storage[uuid:%s] belongs to",
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_10003, "backup storage[uuid:%s] is not attached to zone[uuid:%s] the primary storage[uuid:%s] belongs to",
                             bsUuid, self.getZoneUuid(), self.getUuid()));
         }
     }
@@ -796,7 +797,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
                 .param("volUuid", volUuid)
                 .find();
         if (vmState != null && vmState != VmInstanceState.Stopped) {
-            throw new ApiMessageInterceptionException(operr("volume[uuid:%s] has been attached a %s VM. VM should be Stopped.", volUuid, vmState));
+            throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_STORAGE_PRIMARY_10004, "volume[uuid:%s] has been attached a %s VM. VM should be Stopped.", volUuid, vmState));
         }
     }
 
@@ -865,7 +866,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
                     public void fail(ErrorCode errorCode) {
                         extpEmitter.failToDetach(self, msg.getClusterUuid());
                         logger.warn(errorCode.toString());
-                        reply.setError(err(PrimaryStorageErrors.DETACH_ERROR, errorCode, errorCode.getDetails()));
+                        reply.setError(err(ORG_ZSTACK_STORAGE_PRIMARY_10005, PrimaryStorageErrors.DETACH_ERROR, errorCode, errorCode.getDetails()));
                         bus.reply(msg, reply);
                         chain.next();
                     }
@@ -999,7 +1000,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
     }
 
     protected void handle(APICleanUpImageCacheOnPrimaryStorageMsg msg) {
-        throw new OperationFailureException(operr("operation not supported"));
+        throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_10006, "operation not supported"));
     }
 
     private void handle(final APIGetTrashOnPrimaryStorageMsg msg) {
@@ -1020,7 +1021,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
     }
 
     protected void handle(APICleanUpStorageTrashOnPrimaryStorageMsg msg) {
-        throw new OperationFailureException(operr("operation not supported"));
+        throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_PRIMARY_10007, "operation not supported"));
     }
 
     protected synchronized void updateTrashSize(CleanTrashResult result, Long size) {
@@ -1037,7 +1038,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
         String details = trash.makeSureInstallPathNotUsed(inv);
         if (details != null) {
 //            completion.fail(operr("%s is still in using by %s, cannot remove it from trash...", inv.getInstallPath(), inv.getResourceType()));
-            completion.success(new TrashCleanupResult(inv.getResourceUuid(), inv.getTrashId(), operr(details)));
+            completion.success(new TrashCleanupResult(inv.getResourceUuid(), inv.getTrashId(), operr(ORG_ZSTACK_STORAGE_PRIMARY_10008, details)));
             return;
         }
 
@@ -1395,7 +1396,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
         try {
             extpEmitter.preDetach(self, msg.getClusterUuid());
         } catch (PrimaryStorageException e) {
-            throw new OperationFailureException(err(PrimaryStorageErrors.DETACH_ERROR, e.getMessage()));
+            throw new OperationFailureException(err(ORG_ZSTACK_STORAGE_PRIMARY_10009, PrimaryStorageErrors.DETACH_ERROR, e.getMessage()));
         }
 
         // if not, HA will allocate wrong host, rollback when API fail
@@ -1458,7 +1459,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
 
             protected void exceedMaxPendingCallback() {
                 APIAttachPrimaryStorageToClusterEvent evt = new APIAttachPrimaryStorageToClusterEvent(msg.getId());
-                evt.setError(operr(ErrorCode.getDeduplicateError(getName())));
+                evt.setError(operr(ORG_ZSTACK_STORAGE_PRIMARY_10010, ErrorCode.getDeduplicateError(getName())));
                 bus.publish(evt);
             }
 
@@ -1474,7 +1475,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
         try {
             extpEmitter.preAttach(self, msg.getClusterUuid());
         } catch (PrimaryStorageException pe) {
-            evt.setError(err(PrimaryStorageErrors.ATTACH_ERROR, pe.getMessage()));
+            evt.setError(err(ORG_ZSTACK_STORAGE_PRIMARY_10011, PrimaryStorageErrors.ATTACH_ERROR, pe.getMessage()));
             bus.publish(evt);
             completion.done();
             return;
@@ -1503,7 +1504,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
             @Override
             public void fail(ErrorCode errorCode) {
                 extpEmitter.failToAttach(self, msg.getClusterUuid());
-                evt.setError(err(PrimaryStorageErrors.ATTACH_ERROR, errorCode, errorCode.getDetails()));
+                evt.setError(err(ORG_ZSTACK_STORAGE_PRIMARY_10012, PrimaryStorageErrors.ATTACH_ERROR, errorCode, errorCode.getDetails()));
                 bus.publish(evt);
                 completion.done();
             }
@@ -1563,7 +1564,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
                 try {
                     extpEmitter.preChange(self, event);
                 } catch (PrimaryStorageException e) {
-                    evt.setError(err(SysErrors.CHANGE_RESOURCE_STATE_ERROR, e.getMessage()));
+                    evt.setError(err(ORG_ZSTACK_STORAGE_PRIMARY_10013, SysErrors.CHANGE_RESOURCE_STATE_ERROR, e.getMessage()));
                     bus.publish(evt);
                     return;
                 }
@@ -1633,7 +1634,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
             String clusterUuidsString = pscRefs.stream()
                     .map(PrimaryStorageClusterRefVO::getClusterUuid)
                     .collect(Collectors.joining(", "));
-            evt.setError(operr("primary storage[uuid:%s] cannot be deleted for still " + "being attached to cluster[uuid:%s].", self.getUuid(), clusterUuidsString));
+            evt.setError(operr(ORG_ZSTACK_STORAGE_PRIMARY_10014, "primary storage[uuid:%s] cannot be deleted for still " + "being attached to cluster[uuid:%s].", self.getUuid(), clusterUuidsString));
             bus.publish(evt);
             completion.done();
             return;
@@ -1731,7 +1732,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
         }).error(new FlowErrorHandler(msg) {
             @Override
             public void handle(ErrorCode errCode, Map data) {
-                evt.setError(err(SysErrors.DELETE_RESOURCE_ERROR, errCode, errCode.getDetails()));
+                evt.setError(err(ORG_ZSTACK_STORAGE_PRIMARY_10015, SysErrors.DELETE_RESOURCE_ERROR, errCode, errCode.getDetails()));
                 bus.publish(evt);
                 completion.done();
             }
@@ -1780,7 +1781,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
 
         if(state == PrimaryStorageState.Maintenance){
             throw new OperationFailureException(
-                    operr("cannot attach volume[uuid:%s] whose primary storage is Maintenance", volumeUuid));
+                    operr(ORG_ZSTACK_STORAGE_PRIMARY_10016, "cannot attach volume[uuid:%s] whose primary storage is Maintenance", volumeUuid));
         }
     }
 

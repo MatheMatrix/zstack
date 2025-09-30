@@ -19,6 +19,7 @@ import org.zstack.utils.ssh.SshResult;
 import java.util.concurrent.TimeUnit;
 
 import static org.zstack.core.Platform.operr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 /**
  * @author Xingwei Yu
@@ -51,7 +52,7 @@ public abstract class ZbsMdsBase {
             ssh.setHostname(self.getAddr()).setUsername(self.getUsername()).setPassword(self.getPassword()).setPort(self.getPort())
                     .checkTool("zbs").setTimeout(60).runErrorByExceptionAndClose();
         } catch (SshException e) {
-            throw new OperationFailureException(operr("failed to SSH or zbs-tools was not installed in MDS[%s], you need to check the SSH configuration and dependencies", self.getAddr()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_ZBS_10024, "failed to SSH or zbs-tools was not installed in MDS[%s], you need to check the SSH configuration and dependencies", self.getAddr()));
         }
     }
 
@@ -62,7 +63,7 @@ public abstract class ZbsMdsBase {
             ret = ssh.setHostname(self.getAddr()).setUsername(self.getUsername()).setPassword(self.getPassword()).setPort(self.getPort())
                     .shell("zbs status mds --format json").setTimeout(60).runAndClose();
         } catch (SshException e) {
-            throw new OperationFailureException(operr("failed to get MDS[%s] metadata, you need to check the ZBS configuration", self.getAddr()));
+            throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_ZBS_10025, "failed to get MDS[%s] metadata, you need to check the ZBS configuration", self.getAddr()));
         }
 
         if (ret.getReturnCode() != 0) {
@@ -139,7 +140,7 @@ public abstract class ZbsMdsBase {
             if (success) {
                 return null;
             }
-            return operr("operation error, because:%s", error);
+            return operr(ORG_ZSTACK_STORAGE_ZBS_10026, "operation error, because:%s", error);
         }
     }
 
