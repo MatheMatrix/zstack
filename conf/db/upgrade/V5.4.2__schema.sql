@@ -1,0 +1,1 @@
+CALL ADD_COLUMN('PortMirrorSessionVO', 'dstEndPointType', 'VARCHAR(32)', 1, 'VmNic');
