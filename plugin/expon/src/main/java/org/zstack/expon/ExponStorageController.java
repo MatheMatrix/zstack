@@ -580,12 +580,16 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     @Override
     public void deactivate(String installPath, String protocol, ActiveVolumeClient client, Completion comp) {
         HostVO host = Q.New(HostVO.class).eq(HostVO_.managementIp, client.getManagerIp()).find();
-        if (host != null) {
-            deactivate(installPath, protocol, HostInventory.valueOf(host), comp);
-        } else {
+        if (host == null) {
+            comp.fail(operr("deactivate fail, cannot find host[ip:%s]", client.getManagerIp()));
+            return;
+        }
+        if (host.getHypervisorType().equals("baremetal2")) {
             // bm instance InitiatorName
             deactivateIscsi(installPath, client.getQualifiedName());
             comp.success();
+        } else {
+            deactivate(installPath, protocol, HostInventory.valueOf(host), comp);
         }
     }
 
@@ -752,12 +756,6 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
 
     private void deactivateIscsi(String installPath, HostInventory h) {
         String iqn = IscsiUtils.getHostInitiatorName(h.getUuid());
-        if (h.getHypervisorType().equals("baremetal2")) {
-            String[] parts = installPath.split("/");
-            String volumeUuid = parts[parts.length - 1];
-            VolumeVO volume = dbf.findByUuid(volumeUuid, VolumeVO.class);
-            iqn = String.format("iqn.2015-01.io.zstack:initiator.instance.%s", volume.getVmInstanceUuid());
-        }
         if (iqn == null) {
             throw new RuntimeException(String.format("cannot get host[uuid:%s] initiator name", h.getUuid()));
         }
