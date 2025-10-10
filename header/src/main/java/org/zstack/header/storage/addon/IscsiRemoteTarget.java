@@ -87,7 +87,8 @@ public class IscsiRemoteTarget extends BlockRemoteTarget {
             }
 
             IscsiRemoteTarget target = new IscsiRemoteTarget();
-            target.setIp(uri.getHost());
+            String[] serverHostNames = uri.getAuthority().split(":")[0].split(",");
+            target.setIp(serverHostNames[0]);
             target.setPort(uri.getPort());
 
             // parse: /{iqn}/{diskIdType}_{diskId}
