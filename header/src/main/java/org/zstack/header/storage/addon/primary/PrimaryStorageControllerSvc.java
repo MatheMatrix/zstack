@@ -54,4 +54,7 @@ public interface PrimaryStorageControllerSvc {
     void onFirstAdditionConfigure(Completion completion);
 
     long alignSize(long size);
+
+    String getVolumeLunId(String volInstallPath);
+
 }

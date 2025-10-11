@@ -1333,6 +1333,11 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         return size;
     }
 
+    @Override
+    public String getVolumeLunId(String volInstallPath) {
+        return apiHelper.getVolumeLunDetail(getVolIdFromPath(volInstallPath)).getLunId();
+    }
+
     private void retry(Runnable r) {
         retry(r, 3);
     }
