@@ -11,6 +11,8 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.storage.backup.*;
 import org.zstack.header.tag.SystemTagVO;
 import org.zstack.header.tag.SystemTagVO_;
+import org.zstack.header.vm.VmInstanceVO;
+import org.zstack.header.vm.VmInstanceVO_;
 import org.zstack.storage.backup.BackupStorageSystemTags;
 
 import java.util.Collections;
@@ -36,6 +38,27 @@ public class IscsiUtils {
         }
 
         return null;
+    }
+
+    public static String getGatewayMnIpFromInitiatorName(String initiatorName) {
+        String requiredPrefix = "iqn.2015-01.io.zstack:initiator.instance.";
+
+        if (initiatorName == null || initiatorName.isEmpty()) {
+            return null;
+        }
+
+        if (!initiatorName.startsWith(requiredPrefix)) {
+            return null;
+        }
+
+        String uuid = initiatorName.substring(requiredPrefix.length());
+        String hostUuid = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, uuid)
+                .select(VmInstanceVO_.hostUuid)
+                .findValue();
+        return Q.New(HostVO.class).eq(HostVO_.uuid, hostUuid)
+                .eq(HostVO_.hypervisorType, "baremetal2")
+                .select(HostVO_.managementIp)
+                .findValue();
     }
 
     private static String getBsMnIp(String bsUuid) {

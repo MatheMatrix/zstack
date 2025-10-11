@@ -60,6 +60,7 @@ import java.util.stream.Collectors;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.expon.ExponIscsiHelper.*;
 import static org.zstack.expon.ExponNameHelper.*;
+import static org.zstack.iscsi.IscsiUtils.getGatewayMnIpFromInitiatorName;
 import static org.zstack.iscsi.IscsiUtils.getHostMnIpFromInitiatorName;
 import static org.zstack.storage.addon.primary.ExternalPrimaryStorageNameHelper.*;
 
@@ -530,7 +531,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
                 ActiveVolumeClient c = new ActiveVolumeClient();
                 if (it.contains("iqn")) {
                     c.setQualifiedName(it);
-                    c.setManagerIp(getHostMnIpFromInitiatorName(it));
+                    c.setManagerIp(getHostMnIpFromInitiatorName(it) != null ? getHostMnIpFromInitiatorName(it) : getGatewayMnIpFromInitiatorName(it));
                 } else {
                     c.setManagerIp(it);
                 }
