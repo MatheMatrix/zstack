@@ -5,12 +5,15 @@ import org.zstack.header.message.NeedReplyMessage;
 import org.zstack.header.message.ReplayableMessage;
 import org.zstack.header.volume.VolumeInventory;
 
+import java.util.LinkedHashMap;
+
 public class InstantiateVolumeOnPrimaryStorageMsg extends NeedReplyMessage implements PrimaryStorageMessage, ReplayableMessage {
     private HostInventory destHost;
     private VolumeInventory volume;
     private String primaryStorageUuid;
     private boolean skipIfExisting;
     private String allocatedInstallUrl;
+    private LinkedHashMap<String, Object> addons;
 
     public String getAllocatedInstallUrl() {
         return allocatedInstallUrl;
@@ -61,5 +64,12 @@ public class InstantiateVolumeOnPrimaryStorageMsg extends NeedReplyMessage imple
     @Override
     public Class getReplayableClass() {
         return InstantiateVolumeOnPrimaryStorageMsg.class;
+    }
+
+    public LinkedHashMap<String, Object> getAddons() {
+        if (addons == null) {
+            addons = new LinkedHashMap<>();
+        }
+        return addons;
     }
 }
