@@ -77,6 +77,9 @@ public abstract class ZbsMdsBase {
     }
 
     public <T extends AgentResponse> T syncCall(final String path, final Object cmd, final Class<T> retClass, TimeUnit unit, long timeout) {
+        if (unit == null) {
+            throw new IllegalArgumentException("unit must not be null");
+        }
         return restf.syncJsonPost(makeHttpPath(self.getAddr(), path), cmd, retClass, unit, timeout);
     }
 

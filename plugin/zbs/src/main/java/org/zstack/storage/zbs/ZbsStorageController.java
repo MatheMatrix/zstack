@@ -1081,6 +1081,9 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             this.timeout = timeout;
             this.mdsInfos = prepareMds();
             this.sync = sync;
+            if (sync) {
+                this.tryNext = true;
+            }
         }
 
         public void call() {
@@ -1139,16 +1142,26 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             ZbsPrimaryStorageMdsBase base = it.next();
             cmd.setAddr(base.getSelf().getAddr());
 
-            T ret = base.syncCall(path, cmd, retClass, unit, timeout);
+            T ret;
+            try {
+                ret = base.syncCall(path, cmd, retClass, unit, timeout);
+            } catch (Throwable t) {
+                logger.warn(String.format("exception when executing http call[%s] on MDS[%s]: %s",
+                        path, base.getSelf().getAddr(), t.getMessage()), t);
+                errorCodes.getCauses().add(operr(t.getMessage()));
+                if (it.hasNext() || tryNext) {
+                    return doSyncCall();
+                }
+                throw new OperationFailureException(operr(errorCodes, "all MDS cannot execute http call[%s]", path));
+            }
             if (!ret.isSuccess()) {
                 logger.warn(String.format("failed to execute http call[%s] on MDS[%s], error is: %s",
                         path, base.getSelf().getAddr(), JSONObjectUtil.toJsonString(ret.getError())));
                 errorCodes.getCauses().add(operr(ret.getError()));
-                if (tryNext) {
+                if (it.hasNext() || tryNext) {
                     return doSyncCall();
-                } else {
-                    throw new OperationFailureException(operr(errorCodes, "all MDS cannot execute http call[%s]", path));
                 }
+                throw new OperationFailureException(operr(errorCodes, "all MDS cannot execute http call[%s]", path));
             }
 
             return ret;
