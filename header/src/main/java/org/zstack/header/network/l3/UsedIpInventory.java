@@ -35,6 +35,7 @@ public class UsedIpInventory implements Serializable {
     @APINoSee
     private String metaData;
     private Long ipInLong;
+    @APINoSee
     private byte[] ipInBinary;
     private String vmNicUuid;
     private Timestamp createDate;
