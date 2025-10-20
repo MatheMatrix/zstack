@@ -37,10 +37,7 @@ import org.zstack.header.storage.addon.primary.*;
 import org.zstack.header.storage.primary.ImageCacheInventory;
 import org.zstack.header.storage.primary.VolumeSnapshotCapability;
 import org.zstack.header.storage.snapshot.VolumeSnapshotStats;
-import org.zstack.header.volume.VolumeConstant;
-import org.zstack.header.volume.VolumeInventory;
-import org.zstack.header.volume.VolumeProtocol;
-import org.zstack.header.volume.VolumeStats;
+import org.zstack.header.volume.*;
 import org.zstack.iscsi.IscsiUtils;
 import org.zstack.iscsi.kvm.IscsiHeartbeatVolumeTO;
 import org.zstack.iscsi.kvm.IscsiVolumeTO;
@@ -63,6 +60,7 @@ import java.util.stream.Collectors;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.expon.ExponIscsiHelper.*;
 import static org.zstack.expon.ExponNameHelper.*;
+import static org.zstack.iscsi.IscsiUtils.getGatewayMnIpFromInitiatorName;
 import static org.zstack.iscsi.IscsiUtils.getHostMnIpFromInitiatorName;
 import static org.zstack.storage.addon.primary.ExternalPrimaryStorageNameHelper.*;
 
@@ -239,6 +237,10 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
 
     private synchronized ActiveVolumeTO activeIscsiVolume(HostInventory h, BaseVolumeInfo vol, boolean shareable) {
         String clientIqn = IscsiUtils.getHostInitiatorName(h.getUuid());
+        if (h.getHypervisorType().equals("baremetal2")) {
+            VolumeVO volume = dbf.findByUuid(vol.getUuid(), VolumeVO.class);
+            clientIqn = String.format("iqn.2015-01.io.zstack:initiator.instance.%s", volume.getVmInstanceUuid());
+        }
         if (clientIqn == null) {
             throw new RuntimeException(String.format("cannot get host[uuid:%s] initiator name", h.getUuid()));
         }
@@ -529,7 +531,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
                 ActiveVolumeClient c = new ActiveVolumeClient();
                 if (it.contains("iqn")) {
                     c.setQualifiedName(it);
-                    c.setManagerIp(getHostMnIpFromInitiatorName(it));
+                    c.setManagerIp(getHostMnIpFromInitiatorName(it) != null ? getHostMnIpFromInitiatorName(it) : getGatewayMnIpFromInitiatorName(it));
                 } else {
                     c.setManagerIp(it);
                 }
@@ -579,12 +581,16 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     @Override
     public void deactivate(String installPath, String protocol, ActiveVolumeClient client, Completion comp) {
         HostVO host = Q.New(HostVO.class).eq(HostVO_.managementIp, client.getManagerIp()).find();
-        if (host != null) {
-            deactivate(installPath, protocol, HostInventory.valueOf(host), comp);
-        } else {
+        if (host == null) {
+            comp.fail(operr("deactivate fail, cannot find host[ip:%s]", client.getManagerIp()));
+            return;
+        }
+        if (host.getHypervisorType().equals("baremetal2")) {
             // bm instance InitiatorName
             deactivateIscsi(installPath, client.getQualifiedName());
             comp.success();
+        } else {
+            deactivate(installPath, protocol, HostInventory.valueOf(host), comp);
         }
     }
 
@@ -1325,6 +1331,11 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     @Override
     public long alignSize(long size) {
         return size;
+    }
+
+    @Override
+    public String getVolumeLunId(String volInstallPath) {
+        return apiHelper.getVolumeLunDetail(getVolIdFromPath(volInstallPath)).getLunId();
     }
 
     private void retry(Runnable r) {

@@ -1024,6 +1024,11 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         return convertSizeToByte(alignSizeTo(size, unit), unit);
     }
 
+    @Override
+    public String getVolumeLunId(String volInstallPath) {
+        return null;
+    }
+
     public void doDeleteVolume(String installPath, Boolean force, Completion comp) {
         DeleteVolumeCmd cmd = new DeleteVolumeCmd();
         cmd.setPath(installPath);
