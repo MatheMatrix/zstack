@@ -757,6 +757,10 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
 
     private void deactivateIscsi(String installPath, HostInventory h) {
         String iqn = IscsiUtils.getHostInitiatorName(h.getUuid());
+        if (h.getHypervisorType().equals("baremetal2")) {
+            VolumeVO volume = Q.New(VolumeVO.class).eq(VolumeVO_.installPath, installPath).find();
+            iqn = String.format("iqn.2015-01.io.zstack:initiator.instance.%s", volume.getLastVmInstanceUuid());
+        }
         if (iqn == null) {
             throw new RuntimeException(String.format("cannot get host[uuid:%s] initiator name", h.getUuid()));
         }
