@@ -239,7 +239,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     private synchronized ActiveVolumeTO activeIscsiVolume(HostInventory h, BaseVolumeInfo vol, boolean shareable) {
         String clientIqn = IscsiUtils.getHostInitiatorName(h.getUuid());
         VolumeVO volume = dbf.findByUuid(vol.getUuid(), VolumeVO.class);
-        if (volume instanceof BlockVolumeVO) {
+        if (h.getHypervisorType().equals("baremetal2")) {
             clientIqn = String.format("iqn.2015-01.io.zstack:initiator.instance.%s", volume.getVmInstanceUuid());
         }
         if (clientIqn == null) {
@@ -759,7 +759,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     private void deactivateIscsi(String installPath, HostInventory h) {
         String iqn = IscsiUtils.getHostInitiatorName(h.getUuid());
         VolumeVO volume = Q.New(VolumeVO.class).eq(VolumeVO_.installPath, installPath).find();
-        if (volume instanceof BlockVolumeVO) {
+        if (h.getHypervisorType().equals("baremetal2")) {
             iqn = String.format("iqn.2015-01.io.zstack:initiator.instance.%s", volume.getLastVmInstanceUuid());
         }
         if (iqn == null) {
