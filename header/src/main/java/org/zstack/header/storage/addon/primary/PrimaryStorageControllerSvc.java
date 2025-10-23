@@ -55,6 +55,4 @@ public interface PrimaryStorageControllerSvc {
 
     long alignSize(long size);
 
-    String getVolumeLunId(String volInstallPath);
-
 }

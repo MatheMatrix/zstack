@@ -40,27 +40,6 @@ public class IscsiUtils {
         return null;
     }
 
-    public static String getGatewayMnIpFromInitiatorName(String initiatorName) {
-        String requiredPrefix = "iqn.2015-01.io.zstack:initiator.instance.";
-
-        if (initiatorName == null || initiatorName.isEmpty()) {
-            return null;
-        }
-
-        if (!initiatorName.startsWith(requiredPrefix)) {
-            return null;
-        }
-
-        String uuid = initiatorName.substring(requiredPrefix.length());
-        String hostUuid = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, uuid)
-                .select(VmInstanceVO_.hostUuid)
-                .findValue();
-        return Q.New(HostVO.class).eq(HostVO_.uuid, hostUuid)
-                .eq(HostVO_.hypervisorType, "baremetal2")
-                .select(HostVO_.managementIp)
-                .findValue();
-    }
-
     private static String getBsMnIp(String bsUuid) {
         CloudBus bus = Platform.getComponentLoader().getComponent(CloudBus.class);
         GetBackupStorageManagerHostnameMsg msg = new GetBackupStorageManagerHostnameMsg();
@@ -75,5 +54,9 @@ public class IscsiUtils {
 
     public static String getBSInitiatorName(String bsUuid) {
         return BackupStorageSystemTags.ISCSI_INITIATOR_NAME.getTokenByResourceUuid(bsUuid, BackupStorageVO.class, BackupStorageSystemTags.ISCSI_INITIATOR_NAME_TOKEN);
+    }
+
+    public static String getBMInitiatorName(String vmUuid) {
+        return String.format("iqn.2015-01.io.zstack:initiator.instance.%s", vmUuid);
     }
 }
