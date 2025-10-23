@@ -63,7 +63,6 @@ import java.util.stream.Collectors;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.expon.ExponIscsiHelper.*;
 import static org.zstack.expon.ExponNameHelper.*;
-import static org.zstack.iscsi.IscsiUtils.getGatewayMnIpFromInitiatorName;
 import static org.zstack.iscsi.IscsiUtils.getHostMnIpFromInitiatorName;
 import static org.zstack.storage.addon.primary.ExternalPrimaryStorageNameHelper.*;
 
@@ -537,8 +536,8 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
                     c.setManagerIp(it);
                 }
                 VolumeLunModule lunDetail = apiHelper.getVolumeLunDetail(getVolIdFromPath(installPath));
-                // path: volName/poolId/lunid
-                c.setPath(String.format("%s/%s/%s", lunDetail.getVolName(), lunDetail.getPoolId(), lunDetail.getLunId()));
+                // path: uuid/poolId/lunid
+                c.setPath(String.format("%s/%s/%s", lunDetail.getUuid(), lunDetail.getPoolId(), lunDetail.getLunId()));
                 return c;
             }).collect(Collectors.toList());
         } else {
