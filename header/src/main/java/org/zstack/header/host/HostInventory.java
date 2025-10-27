@@ -187,6 +187,8 @@ public class HostInventory implements Serializable {
 
     private String nqn;
 
+    private String hostname;
+
     /**
      * @desc the time this resource gets created
      */
@@ -508,5 +510,13 @@ public class HostInventory implements Serializable {
 
     public void setTemperatureStatus(HwMonitorStatus temperatureStatus) {
         this.temperatureStatus = temperatureStatus;
+    }
+
+    public String getHostname() {
+        return hostname;
+    }
+
+    public void setHostname(String hostname) {
+        this.hostname = hostname;
     }
 }
