@@ -722,6 +722,8 @@ public class KVMHost extends HostBase implements Host {
             handle((GetHostSensorsMsg) msg);
         } else if (msg instanceof UpdateHostNqnMsg) {
             handle((UpdateHostNqnMsg) msg);
+        } else if (msg instanceof UpdateHostnameMsg) {
+            handle((UpdateHostnameMsg) msg);
         } else if (msg instanceof UploadFileToHostMsg) {
             handle((UploadFileToHostMsg) msg);
         } else if (msg instanceof GetFileDownloadProgressMsg) {
@@ -777,6 +779,53 @@ public class KVMHost extends HostBase implements Host {
             @Override
             public String getName() {
                 return String.format("update-nqn-of-host-%s", msg.getHostUuid());
+            }
+        });
+    }
+
+    private void handle(UpdateHostnameMsg msg) {
+        UpdateHostnameReply ureply = new UpdateHostnameReply();
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return id;
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                UpdateHostnameCmd cmd = new UpdateHostnameCmd();
+                cmd.hostname = msg.getHostname();
+
+                KVMHostAsyncHttpCallMsg kmsg = new KVMHostAsyncHttpCallMsg();
+                kmsg.setCommand(cmd);
+                kmsg.setPath(KVMConstant.KVM_UPDATE_HOSTNAME_PATH);
+                kmsg.setHostUuid(msg.getHostUuid());
+                bus.makeTargetServiceIdByResourceUuid(kmsg, HostConstant.SERVICE_ID, msg.getHostUuid());
+                bus.send(kmsg, new CloudBusCallBack(chain) {
+                    @Override
+                    public void run(MessageReply reply) {
+                        if (!reply.isSuccess()) {
+                            ureply.setError(operr("fail to update hostname of host[uuid:%s], because %s", msg.getHostUuid(), reply.getError()));
+                        } else {
+                            KVMHostAsyncHttpCallReply r = reply.castReply();
+                            UpdateHostnameRsp rsp = r.toResponse(UpdateHostnameRsp.class);
+                            if (!rsp.isSuccess()) {
+                                ureply.setError(operr("fail to update hostname of host[uuid:%s], because %s", msg.getHostUuid(), rsp.getError()));
+                            } else {
+                                SQL.New(HostVO.class).eq(HostVO_.uuid, msg.getHostUuid()).set(HostVO_.hostname, msg.getHostname()).update();
+                                self = dbf.reload(self);
+                                ureply.setInventory(getSelfInventory());
+                            }
+                        }
+                        bus.reply(msg, ureply);
+                        chain.next();
+                    }
+                });
+            }
+
+            @Override
+            public String getName() {
+                return String.format("update-hostname-of-host-%s", msg.getHostUuid());
             }
         });
     }
@@ -6011,6 +6060,7 @@ public class KVMHost extends HostBase implements Host {
             private void saveGeneralHostHardwareFacts(HostFactResponse ret) {
                 HostVO host = getSelf();
                 host.setNqn(ret.getNqn());
+                host.setHostname(ret.getHostname());
                 dbf.update(host);
                 self = dbf.reload(self);
 
