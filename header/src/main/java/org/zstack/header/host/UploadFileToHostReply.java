@@ -5,6 +5,7 @@ import org.zstack.header.message.MessageReply;
 public class UploadFileToHostReply extends MessageReply {
     private String md5sum;
     private long size;
+    private String uploadUrl;
 
     public String getMd5sum() {
         return md5sum;
@@ -20,5 +21,13 @@ public class UploadFileToHostReply extends MessageReply {
 
     public void setSize(long size) {
         this.size = size;
+    }
+
+    public String getUploadUrl() {
+        return uploadUrl;
+    }
+
+    public void setUploadUrl(String uploadUrl) {
+        this.uploadUrl = uploadUrl;
     }
 }
