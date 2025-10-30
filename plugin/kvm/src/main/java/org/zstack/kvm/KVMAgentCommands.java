@@ -4414,6 +4414,7 @@ public class KVMAgentCommands {
         @NoLogging(type = NoLogging.Type.Uri)
         public String urlScheme;
         public long timeout;
+        public String sendCommandUrl;
     }
 
     public static class DownloadFileResponse extends AgentResponse {
