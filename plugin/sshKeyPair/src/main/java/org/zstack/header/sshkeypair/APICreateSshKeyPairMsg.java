@@ -6,7 +6,6 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 import org.zstack.header.volume.VolumeVO;
-import org.zstack.sshkeypair.SshKeyPairConstant;
 
 @TagResourceType(VolumeVO.class)
 @RestRequest(

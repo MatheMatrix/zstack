@@ -1,6 +1,9 @@
-package org.zstack.sshkeypair;
+package org.zstack.header.sshkeypair;
 
 public interface SshKeyPairConstant {
+
+    String SERVICE_ID = "sshKeyPair";
+
     String OPERATE_SSH_KEY_PAIR_THREAD_NAME = "create-update-delete-attach-detach-ssh-key";
 
     String SSH_KEY_PAIR_ATTACH_TO_VM = "/sshkeypair/attach";

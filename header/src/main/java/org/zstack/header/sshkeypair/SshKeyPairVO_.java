@@ -1,6 +1,5 @@
 package org.zstack.header.sshkeypair;
 
-import org.zstack.directory.DirectoryVO;
 import org.zstack.header.vo.ResourceVO_;
 
 import javax.persistence.metamodel.SingularAttribute;

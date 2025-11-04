@@ -6,7 +6,6 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
-import org.zstack.sshkeypair.SshKeyPairConstant;
 
 @RestRequest(
         path = "/ssh-key-pair/{uuid}/actions",
