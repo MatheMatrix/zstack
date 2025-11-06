@@ -40,8 +40,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
-import static org.zstack.core.Platform.argerr;
-import static org.zstack.core.Platform.operr;
+import static org.zstack.core.Platform.*;
 
 public class UpgradeChecker implements Component, GlobalApiMessageInterceptor {
     private static final CLogger logger = Utils.getLogger(UpgradeChecker.class);
@@ -207,7 +206,7 @@ public class UpgradeChecker implements Component, GlobalApiMessageInterceptor {
             if (className != null && grayScaleApiWhiteList
                     .stream()
                     .noneMatch(className::contains)) {
-                return operr("Api: %s is not allowed by allowedApiListGrayscaleUpgrading: %s.",
+                return err(UpgradeErrors.GRAY_SCALE_API_NOT_ALLOWED, "Api: %s is not allowed by allowedApiListGrayscaleUpgrading: %s.",
                         className,
                         grayScaleApiWhiteList);
             }

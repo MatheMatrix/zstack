@@ -12,6 +12,7 @@ import org.zstack.core.cloudbus.CloudBusListCallBack;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
+import org.zstack.core.upgrade.UpgradeErrors;
 import org.zstack.header.cluster.ClusterInventory;
 import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.configuration.InstanceOfferingInventory;
@@ -444,6 +445,11 @@ public class VmCascadeExtension extends AbstractAsyncCascadeExtension {
                             if (!reply.isSuccess()) {
                                 // TODO
                                 logger.warn(reply.getError().toString());
+                                if (UpgradeErrors.GRAY_SCALE_API_NOT_ALLOWED.toString().equals(reply.getError().getCode())) {
+                                    noErrorCompletion.allDone();
+                                    return;
+                                }
+
                             }
                         }
 
@@ -453,6 +459,10 @@ public class VmCascadeExtension extends AbstractAsyncCascadeExtension {
             }, parallelism).run(new WhileDoneCompletion(completion) {
                 @Override
                 public void done(ErrorCodeList errorCodeList) {
+                    if (UpgradeErrors.GRAY_SCALE_API_NOT_ALLOWED.toString().equals(errorCodeList.getCauses().get(0).getCode())) {
+                        completion.fail(errorCodeList.getCauses().get(0));
+                        return;
+                    }
                     if (ZoneVO.class.getSimpleName().equals(action.getRootIssuer())) {
                         dbf.removeByPrimaryKeys(vminvs.stream().map(vm -> vm.getInventory().getVmNics())
                                         .flatMap(List::stream).map(VmNicInventory::getUuid)
