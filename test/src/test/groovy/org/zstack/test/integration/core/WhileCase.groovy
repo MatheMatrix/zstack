@@ -5,20 +5,15 @@ import org.zstack.core.asyncbatch.WhileGlobalProperty
 import org.zstack.core.thread.AsyncThread
 import org.zstack.core.thread.ThreadGlobalProperty
 import org.zstack.header.core.FutureCompletion
-import org.zstack.header.core.NoErrorCompletion
 import org.zstack.header.core.WhileCompletion
 import org.zstack.header.core.WhileDoneCompletion
 import org.zstack.header.errorcode.ErrorCodeList
-import org.zstack.header.errorcode.OperationFailureException
-import org.zstack.test.TestSafeWhile
 import org.zstack.testlib.SubCase
 import org.zstack.utils.Utils
 import org.zstack.utils.logging.CLogger
 
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-
-import static org.zstack.core.Platform.operr
 
 /**
  * Created by MaJin on 2017-05-02.

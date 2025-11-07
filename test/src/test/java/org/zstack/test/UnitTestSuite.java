@@ -3,7 +3,6 @@ package org.zstack.test;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.junit.Test;
-import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.test.UnitTestSuiteConfig.Import;
 import org.zstack.test.UnitTestSuiteConfig.TestCase;
 import org.zstack.utils.DebugUtils;

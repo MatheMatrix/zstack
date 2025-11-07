@@ -1,4 +1,4 @@
-package org.zstack.test;
+package org.zstack.test.integration.core;
 
 import org.zstack.core.asyncbatch.While;
 import org.zstack.header.core.FutureCompletion;
@@ -7,8 +7,6 @@ import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
 
 import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.zstack.core.Platform.operr;
 

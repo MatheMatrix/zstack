@@ -11,17 +11,13 @@ import org.zstack.kvm.KVMConstant
 import org.zstack.kvm.KVMGlobalConfig
 import org.zstack.network.securitygroup.SecurityGroupConstant
 import org.zstack.network.service.virtualrouter.VirtualRouterConstant
-import org.zstack.sdk.ApiException
 import org.zstack.sdk.GetResourceConfigResult
 import org.zstack.sdk.InstanceOfferingInventory
-import org.zstack.sdk.KVMHostInventory
 import org.zstack.sdk.VmInstanceInventory
-import org.zstack.test.Api
 import org.zstack.test.integration.kvm.KvmTest
 import org.zstack.testlib.EnvSpec
 import org.zstack.testlib.SubCase
 import org.zstack.utils.data.SizeUnit
-import org.zstack.utils.gson.JSONObjectUtil
 
 class ChangeVmCpuQuotaCase extends SubCase{
     EnvSpec env
