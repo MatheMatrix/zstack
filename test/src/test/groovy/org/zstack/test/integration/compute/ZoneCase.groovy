@@ -33,6 +33,7 @@ class ZoneCase extends SubCase {
     @Override
     void test() {
         env.create {
+            testFirstZoneSetDefaultZone()
             testCreateZoneAsDefaultZone()
             testBatchCreateZoneAsDefaultZone()
             testUpdateZoneToDefaultZone()
@@ -46,6 +47,16 @@ class ZoneCase extends SubCase {
     @Override
     void clean() {
         env.delete()
+    }
+
+    void testFirstZoneSetDefaultZone() {
+        ZoneInventory zone = createZone {
+            name = "FirstZone"
+            description = "first zone"
+        } as ZoneInventory
+
+        assert zone != null
+        assert zone.isDefault
     }
 
     void testCreateZoneAsDefaultZone() {
