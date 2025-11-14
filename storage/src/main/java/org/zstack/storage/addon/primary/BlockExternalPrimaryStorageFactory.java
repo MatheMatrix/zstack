@@ -11,7 +11,7 @@ public interface BlockExternalPrimaryStorageFactory {
 
     BlockExternalPrimaryStorageBackend getBlockExternalPrimaryStorageBackend(PrimaryStorageVO vo);
 
-    void activeIscsiVolume(String clientIqn, BaseVolumeInfo vol, boolean shareable);
+    void activeIscsiVolume(String clientIqn, BaseVolumeInfo vol, boolean shareable, PrimaryStorageVO vo);
 
     Map<String, String> getVolumeIscsiInfo(String volInstallPath, HostInventory host);
 
