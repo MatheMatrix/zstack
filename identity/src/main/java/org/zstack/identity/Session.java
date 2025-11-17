@@ -220,6 +220,12 @@ public class Session implements Component {
                         return null;
                     }
 
+                    PluginRegistry pluginRgty = getComponentLoader().getComponent(PluginRegistry.class);
+
+                    for (LogoutExtensionPoint ext : pluginRgty.getExtensionList(LogoutExtensionPoint.class)) {
+                        ext.beforeLogout(s);
+                    }
+
                     logout(s.getUuid());
                     return err(IdentityErrors.INVALID_SESSION, "Session expired");
                 }
