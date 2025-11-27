@@ -2219,6 +2219,8 @@ public class KVMAgentCommands {
         private boolean usbRedirect;
         @GrayVersion(value = "5.0.0")
         private boolean enableSecurityElement;
+        @GrayVersion(value = "5.4.2")
+        private boolean enableHygonSecurityElement;
         @GrayVersion(value = "5.0.0")
         private boolean useBootMenu;
         @GrayVersion(value = "5.0.0")
@@ -2499,6 +2501,14 @@ public class KVMAgentCommands {
 
         public void setEnableSecurityElement(boolean enableSecurityElement) {
             this.enableSecurityElement = enableSecurityElement;
+        }
+
+        public boolean isEnableHygonSecurityElement() {
+            return enableHygonSecurityElement;
+        }
+
+        public void setEnableHygonSecurityElement(boolean enableHygonSecurityElement) {
+            this.enableHygonSecurityElement = enableHygonSecurityElement;
         }
         public boolean isUseNuma() {
             return useNuma;

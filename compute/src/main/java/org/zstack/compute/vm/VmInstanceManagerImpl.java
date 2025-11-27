@@ -2098,6 +2098,26 @@ public class VmInstanceManagerImpl extends AbstractService implements
         });
     }
 
+    private void installHygonSeDeviceValidator() {
+        VmSystemTags.HYGON_SECURITY_ELEMENT_ENABLE.installValidator(new SystemTagValidator() {
+            @Override
+            public void validateSystemTag(String resourceUuid, Class resourceType, String systemTag) {
+                String HygonSecurityElementEnableTokenByTag = null;
+                if (VmSystemTags.HYGON_SECURITY_ELEMENT_ENABLE.isMatch(systemTag)) {
+                    HygonSecurityElementEnableTokenByTag = VmSystemTags.HYGON_SECURITY_ELEMENT_ENABLE.getTokenByTag(systemTag, VmSystemTags.HYGON_SECURITY_ELEMENT_ENABLE_TOKEN);
+                } else {
+                    throw new OperationFailureException(argerr("invalid hygonSecurityElementEnable[%s], %s is not hygonSecurityElementEnable tag", systemTag, HygonSecurityElementEnableTokenByTag));
+                }
+                if (!isBoolean(HygonSecurityElementEnableTokenByTag)) {
+                    throw new OperationFailureException(argerr("invalid hygonSecurityElementEnable[%s], %s is not boolean class", systemTag, HygonSecurityElementEnableTokenByTag));
+                }
+            }
+            private boolean isBoolean(String param) {
+                return "true".equalsIgnoreCase(param) || "false".equalsIgnoreCase(param);
+            }
+        });
+    }
+
     private void installSystemTagValidator() {
         installHostnameValidator();
         installUserdataValidator();
@@ -2107,6 +2127,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
         installUsbRedirectValidator();
         installL3NetworkSecurityGroupValidator();
         installSeDeviceValidator();
+        installHygonSeDeviceValidator();
         new StaticIpOperator().installStaticIpValidator();
     }
     private void installUsbRedirectValidator() {
