@@ -352,6 +352,7 @@ public class VmInstanceSpec implements Serializable {
     private boolean ignoreResourceReleaseFailure;
     private boolean usbRedirect = false;
     private boolean enableSecurityElement = false;
+    private boolean enableHygonSecurityElement = false;
     private String enableRDP = "false";
     private String VDIMonitorNumber = "1";
     @NoLogging
@@ -458,6 +459,14 @@ public class VmInstanceSpec implements Serializable {
     
     public void setEnableSecurityElement(boolean enableSecurityElement) {
         this.enableSecurityElement = enableSecurityElement;
+    }
+
+    public boolean isEnableHygonSecurityElement() {
+        return enableHygonSecurityElement;
+    }
+
+    public void setEnableHygonSecurityElement(boolean enableHygonSecurityElement) {
+        this.enableHygonSecurityElement = enableHygonSecurityElement;
     }
 
     public void setCreatePaused(boolean createPaused) {

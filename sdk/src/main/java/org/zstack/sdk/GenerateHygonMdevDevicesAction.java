@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class GenerateModelMetadataAction extends AbstractAction {
+public class GenerateHygonMdevDevicesAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class GenerateModelMetadataAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.GenerateModelMetadataResult value;
+        public org.zstack.sdk.GenerateHygonMdevDevicesResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -26,10 +26,7 @@ public class GenerateModelMetadataAction extends AbstractAction {
     }
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String modelCenterUuid;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List modelUuids;
+    public java.lang.String hygonDeviceUuid;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -63,8 +60,8 @@ public class GenerateModelMetadataAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.GenerateModelMetadataResult value = res.getResult(org.zstack.sdk.GenerateModelMetadataResult.class);
-        ret.value = value == null ? new org.zstack.sdk.GenerateModelMetadataResult() : value; 
+        org.zstack.sdk.GenerateHygonMdevDevicesResult value = res.getResult(org.zstack.sdk.GenerateHygonMdevDevicesResult.class);
+        ret.value = value == null ? new org.zstack.sdk.GenerateHygonMdevDevicesResult() : value; 
 
         return ret;
     }
@@ -94,10 +91,10 @@ public class GenerateModelMetadataAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "PUT";
-        info.path = "/ai/model/metadata/generate";
+        info.path = "/hygon-devices/{hygonDeviceUuid}/actions";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "generateModelMetadata";
+        info.parameterName = "generateHygonMdevDevices";
         return info;
     }
 

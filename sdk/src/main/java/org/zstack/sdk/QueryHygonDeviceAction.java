@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class GenerateModelMetadataAction extends AbstractAction {
+public class QueryHygonDeviceAction extends QueryAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class GenerateModelMetadataAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.GenerateModelMetadataResult value;
+        public org.zstack.sdk.QueryHygonDeviceResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,35 +25,6 @@ public class GenerateModelMetadataAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String modelCenterUuid;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List modelUuids;
-
-    @Param(required = false)
-    public java.util.List systemTags;
-
-    @Param(required = false)
-    public java.util.List userTags;
-
-    @Param(required = false)
-    public String sessionId;
-
-    @Param(required = false)
-    public String accessKeyId;
-
-    @Param(required = false)
-    public String accessKeySecret;
-
-    @Param(required = false)
-    public String requestIp;
-
-    @NonAPIParam
-    public long timeout = -1;
-
-    @NonAPIParam
-    public long pollingInterval = -1;
 
 
     private Result makeResult(ApiResult res) {
@@ -63,8 +34,8 @@ public class GenerateModelMetadataAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.GenerateModelMetadataResult value = res.getResult(org.zstack.sdk.GenerateModelMetadataResult.class);
-        ret.value = value == null ? new org.zstack.sdk.GenerateModelMetadataResult() : value; 
+        org.zstack.sdk.QueryHygonDeviceResult value = res.getResult(org.zstack.sdk.QueryHygonDeviceResult.class);
+        ret.value = value == null ? new org.zstack.sdk.QueryHygonDeviceResult() : value; 
 
         return ret;
     }
@@ -93,11 +64,11 @@ public class GenerateModelMetadataAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "PUT";
-        info.path = "/ai/model/metadata/generate";
+        info.httpMethod = "GET";
+        info.path = "/hygon-devices";
         info.needSession = true;
-        info.needPoll = true;
-        info.parameterName = "generateModelMetadata";
+        info.needPoll = false;
+        info.parameterName = "";
         return info;
     }
 
