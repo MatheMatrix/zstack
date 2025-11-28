@@ -876,11 +876,21 @@ public class VolumeSnapshotTreeBase {
                 VolumeTree volumeTree = VolumeTree.fromVOs(vos, current, VolumeInventory.valueOf(volume));
                 List<VolumeTree.VolumeSnapshotLeaf> children = volumeTree.getSnapshotLeaf(currentRoot.getUuid()).getChildren();
 
+                // snapshot chain : s1 <- s2 <- s3
+                // delete s3
                 if (children.isEmpty()) {
                     deleteVolumeSnapshotAndSyncVolumeSize(completion);
                     return;
                 }
 
+                // snapshot chain :
+                // s1 <- s2
+                //          <- s4 <- s5
+                //          <- s3 <- vol
+                //          <- s6 <- s6
+                // delete s2, s3 is online child
+
+                // children = [s4, s3, s6], s3 is online child
                 VolumeTree.VolumeSnapshotLeaf onlineChild = children.stream()
                         .filter(child -> volumeTree.isOnline(current, currentRoot.getUuid(), child.getUuid(), vmState))
                         .findFirst().orElse(null);
@@ -896,22 +906,25 @@ public class VolumeSnapshotTreeBase {
                         completion.fail(errorCode);
                     }
                 };
-                VolumeTree.VolumeSnapshotLeaf child = children.get(0);
+                VolumeTree.VolumeSnapshotLeaf currentChild = children.get(0);
                 if (children.size() == 1) {
-                    DeleteVolumeSnapshotDirection direction = volumeTree.resolveDirection(currentRoot.getUuid(), child.getUuid(),
+                    DeleteVolumeSnapshotDirection direction = volumeTree.resolveDirection(currentRoot.getUuid(), currentChild.getUuid(),
                             msg.getDirection(), currentRoot.isLatest(), vmState);
-                    boolean online = volumeTree.isOnline(current, currentRoot.getUuid(), child.getUuid(), vmState);
+                    boolean online = volumeTree.isOnline(current, currentRoot.getUuid(), currentChild.getUuid(), vmState);
                     if (Objects.equals(direction, DeleteVolumeSnapshotDirection.Commit)) {
-                        commit(child, volumeTree, online, comp);
+                        commit(currentChild, volumeTree, online, comp);
                     } else {
-                        pull(child, volumeTree, online, comp);
+                        pull(currentChild, volumeTree, online, comp);
                     }
                 } else {
-                    if (onlineChild != null && Objects.equals(child.getUuid(), onlineChild.getUuid())) {
-                        child = children.get(1);
+                    // 确保 s3(online child) 最后删除
+                    // 其他非 online child 使用 pull 方式删除
+                    if (onlineChild != null && Objects.equals(currentChild.getUuid(), onlineChild.getUuid())) {
+                        currentChild = children.get(1);
                     }
-                    boolean online = volumeTree.isOnline(current, currentRoot.getUuid(), child.getUuid(), vmState);
-                    pull(child, volumeTree, online, comp);
+                    // 目前逻辑应该永远为false
+                    boolean online = volumeTree.isOnline(current, currentRoot.getUuid(), currentChild.getUuid(), vmState);
+                    pull(currentChild, volumeTree, online, comp);
                 }
             }
 
@@ -1007,9 +1020,6 @@ public class VolumeSnapshotTreeBase {
 
                             @Override
                             public void run(FlowTrigger trigger, Map data) {
-                                List<String> childrenInstallPath = child.getChildren().stream().map(c ->
-                                        c.getInventory().getPrimaryStorageInstallPath()).collect(Collectors.toList());
-
                                 if (online) {
                                     String hostUuid = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, volume.getVmInstanceUuid())
                                             .select(VmInstanceVO_.hostUuid).findValue();
@@ -1018,7 +1028,7 @@ public class VolumeSnapshotTreeBase {
                                     cmsg.setVolume(VolumeInventory.valueOf(volume));
                                     cmsg.setSrcSnapshot(srcSnapshotInv);
                                     cmsg.setDstSnapshot(dstSnapshotInv);
-                                    cmsg.setSrcChildrenInstallPathInDb(childrenInstallPath);
+                                    cmsg.setChainInstallPathInDb(volumeTree.getAliveChainSnapshotInstallPath());
                                     bus.makeTargetServiceIdByResourceUuid(cmsg, HostConstant.SERVICE_ID, hostUuid);
                                     bus.send(cmsg, new CloudBusCallBack(trigger) {
                                         @Override
@@ -1038,7 +1048,6 @@ public class VolumeSnapshotTreeBase {
                                     cmsg.setVolume(VolumeInventory.valueOf(volume));
                                     cmsg.setSrcSnapshot(srcSnapshotInv);
                                     cmsg.setDstSnapshot(dstSnapshotInv);
-                                    cmsg.setSrcChildrenInstallPathInDb(childrenInstallPath);
                                     bus.makeTargetServiceIdByResourceUuid(cmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
                                     bus.send(cmsg, new CloudBusCallBack(trigger) {
                                         @Override

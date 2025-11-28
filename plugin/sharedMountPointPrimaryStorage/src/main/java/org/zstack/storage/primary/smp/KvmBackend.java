@@ -302,7 +302,6 @@ public class KvmBackend extends HypervisorBackend {
     public static class OfflineCommitSnapshotCmd extends AgentCmd implements HasThreadContext {
         public String top;
         public String base;
-        public List<String> topChildrenInstallPathInDb = new ArrayList<>();
     }
 
     public static class OfflineCommitSnapshotRsp extends AgentRsp {
@@ -2456,7 +2455,6 @@ public class KvmBackend extends HypervisorBackend {
         OfflineCommitSnapshotCmd cmd = new OfflineCommitSnapshotCmd();
         cmd.top = msg.getSrcSnapshot().getPrimaryStorageInstallPath();
         cmd.base = msg.getDstSnapshot().getPrimaryStorageInstallPath();
-        cmd.topChildrenInstallPathInDb = msg.getSrcChildrenInstallPathInDb();
         new Do().go(OFFLINE_COMMIT_SNAPSHOT_PATH, cmd, OfflineCommitSnapshotRsp.class, new ReturnValueCompletion<AgentRsp>(completion) {
             @Override
             public void success(AgentRsp returnValue) {

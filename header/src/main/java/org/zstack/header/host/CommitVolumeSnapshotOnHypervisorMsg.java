@@ -12,7 +12,7 @@ public class CommitVolumeSnapshotOnHypervisorMsg extends NeedReplyMessage implem
     private VolumeInventory volume;
     private VolumeSnapshotInventory srcSnapshot;
     private VolumeSnapshotInventory dstSnapshot;
-    private List<String> srcChildrenInstallPathInDb = new ArrayList<>();
+    private List<String> chainInstallPathInDb = new ArrayList<>();
 
     @Override
     public String getHostUuid() {
@@ -47,11 +47,11 @@ public class CommitVolumeSnapshotOnHypervisorMsg extends NeedReplyMessage implem
         this.dstSnapshot = dstSnapshot;
     }
 
-    public List<String> getSrcChildrenInstallPathInDb() {
-        return srcChildrenInstallPathInDb;
+    public List<String> getChainInstallPathInDb() {
+        return chainInstallPathInDb;
     }
 
-    public void setSrcChildrenInstallPathInDb(List<String> srcChildrenInstallPathInDb) {
-        this.srcChildrenInstallPathInDb = srcChildrenInstallPathInDb;
+    public void setChainInstallPathInDb(List<String> chainInstallPathInDb) {
+        this.chainInstallPathInDb = chainInstallPathInDb;
     }
 }

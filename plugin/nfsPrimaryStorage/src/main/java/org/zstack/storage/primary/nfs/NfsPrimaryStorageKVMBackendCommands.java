@@ -798,7 +798,6 @@ public class NfsPrimaryStorageKVMBackendCommands {
     public static class OfflineCommitSnapshotCmd extends NfsPrimaryStorageAgentCommand implements HasThreadContext {
         public String top;
         public String base;
-        public List<String> topChildrenInstallPathInDb = new ArrayList<>();
     }
 
     public static class OfflineCommitSnapshotRsp extends NfsPrimaryStorageAgentResponse {

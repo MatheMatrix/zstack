@@ -699,7 +699,6 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
     public static class OfflineCommitSnapshotCmd extends AgentCommand implements HasThreadContext {
         public String top;
         public String base;
-        public List<String> topChildrenInstallPathInDb = new ArrayList<>();
     }
 
     public static class OfflineCommitSnapshotRsp extends AgentResponse {
@@ -3773,7 +3772,6 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         OfflineCommitSnapshotCmd cmd = new OfflineCommitSnapshotCmd();
         cmd.top = msg.getSrcSnapshot().getPrimaryStorageInstallPath();
         cmd.base = msg.getDstSnapshot().getPrimaryStorageInstallPath();
-        cmd.topChildrenInstallPathInDb = msg.getSrcChildrenInstallPathInDb();
         httpCall(OFFLINE_COMMIT_PATH, hostUuid, cmd, OfflineCommitSnapshotRsp.class, new ReturnValueCompletion<OfflineCommitSnapshotRsp>(completion) {
             @Override
             public void success(OfflineCommitSnapshotRsp returnValue) {

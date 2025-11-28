@@ -11,7 +11,7 @@ public class CommitVolumeSnapshotOnPrimaryStorageMsg extends NeedReplyMessage im
     private VolumeInventory volume;
     private VolumeSnapshotInventory srcSnapshot;
     private VolumeSnapshotInventory dstSnapshot;
-    List<String> srcChildrenInstallPathInDb = new ArrayList<>();
+    private List<String> chainInstallPathInDb = new ArrayList<>();
 
     public VolumeInventory getVolume() {
         return volume;
@@ -37,16 +37,16 @@ public class CommitVolumeSnapshotOnPrimaryStorageMsg extends NeedReplyMessage im
         this.dstSnapshot = dstSnapshot;
     }
 
-    public List<String> getSrcChildrenInstallPathInDb() {
-        return srcChildrenInstallPathInDb;
-    }
-
-    public void setSrcChildrenInstallPathInDb(List<String> srcChildrenInstallPathInDb) {
-        this.srcChildrenInstallPathInDb = srcChildrenInstallPathInDb;
-    }
-
     @Override
     public String getPrimaryStorageUuid() {
         return srcSnapshot.getPrimaryStorageUuid();
+    }
+
+    public List<String> getChainInstallPathInDb() {
+        return chainInstallPathInDb;
+    }
+
+    public void setChainInstallPathInDb(List<String> chainInstallPathInDb) {
+        this.chainInstallPathInDb = chainInstallPathInDb;
     }
 }

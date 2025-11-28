@@ -442,4 +442,17 @@ public class VolumeSnapshotTree {
 
         return findSnapshot(arg -> arg.getUuid().equals(snapshotUuid));
     }
+
+    public List<String> getAliveChainInstallPath(String latestSnapshotUuid) {
+        VolumeSnapshotTree.SnapshotLeaf lastestSnapshotLeaf = findSnapshot(new Function<Boolean, VolumeSnapshotInventory>() {
+            @Override
+            public Boolean call(VolumeSnapshotInventory arg) {
+                return arg.getUuid().equals(latestSnapshotUuid);
+            }
+        });
+
+        List<VolumeSnapshotInventory> ancestors = lastestSnapshotLeaf.getAncestors();
+        Collections.reverse(ancestors);
+        return ancestors.stream().map(VolumeSnapshotInventory::getPrimaryStorageInstallPath).collect(Collectors.toList());
+    }
 }

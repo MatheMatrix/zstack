@@ -65,7 +65,7 @@ public class APIDeleteVolumeSnapshotMsg extends APIDeleteMessage implements Dele
     @APIParam(required = false, validValues = {"pull", "commit", "auto"})
     private String direction = "auto";
 
-    @APIParam(required = false, validValues = {"single", "chain", "auto"})
+    @APIParam(required = false, validValues = {"single", "chain"})
     private String scope = "chain";
 
     @Override
