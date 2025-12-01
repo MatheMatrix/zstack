@@ -1016,6 +1016,7 @@ public class KVMHost extends HostBase implements Host {
         cmd.setTop(msg.getSrcSnapshot().getPrimaryStorageInstallPath());
         cmd.setBase(msg.getDstSnapshot().getPrimaryStorageInstallPath());
         cmd.setTopChildrenInstallPathInDb(msg.getSrcChildrenInstallPathInDb());
+        cmd.setChainInstallPathInDb(msg.getChainInstallPathInDb());
 
         FlowChain chain = FlowChainBuilder.newShareFlowChain();
         chain.setName(String.format("block-commit-for-volume-%s", msg.getVolume().getUuid()));

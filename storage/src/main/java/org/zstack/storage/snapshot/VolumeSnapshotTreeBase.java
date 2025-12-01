@@ -1019,6 +1019,7 @@ public class VolumeSnapshotTreeBase {
                                     cmsg.setSrcSnapshot(srcSnapshotInv);
                                     cmsg.setDstSnapshot(dstSnapshotInv);
                                     cmsg.setSrcChildrenInstallPathInDb(childrenInstallPath);
+                                    cmsg.setChainInstallPathInDb(volumeTree.getAliveChainSnapshotInstallPath());
                                     bus.makeTargetServiceIdByResourceUuid(cmsg, HostConstant.SERVICE_ID, hostUuid);
                                     bus.send(cmsg, new CloudBusCallBack(trigger) {
                                         @Override
