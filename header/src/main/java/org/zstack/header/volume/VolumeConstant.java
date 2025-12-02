@@ -12,6 +12,10 @@ public interface VolumeConstant {
     int DEFAULT_MAX_DATA_VOLUME_NUMBER = 24;
     String BLOCK_VOLUME_TYPE = "blockVolume";
 
+    String NONE_PREALLOCTION = "none";
+    String FULL_PREALLOCTION = "full";
+    String FALLOC_PREALLOCTION = "falloc";
+
     enum Capability {
         MigrationInCurrentPrimaryStorage,
         MigrationToOtherPrimaryStorage

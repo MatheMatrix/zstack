@@ -28,6 +28,8 @@ import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.snapshot.CreateTemplateFromVolumeSnapshotExtensionPoint;
 import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
 import org.zstack.header.volume.*;
+import org.zstack.resourceconfig.ResourceConfig;
+import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.storage.snapshot.PostMarkRootVolumeAsSnapshotExtension;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
@@ -62,6 +64,8 @@ public class SMPPrimaryStorageFactory implements PrimaryStorageFactory, CreateTe
     private ErrorFacade errf;
     @Autowired
     private PluginRegistry pluginRgty;
+    @Autowired
+    private ResourceConfigFacade rcf;
 
     @Override
     public PrimaryStorageType getPrimaryStorageType() {
@@ -422,10 +426,20 @@ public class SMPPrimaryStorageFactory implements PrimaryStorageFactory, CreateTe
             }
         }
 
-        VolumeInventory volume = msg.getVolume();
-        volume.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
-        for (CreateQcow2VolumeProvisioningStrategyExtensionPoint exp : pluginRgty.getExtensionList(CreateQcow2VolumeProvisioningStrategyExtensionPoint.class)) {
-            exp.saveQcow2VolumeProvisioningStrategy(volume, hasBackingFile);
+        String preallocation = rcf.getResourceConfigValueByResourceType(SMPPrimaryStorageGlobalConfig.QCOW2_ALLOCATION,
+                msg.getVolume().getUuid(), VolumeVO.class.getSimpleName(), String.class);
+        if (preallocation != null) {
+            return;
+        }
+
+        if (hasBackingFile) {
+            ResourceConfig rc = rcf.getResourceConfig(SMPPrimaryStorageGlobalConfig.QCOW2_ALLOCATION.getIdentity());
+            String psPreallocation = rcf.getResourceConfigValueByResourceType(SMPPrimaryStorageGlobalConfig.QCOW2_ALLOCATION,
+                    msg.getVolume().getPrimaryStorageUuid(), PrimaryStorageVO.class.getSimpleName(), String.class);
+            if (psPreallocation == null) {
+                psPreallocation = SMPPrimaryStorageGlobalConfig.QCOW2_ALLOCATION.getDefaultValue();
+            }
+            rc.updateValue(msg.getVolume().getUuid(), psPreallocation);
         }
     }
 }

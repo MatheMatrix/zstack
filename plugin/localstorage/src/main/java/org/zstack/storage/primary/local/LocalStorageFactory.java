@@ -47,6 +47,8 @@ import org.zstack.header.vm.*;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.header.volume.*;
 import org.zstack.kvm.KVMConstant;
+import org.zstack.resourceconfig.ResourceConfig;
+import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.storage.primary.PrimaryStorageCapacityChecker;
 import org.zstack.storage.snapshot.PostMarkRootVolumeAsSnapshotExtension;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
@@ -60,6 +62,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.zstack.compute.vm.VmCpuVendor.AuthenticAMD;
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.err;
 import static org.zstack.core.Platform.operr;
@@ -101,6 +104,8 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
     private CloudBus bus;
     @Autowired
     private ErrorFacade errf;
+    @Autowired
+    private ResourceConfigFacade rcf;
 
     private Map<String, LocalStorageBackupStorageMediator> backupStorageMediatorMap = new HashMap<String, LocalStorageBackupStorageMediator>();
 
@@ -261,11 +266,21 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
                 hasBackingFile = true;
             }
         }
-        
-        VolumeInventory volume = msg.getVolume();
-        volume.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
-        for (CreateQcow2VolumeProvisioningStrategyExtensionPoint exp : pluginRgty.getExtensionList(CreateQcow2VolumeProvisioningStrategyExtensionPoint.class)) {
-            exp.saveQcow2VolumeProvisioningStrategy(volume, hasBackingFile);
+
+        String preallocation = rcf.getResourceConfigValueByResourceType(LocalStoragePrimaryStorageGlobalConfig.QCOW2_ALLOCATION,
+                msg.getVolume().getUuid(), VolumeVO.class.getSimpleName(), String.class);
+        if (preallocation != null) {
+            return;
+        }
+
+        if (hasBackingFile) {
+            ResourceConfig rc = rcf.getResourceConfig(LocalStoragePrimaryStorageGlobalConfig.QCOW2_ALLOCATION.getIdentity());
+            String psPreallocation = rcf.getResourceConfigValueByResourceType(LocalStoragePrimaryStorageGlobalConfig.QCOW2_ALLOCATION,
+                    msg.getVolume().getPrimaryStorageUuid(), PrimaryStorageVO.class.getSimpleName(), String.class);
+            if (psPreallocation == null) {
+                psPreallocation = LocalStoragePrimaryStorageGlobalConfig.QCOW2_ALLOCATION.getDefaultValue();
+            }
+            rc.updateValue(msg.getVolume().getUuid(), psPreallocation);
         }
     }
 

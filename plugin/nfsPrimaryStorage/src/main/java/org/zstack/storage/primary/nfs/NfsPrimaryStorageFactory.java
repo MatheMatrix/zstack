@@ -40,6 +40,8 @@ import org.zstack.header.vm.VmInstanceVO_;
 import org.zstack.header.vo.ResourceVO;
 import org.zstack.header.volume.*;
 import org.zstack.kvm.KVMConstant;
+import org.zstack.resourceconfig.ResourceConfig;
+import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.storage.primary.ChangePrimaryStorageStatusMsg;
 import org.zstack.storage.primary.PrimaryStorageCapacityUpdater;
 import org.zstack.storage.primary.PrimaryStorageSystemTags;
@@ -80,6 +82,8 @@ public class NfsPrimaryStorageFactory implements NfsPrimaryStorageManager, Prima
     private RESTFacade restf;
     @Autowired
     protected EventFacade evtf;
+    @Autowired
+    private ResourceConfigFacade rcf;
 
     private Map<String, NfsPrimaryStorageBackend> backends = new HashMap<String, NfsPrimaryStorageBackend>();
     private Map<String, Map<String, NfsPrimaryToBackupStorageMediator>> mediators =
@@ -793,10 +797,20 @@ public class NfsPrimaryStorageFactory implements NfsPrimaryStorageManager, Prima
             }
         }
 
-        VolumeInventory volume = msg.getVolume();
-        volume.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
-        for (CreateQcow2VolumeProvisioningStrategyExtensionPoint exp : pluginRgty.getExtensionList(CreateQcow2VolumeProvisioningStrategyExtensionPoint.class)) {
-            exp.saveQcow2VolumeProvisioningStrategy(volume, hasBackingFile);
+        String preallocation = rcf.getResourceConfigValueByResourceType(NfsPrimaryStorageGlobalConfig.QCOW2_ALLOCATION,
+                msg.getVolume().getUuid(), VolumeVO.class.getSimpleName(), String.class);
+        if (preallocation != null) {
+            return;
+        }
+
+        if (hasBackingFile) {
+            ResourceConfig rc = rcf.getResourceConfig(NfsPrimaryStorageGlobalConfig.QCOW2_ALLOCATION.getIdentity());
+            String psPreallocation = rcf.getResourceConfigValueByResourceType(NfsPrimaryStorageGlobalConfig.QCOW2_ALLOCATION,
+                    msg.getVolume().getPrimaryStorageUuid(), PrimaryStorageVO.class.getSimpleName(), String.class);
+            if (psPreallocation == null) {
+                psPreallocation = NfsPrimaryStorageGlobalConfig.QCOW2_ALLOCATION.getDefaultValue();
+            }
+            rc.updateValue(msg.getVolume().getUuid(), psPreallocation);
         }
     }
 }
