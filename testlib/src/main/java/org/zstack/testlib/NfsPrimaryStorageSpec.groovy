@@ -437,7 +437,9 @@ class NfsPrimaryStorageSpec extends PrimaryStorageSpec {
                 def cmd = JSONObjectUtil.toObject(e.body, NfsPrimaryStorageKVMBackendCommands.CreateRootVolumeFromTemplateCmd.class)
                 VFS vfs = vfs(cmd, xspec)
                 Volume image = vfs.getFile(cmd.templatePathInCache, true)
-                vfs.createQcow2(cmd.installUrl, image.actualSize, image.virtualSize, cmd.templatePathInCache)
+                long virtualSize = cmd.virtualSize != 0 ? cmd.virtualSize : image.actualSize
+                vfs.createQcow2(cmd.installUrl, image.actualSize, virtualSize, cmd.templatePathInCache)
+                rsp.size = cmd.virtualSize
                 return rsp
             }
 
@@ -449,7 +451,10 @@ class NfsPrimaryStorageSpec extends PrimaryStorageSpec {
                 def cmd = JSONObjectUtil.toObject(e.body, NfsPrimaryStorageKVMBackendCommands.CreateVolumeWithBackingCmd.class)
                 VFS vfs = vfs(cmd, xspec)
                 Volume image = vfs.getFile(cmd.templatePathInCache, true)
-                vfs.createQcow2(cmd.installUrl, image.actualSize, image.virtualSize, cmd.templatePathInCache)
+
+                long virtualSize = cmd.virtualSize != 0 ? cmd.virtualSize : image.actualSize
+                vfs.createQcow2(cmd.installUrl, image.actualSize, virtualSize, cmd.templatePathInCache)
+                rsp.size = cmd.virtualSize
                 return rsp
             }
 

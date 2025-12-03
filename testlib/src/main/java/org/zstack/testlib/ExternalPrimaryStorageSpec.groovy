@@ -169,7 +169,7 @@ class ExternalPrimaryStorageSpec extends PrimaryStorageSpec {
                 assert zspec != null: "cannot found zbs primary storage[uuid:${cmd.uuid}], check your environment()."
 
                 def rsp = new ZbsStorageController.CloneVolumeRsp()
-                rsp.setSize(actualSize)
+                rsp.setSize(cmd.virtualSize != 0 ? cmd.virtualSize : actualSize)
                 // replace volume name
                 rsp.setInstallPath(cmd.path.replaceAll("([^/]+)\$", cmd.dstVolume))
                 return rsp

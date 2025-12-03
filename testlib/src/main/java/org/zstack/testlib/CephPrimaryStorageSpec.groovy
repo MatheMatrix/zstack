@@ -377,7 +377,7 @@ class CephPrimaryStorageSpec extends PrimaryStorageSpec {
             simulator(CephPrimaryStorageBase.CLONE_PATH) { HttpEntity<String> e, EnvSpec spec ->
                 def cmd = JSONObjectUtil.toObject(e.body, CephPrimaryStorageBase.CloneCmd.class)
                 def rsp = new CephPrimaryStorageBase.CloneRsp()
-                rsp.size = 0
+                rsp.size = cmd.virtualSize
                 rsp.actualSize = 0
                 rsp.installPath = cmd.dstPath
                 return rsp
@@ -388,7 +388,7 @@ class CephPrimaryStorageSpec extends PrimaryStorageSpec {
                 VFS vfs = vfs(cmd, spec)
                 String srcPath = cephPathToVFSPath(cmd.srcPath)
                 vfs.Assert(vfs.isFile(srcPath), "cannot find the source file[${srcPath}]")
-                vfs.createCephRaw(cephPathToVFSPath(cmd.dstPath), 0L, srcPath)
+                vfs.createCephRaw(cephPathToVFSPath(cmd.dstPath), cmd.virtualSize, srcPath)
 
                 return rsp
             }
