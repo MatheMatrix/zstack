@@ -454,6 +454,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
     public static class CloneCmd extends AgentCommand {
         String srcPath;
         String dstPath;
+        private long virtualSize;
 
         public String getSrcPath() {
             return srcPath;
@@ -469,6 +470,14 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
 
         public void setDstPath(String dstPath) {
             this.dstPath = dstPath;
+        }
+
+        public long getVirtualSize() {
+            return virtualSize;
+        }
+
+        public void setVirtualSize(long virtualSize) {
+            this.virtualSize = virtualSize;
         }
     }
 
@@ -4974,7 +4983,8 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         String snapShotPath = msg.getSnapshot().getPrimaryStorageInstallPath();
         final String volPath = makeVolumeInstallPathByTargetPool(msg.getVolumeUuid(), getTargetPoolNameFromAllocatedUrl(snapShotPath));
         VolumeSnapshotInventory sp = msg.getSnapshot();
-        cloneAndProtectSnaphost(sp.getPrimaryStorageInstallPath(), volPath, new ReturnValueCompletion<CloneRsp>(completion) {
+        long volumeSize = Q.New(VolumeVO.class).eq(VolumeVO_.uuid, msg.getVolumeUuid()).select(VolumeVO_.size).findValue();
+        cloneAndProtectSnaphost(sp.getPrimaryStorageInstallPath(), volPath, volumeSize, new ReturnValueCompletion<CloneRsp>(completion) {
             @Override
             public void success(CloneRsp rsp) {
                 reply.setInstallPath(volPath);
@@ -4997,7 +5007,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
 
     }
 
-    private void cloneAndProtectSnaphost(String snapshotPath, String dstPath, ReturnValueCompletion<CloneRsp> completion) {
+    private void cloneAndProtectSnaphost(String snapshotPath, String dstPath, long virtualSize, ReturnValueCompletion<CloneRsp> completion) {
         ProtectSnapshotCmd cmd = new ProtectSnapshotCmd();
         cmd.snapshotPath = snapshotPath;
         cmd.ignoreError = true;
@@ -5007,6 +5017,9 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                 CloneCmd cmd = new CloneCmd();
                 cmd.srcPath = snapshotPath;
                 cmd.dstPath = dstPath;
+                if (virtualSize != 0) {
+                    cmd.virtualSize = virtualSize;
+                }
                 httpCall(CLONE_PATH, cmd, CloneRsp.class, completion);
             }
 

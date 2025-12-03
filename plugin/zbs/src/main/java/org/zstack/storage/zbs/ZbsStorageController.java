@@ -642,6 +642,8 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                         CloneVolumeCmd cmd = new CloneVolumeCmd();
                         cmd.setPath(srcInstallPath);
                         cmd.setDstVolume(dst.getName());
+                        cmd.setVirtualSize(dst.getSize());
+                        cmd.setUnit(getSizeUnit(addonInfo.getClusterInfo().getVersion()));
 
                         httpCall(CLONE_VOLUME_PATH, cmd, CloneVolumeRsp.class, new ReturnValueCompletion<CloneVolumeRsp>(trigger) {
                             @Override
@@ -1628,6 +1630,8 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     public static class CloneVolumeCmd extends AgentCommand {
         private String path;
         private String dstVolume;
+        private long virtualSize;
+        private String unit;
 
         public String getPath() {
             return path;
@@ -1643,6 +1647,22 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
         public void setDstVolume(String dstVolume) {
             this.dstVolume = dstVolume;
+        }
+
+        public long getVirtualSize() {
+            return virtualSize;
+        }
+
+        public void setVirtualSize(long virtualSize) {
+            this.virtualSize = virtualSize;
+        }
+
+        public String getUnit() {
+            return unit;
+        }
+
+        public void setUnit(String unit) {
+            this.unit = unit;
         }
     }
 
