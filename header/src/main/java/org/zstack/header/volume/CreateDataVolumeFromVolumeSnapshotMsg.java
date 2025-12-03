@@ -8,6 +8,7 @@ public class CreateDataVolumeFromVolumeSnapshotMsg extends NeedReplyMessage {
     private String description;
     private String volumeSnapshotUuid;
     private SessionInventory session;
+    private long size;
 
     public String getName() {
         return name;
@@ -39,5 +40,13 @@ public class CreateDataVolumeFromVolumeSnapshotMsg extends NeedReplyMessage {
 
     public void setSession(SessionInventory session) {
         this.session = session;
+    }
+
+    public long getSize() {
+        return size;
+    }
+
+    public void setSize(long size) {
+        this.size = size;
     }
 }

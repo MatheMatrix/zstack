@@ -830,8 +830,8 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
         vo.setState(VolumeState.Enabled);
         vo.setStatus(VolumeStatus.Creating);
         vo.setType(VolumeType.Data);
-        vo.setSize(0);
         vo.setAccountUuid(msg.getSession().getAccountUuid());
+        vo.setSize(msg.getSize());
         VolumeVO vvo = new SQLBatchWithReturn<VolumeVO>() {
             @Override
             protected VolumeVO scripts() {

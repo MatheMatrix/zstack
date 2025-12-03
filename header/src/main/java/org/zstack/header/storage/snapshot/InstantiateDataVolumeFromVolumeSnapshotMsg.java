@@ -16,7 +16,6 @@ public class InstantiateDataVolumeFromVolumeSnapshotMsg extends NeedReplyMessage
      * @ignore
      */
     private String treeUuid;
-
     @Override
     public String getTreeUuid() {
         return treeUuid;

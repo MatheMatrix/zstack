@@ -454,6 +454,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
     public static class CloneCmd extends AgentCommand {
         String srcPath;
         String dstPath;
+        private long virtualSize;
 
         public String getSrcPath() {
             return srcPath;
@@ -469,6 +470,14 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
 
         public void setDstPath(String dstPath) {
             this.dstPath = dstPath;
+        }
+
+        public long getVirtualSize() {
+            return virtualSize;
+        }
+
+        public void setVirtualSize(long virtualSize) {
+            this.virtualSize = virtualSize;
         }
     }
 
@@ -5007,6 +5016,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                 CloneCmd cmd = new CloneCmd();
                 cmd.srcPath = snapshotPath;
                 cmd.dstPath = dstPath;
+                cmd.virtualSize = virtualSize;
                 httpCall(CLONE_PATH, cmd, CloneRsp.class, completion);
             }
 
