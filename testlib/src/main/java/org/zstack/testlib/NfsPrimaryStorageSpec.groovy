@@ -429,15 +429,18 @@ class NfsPrimaryStorageSpec extends PrimaryStorageSpec {
                 return rsp
             }
 
-            simulator(NfsPrimaryStorageKVMBackend.CREATE_VOLUME_FROM_TEMPLATE_PATH) {
-                return new NfsPrimaryStorageKVMBackendCommands.CreateRootVolumeFromTemplateResponse()
+            simulator(NfsPrimaryStorageKVMBackend.CREATE_VOLUME_FROM_TEMPLATE_PATH) { HttpEntity<String> e, EnvSpec spec ->
+                def cmd = JSONObjectUtil.toObject(e.body, NfsPrimaryStorageKVMBackendCommands.CreateRootVolumeFromTemplateCmd.class)
+                NfsPrimaryStorageKVMBackendCommands.CreateRootVolumeFromTemplateResponse rsp = new NfsPrimaryStorageKVMBackendCommands.CreateRootVolumeFromTemplateResponse()
+                rsp.size = cmd.virtualSize
+                return rsp
             }
 
             VFS.vfsHook(NfsPrimaryStorageKVMBackend.CREATE_VOLUME_FROM_TEMPLATE_PATH, xspec) { rsp, HttpEntity<String> e, EnvSpec spec ->
                 def cmd = JSONObjectUtil.toObject(e.body, NfsPrimaryStorageKVMBackendCommands.CreateRootVolumeFromTemplateCmd.class)
                 VFS vfs = vfs(cmd, xspec)
                 Volume image = vfs.getFile(cmd.templatePathInCache, true)
-                vfs.createQcow2(cmd.installUrl, image.actualSize, image.virtualSize, cmd.templatePathInCache)
+                vfs.createQcow2(cmd.installUrl, image.actualSize, cmd.virtualSize, cmd.templatePathInCache)
                 return rsp
             }
 
@@ -449,7 +452,8 @@ class NfsPrimaryStorageSpec extends PrimaryStorageSpec {
                 def cmd = JSONObjectUtil.toObject(e.body, NfsPrimaryStorageKVMBackendCommands.CreateVolumeWithBackingCmd.class)
                 VFS vfs = vfs(cmd, xspec)
                 Volume image = vfs.getFile(cmd.templatePathInCache, true)
-                vfs.createQcow2(cmd.installUrl, image.actualSize, image.virtualSize, cmd.templatePathInCache)
+                vfs.createQcow2(cmd.installUrl, image.actualSize, cmd.virtualSize != 0 ? cmd.virtualSize : image.actualSize, cmd.templatePathInCache)
+                rsp.size = cmd.virtualSize
                 return rsp
             }
 

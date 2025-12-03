@@ -300,7 +300,8 @@ class LocalStorageSpec extends PrimaryStorageSpec {
                 VFS vfs = vfs(e, cmd, spec)
 
                 Volume image = vfs.getFile(cmd.templatePathInCache, true)
-                vfs.createQcow2(cmd.installPath, image.actualSize, image.virtualSize, cmd.templatePathInCache)
+                vfs.createQcow2(cmd.installPath, image.actualSize, cmd.virtualSize != 0 ? cmd.virtualSize : image.actualSize, cmd.templatePathInCache)
+                rsp.size = cmd.virtualSize
                 return rsp
             }
 
@@ -327,7 +328,10 @@ class LocalStorageSpec extends PrimaryStorageSpec {
             }
 
             simulator(LocalStorageKvmBackend.CREATE_VOLUME_FROM_CACHE_PATH) { HttpEntity<String> e, EnvSpec spec ->
-                return new LocalStorageKvmBackend.CreateVolumeFromCacheRsp()
+                def cmd = JSONObjectUtil.toObject(e.body, LocalStorageKvmBackend.CreateVolumeFromCacheCmd.class)
+                LocalStorageKvmBackend.CreateVolumeFromCacheRsp rsp = new LocalStorageKvmBackend.CreateVolumeFromCacheRsp()
+                rsp.size = cmd.virtualSize
+                return rsp
             }
 
 
@@ -335,7 +339,7 @@ class LocalStorageSpec extends PrimaryStorageSpec {
                 def cmd = JSONObjectUtil.toObject(e.body, LocalStorageKvmBackend.CreateVolumeFromCacheCmd.class)
                 VFS vfs = vfs(e, cmd, spec)
                 Volume image = vfs.getFile(cmd.templatePathInCache, true)
-                vfs.createQcow2(cmd.installUrl, image.actualSize, image.virtualSize, image.pathString())
+                vfs.createQcow2(cmd.installUrl, image.actualSize, cmd.virtualSize, image.pathString())
                 return rsp
             }
 
