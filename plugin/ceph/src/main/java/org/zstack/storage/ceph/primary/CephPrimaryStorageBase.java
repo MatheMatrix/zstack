@@ -3774,6 +3774,39 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                     }
                 });
 
+                flow(new NoRollbackFlow() {
+                    String __name__ = "check-host-storage-connection";
+
+                    @Override
+                    public void run(final FlowTrigger trigger, Map data) {
+                        List<String> clusterUuids = Q.New(PrimaryStorageClusterRefVO.class)
+                                .eq(PrimaryStorageClusterRefVO_.primaryStorageUuid, self.getUuid())
+                                .select(PrimaryStorageClusterRefVO_.clusterUuid).listValues();
+
+                        if (clusterUuids.isEmpty()) {
+                            trigger.next();
+                            return;
+                        }
+
+                        List<String> hostUuids = Q.New(HostVO.class).in(HostVO_.clusterUuid, clusterUuids)
+                                .eq(HostVO_.status, HostStatus.Connected)
+                                .notIn(HostVO_.state, list(HostState.PreMaintenance, HostState.Maintenance))
+                                .select(HostVO_.uuid).listValues();
+
+                        checkHostStorageConnection(hostUuids, new Completion(trigger) {
+                            @Override
+                            public void success() {
+                                trigger.next();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.next();
+                            }
+                        });
+                    }
+                });
+
                 done(new FlowDoneHandler(completion) {
                     @Override
                     public void handle(Map data) {
@@ -4884,7 +4917,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
             return msg;
         });
 
-        new While<>(msgs).each((msg, wc) -> bus.send(msg, new CloudBusCallBack(wc) {
+        new While<>(msgs).step((msg, wc) -> bus.send(msg, new CloudBusCallBack(wc) {
             @Override
             public void run(MessageReply reply) {
                 KVMHostAsyncHttpCallReply kr = reply.castReply();
@@ -4911,7 +4944,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                 bus.send(umsg);
                 wc.done();
             }
-        })).run(new WhileDoneCompletion(completion) {
+        }), 10).run(new WhileDoneCompletion(completion) {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
