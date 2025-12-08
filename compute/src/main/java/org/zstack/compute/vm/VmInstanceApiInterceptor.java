@@ -1211,7 +1211,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         }
 
         if (count > 1) {
-            throw new ApiMessageInterceptionException(operr("Cannot set the following properties at the same time: %s", errorMsg));
+            throw new ApiMessageInterceptionException(operr("Cannot set the following properties at the same time")
+                    .withException(errorMsg.toString()));
         }
 
         if (count == 0) {
