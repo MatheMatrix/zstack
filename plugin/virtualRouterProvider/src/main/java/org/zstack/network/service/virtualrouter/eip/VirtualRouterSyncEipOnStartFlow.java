@@ -61,7 +61,7 @@ public class VirtualRouterSyncEipOnStartFlow implements Flow {
 
     @Transactional(readOnly = true)
     private List<EipTO> findEipOnThisRouter(VirtualRouterVmInventory vr, List<String> eipUuids) {
-        String sql = "select vip.ip, nic.l3NetworkUuid, nic.uuid, vip.l3NetworkUuid from EipVO eip, VipVO vip, VmNicVO nic " +
+        String sql = "select vip.ip, nic.l3NetworkUuid, nic.uuid, vip.l3NetworkUuid, vip.uuid from EipVO eip, VipVO vip, VmNicVO nic " +
                 " where eip.vipUuid = vip.uuid and vip.serviceProvider in (:providers) "+
                 " and eip.vmNicUuid = nic.uuid and eip.uuid in (:euuids)";
         TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
@@ -72,6 +72,7 @@ public class VirtualRouterSyncEipOnStartFlow implements Flow {
         List<EipTO> ret = new ArrayList<EipTO>();
         for (Tuple t : tuples) {
             String vipIp = t.get(0, String.class);
+            String vipUuid = t.get(4, String.class);
             final String l3Uuid = t.get(1, String.class);
             String guestNicUuid = t.get(2, String.class);
             final String pubL3Uuid = t.get(3, String.class);
@@ -100,6 +101,7 @@ public class VirtualRouterSyncEipOnStartFlow implements Flow {
                     l3Uuid, vr.getUuid()));
             EipTO to = new EipTO();
             to.setVipIp(vipIp);
+            to.setVipUuid(vipUuid);
             to.setPublicMac(publicMac);
             to.setPrivateMac(privMac);
             to.setSnatInboundTraffic(EipGlobalConfig.SNAT_INBOUND_TRAFFIC.value(Boolean.class));

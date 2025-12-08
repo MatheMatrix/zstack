@@ -141,6 +141,7 @@ public class VirtualRouterEipBackend extends AbstractVirtualRouterBackend implem
                         .map(VmNicInventory::getMac)
                         .orElse(null));
                 to.setVipIp(struct.getVip().getIp());
+                to.setVipUuid(struct.getVip().getUuid());
                 to.setSnatInboundTraffic(struct.isSnatInboundTraffic());
                 to.setIpVersion(IPv6NetworkUtils.getIpVersion(to.getVipIp()));
                 to.setGuestIp(IPv6NetworkUtils.getIpByIpVersion(to.getIpVersion(),
@@ -504,7 +505,7 @@ public class VirtualRouterEipBackend extends AbstractVirtualRouterBackend implem
         List<Tuple> existsEips = null;
         List<String> existsEipUuids = proxy.getServiceUuidsByRouterUuid(nic.getVmInstanceUuid(), EipVO.class.getSimpleName());
         if (existsEipUuids != null && !existsEipUuids.isEmpty()) {
-            existsEips = SQL.New("select eip.vipIp, eip.guestIp, nic.l3NetworkUuid, nic.mac, vip.l3NetworkUuid, eip.uuid " +
+            existsEips = SQL.New("select eip.vipIp, eip.guestIp, nic.l3NetworkUuid, nic.mac, vip.l3NetworkUuid, eip.uuid, vip.uuid " +
                     "from EipVO eip, VmNicVO nic, VipVO vip " +
                     "where eip.vmNicUuid = nic.uuid " +
                     "and eip.uuid in (:eipUuids) " +
@@ -548,6 +549,7 @@ public class VirtualRouterEipBackend extends AbstractVirtualRouterBackend implem
             }
             EipTO to = new EipTO();
             to.setVipIp(t.get(0, String.class));
+            to.setVipUuid(t.get(5, String.class));
             to.setGuestIp(t.get(1, String.class));
             Optional<VmNicInventory> priNic = vr.getVmNics().stream()
                     .filter(n -> n.getL3NetworkUuid().equals(t.get(2, String.class)))
@@ -572,7 +574,7 @@ public class VirtualRouterEipBackend extends AbstractVirtualRouterBackend implem
     }
 
     private List<Tuple> findEipTuplesOnVmNic(VmNicInventory nic) {
-        List<Tuple> eips = SQL.New("select eip.vipIp, eip.guestIp, nic.l3NetworkUuid, nic.mac, vip.l3NetworkUuid, eip.uuid " +
+        List<Tuple> eips = SQL.New("select eip.vipIp, eip.guestIp, nic.l3NetworkUuid, nic.mac, vip.l3NetworkUuid, eip.uuid, vip.uuid " +
                 "from EipVO eip, VmNicVO nic, VipVO vip " +
                 "where eip.vmNicUuid = nic.uuid " +
                 "and nic.l3NetworkUuid = :l3Uuid " +

@@ -107,6 +107,7 @@ public class VirtualRouterPortForwardingBackend extends AbstractVirtualRouterBac
         to.setPrivatePortEnd(struct.getRule().getPrivatePortEnd());
         to.setPrivatePortStart(struct.getRule().getPrivatePortStart());
         to.setVipIp(struct.getVip().getIp());
+        to.setVipUuid(struct.getVip().getUuid());
         to.setVipPortEnd(struct.getRule().getVipPortEnd());
         to.setSnatInboundTraffic(struct.isSnatInboundTraffic());
         to.setVipPortStart(struct.getRule().getVipPortStart());
@@ -336,6 +337,7 @@ public class VirtualRouterPortForwardingBackend extends AbstractVirtualRouterBac
             to.setProtocolType(pf.getProtocolType().toString());
             to.setSnatInboundTraffic(PortForwardingGlobalConfig.SNAT_INBOUND_TRAFFIC.value(Boolean.class));
             to.setVipIp(pf.getVipIp());
+            to.setVipUuid(pf.getVipUuid());
             to.setVipPortStart(pf.getVipPortStart());
             to.setVipPortEnd(pf.getVipPortEnd());
             tos.add(to);

@@ -257,29 +257,51 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
     }
 
     public static class LbTO {
+        @GrayVersion(value = "5.0.0")
         String lbUuid;
+        @GrayVersion(value = "5.0.0")
         String listenerUuid;
+        @GrayVersion(value = "5.0.0")
         String vip;
+        @GrayVersion(value = "5.5.0")
+        String vipUuid;
+        @GrayVersion(value = "5.0.0")
         String vip6;
+        @GrayVersion(value = "5.5.0")
+        String vip6uuid;
+        @GrayVersion(value = "5.0.0")
         String publicNic;
+        @GrayVersion(value = "5.0.0")
         List<String> nicIps;
+        @GrayVersion(value = "5.0.0")
         int instancePort;
+        @GrayVersion(value = "5.0.0")
         int loadBalancerPort;
+        @GrayVersion(value = "5.0.0")
         String mode;
+        @GrayVersion(value = "5.0.0")
         List<String> parameters;
+        @GrayVersion(value = "5.0.0")
         String certificateUuid;
+        @GrayVersion(value = "5.0.0")
         String securityPolicyType;
+        @GrayVersion(value = "5.0.0")
         List<ServerGroup> serverGroups;
+        @GrayVersion(value = "5.0.0")
         List<RedirectRule> redirectRules;
+        @GrayVersion(value = "5.0.0")
         String vipL3Uuid;
-
+        @GrayVersion(value = "5.0.0")
         boolean enableFullLog;
-
+        @GrayVersion(value = "5.0.0")
         boolean enableStatsLog;
 
         public static class ServerGroup {
+            @GrayVersion(value = "5.0.0")
             private String name;
+            @GrayVersion(value = "5.0.0")
             private String serverGroupUuid;
+            @GrayVersion(value = "5.0.0")
             private List<BackendServer> backendServers;
             private boolean isDefault = false;
 
@@ -317,7 +339,9 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
         }
 
         public static class BackendServer {
+            @GrayVersion(value = "5.0.0")
             private String ip;
+            @GrayVersion(value = "5.0.0")
             private long weight;
 
             public BackendServer(String ip, long weight) {
@@ -343,9 +367,13 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
         }
 
         public static class RedirectRule {
+            @GrayVersion(value = "5.0.0")
             private String redirectRuleUuid;
+            @GrayVersion(value = "5.0.0")
             private String aclUuid;
+            @GrayVersion(value = "5.0.0")
             private String redirectRule;
+            @GrayVersion(value = "5.0.0")
             private String serverGroupUuid;
 
             public String getRedirectRuleUuid() {
@@ -515,6 +543,22 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
 
         public void setVipL3Uuid(String vipL3Uuid) {
             this.vipL3Uuid = vipL3Uuid;
+        }
+
+        public String getVipUuid() {
+            return vipUuid;
+        }
+
+        public void setVipUuid(String vipUuid) {
+            this.vipUuid = vipUuid;
+        }
+
+        public String getVip6uuid() {
+            return vip6uuid;
+        }
+
+        public void setVip6uuid(String vip6uuid) {
+            this.vip6uuid = vip6uuid;
         }
     }
 
@@ -888,9 +932,11 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
                 to.setMode(l.getProtocol());
                 if (vip != null) {
                     to.setVip(vip.getIp());
+                    to.setVipUuid(vip.getUuid());
                 }
                 if (vip6 != null) {
                     to.setVip6(vip6.getIp());
+                    to.setVip6uuid(vip6.getUuid());
                 }
                 to.setSecurityPolicyType(l.getSecurityPolicyType());
                 if (l.getCertificateRefs() != null && !l.getCertificateRefs().isEmpty()) {

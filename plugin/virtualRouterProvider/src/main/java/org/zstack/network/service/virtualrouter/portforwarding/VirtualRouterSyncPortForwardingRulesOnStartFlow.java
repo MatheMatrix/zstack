@@ -93,7 +93,7 @@ public class VirtualRouterSyncPortForwardingRulesOnStartFlow implements Flow {
     
     @Transactional(readOnly=true)
     private Collection<PortForwardingRuleTO> calculateAllRules(Map<String, PortForwardingRuleVO> ruleMap, String vrUuid) {
-        String sql = "select rule.uuid, nic.ip, vip.ip, vip.l3NetworkUuid from PortForwardingRuleVO rule, VmNicVO nic, VipVO vip " +
+        String sql = "select rule.uuid, nic.ip, vip.ip, vip.l3NetworkUuid, vip.uuid from PortForwardingRuleVO rule, VmNicVO nic, VipVO vip " +
                 " where rule.vmNicUuid = nic.uuid and rule.uuid in (:ruleUuids) and vip.uuid = rule.vipUuid";
         TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
         q.setParameter("ruleUuids", ruleMap.keySet());
@@ -116,6 +116,7 @@ public class VirtualRouterSyncPortForwardingRulesOnStartFlow implements Flow {
             to.setSnatInboundTraffic(PortForwardingGlobalConfig.SNAT_INBOUND_TRAFFIC.value(Boolean.class));
             to.setVipPortStart(ruleVO.getVipPortStart());
             to.setVipIp(t.get(2, String.class));
+            to.setVipUuid(t.get(4, String.class));
             to.setProtocolType(ruleVO.getProtocolType().toString());
             Optional<VmNicInventory> pubNic = vr.getVmNics().stream()
                     .filter(n -> n.getL3NetworkUuid().equals(publicL3Uuid))

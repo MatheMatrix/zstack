@@ -1,16 +1,27 @@
 package org.zstack.network.service.virtualrouter.eip;
 
+import org.zstack.core.upgrade.GrayVersion;
+
 import java.io.Serializable;
 
 /**
  */
 public class EipTO implements Serializable {
+    @GrayVersion(value = "5.0.0")
     private String vipIp;
+    @GrayVersion(value = "5.5.0")
+    private String vipUuid;
+    @GrayVersion(value = "5.0.0")
     private String privateMac;
+    @GrayVersion(value = "5.0.0")
     private String publicMac;
+    @GrayVersion(value = "5.0.0")
     private String guestIp;
+    @GrayVersion(value = "5.0.0")
     private boolean snatInboundTraffic;
+    @GrayVersion(value = "5.0.0")
     private boolean needCleanGuestIp;
+    @GrayVersion(value = "5.0.0")
     private String ipVersion;
 
     public boolean isNeedCleanGuestIp() {
@@ -69,4 +80,11 @@ public class EipTO implements Serializable {
         this.ipVersion = ipVersion;
     }
 
+    public String getVipUuid() {
+        return vipUuid;
+    }
+
+    public void setVipUuid(String vipUuid) {
+        this.vipUuid = vipUuid;
+    }
 }

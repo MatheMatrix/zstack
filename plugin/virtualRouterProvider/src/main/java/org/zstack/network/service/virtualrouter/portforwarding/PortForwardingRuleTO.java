@@ -1,19 +1,35 @@
 package org.zstack.network.service.virtualrouter.portforwarding;
 
+import org.zstack.core.upgrade.GrayVersion;
+
 import java.io.Serializable;
 
 public class PortForwardingRuleTO implements Serializable {
+    @GrayVersion(value = "5.0.0")
     private String uuid;
+    @GrayVersion(value = "5.0.0")
     private int vipPortStart;
+    @GrayVersion(value = "5.0.0")
     private int vipPortEnd;
+    @GrayVersion(value = "5.0.0")
     private int privatePortStart;
+    @GrayVersion(value = "5.0.0")
     private int privatePortEnd;
+    @GrayVersion(value = "5.0.0")
     private String protocolType;
+    @GrayVersion(value = "5.0.0")
     private String vipIp;
+    @GrayVersion(value = "5.5.0")
+    private String vipUuid;
+    @GrayVersion(value = "5.0.0")
     private String publicMac;
+    @GrayVersion(value = "5.0.0")
     private String privateIp;
+    @GrayVersion(value = "5.0.0")
     private String privateMac;
+    @GrayVersion(value = "5.0.0")
     private String allowedCidr;
+    @GrayVersion(value = "5.0.0")
     private boolean snatInboundTraffic;
 
     public boolean isSnatInboundTraffic() {
@@ -93,5 +109,13 @@ public class PortForwardingRuleTO implements Serializable {
 
     public void setPublicMac(String publicMac) {
         this.publicMac = publicMac;
+    }
+
+    public String getVipUuid() {
+        return vipUuid;
+    }
+
+    public void setVipUuid(String vipUuid) {
+        this.vipUuid = vipUuid;
     }
 }
