@@ -53,6 +53,7 @@ public class VmInstanceUtils {
             cmsg.setVirtio(msg.getVirtio());
         }
 
+        // msg.getDiskAOs() != null
         if (!isEmpty(msg.getDiskAOs())) {
             DiskAO rootDisk = findOneOrNull(msg.getDiskAOs(), DiskAO::isBoot);
             cmsg.setRootDisk(rootDisk);
@@ -61,6 +62,7 @@ public class VmInstanceUtils {
         }
 
         if (cmsg.getRootDisk() == null) {
+            // msg.getDiskAOs() == null
             DiskAO bootDisk = DiskAO.rootDisk();
 
             if (msg.getRootDiskOfferingUuid() != null) {
@@ -73,6 +75,7 @@ public class VmInstanceUtils {
             bootDisk.setArchitecture(msg.getArchitecture());
             cmsg.setRootDisk(bootDisk);
         } else {
+            // msg.getDiskAOs() != null
             DiskAO bootDisk = cmsg.getRootDisk();
             if (msg.getRootDiskOfferingUuid() != null) {
                 bootDisk.setDiskOfferingUuid(msg.getRootDiskOfferingUuid());

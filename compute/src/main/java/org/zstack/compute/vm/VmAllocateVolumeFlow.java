@@ -117,6 +117,13 @@ public class VmAllocateVolumeFlow implements Flow {
                 if (disk != null && !isEmpty(disk.getSystemTags())) {
                     tags.addAll(disk.getSystemTags());
                 }
+
+//                if (disk != null) {
+//                    if (!isEmpty(disk.getSystemTags())) {
+//                        tags.addAll(disk.getSystemTags());
+//                    }
+//                    msg.setSize(disk.getSize());
+//                }
             } else if (vspec.isData()) {
                 DiskAO disk = isEmpty(spec.getDataDisks()) ? null :
                         spec.getDataDisks().size() > dataVolumeIndex ? spec.getDataDisks().get(dataVolumeIndex) : null;

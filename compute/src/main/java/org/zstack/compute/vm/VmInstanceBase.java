@@ -8086,6 +8086,13 @@ public class VmInstanceBase extends AbstractVmInstance {
         }
     }
 
+    protected void buildRootDisk(VmInstanceSpec spec) {
+        if (spec.getImageSpec().getInventory() == null) {
+            return;
+        }
+        return;
+    }
+
     protected void buildHostname(VmInstanceSpec spec) {
         String defaultHostname = VmSystemTags.HOSTNAME.getTag(self.getUuid());
         if (defaultHostname == null) {
