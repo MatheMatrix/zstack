@@ -334,7 +334,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
 
                     @Override
                     public void run(final FlowTrigger trigger, Map data) {
-                        downloadImageCache(msg.getTemplateSpec().getInventory(), new ReturnValueCompletion<ImageCacheInventory>(trigger) {
+                        downloadImageCache(msg.getTemplateSpec().getInventory(), spec.getAllocatedUrl(), new ReturnValueCompletion<ImageCacheInventory>(trigger) {
                             @Override
                             public void success(ImageCacheInventory returnValue) {
                                 pathInCache = ImageCacheUtil.getImageCachePath(returnValue);
@@ -1154,7 +1154,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
         });
     }
 
-    private void downloadImageCache(ImageInventory image, ReturnValueCompletion<ImageCacheInventory> completion) {
+    private void downloadImageCache(ImageInventory image, String allocatedUrl, ReturnValueCompletion<ImageCacheInventory> completion) {
         thdf.chainSubmit(new ChainTask(completion) {
             @Override
             public String getSyncSignature() {
@@ -1163,7 +1163,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
 
             @Override
             public void run(SyncTaskChain chain) {
-                doDownloadImageCache(image, new ReturnValueCompletion<ImageCacheInventory>(chain) {
+                doDownloadImageCache(image, allocatedUrl, new ReturnValueCompletion<ImageCacheInventory>(chain) {
                     @Override
                     public void success(ImageCacheInventory returnValue) {
                         completion.success(returnValue);
@@ -1185,14 +1185,16 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
         });
     }
 
-    private void doDownloadImageCache(ImageInventory image, ReturnValueCompletion<ImageCacheInventory> completion) {
+    private void doDownloadImageCache(ImageInventory image, String allocatedUrl, ReturnValueCompletion<ImageCacheInventory> completion) {
         CreateVolumeSpec spec = new CreateVolumeSpec();
         spec.setUuid(image.getUuid());
         spec.setName(buildImageName(image.getUuid()));
+        spec.setAllocatedUrl(allocatedUrl);
 
         ImageCacheVO cache = Q.New(ImageCacheVO.class)
                 .eq(ImageCacheVO_.primaryStorageUuid, self.getUuid())
                 .eq(ImageCacheVO_.imageUuid, image.getUuid())
+                .like(ImageCacheVO_.installUrl, allocatedUrl + "%%")
                 .find();
         if (cache != null) {
             // TODO check exists in ps
@@ -1618,7 +1620,12 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
     @Override
     protected void handle(DownloadIsoToPrimaryStorageMsg msg) {
         DownloadIsoToPrimaryStorageReply reply = new DownloadIsoToPrimaryStorageReply();
-        downloadImageCache(msg.getIsoSpec().getInventory(), new ReturnValueCompletion<ImageCacheInventory>(msg) {
+        String urlTag = msg.getSystemTag(ExternalPrimaryStorageSystemTags.REQUIRED_INSTALL_URL::isMatch);
+        String allocatedUrl = urlTag == null ? null :
+                ExternalPrimaryStorageSystemTags.REQUIRED_INSTALL_URL.getTokenByTag(urlTag,
+                        ExternalPrimaryStorageSystemTags.REQUIRED_INSTALL_URL_TOKEN);
+
+        downloadImageCache(msg.getIsoSpec().getInventory(), allocatedUrl, new ReturnValueCompletion<ImageCacheInventory>(msg) {
             @Override
             public void success(ImageCacheInventory cache) {
                 String isoProtocol = controller.reportCapabilities().getDefaultIsoActiveProtocol() != null
@@ -1831,7 +1838,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                         }
 
                         ImageInventory image = ImageInventory.valueOf(ivo);
-                        downloadImageCache(image, new ReturnValueCompletion<ImageCacheInventory>(trigger) {
+                        downloadImageCache(image, msg.getAllocatedInstallUrl(), new ReturnValueCompletion<ImageCacheInventory>(trigger) {
                             @Override
                             public void success(ImageCacheInventory returnValue) {
                                 installUrl = returnValue.getInstallUrl();
