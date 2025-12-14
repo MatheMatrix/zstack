@@ -116,6 +116,22 @@ public class ModelServiceInstanceInventory  {
         return this.vm;
     }
 
+    public java.lang.String architecture;
+    public void setArchitecture(java.lang.String architecture) {
+        this.architecture = architecture;
+    }
+    public java.lang.String getArchitecture() {
+        return this.architecture;
+    }
+
+    public java.lang.String gpuVendor;
+    public void setGpuVendor(java.lang.String gpuVendor) {
+        this.gpuVendor = gpuVendor;
+    }
+    public java.lang.String getGpuVendor() {
+        return this.gpuVendor;
+    }
+
     public java.sql.Timestamp createDate;
     public void setCreateDate(java.sql.Timestamp createDate) {
         this.createDate = createDate;
