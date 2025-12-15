@@ -11,7 +11,6 @@ import org.zstack.storage.ceph.backup.CephBackupStorageBase
 import org.zstack.storage.ceph.backup.CephBackupStorageMonBase
 import org.zstack.storage.ceph.backup.CephBackupStorageMonVO
 import org.zstack.storage.ceph.backup.CephBackupStorageMonVO_
-import org.zstack.storage.ceph.primary.CephPrimaryStorageBase
 import org.zstack.testlib.vfs.VFS
 import org.zstack.utils.gson.JSONObjectUtil
 
@@ -229,6 +228,35 @@ class CephBackupStorageSpec extends BackupStorageSpec {
 
             simulator(CephBackupStorageBase.CEPH_TO_CEPH_MIGRATE_IMAGE_PATH) { HttpEntity<String> entity ->
                 return new CephBackupStorageBase.StorageMigrationRsp()
+            }
+
+            simulator(CephBackupStorageBase.FILE_DOWNLOAD_PATH) { HttpEntity<String> entity ->
+                def rsp = new CephBackupStorageBase.DownloadFileResponse()
+                rsp.md5sum = "1234567890"
+                rsp.size = 3L * 1024 * 1024 * 1024
+                rsp.unzipInstallPath = "/root/zstone-software-package/unzipInstallPath"
+                rsp.filesSize = [:]
+                rsp.filesSize.put("/root/zstone-software-package/unzipInstallPath/Gateway_Linux_Server_(Treker).zmigrate.fast.10.1.106.qcow2", 1024L * 1024 * 1024)
+                rsp.filesSize.put("/root/zstone-software-package/unzipInstallPath/BootImage_for_Linux_(TrekerLite)_10.1.106.qcow2", 1024L * 1024 * 1024)
+                rsp.filesSize.put("/root/zstone-software-package/unzipInstallPath/BootImage_for_Windows_(TrekerLite)_10.1.106.qcow2", 1024L * 1024 * 1024)
+                return rsp
+            }
+
+            simulator(CephBackupStorageBase.FILE_UPLOAD_PATH) { HttpEntity<String> entity ->
+                def rsp = new CephBackupStorageBase.AgentResponse()
+                return rsp
+            }
+            simulator(CephBackupStorageBase.FILE_UPLOAD_PROGRESS_PATH) { HttpEntity<String> entity ->
+                def rsp = new CephBackupStorageBase.AgentResponse()
+                return rsp
+            }
+            simulator(CephBackupStorageBase.DELETE_FILE_PATH) { HttpEntity<String> entity ->
+                def rsp = new CephBackupStorageBase.AgentResponse()
+                return rsp
+            }
+            simulator(CephBackupStorageBase.COPY_FILE_TO_HOST_PATH) { HttpEntity<String> entity ->
+                def rsp = new CephBackupStorageBase.AgentResponse()
+                return rsp
             }
         }
     }
