@@ -123,6 +123,26 @@ public abstract class BackupStorageBase extends AbstractBackupStorage {
         bus.dealWithUnknownMessage(msg);
     }
 
+    protected void handle(UploadFileToBackupStorageHostMsg msg) {
+        bus.dealWithUnknownMessage(msg);
+    }
+
+    protected void handle(DeleteFilesOnBackupStorageHostMsg msg) {
+        bus.dealWithUnknownMessage(msg);
+    }
+
+    protected void handle(GetFileDownloadProgressMsg msg) {
+        bus.dealWithUnknownMessage(msg);
+    }
+
+    protected void handle(CopyAndExecuteSoftwareUpgradePackageMsg msg) {
+        bus.dealWithUnknownMessage(msg);
+    }
+
+    protected void handle(CancelDownloadFileMsg msg) {
+        bus.dealWithUnknownMessage(msg);
+    }
+
     public BackupStorageBase(BackupStorageVO self) {
         this.self = self;
         this.id = BackupStorage.buildId(self.getUuid());
@@ -274,8 +294,18 @@ public abstract class BackupStorageBase extends AbstractBackupStorage {
             handle((RestoreImagesBackupStorageMetadataToDatabaseMsg) msg);
         } else if (msg instanceof CalculateImageHashOnBackupStorageMsg) {
             handle((CalculateImageHashOnBackupStorageMsg) msg);
+        } else if (msg instanceof UploadFileToBackupStorageHostMsg) {
+            handle((UploadFileToBackupStorageHostMsg) msg);
+        } else if (msg instanceof DeleteFilesOnBackupStorageHostMsg) {
+            handle((DeleteFilesOnBackupStorageHostMsg) msg);
         } else if (msg instanceof GetBackupStorageManagerHostnameMsg) {
             handle((GetBackupStorageManagerHostnameMsg) msg);
+        } else if (msg instanceof GetFileDownloadProgressMsg) {
+            handle((GetFileDownloadProgressMsg) msg);
+        } else if (msg instanceof CopyAndExecuteSoftwareUpgradePackageMsg) {
+            handle((CopyAndExecuteSoftwareUpgradePackageMsg) msg);
+        } else if (msg instanceof CancelDownloadFileMsg) {
+            handle((CancelDownloadFileMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
