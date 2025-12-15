@@ -1,8 +1,6 @@
-package org.zstack.header.host;
+package org.zstack.header.storage.backup;
 
 import org.zstack.header.message.MessageReply;
-
-import java.util.Map;
 
 public class GetFileDownloadProgressReply extends MessageReply {
     private boolean completed;
@@ -12,11 +10,9 @@ public class GetFileDownloadProgressReply extends MessageReply {
     private long actualSize;
     private long downloadSize;
     private String installPath;
+    private String format;
     private long lastOpTime;
     private boolean supportSuspend;
-    private String md5sum;
-    private String unzipInstallPath;
-    private Map<String, Long> unzipFiles;
 
     public boolean isCompleted() {
         return completed;
@@ -50,12 +46,24 @@ public class GetFileDownloadProgressReply extends MessageReply {
         this.actualSize = actualSize;
     }
 
+    public boolean isDownloadComplete() {
+        return actualSize > 0 && actualSize == downloadSize;
+    }
+
     public String getInstallPath() {
         return installPath;
     }
 
     public void setInstallPath(String installPath) {
         this.installPath = installPath;
+    }
+
+    public String getFormat() {
+        return format;
+    }
+
+    public void setFormat(String format) {
+        this.format = format;
     }
 
     public long getLastOpTime() {
@@ -80,29 +88,5 @@ public class GetFileDownloadProgressReply extends MessageReply {
 
     public void setSupportSuspend(boolean supportSuspend) {
         this.supportSuspend = supportSuspend;
-    }
-
-    public String getMd5sum() {
-        return md5sum;
-    }
-
-    public void setMd5sum(String md5sum) {
-        this.md5sum = md5sum;
-    }
-
-    public String getUnzipInstallPath() {
-        return unzipInstallPath;
-    }
-
-    public void setUnzipInstallPath(String unzipInstallPath) {
-        this.unzipInstallPath = unzipInstallPath;
-    }
-
-    public Map<String, Long> getUnzipFiles() {
-        return unzipFiles;
-    }
-
-    public void setUnzipFiles(Map<String, Long> unzipFiles) {
-        this.unzipFiles = unzipFiles;
     }
 }

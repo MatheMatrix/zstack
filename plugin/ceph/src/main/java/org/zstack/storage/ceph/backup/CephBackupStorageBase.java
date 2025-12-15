@@ -19,6 +19,7 @@ import org.zstack.core.thread.AsyncThread;
 import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.SyncThread;
+import org.zstack.core.timeout.ApiTimeoutManager;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.Constants;
@@ -30,6 +31,8 @@ import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.exception.CloudRuntimeException;
+import org.zstack.header.host.GetFileDownloadProgressReply;
+import org.zstack.header.host.UploadFileToHostReply;
 import org.zstack.header.image.*;
 import org.zstack.header.log.NoLogging;
 import org.zstack.header.message.APIMessage;
@@ -37,6 +40,8 @@ import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.rest.RESTFacade;
 import org.zstack.header.storage.backup.*;
+import org.zstack.kvm.KVMAgentCommands;
+import org.zstack.kvm.KVMHost;
 import org.zstack.storage.backup.BackupStorageBase;
 import org.zstack.storage.ceph.*;
 import org.zstack.storage.ceph.CephMonBase.PingResult;
@@ -51,6 +56,7 @@ import org.zstack.utils.logging.CLogger;
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
 import java.io.Serializable;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -91,6 +97,8 @@ public class CephBackupStorageBase extends BackupStorageBase {
     protected RESTFacade restf;
     @Autowired
     protected CephBackupStorageMetaDataMaker metaDataMaker;
+    @Autowired
+    private ApiTimeoutManager timeoutManager;
 
     public enum PingOperationFailure {
         UnableToCreateFile,
@@ -366,6 +374,61 @@ public class CephBackupStorageBase extends BackupStorageBase {
         public void setFormat(String format) {
             this.format = format;
         }
+    }
+
+    public static class DownloadFileCmd extends AgentCommand implements HasThreadContext, Serializable {
+        public String taskUuid;
+        public String installPath;
+        @NoLogging(type = NoLogging.Type.Uri)
+        public String url;
+        @NoLogging(type = NoLogging.Type.Uri)
+        public String urlScheme;
+        public long timeout;
+        @NoLogging(type = NoLogging.Type.Uri)
+        public String sendCommandUrl;
+    }
+
+    public static class DownloadFileResponse extends AgentResponse {
+        public String md5sum;
+        public long size;
+        public String unzipInstallPath;
+        public Map<String, Long> filesSize;
+    }
+
+    public static class DeleteFilesCmd extends AgentCommand implements HasThreadContext, Serializable {
+        List<String> filesPath;
+    }
+
+    public static class DeleteFilesResponse extends AgentResponse {
+    }
+
+    public static class UploadFileCmd extends AgentCommand implements HasThreadContext, Serializable {
+        public String taskUuid;
+        public String installPath;
+        @NoLogging(type = NoLogging.Type.Uri)
+        public String url;
+        public long timeout;
+    }
+
+    public static class UploadFileResponse extends AgentResponse {
+        public String directUploadPath;
+    }
+
+    public static class GetDownloadFileProgressCmd extends AgentCommand {
+        public String taskUuid;
+    }
+
+    public static class GetDownloadFileProgressResponse extends AgentResponse {
+        public boolean completed;
+        public int progress;
+        public long size;
+        public long actualSize;
+        public String installPath;
+        public String format;
+        public long lastOpTime;
+        public long downloadSize;
+        public String md5sum;
+        public boolean supportSuspend;
     }
 
     public static class DeleteCmd extends AgentCommand {
@@ -679,6 +742,11 @@ public class CephBackupStorageBase extends BackupStorageBase {
     public static final String CHECK_POOL_PATH = "/ceph/backupstorage/checkpool";
     public static final String GET_LOCAL_FILE_SIZE = "/ceph/backupstorage/getlocalfilesize";
     public static final String CEPH_TO_CEPH_MIGRATE_IMAGE_PATH = "/ceph/backupstorage/image/migrate";
+
+    public static final String FILE_DOWNLOAD_PATH = "/ceph/file/download";
+    public static final String FILE_UPLOAD_PATH = "/ceph/file/upload";
+    public static final String FILE_UPLOAD_PROGRESS_PATH = "/ceph/file/progress";
+    public static final String DELETE_FILES_PATH = "/ceph/files/delete";
 
     protected String makeImageInstallPath(String imageUuid) {
         return String.format("ceph://%s/%s", getSelf().getPoolName(), imageUuid);
@@ -1663,6 +1731,12 @@ public class CephBackupStorageBase extends BackupStorageBase {
             handle((CephToCephMigrateImageMsg) msg);
         } else if (msg instanceof ExportImageFromBackupStorageMsg) {
             handle((ExportImageFromBackupStorageMsg) msg);
+        } else if (msg instanceof UploadFileToBackupStorageHostMsg) {
+            handle((UploadFileToBackupStorageHostMsg) msg);
+        } else if (msg instanceof DeleteFilesOnBackupStorageHostMsg) {
+            handle((DeleteFilesOnBackupStorageHostMsg) msg);
+        } else if (msg instanceof GetFileDownloadProgressMsg) {
+            handle((GetFileDownloadProgressMsg) msg);
         }
         else {
             super.handleLocalMessage(msg);
@@ -2020,5 +2094,127 @@ public class CephBackupStorageBase extends BackupStorageBase {
     @SyncThread(signature = RESTORE_IMAGES_BACKUP_STORAGE_METADATA_TO_DATABASE)
     private void doRestoreImagesBackupStorageMetadataToDatabase(RestoreImagesBackupStorageMetadataToDatabaseMsg msg) {
         metaDataMaker.restoreImagesBackupStorageMetadataToDatabase(msg.getImagesMetadata(), msg.getBackupStorageUuid());
+    }
+
+    protected void handle(final UploadFileToBackupStorageHostMsg msg) {
+        UploadFileToBackupStorageHostReply reply = new UploadFileToBackupStorageHostReply();
+
+        if (msg.getUrl().startsWith("upload://")) {
+            UploadFileCmd cmd = new UploadFileCmd();
+            cmd.url = msg.getUrl();
+            cmd.installPath = msg.getInstallPath();
+            cmd.timeout = timeoutManager.getTimeout();
+            cmd.taskUuid = msg.getTaskUuid();
+            httpCall(FILE_UPLOAD_PATH, cmd, UploadFileResponse.class, new ReturnValueCompletion<UploadFileResponse>(msg) {
+                @Override
+                public void fail(ErrorCode err) {
+                    reply.setError(err);
+                    bus.reply(msg, reply);
+                }
+
+                @Override
+                public void success(UploadFileResponse rsp) {
+                    reply.setDirectUploadUrl(rsp.directUploadPath);
+                    reply.setHostname(rsp.handleMon.getHostname());
+                    reply.setSshPassword(rsp.handleMon.getSshPassword());
+                    reply.setSshPort(rsp.handleMon.getSshPort());
+                    reply.setSshUsername(rsp.handleMon.getSshUsername());
+                    bus.reply(msg, reply);
+                }
+            });
+            return;
+        }
+
+        DownloadFileCmd cmd = new DownloadFileCmd();
+        cmd.url = msg.getUrl();
+        cmd.installPath = msg.getInstallPath();
+        cmd.timeout = timeoutManager.getTimeout();
+        cmd.taskUuid = msg.getTaskUuid();
+        cmd.sendCommandUrl = restf.getSendCommandUrl();
+
+        String scheme;
+        try {
+            URI uri = new URI(msg.getUrl());
+            scheme = uri.getScheme();
+        } catch (URISyntaxException e) {
+            reply.setError(operr("failed to parse upload URL [%s]: %s", msg.getUrl(), e.getMessage()));
+            bus.reply(msg, reply);
+            return;
+        }
+        if (scheme == null) {
+            reply.setError(operr("upload URL [%s] is missing a protocol prefix", msg.getUrl()));
+            bus.reply(msg, reply);
+            return;
+        }
+        cmd.urlScheme = scheme;
+
+        httpCall(FILE_DOWNLOAD_PATH, cmd, DownloadFileResponse.class, new ReturnValueCompletion<DownloadFileResponse>(msg) {
+            @Override
+            public void fail(ErrorCode err) {
+                reply.setError(err);
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void success(DownloadFileResponse rsp) {
+                reply.setMd5sum(rsp.md5sum);
+                reply.setSize(rsp.size);
+                reply.setUnzipInstallPath(rsp.unzipInstallPath);
+                reply.setFilesSize(rsp.filesSize);
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    protected void handle(final DeleteFilesOnBackupStorageHostMsg msg) {
+        DeleteFilesOnBackupStorageHostReply reply = new DeleteFilesOnBackupStorageHostReply();
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            bus.reply(msg, reply);
+            return;
+        }
+
+        DeleteFilesCmd cmd = new DeleteFilesCmd();
+        cmd.filesPath = msg.getFilesPath();
+        httpCall(DELETE_FILES_PATH, cmd, DownloadFileResponse.class, new ReturnValueCompletion<DownloadFileResponse>(msg) {
+            @Override
+            public void fail(ErrorCode err) {
+                reply.setError(err);
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void success(DownloadFileResponse rsp) {
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    protected void handle(GetFileDownloadProgressMsg msg) {
+        GetFileDownloadProgressReply reply = new GetFileDownloadProgressReply();
+
+        GetDownloadFileProgressCmd cmd = new GetDownloadFileProgressCmd();
+        cmd.taskUuid = msg.getTaskUuid();
+
+        httpCall(FILE_UPLOAD_PROGRESS_PATH, cmd, GetDownloadFileProgressResponse.class, new ReturnValueCompletion<GetDownloadFileProgressResponse>(msg) {
+            @Override
+            public void fail(ErrorCode err) {
+                reply.setError(err);
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void success(GetDownloadFileProgressResponse rsp) {
+                reply.setCompleted(rsp.completed);
+                reply.setProgress(rsp.progress);
+                reply.setActualSize(rsp.actualSize);
+                reply.setSize(rsp.size);
+                reply.setInstallPath(rsp.installPath);
+                reply.setDownloadSize(rsp.downloadSize);
+                reply.setLastOpTime(rsp.lastOpTime);
+                reply.setMd5sum(rsp.md5sum);
+                reply.setSupportSuspend(rsp.supportSuspend);
+                bus.reply(msg, reply);
+            }
+        });
     }
 }

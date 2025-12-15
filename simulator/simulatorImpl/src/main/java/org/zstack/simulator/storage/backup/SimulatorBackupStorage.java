@@ -6,6 +6,7 @@ import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.image.CancelAddImageReply;
 import org.zstack.header.image.CancelDownloadImageMsg;
 import org.zstack.header.image.ImageInventory;
+import org.zstack.header.image.UploadFileToBackupStorageHostMsg;
 import org.zstack.header.storage.backup.*;
 import org.zstack.storage.backup.BackupStorageBase;
 import org.zstack.utils.Utils;

@@ -7,6 +7,7 @@ import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.image.CancelDownloadImageMsg;
 import org.zstack.header.image.CancelDownloadImageReply;
 import org.zstack.header.image.ImageInventory;
+import org.zstack.header.image.UploadFileToBackupStorageHostMsg;
 import org.zstack.header.storage.addon.ImageDescriptor;
 import org.zstack.header.storage.addon.StorageHealthy;
 import org.zstack.header.storage.addon.backup.BackupStorageController;
