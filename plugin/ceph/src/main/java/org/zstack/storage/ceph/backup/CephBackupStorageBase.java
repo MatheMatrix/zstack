@@ -19,6 +19,7 @@ import org.zstack.core.thread.AsyncThread;
 import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.SyncThread;
+import org.zstack.core.timeout.ApiTimeoutManager;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.Constants;
@@ -30,6 +31,7 @@ import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.exception.CloudRuntimeException;
+import org.zstack.header.host.GetFileDownloadProgressReply;
 import org.zstack.header.image.*;
 import org.zstack.header.log.NoLogging;
 import org.zstack.header.message.APIMessage;
@@ -51,6 +53,7 @@ import org.zstack.utils.logging.CLogger;
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
 import java.io.Serializable;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -91,6 +94,8 @@ public class CephBackupStorageBase extends BackupStorageBase {
     protected RESTFacade restf;
     @Autowired
     protected CephBackupStorageMetaDataMaker metaDataMaker;
+    @Autowired
+    private ApiTimeoutManager timeoutManager;
 
     public enum PingOperationFailure {
         UnableToCreateFile,
@@ -659,6 +664,76 @@ public class CephBackupStorageBase extends BackupStorageBase {
         }
     }
 
+    public static class DownloadFileCmd extends AgentCommand implements HasThreadContext, Serializable {
+        public String taskUuid;
+        public String installPath;
+        @NoLogging(type = NoLogging.Type.Uri)
+        public String url;
+        @NoLogging(type = NoLogging.Type.Uri)
+        public String urlScheme;
+        public long timeout;
+        @NoLogging(type = NoLogging.Type.Uri)
+        public String sendCommandUrl;
+    }
+
+    public static class DownloadFileResponse extends AgentResponse {
+        public String md5sum;
+        public long size;
+        public String unzipInstallPath;
+        public Map<String, Long> filesSize;
+    }
+
+    public static class DeleteFilesCmd extends AgentCommand implements HasThreadContext, Serializable {
+        List<String> filesPath;
+    }
+
+    public static class DeleteFilesResponse extends AgentResponse {
+    }
+
+    public static class UploadFileCmd extends AgentCommand implements HasThreadContext, Serializable {
+        public String taskUuid;
+        public String installPath;
+        @NoLogging(type = NoLogging.Type.Uri)
+        public String url;
+        public long timeout;
+    }
+
+    public static class UploadFileResponse extends AgentResponse {
+        public String directUploadPath;
+    }
+
+    public static class GetDownloadFileProgressCmd extends AgentCommand {
+        public String taskUuid;
+    }
+
+    public static class GetDownloadFileProgressResponse extends AgentResponse {
+        public boolean completed;
+        public int progress;
+        public long size;
+        public long actualSize;
+        public String installPath;
+        public String format;
+        public long lastOpTime;
+        public long downloadSize;
+        public String md5sum;
+        public boolean supportSuspend;
+    }
+
+    public static class SoftwareUpgradePackageCmd extends AgentCommand implements Serializable {
+        public String upgradePackagePath;
+        public String upgradePackageTargetPath;
+        public String upgradeScriptPath;
+        public int targetHostSshPort;
+        public String targetHostSshUsername;
+        @NoLogging
+        public String targetHostSshPassword;
+        public String targetHostIp;
+
+    }
+
+    public static class SoftwareUpgradePackageResponse extends AgentResponse {
+    }
+
     // common response of storage migration
     public static class StorageMigrationRsp extends AgentResponse {
     }
@@ -679,6 +754,12 @@ public class CephBackupStorageBase extends BackupStorageBase {
     public static final String CHECK_POOL_PATH = "/ceph/backupstorage/checkpool";
     public static final String GET_LOCAL_FILE_SIZE = "/ceph/backupstorage/getlocalfilesize";
     public static final String CEPH_TO_CEPH_MIGRATE_IMAGE_PATH = "/ceph/backupstorage/image/migrate";
+
+    public static final String FILE_DOWNLOAD_PATH = "/ceph/file/download";
+    public static final String FILE_UPLOAD_PATH = "/ceph/file/upload";
+    public static final String FILE_UPLOAD_PROGRESS_PATH = "/ceph/file/progress";
+    public static final String DELETE_FILE_PATH = "/ceph/file/delete";
+    public static final String SOFTWARE_UPGRADE_PACKAGE_DEPLOY_PATH = "/ceph/upgrade/deploy";
 
     protected String makeImageInstallPath(String imageUuid) {
         return String.format("ceph://%s/%s", getSelf().getPoolName(), imageUuid);
@@ -2020,5 +2101,214 @@ public class CephBackupStorageBase extends BackupStorageBase {
     @SyncThread(signature = RESTORE_IMAGES_BACKUP_STORAGE_METADATA_TO_DATABASE)
     private void doRestoreImagesBackupStorageMetadataToDatabase(RestoreImagesBackupStorageMetadataToDatabaseMsg msg) {
         metaDataMaker.restoreImagesBackupStorageMetadataToDatabase(msg.getImagesMetadata(), msg.getBackupStorageUuid());
+    }
+
+    @Override
+    protected void handle(final UploadFileToBackupStorageHostMsg msg) {
+        UploadFileToBackupStorageHostReply reply = new UploadFileToBackupStorageHostReply();
+
+        if (msg.getUrl().startsWith("upload://")) {
+            UploadFileCmd cmd = new UploadFileCmd();
+            cmd.url = msg.getUrl();
+            cmd.installPath = msg.getInstallPath();
+            cmd.timeout = timeoutManager.getTimeout();
+            cmd.taskUuid = msg.getTaskUuid();
+            httpCall(FILE_UPLOAD_PATH, cmd, UploadFileResponse.class, new ReturnValueCompletion<UploadFileResponse>(msg) {
+                @Override
+                public void fail(ErrorCode err) {
+                    reply.setError(err);
+                    bus.reply(msg, reply);
+                }
+
+                @Override
+                public void success(UploadFileResponse rsp) {
+                    reply.setDirectUploadUrl(rsp.directUploadPath);
+                    reply.setBackupStorageHostUuid(rsp.handleMon.getMonUuid());
+                    bus.reply(msg, reply);
+                }
+            });
+            return;
+        }
+
+        DownloadFileCmd cmd = new DownloadFileCmd();
+        cmd.url = msg.getUrl();
+        cmd.installPath = msg.getInstallPath();
+        cmd.timeout = timeoutManager.getTimeout();
+        cmd.taskUuid = msg.getTaskUuid();
+        cmd.sendCommandUrl = restf.getSendCommandUrl();
+
+        String scheme;
+        try {
+            URI uri = new URI(msg.getUrl());
+            scheme = uri.getScheme();
+        } catch (URISyntaxException e) {
+            reply.setError(operr("failed to parse upload URL [%s]: %s", msg.getUrl(), e.getMessage()));
+            bus.reply(msg, reply);
+            return;
+        }
+        if (scheme == null) {
+            reply.setError(operr("upload URL [%s] is missing a protocol prefix", msg.getUrl()));
+            bus.reply(msg, reply);
+            return;
+        }
+        cmd.urlScheme = scheme;
+
+        httpCall(FILE_DOWNLOAD_PATH, cmd, DownloadFileResponse.class, new ReturnValueCompletion<DownloadFileResponse>(msg) {
+            @Override
+            public void fail(ErrorCode err) {
+                reply.setError(err);
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void success(DownloadFileResponse rsp) {
+                reply.setMd5sum(rsp.md5sum);
+                reply.setSize(rsp.size);
+                reply.setUnzipInstallPath(rsp.unzipInstallPath);
+                reply.setFilesSize(rsp.filesSize);
+                reply.setBackupStorageHostUuid(rsp.handleMon.getMonUuid());
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    @Override
+    protected void handle(final DeleteFilesOnBackupStorageHostMsg msg) {
+        DeleteFilesOnBackupStorageHostReply reply = new DeleteFilesOnBackupStorageHostReply();
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            bus.reply(msg, reply);
+            return;
+        }
+
+        CephBackupStorageMonVO mon = getSelf().getMons().stream()
+                .filter(m -> m.getUuid().equals(msg.getBackupStorageHostUuid())).findAny().orElse(null);
+        if (mon == null) {
+            reply.setError(operr("failed to find mon with uuid [%s]", msg.getBackupStorageHostUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        DeleteFilesCmd cmd = new DeleteFilesCmd();
+        cmd.filesPath = msg.getFilesPath();
+
+        CephBackupStorageMonBase monBase = new CephBackupStorageMonBase(mon);
+        monBase.httpCall(DELETE_FILE_PATH, cmd, DeleteFilesResponse.class, new ReturnValueCompletion<DeleteFilesResponse>(msg) {
+            @Override
+            public void fail(ErrorCode err) {
+                reply.setError(err);
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void success(DeleteFilesResponse rsp) {
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    @Override
+    protected void handle(GetFileDownloadProgressMsg msg) {
+        GetFileDownloadProgressReply reply = new GetFileDownloadProgressReply();
+
+        CephBackupStorageMonVO mon = getSelf().getMons().stream()
+                .filter(m -> m.getUuid().equals(msg.getBackupStorageHostUuid())).findAny().orElse(null);
+        if (mon == null) {
+            reply.setError(operr("failed to find mon with uuid [%s]", msg.getBackupStorageHostUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        GetDownloadFileProgressCmd cmd = new GetDownloadFileProgressCmd();
+        cmd.taskUuid = msg.getTaskUuid();
+
+        CephBackupStorageMonBase monBase = new CephBackupStorageMonBase(mon);
+        monBase.httpCall(FILE_UPLOAD_PROGRESS_PATH, cmd, GetDownloadFileProgressResponse.class, new ReturnValueCompletion<GetDownloadFileProgressResponse>(msg) {
+            @Override
+            public void fail(ErrorCode err) {
+                reply.setError(err);
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void success(GetDownloadFileProgressResponse rsp) {
+                reply.setCompleted(rsp.completed);
+                reply.setProgress(rsp.progress);
+                reply.setActualSize(rsp.actualSize);
+                reply.setSize(rsp.size);
+                reply.setInstallPath(rsp.installPath);
+                reply.setDownloadSize(rsp.downloadSize);
+                reply.setLastOpTime(rsp.lastOpTime);
+                reply.setMd5sum(rsp.md5sum);
+                reply.setSupportSuspend(rsp.supportSuspend);
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    @Override
+    protected void handle(SoftwareUpgradePackageDeployMsg msg) {
+        SoftwareUpgradePackageDeployReply reply = new SoftwareUpgradePackageDeployReply();
+
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            bus.reply(msg, reply);
+            return;
+        }
+
+        CephBackupStorageMonVO mon = getSelf().getMons().stream()
+                .filter(m -> m.getUuid().equals(msg.getBackupStorageHostUuid())).findAny().orElse(null);
+        if (mon == null) {
+            reply.setError(operr("failed to find mon with uuid [%s]", msg.getBackupStorageHostUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        SoftwareUpgradePackageCmd cmd = new SoftwareUpgradePackageCmd();
+        cmd.upgradePackagePath = msg.getUpgradePackagePath();
+        cmd.upgradePackageTargetPath = msg.getUpgradePackageTargetPath();
+        cmd.upgradeScriptPath = msg.getUpgradeScriptPath();
+        cmd.targetHostSshPort = msg.getTargetHostSshPort();
+        cmd.targetHostSshUsername = msg.getTargetHostSshUsername();
+        cmd.targetHostSshPassword = msg.getTargetHostSshPassword();
+        cmd.targetHostIp = msg.getTargetHostIp();
+
+        CephBackupStorageMonBase monBase = new CephBackupStorageMonBase(mon);
+        monBase.httpCall(SOFTWARE_UPGRADE_PACKAGE_DEPLOY_PATH, cmd, SoftwareUpgradePackageResponse.class, new ReturnValueCompletion<SoftwareUpgradePackageResponse>(msg) {
+            @Override
+            public void fail(ErrorCode err) {
+                reply.setError(err);
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void success(SoftwareUpgradePackageResponse rsp) {
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    @Override
+    protected void handle(CancelDownloadFileMsg msg) {
+        CancelDownloadFileReply reply = new CancelDownloadFileReply();
+
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            bus.reply(msg, reply);
+            return;
+        }
+
+        CancelCommand cmd = new CancelCommand();
+        cmd.setCancellationApiId(msg.getCancellationApiId());
+
+        new HttpCaller<>(AgentConstant.CANCEL_JOB, cmd, AgentResponse.class, new ReturnValueCompletion<AgentResponse>(msg) {
+            @Override
+            public void fail(ErrorCode err) {
+                reply.setError(err);
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void success(AgentResponse rsp) {
+                bus.reply(msg, reply);
+            }
+        }).specifyOrder(msg.getCancellationApiId()).tryNext().call();
     }
 }
