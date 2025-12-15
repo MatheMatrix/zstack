@@ -6,6 +6,7 @@ import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.image.CancelAddImageReply;
 import org.zstack.header.image.CancelDownloadImageMsg;
 import org.zstack.header.image.ImageInventory;
+import org.zstack.header.image.UploadFileToBackupStorageHostMsg;
 import org.zstack.header.storage.backup.*;
 import org.zstack.storage.backup.BackupStorageBase;
 import org.zstack.utils.Utils;
@@ -136,5 +137,15 @@ public class SimulatorBackupStorage extends BackupStorageBase {
     protected void handle(CalculateImageHashOnBackupStorageMsg msg) {
         CalculateImageHashOnBackupStorageReply reply = new CalculateImageHashOnBackupStorageReply();
         bus.reply(msg, reply);
+    }
+
+    @Override
+    protected void handle(UploadFileToBackupStorageHostMsg msg) {
+        bus.replyErrorByMessageType(msg, "not supported");
+    }
+
+    @Override
+    protected void handle(GetFileDownloadProgressMsg msg) {
+        bus.replyErrorByMessageType(msg, "not supported");
     }
 }

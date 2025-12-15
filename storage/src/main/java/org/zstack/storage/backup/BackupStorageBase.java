@@ -36,6 +36,7 @@ import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.image.CancelDownloadImageMsg;
 import org.zstack.header.image.ImageConstant;
 import org.zstack.header.image.ImageVO;
+import org.zstack.header.image.UploadFileToBackupStorageHostMsg;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
@@ -120,6 +121,10 @@ public abstract class BackupStorageBase extends AbstractBackupStorage {
     abstract protected void connectHook(boolean newAdd, Completion completion);
 
     abstract protected void pingHook(Completion completion);
+
+    abstract protected void handle(UploadFileToBackupStorageHostMsg msg);
+
+    abstract protected void handle(GetFileDownloadProgressMsg msg);
 
     protected void handle(GetBackupStorageManagerHostnameMsg msg) {
         bus.dealWithUnknownMessage(msg);

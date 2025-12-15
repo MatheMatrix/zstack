@@ -705,4 +705,14 @@ public class SftpBackupStorage extends BackupStorageBase {
     private void doRestoreImagesBackupStorageMetadataToDatabase(RestoreImagesBackupStorageMetadataToDatabaseMsg msg) {
         metaDataMaker.restoreImagesBackupStorageMetadataToDatabase(msg.getImagesMetadata(), msg.getBackupStorageUuid());
     }
+
+    @Override
+    protected void handle(UploadFileToBackupStorageHostMsg msg) {
+        bus.replyErrorByMessageType(msg, "not supported");
+    }
+
+    @Override
+    protected void handle(GetFileDownloadProgressMsg msg) {
+        bus.replyErrorByMessageType(msg, "not supported");
+    }
 }
