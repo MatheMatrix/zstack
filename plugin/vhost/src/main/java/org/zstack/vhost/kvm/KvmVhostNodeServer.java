@@ -1,8 +1,9 @@
 package org.zstack.vhost.kvm;
 
+import javax.persistence.TypedQuery;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.zstack.core.componentloader.PluginRegistry;
+import org.zstack.core.db.DatabaseFacade;
 import org.zstack.header.Component;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
@@ -27,6 +28,8 @@ public class KvmVhostNodeServer implements Component, KVMStartVmExtensionPoint,
         KVMConvertVolumeExtensionPoint, KVMDetachVolumeExtensionPoint, KVMAttachVolumeExtensionPoint {
     @Autowired
     private ExternalPrimaryStorageFactory extPsFactory;
+    @Autowired
+    private DatabaseFacade dbf;
 
     private PluginRegistry pluginRgty;
 
@@ -37,6 +40,18 @@ public class KvmVhostNodeServer implements Component, KVMStartVmExtensionPoint,
         capability.setSupportQosOnHypervisor(false);
         capability.setSupportResizeOnHypervisor(false);
         capability.setSupportReadonly(false);
+    }
+
+    private boolean isVhostPrimaryStorageAttachedToCluster(String clusterUuid) {
+        String sql = "select count(ref) from PrimaryStorageClusterRefVO ref, PrimaryStorageOutputProtocolRefVO protoRef" +
+                " where ref.primaryStorageUuid = protoRef.primaryStorageUuid" +
+                " and ref.clusterUuid = :clusterUuid" +
+                " and protoRef.outputProtocol = :outputProtocol";
+        TypedQuery<Long> q = dbf.getEntityManager().createQuery(sql, Long.class);
+        q.setParameter("clusterUuid", clusterUuid);
+        q.setParameter("outputProtocol", VolumeProtocol.Vhost.name());
+        Long count = q.getSingleResult();
+        return count != null && count > 0;
     }
 
 
@@ -56,7 +71,8 @@ public class KvmVhostNodeServer implements Component, KVMStartVmExtensionPoint,
 
         cmd.setDataVolumes(dtos);
         if (VolumeProtocol.Vhost.name().equals(spec.getDestRootVolume().getProtocol()) ||
-                spec.getDestDataVolumes().stream().anyMatch(v -> VolumeProtocol.Vhost.name().equals(v.getProtocol()))) {
+                spec.getDestDataVolumes().stream().anyMatch(v -> VolumeProtocol.Vhost.name().equals(v.getProtocol())) ||
+                isVhostPrimaryStorageAttachedToCluster(host.getClusterUuid())) {
             cmd.setUseHugePage(true);
             cmd.setMemAccess("shared");
         }
