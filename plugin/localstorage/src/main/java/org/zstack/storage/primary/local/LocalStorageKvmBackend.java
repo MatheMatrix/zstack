@@ -657,6 +657,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         private String srcPath;
         private String destPath;
         private boolean fullRebase;
+        private List<String> chainInstallPathInDb = new ArrayList<>();
 
         public boolean isFullRebase() {
             return fullRebase;
@@ -681,6 +682,14 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         public void setDestPath(String destPath) {
             this.destPath = destPath;
         }
+
+        public List<String> getChainInstallPathInDb() {
+            return chainInstallPathInDb;
+        }
+
+        public void setChainInstallPathInDb(List<String> chainInstallPathInDb) {
+            this.chainInstallPathInDb = chainInstallPathInDb;
+        }
     }
 
     public static class OfflineMergeSnapshotRsp extends AgentResponse {
@@ -699,6 +708,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         public String top;
         public String base;
         public List<String> topChildrenInstallPathInDb = new ArrayList<>();
+        public List<String> chainInstallPathInDb = new ArrayList<>();
     }
 
     public static class OfflineCommitSnapshotRsp extends AgentResponse {
@@ -3732,6 +3742,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         cmd.top = msg.getSrcSnapshot().getPrimaryStorageInstallPath();
         cmd.base = msg.getDstSnapshot().getPrimaryStorageInstallPath();
         cmd.topChildrenInstallPathInDb = msg.getSrcChildrenInstallPathInDb();
+        cmd.chainInstallPathInDb = msg.getChainInstallPathInDb();
         httpCall(OFFLINE_COMMIT_PATH, hostUuid, cmd, OfflineCommitSnapshotRsp.class, new ReturnValueCompletion<OfflineCommitSnapshotRsp>(completion) {
             @Override
             public void success(OfflineCommitSnapshotRsp returnValue) {
@@ -3754,6 +3765,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
         cmd.srcPath = msg.getSrcSnapshotParentPath();
         cmd.destPath = msg.getDstSnapshot().getPrimaryStorageInstallPath();
         cmd.fullRebase = cmd.srcPath == null;
+        cmd.chainInstallPathInDb = msg.getChainInstallPathInDb();
         httpCall(OFFLINE_MERGE_PATH, hostUuid, cmd, OfflineMergeSnapshotRsp.class, new ReturnValueCompletion<OfflineMergeSnapshotRsp>(completion) {
             @Override
             public void success(OfflineMergeSnapshotRsp rsp) {

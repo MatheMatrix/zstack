@@ -45,7 +45,7 @@ import org.zstack.header.storage.snapshot.VolumeSnapshotTreeVO;
 import org.zstack.header.storage.snapshot.VolumeSnapshotTreeVO_;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
-import org.zstack.header.storage.snapshot.group.MemorySnapshotValidatorExtensionPoint;
+import org.zstack.header.storage.snapshot.group.*;
 import org.zstack.header.tag.SystemTagVO;
 import org.zstack.header.vm.APICreateVmInstanceMsg;
 import org.zstack.header.vm.DiskAO;
@@ -82,16 +82,13 @@ import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.volume.VolumeVO_;
 
 import javax.persistence.Tuple;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.operr;
+import static org.zstack.storage.snapshot.VolumeSnapshotApiInterceptor.getVmResidualSnapshotGroupUuid;
 
 /**
  * Created with IntelliJ IDEA.
@@ -242,6 +239,13 @@ public class VolumeApiInterceptor implements ApiMessageInterceptor, Component, G
                 throw new ApiMessageInterceptionException(errorCode);
             }
         }
+
+        String vmResidualSnapshotGroupUuid = getVmResidualSnapshotGroupUuid(vmvo.getUuid());
+        if (vmResidualSnapshotGroupUuid == null) {
+            return;
+        }
+        throw new ApiMessageInterceptionException(operr("the vm[%s] currently has an incomplete snapshot group. " +
+                "please delete the snapshot group[%s].", vmvo.getUuid(), vmResidualSnapshotGroupUuid));
     }
 
     private void validate(APIRecoverDataVolumeMsg msg) {

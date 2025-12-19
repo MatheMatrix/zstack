@@ -3746,6 +3746,7 @@ public class KVMAgentCommands {
         private String top;
         private String base;
         private List<String> topChildrenInstallPathInDb = new ArrayList<>();
+        private List<String> chainInstallPathInDb = new ArrayList<>();
 
         public String getVmUuid() {
             return vmUuid;
@@ -3786,6 +3787,14 @@ public class KVMAgentCommands {
         public void setTopChildrenInstallPathInDb(List<String> topChildrenInstallPathInDb) {
             this.topChildrenInstallPathInDb = topChildrenInstallPathInDb;
         }
+
+        public List<String> getChainInstallPathInDb() {
+            return chainInstallPathInDb;
+        }
+
+        public void setChainInstallPathInDb(List<String> chainInstallPathInDb) {
+            this.chainInstallPathInDb = chainInstallPathInDb;
+        }
     }
 
     public static class BlockCommitResponse extends AgentResponse {
@@ -3805,6 +3814,7 @@ public class KVMAgentCommands {
         private String vmUuid;
         private VolumeTO volume;
         private String base;
+        private List<String> chainInstallPathInDb = new ArrayList<>();
 
         public String getVmUuid() {
             return vmUuid;
@@ -3828,6 +3838,14 @@ public class KVMAgentCommands {
 
         public void setBase(String base) {
             this.base = base;
+        }
+
+        public List<String> getChainInstallPathInDb() {
+            return chainInstallPathInDb;
+        }
+
+        public void setChainInstallPathInDb(List<String> chainInstallPathInDb) {
+            this.chainInstallPathInDb = chainInstallPathInDb;
         }
     }
 
