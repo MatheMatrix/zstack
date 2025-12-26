@@ -200,16 +200,34 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
             msg.setNicNames(new ArrayList<>(nicNamePciAddressMap.keySet()));
         }
 
-        if (msg.getNicNames().size() > 1 && msg.getBondMode() == null) {
-            msg.setBondMode(refVO.getBondMode());
+        if (msg.getBondMode() == null) {
+            throw new ApiMessageInterceptionException(argerr("could not change host[uuid:%s] of sdn controller[uuid:%s], " +
+                    " because bond mode is not specified", msg.getHostUuid(), msg.getSdnControllerUuid()));
         }
 
-        if (msg.getLacpMode() == null) {
+        if (msg.getNicNames().isEmpty()) {
+            throw new ApiMessageInterceptionException(argerr("could not change host[uuid:%s] of sdn controller[uuid:%s], " +
+                    " because nic names is empty", msg.getHostUuid(), msg.getSdnControllerUuid()));
+        }
+
+        if (msg.getNicNames().size() == 1) {
+            msg.setBondMode(null);
+            msg.setLacpMode(null);
+            return;
+        }
+
+        if (msg.getBondMode().equals(refVO.getBondMode())) {
             msg.setLacpMode(refVO.getLacpMode());
         }
 
-        if (msg.getBondMode() != null && msg.getBondMode().equals(L2NetworkConstant.BONDING_MODE_TCP) && msg.getLacpMode() == null) {
+        if (msg.getBondMode().equals(L2NetworkConstant.BONDING_MODE_TCP)) {
             msg.setLacpMode(L2NetworkConstant.LACP_MODE_ACTIVE);
+        } else if (msg.getBondMode().equals(L2NetworkConstant.BONDING_MODE_SLB)) {
+            if (!(msg.getLacpMode().equals(L2NetworkConstant.LACP_MODE_PASSIVE) || msg.getLacpMode().equals(L2NetworkConstant.LACP_MODE_OFF))) {
+                msg.setLacpMode(L2NetworkConstant.LACP_MODE_OFF);
+            }
+        } else {
+            msg.setLacpMode(L2NetworkConstant.LACP_MODE_OFF);
         }
     }
 
