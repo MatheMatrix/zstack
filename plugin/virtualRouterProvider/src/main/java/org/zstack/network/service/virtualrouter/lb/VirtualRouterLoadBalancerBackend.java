@@ -661,7 +661,7 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
         VipInventory vipInUsed = vip == null ? vip6 : vip;
         VmNicInventory publicNic = null;
 
-        if (vr != null) {
+        if (vr != null && vipInUsed != null) {
             List<VmNicInventory> nics = vr.getVmNics().stream()
                     .filter(n -> StringUtils.equals(n.getL3NetworkUuid(), vipInUsed.getL3NetworkUuid()))
                     .collect(Collectors.toList());
@@ -2763,6 +2763,10 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
                 }
 
                 LoadBalancerStruct s = JSONObjectUtil.toObject(task.getJsonData(), LoadBalancerStruct.class);
+                logger.debug(String.format("Refreshing LB[uuid:%s] on backup VR[uuid:%s], clearing VIP to avoid dual-master",
+                        s.getLb().getUuid(), vrUuid));
+                s.setVip(null);
+                s.setIpv6Vip(null);
                 refreshLbToVirtualRouter(VirtualRouterVmInventory.valueOf(vrVO), s, completion);
             }
         };
