@@ -610,10 +610,18 @@ public class ManagementNodeManagerImpl extends AbstractService implements Manage
                 public void handle(ErrorCode errCode, Map data) {
                     new BootErrorLog().write(errCode.toString());
                     ret.success = false;
+
                 }
             }).start();
         } finally {
-            lock.unlock();
+            try {
+                lock.unlock();
+
+            } catch (Exception e) {
+                ErrorCode errCode = Platform.inerr(e.getMessage());
+                new BootErrorLog().write(errCode.toString());
+                ret.success = false;
+            }
         }
 
         if (!ret.success || !Platform.IS_RUNNING) {
