@@ -4,7 +4,6 @@ import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
-import org.zstack.cbd.*;
 import org.zstack.cbd.kvm.CbdHeartbeatVolumeTO;
 import org.zstack.cbd.kvm.CbdVolumeTo;
 import org.zstack.compute.host.HostGlobalConfig;
@@ -32,7 +31,6 @@ import org.zstack.header.host.HostInventory;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.image.ImageConstant;
 import org.zstack.header.message.MessageReply;
-import org.zstack.header.rest.RESTFacade;
 import org.zstack.header.storage.addon.*;
 import org.zstack.header.storage.addon.primary.*;
 import org.zstack.header.storage.primary.*;
@@ -606,7 +604,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                         .set(ExternalPrimaryStorageVO_.addonInfo, JSONObjectUtil.toJsonString(addonInfo))
                         .update();
 
-                List<LogicalPoolInfo> logicalPoolInfos = getSelfPools();
+                List<LogicalPoolInfo> logicalPoolInfos = syncAndGetSelfPools();
                 long total = logicalPoolInfos.stream().mapToLong(LogicalPoolInfo::getCapacity).sum();
                 long used = logicalPoolInfos.stream().mapToLong(LogicalPoolInfo::getUsedSize).sum();
                 long avail = total != 0 ? total - used : 0;
@@ -700,7 +698,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     }
 
     private LogicalPoolInfo allocateFreePool(long size, Predicate<LogicalPoolInfo> filter) {
-        List<LogicalPoolInfo> logicalPoolInfos = getSelfPools();
+        List<LogicalPoolInfo> logicalPoolInfos = syncAndGetSelfPools();
         Stream<LogicalPoolInfo> s = logicalPoolInfos.stream().filter(it -> it.getCapacity() - it.getUsedSize() > size);
         if (filter != null) {
             s = s.filter(filter);
@@ -710,7 +708,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 .orElse(null);
     }
 
-    private List<LogicalPoolInfo> getSelfPools() {
+    private List<LogicalPoolInfo> syncAndGetSelfPools() {
         List<LogicalPoolInfo> logicalPoolInfos = addonInfo.getLogicalPoolInfos();
         logicalPoolInfos.removeIf(it -> !config.getPoolNames().contains(it.getLogicalPoolName()));
         return logicalPoolInfos;
