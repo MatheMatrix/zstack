@@ -140,6 +140,14 @@ public class LicenseInventory  {
         return this.licenseRequest;
     }
 
+    public java.lang.String caChecksum;
+    public void setCaChecksum(java.lang.String caChecksum) {
+        this.caChecksum = caChecksum;
+    }
+    public java.lang.String getCaChecksum() {
+        return this.caChecksum;
+    }
+
     public java.lang.Integer availableHostNum;
     public void setAvailableHostNum(java.lang.Integer availableHostNum) {
         this.availableHostNum = availableHostNum;
