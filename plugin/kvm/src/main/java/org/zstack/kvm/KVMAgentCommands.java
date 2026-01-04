@@ -2914,6 +2914,8 @@ public class KVMAgentCommands {
         private VirtualDeviceInfo memBalloonInfo;
         @GrayVersion(value = "5.0.0")
         private VirtualizerInfoTO virtualizerInfo;
+        @GrayVersion(value = "5.5.6")
+        private Map<String, Object> addonInfos;
 
         public VirtualDeviceInfo getMemBalloonInfo() {
             return memBalloonInfo;
@@ -2945,6 +2947,14 @@ public class KVMAgentCommands {
 
         public void setVirtualizerInfo(VirtualizerInfoTO virtualizerInfo) {
             this.virtualizerInfo = virtualizerInfo;
+        }
+
+        public Map<String, Object> getAddonInfos() {
+            return addonInfos;
+        }
+
+        public void setAddonInfos(Map<String, Object> addonInfos) {
+            this.addonInfos = addonInfos;
         }
     }
 
