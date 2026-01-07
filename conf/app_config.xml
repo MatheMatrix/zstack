@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Bootstrap configuration for ZStack
+    This file determines which properties file to load at startup
+
+    The propertiesFile value can be replaced by build script for OEM customization:
+    - Default: zstack.properties
+    - Custom: will be replaced by Ant during build (e.g., myapp.properties)
+-->
+<bootstrap>
+    <!-- BUILD_REPLACE_MARKER: Do not modify manually, will be replaced during build -->
+    <propertiesFile>zstack.properties</propertiesFile>
+</bootstrap>
