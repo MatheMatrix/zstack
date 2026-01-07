@@ -2,6 +2,7 @@ package org.zstack.test;
 
 import org.apache.commons.io.FileUtils;
 import org.zstack.core.Platform;
+import org.zstack.core.config.AppConfig;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.utils.ShellResult;
 import org.zstack.utils.ShellUtils;
@@ -28,7 +29,7 @@ public class DBUtil {
         Properties prop = new Properties();
 
         try {
-            prop.load(DBUtil.class.getClassLoader().getResourceAsStream("zstack.properties"));
+            prop.load(DBUtil.class.getClassLoader().getResourceAsStream(AppConfig.getPropertiesFileName()));
 
             String user = System.getProperty("DB.user");
             if (user == null) {
