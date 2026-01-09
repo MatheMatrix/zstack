@@ -1,8 +1,12 @@
-package org.zstack.header.vm;
+package org.zstack.header.storage.primary;
 
 import org.zstack.header.allocator.HostAllocatorConstant;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.rest.RestResponse;
+import org.zstack.header.vm.VmInstanceConstant;
+import org.zstack.header.vm.VmInstanceInventory;
+import org.zstack.header.vm.VmInstanceState;
+import org.zstack.header.vm.VmNicInventory;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.header.volume.VolumeState;
 import org.zstack.header.volume.VolumeStatus;
@@ -13,12 +17,16 @@ import java.sql.Timestamp;
 
 import static java.util.Arrays.asList;
 
-/**
- * Created by miao on 11/3/16.
- */
 @RestResponse(allTo = "inventory")
-public class APIReimageVmInstanceEvent extends APIEvent {
+public class APIRegisterVmInstanceEvent extends APIEvent {
     private VmInstanceInventory inventory;
+
+    public APIRegisterVmInstanceEvent() {
+    }
+
+    public APIRegisterVmInstanceEvent(String apiId) {
+        super(apiId);
+    }
 
     public VmInstanceInventory getInventory() {
         return inventory;
@@ -27,17 +35,10 @@ public class APIReimageVmInstanceEvent extends APIEvent {
     public void setInventory(VmInstanceInventory inventory) {
         this.inventory = inventory;
     }
-
-    public APIReimageVmInstanceEvent(String apiId) {
-        super(apiId);
-    }
-
-    public APIReimageVmInstanceEvent() {
-        super(null);
-    }
  
-    public static APIReimageVmInstanceEvent __example__() {
-        APIReimageVmInstanceEvent event = new APIReimageVmInstanceEvent();
+    public static APIRegisterVmInstanceEvent __example__() {
+        APIRegisterVmInstanceEvent event = new APIRegisterVmInstanceEvent();
+
 
         String defaultL3Uuid = uuid();
         String rootVolumeUuid = uuid();
@@ -59,7 +60,7 @@ public class APIReimageVmInstanceEvent extends APIEvent {
         vm.setMemorySize(SizeUnit.GIGABYTE.toByte(8));
         vm.setPlatform("Linux");
         vm.setRootVolumeUuid(rootVolumeUuid);
-        vm.setState(VmInstanceState.Running.toString());
+        vm.setState(VmInstanceState.Stopped.toString());
         vm.setType(VmInstanceConstant.USER_VM_TYPE);
         vm.setLastOpDate(new Timestamp(org.zstack.header.message.DocUtils.date));
         vm.setZoneUuid(uuid());
@@ -88,13 +89,9 @@ public class APIReimageVmInstanceEvent extends APIEvent {
         nic.setCreateDate(vm.getCreateDate());
         nic.setLastOpDate(vm.getLastOpDate());
         nic.setDeviceId(0);
-        nic.setGateway("192.168.1.1");
-        nic.setIp("192.168.1.10");
         nic.setL3NetworkUuid(defaultL3Uuid);
-        nic.setNetmask("255.255.255.0");
         nic.setMac("00:0c:29:bd:99:fc");
         nic.setHypervisorType("KVM");
-        nic.setUsedIpUuid(uuid());
         nic.setUuid(uuid());
         vm.setVmNics(asList(nic));
 

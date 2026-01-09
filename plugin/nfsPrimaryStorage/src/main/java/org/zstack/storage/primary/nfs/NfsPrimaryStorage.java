@@ -40,10 +40,8 @@ import org.zstack.header.storage.snapshot.DeleteVolumeSnapshotDirection;
 import org.zstack.header.storage.snapshot.ShrinkVolumeSnapshotOnPrimaryStorageMsg;
 import org.zstack.header.storage.snapshot.VolumeSnapshotConstant;
 import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
+import org.zstack.header.vm.*;
 import org.zstack.header.vm.VmInstanceSpec.ImageSpec;
-import org.zstack.header.vm.VmInstanceState;
-import org.zstack.header.vm.VmInstanceVO;
-import org.zstack.header.vm.VmInstanceVO_;
 import org.zstack.header.volume.*;
 import org.zstack.kvm.*;
 import org.zstack.storage.primary.*;
@@ -131,6 +129,8 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
             handle((CommitVolumeSnapshotOnPrimaryStorageMsg) msg);
         } else if (msg instanceof PullVolumeSnapshotOnPrimaryStorageMsg) {
             handle((PullVolumeSnapshotOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof UpdateVmInstanceMetadataOnPrimaryStorageMsg) {
+            handle((UpdateVmInstanceMetadataOnPrimaryStorageMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
@@ -1923,5 +1923,31 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
         }
 
         return hostUuid;
+    }
+
+    protected void handle(UpdateVmInstanceMetadataOnPrimaryStorageMsg msg) {
+        UpdateVmInstanceMetadataOnPrimaryStorageReply reply = new UpdateVmInstanceMetadataOnPrimaryStorageReply();
+
+        String hostUuid = getHostUuidFromVolume(msg.getRootVolumeUuid());
+        if (hostUuid == null || hostUuid.isEmpty()) {
+            reply.setError(operr("no host found for volume[uuid:%s]", msg.getRootVolumeUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        final NfsPrimaryStorageBackend backend = getUsableBackend();
+
+        backend.handle(msg, hostUuid, new ReturnValueCompletion<UpdateVmInstanceMetadataOnPrimaryStorageReply>(msg) {
+            @Override
+            public void success(UpdateVmInstanceMetadataOnPrimaryStorageReply r) {
+                bus.reply(msg, r);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
     }
 }

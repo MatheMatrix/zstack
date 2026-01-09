@@ -255,6 +255,8 @@ public class GarbageCollectorManagerImpl extends AbstractService
     private void handleLocalMessage(Message msg) {
         if (msg instanceof TriggerGcJobMsg) {
             handle((TriggerGcJobMsg) msg);
+        } else if (msg instanceof SubmitTimeBasedGarbageCollectorMsg) {
+            handle((SubmitTimeBasedGarbageCollectorMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
@@ -280,6 +282,12 @@ public class GarbageCollectorManagerImpl extends AbstractService
                 return String.format("trigger-gc-job-%s", msg.getUuid());
             }
         });
+    }
+
+    private void handle(final SubmitTimeBasedGarbageCollectorMsg msg) {
+        MessageReply reply = new MessageReply();
+        msg.getGc().submit(msg.getGcInterval(), msg.getUnit());
+        bus.reply(msg, reply);
     }
 
     private void handleApiMessage(APIMessage msg) {

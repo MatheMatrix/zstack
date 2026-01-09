@@ -86,6 +86,9 @@ public interface KVMConstant {
     String CLEAN_FIRMWARE_FLASH = "/clean/firmware/flash";
     String FSTRIM_VM_PATH = "/vm/fstrim";
 
+    String WRITE_VM_INSTANCE_METADATA_PATH = "/vm/metadata/write";
+    String READ_VM_INSTANCE_METADATA_PATH = "/vm/metadata/read";
+
     String ISO_TO = "kvm.isoto";
     String ANSIBLE_PLAYBOOK_NAME = "kvm.py";
     String ANSIBLE_MODULE_PATH = "ansible/kvm";

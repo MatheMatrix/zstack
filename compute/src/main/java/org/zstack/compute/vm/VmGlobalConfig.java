@@ -133,4 +133,10 @@ public class VmGlobalConfig {
     @GlobalConfigValidation(validValues = {"None", "AuthenticAMD"})
     @BindResourceConfig(value = {VmInstanceVO.class})
     public static GlobalConfig VM_CPUID_VENDOR = new GlobalConfig(CATEGORY, "vm.cpuid.vendor");
+
+    @GlobalConfigValidation(numberGreaterThan = 1)
+    public static GlobalConfig GC_INTERVAL = new GlobalConfig(CATEGORY, "deletion.gcInterval");
+
+    @GlobalConfigValidation(validValues = {"true", "false"})
+    public static GlobalConfig VM_METADATA = new GlobalConfig(CATEGORY, "vm.metadata");
 }

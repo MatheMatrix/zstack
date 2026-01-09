@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.transaction.annotation.Transactional;
+import org.zstack.core.Platform;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cascade.CascadeConstant;
 import org.zstack.core.cascade.CascadeFacade;
@@ -14,6 +15,8 @@ import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.cloudbus.CloudBusListCallBack;
 import org.zstack.core.cloudbus.EventFacade;
 import org.zstack.core.componentloader.PluginRegistry;
+import org.zstack.core.config.GlobalConfig;
+import org.zstack.core.config.GlobalConfigDefinition;
 import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.errorcode.ErrorFacade;
@@ -27,6 +30,7 @@ import org.zstack.core.trash.StorageTrash;
 import org.zstack.core.trash.TrashType;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
+import org.zstack.core.workflow.ShareFlowChain;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.core.*;
 import org.zstack.header.core.trash.CleanTrashResult;
@@ -49,20 +53,35 @@ import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.primary.PrimaryStorageCanonicalEvent.PrimaryStorageDeletedData;
 import org.zstack.header.storage.primary.PrimaryStorageCanonicalEvent.PrimaryStorageStatusChangedData;
 import org.zstack.header.storage.snapshot.*;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefVO;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
+import org.zstack.header.tag.SystemTagVO;
+import org.zstack.header.tag.TagDefinition;
+import org.zstack.header.tag.TagType;
 import org.zstack.header.vm.*;
+import org.zstack.header.vm.cdrom.VmCdRomInventory;
 import org.zstack.header.volume.*;
+import org.zstack.header.zone.ZoneVO;
+import org.zstack.header.zone.ZoneVO_;
+import org.zstack.resourceconfig.BindResourceConfig;
+import org.zstack.resourceconfig.ResourceConfigVO;
 import org.zstack.storage.volume.VolumeUtils;
+import org.zstack.tag.SystemTag;
+import org.zstack.utils.BeanUtils;
 import org.zstack.utils.CollectionDSL;
 import org.zstack.utils.DebugUtils;
 import org.zstack.utils.Utils;
+import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.LockModeType;
 import javax.persistence.TypedQuery;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static java.util.Arrays.asList;
 import static org.zstack.core.Platform.err;
 import static org.zstack.core.Platform.operr;
 
@@ -935,6 +954,8 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
             handle((APICleanUpStorageTrashOnPrimaryStorageMsg) msg);
         } else if (msg instanceof APIAddStorageProtocolMsg) {
             handle((APIAddStorageProtocolMsg) msg);
+        } else if (msg instanceof APIRegisterVmInstanceMsg) {
+            handle((APIRegisterVmInstanceMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
@@ -1811,5 +1832,355 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
 
     private static String getDeduplicateError(String operationName) {
         return String.format("an other %s task is running, cancel this operation", operationName);
+    }
+
+    private void handle(APIRegisterVmInstanceMsg msg) {
+        APIRegisterVmInstanceEvent event = new APIRegisterVmInstanceEvent(msg.getId());
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return String.format("register-vm-from-%s", msg.getMetadataPath());
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                registerVmInstance(msg, new ReturnValueCompletion<VmInstanceInventory>(chain, msg) {
+                    @Override
+                    public void success(VmInstanceInventory vmInstanceInventory) {
+                        event.setInventory(vmInstanceInventory);
+                        bus.publish(event);
+                        chain.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        bus.publish(event);
+                        chain.next();
+                    }
+                });
+            }
+
+            @Override
+            public String getName() {
+                return String.format("register-vm-from-%s", msg.getMetadataPath());
+            }
+        });
+    }
+
+    private void registerVmInstance(APIRegisterVmInstanceMsg msg, ReturnValueCompletion<VmInstanceInventory> completion) {
+        FlowChain chain = new ShareFlowChain();
+        chain.setName("register-vm-from-metadata");
+        chain.then(new ShareFlow() {
+            VmMetadata vmMetadata;
+            VmInstanceInventory vmInstanceInventory;
+
+            @Override
+            public void setup() {
+                flow(new NoRollbackFlow() {
+                    String __name__ = "read-metadata";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        ReadVmInstanceMetadataOnHypervisorMsg umsg = new ReadVmInstanceMetadataOnHypervisorMsg();
+                        umsg.setHostUuid(msg.getHostUuid());
+                        umsg.setMetadataPath(msg.getMetadataPath());
+                        bus.makeTargetServiceIdByResourceUuid(umsg, HostConstant.SERVICE_ID, msg.getHostUuid());
+                        bus.send(umsg, new CloudBusCallBack(msg) {
+                            @Override
+                            public void run(MessageReply r) {
+                                if (!r.isSuccess()) {
+                                    trigger.fail(operr("failed to update vm[uuid=%s] on hypervisor.",
+                                            self.getUuid()).withCause(r.getError()));
+                                    return;
+                                }
+                                ReadVmInstanceMetadataOnHypervisorReply reply = r.castReply();
+                                vmMetadata = JSONObjectUtil.toObject(reply.getMetadata(), VmMetadata.class);
+                                trigger.next();
+                            }
+                        });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "register-volume";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        List<String> volumesString = vmMetadata.volumeVOs;
+
+                        List<VolumeVO> volumes = new ArrayList<>();
+                        volumesString.forEach(v -> volumes.add(JSONObjectUtil.toObject(v, VolumeVO.class)));
+
+                        List<VolumeVO> newVolumes = new ArrayList<>();
+                        volumes.forEach(v -> {
+                            VolumeVO vo = new VolumeVO();
+//                            vo.setRootImageUuid(vo.getRootImageUuid());
+                            vo.setAccountUuid(msg.getSession().getAccountUuid());
+                            vo.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
+                            vo.setInstallPath(v.getInstallPath());
+
+                            vo.setCreateDate(v.getCreateDate());
+                            vo.setDescription(v.getDescription());
+                            vo.setName(v.getName());
+                            vo.setSize(v.getSize());
+                            vo.setActualSize(v.getActualSize());
+                            vo.setState(v.getState());
+                            vo.setUuid(v.getUuid());
+                            vo.setVmInstanceUuid(v.getVmInstanceUuid());
+                            vo.setType(v.getType());
+                            vo.setCreateDate(v.getCreateDate());
+                            vo.setLastOpDate(v.getLastOpDate());
+                            vo.setDeviceId(v.getDeviceId());
+                            vo.setStatus(v.getStatus());
+                            vo.setFormat(v.getFormat());
+                            vo.setShareable(v.isShareable());
+                            vo.setVolumeQos(v.getVolumeQos());
+                            vo.setLastDetachDate(v.getLastDetachDate());
+                            vo.setLastVmInstanceUuid(v.getLastVmInstanceUuid());
+                            vo.setLastAttachDate(v.getLastAttachDate());
+                            vo.setProtocol(v.getProtocol());
+                            newVolumes.add(vo);
+                        });
+                        dbf.persistCollection(newVolumes);
+                        trigger.next();
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "register-snapshot";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        // 快照
+                        vmMetadata.volumeSnapshots.forEach((volumeUuid, snapshotList) -> {
+                            // 一个 volume 有多个快照树
+                            // key = treeuuid
+                            // value = snapshosts
+                            Map<String, List<VolumeSnapshotInventory>> snapshotsByTreeUuid = new HashMap<>();
+                            snapshotList.forEach(snapshot -> {
+                                VolumeSnapshotInventory inv = JSONObjectUtil.toObject(snapshot, VolumeSnapshotInventory.class);
+                                if (snapshotsByTreeUuid.containsKey(inv.getTreeUuid())) {
+                                    snapshotsByTreeUuid.get(inv.getTreeUuid()).add(inv);
+                                } else {
+                                    snapshotsByTreeUuid.put(inv.getTreeUuid(), new ArrayList<>());
+                                    snapshotsByTreeUuid.get(inv.getTreeUuid()).add(inv);
+                                }
+                            });
+
+                            // 遍历每一颗树
+                            snapshotsByTreeUuid.forEach((treeUuid, snapshots) -> {
+                                //构建快照树
+                                VolumeSnapshotTree tree = VolumeSnapshotTree.fromInventories(snapshots);
+                                // 层级遍历 快照
+                                List<VolumeSnapshotInventory> levelOrderTraversals = tree.levelOrderTraversal();
+                                // 判断当前树有没有 latest 节点
+                                boolean treeIsCurrent = levelOrderTraversals.stream().anyMatch(VolumeSnapshotInventory::isLatest);
+
+                                // 先创建快照树，VolumeSnapshotVO 外键依赖 VolumeSnapshotTreeVO
+                                VolumeSnapshotTreeVO newTree = new VolumeSnapshotTreeVO();
+                                newTree.setCurrent(treeIsCurrent);
+                                newTree.setVolumeUuid(volumeUuid);
+                                newTree.setUuid(treeUuid);
+                                newTree.setStatus(VolumeSnapshotTreeStatus.Completed);
+                                dbf.persist(newTree);
+
+                                // 按照层级遍历的快照构建VolumeSnapshotTreeVO
+                                levelOrderTraversals.forEach(snapshot -> {
+                                    VolumeSnapshotVO vo = new VolumeSnapshotVO();
+                                    vo.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
+                                    vo.setPrimaryStorageInstallPath(snapshot.getPrimaryStorageInstallPath());
+
+                                    vo.setName(snapshot.getName());
+                                    vo.setCreateDate(snapshot.getCreateDate());
+                                    vo.setDescription(snapshot.getDescription());
+                                    vo.setLastOpDate(snapshot.getLastOpDate());
+                                    vo.setParentUuid(snapshot.getParentUuid());
+                                    vo.setState(VolumeSnapshotState.valueOf(snapshot.getState()));
+                                    vo.setType(snapshot.getType());
+                                    vo.setVolumeUuid(snapshot.getVolumeUuid());
+                                    vo.setFormat(snapshot.getFormat());
+                                    vo.setUuid(snapshot.getUuid());
+                                    vo.setStatus(VolumeSnapshotStatus.valueOf(snapshot.getStatus()));
+                                    vo.setLatest(snapshot.isLatest());
+                                    vo.setSize(snapshot.getSize());
+                                    vo.setVolumeType(snapshot.getVolumeType());
+                                    vo.setTreeUuid(snapshot.getTreeUuid());
+                                    vo.setDistance(snapshot.getDistance());
+                                    dbf.persist(vo);
+                                });
+                            });
+                        });
+
+                        // 快照组
+                        List<VolumeSnapshotGroupVO> newGroups = new ArrayList<>();
+                        vmMetadata.volumeSnapshotGroupVO.forEach(group -> {
+                            VolumeSnapshotGroupVO vo = JSONObjectUtil.toObject(group, VolumeSnapshotGroupVO.class);
+                            vo.setAccountUuid(msg.getSession().getAccountUuid());
+                            newGroups.add(vo);
+                        });
+                        dbf.persistCollection(newGroups);
+
+                        // 快照组ref
+                        List<VolumeSnapshotGroupRefVO> newGroupRefs = new ArrayList<>();
+                        vmMetadata.volumeSnapshotGroupRefVO.forEach(group -> {
+                            VolumeSnapshotGroupRefVO vo = JSONObjectUtil.toObject(group, VolumeSnapshotGroupRefVO.class);
+                            newGroupRefs.add(vo);
+                        });
+                        dbf.persistCollection(newGroupRefs);
+
+                        trigger.next();
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "register-vmInstance";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        VmInstanceVO metaVm = JSONObjectUtil.toObject(vmMetadata.vmInstanceVO, VmInstanceVO.class);
+                        VmInstanceVO newVm = new VmInstanceVO();
+
+                        newVm.setClusterUuid(msg.getClusterUuid());
+                        newVm.setZoneUuid(msg.getZoneUuid());
+                        newVm.setHostUuid(msg.getHostUuid());
+                        // 寻找有没有cache的tag lv 构建imageCache
+//                        newVm.setImageUuid();
+
+                        newVm.setUuid(metaVm.getUuid());
+                        newVm.setName(metaVm.getName());
+                        newVm.setDescription(metaVm.getDescription());
+                        newVm.setType(metaVm.getType());
+                        newVm.setHypervisorType(metaVm.getHypervisorType());
+                        newVm.setCreateDate(metaVm.getCreateDate());
+                        newVm.setLastOpDate(metaVm.getLastOpDate());
+                        newVm.setState(metaVm.getState());
+                        newVm.setRootVolumeUuid(metaVm.getRootVolumeUuid());
+                        newVm.setInternalId(metaVm.getInternalId());
+                        newVm.setCpuNum(metaVm.getCpuNum());
+                        newVm.setCpuSpeed(metaVm.getCpuSpeed());
+                        newVm.setMemorySize(metaVm.getMemorySize());
+                        newVm.setReservedMemorySize(metaVm.getReservedMemorySize());
+                        newVm.setAllocatorStrategy(metaVm.getAllocatorStrategy());
+                        newVm.setPlatform(metaVm.getPlatform());
+                        newVm.setArchitecture(metaVm.getArchitecture());
+                        newVm.setGuestOsType(metaVm.getGuestOsType());
+                        dbf.persist(newVm);
+                        vmInstanceInventory = VmInstanceInventory.valueOf(newVm);
+                        trigger.next();
+//                        List<String> vmSystemTags = vmMetadata.vmSystemTags;
+//                        List<String> vmResourceConfigs = vmMetadata.vmResourceConfigs;
+//
+//                        try {
+//                            List<SystemTag> systemTags = getResourceSystemTagFromSystem(VmInstanceVO.class.getSimpleName());
+//                            List<GlobalConfig> resourceConfigs = getResourceConfigFromSystem(VmInstanceVO.class.getSimpleName());
+//
+//                            List<SystemTagVO> tagVOS = new ArrayList<>();
+//                            vmSystemTags.forEach(tag -> {
+//                                List<String> info = asList(tag.split("_"));
+//                                String t = info.get(0);
+//                                Boolean inherent = Boolean.valueOf(info.get(1));
+//                                String type = info.get(2);
+//                                systemTags.forEach(it -> {
+//                                    if (!it.isMatch(t)) {
+//                                        return;
+//                                    }
+//                                    SystemTagVO vo = new SystemTagVO();
+//                                    vo.setTag(t);
+//                                    vo.setType(TagType.valueOf(type));
+//                                    vo.setInherent(inherent);
+//                                    vo.setResourceType(VmInstanceVO.class.getSimpleName());
+//                                    vo.setResourceUuid(newVm.getUuid());
+//                                    tagVOS.add(vo);
+//                                });
+//                            });
+//
+//                            List<ResourceConfigVO> configVOS = new ArrayList<>();
+//                            vmResourceConfigs.forEach(tag -> {
+//                                List<String> info = asList(tag.split("_"));
+//                                String identity = info.get(0);
+//                                String value = info.get(1);
+//                                resourceConfigs.forEach(it -> {
+//                                    if (it.getIdentity() == identity) {
+//                                        return;
+//                                    }
+//                                    ResourceConfigVO vo = new ResourceConfigVO();
+//                                    vo.setCategory(identity);
+//                                    vo.setName(identity);
+//                                    vo.setValue(value);
+//                                    vo.setResourceType(VmInstanceVO.class.getSimpleName());
+//                                    vo.setResourceUuid(newVm.getUuid());
+//                                    configVOS.add(vo);
+//                                });
+//                            });
+//                        } catch (IllegalAccessException | InstantiationException e) {
+//                            throw new RuntimeException(e);
+//                        }
+                    }
+                });
+
+                done(new FlowDoneHandler(completion) {
+                    @Override
+                    public void handle(Map data) {
+                        completion.success(vmInstanceInventory);
+                    }
+                });
+
+                error(new FlowErrorHandler(msg) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        completion.fail(errCode);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private List<SystemTag> getResourceSystemTagFromSystem(String resourceType) throws IllegalAccessException, InstantiationException {
+        List<SystemTag> systemTags = new ArrayList<>();
+
+        Set<Class<?>> classes = BeanUtils.reflections.getTypesAnnotatedWith(TagDefinition.class);
+        for (Class clazz : classes) {
+            Field[] fields = clazz.getDeclaredFields();
+            for (Field field : fields) {
+                if (!SystemTag.class.isAssignableFrom(field.getType())) {
+                    continue;
+                }
+
+                SystemTag systemTag = (SystemTag) field.get(clazz.newInstance());
+
+                if (resourceType.equals(systemTag.getResourceClass().getName())) {
+                    systemTags.add(systemTag);
+                }
+            }
+        }
+        return systemTags;
+    }
+
+    private List<GlobalConfig> getResourceConfigFromSystem(String resourceType) throws IllegalAccessException, InstantiationException {
+        List<GlobalConfig> globalConfigs = new ArrayList<>();
+
+        Set<Class<?>> classes = BeanUtils.reflections.getTypesAnnotatedWith(GlobalConfigDefinition.class);
+        for (Class clazz : classes) {
+            Field[] fields = clazz.getDeclaredFields();
+            for (Field field : fields) {
+                if (!GlobalConfig.class.isAssignableFrom(field.getType())) {
+                    continue;
+                }
+                GlobalConfig globalConfig = (GlobalConfig) field.get(clazz.newInstance());
+
+                BindResourceConfig bindResourceConfig = field.getAnnotation(BindResourceConfig.class);
+                if (bindResourceConfig == null) {
+                    continue;
+                }
+
+                List<String> bindResourceConfigs = Arrays.stream(bindResourceConfig.value()).map(Class::getName).collect(Collectors.toList());
+
+                if (bindResourceConfigs.contains(resourceType)) {
+                    globalConfigs.add(globalConfig);
+                }
+            }
+        }
+
+        return globalConfigs;
     }
 }

@@ -13,10 +13,14 @@ import org.zstack.core.cascade.CascadeConstant;
 import org.zstack.core.cascade.CascadeFacade;
 import org.zstack.core.cloudbus.*;
 import org.zstack.core.componentloader.PluginRegistry;
+import org.zstack.core.config.GlobalConfig;
+import org.zstack.core.config.GlobalConfigDefinition;
 import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.defer.Defer;
 import org.zstack.core.defer.Deferred;
+import org.zstack.core.gc.GCConstants;
+import org.zstack.core.gc.SubmitTimeBasedGarbageCollectorMsg;
 import org.zstack.core.jsonlabel.JsonLabel;
 import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.RunInQueue;
@@ -45,6 +49,14 @@ import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.message.*;
 import org.zstack.header.network.l3.*;
 import org.zstack.header.storage.primary.*;
+import org.zstack.header.storage.snapshot.*;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefVO;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefVO_;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO_;
+import org.zstack.header.tag.SystemTagVO;
+import org.zstack.header.tag.SystemTagVO_;
+import org.zstack.header.tag.TagDefinition;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.ChangeVmMetaDataMsg.AtomicHostUuid;
 import org.zstack.header.vm.ChangeVmMetaDataMsg.AtomicVmState;
@@ -66,30 +78,29 @@ import org.zstack.network.l3.IpRangeHelper;
 import org.zstack.network.l3.L3NetworkManager;
 import org.zstack.network.service.DnsUtils;
 import org.zstack.network.service.NetworkServiceManager;
-import org.zstack.resourceconfig.ResourceConfig;
-import org.zstack.resourceconfig.ResourceConfigFacade;
+import org.zstack.resourceconfig.*;
+import org.zstack.tag.SystemTag;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.tag.SystemTagUtils;
 import org.zstack.tag.TagManager;
-import org.zstack.utils.CollectionUtils;
-import org.zstack.utils.ExceptionDSL;
-import org.zstack.utils.ObjectUtils;
-import org.zstack.utils.Utils;
+import org.zstack.utils.*;
 import org.zstack.utils.function.ForEachFunction;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
-import org.zstack.utils.network.NicIpAddressInfo;
 import org.zstack.utils.network.IPv6Constants;
 import org.zstack.utils.network.IPv6NetworkUtils;
 import org.zstack.utils.network.NetworkUtils;
+import org.zstack.utils.network.NicIpAddressInfo;
 
 import javax.persistence.PersistenceException;
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
+import java.lang.reflect.Field;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -140,6 +151,8 @@ public class VmInstanceBase extends AbstractVmInstance {
     private VmInstanceResourceMetadataManager vidm;
     @Autowired
     private NetworkServiceManager nwServiceMgr;
+    @Autowired
+    private ResourceDestinationMaker destMaker;
 
     protected VmInstanceVO self;
     protected VmInstanceVO originalCopy;
@@ -533,6 +546,8 @@ public class VmInstanceBase extends AbstractVmInstance {
             handle((CancelFlattenVmInstanceMsg) msg);
         } else if (msg instanceof KvmReportVmShutdownEventMsg) {
             handle((KvmReportVmShutdownEventMsg) msg);
+        } else if (msg instanceof UpdateVmInstanceMetadataMsg) {
+            handle((UpdateVmInstanceMetadataMsg) msg);
         } else {
             VmInstanceBaseExtensionFactory ext = vmMgr.getVmInstanceBaseExtensionFactory(msg);
             if (ext != null) {
@@ -9368,6 +9383,122 @@ public class VmInstanceBase extends AbstractVmInstance {
                 noErrorCompletion.done();
             }
         });
+    }
+
+    private void handle(UpdateVmInstanceMetadataMsg msg) {
+        Tuple tuple = Q.New(VolumeVO.class).select(VolumeVO_.primaryStorageUuid, VolumeVO_.uuid)
+                .eq(VolumeVO_.vmInstanceUuid, msg.getUuid()).eq(VolumeVO_.type, VolumeType.Root).findTuple();
+        String primaryStorageUuid = tuple.get(0, String.class);
+        String rootVolumeUuid = tuple.get(1, String.class);
+
+        UpdateVmInstanceMetadataOnPrimaryStorageMsg umsg = new UpdateVmInstanceMetadataOnPrimaryStorageMsg();
+        umsg.setMetadata(buildVmInstanceMetadata(msg.getUuid()));
+        umsg.setPrimaryStorageUuid(primaryStorageUuid);
+        umsg.setRootVolumeUuid(rootVolumeUuid);
+        bus.makeTargetServiceIdByResourceUuid(umsg, PrimaryStorageConstant.SERVICE_ID, umsg.getPrimaryStorageUuid());
+        bus.send(umsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply r) {
+                UpdateVmInstanceMetadataOnPrimaryStorageReply reply = new UpdateVmInstanceMetadataOnPrimaryStorageReply();
+
+                if (!r.isSuccess()) {
+                    reply.setError(Platform.operr("failed to update vm[uuid=%s] on hypervisor.", self.getUuid())
+                            .withCause(r.getError()));
+
+                    submitUpdateVmInstanceMetadataGC();
+                    return;
+                }
+                bus.reply(msg, reply);
+            }
+
+            private void submitUpdateVmInstanceMetadataGC() {
+                SubmitTimeBasedGarbageCollectorMsg gcmsg = new SubmitTimeBasedGarbageCollectorMsg();
+                gcmsg.setGcInterval(VmGlobalConfig.GC_INTERVAL.value(Long.class));
+                gcmsg.setUnit(TimeUnit.SECONDS);
+
+                UpdateVmInstanceMetadataGC gc = new UpdateVmInstanceMetadataGC();
+                gc.vmInstanceUuid = self.getUuid();
+                gc.NAME = String.format("gc-update-vm-%s-metadata", msg.getVmInstanceUuid());
+                gcmsg.setGc(gc);
+
+                bus.makeTargetServiceIdByResourceUuid(gcmsg, GCConstants.SERVICE_ID, msg.getVmInstanceUuid());
+                bus.send(gcmsg);
+            }
+        });
+    }
+
+    private String buildVmInstanceMetadata(String vmInstanceUuid) {
+        VmMetadata vmMetadata = new VmMetadata();
+
+        // 找出vm
+        // 找出volume和快照
+        // 找出网卡
+        VmInstanceVO vm = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, vmInstanceUuid).find();
+        vmMetadata.vmSystemTags = getResourceSystemTagFromDb(vm.getUuid());
+        vmMetadata.vmResourceConfigs = getResourceConfigFromDb(vm.getUuid());
+
+        // volume
+        // 挂载的
+        List<VolumeVO> volumes1 = Q.New(VolumeVO.class).eq(VolumeVO_.vmInstanceUuid, vmInstanceUuid).list();
+        // 被卸载的
+        List<VolumeVO> volumes2 = Q.New(VolumeVO.class).eq(VolumeVO_.vmInstanceUuid, null).eq(VolumeVO_.lastVmInstanceUuid, vmInstanceUuid).list();
+
+        List<VolumeVO> volumes = new ArrayList<>();
+        volumes.addAll(volumes1);
+        volumes.addAll(volumes2);
+        volumes.forEach(volume -> {
+            vmMetadata.volumeSystemTags.put(volume.getUuid(), getResourceSystemTagFromDb(volume.getUuid()));
+            vmMetadata.volumeResourceConfigs.put(volume.getUuid(), getResourceConfigFromDb(volume.getUuid()));
+        });
+
+        // snapshot
+        List<String> volumeUuids = volumes.stream().map(VolumeVO::getUuid).collect(Collectors.toList());
+        List<VolumeSnapshotVO> snapshot = Q.New(VolumeSnapshotVO.class).in(VolumeSnapshotVO_.volumeUuid, volumeUuids).list();
+
+        List<VolumeSnapshotGroupVO> group = Q.New(VolumeSnapshotGroupVO.class).eq(VolumeSnapshotGroupVO_.vmInstanceUuid, vmInstanceUuid).list();
+        List<String> groupUuids = group.stream().map(VolumeSnapshotGroupVO::getUuid).collect(Collectors.toList());
+        List<VolumeSnapshotGroupRefVO> groupRef = Q.New(VolumeSnapshotGroupRefVO.class).in(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, groupUuids).list();
+
+        // vm nic
+        List<VmNicVO> vmNics = Q.New(VmNicVO.class).eq(VmNicVO_.vmInstanceUuid, vmInstanceUuid).list();
+        vmNics.forEach(nic -> {
+            vmMetadata.vmNicSystemTags.put(nic.getUuid(), getResourceSystemTagFromDb(nic.getUuid()));
+            vmMetadata.vmNicResourceConfigs.put(nic.getUuid(), getResourceConfigFromDb(nic.getUuid()));
+        });
+
+        // build metadata
+        vmMetadata.vmInstanceVO = JSONObjectUtil.toJsonString(vm);
+        volumes.forEach(volumeVO -> vmMetadata.volumeVOs.add(JSONObjectUtil.toJsonString(volumeVO)));
+        vmNics.forEach(nic -> vmMetadata.vmNicVOs.add(JSONObjectUtil.toJsonString(nic)));
+
+        Map<String, List<String>> volumeSnapshots = new HashMap<>();
+        snapshot.forEach(s -> {
+            if (volumeSnapshots.containsKey(s.getVolumeUuid())) {
+                volumeSnapshots.get(s.getVolumeUuid()).add(JSONObjectUtil.toJsonString(VolumeSnapshotInventory.valueOf(s)));
+            } else {
+                volumeSnapshots.put(s.getVolumeUuid(), new ArrayList<>());
+                volumeSnapshots.get(s.getVolumeUuid()).add(JSONObjectUtil.toJsonString(VolumeSnapshotInventory.valueOf(s)));
+            }
+        });
+        vmMetadata.volumeSnapshots = volumeSnapshots;
+        vmMetadata.volumeSnapshotGroupVO = group.stream().map(JSONObjectUtil::toJsonString).collect(Collectors.toList());
+        vmMetadata.volumeSnapshotGroupRefVO = groupRef.stream().map(JSONObjectUtil::toJsonString).collect(Collectors.toList());
+
+        return JSONObjectUtil.toJsonString(vmMetadata);
+    }
+
+    private List<String> getResourceSystemTagFromDb(String resourceUuid) {
+        List<String> systemTags = new ArrayList<>();
+        List<SystemTagVO> vos = Q.New(SystemTagVO.class).eq(SystemTagVO_.resourceUuid, resourceUuid).list();
+        vos.forEach(vo -> systemTags.add(JSONObjectUtil.toJsonString(vo)));
+        return systemTags;
+    }
+
+    private List<String> getResourceConfigFromDb(String resourceUuid) {
+        List<String> resourceConfigs = new ArrayList<>();
+        List<ResourceConfigVO> vos = Q.New(ResourceConfigVO.class).eq(ResourceConfigVO_.resourceUuid, resourceUuid).list();
+        vos.forEach(vo -> resourceConfigs.add(JSONObjectUtil.toJsonString(vo)));
+        return resourceConfigs;
     }
 }
 

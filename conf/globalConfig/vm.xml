@@ -317,4 +317,20 @@
 		<type>java.lang.Boolean</type>
 		<defaultValue>false</defaultValue>
 	</config>
+
+	<config>
+		<category>vm</category>
+		<name>deletion.gcInterval</name>
+		<description>update vm metadata interval</description>
+		<type>java.lang.Long</type>
+		<defaultValue>30</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata</name>
+		<description>save vm metadata</description>
+		<type>java.lang.Boolean</type>
+		<defaultValue>false</defaultValue>
+	</config>
 </globalConfig>
