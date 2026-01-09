@@ -8,6 +8,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 import org.zstack.header.vm.VmInstanceMessage;
 import org.zstack.header.vm.VmInstanceVO;
 
@@ -19,6 +20,7 @@ import org.zstack.header.vm.VmInstanceVO;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteVmCdRomEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteVmCdRomMsg extends APIDeleteMessage implements VmInstanceMessage, APIAuditor {
     @APIParam(resourceType = VmCdRomVO.class, successIfResourceNotExisting = true)
     private String uuid;

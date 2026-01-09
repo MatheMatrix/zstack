@@ -118,6 +118,7 @@
                 <value>org.zstack.compute.vm.VmExpungeRootVolumeFlow</value>
                 <value>org.zstack.compute.vm.VmExpungeMemoryVolumeFlow</value>
                 <value>org.zstack.compute.vm.VmExpungeCacheVolumeFlow</value>
+                <value>org.zstack.compute.vm.VmExpungeMetadataFlow</value>
             </list>
         </property>
         <property name="pauseVmWorkFlowElements">
@@ -264,6 +265,60 @@
     <bean id="ComputeLegacyComponent" class="org.zstack.compute.legacy.ComputeLegacyComponent">
         <zstack:plugin>
             <zstack:extension interface="org.zstack.header.Component" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="VmMetadataBuilder" class="org.zstack.compute.vm.metadata.VmMetadataBuilder" />
+
+    <bean id="DefaultVmUuidFromApiResolver" class="org.zstack.compute.vm.metadata.DefaultVmUuidFromApiResolver" />
+    <bean id="VolumeBasedVmUuidFromApiResolver" class="org.zstack.compute.vm.metadata.VolumeBasedVmUuidFromApiResolver" />
+    <bean id="ResourceBasedVmUuidFromApiResolver" class="org.zstack.compute.vm.metadata.ResourceBasedVmUuidFromApiResolver" />
+    <bean id="SnapshotBasedVmUuidFromApiResolver" class="org.zstack.compute.vm.metadata.SnapshotBasedVmUuidFromApiResolver" />
+    <bean id="SnapshotGroupBasedVmUuidFromApiResolver" class="org.zstack.compute.vm.metadata.SnapshotGroupBasedVmUuidFromApiResolver" />
+    <bean id="NicBasedVmUuidFromApiResolver" class="org.zstack.compute.vm.metadata.NicBasedVmUuidFromApiResolver" />
+    <bean id="ReflectionBasedVmUuidFromApiResolver" class="org.zstack.compute.vm.metadata.ReflectionBasedVmUuidFromApiResolver" />
+
+    <bean id="VmMetadataUpdateInterceptor" class="org.zstack.compute.vm.metadata.VmMetadataUpdateInterceptor">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.Component" />
+            <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="VmMetadataDirtyMarker" class="org.zstack.compute.vm.metadata.VmMetadataDirtyMarker">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.Component" />
+            <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeChangeListener" />
+            <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="MetadataCascadeExtension" class="org.zstack.compute.vm.metadata.MetadataCascadeExtension">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.core.cascade.CascadeExtensionPoint" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="MetadataPathSnapshotBuilder" class="org.zstack.compute.vm.metadata.MetadataPathSnapshotBuilder" />
+
+    <bean id="MetadataStaleRecoveryTask" class="org.zstack.compute.vm.metadata.MetadataStaleRecoveryTask">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.Component" />
+            <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="MetadataPathDriftDetector" class="org.zstack.compute.vm.metadata.MetadataPathDriftDetector">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.Component" />
+            <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="MetadataOrphanDetector" class="org.zstack.compute.vm.metadata.MetadataOrphanDetector">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.Component" />
+            <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint" />
         </zstack:plugin>
     </bean>
 

@@ -14,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         responseClass = APIRecoverVmInstanceEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.CONFIG)
 public class APIRecoverVmInstanceMsg extends APIMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String uuid;

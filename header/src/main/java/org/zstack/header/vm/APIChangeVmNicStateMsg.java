@@ -22,6 +22,7 @@ import java.util.List;
         responseClass = APIChangeVmNicStateEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.CONFIG)
 public class APIChangeVmNicStateMsg extends APIMessage implements VmInstanceMessage, APIMultiAuditor {
     @APIParam(resourceType = VmNicVO.class)
     private String vmNicUuid;

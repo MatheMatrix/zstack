@@ -13,6 +13,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIConvertVmInstanceToTemplatedVmInstanceEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.CONFIG)
 public class APIConvertVmInstanceToTemplatedVmInstanceMsg extends APIMessage implements VmInstanceMessage, APIAuditor {
     @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;

@@ -15,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true,
         responseClass = APIUpdateVmInstanceEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.CONFIG)
 public class APIUpdateVmInstanceMsg extends APIMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String uuid;

@@ -35,10 +35,7 @@ import org.zstack.header.storage.backup.BackupStorageVO;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
-import org.zstack.header.vm.VmInstanceSpec;
-import org.zstack.header.vm.VmInstanceState;
-import org.zstack.header.vm.VmInstanceVO;
-import org.zstack.header.vm.VmInstanceVO_;
+import org.zstack.header.vm.*;
 import org.zstack.header.volume.*;
 import org.zstack.identity.AccountManager;
 import org.zstack.kvm.*;
@@ -67,6 +64,7 @@ import java.util.stream.Collectors;
 import static java.lang.Integer.min;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.core.Platform.touterr;
+import static org.zstack.header.vm.VmInstanceConstant.VM_META_SUFFIX;
 import static org.zstack.utils.CollectionUtils.transformAndRemoveNull;
 
 public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
@@ -2047,6 +2045,34 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
 
                 CommitVolumeSnapshotOnPrimaryStorageReply reply = new CommitVolumeSnapshotOnPrimaryStorageReply();
                 reply.setSize(rsp.getActualSize());
+                completion.success(reply);
+            }
+        });
+    }
+
+    public void handle(UpdateVmInstanceMetadataOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<UpdateVmInstanceMetadataOnPrimaryStorageReply> completion) {
+        UpdateVmInstanceMetadataOnHypervisorMsg umsg = new UpdateVmInstanceMetadataOnHypervisorMsg();
+        umsg.setMetadata(msg.getMetadata());
+        umsg.setHostUuid(hostUuid);
+
+        String installPath = Q.New(VolumeVO.class)
+                .eq(VolumeVO_.uuid, msg.getRootVolumeUuid())
+                .select(VolumeVO_.installPath)
+                .findValue();
+        String path = installPath.replaceFirst("^(.+/vol-[^/]+/).*$", "$1");
+        String metadataPath = String.format("%s%s", path, VM_META_SUFFIX);
+        umsg.setMetadataPath(metadataPath);
+
+        bus.makeTargetServiceIdByResourceUuid(umsg, HostConstant.SERVICE_ID, hostUuid);
+        bus.send(umsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply r) {
+                UpdateVmInstanceMetadataOnPrimaryStorageReply reply = new UpdateVmInstanceMetadataOnPrimaryStorageReply();
+                if (!r.isSuccess()) {
+                    reply.setError(Platform.operr("failed to update vm[uuid=%s] metadata on hypervisor via host[uuid:%s]",
+                            msg.getVmInstanceUuid(), hostUuid)
+                            .withCause(r.getError()));
+                }
                 completion.success(reply);
             }
         });

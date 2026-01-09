@@ -133,4 +133,139 @@ public class VmGlobalConfig {
     @GlobalConfigValidation(validValues = {"None", "AuthenticAMD"})
     @BindResourceConfig(value = {VmInstanceVO.class})
     public static GlobalConfig VM_CPUID_VENDOR = new GlobalConfig(CATEGORY, "vm.cpuid.vendor");
+
+    @GlobalConfigValidation(numberGreaterThan = 1)
+    public static GlobalConfig GC_INTERVAL = new GlobalConfig(CATEGORY, "deletion.gcInterval");
+
+    @GlobalConfigValidation(validValues = {"true", "false"})
+    public static GlobalConfig VM_METADATA = new GlobalConfig(CATEGORY, "vm.metadata");
+
+    @GlobalConfigDef(defaultValue = "5", type = Integer.class,
+            description = "Max concurrent metadata writes per primary storage per MN")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_PS_MAX_CONCURRENT = new GlobalConfig(CATEGORY, "vm.metadata.ps.maxConcurrent");
+
+    @GlobalConfigDef(defaultValue = "10", type = Integer.class,
+            description = "Max concurrent VM metadata updates globally per MN")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_GLOBAL_MAX_CONCURRENT = new GlobalConfig(CATEGORY, "vm.metadata.global.maxConcurrent");
+
+    @GlobalConfigDef(defaultValue = "10", type = Integer.class,
+            description = "Initial GC delay in seconds after API success")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_GC_INITIAL_DELAY_SEC = new GlobalConfig(CATEGORY, "vm.metadata.gc.initialDelaySec");
+
+    @GlobalConfigDef(defaultValue = "5", type = Integer.class,
+            description = "Max retry count before giving up metadata flush")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_MAX_RETRY = new GlobalConfig(CATEGORY, "vm.metadata.maxRetry");
+
+    @GlobalConfigDef(defaultValue = "5", type = Long.class,
+            description = "Dirty poller interval in seconds")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_DIRTY_POLL_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.dirty.pollIntervalSec");
+
+    @GlobalConfigDef(defaultValue = "20", type = Integer.class,
+            description = "Max dirty rows to claim per poller cycle")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_DIRTY_BATCH_SIZE = new GlobalConfig(CATEGORY, "vm.metadata.dirty.batchSize");
+
+    @GlobalConfigDef(defaultValue = "300", type = Long.class,
+            description = "Path fingerprint check interval in seconds")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_PATH_CHECK_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.pathCheck.intervalSec");
+
+    @GlobalConfigDef(defaultValue = "500", type = Integer.class,
+            description = "Path fingerprint check keyset pagination batch size")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_PATH_CHECK_BATCH_SIZE = new GlobalConfig(CATEGORY, "vm.metadata.pathCheck.batchSize");
+
+    @GlobalConfigDef(defaultValue = "600", type = Long.class,
+            description = "Delay in seconds before full refresh after upgrade, waiting for rolling upgrade to complete")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_UPGRADE_REFRESH_DELAY = new GlobalConfig(CATEGORY, "vm.metadata.upgrade.refreshDelaySec");
+
+    @GlobalConfigDef(defaultValue = "1000", type = Integer.class,
+            description = "Upgrade full refresh SQL batch size")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_UPGRADE_REFRESH_BATCH_SIZE = new GlobalConfig(CATEGORY, "vm.metadata.upgrade.refreshBatchSize");
+
+    @GlobalConfigDef(defaultValue = "5", type = Long.class,
+            description = "Delay in seconds after nodeLeft before takeover, reduces zombie MN race condition")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_NODE_LEFT_DELAY = new GlobalConfig(CATEGORY, "vm.metadata.nodeLeft.delaySec");
+
+    @GlobalConfigDef(defaultValue = "1800", type = Long.class,
+            description = "MetadataStaleRecoveryTask scan interval in seconds")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_STALE_RECOVERY_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.staleRecovery.intervalSec");
+
+    @GlobalConfigDef(defaultValue = "100", type = Integer.class,
+            description = "MetadataStaleRecoveryTask rows per scan batch")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_STALE_RECOVERY_BATCH_SIZE = new GlobalConfig(CATEGORY, "vm.metadata.staleRecovery.batchSize");
+
+    @GlobalConfigDef(defaultValue = "10", type = Integer.class,
+            description = "Max consecutive stale recovery cycles per VM before circuit-break")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_STALE_RECOVERY_MAX_CYCLES = new GlobalConfig(CATEGORY, "vm.metadata.staleRecovery.maxCycles");
+
+    @GlobalConfigDef(defaultValue = "45", type = Long.class,
+            description = "Pending API timeout cleanup threshold in minutes")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_PENDING_API_TIMEOUT = new GlobalConfig(CATEGORY, "vm.metadata.pendingApi.timeoutMinutes");
+
+    @GlobalConfigDef(defaultValue = "10", type = Integer.class,
+            description = "Exponential backoff base delay in seconds")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_RETRY_BASE_DELAY = new GlobalConfig(CATEGORY, "vm.metadata.retry.baseDelaySeconds");
+
+    @GlobalConfigDef(defaultValue = "10", type = Integer.class,
+            description = "Exponential backoff max exponent")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_RETRY_MAX_EXPONENT = new GlobalConfig(CATEGORY, "vm.metadata.retry.maxExponent");
+
+    @GlobalConfigDef(defaultValue = "200", type = Integer.class,
+            description = "Batch size per round when enabling metadata (false to true init)")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_INIT_BATCH_SIZE = new GlobalConfig(CATEGORY, "vm.metadata.init.batchSize");
+
+    @GlobalConfigDef(defaultValue = "5", type = Long.class,
+            description = "Delay in seconds between init batches to prevent IO storm")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_INIT_BATCH_DELAY = new GlobalConfig(CATEGORY, "vm.metadata.init.batchDelaySec");
+
+    @GlobalConfigDef(defaultValue = "3600", type = Long.class,
+            description = "Orphan metadata detection interval in seconds")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_ORPHAN_CHECK_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.orphanCheck.intervalSec");
+
+    @GlobalConfigDef(defaultValue = "15", type = Long.class,
+            description = "Zombie claim threshold in minutes: claimed dirty rows older than this are released")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_ZOMBIE_CLAIM_THRESHOLD = new GlobalConfig(CATEGORY, "vm.metadata.zombieClaim.thresholdMinutes");
+
+    @GlobalConfigDef(defaultValue = "30", type = Long.class,
+            description = "Stale claim threshold in minutes for background recovery task")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_STALE_CLAIM_THRESHOLD = new GlobalConfig(CATEGORY, "vm.metadata.staleClaim.thresholdMinutes");
+
+    @GlobalConfigDef(defaultValue = "10", type = Long.class,
+            description = "Inline stale claim takeover threshold in minutes for triggerFlushForVm hot path")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_TRIGGER_FLUSH_STALE = new GlobalConfig(CATEGORY, "vm.metadata.triggerFlush.staleMinutes");
+
+    @GlobalConfigDef(defaultValue = "3", type = Integer.class,
+            description = "Max retry count for deleteMetadata in ExpungeVmInstanceFlow")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_DELETE_MAX_RETRY = new GlobalConfig(CATEGORY, "vm.metadata.delete.maxRetry");
+
+    @GlobalConfigDef(defaultValue = "30", type = Long.class,
+            description = "Base delay in seconds for deleteMetadata retry backoff")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_DELETE_BASE_DELAY = new GlobalConfig(CATEGORY, "vm.metadata.delete.baseDelaySec");
+
+    @GlobalConfigDef(defaultValue = "", type = String.class,
+            description = "Last completed upgrade refresh version, prevents duplicate triggers across MNs. Internal use only")
+    public static GlobalConfig VM_METADATA_LAST_REFRESH_VERSION = new GlobalConfig(CATEGORY, "vm.metadata.lastRefreshVersion");
 }

@@ -8,6 +8,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.message.DefaultTimeout;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 import java.util.concurrent.TimeUnit;
 
@@ -18,6 +19,7 @@ import java.util.concurrent.TimeUnit;
         responseClass = APIExportImageFromBackupStorageEvent.class
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 3)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIExportImageFromBackupStorageMsg extends APIMessage implements BackupStorageMessage, APIAuditor {
     @APIParam(resourceType = BackupStorageVO.class)
     private String backupStorageUuid;

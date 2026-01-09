@@ -317,4 +317,68 @@
 		<type>java.lang.Boolean</type>
 		<defaultValue>false</defaultValue>
 	</config>
+
+	<config>
+		<category>vm</category>
+		<name>deletion.gcInterval</name>
+		<description>update vm metadata interval</description>
+		<type>java.lang.Long</type>
+		<defaultValue>30</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata</name>
+		<description>save vm metadata</description>
+		<type>java.lang.Boolean</type>
+		<defaultValue>false</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.ps.maxConcurrent</name>
+		<description>Max concurrent metadata writes per primary storage per MN. In dual-MN the actual global concurrency per PS = 2 × this value.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>5</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.global.maxConcurrent</name>
+		<description>Max concurrent VM metadata updates globally per MN. In dual-MN the actual global concurrency = 2 × this value.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>10</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.gc.initialDelaySec</name>
+		<description>Initial GC delay in seconds after API success. The first metadata update attempt happens after this delay.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>10</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.maxRetry</name>
+		<description>Max retry count before giving up metadata flush. After this many failed attempts with exponential backoff, the dirty row is deleted and will auto-retry on the next API that modifies this VM.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>5</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.dirty.pollIntervalSec</name>
+		<description>Dirty poller interval in seconds. The poller acts as a safety net to process dirty rows that were not handled by the immediate triggerFlush path (e.g., rows in backoff, orphaned rows after MN crash).</description>
+		<type>java.lang.Long</type>
+		<defaultValue>5</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.dirty.batchSize</name>
+		<description>Max dirty rows to claim per poller cycle. Controls the batch size of CAS claim in each poller round.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>20</defaultValue>
+	</config>
 </globalConfig>

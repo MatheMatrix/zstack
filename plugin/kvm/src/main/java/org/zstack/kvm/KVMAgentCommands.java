@@ -4716,4 +4716,20 @@ public class KVMAgentCommands {
             this.memoryUsage = memoryUsage;
         }
     }
+
+    public static class WriteVmInstanceMetadataCmd extends AgentCommand {
+        public String metadata;
+        public String metadataPath;
+    }
+
+    public static class WriteVmInstanceMetadataRsp extends AgentResponse {
+    }
+
+    public static class ReadVmInstanceMetadataCmd extends AgentCommand {
+        public String metadataPath;
+    }
+
+    public static class ReadVmInstanceMetadataRsp extends AgentResponse {
+        public String metadata;
+    }
 }

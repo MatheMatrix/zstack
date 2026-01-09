@@ -11,6 +11,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIAttachVmNicToVmEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.CONFIG)
 public class APIAttachVmNicToVmMsg extends APIMessage implements VmInstanceMessage {
 
     @APIParam(resourceType = VmNicVO.class)

@@ -15,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIReimageVmInstanceEvent.class,
         category = "vmInstance"
 )
+@MetadataImpact(MetadataImpact.Impact.STORAGE)
 public class APIReimageVmInstanceMsg extends APIMessage implements VmInstanceMessage {
     public String getVmInstanceUuid() {
         return vmInstanceUuid;
