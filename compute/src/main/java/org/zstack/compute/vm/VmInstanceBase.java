@@ -45,6 +45,10 @@ import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.message.*;
 import org.zstack.header.network.l3.*;
 import org.zstack.header.storage.primary.*;
+import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
+import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefVO;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.ChangeVmMetaDataMsg.AtomicHostUuid;
 import org.zstack.header.vm.ChangeVmMetaDataMsg.AtomicVmState;
@@ -71,10 +75,7 @@ import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.tag.SystemTagUtils;
 import org.zstack.tag.TagManager;
-import org.zstack.utils.CollectionUtils;
-import org.zstack.utils.ExceptionDSL;
-import org.zstack.utils.ObjectUtils;
-import org.zstack.utils.Utils;
+import org.zstack.utils.*;
 import org.zstack.utils.function.ForEachFunction;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.gson.JSONObjectUtil;
@@ -4860,49 +4861,49 @@ public class VmInstanceBase extends AbstractVmInstance {
         }).start();
     }
 
-    private void handle(final APIRecoverVmInstanceMsg msg) {
-        thdf.chainSubmit(new ChainTask(msg) {
-            @Override
-            public String getSyncSignature() {
-                return syncThreadName;
-            }
-
-            @Override
-            public void run(final SyncTaskChain chain) {
-                final APIRecoverVmInstanceEvent evt = new APIRecoverVmInstanceEvent(msg.getId());
-                refreshVO();
-
-                ErrorCode error = validateOperationByState(msg, self.getState(), SysErrors.OPERATION_ERROR);
-                if (error != null) {
-                    evt.setError(error);
-                    bus.publish(evt);
-                    chain.next();
-                    return;
-                }
-
-                recoverVm(new Completion(msg, chain) {
-                    @Override
-                    public void success() {
-                        evt.setInventory(getSelfInventory());
-                        bus.publish(evt);
-                        chain.next();
-                    }
-
-                    @Override
-                    public void fail(ErrorCode errorCode) {
-                        evt.setError(errorCode);
-                        bus.publish(evt);
-                        chain.next();
-                    }
-                });
-            }
-
-            @Override
-            public String getName() {
-                return "recover-vm";
-            }
-        });
-    }
+//    private void handle(final APIRecoverVmInstanceMsg msg) {
+//        thdf.chainSubmit(new ChainTask(msg) {
+//            @Override
+//            public String getSyncSignature() {
+//                return syncThreadName;
+//            }
+//
+//            @Override
+//            public void run(final SyncTaskChain chain) {
+//                final APIRecoverVmInstanceEvent evt = new APIRecoverVmInstanceEvent(msg.getId());
+//                refreshVO();
+//
+//                ErrorCode error = validateOperationByState(msg, self.getState(), SysErrors.OPERATION_ERROR);
+//                if (error != null) {
+//                    evt.setError(error);
+//                    bus.publish(evt);
+//                    chain.next();
+//                    return;
+//                }
+//
+//                recoverVm(new Completion(msg, chain) {
+//                    @Override
+//                    public void success() {
+//                        evt.setInventory(getSelfInventory());
+//                        bus.publish(evt);
+//                        chain.next();
+//                    }
+//
+//                    @Override
+//                    public void fail(ErrorCode errorCode) {
+//                        evt.setError(errorCode);
+//                        bus.publish(evt);
+//                        chain.next();
+//                    }
+//                });
+//            }
+//
+//            @Override
+//            public String getName() {
+//                return "recover-vm";
+//            }
+//        });
+//    }
 
     private void handle(final APIExpungeVmInstanceMsg msg) {
         final APIExpungeVmInstanceEvent evt = new APIExpungeVmInstanceEvent(msg.getId());
@@ -9368,6 +9369,99 @@ public class VmInstanceBase extends AbstractVmInstance {
                 noErrorCompletion.done();
             }
         });
+    }
+
+    static class VmMetadata {
+        public String vmInstanceVO;
+        public List<String> vmConfigs;
+
+        public String volumeVO;
+        public List<String> volumeConfigs;
+
+        public String vmNicVO;
+        public List<String> vmNicConfigs;
+
+        // value = List<VolumeSnapshotVO.toString>
+        public Map<String, List<String>> volumeSnapshots;
+
+        // VolumeSnapshotGroupVO.toString
+        public List<String> volumeSnapshotGroupVO;
+        // VolumeSnapshotGroupRefVO.toString
+        public List<String> volumeSnapshotGroupRefVO;
+
+        // value = VolumeSnapshotReferenceVO.toString
+        public Map<String, String> volumeSnapshotReferenceVO;
+        // value = VolumeSnapshotReferenceTreeVO.toString
+        public Map<String, String> volumeSnapshotReferenceTreeVO;
+    }
+
+    private void handle(final APIRecoverVmInstanceMsg msg) {
+        // 从 元数据的中获取
+//        VmInstanceVO vo1 = new VmInstanceVO();
+
+        // root 和 data volume
+//        VolumeVO vo2 = new VolumeVO();
+
+        // 快照 存储/tree/parent/psuuid
+//        final VolumeSnapshotVO vo3 = new VolumeSnapshotVO();
+        // 创建快照的快照树
+
+        // 快照组
+//        newGroup = new VolumeSnapshotGroupVO();
+//        newGroup.setUuid(Platform.getUuid());
+//        newGroup.setName(String.format("revert-vm-point-%s-%s", vmUuid, TimeUtils.getCurrentTimeStamp("yyyyMMddHHmmss")));
+//        newGroup.setDescription(String.format("save snapshot for revert vm [uuid:%s]", vmUuid));
+//        newGroup.setSnapshotCount(snapshots.size());
+//        newGroup.setVmInstanceUuid(vmUuid);
+//        newGroup.setAccountUuid(msg.getSession().getAccountUuid());
+//        dbf.persist(newGroup);
+
+        // 快照组ref
+//        VolumeSnapshotGroupRefVO ref = new VolumeSnapshotGroupRefVO();
+//        ref.setVolumeUuid(inv.getVolumeUuid());
+//        ref.setVolumeName(vols.get(inv.getVolumeUuid()).getName());
+//        ref.setVolumeType(inv.getVolumeType());
+//        ref.setVolumeSnapshotGroupUuid(group.getUuid());
+//        ref.setVolumeSnapshotUuid(inv.getUuid());
+//        ref.setVolumeSnapshotName(inv.getName());
+//        ref.setVolumeSnapshotInstallPath(inv.getPrimaryStorageInstallPath());
+//        ref.setDeviceId(vols.get(inv.getVolumeUuid()).getDeviceId());
+//        ref.setVolumeLastAttachDate(vols.get(inv.getVolumeUuid()).getLastAttachDate());
+
+        // 解析配置
+        // xml 字段 与 控制面配置的映射
+
+        // 给资源加配置
+
+        List<VmInstanceVO> vms = Q.New(VmInstanceVO.class).list();
+        List<VolumeVO> volumes = Q.New(VolumeVO.class).list();
+        List<VmNicVO> nics = Q.New(VmNicVO.class).list();
+
+        List<VolumeSnapshotVO> snapshot = Q.New(VolumeSnapshotVO.class).list();
+        List<VolumeSnapshotGroupVO> group = Q.New(VolumeSnapshotGroupVO.class).list();
+        List<VolumeSnapshotGroupRefVO> groupRef = Q.New(VolumeSnapshotGroupRefVO.class).list();
+
+        VmMetadata vmMetadata = new VmMetadata();
+        vmMetadata.vmInstanceVO = JSONObjectUtil.toJsonString(vms.get(0));
+        vmMetadata.volumeVO = JSONObjectUtil.toJsonString(volumes.get(0));
+        vmMetadata.vmNicVO = JSONObjectUtil.toJsonString(nics.get(0));
+
+        Map<String, List<String>> volumeSnapshots = new HashMap<>();
+        snapshot.forEach(s -> {
+            if (volumeSnapshots.containsKey(s.getVolumeUuid())) {
+                volumeSnapshots.get(s.getVolumeUuid()).add(JSONObjectUtil.toJsonString(VolumeSnapshotInventory.valueOf(s)));
+            } else {
+                volumeSnapshots.put(s.getVolumeUuid(), new ArrayList<>());
+                volumeSnapshots.get(s.getVolumeUuid()).add(JSONObjectUtil.toJsonString(VolumeSnapshotInventory.valueOf(s)));
+            }
+        });
+        vmMetadata.volumeSnapshots = volumeSnapshots;
+
+        vmMetadata.volumeSnapshotGroupVO = group.stream().map(JSONObjectUtil::toJsonString).collect(Collectors.toList());
+        vmMetadata.volumeSnapshotGroupRefVO = groupRef.stream().map(JSONObjectUtil::toJsonString).collect(Collectors.toList());
+
+        String json = JSONObjectUtil.toJsonString(vmMetadata);
+        logger.info(String.format("recover vm instance [uuid:%s] with metadata: %s", vms.get(0).getUuid(), json));
     }
 }
 
