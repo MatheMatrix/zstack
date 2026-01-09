@@ -317,4 +317,52 @@
 		<type>java.lang.Boolean</type>
 		<defaultValue>false</defaultValue>
 	</config>
+
+	<config>
+		<category>vm</category>
+		<name>deletion.gcInterval</name>
+		<description>update vm metadata interval</description>
+		<type>java.lang.Long</type>
+		<defaultValue>30</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata</name>
+		<description>save vm metadata</description>
+		<type>java.lang.Boolean</type>
+		<defaultValue>false</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.ps.maxConcurrent</name>
+		<description>Max concurrent metadata writes per primary storage per MN. In dual-MN the actual global concurrency per PS = 2 × this value.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>5</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.global.maxConcurrent</name>
+		<description>Max concurrent VM metadata updates globally per MN. In dual-MN the actual global concurrency = 2 × this value.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>10</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.gc.initialDelaySec</name>
+		<description>Initial GC delay in seconds after API success. The first metadata update attempt happens after this delay.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>10</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.gc.maxRetry</name>
+		<description>Max GC retry count before giving up and publishing MetadataStaleEvent. After this many failed attempts, the GC is marked Done and a stale event is published for the health check job to handle.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>5</defaultValue>
+	</config>
 </globalConfig>

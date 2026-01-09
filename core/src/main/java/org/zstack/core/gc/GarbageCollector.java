@@ -173,7 +173,16 @@ public abstract class GarbageCollector {
         return context;
     }
 
-    void loadFromVO(GarbageCollectorVO vo) {
+    /**
+     * 从 GarbageCollectorVO 恢复 GC 实例（孤儿加载 / 手动触发场景）。
+     *
+     * <p>使用乐观锁（条件更新）认领 GC，防止多个线程/MN 并发加载同一个孤儿 GC。
+     * 只有 managementNodeUuid 仍为 NULL 的 VO 才会被认领成功。</p>
+     *
+     * @param vo GC 数据库记录
+     * @return true=认领成功，false=已被其他线程/MN 认领
+     */
+    boolean loadFromVO(GarbageCollectorVO vo) {
         Object dataObj = JSONObjectUtil.toObject(vo.getContext(), getClass());
 
         for (Field f : FieldUtils.getAllFields(getClass())) {
@@ -190,11 +199,23 @@ public abstract class GarbageCollector {
         }
 
         uuid = vo.getUuid();
-        vo.setStatus(GCStatus.Idle);
-        vo.setManagementNodeUuid(Platform.getManagementServerId());
-        dbf.update(vo);
+
+        // 乐观锁：只认领 managementNodeUuid 为 NULL 的 GC（防止并发加载同一孤儿）
+        int updated = SQL.New(GarbageCollectorVO.class)
+                .eq(GarbageCollectorVO_.uuid, vo.getUuid())
+                .isNull(GarbageCollectorVO_.managementNodeUuid)
+                .set(GarbageCollectorVO_.status, GCStatus.Idle)
+                .set(GarbageCollectorVO_.managementNodeUuid, Platform.getManagementServerId())
+                .update();
+
+        if (updated == 0) {
+            logger.debug(String.format("[GC] job[name:%s, id:%s] already claimed by another node, skip",
+                    vo.getName(), vo.getUuid()));
+            return false;
+        }
 
         gcMgr.registerGC(this);
+        return true;
     }
 
     @SyncThread(level = 50)

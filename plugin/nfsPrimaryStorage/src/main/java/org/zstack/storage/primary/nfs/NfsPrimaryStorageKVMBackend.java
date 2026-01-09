@@ -35,10 +35,7 @@ import org.zstack.header.storage.backup.BackupStorageVO;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
-import org.zstack.header.vm.VmInstanceSpec;
-import org.zstack.header.vm.VmInstanceState;
-import org.zstack.header.vm.VmInstanceVO;
-import org.zstack.header.vm.VmInstanceVO_;
+import org.zstack.header.vm.*;
 import org.zstack.header.volume.*;
 import org.zstack.identity.AccountManager;
 import org.zstack.kvm.*;
@@ -2047,6 +2044,25 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
 
                 CommitVolumeSnapshotOnPrimaryStorageReply reply = new CommitVolumeSnapshotOnPrimaryStorageReply();
                 reply.setSize(rsp.getActualSize());
+                completion.success(reply);
+            }
+        });
+    }
+
+    public void handle(UpdateVmInstanceMetadataOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<UpdateVmInstanceMetadataOnPrimaryStorageReply> completion) {
+        UpdateVmInstanceMetadataOnHypervisorMsg umsg = new UpdateVmInstanceMetadataOnHypervisorMsg();
+        umsg.setMetadata(msg.getMetadata());
+        umsg.setHostUuid(hostUuid);
+        bus.makeTargetServiceIdByResourceUuid(umsg, HostConstant.SERVICE_ID, hostUuid);
+        bus.send(umsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply r) {
+                UpdateVmInstanceMetadataOnPrimaryStorageReply reply = new UpdateVmInstanceMetadataOnPrimaryStorageReply();
+                if (!r.isSuccess()) {
+                    reply.setError(Platform.operr("failed to update vm[uuid=%s] metadata on hypervisor via host[uuid:%s]",
+                            msg.getVmInstanceUuid(), hostUuid)
+                            .withCause(r.getError()));
+                }
                 completion.success(reply);
             }
         });

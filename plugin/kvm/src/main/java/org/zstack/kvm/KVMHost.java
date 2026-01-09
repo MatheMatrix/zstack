@@ -230,6 +230,8 @@ public class KVMHost extends HostBase implements Host {
     private String fileDownloadPath;
     private String fileUploadPath;
     private String fileDownloadProgressPath;
+    private String writeVmInstanceMetadataPath;
+    private String readVmInstanceMetadataPath;
 
     public KVMHost(KVMHostVO self, KVMHostContext context) {
         super(self);
@@ -480,6 +482,14 @@ public class KVMHost extends HostBase implements Host {
         ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
         ub.path(KVMConstant.KVM_HOST_FILE_DOWNLOAD_PROGRESS_PATH);
         fileDownloadProgressPath = ub.build().toString();
+
+        ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
+        ub.path(KVMConstant.WRITE_VM_INSTANCE_METADATA_PATH);
+        writeVmInstanceMetadataPath = ub.build().toString();
+
+        ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
+        ub.path(KVMConstant.READ_VM_INSTANCE_METADATA_PATH);
+        readVmInstanceMetadataPath = ub.build().toString();
     }
 
     static {
@@ -738,6 +748,10 @@ public class KVMHost extends HostBase implements Host {
             handle((GetFileDownloadProgressMsg) msg);
         } else if (msg instanceof RestartKvmAgentMsg) {
             handle((RestartKvmAgentMsg) msg);
+        } else if (msg instanceof UpdateVmInstanceMetadataOnHypervisorMsg) {
+            handle((UpdateVmInstanceMetadataOnHypervisorMsg) msg);
+        } else if (msg instanceof ReadVmInstanceMetadataOnHypervisorMsg) {
+            handle((ReadVmInstanceMetadataOnHypervisorMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
@@ -7306,6 +7320,79 @@ public class KVMHost extends HostBase implements Host {
             public void fail(ErrorCode errorCode) {
                 r.setError(errorCode);
                 bus.reply(msg, r);
+            }
+        });
+    }
+
+    private void handle(UpdateVmInstanceMetadataOnHypervisorMsg msg) {
+        inQueue().name(String.format("update-vmInstance-metadata-on-host-%s", self.getUuid()))
+                .asyncBackup(msg)
+                .run(chain -> updateVmInstanceMetadata(msg, new NoErrorCompletion(chain) {
+                    @Override
+                    public void done() {
+                        chain.next();
+                    }
+                }));
+    }
+
+    private void updateVmInstanceMetadata(final UpdateVmInstanceMetadataOnHypervisorMsg msg, final NoErrorCompletion completion) {
+        UpdateVmInstanceMetadataOnHypervisorReply reply = new UpdateVmInstanceMetadataOnHypervisorReply();
+
+        checkStatus();
+        WriteVmInstanceMetadataCmd cmd = new WriteVmInstanceMetadataCmd();
+        cmd.metadata = msg.getMetadata();
+        cmd.metadataPath = msg.getMetadataPath();
+        new Http<>(writeVmInstanceMetadataPath, cmd, WriteVmInstanceMetadataRsp.class).call(new ReturnValueCompletion<WriteVmInstanceMetadataRsp>(msg) {
+            @Override
+            public void success(WriteVmInstanceMetadataRsp ret) {
+                if (!ret.isSuccess()) {
+                    reply.setError(operr("operation error, because:%s", ret.getError()));
+                }
+                bus.reply(msg, reply);
+                completion.done();
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+                completion.done();
+            }
+        });
+    }
+
+    private void handle(ReadVmInstanceMetadataOnHypervisorMsg msg) {
+        inQueue().name(String.format("readVmInstanceMetadata-on-host-%s", self.getUuid()))
+                .asyncBackup(msg)
+                .run(chain -> readVmInstanceMetadata(msg, new NoErrorCompletion(chain) {
+                    @Override
+                    public void done() {
+                        chain.next();
+                    }
+                }));
+    }
+
+    private void readVmInstanceMetadata(final ReadVmInstanceMetadataOnHypervisorMsg msg, final NoErrorCompletion completion) {
+        checkStatus();
+        ReadVmInstanceMetadataOnHypervisorReply reply = new ReadVmInstanceMetadataOnHypervisorReply();
+        ReadVmInstanceMetadataCmd cmd = new ReadVmInstanceMetadataCmd();
+        cmd.metadataPath = msg.getMetadataPath();
+        new Http<>(readVmInstanceMetadataPath, cmd, ReadVmInstanceMetadataRsp.class).call(new ReturnValueCompletion<ReadVmInstanceMetadataRsp>(msg) {
+            @Override
+            public void success(ReadVmInstanceMetadataRsp rsp) {
+                if (!rsp.isSuccess()) {
+                    reply.setError(operr("operation error, because:%s", rsp.getError()));
+                }
+                reply.setMetadata(rsp.metadata);
+                bus.reply(msg, reply);
+                completion.done();
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+                completion.done();
             }
         });
     }

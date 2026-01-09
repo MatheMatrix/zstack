@@ -133,4 +133,30 @@ public class VmGlobalConfig {
     @GlobalConfigValidation(validValues = {"None", "AuthenticAMD"})
     @BindResourceConfig(value = {VmInstanceVO.class})
     public static GlobalConfig VM_CPUID_VENDOR = new GlobalConfig(CATEGORY, "vm.cpuid.vendor");
+
+    @GlobalConfigValidation(numberGreaterThan = 1)
+    public static GlobalConfig GC_INTERVAL = new GlobalConfig(CATEGORY, "deletion.gcInterval");
+
+    @GlobalConfigValidation(validValues = {"true", "false"})
+    public static GlobalConfig VM_METADATA = new GlobalConfig(CATEGORY, "vm.metadata");
+
+    @GlobalConfigDef(defaultValue = "5", type = Integer.class,
+            description = "Max concurrent metadata writes per primary storage per MN")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_PS_MAX_CONCURRENT = new GlobalConfig(CATEGORY, "vm.metadata.ps.maxConcurrent");
+
+    @GlobalConfigDef(defaultValue = "10", type = Integer.class,
+            description = "Max concurrent VM metadata updates globally per MN")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_GLOBAL_MAX_CONCURRENT = new GlobalConfig(CATEGORY, "vm.metadata.global.maxConcurrent");
+
+    @GlobalConfigDef(defaultValue = "10", type = Integer.class,
+            description = "Initial GC delay in seconds after API success")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_GC_INITIAL_DELAY_SEC = new GlobalConfig(CATEGORY, "vm.metadata.gc.initialDelaySec");
+
+    @GlobalConfigDef(defaultValue = "5", type = Integer.class,
+            description = "Max GC retry count before giving up and publishing MetadataStaleEvent")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_GC_MAX_RETRY = new GlobalConfig(CATEGORY, "vm.metadata.gc.maxRetry");
 }
