@@ -11,9 +11,11 @@ import org.zstack.core.Platform;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
 import org.zstack.header.allocator.AllocationScene;
+import org.zstack.header.allocator.HostAllocatorConstant;
 import org.zstack.header.allocator.ResourceBindingCollector;
 import org.zstack.header.allocator.ResourceBindingStrategy;
 import org.zstack.header.host.HostVO;
+import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.resourceconfig.ResourceConfigFacade;
 
 import java.util.*;
@@ -129,11 +131,33 @@ public class ResourceBindingAllocatorFlow extends AbstractHostAllocatorFlow {
             return;
         }
 
+        // Check if user explicitly designated a target host for migration
+        // Only migration operation with a designated host should be rejected for cross-cluster
+        // Other scenarios (e.g., online CPU/memory change) may set hostUuid but it's not user-designated migration target
+        String designatedHostUuid = (String) spec.getExtraData().get(HostAllocatorConstant.LocationSelector.host);
+        boolean isUserDesignatedMigration = VmOperation.Migrate.toString().equals(spec.getVmOperation())
+                && designatedHostUuid != null;
+
+        if (isUserDesignatedMigration) {
+            // User explicitly designated a migration target host, but that host is not in bound resources
+            // This should fail even if strategy is Soft
+            fail(Platform.operr(ORG_ZSTACK_COMPUTE_ALLOCATOR_10038,"designated host[uuid:%s] is not in bound resource %s, " +
+                    "vm bindingStrategy is %s, vm bindingScene is %s, vm.ha" +
+                    ".across.clusters is %s",
+                    designatedHostUuid, resources,
+                    rcf.getResourceConfigValue(VmGlobalConfig.RESOURCE_BINDING_STRATEGY, spec.getVmInstance().getUuid(), String.class),
+                    rcf.getResourceConfigValue(VmGlobalConfig.RESOURCE_BINDING_SCENE, spec.getVmInstance().getUuid(), String.class),
+                    rcf.getResourceConfigValue(VmGlobalConfig.VM_HA_ACROSS_CLUSTERS, spec.getVmInstance().getUuid(), Boolean.class)));
+            return;
+        }
+
+        // No designated host, system is auto-allocating
+        // Apply Soft strategy only in this case
         if (rcf.getResourceConfigValue(VmGlobalConfig.RESOURCE_BINDING_STRATEGY, spec.getVmInstance().getUuid(), String.class)
                 .equals(ResourceBindingStrategy.Soft.toString())) {
             next(candidates);
         } else {
-            fail(Platform.operr(ORG_ZSTACK_COMPUTE_ALLOCATOR_10005, "no available host found with binded resource %s", resources));
+            fail(Platform.operr(ORG_ZSTACK_COMPUTE_ALLOCATOR_10005, "no available host found with bound resource %s", resources));
         }
     }
 }
