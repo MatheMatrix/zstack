@@ -11,6 +11,7 @@ import org.zstack.core.Platform;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
 import org.zstack.header.allocator.AllocationScene;
+import org.zstack.header.allocator.HostAllocatorConstant;
 import org.zstack.header.allocator.ResourceBindingCollector;
 import org.zstack.header.allocator.ResourceBindingStrategy;
 import org.zstack.header.host.HostVO;
@@ -128,6 +129,24 @@ public class ResourceBindingAllocatorFlow extends AbstractHostAllocatorFlow {
             return;
         }
 
+        // Check if user explicitly designated a target host
+        // If user specified a host but it's not in the bound resources, should fail regardless of strategy
+        String designatedHostUuid = (String) spec.getExtraData().get(HostAllocatorConstant.LocationSelector.host);
+        if (designatedHostUuid != null) {
+            // User explicitly designated a target host, but that host is not in bound resources
+            // This should fail even if strategy is Soft
+            fail(Platform.operr("designated host[uuid:%s] is not in bound resource %s, " +
+                    "vm bindingStrategy is %s, vm bindingScene is %s, vm.ha" +
+                    ".across.clusters is %s",
+                    designatedHostUuid, resources,
+                    rcf.getResourceConfigValue(VmGlobalConfig.RESOURCE_BINDING_STRATEGY, spec.getVmInstance().getUuid(), String.class),
+                    rcf.getResourceConfigValue(VmGlobalConfig.RESOURCE_BINDING_SCENE, spec.getVmInstance().getUuid(), String.class),
+                    rcf.getResourceConfigValue(VmGlobalConfig.VM_HA_ACROSS_CLUSTERS, spec.getVmInstance().getUuid(), Boolean.class)));
+            return;
+        }
+
+        // No designated host, system is auto-allocating
+        // Apply Soft strategy only in this case
         if (rcf.getResourceConfigValue(VmGlobalConfig.RESOURCE_BINDING_STRATEGY, spec.getVmInstance().getUuid(), String.class)
                 .equals(ResourceBindingStrategy.Soft.toString())) {
             next(candidates);
