@@ -3,7 +3,7 @@ package org.zstack.header.zql;
 import java.util.List;
 
 /**
- * BeforeZQLReturnWithExtensionPoint is an extension point that allows plugins
+ * BeforeCallZWatchExtensionPoint is an extension point that allows plugins
  * to perform custom operations before calling zwatch.
  */
 public interface BeforeCallZWatchExtensionPoint {
