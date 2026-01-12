@@ -11,6 +11,7 @@ import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.storage.addon.primary.BaseVolumeInfo;
 import org.zstack.header.storage.addon.primary.PrimaryStorageNodeSvc;
+import org.zstack.header.vhost.VhostBeforeStartVmOnKvmExtensionPoint;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.header.vm.VmInstanceSpec;
 import org.zstack.header.volume.VolumeInventory;
@@ -35,7 +36,7 @@ public class KvmVhostNodeServer implements Component, KVMStartVmExtensionPoint,
     private DatabaseFacade dbf;
     @Autowired
     private ResourceConfigFacade rcf;
-
+    @Autowired
     private PluginRegistry pluginRgty;
 
     private static final VolumeProtocolCapability capability = VolumeProtocolCapability
@@ -65,21 +66,38 @@ public class KvmVhostNodeServer implements Component, KVMStartVmExtensionPoint,
 
     @Override
     public void beforeStartVmOnKvm(KVMHostInventory host, VmInstanceSpec spec, KVMAgentCommands.StartVmCmd cmd) {
-        cmd.setRootVolume(convertVolumeIfNeeded(spec.getDestRootVolume(), host, cmd.getRootVolume()));
+        // Collect volumes using vhost protocol while converting
+        List<VolumeInventory> vhostVolumes = new ArrayList<>();
 
+        // Convert and collect root volume
+        cmd.setRootVolume(convertVolumeIfNeeded(spec.getDestRootVolume(), host, cmd.getRootVolume()));
+        if (VolumeProtocol.Vhost.name().equals(spec.getDestRootVolume().getProtocol())) {
+            vhostVolumes.add(spec.getDestRootVolume());
+        }
+
+        // Convert and collect data volumes
         List<VolumeTO> dtos = new ArrayList<>();
         for (VolumeTO to : cmd.getDataVolumes()) {
             for (VolumeInventory vol : spec.getDestDataVolumes()) {
                 if (vol.getUuid().equals(to.getVolumeUuid())) {
                     dtos.add(convertVolumeIfNeeded(vol, host, to));
+                    if (VolumeProtocol.Vhost.name().equals(vol.getProtocol())) {
+                        vhostVolumes.add(vol);
+                    }
                     break;
                 }
             }
         }
 
-        if (VolumeProtocol.Vhost.name().equals(spec.getDestRootVolume().getProtocol()) ||
-                spec.getDestDataVolumes().stream().anyMatch(v -> VolumeProtocol.Vhost.name().equals(v.getProtocol())) ||
-                needSupportVhostPrimaryStorage(host.getClusterUuid())) {
+        // Check if using vhost protocol
+        if (!vhostVolumes.isEmpty() || needSupportVhostPrimaryStorage(host.getClusterUuid())) {
+            // Call extension points for each volume using vhost protocol
+            for (VolumeInventory vol : vhostVolumes) {
+                for (VhostBeforeStartVmOnKvmExtensionPoint ext : pluginRgty.getExtensionList(VhostBeforeStartVmOnKvmExtensionPoint.class)) {
+                    ext.beforeStartVmOnKvmWithVhost(vol);
+                }
+            }
+
             cmd.setUseHugePage(true);
             cmd.setMemAccess("shared");
         }
