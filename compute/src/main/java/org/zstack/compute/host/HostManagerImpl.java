@@ -471,7 +471,7 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
             @Override
             public boolean skip(Map data) {
                 // no need to check baremetal2 gateway architecture with the cluster architecture
-                return vo.getHypervisorType().equals("baremetal2");
+                return cluster.getType().equals("baremetal2");
             }
 
             @Override
