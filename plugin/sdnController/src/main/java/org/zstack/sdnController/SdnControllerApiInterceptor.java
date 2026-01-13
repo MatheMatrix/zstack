@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.zstack.core.Platform;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
@@ -134,6 +135,10 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
         boolean existed = Q.New(SdnControllerVO.class).eq(SdnControllerVO_.ip, msg.getIp()).isExists();
         if (existed) {
             throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10017, "could not add sdn controller because controller [ip:%s] is already added", msg.getIp()));
+        }
+
+        if (msg.getResourceUuid() == null) {
+            msg.setResourceUuid(Platform.getUuid());
         }
     }
 

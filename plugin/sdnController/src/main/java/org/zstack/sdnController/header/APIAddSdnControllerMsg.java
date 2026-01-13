@@ -5,6 +5,7 @@ import org.zstack.header.identity.Action;
 import org.zstack.header.log.NoLogging;
 import org.zstack.header.message.*;
 import org.zstack.header.network.sdncontroller.SdnControllerConstant;
+import org.zstack.header.network.sdncontroller.SdnControllerMessage;
 import org.zstack.header.network.sdncontroller.SdnControllerVO;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
@@ -18,7 +19,7 @@ import org.zstack.header.tag.TagResourceType;
         responseClass = APIAddSdnControllerEvent.class,
         parameterName = "params"
 )
-public class APIAddSdnControllerMsg extends APICreateMessage implements APIAuditor {
+public class APIAddSdnControllerMsg extends APICreateMessage implements APIAuditor, SdnControllerMessage {
     @APIParam(maxLength = 255)
     private String vendorType;
 
@@ -95,6 +96,11 @@ public class APIAddSdnControllerMsg extends APICreateMessage implements APIAudit
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    @Override
+    public String getSdnControllerUuid() {
+        return getResourceUuid();
     }
 
     @Override
