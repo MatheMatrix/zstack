@@ -157,7 +157,7 @@ public class BlockDevicesParser {
             }
             blockDevicePartitionTable.put(blockDeviceAndPartitionTable.get(0), blockDeviceAndPartitionTable.get(1));
         });
-        allBlockDevices.forEach(blockDevice -> blockDevice.setPartitionTable(blockDevicePartitionTable.get(blockDevice.getName())));
+        allBlockDevices.forEach(blockDevice -> blockDevice.setPartitionTable(blockDevicePartitionTable.getOrDefault(blockDevice.getName(), "")));
 
         return allBlockDevices;
     }
@@ -173,7 +173,7 @@ public class BlockDevicesParser {
 
     public static String getBlockDevicesCommand() {
         String blockDevicesCommand = "lsblk -p -b -o NAME,TYPE,SIZE,PHY-SEC,LOG-SEC,MOUNTPOINT -J";
-        String partitionTableInfoCommand = "for disk in $(lsblk -d -p -n -o NAME); do echo -n \"$disk:\"; " +
+        String partitionTableInfoCommand = "for disk in $(lsblk -d -p -n -o NAME,TYPE | awk '$2!~/loop|rom/ {print $1}'); do echo -n \"$disk:\"; " +
                 "parted -s $disk print 2>/dev/null | awk '/Partition Table/ {print $3} END{print \"\"}'; done";
         return String.format("%s ; echo === ; %s", blockDevicesCommand, partitionTableInfoCommand);
     }
