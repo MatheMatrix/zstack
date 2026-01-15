@@ -135,4 +135,12 @@
         <type>java.lang.Integer</type>
     </config>
 
+    <config>
+        <category>host</category>
+        <name>ps.hostRef.disconnectHost</name>
+        <description>Specifies whether to disconnect a host when all of its primary storage host references become disconnected. Set this value to false to prevent primary storage connection issues from causing the host to be disconnected.</description>
+        <defaultValue>false</defaultValue>
+        <type>java.lang.Boolean</type>
+    </config>
+
 </globalConfig>

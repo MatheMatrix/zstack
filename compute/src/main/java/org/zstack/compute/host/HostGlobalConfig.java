@@ -59,4 +59,7 @@ public class HostGlobalConfig {
     @GlobalConfigValidation
     @GlobalConfigDef(type = String.class, defaultValue = "10501:10999", description = "nbd port range")
     public static GlobalConfig NBD_PORT_RANGE = new GlobalConfig(CATEGORY, "nbd.port.range");
+
+    @GlobalConfigValidation
+    public static GlobalConfig DISCONNECT_HOST_ON_PS_HOST_REF_DISCONNECTED = new GlobalConfig(CATEGORY, "ps.hostRef.disconnectHost");
 }

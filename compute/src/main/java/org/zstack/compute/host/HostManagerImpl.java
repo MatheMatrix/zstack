@@ -889,6 +889,10 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
             protected void run(Map tokens, Object data) {
                 PrimaryStorageCanonicalEvent.PrimaryStorageHostStatusChangeData d =
                         (PrimaryStorageCanonicalEvent.PrimaryStorageHostStatusChangeData)data;
+                if (!HostGlobalConfig.DISCONNECT_HOST_ON_PS_HOST_REF_DISCONNECTED.value(Boolean.class)) {
+                    return;
+                }
+
                 if (d.getNewStatus() == PrimaryStorageHostStatus.Disconnected &&
                         d.getOldStatus() != PrimaryStorageHostStatus.Disconnected &&
                         noStorageAccessible(d.getHostUuid())){
