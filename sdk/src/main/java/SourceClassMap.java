@@ -555,6 +555,7 @@ public class SourceClassMap {
 			put("org.zstack.storage.primary.sharedblock.SharedBlockGroupPrimaryStorageHostRefInventory", "org.zstack.sdk.SharedBlockGroupPrimaryStorageHostRefInventory");
 			put("org.zstack.storage.primary.sharedblock.SharedBlockGroupPrimaryStorageInventory", "org.zstack.sdk.SharedBlockGroupPrimaryStorageInventory");
 			put("org.zstack.storage.primary.sharedblock.SharedBlockGroupType", "org.zstack.sdk.SharedBlockGroupType");
+			put("org.zstack.storage.primary.sharedblock.SharedBlockGroupVgInfo", "org.zstack.sdk.SharedBlockGroupVgInfo");
 			put("org.zstack.storage.primary.sharedblock.SharedBlockInventory", "org.zstack.sdk.SharedBlockInventory");
 			put("org.zstack.storage.primary.sharedblock.SharedBlockState", "org.zstack.sdk.SharedBlockState");
 			put("org.zstack.storage.primary.sharedblock.SharedBlockStatus", "org.zstack.sdk.SharedBlockStatus");
@@ -1078,6 +1079,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.SharedBlockGroupPrimaryStorageHostRefInventory", "org.zstack.storage.primary.sharedblock.SharedBlockGroupPrimaryStorageHostRefInventory");
 			put("org.zstack.sdk.SharedBlockGroupPrimaryStorageInventory", "org.zstack.storage.primary.sharedblock.SharedBlockGroupPrimaryStorageInventory");
 			put("org.zstack.sdk.SharedBlockGroupType", "org.zstack.storage.primary.sharedblock.SharedBlockGroupType");
+			put("org.zstack.sdk.SharedBlockGroupVgInfo", "org.zstack.storage.primary.sharedblock.SharedBlockGroupVgInfo");
 			put("org.zstack.sdk.SharedBlockInventory", "org.zstack.storage.primary.sharedblock.SharedBlockInventory");
 			put("org.zstack.sdk.SharedBlockState", "org.zstack.storage.primary.sharedblock.SharedBlockState");
 			put("org.zstack.sdk.SharedBlockStatus", "org.zstack.storage.primary.sharedblock.SharedBlockStatus");
