@@ -935,9 +935,21 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
             handle((APICleanUpStorageTrashOnPrimaryStorageMsg) msg);
         } else if (msg instanceof APIAddStorageProtocolMsg) {
             handle((APIAddStorageProtocolMsg) msg);
+        } else if (msg instanceof APITakeoverPrimaryStorageMsg) {
+            handle((APITakeoverPrimaryStorageMsg) msg);
+        } else if (msg instanceof APICheckPrimaryStorageConsistencyMsg) {
+            handle((APICheckPrimaryStorageConsistencyMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
+    }
+
+    protected void handle(APITakeoverPrimaryStorageMsg msg) {
+        throw new OperationFailureException(operr("operation not supported"));
+    }
+
+    protected void handle(APICheckPrimaryStorageConsistencyMsg msg) {
+        throw new OperationFailureException(operr("operation not supported"));
     }
 
     private void handle(APIAddStorageProtocolMsg msg) {
