@@ -177,6 +177,10 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
 
     protected abstract void handle(GetVolumeSnapshotEncryptedOnPrimaryStorageMsg msg);
 
+    protected void takeoverHook(Completion completion){
+        completion.success();
+    }
+
     public PrimaryStorageBase(PrimaryStorageVO self) {
         this.self = self;
     }
@@ -603,6 +607,22 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
         });
     }
 
+    protected void handle(TakeoverPrimaryStorageMsg msg) {
+        TakeoverPrimaryStorageReply reply = new TakeoverPrimaryStorageReply();
+        doTakeover(new ConnectParam(), new Completion(msg) {
+            @Override
+            public void success() {
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
     private void handle(ChangePrimaryStorageStatusMsg msg) {
         changeStatus(PrimaryStorageStatus.valueOf(msg.getStatus()));
         ChangePrimaryStorageStatusReply reply = new ChangePrimaryStorageStatusReply();
@@ -664,6 +684,51 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
                         rmsg.setPrimaryStorageUuid(self.getUuid());
                         bus.makeLocalServiceId(rmsg, PrimaryStorageConstant.SERVICE_ID);
                         bus.send(rmsg);
+
+                        tracker.track(self.getUuid());
+
+                        completion.success();
+                        chain.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        tracker.track(self.getUuid());
+
+                        self = dbf.reload(self);
+                        if (changeStatus(PrimaryStorageStatus.Disconnected) && !errorCode.isError(PrimaryStorageErrors.DISCONNECTED)) {
+                            fireDisconnectedCanonicalEvent(errorCode);
+                        }
+
+                        logger.debug(String.format("failed to connect primary storage[uuid:%s], %s", self.getUuid(), errorCode));
+
+                        completion.fail(errorCode);
+                        chain.next();
+                    }
+                });
+            }
+
+            @Override
+            public String getName() {
+                return String.format("reconnect-primary-storage-%s", self.getUuid());
+            }
+        });
+    }
+
+    private void doTakeover(ConnectParam param, final Completion completion) {
+        thdf.chainSubmit(new ChainTask(completion) {
+            @Override
+            public String getSyncSignature() {
+                return getSyncId();
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                takeoverHook(new Completion(chain, completion) {
+                    @Override
+                    public void success() {
+                        self = dbf.reload(self);
+                        logger.debug(String.format("successfully reload primary storage[uuid:%s]", self.getUuid()));
 
                         tracker.track(self.getUuid());
 
@@ -1380,6 +1445,27 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
         final APIReconnectPrimaryStorageEvent evt = new APIReconnectPrimaryStorageEvent(msg.getId());
 
         ReconnectPrimaryStorageMsg rmsg = new ReconnectPrimaryStorageMsg();
+        rmsg.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
+        bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, rmsg.getPrimaryStorageUuid());
+        bus.send(rmsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    evt.setError(reply.getError());
+                } else {
+                    self = dbf.reload(self);
+                    evt.setInventory(getSelfInventory());
+                }
+
+                bus.publish(evt);
+            }
+        });
+    }
+
+    protected void handle(APITakeoverPrimaryStorageMsg msg) {
+        final APITakeoverPrimaryStorageEvent evt = new APITakeoverPrimaryStorageEvent(msg.getId());
+
+        TakeoverPrimaryStorageMsg rmsg = new TakeoverPrimaryStorageMsg();
         rmsg.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
         bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, rmsg.getPrimaryStorageUuid());
         bus.send(rmsg, new CloudBusCallBack(msg) {
