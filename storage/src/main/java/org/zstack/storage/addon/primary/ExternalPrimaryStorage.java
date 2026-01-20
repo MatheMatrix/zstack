@@ -18,6 +18,7 @@ import org.zstack.core.trash.TrashType;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.core.Completion;
+import org.zstack.header.core.NoErrorCompletion;
 import org.zstack.header.core.NopeCompletion;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
@@ -172,7 +173,31 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
         }
     }
 
-    private void handle(APIUpdateExternalPrimaryStorageMsg msg) {
+    private void handle(final APIUpdateExternalPrimaryStorageMsg msg) {
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return String.format("update-external-primary-storage-%s", msg.getUuid());
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                doUpdateExternalPrimaryStorageInQueue(msg, new NoErrorCompletion(chain) {
+                    @Override
+                    public void done() {
+                        chain.next();
+                    }
+                });
+            }
+
+            @Override
+            public String getName() {
+                return getSyncSignature();
+            }
+        });
+    }
+
+    private void doUpdateExternalPrimaryStorageInQueue(APIUpdateExternalPrimaryStorageMsg msg, NoErrorCompletion completion) {
         APIUpdateExternalPrimaryStorageEvent evt = new APIUpdateExternalPrimaryStorageEvent(msg.getId());
         if (msg.getName() != null) {
             externalVO.setName(msg.getName());
@@ -188,7 +213,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
         }
         boolean needReconnect = false;
         String oldConfig = externalVO.getConfig();
-        if (msg.getConfig() != null) {
+        if (msg.getConfig() != null && !msg.getConfig().equals(oldConfig)) {
             String config = controller.validateConfig(msg.getConfig());
             externalVO.setConfig(config);
             needReconnect = true;
@@ -216,6 +241,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                     }
 
                     bus.publish(evt);
+                    completion.done();
                 }
             });
             return;
@@ -223,6 +249,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
 
         evt.setInventory(externalVO.toInventory());
         bus.publish(evt);
+        completion.done();
     }
 
     @Override
