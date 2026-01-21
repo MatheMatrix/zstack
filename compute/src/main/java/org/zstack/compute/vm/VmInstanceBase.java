@@ -13,6 +13,8 @@ import org.zstack.core.cascade.CascadeConstant;
 import org.zstack.core.cascade.CascadeFacade;
 import org.zstack.core.cloudbus.*;
 import org.zstack.core.componentloader.PluginRegistry;
+import org.zstack.core.config.GlobalConfig;
+import org.zstack.core.config.GlobalConfigDefinition;
 import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.defer.Defer;
@@ -24,6 +26,7 @@ import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
+import org.zstack.core.workflow.ShareFlowChain;
 import org.zstack.core.workflow.SimpleFlowChain;
 import org.zstack.header.allocator.*;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
@@ -45,10 +48,12 @@ import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.message.*;
 import org.zstack.header.network.l3.*;
 import org.zstack.header.storage.primary.*;
-import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
-import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
-import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefVO;
-import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
+import org.zstack.header.storage.snapshot.*;
+import org.zstack.header.storage.snapshot.group.*;
+import org.zstack.header.tag.SystemTagVO;
+import org.zstack.header.tag.SystemTagVO_;
+import org.zstack.header.tag.TagDefinition;
+import org.zstack.header.tag.TagType;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.ChangeVmMetaDataMsg.AtomicHostUuid;
 import org.zstack.header.vm.ChangeVmMetaDataMsg.AtomicVmState;
@@ -70,8 +75,8 @@ import org.zstack.network.l3.IpRangeHelper;
 import org.zstack.network.l3.L3NetworkManager;
 import org.zstack.network.service.DnsUtils;
 import org.zstack.network.service.NetworkServiceManager;
-import org.zstack.resourceconfig.ResourceConfig;
-import org.zstack.resourceconfig.ResourceConfigFacade;
+import org.zstack.resourceconfig.*;
+import org.zstack.tag.SystemTag;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.tag.SystemTagUtils;
 import org.zstack.tag.TagManager;
@@ -80,14 +85,15 @@ import org.zstack.utils.function.ForEachFunction;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
-import org.zstack.utils.network.NicIpAddressInfo;
 import org.zstack.utils.network.IPv6Constants;
 import org.zstack.utils.network.IPv6NetworkUtils;
 import org.zstack.utils.network.NetworkUtils;
+import org.zstack.utils.network.NicIpAddressInfo;
 
 import javax.persistence.PersistenceException;
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
+import java.lang.reflect.Field;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -141,6 +147,8 @@ public class VmInstanceBase extends AbstractVmInstance {
     private VmInstanceResourceMetadataManager vidm;
     @Autowired
     private NetworkServiceManager nwServiceMgr;
+    @Autowired
+    private ResourceDestinationMaker destMaker;
 
     protected VmInstanceVO self;
     protected VmInstanceVO originalCopy;
@@ -534,6 +542,8 @@ public class VmInstanceBase extends AbstractVmInstance {
             handle((CancelFlattenVmInstanceMsg) msg);
         } else if (msg instanceof KvmReportVmShutdownEventMsg) {
             handle((KvmReportVmShutdownEventMsg) msg);
+        } else if (msg instanceof UpdateVmInstanceMetadataMsg) {
+            handle((UpdateVmInstanceMetadataMsg) msg);
         } else {
             VmInstanceBaseExtensionFactory ext = vmMgr.getVmInstanceBaseExtensionFactory(msg);
             if (ext != null) {
@@ -3311,6 +3321,8 @@ public class VmInstanceBase extends AbstractVmInstance {
             handle((APIUpdateTemplatedVmInstanceMsg) msg);
         } else if (msg instanceof APIDeleteTemplatedVmInstanceMsg) {
             handle((APIDeleteTemplatedVmInstanceMsg) msg);
+        } else if (msg instanceof APIRegisterVmInstanceMsg) {
+            handle((APIRegisterVmInstanceMsg) msg);
         } else {
             VmInstanceBaseExtensionFactory ext = vmMgr.getVmInstanceBaseExtensionFactory(msg);
             if (ext != null) {
@@ -4861,49 +4873,49 @@ public class VmInstanceBase extends AbstractVmInstance {
         }).start();
     }
 
-//    private void handle(final APIRecoverVmInstanceMsg msg) {
-//        thdf.chainSubmit(new ChainTask(msg) {
-//            @Override
-//            public String getSyncSignature() {
-//                return syncThreadName;
-//            }
-//
-//            @Override
-//            public void run(final SyncTaskChain chain) {
-//                final APIRecoverVmInstanceEvent evt = new APIRecoverVmInstanceEvent(msg.getId());
-//                refreshVO();
-//
-//                ErrorCode error = validateOperationByState(msg, self.getState(), SysErrors.OPERATION_ERROR);
-//                if (error != null) {
-//                    evt.setError(error);
-//                    bus.publish(evt);
-//                    chain.next();
-//                    return;
-//                }
-//
-//                recoverVm(new Completion(msg, chain) {
-//                    @Override
-//                    public void success() {
-//                        evt.setInventory(getSelfInventory());
-//                        bus.publish(evt);
-//                        chain.next();
-//                    }
-//
-//                    @Override
-//                    public void fail(ErrorCode errorCode) {
-//                        evt.setError(errorCode);
-//                        bus.publish(evt);
-//                        chain.next();
-//                    }
-//                });
-//            }
-//
-//            @Override
-//            public String getName() {
-//                return "recover-vm";
-//            }
-//        });
-//    }
+    private void handle(final APIRecoverVmInstanceMsg msg) {
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return syncThreadName;
+            }
+
+            @Override
+            public void run(final SyncTaskChain chain) {
+                final APIRecoverVmInstanceEvent evt = new APIRecoverVmInstanceEvent(msg.getId());
+                refreshVO();
+
+                ErrorCode error = validateOperationByState(msg, self.getState(), SysErrors.OPERATION_ERROR);
+                if (error != null) {
+                    evt.setError(error);
+                    bus.publish(evt);
+                    chain.next();
+                    return;
+                }
+
+                recoverVm(new Completion(msg, chain) {
+                    @Override
+                    public void success() {
+                        evt.setInventory(getSelfInventory());
+                        bus.publish(evt);
+                        chain.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        evt.setError(errorCode);
+                        bus.publish(evt);
+                        chain.next();
+                    }
+                });
+            }
+
+            @Override
+            public String getName() {
+                return "recover-vm";
+            }
+        });
+    }
 
     private void handle(final APIExpungeVmInstanceMsg msg) {
         final APIExpungeVmInstanceEvent evt = new APIExpungeVmInstanceEvent(msg.getId());
@@ -6046,6 +6058,19 @@ public class VmInstanceBase extends AbstractVmInstance {
                     bus.publish(evt);
                     return;
                 }
+
+//                SubmitGarbageCollectorMsg gcmsg = new SubmitGarbageCollectorMsg();
+//                gcmsg.setGcInterval(VmGlobalConfig.GC_INTERVAL.value(Long.class));
+//                gcmsg.setUnit(TimeUnit.SECONDS);
+//
+//                UpdateVmInstanceMetadataGC gc = new UpdateVmInstanceMetadataGC();
+//                gc.vmInstanceUuid = self.getUuid();
+//                gc.NAME = String.format("gc-update-vm-%s-metadata", self.getUuid());
+//                gcmsg.setGc(gc);
+//
+//                bus.makeServiceIdByManagementNodeId(gcmsg, GCConstants.SERVICE_ID, destMaker.makeDestination(umsg.getVmInstanceUuid()));
+//                bus.send(gcmsg);
+
                 evt.setInventory(((UpdateVmInstanceReply) reply.castReply()).getInventory());
                 bus.publish(evt);
             }
@@ -9371,81 +9396,49 @@ public class VmInstanceBase extends AbstractVmInstance {
         });
     }
 
-    static class VmMetadata {
-        public String vmInstanceVO;
-        public List<String> vmConfigs;
-
-        public String volumeVO;
-        public List<String> volumeConfigs;
-
-        public String vmNicVO;
-        public List<String> vmNicConfigs;
-
-        // value = List<VolumeSnapshotVO.toString>
-        public Map<String, List<String>> volumeSnapshots;
-
-        // VolumeSnapshotGroupVO.toString
-        public List<String> volumeSnapshotGroupVO;
-        // VolumeSnapshotGroupRefVO.toString
-        public List<String> volumeSnapshotGroupRefVO;
-
-        // value = VolumeSnapshotReferenceVO.toString
-        public Map<String, String> volumeSnapshotReferenceVO;
-        // value = VolumeSnapshotReferenceTreeVO.toString
-        public Map<String, String> volumeSnapshotReferenceTreeVO;
-    }
-
-    private void handle(final APIRecoverVmInstanceMsg msg) {
-        // 从 元数据的中获取
-//        VmInstanceVO vo1 = new VmInstanceVO();
-
-        // root 和 data volume
-//        VolumeVO vo2 = new VolumeVO();
-
-        // 快照 存储/tree/parent/psuuid
-//        final VolumeSnapshotVO vo3 = new VolumeSnapshotVO();
-        // 创建快照的快照树
-
-        // 快照组
-//        newGroup = new VolumeSnapshotGroupVO();
-//        newGroup.setUuid(Platform.getUuid());
-//        newGroup.setName(String.format("revert-vm-point-%s-%s", vmUuid, TimeUtils.getCurrentTimeStamp("yyyyMMddHHmmss")));
-//        newGroup.setDescription(String.format("save snapshot for revert vm [uuid:%s]", vmUuid));
-//        newGroup.setSnapshotCount(snapshots.size());
-//        newGroup.setVmInstanceUuid(vmUuid);
-//        newGroup.setAccountUuid(msg.getSession().getAccountUuid());
-//        dbf.persist(newGroup);
-
-        // 快照组ref
-//        VolumeSnapshotGroupRefVO ref = new VolumeSnapshotGroupRefVO();
-//        ref.setVolumeUuid(inv.getVolumeUuid());
-//        ref.setVolumeName(vols.get(inv.getVolumeUuid()).getName());
-//        ref.setVolumeType(inv.getVolumeType());
-//        ref.setVolumeSnapshotGroupUuid(group.getUuid());
-//        ref.setVolumeSnapshotUuid(inv.getUuid());
-//        ref.setVolumeSnapshotName(inv.getName());
-//        ref.setVolumeSnapshotInstallPath(inv.getPrimaryStorageInstallPath());
-//        ref.setDeviceId(vols.get(inv.getVolumeUuid()).getDeviceId());
-//        ref.setVolumeLastAttachDate(vols.get(inv.getVolumeUuid()).getLastAttachDate());
-
-        // 解析配置
-        // xml 字段 与 控制面配置的映射
-
-        // 给资源加配置
-
-        List<VmInstanceVO> vms = Q.New(VmInstanceVO.class).list();
-        List<VolumeVO> volumes = Q.New(VolumeVO.class).list();
-        List<VmNicVO> nics = Q.New(VmNicVO.class).list();
-
-        List<VolumeSnapshotVO> snapshot = Q.New(VolumeSnapshotVO.class).list();
-        List<VolumeSnapshotGroupVO> group = Q.New(VolumeSnapshotGroupVO.class).list();
-        List<VolumeSnapshotGroupRefVO> groupRef = Q.New(VolumeSnapshotGroupRefVO.class).list();
-
+    private String buildVmInstanceMetadata(String vmInstanceUuid) {
         VmMetadata vmMetadata = new VmMetadata();
-        vmMetadata.vmInstanceVO = JSONObjectUtil.toJsonString(vms.get(0));
-        vmMetadata.volumeVO = JSONObjectUtil.toJsonString(volumes.get(0));
-        vmMetadata.vmNicVO = JSONObjectUtil.toJsonString(nics.get(0));
 
+        // 找出vm
+        // 找出volume和快照
+        // 找出网卡
+        VmInstanceVO vm = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, vmInstanceUuid).find();
+        vmMetadata.vmSystemTags = getResourceSystemTagFromDb(vm.getUuid());
+        vmMetadata.vmResourceConfigs = getResourceConfigFromDb(vm.getUuid());
+
+        // volume
+        // 挂载的
+        List<VolumeVO> volumes1 = Q.New(VolumeVO.class).eq(VolumeVO_.vmInstanceUuid, vmInstanceUuid).list();
+        // 被卸载的
+        List<VolumeVO> volumes2 = Q.New(VolumeVO.class).eq(VolumeVO_.vmInstanceUuid, null).eq(VolumeVO_.lastVmInstanceUuid, vmInstanceUuid).list();
+
+        List<VolumeVO> volumes = new ArrayList<>();
+        volumes.addAll(volumes1);
+        volumes.addAll(volumes2);
+        volumes.forEach(volume -> {
+            vmMetadata.volumeSystemTags.put(volume.getUuid(), getResourceSystemTagFromDb(volume.getUuid()));
+            vmMetadata.volumeResourceConfigs.put(volume.getUuid(), getResourceConfigFromDb(volume.getUuid()));
+        });
+
+        // snapshot
+        List<String> volumeUuids = volumes.stream().map(VolumeVO::getUuid).collect(Collectors.toList());
+        List<VolumeSnapshotVO> snapshot = Q.New(VolumeSnapshotVO.class).in(VolumeSnapshotVO_.volumeUuid, volumeUuids).list();
+
+        List<VolumeSnapshotGroupVO> group = Q.New(VolumeSnapshotGroupVO.class).eq(VolumeSnapshotGroupVO_.vmInstanceUuid, vmInstanceUuid).list();
+        List<String> groupUuids = group.stream().map(VolumeSnapshotGroupVO::getUuid).collect(Collectors.toList());
+        List<VolumeSnapshotGroupRefVO> groupRef = Q.New(VolumeSnapshotGroupRefVO.class).in(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, groupUuids).list();
+
+        // vm nic
+        List<VmNicVO> nics = Q.New(VmNicVO.class).eq(VmNicVO_.vmInstanceUuid, vmInstanceUuid).list();
+        nics.forEach(nic -> {
+            vmMetadata.vmNicSystemTags.put(nic.getUuid(), getResourceSystemTagFromDb(nic.getUuid()));
+            vmMetadata.vmNicResourceConfigs.put(nic.getUuid(), getResourceConfigFromDb(nic.getUuid()));
+        });
+
+        // build metadata
+        vmMetadata.vmInstanceVO = JSONObjectUtil.toJsonString(vm);
+        volumes.forEach(volumeVO -> vmMetadata.volumeVOs.add(JSONObjectUtil.toJsonString(volumeVO)));
+        nics.forEach(nic -> vmMetadata.vmNicVOs.add(JSONObjectUtil.toJsonString(nic)));
         Map<String, List<String>> volumeSnapshots = new HashMap<>();
         snapshot.forEach(s -> {
             if (volumeSnapshots.containsKey(s.getVolumeUuid())) {
@@ -9456,12 +9449,475 @@ public class VmInstanceBase extends AbstractVmInstance {
             }
         });
         vmMetadata.volumeSnapshots = volumeSnapshots;
-
         vmMetadata.volumeSnapshotGroupVO = group.stream().map(JSONObjectUtil::toJsonString).collect(Collectors.toList());
         vmMetadata.volumeSnapshotGroupRefVO = groupRef.stream().map(JSONObjectUtil::toJsonString).collect(Collectors.toList());
 
-        String json = JSONObjectUtil.toJsonString(vmMetadata);
-        logger.info(String.format("recover vm instance [uuid:%s] with metadata: %s", vms.get(0).getUuid(), json));
+        // 其他组件的metadata
+//        CollectionUtils.safeForEach(pluginRgty.getExtensionList(UpdateVmInstanceMetadataExtensionPoint.class),
+//                new ForEachFunction<UpdateVmInstanceMetadataExtensionPoint>() {
+//                    @Override
+//                    public void run(UpdateVmInstanceMetadataExtensionPoint ext) {
+//                        logger.debug(String.format("execute before add acl ip entry extension point %s", ext));
+//                        ext.buildVmInstanceMetadata(VmInstanceInventory.valueOf(vm), vmMetadata);
+//                    }
+//                });
+
+        return JSONObjectUtil.toJsonString(vmMetadata);
+//        {
+//          "vmInstanceVO" : "{\"vmNics\":[{\"vmInstanceUuid\":\"56583eb6f40e40d1a28f23b7d34b4f5b\",\"l3NetworkUuid\":\"81c8aafb064d4ba2944227da9555c5f0\",\"mac\":\"fa:b2:1a:b5:3a:00\",\"hypervisorType\":\"KVM\",\"deviceId\":0,\"internalName\":\"vnic3.0\",\"driverType\":\"virtio\",\"type\":\"VNIC\",\"state\":\"enable\",\"createDate\":\"Jan 18, 2026 10:34:40 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:40 PM\",\"usedIps\":[],\"uuid\":\"07fdf6d90be1460f9b7ad949cc39c893\",\"resourceType\":\"VmNicVO\",\"concreteResourceType\":\"org.zstack.header.vm.VmNicVO\"}],\"allVolumes\":[{\"name\":\"DATA-for-vm3\",\"description\":\"DataVolume-56583eb6f40e40d1a28f23b7d34b4f5b\",\"primaryStorageUuid\":\"95e0442313234b7d890be67ab232af3f\",\"vmInstanceUuid\":\"56583eb6f40e40d1a28f23b7d34b4f5b\",\"diskOfferingUuid\":\"d2f0438b52a142a981ebfb62cc8dc11a\",\"installPath\":\"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/dataVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-60c5546c30de4f09afaa243ae951dc63/60c5546c30de4f09afaa243ae951dc63.qcow2\",\"type\":\"Data\",\"status\":\"Ready\",\"size\":10737418240,\"actualSize\":0,\"deviceId\":1,\"format\":\"qcow2\",\"state\":\"Enabled\",\"createDate\":\"Jan 18, 2026 10:34:40 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:40 PM\",\"lastAttachDate\":\"Jan 18, 2026 10:34:40 PM\",\"isShareable\":false,\"shadow\":{\"name\":\"DATA-for-vm3\",\"description\":\"DataVolume-56583eb6f40e40d1a28f23b7d34b4f5b\",\"primaryStorageUuid\":\"95e0442313234b7d890be67ab232af3f\",\"vmInstanceUuid\":\"56583eb6f40e40d1a28f23b7d34b4f5b\",\"diskOfferingUuid\":\"d2f0438b52a142a981ebfb62cc8dc11a\",\"installPath\":\"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/dataVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-60c5546c30de4f09afaa243ae951dc63/60c5546c30de4f09afaa243ae951dc63.qcow2\",\"type\":\"Data\",\"status\":\"Ready\",\"size\":10737418240,\"actualSize\":0,\"deviceId\":1,\"format\":\"qcow2\",\"state\":\"Enabled\",\"createDate\":\"Jan 18, 2026 10:34:40 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:40 PM\",\"lastAttachDate\":\"Jan 18, 2026 10:34:40 PM\",\"isShareable\":false},\"uuid\":\"60c5546c30de4f09afaa243ae951dc63\",\"resourceName\":\"DATA-for-vm3\",\"resourceType\":\"VolumeVO\",\"concreteResourceType\":\"org.zstack.header.volume.VolumeVO\"},{\"name\":\"ROOT-for-vm3\",\"description\":\"Root volume for VM[uuid:56583eb6f40e40d1a28f23b7d34b4f5b]\",\"primaryStorageUuid\":\"95e0442313234b7d890be67ab232af3f\",\"vmInstanceUuid\":\"56583eb6f40e40d1a28f23b7d34b4f5b\",\"rootImageUuid\":\"ed16ac328672441a93d15dfb51fa1033\",\"installPath\":\"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-c28b1bd97d8247bbbf60b8c86276dceb/c28b1bd97d8247bbbf60b8c86276dceb.qcow2\",\"type\":\"Root\",\"status\":\"Ready\",\"size\":0,\"actualSize\":0,\"deviceId\":0,\"format\":\"qcow2\",\"state\":\"Enabled\",\"createDate\":\"Jan 18, 2026 10:34:40 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:40 PM\",\"lastAttachDate\":\"Jan 18, 2026 10:34:40 PM\",\"isShareable\":false,\"shadow\":{\"name\":\"ROOT-for-vm3\",\"description\":\"Root volume for VM[uuid:56583eb6f40e40d1a28f23b7d34b4f5b]\",\"primaryStorageUuid\":\"95e0442313234b7d890be67ab232af3f\",\"vmInstanceUuid\":\"56583eb6f40e40d1a28f23b7d34b4f5b\",\"rootImageUuid\":\"ed16ac328672441a93d15dfb51fa1033\",\"installPath\":\"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-c28b1bd97d8247bbbf60b8c86276dceb/c28b1bd97d8247bbbf60b8c86276dceb.qcow2\",\"type\":\"Root\",\"status\":\"Ready\",\"size\":0,\"actualSize\":0,\"deviceId\":0,\"format\":\"qcow2\",\"state\":\"Enabled\",\"createDate\":\"Jan 18, 2026 10:34:40 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:40 PM\",\"lastAttachDate\":\"Jan 18, 2026 10:34:40 PM\",\"isShareable\":false},\"uuid\":\"c28b1bd97d8247bbbf60b8c86276dceb\",\"resourceName\":\"ROOT-for-vm3\",\"resourceType\":\"VolumeVO\",\"concreteResourceType\":\"org.zstack.header.volume.VolumeVO\"}],\"vmCdRoms\":[{\"vmInstanceUuid\":\"56583eb6f40e40d1a28f23b7d34b4f5b\",\"deviceId\":0,\"name\":\"vm-56583eb6f40e40d1a28f23b7d34b4f5b-cdRom\",\"createDate\":\"Jan 18, 2026 10:34:40 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:40 PM\",\"uuid\":\"e087bbf2d5bc4eea8cf04fc5c27db3d1\",\"resourceName\":\"vm-56583eb6f40e40d1a28f23b7d34b4f5b-cdRom\",\"resourceType\":\"VmCdRomVO\",\"concreteResourceType\":\"org.zstack.header.vm.cdrom.VmCdRomVO\"}],\"name\":\"vm3\",\"zoneUuid\":\"edad4e425c6e4b9c9f62e22bc26cfe2e\",\"clusterUuid\":\"c19ac94e90004d72a85fa59269f539ec\",\"imageUuid\":\"ed16ac328672441a93d15dfb51fa1033\",\"hostUuid\":\"3495ce7c625f4b5bbbf3dd10d2387474\",\"internalId\":3,\"lastHostUuid\":\"3495ce7c625f4b5bbbf3dd10d2387474\",\"instanceOfferingUuid\":\"b219364de4d840349938c2ca238eb1ee\",\"rootVolumeUuid\":\"c28b1bd97d8247bbbf60b8c86276dceb\",\"defaultL3NetworkUuid\":\"81c8aafb064d4ba2944227da9555c5f0\",\"type\":\"UserVm\",\"hypervisorType\":\"KVM\",\"cpuNum\":4,\"cpuSpeed\":0,\"memorySize\":4294967296,\"reservedMemorySize\":0,\"platform\":\"Linux\",\"architecture\":\"x86_64\",\"allocatorStrategy\":\"LeastVmPreferredHostAllocatorStrategy\",\"guestOsType\":\"CentOS\",\"createDate\":\"Jan 18, 2026 10:34:40 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:41 PM\",\"state\":\"Running\",\"uuid\":\"56583eb6f40e40d1a28f23b7d34b4f5b\",\"resourceName\":\"vm3\",\"resourceType\":\"VmInstanceVO\",\"concreteResourceType\":\"org.zstack.header.vm.VmInstanceVO\"}",
+//          "volumeVO" : "{\"name\":\"ROOT-for-vm2\",\"description\":\"Root volume for VM[uuid:7f9d54d410d4415ea744b9b85ccdc84d]\",\"primaryStorageUuid\":\"ad0e38a8249e4b129e5538fe5dc1c59e\",\"vmInstanceUuid\":\"7f9d54d410d4415ea744b9b85ccdc84d\",\"rootImageUuid\":\"e5875b4855f2466cbef440358318d7dd\",\"installPath\":\"/zstack_smp/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-34e8e378948948fcb273cf29a4c16831/34e8e378948948fcb273cf29a4c16831.qcow2\",\"type\":\"Root\",\"status\":\"Ready\",\"size\":0,\"actualSize\":0,\"deviceId\":0,\"format\":\"qcow2\",\"state\":\"Enabled\",\"createDate\":\"Jan 18, 2026 10:34:39 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:39 PM\",\"lastAttachDate\":\"Jan 18, 2026 10:34:39 PM\",\"isShareable\":false,\"shadow\":{\"name\":\"ROOT-for-vm2\",\"description\":\"Root volume for VM[uuid:7f9d54d410d4415ea744b9b85ccdc84d]\",\"primaryStorageUuid\":\"ad0e38a8249e4b129e5538fe5dc1c59e\",\"vmInstanceUuid\":\"7f9d54d410d4415ea744b9b85ccdc84d\",\"rootImageUuid\":\"e5875b4855f2466cbef440358318d7dd\",\"installPath\":\"/zstack_smp/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-34e8e378948948fcb273cf29a4c16831/34e8e378948948fcb273cf29a4c16831.qcow2\",\"type\":\"Root\",\"status\":\"Ready\",\"size\":0,\"actualSize\":0,\"deviceId\":0,\"format\":\"qcow2\",\"state\":\"Enabled\",\"createDate\":\"Jan 18, 2026 10:34:39 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:39 PM\",\"lastAttachDate\":\"Jan 18, 2026 10:34:39 PM\",\"isShareable\":false},\"uuid\":\"34e8e378948948fcb273cf29a4c16831\",\"resourceName\":\"ROOT-for-vm2\",\"resourceType\":\"VolumeVO\",\"concreteResourceType\":\"org.zstack.header.volume.VolumeVO\"}",
+//          "vmNicVO" : "{\"vmInstanceUuid\":\"56583eb6f40e40d1a28f23b7d34b4f5b\",\"l3NetworkUuid\":\"81c8aafb064d4ba2944227da9555c5f0\",\"mac\":\"fa:b2:1a:b5:3a:00\",\"hypervisorType\":\"KVM\",\"deviceId\":0,\"internalName\":\"vnic3.0\",\"driverType\":\"virtio\",\"type\":\"VNIC\",\"state\":\"enable\",\"createDate\":\"Jan 18, 2026 10:34:40 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:40 PM\",\"usedIps\":[],\"uuid\":\"07fdf6d90be1460f9b7ad949cc39c893\",\"resourceType\":\"VmNicVO\",\"concreteResourceType\":\"org.zstack.header.vm.VmNicVO\"}",
+//          "volumeSnapshots" : {
+//            "82b1c604f3fc44e1b863efc993e88223" : [ "{\"uuid\":\"3214fb7d25154a07956b65da51ef64d2\",\"name\":\"test-snap-ROOT-for-vm1\",\"type\":\"Hypervisor\",\"volumeUuid\":\"82b1c604f3fc44e1b863efc993e88223\",\"treeUuid\":\"f427df56f5dc4c7592a310b5c128520b\",\"primaryStorageUuid\":\"95e0442313234b7d890be67ab232af3f\",\"primaryStorageInstallPath\":\"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-82b1c604f3fc44e1b863efc993e88223/82b1c604f3fc44e1b863efc993e88223.qcow2\",\"volumeType\":\"Root\",\"format\":\"qcow2\",\"latest\":false,\"size\":0,\"distance\":1,\"state\":\"Enabled\",\"status\":\"Ready\",\"createDate\":\"Jan 18, 2026 10:34:42 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:43 PM\",\"backupStorageRefs\":[],\"groupUuid\":\"36e0512b36984d40b781efe561e8fdd6\"}", "{\"uuid\":\"bdd615cb76de4a1b9ef26fc3525799a2\",\"name\":\"test-snap-ROOT-for-vm1\",\"type\":\"Hypervisor\",\"volumeUuid\":\"82b1c604f3fc44e1b863efc993e88223\",\"treeUuid\":\"f427df56f5dc4c7592a310b5c128520b\",\"parentUuid\":\"3214fb7d25154a07956b65da51ef64d2\",\"primaryStorageUuid\":\"95e0442313234b7d890be67ab232af3f\",\"primaryStorageInstallPath\":\"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-82b1c604f3fc44e1b863efc993e88223/snapshots/d0abc4fad2e34b5a9d70c628a38178ec.qcow2\",\"volumeType\":\"Root\",\"format\":\"qcow2\",\"latest\":true,\"size\":0,\"distance\":2,\"state\":\"Enabled\",\"status\":\"Ready\",\"createDate\":\"Jan 18, 2026 10:34:43 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:43 PM\",\"backupStorageRefs\":[],\"groupUuid\":\"1c9321907b9d458fae5753e84e77f689\"}" ]
+//          },
+//          "volumeSnapshotGroupVO" : [ "{\"snapshotCount\":1,\"name\":\"test-snap\",\"vmInstanceUuid\":\"e045e8df65804beab29b6744e0a8fbf1\",\"createDate\":\"Jan 18, 2026 10:34:43 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:43 PM\",\"volumeSnapshotRefs\":[{\"volumeSnapshotUuid\":\"bdd615cb76de4a1b9ef26fc3525799a2\",\"volumeSnapshotGroupUuid\":\"1c9321907b9d458fae5753e84e77f689\",\"snapshotDeleted\":false,\"deviceId\":0,\"volumeUuid\":\"82b1c604f3fc44e1b863efc993e88223\",\"volumeName\":\"ROOT-for-vm1\",\"volumeType\":\"Root\",\"volumeSnapshotInstallPath\":\"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-82b1c604f3fc44e1b863efc993e88223/snapshots/d0abc4fad2e34b5a9d70c628a38178ec.qcow2\",\"volumeSnapshotName\":\"test-snap-ROOT-for-vm1\",\"createDate\":\"Jan 18, 2026 10:34:43 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:43 PM\",\"volumeLastAttachDate\":\"Jan 18, 2026 10:34:38 PM\"}],\"uuid\":\"1c9321907b9d458fae5753e84e77f689\",\"resourceName\":\"test-snap\",\"resourceType\":\"VolumeSnapshotGroupVO\",\"concreteResourceType\":\"org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO\"}", "{\"snapshotCount\":1,\"name\":\"test-snap\",\"vmInstanceUuid\":\"e045e8df65804beab29b6744e0a8fbf1\",\"createDate\":\"Jan 18, 2026 10:34:42 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:42 PM\",\"volumeSnapshotRefs\":[{\"volumeSnapshotUuid\":\"3214fb7d25154a07956b65da51ef64d2\",\"volumeSnapshotGroupUuid\":\"36e0512b36984d40b781efe561e8fdd6\",\"snapshotDeleted\":false,\"deviceId\":0,\"volumeUuid\":\"82b1c604f3fc44e1b863efc993e88223\",\"volumeName\":\"ROOT-for-vm1\",\"volumeType\":\"Root\",\"volumeSnapshotInstallPath\":\"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-82b1c604f3fc44e1b863efc993e88223/82b1c604f3fc44e1b863efc993e88223.qcow2\",\"volumeSnapshotName\":\"test-snap-ROOT-for-vm1\",\"createDate\":\"Jan 18, 2026 10:34:42 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:42 PM\",\"volumeLastAttachDate\":\"Jan 18, 2026 10:34:38 PM\"}],\"uuid\":\"36e0512b36984d40b781efe561e8fdd6\",\"resourceName\":\"test-snap\",\"resourceType\":\"VolumeSnapshotGroupVO\",\"concreteResourceType\":\"org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO\"}" ],
+//          "volumeSnapshotGroupRefVO" : [ "{\"volumeSnapshotUuid\":\"3214fb7d25154a07956b65da51ef64d2\",\"volumeSnapshotGroupUuid\":\"36e0512b36984d40b781efe561e8fdd6\",\"snapshotDeleted\":false,\"deviceId\":0,\"volumeUuid\":\"82b1c604f3fc44e1b863efc993e88223\",\"volumeName\":\"ROOT-for-vm1\",\"volumeType\":\"Root\",\"volumeSnapshotInstallPath\":\"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-82b1c604f3fc44e1b863efc993e88223/82b1c604f3fc44e1b863efc993e88223.qcow2\",\"volumeSnapshotName\":\"test-snap-ROOT-for-vm1\",\"createDate\":\"Jan 18, 2026 10:34:42 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:42 PM\",\"volumeLastAttachDate\":\"Jan 18, 2026 10:34:38 PM\"}", "{\"volumeSnapshotUuid\":\"bdd615cb76de4a1b9ef26fc3525799a2\",\"volumeSnapshotGroupUuid\":\"1c9321907b9d458fae5753e84e77f689\",\"snapshotDeleted\":false,\"deviceId\":0,\"volumeUuid\":\"82b1c604f3fc44e1b863efc993e88223\",\"volumeName\":\"ROOT-for-vm1\",\"volumeType\":\"Root\",\"volumeSnapshotInstallPath\":\"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-82b1c604f3fc44e1b863efc993e88223/snapshots/d0abc4fad2e34b5a9d70c628a38178ec.qcow2\",\"volumeSnapshotName\":\"test-snap-ROOT-for-vm1\",\"createDate\":\"Jan 18, 2026 10:34:43 PM\",\"lastOpDate\":\"Jan 18, 2026 10:34:43 PM\",\"volumeLastAttachDate\":\"Jan 18, 2026 10:34:38 PM\"}" ]
+//        }
+
+        // VmMetadata vmMetadata1 = JSONObjectUtil.toObject(json, VmMetadata.class);
+        // 结果 = {VmInstanceBase$VmMetadata@51572}
+        // vmInstanceVO = "{"vmNics":[{"vmInstanceUuid":"56583eb6f40e40d1a28f23b7d34b4f5b","l3NetworkUuid":"81c8aafb064d4ba2944227da9555c5f0","mac":"fa:b2:1a:b5:3a:00","hypervisorType":"KVM","deviceId":0,"internalName":"vnic3.0","driverType":"virtio","type":"VNIC","state":"enable","createDate":"Jan 18, 2026 10:34:40 PM","lastOpDate":"Jan 18, 2026 10:34:40 PM","usedIps":[],"uuid":"07fdf6d90be1460f9b7ad949cc39c893","resourceType":"VmNicVO","concreteResourceType":"org.zstack.header.vm.VmNicVO"}],"allVolumes":[{"name":"DATA-for-vm3","description":"DataVolume-56583eb6f40e40d1a28f23b7d34b4f5b","primaryStorageUuid":"95e0442313234b7d890be67ab232af3f","vmInstanceUuid":"56583eb6f40e40d1a28f23b7d34b4f5b","diskOfferingUuid":"d2f0438b52a142a981ebfb62cc8dc11a","installPath":"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/dataVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-60c5546c30de4f09afaa243ae951dc63/60c5546c30de4f09afaa243ae951dc63.qcow2","type":"Data","status":"Ready","size":10737418240,"actualSiz"
+        // vmConfigs = null
+        // volumeVO = "{"name":"ROOT-for-vm2","description":"Root volume for VM[uuid:7f9d54d410d4415ea744b9b85ccdc84d]","primaryStorageUuid":"ad0e38a8249e4b129e5538fe5dc1c59e","vmInstanceUuid":"7f9d54d410d4415ea744b9b85ccdc84d","rootImageUuid":"e5875b4855f2466cbef440358318d7dd","installPath":"/zstack_smp/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-34e8e378948948fcb273cf29a4c16831/34e8e378948948fcb273cf29a4c16831.qcow2","type":"Root","status":"Ready","size":0,"actualSize":0,"deviceId":0,"format":"qcow2","state":"Enabled","createDate":"Jan 18, 2026 10:34:39 PM","lastOpDate":"Jan 18, 2026 10:34:39 PM","lastAttachDate":"Jan 18, 2026 10:34:39 PM","isShareable":false,"shadow":{"name":"ROOT-for-vm2","description":"Root volume for VM[uuid:7f9d54d410d4415ea744b9b85ccdc84d]","primaryStorageUuid":"ad0e38a8249e4b129e5538fe5dc1c59e","vmInstanceUuid":"7f9d54d410d4415ea744b9b85ccdc84d","rootImageUuid":"e5875b4855f2466cbef440358318d7dd","installPath":"/zstack_smp/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/v"
+        // volumeConfigs = null
+        // vmNicVO = "{"vmInstanceUuid":"56583eb6f40e40d1a28f23b7d34b4f5b","l3NetworkUuid":"81c8aafb064d4ba2944227da9555c5f0","mac":"fa:b2:1a:b5:3a:00","hypervisorType":"KVM","deviceId":0,"internalName":"vnic3.0","driverType":"virtio","type":"VNIC","state":"enable","createDate":"Jan 18, 2026 10:34:40 PM","lastOpDate":"Jan 18, 2026 10:34:40 PM","usedIps":[],"uuid":"07fdf6d90be1460f9b7ad949cc39c893","resourceType":"VmNicVO","concreteResourceType":"org.zstack.header.vm.VmNicVO"}"
+        // vmNicConfigs = null
+        // volumeSnapshots = {LinkedTreeMap@51576}  size = 1
+        //  "82b1c604f3fc44e1b863efc993e88223" -> {ArrayList@51587}  size = 2
+        // volumeSnapshotGroupVO = {ArrayList@51577}  size = 2
+        //  0 = "{"snapshotCount":1,"name":"test-snap","vmInstanceUuid":"e045e8df65804beab29b6744e0a8fbf1","createDate":"Jan 18, 2026 10:34:43 PM","lastOpDate":"Jan 18, 2026 10:34:43 PM","volumeSnapshotRefs":[{"volumeSnapshotUuid":"bdd615cb76de4a1b9ef26fc3525799a2","volumeSnapshotGroupUuid":"1c9321907b9d458fae5753e84e77f689","snapshotDeleted":false,"deviceId":0,"volumeUuid":"82b1c604f3fc44e1b863efc993e88223","volumeName":"ROOT-for-vm1","volumeType":"Root","volumeSnapshotInstallPath":"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-82b1c604f3fc44e1b863efc993e88223/snapshots/d0abc4fad2e34b5a9d70c628a38178ec.qcow2","volumeSnapshotName":"test-snap-ROOT-for-vm1","createDate":"Jan 18, 2026 10:34:43 PM","lastOpDate":"Jan 18, 2026 10:34:43 PM","volumeLastAttachDate":"Jan 18, 2026 10:34:38 PM"}],"uuid":"1c9321907b9d458fae5753e84e77f689","resourceName":"test-snap","resourceType":"VolumeSnapshotGroupVO","concreteResourceType":"org.zstack.he"
+        //  1 = "{"snapshotCount":1,"name":"test-snap","vmInstanceUuid":"e045e8df65804beab29b6744e0a8fbf1","createDate":"Jan 18, 2026 10:34:42 PM","lastOpDate":"Jan 18, 2026 10:34:42 PM","volumeSnapshotRefs":[{"volumeSnapshotUuid":"3214fb7d25154a07956b65da51ef64d2","volumeSnapshotGroupUuid":"36e0512b36984d40b781efe561e8fdd6","snapshotDeleted":false,"deviceId":0,"volumeUuid":"82b1c604f3fc44e1b863efc993e88223","volumeName":"ROOT-for-vm1","volumeType":"Root","volumeSnapshotInstallPath":"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-82b1c604f3fc44e1b863efc993e88223/82b1c604f3fc44e1b863efc993e88223.qcow2","volumeSnapshotName":"test-snap-ROOT-for-vm1","createDate":"Jan 18, 2026 10:34:42 PM","lastOpDate":"Jan 18, 2026 10:34:42 PM","volumeLastAttachDate":"Jan 18, 2026 10:34:38 PM"}],"uuid":"36e0512b36984d40b781efe561e8fdd6","resourceName":"test-snap","resourceType":"VolumeSnapshotGroupVO","concreteResourceType":"org.zstack.header.stora"
+        // volumeSnapshotGroupRefVO = {ArrayList@51578}  size = 2
+        //  0 = "{"volumeSnapshotUuid":"3214fb7d25154a07956b65da51ef64d2","volumeSnapshotGroupUuid":"36e0512b36984d40b781efe561e8fdd6","snapshotDeleted":false,"deviceId":0,"volumeUuid":"82b1c604f3fc44e1b863efc993e88223","volumeName":"ROOT-for-vm1","volumeType":"Root","volumeSnapshotInstallPath":"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-82b1c604f3fc44e1b863efc993e88223/82b1c604f3fc44e1b863efc993e88223.qcow2","volumeSnapshotName":"test-snap-ROOT-for-vm1","createDate":"Jan 18, 2026 10:34:42 PM","lastOpDate":"Jan 18, 2026 10:34:42 PM","volumeLastAttachDate":"Jan 18, 2026 10:34:38 PM"}"
+        //  1 = "{"volumeSnapshotUuid":"bdd615cb76de4a1b9ef26fc3525799a2","volumeSnapshotGroupUuid":"1c9321907b9d458fae5753e84e77f689","snapshotDeleted":false,"deviceId":0,"volumeUuid":"82b1c604f3fc44e1b863efc993e88223","volumeName":"ROOT-for-vm1","volumeType":"Root","volumeSnapshotInstallPath":"/opt/zstack/nfsprimarystorage/prim-95e0442313234b7d890be67ab232af3f/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-82b1c604f3fc44e1b863efc993e88223/snapshots/d0abc4fad2e34b5a9d70c628a38178ec.qcow2","volumeSnapshotName":"test-snap-ROOT-for-vm1","createDate":"Jan 18, 2026 10:34:43 PM","lastOpDate":"Jan 18, 2026 10:34:43 PM","volumeLastAttachDate":"Jan 18, 2026 10:34:38 PM"}"
+        // volumeSnapshotReferenceVO = null
+        // volumeSnapshotReferenceTreeVO = null
+    }
+
+    private List<String> getResourceSystemTagFromDb(String resourceUuid) {
+        List<String> systemTags = new ArrayList<>();
+        List<Tuple> tuples = Q.New(SystemTagVO.class).eq(SystemTagVO_.resourceUuid, resourceUuid)
+                .select(SystemTagVO_.tag, SystemTagVO_.inherent, SystemTagVO_.type).listTuple();
+        tuples.forEach(t -> {
+            String tag = String.format("%s_%s_%s", t.get(0, String.class), t.get(1, Boolean.class), t.get(2, TagType.class).toString());
+            systemTags.add(tag);
+        });
+        return systemTags;
+    }
+
+    private List<String> getResourceConfigFromDb(String resourceUuid) {
+        List<String> resourceConfigs = new ArrayList<>();
+        List<Tuple> tuples = Q.New(ResourceConfigVO.class).eq(ResourceConfigVO_.resourceUuid, resourceUuid)
+                .select(ResourceConfigVO_.category, ResourceConfigVO_.name, ResourceConfigVO_.value).listTuple();
+
+        tuples.forEach(t -> {
+            String config = String.format("%s.%s_%s", t.get(0, String.class), t.get(1, String.class), t.get(2, String.class));
+            resourceConfigs.add(config);
+        });
+        return resourceConfigs;
+    }
+
+    private List<SystemTag> getResourceSystemTagFromSystem(String resourceType) throws IllegalAccessException, InstantiationException {
+        List<SystemTag> systemTags = new ArrayList<>();
+
+        Set<Class<?>> classes = BeanUtils.reflections.getTypesAnnotatedWith(TagDefinition.class);
+        for (Class clazz : classes) {
+            Field[] fields = clazz.getDeclaredFields();
+            for (Field field : fields) {
+                if (!SystemTag.class.isAssignableFrom(field.getType())) {
+                    continue;
+                }
+
+                SystemTag systemTag = (SystemTag) field.get(clazz.newInstance());
+
+                if (resourceType.equals(systemTag.getResourceClass().getName())) {
+                    systemTags.add(systemTag);
+                }
+            }
+        }
+        return systemTags;
+    }
+
+    private List<GlobalConfig> getResourceConfigFromSystem(String resourceType) throws IllegalAccessException, InstantiationException {
+        List<GlobalConfig> globalConfigs = new ArrayList<>();
+
+        Set<Class<?>> classes = BeanUtils.reflections.getTypesAnnotatedWith(GlobalConfigDefinition.class);
+        for (Class clazz : classes) {
+            Field[] fields = clazz.getDeclaredFields();
+            for (Field field : fields) {
+                if (!GlobalConfig.class.isAssignableFrom(field.getType())) {
+                    continue;
+                }
+                GlobalConfig globalConfig = (GlobalConfig) field.get(clazz.newInstance());
+
+                BindResourceConfig bindResourceConfig = field.getAnnotation(BindResourceConfig.class);
+                if (bindResourceConfig == null) {
+                    continue;
+                }
+
+                List<String> bindResourceConfigs = Arrays.stream(bindResourceConfig.value()).map(Class::getName).collect(Collectors.toList());
+
+                if (bindResourceConfigs.contains(resourceType)) {
+                    globalConfigs.add(globalConfig);
+                }
+            }
+        }
+
+        return globalConfigs;
+    }
+
+    private void handle(UpdateVmInstanceMetadataMsg msg) {
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return syncThreadName;
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                UpdateVmInstanceMetadataReply reply = new UpdateVmInstanceMetadataReply();
+                UpdateVmInstanceMetadataOnHypervisorMsg umsg = new UpdateVmInstanceMetadataOnHypervisorMsg();
+                umsg.setVmInstanceMetadata(buildVmInstanceMetadata(msg.getUuid()));
+                if (self.getHostUuid() != null) {
+                    umsg.setHostUuid(self.getHostUuid());
+                } else if (self.getLastHostUuid() != null) {
+                    umsg.setHostUuid(self.getLastHostUuid());
+                }
+                bus.makeTargetServiceIdByResourceUuid(umsg, HostConstant.SERVICE_ID, umsg.getHostUuid());
+                bus.send(umsg, new CloudBusCallBack(msg) {
+                    @Override
+                    public void run(MessageReply innerReply) {
+                        if (!innerReply.isSuccess()) {
+                            reply.setError(Platform.operr("failed to update vm[uuid=%s] on hypervisor.", self.getUuid())
+                                    .withCause(innerReply.getError()));
+
+                            gc();
+                            return;
+                        }
+                        bus.reply(msg, reply);
+                        chain.next();
+                    }
+
+                    private void gc() {
+//                        SubmitGarbageCollectorMsg gcmsg = new SubmitGarbageCollectorMsg();
+//                        gcmsg.setGcInterval(VmGlobalConfig.GC_INTERVAL.value(Long.class));
+//                        gcmsg.setUnit(TimeUnit.SECONDS);
+//
+//                        UpdateVmInstanceMetadataGC gc = new UpdateVmInstanceMetadataGC();
+//                        gc.vmInstanceUuid = self.getUuid();
+//                        gc.NAME = String.format("gc-update-vm-%s-metadata", self.getUuid());
+//                        gcmsg.setGc(gc);
+
+//                        bus.makeTargetServiceIdByResourceUuid(gcmsg, GCConstants.SERVICE_ID, umsg.getHostUuid());
+//                        bus.send(gcmsg);
+                    }
+                });
+            }
+
+            @Override
+            public String getName() {
+                return "update-vm-info";
+            }
+        });
+    }
+
+    private void handle(APIRegisterVmInstanceMsg msg) {
+        APIRegisterVmInstanceEvent evnet = new APIRegisterVmInstanceEvent(msg.getId());
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return syncThreadName;
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                RegisterVmInstance(msg, new Completion(msg, chain) {
+                    @Override
+                    public void success() {
+                        bus.publish(evnet);
+                        chain.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        bus.publish(evnet);
+                        chain.next();
+                    }
+                });
+
+            }
+
+            @Override
+            public String getName() {
+                return String.format("register-vm-from-%s", msg.getMetadataPath());
+            }
+        });
+    }
+
+    private void RegisterVmInstance(APIRegisterVmInstanceMsg msg, Completion completion) {
+        FlowChain chain = new ShareFlowChain();
+        chain.setName("register-vm-from-metadata");
+        chain.then(new ShareFlow() {
+            VmMetadata vmMetadata;
+
+            @Override
+            public void setup() {
+                flow(new NoRollbackFlow() {
+                    String __name__ = "read-metadata";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        ReadVmInstanceMetadataOnHypervisorReply reply = new ReadVmInstanceMetadataOnHypervisorReply();
+                        ReadVmInstanceMetadataOnHypervisorMsg umsg = new ReadVmInstanceMetadataOnHypervisorMsg();
+                        bus.makeTargetServiceIdByResourceUuid(umsg, HostConstant.SERVICE_ID, "umsg.getHostUuid()");
+                        bus.send(umsg, new CloudBusCallBack(msg) {
+                            @Override
+                            public void run(MessageReply innerReply) {
+                                if (!innerReply.isSuccess()) {
+                                    reply.setError(Platform.operr("failed to update vm[uuid=%s] on hypervisor.",
+                                            self.getUuid()).withCause(innerReply.getError()));
+                                    return;
+                                }
+                                vmMetadata = JSONObjectUtil.toObject(reply.getVmMetadata(), VmMetadata.class);
+                                trigger.next();
+                            }
+                        });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "register-volume";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+
+                        List<String> volumesString = vmMetadata.volumeVOs;
+
+                        List<VolumeVO> volumes = new ArrayList<>();
+                        volumesString.forEach(v -> volumes.add(JSONObjectUtil.toObject(v, VolumeVO.class)));
+
+                        List<VolumeVO> newVolumes = new ArrayList<>();
+                        volumes.forEach(v -> {
+                            VolumeVO vo = new VolumeVO();
+                            vo.setUuid(v.getUuid());
+                            vo.setDescription(v.getDescription());
+                            vo.setName(v.getName());
+                            vo.setSize(v.getSize());
+                            vo.setActualSize(v.getActualSize());
+                            vo.setType(v.getType());
+                            vo.setStatus(v.getStatus());
+                            vo.setAccountUuid(v.getAccountUuid());
+                            vo.setProtocol(v.getProtocol());
+                            vo.setPrimaryStorageUuid(vo.getPrimaryStorageUuid());
+                            newVolumes.add(vo);
+                        });
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "register-snapshot";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        vmMetadata.volumeSnapshots.forEach((volumeUuid, snapshotList) -> {
+                            // 一个 volume 有多个快照树
+                            // key = treeuuid
+                            // value = snapshosts
+                            Map<String, List<VolumeSnapshotInventory>> snapshotsByTreeUuid = new HashMap<>();
+                            snapshotList.forEach(snapshot -> {
+                                VolumeSnapshotInventory inv = JSONObjectUtil.toObject(snapshot, VolumeSnapshotInventory.class);
+                                if (snapshotsByTreeUuid.containsKey(inv.getTreeUuid())) {
+                                    snapshotsByTreeUuid.get(inv.getTreeUuid()).add(inv);
+                                } else {
+                                    snapshotsByTreeUuid.put(inv.getTreeUuid(), new ArrayList<>());
+                                    snapshotsByTreeUuid.get(inv.getTreeUuid()).add(inv);
+                                }
+                            });
+
+                            // 遍历每一颗树
+                            snapshotsByTreeUuid.forEach((treeUuid, s) -> {
+                                //构建快照树
+                                VolumeSnapshotTree tree = VolumeSnapshotTree.fromInventories(s);
+                                // 层级遍历 快照
+                                List<VolumeSnapshotInventory> levelOrderTraversals = tree.levelOrderTraversal();
+                                // 判断当前树有没有 latest 节点
+                                boolean treeIsCurrent = levelOrderTraversals.stream().anyMatch(VolumeSnapshotInventory::isLatest);
+
+                                // 先创建快照树，VolumeSnapshotVO 外键依赖 VolumeSnapshotTreeVO
+                                VolumeSnapshotTreeVO newTree = new VolumeSnapshotTreeVO();
+                                newTree.setCurrent(treeIsCurrent);
+                                newTree.setVolumeUuid(volumeUuid);
+                                newTree.setUuid(Platform.getUuid());
+                                newTree.setStatus(VolumeSnapshotTreeStatus.Completed);
+                                dbf.persist(newTree);
+
+                                // 按照层级遍历的快照构建VolumeSnapshotTreeVO
+                                levelOrderTraversals.forEach(sss -> {
+                                    VolumeSnapshotVO vo = new VolumeSnapshotVO();
+                                    vo.setName(sss.getName());
+                                    vo.setCreateDate(sss.getCreateDate());
+                                    vo.setDescription(sss.getDescription());
+                                    vo.setLastOpDate(sss.getLastOpDate());
+                                    vo.setParentUuid(sss.getParentUuid());
+                                    vo.setState(vo.getState());
+                                    vo.setType(sss.getType());
+                                    vo.setVolumeUuid(sss.getVolumeUuid());
+                                    vo.setFormat(sss.getFormat());
+                                    vo.setUuid(sss.getUuid());
+                                    vo.setStatus(vo.getStatus());
+                                    vo.setPrimaryStorageUuid(sss.getPrimaryStorageUuid());
+                                    vo.setPrimaryStorageInstallPath(sss.getPrimaryStorageInstallPath());
+                                    vo.setLatest(sss.isLatest());
+                                    vo.setSize(sss.getSize());
+                                    vo.setVolumeType(sss.getVolumeType());
+                                    vo.setTreeUuid(sss.getTreeUuid());
+                                    vo.setDistance(sss.getDistance());
+                                    // VolumeSnapshotVO.parentUuid 外键依赖 父节点，因此，一个一个持久化
+                                    dbf.persist(vo);
+                                });
+                            });
+                        });
+
+                        // 先持久化 快照组
+                        List<VolumeSnapshotGroupVO> newGroups = new ArrayList<>();
+                        vmMetadata.volumeSnapshotGroupVO.forEach(group -> {
+                            VolumeSnapshotGroupVO vo = JSONObjectUtil.toObject(group, VolumeSnapshotGroupVO.class);
+                            vo.setAccountUuid(msg.getSession().getAccountUuid());
+                            newGroups.add(vo);
+                        });
+                        dbf.persistCollection(newGroups);
+
+                        List<VolumeSnapshotGroupRefVO> newGroupRefs = new ArrayList<>();
+                        vmMetadata.volumeSnapshotGroupRefVO.forEach(group -> {
+                            VolumeSnapshotGroupRefVO vo = JSONObjectUtil.toObject(group, VolumeSnapshotGroupRefVO.class);
+                            newGroupRefs.add(vo);
+                        });
+                        dbf.persistCollection(newGroupRefs);
+
+                        trigger.next();
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "register-snapshot";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        VmInstanceVO vmInstanceString = JSONObjectUtil.toObject(vmMetadata.vmInstanceVO, VmInstanceVO.class);
+                        VmInstanceVO vm = new VmInstanceVO();
+
+                        List<String> vmSystemTags = vmMetadata.vmSystemTags;
+                        List<String> vmResourceConfigs = vmMetadata.vmResourceConfigs;
+
+                        try {
+                            List<SystemTag> systemTags = getResourceSystemTagFromSystem(VmInstanceVO.class.getSimpleName());
+                            List<GlobalConfig> resourceConfigs = getResourceConfigFromSystem(VmInstanceVO.class.getSimpleName());
+
+                            List<SystemTagVO> tagVOS = new ArrayList<>();
+                            vmSystemTags.forEach(tag -> {
+                                List<String> info = asList(tag.split("_"));
+                                String t = info.get(0);
+                                Boolean inherent = Boolean.valueOf(info.get(1));
+                                String type = info.get(2);
+                                systemTags.forEach(it -> {
+                                    if (!it.isMatch(t)) {
+                                        return;
+                                    }
+                                    SystemTagVO vo = new SystemTagVO();
+                                    vo.setTag(t);
+                                    vo.setType(TagType.valueOf(type));
+                                    vo.setInherent(inherent);
+                                    vo.setResourceType(VmInstanceVO.class.getSimpleName());
+                                    vo.setResourceUuid(vm.getUuid());
+                                    tagVOS.add(vo);
+                                });
+                            });
+
+                            List<ResourceConfigVO> configVOS = new ArrayList<>();
+                            vmResourceConfigs.forEach(tag -> {
+                                List<String> info = asList(tag.split("_"));
+                                String identity = info.get(0);
+                                String value = info.get(1);
+                                resourceConfigs.forEach(it -> {
+                                    if (it.getIdentity() == identity) {
+                                        return;
+                                    }
+                                    ResourceConfigVO vo = new ResourceConfigVO();
+                                    vo.setCategory(identity);
+                                    vo.setName(identity);
+                                    vo.setValue(value);
+                                    vo.setResourceType(VmInstanceVO.class.getSimpleName());
+                                    vo.setResourceUuid(vm.getUuid());
+                                    configVOS.add(vo);
+                                });
+                            });
+                        } catch (IllegalAccessException | InstantiationException e) {
+                            throw new RuntimeException(e);
+                        }
+
+                        List<String> volumesString = vmMetadata.volumeVOs;
+                        List<VolumeVO> volumes = new ArrayList<>();
+                        volumesString.forEach(v -> volumes.add(JSONObjectUtil.toObject(v, VolumeVO.class)));
+                        volumes.forEach(v -> {
+                            VolumeVO volume = new VolumeVO();
+                        });
+
+                        Map<String, List<String>> volumeSnapshots = vmMetadata.volumeSnapshots;
+                        Set<String> snapshotTreeUuid = new HashSet<>();
+                        volumeSnapshots.forEach((volumeUuid, snapshots) -> {
+                            snapshots.forEach(snapshot -> {
+                                VolumeSnapshotInventory inv = JSONObjectUtil.toObject(snapshot, VolumeSnapshotInventory.class);
+                                VolumeSnapshotVO vo = new VolumeSnapshotVO();
+                                snapshotTreeUuid.add(inv.toString());
+                            });
+                        });
+
+                        List<String> volumeSnapshotGroupVO = vmMetadata.volumeSnapshotGroupVO;
+                        volumeSnapshotGroupVO.forEach(group -> {
+                            VolumeSnapshotGroupVO inv = JSONObjectUtil.toObject(group, VolumeSnapshotGroupVO.class);
+                            VolumeSnapshotGroupVO newGroup = new VolumeSnapshotGroupVO();
+//            newGroup = new VolumeSnapshotGroupVO();
+//            newGroup.setUuid(Platform.getUuid());
+//            newGroup.setName(String.format("revert-vm-point-%s-%s", vmUuid, TimeUtils.getCurrentTimeStamp("yyyyMMddHHmmss")));
+//            newGroup.setDescription(String.format("save snapshot for revert vm [uuid:%s]", vmUuid));
+//            newGroup.setSnapshotCount(snapshots.size());
+//            newGroup.setVmInstanceUuid(vmUuid);
+//            newGroup.setAccountUuid(msg.getSession().getAccountUuid());
+                        });
+
+                        List<String> volumeSnapshotGroupRefVO = vmMetadata.volumeSnapshotGroupRefVO;
+                        volumeSnapshotGroupRefVO.forEach(group -> {
+                            VolumeSnapshotGroupRefVO inv = JSONObjectUtil.toObject(group, VolumeSnapshotGroupRefVO.class);
+
+//            VolumeSnapshotGroupRefVO ref = new VolumeSnapshotGroupRefVO();
+//            ref.setVolumeUuid(inv.getVolumeUuid());
+//            ref.setVolumeName(vols.get(inv.getVolumeUuid()).getName());
+//            ref.setVolumeType(inv.getVolumeType());
+//            ref.setVolumeSnapshotGroupUuid(group.getUuid());
+//            ref.setVolumeSnapshotUuid(inv.getUuid());
+//            ref.setVolumeSnapshotName(inv.getName());
+//            ref.setVolumeSnapshotInstallPath(inv.getPrimaryStorageInstallPath());
+//            ref.setDeviceId(vols.get(inv.getVolumeUuid()).getDeviceId());
+//            ref.setVolumeLastAttachDate(vols.get(inv.getVolumeUuid()).getLastAttachDate());
+                        });
+                    }
+                });
+
+                done(new FlowDoneHandler(completion) {
+                    @Override
+                    public void handle(Map data) {
+                        completion.success();
+                    }
+                });
+
+                error(new FlowErrorHandler(msg) {
+                    @Override
+                    public void handle(ErrorCode errCode, Map data) {
+                        completion.fail(errCode);
+                    }
+                });
+            }
+        }).start();
     }
 }
 

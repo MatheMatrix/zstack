@@ -264,4 +264,7 @@
     <message>
         <name>org.zstack.header.vm.APIDeleteTemplatedVmInstanceMsg</name>
     </message>
+    <message>
+        <name>org.zstack.header.vm.APIRegisterVmInstanceMsg</name>
+    </message>
 </service>
