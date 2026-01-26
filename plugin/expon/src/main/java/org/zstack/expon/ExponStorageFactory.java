@@ -64,4 +64,8 @@ public class ExponStorageFactory implements ExternalPrimaryStorageSvcBuilder, Ba
 
         controllers.get(volume.getPrimaryStorageUuid()).cleanActiveRecord(volume);
     }
+
+    public ExponStorageController getController(String primaryStorageUuid) {
+        return controllers.get(primaryStorageUuid);
+    }
 }
