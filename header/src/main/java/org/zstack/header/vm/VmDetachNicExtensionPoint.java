@@ -3,8 +3,9 @@ package org.zstack.header.vm;
 import org.zstack.header.errorcode.ErrorCode;
 
 /**
- * Created by frank on 7/18/2015.
+ * @deprecated Use {@link org.zstack.header.vm.extensions.VmInstanceDetachNicExtensionPoint} instead.
  */
+@Deprecated
 public interface VmDetachNicExtensionPoint {
     void preDetachNic(VmNicInventory nic);
 

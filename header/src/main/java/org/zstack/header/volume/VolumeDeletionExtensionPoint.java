@@ -4,8 +4,9 @@ import org.zstack.header.core.Completion;
 import org.zstack.header.errorcode.ErrorCode;
 
 /**
- * Created by frank on 6/18/2015.
+ * @deprecated Use {@link org.zstack.header.volume.extensions.VolumeDeletionExtPoint} instead.
  */
+@Deprecated
 public interface VolumeDeletionExtensionPoint {
     void preDeleteVolume(VolumeInventory volume);
 

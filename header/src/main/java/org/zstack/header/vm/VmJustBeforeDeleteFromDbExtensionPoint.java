@@ -1,8 +1,9 @@
 package org.zstack.header.vm;
 
 /**
- * Created by xing5 on 2017/6/26.
+ * @deprecated Use {@link org.zstack.header.vm.extensions.VmDbDeleteContext} with a single-phase extension point instead.
  */
+@Deprecated
 public interface VmJustBeforeDeleteFromDbExtensionPoint {
     void vmJustBeforeDeleteFromDb(VmInstanceInventory inv);
 }
