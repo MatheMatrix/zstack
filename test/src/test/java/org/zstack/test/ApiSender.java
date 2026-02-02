@@ -44,7 +44,7 @@ public class ApiSender {
     private <T extends APIEvent> T doSend(final APIMessage msg, Class<? extends APIEvent> clazz, boolean exceptionOnError) throws ApiSenderException {
         APIEvent resultEvent;
         try {
-            resultEvent = clazz.newInstance();
+            resultEvent = clazz.getConstructor().newInstance();
         } catch (Exception e) {
             throw new CloudRuntimeException("Unable to create instance of " + clazz.getCanonicalName(), e);
         }

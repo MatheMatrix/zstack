@@ -118,7 +118,7 @@ public class Deployer {
         for (BeanDefinition bd : scanner.findCandidateComponents("org.zstack.test")) {
             try {
                 Class<?> clazz = Class.forName(bd.getBeanClassName());
-                AbstractDeployer d = (AbstractDeployer) clazz.newInstance();
+                AbstractDeployer d = (AbstractDeployer) clazz.getConstructor().newInstance();
                 deployers.put(d.getSupportedDeployerClassType(), d);
                 logger.debug(String.format("Scanned a deployer[%s] supporting %s", d.getClass().getName(), d.getSupportedDeployerClassType()));
             } catch (Exception e) {

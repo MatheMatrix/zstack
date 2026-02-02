@@ -11,34 +11,76 @@
 
     <build>
         <plugins>
+            <!-- 标准Java编译器 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${project.compiler.version}</version>
                 <configuration>
-                    <compilerId>groovy-eclipse-compiler</compilerId>
-                    <source>${project.java.version}</source>
-                    <target>${project.java.version}</target>
-                    <debuglevel>lines,vars,source</debuglevel>
+                    <release>${project.java.version}</release>
                     <debug>true</debug>
+                    <parameters>true</parameters>
                 </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy-eclipse-compiler</artifactId>
-                        <version>${groovy.eclipse.compiler}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy-eclipse-batch</artifactId>
-                        <version>${groovy.eclipse.batch}</version>
-                    </dependency>
-                </dependencies>
             </plugin>
+
+            <!-- GMavenPlus 用于编译 Groovy 源码（例如 header/zql/ASTNode.groovy） -->
+            <!-- 注意：generateStubs 必须在 process-sources phase 运行，确保 Java 编译器能看到 Groovy 类的 stub -->
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+                <version>4.2.1</version>
+                <executions>
+                    <!-- 在 process-sources phase 生成 Groovy stub，供 Java 编译器使用 -->
+                    <execution>
+                        <id>generate-stubs</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>generateStubs</goal>
+                        </goals>
+                    </execution>
+                    <!-- 在 compile phase 编译 Groovy 代码 -->
+                    <execution>
+                        <id>compile-groovy</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                    <!-- 在 process-test-sources phase 生成测试 Groovy stub -->
+                    <execution>
+                        <id>generate-test-stubs</id>
+                        <phase>process-test-sources</phase>
+                        <goals>
+                            <goal>generateTestStubs</goal>
+                        </goals>
+                    </execution>
+                    <!-- 在 test-compile phase 编译测试 Groovy 代码 -->
+                    <execution>
+                        <id>compile-test-groovy</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>compileTests</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <groovyVersion>${groovy.version}</groovyVersion>
+                    <targetBytecode>${project.java.version}</targetBytecode>
+                </configuration>
+            </plugin>
+
+            <!-- AspectJ Maven Plugin (org.codehaus.mojo) for Java 17 -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>aspectj-maven-plugin</artifactId>
                 <version>${aspectj.plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.aspectj</groupId>
+                        <artifactId>aspectjtools</artifactId>
+                        <version>${aspectj.version}</version>
+                    </dependency>
+                </dependencies>
                 <executions>
                     <execution>
                         <goals>
@@ -47,13 +89,13 @@
                         </goals>
                     </execution>
                 </executions>
-
                 <configuration>
                     <complianceLevel>${project.java.version}</complianceLevel>
                     <source>${project.java.version}</source>
                     <target>${project.java.version}</target>
-                    <XnoInline>true</XnoInline>
-                    <verbose>true</verbose>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <showWeaveInfo>true</showWeaveInfo>
+                    <proc>none</proc>
                     <aspectLibraries>
                         <aspectLibrary>
                             <groupId>org.springframework</groupId>
@@ -66,6 +108,12 @@
     </build>
 
     <dependencies>
+        <dependency>
+            <groupId>org.apache.groovy</groupId>
+            <artifactId>groovy</artifactId>
+            <version>${groovy.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.hibernate.javax.persistence</groupId>
             <artifactId>hibernate-jpa-2.1-api</artifactId>

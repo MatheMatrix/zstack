@@ -10,6 +10,22 @@
     <artifactId>core</artifactId>
     <name>core</name>
     <description>core library for zstack</description>
+
+    <pluginRepositories>
+        <!-- Maven Central Plugin Repository 作为备用，确保 dev.aspectj 插件可下载 -->
+        <pluginRepository>
+            <id>central</id>
+            <name>Maven Central Plugin Repository</name>
+            <url>https://repo1.maven.org/maven2</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
+
     <dependencies>
         <dependency>
             <groupId>org.zstack</groupId>
@@ -20,6 +36,32 @@
             <groupId>org.zstack</groupId>
             <artifactId>header</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <!-- 插件抽象定义（PluginDriver / PluginValidator 等），core 直接使用 -->
+        <dependency>
+            <groupId>org.zstack</groupId>
+            <artifactId>abstraction</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Jackson 用于 UpgradeChecker 等 JSON 解析 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+
+        <!-- RabbitMQ 客户端 (CloudBusImpl2 / MessageTracker 等) -->
+        <dependency>
+            <groupId>com.rabbitmq</groupId>
+            <artifactId>amqp-client</artifactId>
         </dependency>
         <dependency>
               <groupId>org.quartz-scheduler</groupId>
@@ -201,29 +243,24 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${project.compiler.version}</version>
                 <configuration>
-                    <compilerId>groovy-eclipse-compiler</compilerId>
-                    <source>${project.java.version}</source>
-                    <target>${project.java.version}</target>
-                    <debuglevel>lines,vars,source</debuglevel>
+                    <release>${project.java.version}</release>
                     <debug>true</debug>
+                    <parameters>true</parameters>
                 </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy-eclipse-compiler</artifactId>
-                        <version>${groovy.eclipse.compiler}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy-eclipse-batch</artifactId>
-                        <version>${groovy.eclipse.batch}</version>
-                    </dependency>
-                </dependencies>
             </plugin>
+
+            <!-- AspectJ Maven Plugin (org.codehaus.mojo) for Java 17 -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>aspectj-maven-plugin</artifactId>
                 <version>${aspectj.plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.aspectj</groupId>
+                        <artifactId>aspectjtools</artifactId>
+                        <version>${aspectj.version}</version>
+                    </dependency>
+                </dependencies>
                 <executions>
                     <execution>
                         <goals>
@@ -233,10 +270,12 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <source>${project.java.version}</source>
                     <complianceLevel>${project.java.version}</complianceLevel>
+                    <source>${project.java.version}</source>
                     <target>${project.java.version}</target>
-                    <XnoInline>true</XnoInline>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <showWeaveInfo>true</showWeaveInfo>
+                    <proc>none</proc>
                     <aspectLibraries>
                         <aspectLibrary>
                             <groupId>org.springframework</groupId>

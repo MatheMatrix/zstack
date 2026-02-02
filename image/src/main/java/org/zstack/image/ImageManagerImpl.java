@@ -75,7 +75,6 @@ import org.zstack.zql.ZQL;
 
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
-import javax.xml.ws.ResponseWrapper;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.Timestamp;

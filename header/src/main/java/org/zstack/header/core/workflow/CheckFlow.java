@@ -15,7 +15,7 @@ public abstract class CheckFlow implements Flow {
     @Override
     public void run(FlowTrigger trigger, Map data) {
         try {
-            targetFlow = getTargetFlow().newInstance();
+            targetFlow = getTargetFlow().getConstructor().newInstance();
         } catch (Exception e){
             throw new RuntimeException(e);
         }

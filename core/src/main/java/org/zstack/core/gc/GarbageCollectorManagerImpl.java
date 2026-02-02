@@ -181,15 +181,15 @@ public class GarbageCollectorManagerImpl extends AbstractService
             GarbageCollector ret = null;
             Class clz = Class.forName(vo.getRunnerClass());
             if (vo.getType().equals(GarbageCollectorType.EventBased.toString())) {
-                EventBasedGarbageCollector gc = (EventBasedGarbageCollector) clz.newInstance();
+                EventBasedGarbageCollector gc = (EventBasedGarbageCollector) clz.getConstructor().newInstance();
                 gc.load(vo);
                 ret = gc;
             } else if (vo.getType().equals(GarbageCollectorType.TimeBased.toString())) {
-                TimeBasedGarbageCollector gc = (TimeBasedGarbageCollector) clz.newInstance();
+                TimeBasedGarbageCollector gc = (TimeBasedGarbageCollector) clz.getConstructor().newInstance();
                 gc.load(vo);
                 ret = gc;
             } else if (vo.getType().equals(GarbageCollectorType.CycleBased.toString())) {
-                TimeBasedGarbageCollector gc = (TimeBasedGarbageCollector) clz.newInstance();
+                TimeBasedGarbageCollector gc = (TimeBasedGarbageCollector) clz.getConstructor().newInstance();
                 gc.load(vo);
                 ret = gc;
             } else {

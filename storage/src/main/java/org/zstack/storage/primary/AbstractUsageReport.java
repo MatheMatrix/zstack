@@ -354,8 +354,8 @@ public abstract class AbstractUsageReport<T extends PrimaryStorageHistoricalUsag
         IntStream.range(1, (int) days).forEach(i -> {
             T vo;
             try {
-                vo = usageClass.newInstance();
-            } catch (InstantiationException | IllegalAccessException e) {
+                vo = usageClass.getConstructor().newInstance();
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
 
@@ -444,8 +444,8 @@ public abstract class AbstractUsageReport<T extends PrimaryStorageHistoricalUsag
             if (usageRecordedNotInDatabase(usage.getResourceUuid(), nowRecordDate, historicalLastUsageRecordDateMap)) {
                 T vo;
                 try {
-                    vo = usageClass.newInstance();
-                } catch (InstantiationException | IllegalAccessException e) {
+                    vo = usageClass.getConstructor().newInstance();
+                } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
                 vo.setPrimaryStorageUuid(usage.getPrimaryStorageUuid());

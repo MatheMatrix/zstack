@@ -20,7 +20,13 @@ buildClassPath() {
 }
 
 run() {
-	javaOptitons="-Xdebug -Xms256m -Xmx512m -XX:+HeapDumpOnOutOfMemoryError -Xrunjdwp:transport=dt_socket,address=8787,server=y,suspend=y"
+    # 加载Java 17 JVM参数
+    jvmOptionsFile="$confDir/jvm-options-java17.conf"
+    jvmOptions=""
+    if [ -f "$jvmOptionsFile" ]; then
+        jvmOptions=$(cat "$jvmOptionsFile" | grep -v '^#' | tr '\n' ' ')
+    fi
+    javaOptitons="$jvmOptions -Xdebug -Xms256m -Xmx512m -XX:+HeapDumpOnOutOfMemoryError -Xrunjdwp:transport=dt_socket,address=8787,server=y,suspend=y"
     java $javaOptions -cp $classPath org.zstack.portal.main.Main "$@"
 }
 

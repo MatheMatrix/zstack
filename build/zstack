@@ -20,7 +20,13 @@ buildClassPath() {
 }
 
 run() {
-    java -cp $classPath org.zstack.portal.main.Main "$@"
+    # 加载Java 17 JVM参数
+    jvmOptionsFile="$confDir/jvm-options-java17.conf"
+    jvmOptions=""
+    if [ -f "$jvmOptionsFile" ]; then
+        jvmOptions=$(cat "$jvmOptionsFile" | grep -v '^#' | tr '\n' ' ')
+    fi
+    java $jvmOptions -cp $classPath org.zstack.portal.main.Main "$@"
 }
 
 main() {

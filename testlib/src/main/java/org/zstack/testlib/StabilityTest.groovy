@@ -117,7 +117,7 @@ abstract class StabilityTest extends Test implements Case{
     }
 
     protected Case buildCase(String caseName) {
-        Case subCase = Class.forName(caseName).newInstance() as Case
+        Case subCase = Class.forName(caseName).getConstructor().newInstance() as Case
         def resultDir = [getResultDirBase(), getFailureLogsDirName()].join("/")
         def dir = new File(resultDir)
         dir.deleteDir()

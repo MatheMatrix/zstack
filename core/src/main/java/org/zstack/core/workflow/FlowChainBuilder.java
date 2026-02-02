@@ -24,7 +24,7 @@ public class FlowChainBuilder {
                 for (Object name : flowClassNames) {
                     String className = (String) name;
                     Class<Flow> clazz = (Class<Flow>) Class.forName(className);
-                    Flow flow = clazz.newInstance();
+                    Flow flow = clazz.getConstructor().newInstance();
                     flows.add(flow);
                 }
             }

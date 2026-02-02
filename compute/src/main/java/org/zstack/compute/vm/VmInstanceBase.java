@@ -956,7 +956,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                 HaStartVmJudger judger;
                 try {
                     Class clz = Class.forName(msg.getJudgerClassName());
-                    judger = (HaStartVmJudger) clz.newInstance();
+                    judger = (HaStartVmJudger) clz.getConstructor().newInstance();
                 } catch (Exception e) {
                     throw new CloudRuntimeException(e);
                 }

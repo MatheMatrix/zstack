@@ -25,6 +25,12 @@
 -->
 
     <dependencies>
+        <!-- 显式引入 Groovy 4，避免 gmavenplus 从 groovy-sandbox 的传递依赖里解析到 2.x 导致 targetBytecode 17 校验失败 -->
+        <dependency>
+            <groupId>org.apache.groovy</groupId>
+            <artifactId>groovy</artifactId>
+            <version>${groovy.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.kohsuke</groupId>
             <artifactId>groovy-sandbox</artifactId>
@@ -504,47 +510,128 @@
                 </configuration>
             </plugin>
 
+            <!-- 把 src/test/groovy 加入测试源码，让其中的 .java（如 FakeNeedReplyMessage）被 compiler:testCompile 编译，stub 才能解析 -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>add-test-source</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.basedir}/src/test/groovy</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- GMavenPlus 必须在 maven-compiler-plugin 之前，保证 test-compile 阶段先编 Groovy 再编 Java，stub 才能解析到 Groovy 类 -->
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+                <version>4.2.1</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.groovy</groupId>
+                        <artifactId>groovy</artifactId>
+                        <version>${groovy.version}</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>generate-stubs</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>generateStubs</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>compile-groovy</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>generate-test-stubs</id>
+                        <phase>process-test-sources</phase>
+                        <goals>
+                            <goal>generateTestStubs</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>compile-test-groovy</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>compileTests</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <!-- fork 到独立 JVM 编译 Groovy，减轻 mvnd/test-premium 等大模块的内存压力 -->
+                    <fork>true</fork>
+                    <groovyVersion>${groovy.version}</groovyVersion>
+                    <targetBytecode>${project.java.version}</targetBytecode>
+                    <sources>
+                        <fileset>
+                            <directory>${project.basedir}/src/main/java</directory>
+                            <includes>
+                                <include>**/*.groovy</include>
+                            </includes>
+                        </fileset>
+                        <fileset>
+                            <directory>${project.basedir}/src/main/groovy</directory>
+                            <includes>
+                                <include>**/*.groovy</include>
+                            </includes>
+                        </fileset>
+                    </sources>
+                    <testSources>
+                        <fileset>
+                            <directory>${project.basedir}/src/test/java</directory>
+                            <includes>
+                                <include>**/*.groovy</include>
+                            </includes>
+                        </fileset>
+                        <fileset>
+                            <directory>${project.basedir}/src/test/groovy</directory>
+                            <includes>
+                                <include>**/*.groovy</include>
+                            </includes>
+                        </fileset>
+                    </testSources>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${project.compiler.version}</version>
                 <configuration>
-                    <source>${project.java.version}</source>
-                    <target>${project.java.version}</target>
+                    <release>${project.java.version}</release>
                     <debug>true</debug>
+                    <parameters>true</parameters>
                     <useIncrementalCompilation>false</useIncrementalCompilation>
                 </configuration>
-            </plugin>
-
-	    <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.6.1</version>
-                <configuration>
-                    <compilerId>groovy-eclipse-compiler</compilerId>
-                    <source>${project.java.version}</source>
-                    <target>${project.java.version}</target>
-		            <debuglevel>lines,vars,source</debuglevel>
-		            <debug>true</debug>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy-eclipse-compiler</artifactId>
-                        <version>2.9.2-01</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy-eclipse-batch</artifactId>
-                        <version>2.4.3-01</version>
-                    </dependency>
-                </dependencies>
             </plugin>
 
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>aspectj-maven-plugin</artifactId>
                 <version>${aspectj.plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.aspectj</groupId>
+                        <artifactId>aspectjtools</artifactId>
+                        <version>${aspectj.version}</version>
+                    </dependency>
+                </dependencies>
                 <executions>
                     <execution>
                         <goals>
@@ -554,10 +641,11 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <complianceLevel>${project.java.version}</complianceLevel>
                     <source>${project.java.version}</source>
                     <target>${project.java.version}</target>
-                    <complianceLevel>${project.java.version}</complianceLevel>
                     <XnoInline>true</XnoInline>
+                    <proc>none</proc>
                     <aspectLibraries>
                         <aspectLibrary>
                             <groupId>org.springframework</groupId>

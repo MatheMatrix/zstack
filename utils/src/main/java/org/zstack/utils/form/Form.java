@@ -172,7 +172,7 @@ public class Form<T> {
             throw new OutOfLimitException(String.format("objects count is too larger than limit[%d]", limit));
         }
 
-        T object = clz.newInstance();
+        T object = clz.getConstructor().newInstance();
         for (int i = 0; i < record.length; i++) {
             String key = columns[i];
             String value = record[i];

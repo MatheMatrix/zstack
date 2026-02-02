@@ -25,35 +25,44 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${project.compiler.version}</version>
                 <configuration>
-                    <compilerId>groovy-eclipse-compiler</compilerId>
-                    <source>${project.java.version}</source>
-                    <target>${project.java.version}</target>
-                    <debuglevel>lines,vars,source</debuglevel>
+                    <release>${project.java.version}</release>
                     <debug>true</debug>
+                    <parameters>true</parameters>
                 </configuration>
                 <dependencies>
-                    <dependency>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy-eclipse-compiler</artifactId>
-                        <version>${groovy.eclipse.compiler}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy-eclipse-batch</artifactId>
-                        <version>${groovy.eclipse.batch}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>com.jcraft</groupId>
-                        <artifactId>jsch</artifactId>
-                        <version>0.1.55</version>
-                    </dependency>
                 </dependencies>
 
             </plugin>
+            <!-- GMavenPlus 用于编译 src/main/java 下的 *Doc_zh_cn.groovy -->
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+                <version>4.2.1</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generateStubs</goal>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <groovyVersion>${groovy.version}</groovyVersion>
+                    <targetBytecode>${project.java.version}</targetBytecode>
+                </configuration>
+            </plugin>
+            <!-- AspectJ Maven Plugin (org.codehaus.mojo) for Java 17 -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>aspectj-maven-plugin</artifactId>
                 <version>${aspectj.plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.aspectj</groupId>
+                        <artifactId>aspectjtools</artifactId>
+                        <version>${aspectj.version}</version>
+                    </dependency>
+                </dependencies>
                 <executions>
                     <execution>
                         <goals>
@@ -63,10 +72,12 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <complianceLevel>${project.java.version}</complianceLevel>
                     <source>${project.java.version}</source>
                     <target>${project.java.version}</target>
-                    <complianceLevel>${project.java.version}</complianceLevel>
-                    <XnoInline>true</XnoInline>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <showWeaveInfo>true</showWeaveInfo>
+                    
                     <aspectLibraries>
                         <aspectLibrary>
                             <groupId>org.springframework</groupId>

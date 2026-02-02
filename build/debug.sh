@@ -8,10 +8,17 @@ conf_dir=$zstack_dir/conf
 classpath=
 is_suspend="$1"
 
+# 加载Java 17 JVM参数
+jvm_options_file="$conf_dir/jvm-options-java17.conf"
+jvm_options=""
+if [ -f "$jvm_options_file" ]; then
+    jvm_options=$(cat "$jvm_options_file" | grep -v '^#' | tr '\n' ' ')
+fi
+
 if [ x"$is_suspend" == x"true" ]; then
-    java_optitons="-Xdebug -Xms256m -Xmx512m -XX:+HeapDumpOnOutOfMemoryError -Xrunjdwp:transport=dt_socket,address=8787,server=y,suspend=y"
+    java_optitons="$jvm_options -Xdebug -Xms256m -Xmx512m -XX:+HeapDumpOnOutOfMemoryError -Xrunjdwp:transport=dt_socket,address=8787,server=y,suspend=y"
 else
-    java_optitons="-Xdebug -Xms256m -Xmx512m -XX:+HeapDumpOnOutOfMemoryError -Xrunjdwp:transport=dt_socket,address=8787,server=y,suspend=n"
+    java_optitons="$jvm_options -Xdebug -Xms256m -Xmx512m -XX:+HeapDumpOnOutOfMemoryError -Xrunjdwp:transport=dt_socket,address=8787,server=y,suspend=n"
 fi
 
 

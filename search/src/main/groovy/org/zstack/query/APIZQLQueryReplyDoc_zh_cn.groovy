@@ -30,3 +30,4 @@ doc {
 		clz ZQLQueryReturn.class
 	}
 }
+

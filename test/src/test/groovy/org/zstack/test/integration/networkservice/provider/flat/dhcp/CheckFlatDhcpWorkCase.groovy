@@ -258,14 +258,14 @@ class CheckFlatDhcpWorkCase extends SubCase{
         }
         assert flushCmds.size() == 2
         flushCmds.clear()
-        l31 = queryL3Network{ conditions = ["uuid=${l31.uuid}"]}[0]
-        for (NetworkServiceL3NetworkRefInventory ref : l31.networkServices) {
+        def l31Refreshed = queryL3Network{ conditions = ["uuid=${l31.uuid}"]}[0]
+        for (NetworkServiceL3NetworkRefInventory ref : l31Refreshed.networkServices) {
             if (ref.networkServiceType == "DHCP") {
                 assert false
             }
         }
         GetL3NetworkDhcpIpAddressResult ret = getL3NetworkDhcpIpAddress {
-            l3NetworkUuid = l31.uuid
+            l3NetworkUuid = l31Refreshed.uuid
         }
         assert ret.ip6 == null
         assert ret.ip == null
@@ -283,19 +283,19 @@ class CheckFlatDhcpWorkCase extends SubCase{
         }
         assert bCmds.size() == 2
         bCmds.clear()
-        l31 = queryL3Network{ conditions = ["uuid=${l31.uuid}"]}[0]
-        List<String> services = l31.networkServices.stream().map {ref -> ref.networkServiceType}.collect(Collectors.toList())
+        def l31Refreshed2 = queryL3Network{ conditions = ["uuid=${l31.uuid}"]}[0]
+        List<String> services = l31Refreshed2.networkServices.stream().map {ref -> ref.networkServiceType}.collect(Collectors.toList())
         assert services.contains("DHCP")
 
         detachNetworkServiceFromL3Network {
-            l3NetworkUuid = l31.uuid
+            l3NetworkUuid = l31Refreshed2.uuid
             service = 'DHCP'
         }
 
         /* dhcp is disabled, can not change dhcp server ip */
         expect(AssertionError.class) {
             changeL3NetworkDhcpIpAddress {
-                l3NetworkUuid = l31.uuid
+                l3NetworkUuid = l31Refreshed2.uuid
                 dhcpServerIp = "172.16.10.10"
             }
         }
@@ -380,14 +380,14 @@ class CheckFlatDhcpWorkCase extends SubCase{
         }
         assert flushCmds.size() == 2
         flushCmds.clear()
-        l32 = queryL3Network{ conditions = ["uuid=${l32.uuid}"]}[0]
-        for (NetworkServiceL3NetworkRefInventory ref : l32.networkServices) {
+        def l32Refreshed = queryL3Network{ conditions = ["uuid=${l32.uuid}"]}[0]
+        for (NetworkServiceL3NetworkRefInventory ref : l32Refreshed.networkServices) {
             if (ref.networkServiceType == "DHCP") {
                 assert false
             }
         }
         GetL3NetworkDhcpIpAddressResult ret = getL3NetworkDhcpIpAddress {
-            l3NetworkUuid = l32.uuid
+            l3NetworkUuid = l32Refreshed.uuid
         }
         assert ret.ip6 == null
         assert ret.ip == null
@@ -405,29 +405,29 @@ class CheckFlatDhcpWorkCase extends SubCase{
         }
         assert bCmds.size() == 2
         bCmds.clear()
-        l32 = queryL3Network{ conditions = ["uuid=${l32.uuid}"]}[0]
-        List<String> services = l32.networkServices.stream().map {ref -> ref.networkServiceType}.collect(Collectors.toList())
+        def l32Refreshed2 = queryL3Network{ conditions = ["uuid=${l32.uuid}"]}[0]
+        List<String> services = l32Refreshed2.networkServices.stream().map {ref -> ref.networkServiceType}.collect(Collectors.toList())
         assert services.contains("DHCP")
 
-        UsedIpInventory usedIp4 = queryIpAddress {conditions=["l3NetworkUuid=${l32.uuid}", "ipVersion=4"]
+        UsedIpInventory usedIp4 = queryIpAddress {conditions=["l3NetworkUuid=${l32Refreshed2.uuid}", "ipVersion=4"]
             limit = 1} [0]
-        UsedIpInventory usedIp6 = queryIpAddress {conditions=["l3NetworkUuid=${l32.uuid}", "ipVersion=6"]
+        UsedIpInventory usedIp6 = queryIpAddress {conditions=["l3NetworkUuid=${l32Refreshed2.uuid}", "ipVersion=6"]
             limit = 1} [0]
         expect(AssertionError.class) {
             changeL3NetworkDhcpIpAddress {
-                l3NetworkUuid = l32.uuid
+                l3NetworkUuid = l32Refreshed2.uuid
                 dhcpServerIp = usedIp4.ip
             }
         }
         expect(AssertionError.class) {
             changeL3NetworkDhcpIpAddress {
-                l3NetworkUuid = l32.uuid
+                l3NetworkUuid = l32Refreshed2.uuid
                 dhcpServerIp = usedIp6.ip
             }
         }
 
         def freeIp6s = getFreeIp {
-            l3NetworkUuid = l32.getUuid()
+            l3NetworkUuid = l32Refreshed2.getUuid()
             ipVersion = IPv6Constants.IPv6
             limit = 1
         } as List<FreeIpInventory>

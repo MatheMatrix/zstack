@@ -1,5 +1,7 @@
 package org.zstack.portal.managementnode;
 
+// Note: sun.misc.Signal requires --add-exports java.base/sun.misc=ALL-UNNAMED JVM option in Java 17+
+// This is configured in conf/jvm-options-java17.conf
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 

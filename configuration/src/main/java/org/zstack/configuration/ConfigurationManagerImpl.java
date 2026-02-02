@@ -452,7 +452,7 @@ public class ConfigurationManagerImpl extends AbstractService implements Configu
         sb.append(String.format("\n\n%sdef fullName() { return '%s' }", whiteSpace(4), clazz.getName()));
         if (APIEvent.class.isAssignableFrom(clazz) && !Modifier.isAbstract(clazz.getModifiers())) {
             try {
-                APIEvent evt = (APIEvent) clazz.newInstance();
+                APIEvent evt = (APIEvent) clazz.getConstructor().newInstance();
                 sb.append(String.format("\n%sdef eventType() { return '%s' }", whiteSpace(4), evt.getType().toString()));
             } catch (Exception e) {
                 throw new CloudRuntimeException(String.format("cannot generate event type for %s", clazz.getName()), e);

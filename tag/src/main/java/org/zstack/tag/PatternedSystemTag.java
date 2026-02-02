@@ -127,9 +127,9 @@ public class PatternedSystemTag extends SystemTag {
         Class<? extends SensitiveTagOutputHandler> clz = this.annotation.customizeOutput();
         String result = tag;
         try {
-            SensitiveTagOutputHandler sensitiveOutputHandler = clz.newInstance();
+            SensitiveTagOutputHandler sensitiveOutputHandler = clz.getConstructor().newInstance();
             result = sensitiveOutputHandler.desensitizeTag(this, tag);
-        } catch (InstantiationException | IllegalAccessException e) {
+        } catch (Exception e) {
             logger.warn("exception happened :", e);
         }
         return result;

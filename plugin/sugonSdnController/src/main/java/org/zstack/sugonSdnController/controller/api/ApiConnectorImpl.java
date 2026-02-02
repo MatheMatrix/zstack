@@ -558,7 +558,7 @@ class ApiConnectorImpl implements ApiConnector {
             name_list.addAll(parent.getQualifiedName());
         } else {
             try {
-                name_list.addAll(cls.newInstance().getDefaultParent());
+                name_list.addAll(cls.getConstructor().newInstance().getDefaultParent());
             } catch (Exception ex) {
                 // Instantiation or IllegalAccess
                 s_logger.error("Failed to instantiate object of class " + cls.getName(), ex);

@@ -499,7 +499,7 @@ clear_git_config() {
 
 run_profile() {
   if test x$1 = x'premium'; then
-    mvn -Dmaven.test.skip=true -P premium clean install
+    mvn -Dmaven.test.skip=true -T 1C -P premium clean install
   elif test x$1 = x'md'; then
     md
   elif test x$1 = x'sdk'; then

@@ -37,7 +37,7 @@ public class JSONObjectUtil {
             if (collections.isInterface()) {
                 throw new IllegalArgumentException(String.format("collections must be a concrete class, not interface[%s]", collections.getName()));
             }
-            Collection c = collections.newInstance();
+            Collection c = collections.getConstructor().newInstance();
             JSONArray jarr = new JSONArray(content);
             for (int i=0; i<jarr.length(); i++) {
                 String objstr = jarr.get(i).toString();

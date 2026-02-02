@@ -670,7 +670,7 @@ public class DatabaseFacadeImpl implements DatabaseFacade, Component {
             if (id == null) {
                 throw new CloudRuntimeException(String.format("sequence VO[%s] must have 'id' field", seqTable.getName()));
             }
-            Object vo = seqTable.newInstance();
+            Object vo = seqTable.getConstructor().newInstance();
             vo = persistAndRefresh(vo);
             id.setAccessible(true);
             return (Long) id.get(vo);

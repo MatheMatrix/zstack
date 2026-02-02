@@ -144,7 +144,7 @@ public class ValueVisitor extends ZQLBaseVisitor<ASTNode.Value> {
         String apiName = "org.zstack.sdk." + apiStr + "Action";
         logger.debug(String.format("start to call sdk: %s, params: %s", apiName, JSONObjectUtil.toJsonString(params)));
         try {
-            Object action = Class.forName(apiName).newInstance();
+            Object action = Class.forName(apiName).getConstructor().newInstance();
             params.forEach((k, v) -> {
                 setField(action, k, v);
             });

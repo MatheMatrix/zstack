@@ -10,6 +10,7 @@ import org.zstack.utils.ObjectUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Set;
@@ -50,8 +51,8 @@ public class LongJobFactoryImpl implements LongJobFactory, Component {
         for (Class it : longJobClasses) {
             LongJobFor at = (LongJobFor) it.getAnnotation(LongJobFor.class);
             try {
-                job = (LongJob) it.newInstance();
-            } catch (InstantiationException | IllegalAccessException e) {
+                job = (LongJob) it.getConstructor().newInstance();
+            } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
                 e.printStackTrace();
             }
             if (null == job) {

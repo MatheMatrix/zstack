@@ -449,7 +449,7 @@ public class ApiConnectorMock implements ApiConnector {
             name_list.addAll(parent.getQualifiedName());
         } else {
             try {
-                name_list.addAll(cls.newInstance().getDefaultParent());
+                name_list.addAll(cls.getConstructor().newInstance().getDefaultParent());
             } catch (Exception e) {
                 s_logger.warn(e.getMessage());
             }

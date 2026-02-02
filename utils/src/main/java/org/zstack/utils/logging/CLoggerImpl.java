@@ -30,7 +30,7 @@ public class CLoggerImpl implements CLogger {
     private MessageFactory buildMessageFactory(Function<String, String> rewriter) {
         try {
             return new MessageFactory() {
-                MessageFactory defaultFactory = AbstractLogger.DEFAULT_MESSAGE_FACTORY_CLASS.newInstance();
+                MessageFactory defaultFactory = AbstractLogger.DEFAULT_MESSAGE_FACTORY_CLASS.getConstructor().newInstance();
 
                 @Override
                 public org.apache.logging.log4j.message.Message newMessage(Object message) {

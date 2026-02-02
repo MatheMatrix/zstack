@@ -426,7 +426,7 @@ public class AccountManagerImpl extends AbstractService implements AccountManage
         for (String apiName : msg.getApiNames()) {
             try {
                 Class apiClass = Class.forName(apiName);
-                APIMessage api = (APIMessage) apiClass.newInstance();
+                APIMessage api = (APIMessage) apiClass.getConstructor().newInstance();
                 api.setSession(session);
 
                 try {

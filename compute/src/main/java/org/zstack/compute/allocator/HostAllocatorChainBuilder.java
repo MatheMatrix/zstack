@@ -43,7 +43,7 @@ public class HostAllocatorChainBuilder {
         List<AbstractHostAllocatorFlow> flows = new ArrayList<AbstractHostAllocatorFlow>();
         try {
             for (Class flowClass : classes) {
-                flows.add((AbstractHostAllocatorFlow) flowClass.newInstance());
+                flows.add((AbstractHostAllocatorFlow) flowClass.getConstructor().newInstance());
             }
         } catch (Exception e) {
             throw new CloudRuntimeException(e);
@@ -54,9 +54,9 @@ public class HostAllocatorChainBuilder {
     private List<AbstractHostSortorFlow> buildSortFlows() {
         List<AbstractHostSortorFlow> flows = new ArrayList<>();
         try {
-            flows.add(RandomSortFlow.class.newInstance());
+            flows.add(RandomSortFlow.class.getConstructor().newInstance());
             for (Class flowClass : classes) {
-                flows.add((AbstractHostSortorFlow) flowClass.newInstance());
+                flows.add((AbstractHostSortorFlow) flowClass.getConstructor().newInstance());
             }
         } catch (Exception e) {
             throw new CloudRuntimeException(e);

@@ -55,7 +55,7 @@ public class ObjectUtils {
         }
 
         try {
-            T dst = dstClass.newInstance();
+            T dst = dstClass.getConstructor().newInstance();
             org.springframework.beans.BeanUtils.copyProperties(src, dst);
             return dst;
         } catch (Exception e) {

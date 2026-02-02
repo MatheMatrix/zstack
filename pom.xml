@@ -5,19 +5,30 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
         </dependency>
+
+        <!-- Java 17 里不再内置 javax.annotation，显式依赖到所有子模块 -->
+        <dependency>
+            <groupId>javax.annotation</groupId>
+            <artifactId>javax.annotation-api</artifactId>
+        </dependency>
     </dependencies>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.compiler.version>3.6.1</project.compiler.version>
-        <project.java.version>1.8</project.java.version>
+        <project.java.version>17</project.java.version>
         <spring.framework.version>5.2.25.RELEASE</spring.framework.version>
         <spring.security.version>5.7.13</spring.security.version>
-        <hibernate.version>5.3.26.Final</hibernate.version>
-        <aspectj.version>1.8.9</aspectj.version>
-        <aspectj.plugin.version>1.10</aspectj.plugin.version>
-        <groovy.eclipse.compiler>2.9.2-01</groovy.eclipse.compiler>
-        <groovy.eclipse.batch>2.4.3-01</groovy.eclipse.batch>
+        <hibernate.version>5.6.15.Final</hibernate.version>
+        <aspectj.version>1.9.21</aspectj.version>
+        <aspectj.plugin.version>1.16.0</aspectj.plugin.version>
+        <groovy.version>4.0.15</groovy.version>
+        <groovy.eclipse.compiler>3.9.0</groovy.eclipse.compiler>
+        <groovy.eclipse.batch>4.0.15-01</groovy.eclipse.batch>
         <hibernate.search.version>5.10.12.Final</hibernate.search.version>
+        <!-- Java 17 兼容性依赖版本 -->
+        <jaxb.api.version>2.3.1</jaxb.api.version>
+        <jaxb.runtime.version>2.3.6</jaxb.runtime.version>
+        <javax.annotation.version>1.3.2</javax.annotation.version>
     </properties>
 
     <modelVersion>4.0.0</modelVersion>
@@ -131,9 +142,36 @@
                 <version>2.18.0</version>
             </dependency>
             <dependency>
-                <groupId>org.codehaus.groovy</groupId>
-                <artifactId>groovy-all</artifactId>
-                <version>2.4.21</version>
+                <groupId>org.apache.groovy</groupId>
+                <artifactId>groovy</artifactId>
+                <version>${groovy.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.groovy</groupId>
+                <artifactId>groovy-xml</artifactId>
+                <version>${groovy.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.groovy</groupId>
+                <artifactId>groovy-templates</artifactId>
+                <version>${groovy.version}</version>
+            </dependency>
+            <!-- JAXB API (Java 9+移除，89个文件依赖) -->
+            <dependency>
+                <groupId>javax.xml.bind</groupId>
+                <artifactId>jaxb-api</artifactId>
+                <version>${jaxb.api.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.jaxb</groupId>
+                <artifactId>jaxb-runtime</artifactId>
+                <version>${jaxb.runtime.version}</version>
+            </dependency>
+            <!-- javax.annotation (Java 9+移除) -->
+            <dependency>
+                <groupId>javax.annotation</groupId>
+                <artifactId>javax.annotation-api</artifactId>
+                <version>${javax.annotation.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.hibernate.javax.persistence</groupId>
@@ -295,7 +333,7 @@
             <dependency>
                 <groupId>com.mchange</groupId>
                 <artifactId>c3p0</artifactId>
-                <version>0.9.5.4</version>
+                <version>0.9.5.5</version>
             </dependency>
             <dependency>
                 <groupId>com.google.guava</groupId>
@@ -622,8 +660,114 @@
                     </docletArtifact>
                 </configuration>
             </plugin>
+            <!-- Java 17 兼容性验证插件 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.4.1</version>
+                <executions>
+                    <execution>
+                        <id>enforce-java17</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[17,18)</version>
+                                    <message>项目需要Java 17，当前版本: ${java.version}</message>
+                                </requireJavaVersion>
+                                <requireMavenVersion>
+                                    <version>[3.6.0,)</version>
+                                </requireMavenVersion>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
+        <pluginManagement>
+            <plugins>
+                <!-- GMavenPlus 统一配置：确保 src/main/java 与 src/main/groovy 等目录下的 Groovy 均被编译 -->
+                <plugin>
+                    <groupId>org.codehaus.gmavenplus</groupId>
+                    <artifactId>gmavenplus-plugin</artifactId>
+                    <version>4.2.1</version>
+                    <dependencies>
+                        <!-- 显式使用 Groovy 4.x，满足 targetBytecode 17 的版本校验（需 3.0.8+） -->
+                        <dependency>
+                            <groupId>org.apache.groovy</groupId>
+                            <artifactId>groovy</artifactId>
+                            <version>${groovy.version}</version>
+                        </dependency>
+                    </dependencies>
+                    <configuration>
+                        <!-- fork 到独立 JVM 编译 Groovy，编译完成后子进程退出释放内存，减轻 mvnd daemon 压力 -->
+                        <fork>true</fork>
+                        <sources>
+                            <fileset>
+                                <directory>${project.basedir}/src/main/java</directory>
+                                <includes>
+                                    <include>**/*.groovy</include>
+                                </includes>
+                            </fileset>
+                            <fileset>
+                                <directory>${project.basedir}/src/main/groovy</directory>
+                                <includes>
+                                    <include>**/*.groovy</include>
+                                </includes>
+                            </fileset>
+                        </sources>
+                        <testSources>
+                            <fileset>
+                                <directory>${project.basedir}/src/test/java</directory>
+                                <includes>
+                                    <include>**/*.groovy</include>
+                                </includes>
+                            </fileset>
+                            <fileset>
+                                <directory>${project.basedir}/src/test/groovy</directory>
+                                <includes>
+                                    <include>**/*.groovy</include>
+                                </includes>
+                            </fileset>
+                        </testSources>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
+
+    <repositories>
+        <!-- Maven Central 作为备用，确保 dev.aspectj 等依赖可下载 -->
+        <repository>
+            <id>central</id>
+            <name>Maven Central Repository</name>
+            <url>https://repo1.maven.org/maven2</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <!-- Maven Central Plugin Repository 作为备用，确保 dev.aspectj 插件可下载 -->
+        <pluginRepository>
+            <id>central</id>
+            <name>Maven Central Plugin Repository</name>
+            <url>https://repo1.maven.org/maven2</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
 
     <distributionManagement>
         <repository>

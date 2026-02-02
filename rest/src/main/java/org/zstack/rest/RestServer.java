@@ -1118,7 +1118,7 @@ public class RestServer implements Component, CloudBusEventListener {
 
         APIMessage msg;
         if (parameter == null) {
-            msg = (APIMessage) api.apiClass.newInstance();
+            msg = (APIMessage) api.apiClass.getConstructor().newInstance();
         } else {
             for (Field f : api.apiClass.getDeclaredFields()) {
                 String fieldName = f.getName();
@@ -1253,7 +1253,7 @@ public class RestServer implements Component, CloudBusEventListener {
 
     private void handleQueryApi(Api api, SessionInventory session, HttpServletRequest req, HttpServletResponse rsp) throws IllegalAccessException, InstantiationException, RestException, IOException, NoSuchMethodException, InvocationTargetException {
         Map<String, String[]> vars = req.getParameterMap();
-        APIQueryMessage msg = (APIQueryMessage) api.apiClass.newInstance();
+        APIQueryMessage msg = (APIQueryMessage) api.apiClass.getConstructor().newInstance();
 
         if (session != null && session.isNoSessionEvaluation()) {
             msg.putHeaderEntry(IdentityByPassCheck.NoSessionEvaluation.toString(), true);

@@ -39,7 +39,7 @@ public class ESTuple {
             }
             String val = vals.get(name);
             if (val == null) {
-                Collection c = collections.newInstance();
+                Collection c = collections.getConstructor().newInstance();
                 return (K) c;
             }
             return (K) JSONObjectUtil.toCollection(val, collections, clazz);

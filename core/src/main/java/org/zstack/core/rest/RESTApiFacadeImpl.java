@@ -33,6 +33,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -104,7 +105,8 @@ public class RESTApiFacadeImpl extends AbstractService implements RESTApiFacade,
         }
     }
 
-    void init() throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+    void init() throws ClassNotFoundException, InstantiationException, IllegalAccessException,
+            NoSuchMethodException, InvocationTargetException {
         Set<APIEvent> boundEvents = new HashSet<APIEvent>(100);
         ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(true);
         scanner.resetFilters(false);
@@ -115,7 +117,7 @@ public class RESTApiFacadeImpl extends AbstractService implements RESTApiFacade,
                 if (clazz == APIEvent.class) {
                     continue;
                 }
-                APIEvent evt = (APIEvent) clazz.newInstance();
+                APIEvent evt = (APIEvent) clazz.getConstructor().newInstance();
                 boundEvents.add(evt);
             }
         }

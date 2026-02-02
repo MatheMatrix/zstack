@@ -45,6 +45,7 @@ import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.Tuple;
+import java.lang.reflect.InvocationTargetException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -1022,8 +1023,8 @@ public class LongJobManagerImpl extends AbstractService implements LongJobManage
 
     private long getMessageTimeout(Class<? extends APIMessage> clz) {
         try {
-            return timeoutMgr.getMessageTimeout(clz.newInstance());
-        } catch (InstantiationException | IllegalAccessException e) {
+            return timeoutMgr.getMessageTimeout(clz.getConstructor().newInstance());
+        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
             throw new CloudRuntimeException(e);
         }
     }

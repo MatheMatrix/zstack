@@ -19,7 +19,7 @@ public class GroovyUtils {
     public static <T> T newInstance(String scriptPath, ClassLoader parent) {
         try {
             Class clz = getClass(scriptPath, parent);
-            return (T)clz.newInstance();
+            return (T) clz.getConstructor().newInstance();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

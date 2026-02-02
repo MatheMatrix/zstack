@@ -1065,11 +1065,11 @@ mysqldump -u root zstack > ${failureLogDir.absolutePath}/dbdump.sql
     StartMode getStabilityTestStartMode() {
         String targetCaseList = System.getProperty(targetSubCaseParamKey)
         List<String> caseClassNameList = targetCaseList.split(",")
-        def count = caseClassNameList.stream().map { it -> Class.forName(it).newInstance().getCaseMode() }.distinct().count()
+        def count = caseClassNameList.stream().map { it -> Class.forName(it).getConstructor().newInstance().getCaseMode() }.distinct().count()
         if (count != 1) {
             throw new Exception("All cases in the case list should use the same mode")
         }
-        return Class.forName(caseClassNameList[0]).newInstance().getCaseMode()
+        return Class.forName(caseClassNameList[0]).getConstructor().newInstance().getCaseMode()
     }
 
     StartMode getCaseMode() {

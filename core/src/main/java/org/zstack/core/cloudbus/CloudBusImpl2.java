@@ -685,7 +685,7 @@ public class CloudBusImpl2 implements CloudBus, CloudBusIN, ManagementNodeChange
 
                 String msgName = (String) msgObj.keySet().iterator().next();
                 Class msgClass = Class.forName(msgName);
-                Message msgInstance = (Message) msgClass.newInstance();
+                Message msgInstance = (Message) msgClass.getConstructor().newInstance();
                 msgInstance.setHeaders(headers);
                 msgInstance.setId((String) msg.get("id"));
                 replyErrorByMessageType(msgInstance, argerr(ORG_ZSTACK_CORE_CLOUDBUS_10021, "message is not in corrected JSON mediaType, %s", errMsg));
