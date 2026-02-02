@@ -61,14 +61,6 @@ public class MdevDeviceSpecInventory  {
         return this.vendor;
     }
 
-    public java.lang.String allocatorStrategy;
-    public void setAllocatorStrategy(java.lang.String allocatorStrategy) {
-        this.allocatorStrategy = allocatorStrategy;
-    }
-    public java.lang.String getAllocatorStrategy() {
-        return this.allocatorStrategy;
-    }
-
     public java.sql.Timestamp createDate;
     public void setCreateDate(java.sql.Timestamp createDate) {
         this.createDate = createDate;
