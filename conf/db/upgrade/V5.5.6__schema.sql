@@ -119,3 +119,20 @@ CALL ADD_COLUMN('MdevDeviceSpecVO', 'allocatorStrategy', 'varchar(32)', 1, NULL)
 
 UPDATE `zstack`.`GpuDeviceSpecVO` SET `allocatorStrategy` = 'FollowGlobal' WHERE `allocatorStrategy` IS NULL;
 UPDATE `zstack`.`MdevDeviceSpecVO` SET `allocatorStrategy` = 'FollowGlobal' WHERE `allocatorStrategy` IS NULL;
+
+-- ZSTAC-81171: VPC路由器CPU报警切换为外部监控
+-- 更新一键报警模板
+UPDATE `zstack`.`ActiveAlarmTemplateVO`
+SET `metricName` = 'CPUUsedUtilization'
+WHERE `uuid` = 'c9e6cdca107140bea62b4ca919ff9e88'
+  AND `metricName` = 'VRouterCPUAverageUsedUtilization';
+
+-- 更新由该模板创建的报警规则（通过 ActiveAlarmVO 关联）
+UPDATE `zstack`.`AlarmVO`
+SET `metricName` = 'CPUUsedUtilization'
+WHERE `uuid` IN (
+    SELECT `alarmUuid` FROM `zstack`.`ActiveAlarmVO`
+    WHERE `templateUuid` = 'c9e6cdca107140bea62b4ca919ff9e88'
+)
+AND `metricName` = 'VRouterCPUAverageUsedUtilization';
+
