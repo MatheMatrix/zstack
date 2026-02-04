@@ -119,3 +119,17 @@ CALL ADD_COLUMN('MdevDeviceSpecVO', 'allocatorStrategy', 'varchar(32)', 1, NULL)
 
 UPDATE `zstack`.`GpuDeviceSpecVO` SET `allocatorStrategy` = 'FollowGlobal' WHERE `allocatorStrategy` IS NULL;
 UPDATE `zstack`.`MdevDeviceSpecVO` SET `allocatorStrategy` = 'FollowGlobal' WHERE `allocatorStrategy` IS NULL;
+
+-- ZSTAC-81171: Migrate VPC Router CPU alarm from internal monitoring to external monitoring
+-- Step 1: Update ActiveAlarmTemplateVO (one-click alarm template)
+UPDATE `zstack`.`ActiveAlarmTemplateVO`
+SET `metricName` = 'CPUUsedUtilization'
+WHERE `uuid` = 'c9e6cdca107140bea62b4ca919ff9e88'
+  AND `metricName` = 'VRouterCPUAverageUsedUtilization';
+
+-- Step 2: Update AlarmVO created by the template (via ActiveAlarmVO relationship)
+UPDATE `zstack`.`AlarmVO` a
+INNER JOIN `zstack`.`ActiveAlarmVO` aa ON a.uuid = aa.alarmUuid
+SET a.`metricName` = 'CPUUsedUtilization'
+WHERE aa.`templateUuid` = 'c9e6cdca107140bea62b4ca919ff9e88'
+  AND a.`metricName` = 'VRouterCPUAverageUsedUtilization';
