@@ -34,6 +34,7 @@ public class HostCanonicalEvents {
     public static final String HOST_PING_SKIP = "/host/ping/skip";
     public static final String HOST_PING_CANCEL_SKIP = "/host/ping/cancel/skip";
     public static final String HOST_MULTIPATH_CONFIG_CHANGED = "/host/multipathConfig/changed";
+    public static final String HOST_CPU_TEMPERATURE_TOO_HIGH = "/host/cpu/temperature/tooHigh";
 
     @NeedJsonSchema
     public static class HostPhysicalHbaPortStateAbnormalData {
@@ -746,6 +747,46 @@ public class HostCanonicalEvents {
 
         public void setSkipTimeInSec(int skipTimeInSec) {
             this.skipTimeInSec = skipTimeInSec;
+        }
+    }
+
+    @NeedJsonSchema
+    public static class HostCpuTemperatureTooHighData {
+        private String hostUuid;
+        private String cpuName;
+        private int currentTemperature;
+        private int thresholdTemperature;
+
+        public String getHostUuid() {
+            return hostUuid;
+        }
+
+        public void setHostUuid(String hostUuid) {
+            this.hostUuid = hostUuid;
+        }
+
+        public String getCpuName() {
+            return cpuName;
+        }
+
+        public void setCpuName(String cpuName) {
+            this.cpuName = cpuName;
+        }
+
+        public int getCurrentTemperature() {
+            return currentTemperature;
+        }
+
+        public void setCurrentTemperature(int currentTemperature) {
+            this.currentTemperature = currentTemperature;
+        }
+
+        public int getThresholdTemperature() {
+            return thresholdTemperature;
+        }
+
+        public void setThresholdTemperature(int thresholdTemperature) {
+            this.thresholdTemperature = thresholdTemperature;
         }
     }
 }
