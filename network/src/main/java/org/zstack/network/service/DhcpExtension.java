@@ -136,11 +136,16 @@ public class DhcpExtension extends AbstractNetworkServiceExtension implements Co
     }
 
     public boolean isDualStackNicInSingleL3Network(VmNicInventory nic) {
-        if (nic.getUsedIps().size() < 2) {
+        // Filter out IPs outside L3 CIDR range (ipRangeUuid is null)
+        List<UsedIpInventory> validIps = nic.getUsedIps().stream()
+                .filter(ip -> ip.getIpRangeUuid() != null)
+                .collect(Collectors.toList());
+
+        if (validIps.size() < 2) {
             return false;
         }
 
-        return nic.getUsedIps().stream().map(UsedIpInventory::getL3NetworkUuid).distinct().count() == 1;
+        return validIps.stream().map(UsedIpInventory::getL3NetworkUuid).distinct().count() == 1;
     }
 
     private DhcpStruct getDhcpStruct(VmInstanceInventory vm, List<VmInstanceSpec.HostName> hostNames, VmNicVO nic, UsedIpVO ip, boolean isDefaultNic) {
@@ -188,7 +193,11 @@ public class DhcpExtension extends AbstractNetworkServiceExtension implements Co
 
     private void setDualStackNicOfSingleL3Network(DhcpStruct struct, VmNicVO nic) {
         struct.setIpVersion(IPv6Constants.DUAL_STACK);
-        List<UsedIpVO> sortedIps = nic.getUsedIps().stream().sorted(Comparator.comparingLong(UsedIpVO::getIpVersionl)).collect(Collectors.toList());
+        // Filter out IPs outside L3 CIDR range (ipRangeUuid is null)
+        List<UsedIpVO> sortedIps = nic.getUsedIps().stream()
+                .filter(ip -> ip.getIpRangeUuid() != null)
+                .sorted(Comparator.comparingLong(UsedIpVO::getIpVersionl))
+                .collect(Collectors.toList());
         for (UsedIpVO ip : sortedIps) {
             if (ip.getIpVersion() == IPv6Constants.IPv4) {
                 struct.setGateway(ip.getGateway());
@@ -198,19 +207,28 @@ public class DhcpExtension extends AbstractNetworkServiceExtension implements Co
                     struct.setHostname(ip.getIp().replaceAll("\\.", "-"));
                 }
             } else {
-                List<NormalIpRangeVO> iprs = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, ip.getL3NetworkUuid())
-                        .eq(NormalIpRangeVO_.ipVersion, ip.getIpVersion()).list();
-
                 struct.setGateway6(ip.getGateway());
                 struct.setIp6(ip.getIp());
                 struct.setEnableRa(isEnableRa(ip.getL3NetworkUuid()));
-                if (iprs.isEmpty() || iprs.get(0).getAddressMode().equals(IPv6Constants.SLAAC)) {
-                    continue;
+
+                // First try to use prefixLen from UsedIpVO (for IP outside range)
+                if (ip.getPrefixLen() != null) {
+                    struct.setPrefixLength(ip.getPrefixLen());
+                    struct.setFirstIp(ip.getIp());
+                    struct.setEndIP(ip.getIp());
+                    struct.setRaMode(IPv6Constants.Stateful_DHCP);
+                } else {
+                    // Fallback to IpRangeVO for IP within range
+                    List<NormalIpRangeVO> iprs = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, ip.getL3NetworkUuid())
+                            .eq(NormalIpRangeVO_.ipVersion, ip.getIpVersion()).list();
+                    if (iprs.isEmpty() || iprs.get(0).getAddressMode().equals(IPv6Constants.SLAAC)) {
+                        continue;
+                    }
+                    struct.setRaMode(iprs.get(0).getAddressMode());
+                    struct.setPrefixLength(iprs.get(0).getPrefixLen());
+                    struct.setFirstIp(NetworkUtils.getSmallestIp(iprs.stream().map(IpRangeVO::getStartIp).collect(Collectors.toList())));
+                    struct.setEndIP(NetworkUtils.getBiggesttIp(iprs.stream().map(IpRangeVO::getEndIp).collect(Collectors.toList())));
                 }
-                struct.setRaMode(iprs.get(0).getAddressMode());
-                struct.setPrefixLength(iprs.get(0).getPrefixLen());
-                struct.setFirstIp(NetworkUtils.getSmallestIp(iprs.stream().map(IpRangeVO::getStartIp).collect(Collectors.toList())));
-                struct.setEndIP(NetworkUtils.getBiggesttIp(iprs.stream().map(IpRangeVO::getEndIp).collect(Collectors.toList())));
             }
         }
     }
@@ -224,18 +242,29 @@ public class DhcpExtension extends AbstractNetworkServiceExtension implements Co
                 struct.setHostname(ip.getIp().replaceAll("\\.", "-"));
             }
         } else {
-            List<NormalIpRangeVO> iprs = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, ip.getL3NetworkUuid())
-                    .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv6).list();
             struct.setGateway6(ip.getGateway());
             struct.setIp6(ip.getIp());
             struct.setEnableRa(isEnableRa(ip.getL3NetworkUuid()));
-            if (iprs.isEmpty()) {
-                return;
+
+            // First try to use prefixLen from UsedIpVO (for IP outside range)
+            if (ip.getPrefixLen() != null) {
+                struct.setPrefixLength(ip.getPrefixLen());
+                // For IP outside range, set firstIp and endIp to the IP itself
+                struct.setFirstIp(ip.getIp());
+                struct.setEndIP(ip.getIp());
+                struct.setRaMode(IPv6Constants.Stateful_DHCP);  // Default to Stateful DHCP for outside range
+            } else {
+                // Fallback to IpRangeVO for IP within range
+                List<NormalIpRangeVO> iprs = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.l3NetworkUuid, ip.getL3NetworkUuid())
+                        .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv6).list();
+                if (iprs.isEmpty()) {
+                    return;
+                }
+                struct.setRaMode(iprs.get(0).getAddressMode());
+                struct.setPrefixLength(iprs.get(0).getPrefixLen());
+                struct.setFirstIp(NetworkUtils.getSmallestIp(iprs.stream().map(IpRangeVO::getStartIp).collect(Collectors.toList())));
+                struct.setEndIP(NetworkUtils.getBiggesttIp(iprs.stream().map(IpRangeVO::getEndIp).collect(Collectors.toList())));
             }
-            struct.setRaMode(iprs.get(0).getAddressMode());
-            struct.setPrefixLength(iprs.get(0).getPrefixLen());
-            struct.setFirstIp(NetworkUtils.getSmallestIp(iprs.stream().map(IpRangeVO::getStartIp).collect(Collectors.toList())));
-            struct.setEndIP(NetworkUtils.getBiggesttIp(iprs.stream().map(IpRangeVO::getEndIp).collect(Collectors.toList())));
         }
     }
 
@@ -269,19 +298,30 @@ public class DhcpExtension extends AbstractNetworkServiceExtension implements Co
             }
 
             for (UsedIpVO ip : nic.getUsedIps()) {
-                if (ip.getIpVersion() == IPv6Constants.IPv6) {
-                    NormalIpRangeVO ipr = Q.New(NormalIpRangeVO.class)
-                            .eq(NormalIpRangeVO_.l3NetworkUuid, ip.getL3NetworkUuid())
-                            .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv6).limit(1).find();
-                    if (ipr == null) {
-                        /* dhcp v6 need ra mode and ip range start/end ip */
-                        logger.info(String.format("can not get ipv6 range info for vmnic[ip:%s] for vm[name:%s, uuid:%s]",
-                                ip.getIp(), vm.getName(), vm.getUuid()));
-                        continue;
-                    }
+                // Skip IP addresses outside L3 CIDR range (ipRangeUuid is null)
+                // These addresses should not be included in DHCP configuration
+                if (ip.getIpRangeUuid() == null) {
+                    logger.debug(String.format("skip DHCP for vmnic[ip:%s] because it's outside L3 CIDR range (ipRangeUuid is null)",
+                            ip.getIp()));
+                    continue;
+                }
 
-                    if (ipr.getAddressMode().equals(IPv6Constants.SLAAC)) {
-                        continue;
+                if (ip.getIpVersion() == IPv6Constants.IPv6) {
+                    // Check if IP has prefixLen (for IP outside range)
+                    if (ip.getPrefixLen() == null) {
+                        NormalIpRangeVO ipr = Q.New(NormalIpRangeVO.class)
+                                .eq(NormalIpRangeVO_.l3NetworkUuid, ip.getL3NetworkUuid())
+                                .eq(NormalIpRangeVO_.ipVersion, IPv6Constants.IPv6).limit(1).find();
+                        if (ipr == null) {
+                            /* dhcp v6 need ra mode and ip range start/end ip */
+                            logger.info(String.format("can not get ipv6 range info for vmnic[ip:%s] for vm[name:%s, uuid:%s]",
+                                    ip.getIp(), vm.getName(), vm.getUuid()));
+                            continue;
+                        }
+
+                        if (ipr.getAddressMode().equals(IPv6Constants.SLAAC)) {
+                            continue;
+                        }
                     }
                 } else {
                     if (StringUtils.isEmpty(ip.getGateway())) {

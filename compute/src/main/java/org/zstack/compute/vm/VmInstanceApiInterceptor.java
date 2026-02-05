@@ -51,8 +51,6 @@ import org.zstack.utils.logging.CLogger;
 import org.zstack.utils.network.IPv6Constants;
 import org.zstack.utils.network.IPv6NetworkUtils;
 import org.zstack.utils.network.NetworkUtils;
-import org.zstack.utils.network.NicIpAddressInfo;
-
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
 import java.util.*;
@@ -288,7 +286,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
 
         new StaticIpOperator().validateSystemTagInApiMessage(msg);
         Map<String, List<String>> staticIps = new StaticIpOperator().getStaticIpbySystemTag(msg.getSystemTags());
-        if (msg.getRequiredIpMap() != null) {
+        if (msg.getStaticIp() != null) {
             staticIps.computeIfAbsent(msg.getDestL3NetworkUuid(), k -> new ArrayList<>()).add(msg.getStaticIp());
             SimpleQuery<NormalIpRangeVO> iprq = dbf.createQuery(NormalIpRangeVO.class);
             iprq.add(NormalIpRangeVO_.l3NetworkUuid, Op.EQ, msg.getDestL3NetworkUuid());
@@ -358,8 +356,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 }
 
                 SimpleQuery<UsedIpVO> uq = dbf.createQuery(UsedIpVO.class);
-                uq.add(UsedIpVO_.l3NetworkUuid, Op.EQ, msg.getDestL3NetworkUuid());
-                uq.add(UsedIpVO_.ip, Op.EQ, msg.getStaticIp());
+                uq.add(UsedIpVO_.l3NetworkUuid, Op.EQ, l3Uuid);
+                uq.add(UsedIpVO_.ip, Op.EQ, staticIp);
                 if (uq.isExists()) {
                     throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_COMPUTE_VM_10108, "the static IP[%s] has been occupied on the L3 network[uuid:%s]", staticIp, l3Uuid));
                 }
@@ -372,15 +370,11 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             msg.getRequiredIpMap().put(e.getKey(), e.getValue());
         }
 
-        final Map<String, NicIpAddressInfo> nicNetworkInfo = new StaticIpOperator().getNicNetworkInfoBySystemTag(msg.getSystemTags());
-        NicIpAddressInfo nicIpAddressInfo = nicNetworkInfo.get(msg.getDestL3NetworkUuid());
-        if (nicIpAddressInfo != null) {
-            if (!nicIpAddressInfo.ipv4Address.isEmpty() && Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, nicIpAddressInfo.ipv4Address).eq(UsedIpVO_.l3NetworkUuid, msg.getDestL3NetworkUuid()).isExists()) {
-                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10109, "the static IP[%s] has been occupied on the L3 network[uuid:%s]", nicIpAddressInfo.ipv4Address, msg.getDestL3NetworkUuid()));
-            }
-            if (!nicIpAddressInfo.ipv6Address.isEmpty() && Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, IPv6NetworkUtils.getIpv6AddressCanonicalString(nicIpAddressInfo.ipv6Address)).eq(UsedIpVO_.l3NetworkUuid, msg.getDestL3NetworkUuid()).isExists()) {
-                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10110, "the static IP[%s] has been occupied on the L3 network[uuid:%s]", nicIpAddressInfo.ipv6Address, msg.getDestL3NetworkUuid()));
-            }
+        if (msg.getIp() != null && !msg.getIp().isEmpty() && Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, msg.getIp()).eq(UsedIpVO_.l3NetworkUuid, msg.getDestL3NetworkUuid()).isExists()) {
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10109, "the static IP[%s] has been occupied on the L3 network[uuid:%s]", msg.getIp(), msg.getDestL3NetworkUuid()));
+        }
+        if (msg.getIp6() != null && !msg.getIp6().isEmpty() && Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, IPv6NetworkUtils.getIpv6AddressCanonicalString(msg.getIp6())).eq(UsedIpVO_.l3NetworkUuid, msg.getDestL3NetworkUuid()).isExists()) {
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10110, "the static IP[%s] has been occupied on the L3 network[uuid:%s]", msg.getIp6(), msg.getDestL3NetworkUuid()));
         }
     }
 
@@ -588,8 +582,12 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     continue;
                 }
                 // check if the ip is in the ip range when ipam is enabled
+                if (ipVo.getIpRangeUuid() == null) {
+                    // IP is outside range, skip range validation
+                    continue;
+                }
                 NormalIpRangeVO rangeVO = dbf.findByUuid(ipVo.getIpRangeUuid(), NormalIpRangeVO.class);
-                if (!NetworkUtils.isIpv4InCidr(ip, rangeVO.getNetworkCidr())) {
+                if (rangeVO != null && !NetworkUtils.isIpv4InCidr(ip, rangeVO.getNetworkCidr())) {
                     throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10131, "ip address [%s] is not in ip range [%s]",
                             ip, rangeVO.getNetworkCidr()));
                 }
@@ -615,8 +613,12 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 if (!l3NetworkVO.enableIpAddressAllocation()) {
                     continue;
                 }
+                if (ipVo.getIpRangeUuid() == null) {
+                    // IP is outside range, skip range validation
+                    continue;
+                }
                 NormalIpRangeVO rangeVO = dbf.findByUuid(ipVo.getIpRangeUuid(), NormalIpRangeVO.class);
-                if (!IPv6NetworkUtils.isIpv6InRange(ip, rangeVO.getStartIp(), rangeVO.getEndIp())) {
+                if (rangeVO != null && !IPv6NetworkUtils.isIpv6InRange(ip, rangeVO.getStartIp(), rangeVO.getEndIp())) {
                     throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10134, "ip address [%s] is not in ip range [startIp %s, endIp %s]",
                             ip, rangeVO.getStartIp(), rangeVO.getEndIp()));
                 }

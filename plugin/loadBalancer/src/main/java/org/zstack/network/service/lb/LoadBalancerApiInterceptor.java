@@ -642,6 +642,19 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
         q = dbf.getEntityManager().createQuery(sql, String.class);
         q.setParameter("uuid", msg.getListenerUuid());
         msg.setLoadBalancerUuid(q.getSingleResult());
+
+        // Check if any NIC's IP is outside L3 CIDR range (ipRangeUuid is null)
+        for (String nicUuid : msg.getVmNicUuids()) {
+            VmNicVO nicVO = dbf.findByUuid(nicUuid, VmNicVO.class);
+            if (nicVO != null && nicVO.getUsedIpUuid() != null) {
+                UsedIpVO usedIpVO = dbf.findByUuid(nicVO.getUsedIpUuid(), UsedIpVO.class);
+                if (usedIpVO != null && usedIpVO.getIpRangeUuid() == null) {
+                    throw new ApiMessageInterceptionException(argerr(
+                            "cannot add VM NIC[uuid:%s] with IP address[%s] which is outside L3 network CIDR range to load balancer",
+                            nicUuid, usedIpVO.getIp()));
+                }
+            }
+        }
     }
 
     private boolean hasTag(APIMessage msg, PatternedSystemTag tag) {

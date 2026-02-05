@@ -987,9 +987,19 @@ public class VirtualRouter extends ApplianceVmBase {
                 } else {
                     info.setIp6(ip.getIp());
                     info.setGateway6(ip.getGateway());
-                    NormalIpRangeVO ipr = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.uuid, ip.getIpRangeUuid()).find();
-                    info.setPrefixLength(ipr.getPrefixLen());
-                    info.setAddressMode(ipr.getAddressMode());
+                    // First try to use prefixLen from UsedIpInventory (for IP outside range)
+                    if (ip.getPrefixLen() != null) {
+                        info.setPrefixLength(ip.getPrefixLen());
+                    }
+                    if (ip.getIpRangeUuid() != null) {
+                        NormalIpRangeVO ipr = Q.New(NormalIpRangeVO.class).eq(NormalIpRangeVO_.uuid, ip.getIpRangeUuid()).find();
+                        if (ipr != null) {
+                            if (info.getPrefixLength() == null) {
+                                info.setPrefixLength(ipr.getPrefixLen());
+                            }
+                            info.setAddressMode(ipr.getAddressMode());
+                        }
+                    }
                 }
             }
 

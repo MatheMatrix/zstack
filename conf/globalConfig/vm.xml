@@ -312,6 +312,14 @@
 
 	<config>
 		<category>vm</category>
+		<name>allow.ip.outside.range</name>
+		<description>Allow VM NIC to use IP address outside of L3 network IP ranges. When enabled, users must provide netmask/gateway for IPv4 or prefixLen/gateway for IPv6.</description>
+		<type>java.lang.Boolean</type>
+		<defaultValue>true</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
 		<name>uniqueVmName</name>
 		<description>enable vm name unique</description>
 		<type>java.lang.Boolean</type>

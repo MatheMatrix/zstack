@@ -25,9 +25,11 @@ import org.zstack.header.network.l3.*;
 import org.zstack.header.network.service.*;
 import org.zstack.header.network.service.NetworkServiceExtensionPoint.NetworkServiceExtensionPosition;
 import org.zstack.header.vm.*;
+import org.zstack.compute.vm.VmSystemTags;
 import org.zstack.query.QueryFacade;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.utils.network.IPv6NetworkUtils;
 
 import java.util.*;
 
@@ -481,6 +483,28 @@ public class NetworkServiceManagerImpl extends AbstractService implements Networ
         }
 
         return dns;
+    }
+
+    @Override
+    public List<String> getVmNicDns(String vmUuid, String l3NetworkUuid) {
+        // First try to get DNS from system tag (VM NIC-level custom DNS)
+        List<Map<String, String>> tokenList = VmSystemTags.STATIC_DNS.getTokensOfTagsByResourceUuid(vmUuid);
+        for (Map<String, String> tokens : tokenList) {
+            String uuid = tokens.get(VmSystemTags.STATIC_DNS_L3_UUID_TOKEN);
+            if (uuid.equals(l3NetworkUuid)) {
+                String dnsStr = tokens.get(VmSystemTags.STATIC_DNS_TOKEN);
+                if (dnsStr != null && !dnsStr.isEmpty()) {
+                    // Convert back from tag value: replace '--' with '::' for IPv6 addresses
+                    List<String> dnsList = new ArrayList<>();
+                    for (String dns : dnsStr.split(",")) {
+                        dnsList.add(IPv6NetworkUtils.ipv6TagValueToAddress(dns));
+                    }
+                    return dnsList;
+                }
+            }
+        }
+        // Fall back to L3 network DNS
+        return getL3NetworkDns(l3NetworkUuid);
     }
 
     @Override

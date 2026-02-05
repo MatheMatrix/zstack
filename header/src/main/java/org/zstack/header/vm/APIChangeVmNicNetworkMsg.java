@@ -33,6 +33,22 @@ public class APIChangeVmNicNetworkMsg extends APIMessage implements VmInstanceMe
 
     private String staticIp;
 
+    @APIParam(required = false)
+    private String ip;
+    @APIParam(required = false)
+    private String ip6;
+    @APIParam(required = false)
+    private String netmask;
+    @APIParam(required = false)
+    private String gateway;
+    @APIParam(required = false)
+    private String ipv6Gateway;
+    @APIParam(required = false)
+    private String ipv6Prefix;
+
+    @APIParam(required = false)
+    private List<String> dnsAddresses;
+
     public String getVmNicUuid() {
         return vmNicUuid;
     }
@@ -57,6 +73,54 @@ public class APIChangeVmNicNetworkMsg extends APIMessage implements VmInstanceMe
         this.requiredIpMap = requiredIpMap;
     }
 
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+
+    public String getIp6() {
+        return ip6;
+    }
+
+    public void setIp6(String ip6) {
+        this.ip6 = ip6;
+    }
+
+    public String getNetmask() {
+        return netmask;
+    }
+
+    public void setNetmask(String netmask) {
+        this.netmask = netmask;
+    }
+
+    public String getGateway() {
+        return gateway;
+    }
+
+    public void setGateway(String gateway) {
+        this.gateway = gateway;
+    }
+
+    public String getIpv6Gateway() {
+        return ipv6Gateway;
+    }
+
+    public void setIpv6Gateway(String ipv6Gateway) {
+        this.ipv6Gateway = ipv6Gateway;
+    }
+
+    public String getIpv6Prefix() {
+        return ipv6Prefix;
+    }
+
+    public void setIpv6Prefix(String ipv6Prefix) {
+        this.ipv6Prefix = ipv6Prefix;
+    }
+
     public static APIChangeVmNicNetworkMsg __example__() {
         APIChangeVmNicNetworkMsg msg = new APIChangeVmNicNetworkMsg();
         msg.vmNicUuid = uuid();
@@ -79,5 +143,13 @@ public class APIChangeVmNicNetworkMsg extends APIMessage implements VmInstanceMe
 
     public void setStaticIp(String staticIp) {
         this.staticIp = staticIp;
+    }
+
+    public List<String> getDnsAddresses() {
+        return dnsAddresses;
+    }
+
+    public void setDnsAddresses(List<String> dnsAddresses) {
+        this.dnsAddresses = dnsAddresses;
     }
 }

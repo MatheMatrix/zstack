@@ -123,6 +123,10 @@ public class VmGlobalConfig {
     public static GlobalConfig ENABLE_VM_INTERNAL_IP_OVERWRITE = new GlobalConfig(CATEGORY, "enable.vm.internal.ip.overwrite");
 
     @GlobalConfigValidation(validValues = {"true", "false"})
+    @GlobalConfigDef(defaultValue = "true", type = Boolean.class, description = "Allow VM NIC to use IP address outside of L3 network IP ranges. When enabled, users must provide netmask/gateway for IPv4 or prefixLen/gateway for IPv6.")
+    public static GlobalConfig ALLOW_IP_OUTSIDE_RANGE = new GlobalConfig(CATEGORY, "allow.ip.outside.range");
+
+    @GlobalConfigValidation(validValues = {"true", "false"})
     public static GlobalConfig UNIQUE_VM_NAME = new GlobalConfig(CATEGORY, "uniqueVmName");
 
     @BindResourceConfig(value = {VmInstanceVO.class, ClusterVO.class})

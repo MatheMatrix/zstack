@@ -383,7 +383,7 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
                     ts = IpRangeHelper.stripNetworkAndBroadcastAddress(ts);
                     calcElementTotalIp(ts, ret);
 
-                    sql = "select count(distinct uip.ip), uip.l3NetworkUuid, uip.ipVersion from UsedIpVO uip where uip.l3NetworkUuid in (:uuids) and (uip.metaData not in (:notAccountMetaData) or uip.metaData IS NULL) group by uip.l3NetworkUuid, uip.ipVersion";
+                    sql = "select count(distinct uip.ip), uip.l3NetworkUuid, uip.ipVersion from UsedIpVO uip where uip.l3NetworkUuid in (:uuids) and uip.ipRangeUuid is not null and (uip.metaData not in (:notAccountMetaData) or uip.metaData IS NULL) group by uip.l3NetworkUuid, uip.ipVersion";
                     TypedQuery<Tuple> cq = dbf.getEntityManager().createQuery(sql, Tuple.class);
                     cq.setParameter("uuids", msg.getL3NetworkUuids());
                     cq.setParameter("notAccountMetaData", notAccountMetaDatas);
@@ -399,7 +399,7 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
                     ts = IpRangeHelper.stripNetworkAndBroadcastAddress(ts);
                     calcElementTotalIp(ts, ret);
 
-                    sql = "select count(distinct uip.ip), zone.uuid, uip.ipVersion from UsedIpVO uip, L3NetworkVO l3, ZoneVO zone where uip.l3NetworkUuid = l3.uuid and l3.zoneUuid = zone.uuid and zone.uuid in (:uuids) and (uip.metaData not in (:notAccountMetaData) or uip.metaData IS NULL) group by zone.uuid, uip.ipVersion";
+                    sql = "select count(distinct uip.ip), zone.uuid, uip.ipVersion from UsedIpVO uip, L3NetworkVO l3, ZoneVO zone where uip.l3NetworkUuid = l3.uuid and l3.zoneUuid = zone.uuid and zone.uuid in (:uuids) and uip.ipRangeUuid is not null and (uip.metaData not in (:notAccountMetaData) or uip.metaData IS NULL) group by zone.uuid, uip.ipVersion";
                     TypedQuery<Tuple> cq = dbf.getEntityManager().createQuery(sql, Tuple.class);
                     cq.setParameter("uuids", msg.getZoneUuids());
                     cq.setParameter("notAccountMetaData", notAccountMetaDatas);
@@ -723,6 +723,7 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
             vo.setL3NetworkUuid(ipRange.getL3NetworkUuid());
             vo.setNetmask(ipRange.getNetmask());
             vo.setGateway(ipRange.getGateway());
+            vo.setPrefixLen(ipRange.getPrefixLen());
             vo.setIpVersion(IPv6Constants.IPv6);
             vo = dbf.persistAndRefresh(vo);
             return UsedIpInventory.valueOf(vo);
@@ -785,6 +786,77 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
         } else if (IPv6NetworkUtils.isIpv6Address(ip)) {
             return reserveIpv6(ipRange, ip, allowDuplicatedAddress);
         } else {
+            return null;
+        }
+    }
+
+    /**
+     * Reserve an IP address that is outside of any IP range.
+     * This method is used when ALLOW_IP_OUTSIDE_RANGE global config is enabled.
+     *
+     * @param l3NetworkUuid the L3 network UUID
+     * @param ip the IP address to reserve
+     * @param netmask the netmask (required for IPv4)
+     * @param gateway the gateway (required)
+     * @param prefixLen the prefix length (required for IPv6)
+     * @param ipVersion 4 for IPv4, 6 for IPv6
+     * @return UsedIpInventory of the reserved IP
+     */
+    public UsedIpInventory reserveIpWithoutRange(String l3NetworkUuid, String ip, String netmask,
+                                                  String gateway, Integer prefixLen, int ipVersion) {
+        // Normalize IPv6 address before uniqueness check
+        String normalizedIp = ip;
+        if (ipVersion != IPv6Constants.IPv4) {
+            normalizedIp = IPv6NetworkUtils.getIpv6AddressCanonicalString(ip);
+        }
+
+        // Explicit uniqueness check: ensure no UsedIpVO exists for the same IP on this L3 network.
+        // This covers both in-range IPs (whose UUID is derived from ipRangeUuid+ip) and
+        // outside-range IPs (whose UUID is derived from l3NetworkUuid+ip).
+        boolean exists = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.l3NetworkUuid, l3NetworkUuid)
+                .eq(UsedIpVO_.ip, normalizedIp)
+                .isExists();
+        if (exists) {
+            logger.debug(String.format("IP[%s] in L3 network[uuid:%s] has already been allocated, " +
+                    "cannot reserve outside-range IP", ip, l3NetworkUuid));
+            return null;
+        }
+
+        try {
+            UsedIpVO vo = new UsedIpVO();
+            String uuid = l3NetworkUuid + normalizedIp;
+            uuid = UUID.nameUUIDFromBytes(uuid.getBytes()).toString().replaceAll("-", "");
+            vo.setUuid(uuid);
+            vo.setIpRangeUuid(null);  // No IP range for outside-range IP
+            vo.setL3NetworkUuid(l3NetworkUuid);
+            vo.setIpVersion(ipVersion);
+            vo.setGateway(gateway);
+
+            if (ipVersion == IPv6Constants.IPv4) {
+                vo.setIp(normalizedIp);
+                vo.setNetmask(netmask);
+                vo.setIpInLong(NetworkUtils.ipv4StringToLong(normalizedIp));
+                vo.setIpInBinary(NetworkUtils.ipStringToBytes(normalizedIp));
+            } else {
+                vo.setIp(normalizedIp);
+                vo.setNetmask(netmask);
+                vo.setPrefixLen(prefixLen);
+                vo.setIpInBinary(NetworkUtils.ipStringToBytes(normalizedIp));
+            }
+
+            vo = dbf.persistAndRefresh(vo);
+            logger.debug(String.format("Reserved IP[%s] outside of IP range for L3 network[uuid:%s]", ip, l3NetworkUuid));
+            return UsedIpInventory.valueOf(vo);
+        } catch (PersistenceException e) {
+            if (ExceptionDSL.isCausedBy(e, SQLIntegrityConstraintViolationException.class)) {
+                logger.debug(String.format("Concurrent ip allocation. " +
+                        "Ip[%s] in L3 network[uuid:%s] has been allocated. " +
+                        "The error[Duplicate entry] printed by jdbc.spi.SqlExceptionHelper is no harm", ip, l3NetworkUuid));
+                logger.trace("", e);
+            } else {
+                throw e;
+            }
             return null;
         }
     }
