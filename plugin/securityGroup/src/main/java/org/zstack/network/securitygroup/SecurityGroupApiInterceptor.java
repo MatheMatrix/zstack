@@ -21,6 +21,7 @@ import org.zstack.header.identity.APIChangeResourceOwnerMsg;
 import org.zstack.identity.Account;
 import org.zstack.identity.QuotaUtil;
 import org.zstack.header.message.APIMessage;
+import org.zstack.header.network.l3.UsedIpVO;
 import org.zstack.header.network.service.NetworkServiceL3NetworkRefVO;
 import org.zstack.header.network.service.NetworkServiceL3NetworkRefVO_;
 import org.zstack.header.vm.VmInstanceVO;
@@ -919,6 +920,21 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor, Globa
         }
 
         checkIfL3NetworkSupportSecurityGroup(uuids);
+
+        // Reject NICs whose all IPs are outside L3 IP range
+        for (String nicUuid : uuids) {
+            VmNicVO nicVO = dbf.findByUuid(nicUuid, VmNicVO.class);
+            if (nicVO == null || nicVO.getUsedIps().isEmpty()) {
+                continue;
+            }
+            boolean allOutsideRange = nicVO.getUsedIps().stream()
+                    .allMatch(ip -> ip.getIpRangeUuid() == null);
+            if (allOutsideRange) {
+                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SECURITYGROUP_10130,
+                        "cannot add VM NIC[uuid:%s] to security group, because all its IP addresses are outside L3 network CIDR range",
+                        nicUuid));
+            }
+        }
 
         msg.setVmNicUuids(uuids);
     }
