@@ -13,8 +13,7 @@ import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.*;
 import org.zstack.core.defer.Defer;
 import org.zstack.core.defer.Deferred;
-import org.zstack.core.thread.SyncTask;
-import org.zstack.core.thread.ThreadFacade;
+import org.zstack.core.thread.*;
 import org.zstack.header.AbstractService;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.GlobalApiMessageInterceptor;
@@ -89,6 +88,54 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
     private AccountManager acntMgr;
     @Autowired
     private DhcpExtension dhcpExtension;
+
+    /**
+     * Request wrapper for DHCP apply coalescing.
+     */
+    private static class DhcpApplyRequest {
+        final String hostUuid;
+        final List<DhcpInfo> dhcpInfos;
+        final boolean rebuild;
+
+        DhcpApplyRequest(String hostUuid, List<DhcpInfo> dhcpInfos, boolean rebuild) {
+            this.hostUuid = hostUuid;
+            this.dhcpInfos = dhcpInfos;
+            this.rebuild = rebuild;
+        }
+    }
+
+    private class DhcpApplyQueue extends CoalesceQueue<DhcpApplyRequest> {
+        @Override
+        protected String getName() {
+            return "flat-dhcp-apply";
+        }
+
+        @Override
+        protected void executeBatch(List<DhcpApplyRequest> requests, Completion completion) {
+            if (requests.isEmpty()) {
+                completion.success();
+                return;
+            }
+
+            // All requests in the same batch have the same hostUuid
+            String hostUuid = requests.get(0).hostUuid;
+
+            // Merge all DhcpInfo from all requests, grouped by L3 network
+            // TODO: unify DHCP apply logic and switch to merged/batch flow everywhere
+            boolean anyRebuild = false;
+            List<DhcpInfo> mergedInfos = new ArrayList<>();
+            for (DhcpApplyRequest req : requests) {
+                anyRebuild = anyRebuild || req.rebuild;
+                mergedInfos.addAll(req.dhcpInfos);
+            }
+
+            logger.debug(String.format("Coalesced %d DHCP apply requests for host[uuid:%s]", requests.size(), hostUuid));
+
+            applyDhcpToHosts(mergedInfos, hostUuid, anyRebuild, completion);
+        }
+    }
+
+    private final DhcpApplyQueue dhcpApplyCoalesceQueue = new DhcpApplyQueue();
 
     public static final String APPLY_DHCP_PATH = "/flatnetworkprovider/dhcp/apply";
     public static final String BATCH_APPLY_DHCP_PATH = "/flatnetworkprovider/dhcp/batchApply";
@@ -1517,7 +1564,10 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
             return;
         }
 
-        applyDhcpToHosts(toDhcpInfo(dhcpStructList), spec.getDestHost().getUuid(), false, completion);
+        String hostUuid = spec.getDestHost().getUuid();
+        DhcpApplyRequest request = new DhcpApplyRequest(hostUuid, toDhcpInfo(dhcpStructList), false);
+        // Use coalesce queue: requests to the same host will be merged into a single batch
+        dhcpApplyCoalesceQueue.submit(hostUuid, request, completion);
     }
 
     private void releaseDhcpService(List<DhcpInfo> info, final String vmUuid, final String hostUuid, final NoErrorCompletion completion) {
