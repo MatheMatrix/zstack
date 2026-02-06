@@ -87,12 +87,16 @@ public class CLoggerImpl implements CLogger {
 
     @Override
     public void trace(String msg, Throwable e) {
-        logger.trace(msg, e);
+        if (logger.isTraceEnabled()) {
+            logger.trace(msg, e);
+        }
     }
 
     @Override
     public void trace(String msg) {
-        logger.trace(msg);
+        if (logger.isTraceEnabled()) {
+            logger.trace(msg);
+        }
     }
 
     @Override
