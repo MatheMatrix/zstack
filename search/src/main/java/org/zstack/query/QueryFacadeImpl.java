@@ -489,7 +489,7 @@ public class QueryFacadeImpl extends AbstractService implements QueryFacade, Glo
                 // 追加 uuid 作为 tiebreaker，确保排序稳定
                 sb.add(String.format("order by %s %s, uuid asc", msg.getSortBy(), msg.getSortDirection()));
             }
-        } else if (!msg.isCount()) {
+        } else if (!msg.isCount() && msg.getGroupBy() == null) {
             // 无排序字段时添加默认排序
             sb.add("order by uuid asc");
         }

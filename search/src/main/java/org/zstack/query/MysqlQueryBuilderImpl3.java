@@ -725,7 +725,7 @@ public class MysqlQueryBuilderImpl3 implements Component, QueryBuilder, GlobalAp
                         ret = String.format("select %s from %s %s where %s", selector, entity, entityName, condition);
                     }
 
-                    if (msg.getSortBy() != null) {
+                    if (msg.getSortBy() != null && !msg.isCount()) {
                         if (!FieldUtils.hasField(msg.getSortBy(), info.entityClass)) {
                             throw new IllegalArgumentException(String.format("illegal sortBy[%s], entity[%s] doesn't have this field", msg.getSortBy(), info.entityClass.getName()));
                         }
