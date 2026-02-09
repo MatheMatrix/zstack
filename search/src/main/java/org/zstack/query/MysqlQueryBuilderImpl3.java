@@ -730,7 +730,15 @@ public class MysqlQueryBuilderImpl3 implements Component, QueryBuilder, GlobalAp
                             throw new IllegalArgumentException(String.format("illegal sortBy[%s], entity[%s] doesn't have this field", msg.getSortBy(), info.entityClass.getName()));
                         }
 
-                        ret = String.format("%s order by %s.%s %s", ret, entityName, msg.getSortBy(), msg.getSortDirection().toUpperCase());
+                        if ("uuid".equals(msg.getSortBy())) {
+                            ret = String.format("%s order by %s.%s %s", ret, entityName, msg.getSortBy(), msg.getSortDirection().toUpperCase());
+                        } else {
+                            // 追加 uuid 作为 tiebreaker，确保排序稳定
+                            ret = String.format("%s order by %s.%s %s, %s.uuid ASC", ret, entityName, msg.getSortBy(), msg.getSortDirection().toUpperCase(), entityName);
+                        }
+                    } else if (!msg.isCount()) {
+                        // 无排序字段时添加默认排序
+                        ret = String.format("%s order by %s.uuid ASC", ret, entityName);
                     }
 
                     if (msg.getGroupBy() != null) {
