@@ -1181,6 +1181,11 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
 
                     ret.totalPhysicalSize += rsp.getTotalCapacity();
                     ret.availablePhysicalSize += rsp.getAvailableCapacity();
+
+                    if (rsp.getTotalCapacity() != null && rsp.getAvailableCapacity() != null) {
+                        new LocalStorageCapacityUpdater().updatePhysicalCapacityByKvmAgentResponse(
+                                self.getUuid(), hostUuid, rsp);
+                    }
                 }
 
                 completion.success(ret);
