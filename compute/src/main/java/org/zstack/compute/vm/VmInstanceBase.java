@@ -2285,8 +2285,8 @@ public class VmInstanceBase extends AbstractVmInstance {
         setAdditionalFlow(flowChain, spec);
         if (self.getState() == VmInstanceState.Running) {
             flowChain.then(new VmInstantiateResourceOnAttachingNicFlow());
+            flowChain.then(new VmAttachNicOnHypervisorFlow());
         }
-        flowChain.then(new VmAttachNicOnHypervisorFlow());
 
         flowChain.done(new FlowDoneHandler(completion) {
             @Override
