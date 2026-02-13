@@ -270,6 +270,7 @@ public class KVMAgentCommands {
         private int tcpServerPort;
         private boolean isInstallHostShutdownHook;
         private String version;
+        private String libvirtListenAddr;
 
         public boolean isInstallHostShutdownHook() {
             return isInstallHostShutdownHook;
@@ -333,6 +334,14 @@ public class KVMAgentCommands {
 
         public void setVersion(String version) {
             this.version = version;
+        }
+
+        public String getLibvirtListenAddr() {
+            return libvirtListenAddr;
+        }
+
+        public void setLibvirtListenAddr(String libvirtListenAddr) {
+            this.libvirtListenAddr = libvirtListenAddr;
         }
     }
 

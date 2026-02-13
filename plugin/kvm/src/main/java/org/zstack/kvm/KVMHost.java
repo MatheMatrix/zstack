@@ -5175,6 +5175,7 @@ public class KVMHost extends HostBase implements Host {
             cmd.setIgnoreMsrs(KVMGlobalConfig.KVM_IGNORE_MSRS.value(Boolean.class));
             cmd.setTcpServerPort(KVMGlobalProperty.TCP_SERVER_PORT);
             cmd.setVersion(dbf.getDbVersion());
+            cmd.setLibvirtListenAddr(self.getManagementIp());
             cmd.setInstallHostShutdownHook(KVMGlobalConfig.INSTALL_HOST_SHUTDOWN_HOOK.value(Boolean.class));
             if (HostSystemTags.PAGE_TABLE_EXTENSION_DISABLED.hasTag(self.getUuid(), HostVO.class) || !KVMSystemTags.EPT_CPU_FLAG.hasTag(self.getUuid())) {
                 cmd.setPageTableExtensionDisabled(true);
@@ -5811,6 +5812,7 @@ public class KVMHost extends HostBase implements Host {
                         }
 
                         deployArguments.setRestartLibvirtd(rcf.getResourceConfigValue(KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE, self.getUuid(), String.class));
+                        deployArguments.setLibvirtListenAddr(self.getManagementIp());
                         deployArguments.setHostname(String.format("%s.zstack.org", self.getManagementIp().replaceAll("\\.", "-")));
                         deployArguments.setSkipPackages(info.getSkipPackages());
                         deployArguments.setUpdatePackages(String.valueOf(CoreGlobalProperty.UPDATE_PKG_WHEN_CONNECT));

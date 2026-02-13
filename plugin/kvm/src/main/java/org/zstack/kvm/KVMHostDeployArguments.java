@@ -39,6 +39,8 @@ public class KVMHostDeployArguments extends SyncTimeRequestedDeployArguments {
     private String restartLibvirtd;
     @SerializedName("extra_packages")
     private String extraPackages;
+    @SerializedName("libvirt_listen_addr")
+    private String libvirtListenAddr;
 
     private transient boolean forceRun = false;
 
@@ -157,6 +159,14 @@ public class KVMHostDeployArguments extends SyncTimeRequestedDeployArguments {
 
     public void setRestartLibvirtd(String restartLibvirtd) {
         this.restartLibvirtd = restartLibvirtd;
+    }
+
+    public String getLibvirtListenAddr() {
+        return libvirtListenAddr;
+    }
+
+    public void setLibvirtListenAddr(String libvirtListenAddr) {
+        this.libvirtListenAddr = libvirtListenAddr;
     }
 
     public boolean isForceRun() {
