@@ -71,7 +71,7 @@ public class APICreateVipMsg extends APICreateMessage implements L3NetworkMessag
     /**
      * @desc uuid of l3Network where the vip is being created
      */
-    @APIParam(resourceType = L3NetworkVO.class)
+    @APIParam(resourceType = L3NetworkVO.class, checkAccount = true)
     private String l3NetworkUuid;
     /**
      * @desc strategy type of ip allocation algorithm. When omitted, a default strategy will be used
