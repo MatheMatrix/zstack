@@ -7033,6 +7033,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                 extEmitter.afterMigrateVm(vm, vm.getLastHostUuid(), new NoErrorCompletion(completion) {
                     @Override
                     public void done() {
+                        syncVmDevicesAddressInfo(self.getUuid());
                         completion.success();
                     }
                 });
@@ -7226,6 +7227,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                                 self.setZoneUuid(spec.getDestHost().getZoneUuid());
                             }
                         }.execute());
+                        syncVmDevicesAddressInfo(self.getUuid());
                         logger.debug(String.format("vm[uuid:%s] is running ..", self.getUuid()));
                         VmInstanceInventory inv = VmInstanceInventory.valueOf(self);
                         extEmitter.afterStartVm(inv);
@@ -7495,6 +7497,9 @@ public class VmInstanceBase extends AbstractVmInstance {
                     self.setHypervisorType(spec.getDestHost().getHypervisorType());
                     self.setRootVolumeUuid(spec.getDestRootVolume().getUuid());
                 });
+                if (struct.getStrategy() == VmCreationStrategy.InstantStart) {
+                    syncVmDevicesAddressInfo(self.getUuid());
+                }
                 logger.debug(String.format("vm[uuid:%s] is started ..", self.getUuid()));
                 VmInstanceInventory inv = VmInstanceInventory.valueOf(self);
                 extEmitter.afterStartNewCreatedVm(inv);
@@ -7931,6 +7936,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                     public void done() {
                         self = changeVmStateInDb(VmInstanceStateEvent.running,
                                 () -> self.setHostUuid(originalCopy.getHostUuid()));
+                        syncVmDevicesAddressInfo(self.getUuid());
                         VmInstanceInventory inv = VmInstanceInventory.valueOf(self);
                         extEmitter.afterRebootVm(inv);
                         new StaticIpOperator().deleteIpChange(self.getUuid());
@@ -8347,6 +8353,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void handle(Map Data) {
                 self = changeVmStateInDb(VmInstanceStateEvent.running);
+                syncVmDevicesAddressInfo(self.getUuid());
                 completion.success();
             }
         }).error(new FlowErrorHandler(completion) {
@@ -8463,6 +8470,25 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public String getName() {
                 return String.format("delete-vm-cdRom-%s", msg.getCdRomUuid());
+            }
+        });
+    }
+
+    private void syncVmDevicesAddressInfo(String vmUuid) {
+        SyncVmDeviceInfoMsg msg = new SyncVmDeviceInfoMsg();
+        msg.setVmInstanceUuid(vmUuid);
+        msg.setHostUuid(self.getHostUuid());
+        bus.makeTargetServiceIdByResourceUuid(msg, HostConstant.SERVICE_ID, msg.getHostUuid());
+        bus.send(msg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    logger.warn(String.format("Failed to sync vm device info for vm[uuid:%s], %s",
+                        vmUuid, reply.getError()));
+                } else {
+                    logger.debug(String.format("Sent SyncVmDeviceInfoMsg for vm[uuid:%s] on host[uuid:%s]",
+                        vmUuid, self.getHostUuid()));
+                }
             }
         });
     }
