@@ -87,6 +87,8 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
             validate((APIPullSdnControllerTenantMsg) msg);
         } else if (msg instanceof APIChangeSdnControllerMsg) {
             validate((APIChangeSdnControllerMsg) msg);
+        } else if (msg instanceof APIRemoveSdnControllerMsg) {
+            validate((APIRemoveSdnControllerMsg) msg);
         }
 
         setServiceId(msg);
@@ -309,6 +311,17 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
         return (start >= startVlan && start <= endVlan) ||
                (end >= startVlan && end <= endVlan) ||
                (start <= startVlan && end >= endVlan);
+    }
+
+    private void validate(APIRemoveSdnControllerMsg msg) {
+        long poolCount = Q.New(HardwareL2VxlanNetworkPoolVO.class)
+                .eq(HardwareL2VxlanNetworkPoolVO_.sdnControllerUuid, msg.getUuid())
+                .count();
+        if (poolCount > 0) {
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10031,
+                    "could not remove sdn controller[uuid:%s] because it still has %d L2 vxlan network pool(s) attached. Please detach them first",
+                    msg.getUuid(), poolCount));
+        }
     }
 
     private void validate(APIChangeSdnControllerMsg msg) {
