@@ -1,0 +1,82 @@
+#!/bin/bash
+# Pre-push hook: validate remote, branch name, and commit before pushing
+# Prevents common mistakes:
+#   - Pushing to fork instead of upstream (or vice versa)
+#   - Branch name not matching ZSTAC-XXXXX pattern for fix branches
+#   - Pushing wrong commits
+
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+REMOTE="$1"
+URL="$2"
+
+BRANCH=$(git branch --show-current)
+
+# Skip validation for non-fix branches (master, release branches, etc.)
+if [[ ! "$BRANCH" =~ ^fix/ ]] && [[ ! "$BRANCH" =~ ^feature/ ]]; then
+    exit 0
+fi
+
+ERRORS=0
+
+# --- Check 1: Branch name format ---
+if [[ "$BRANCH" =~ ^fix/ ]]; then
+    if [[ ! "$BRANCH" =~ ^fix/ZSTAC-[0-9]+ ]]; then
+        echo -e "${RED}[pre-push] Branch name '$BRANCH' does not match fix/ZSTAC-XXXXX pattern${NC}"
+        echo -e "${YELLOW}  Hint: Use 'ZSTAC' not 'ZSTACK'. Example: fix/ZSTAC-82099${NC}"
+        ERRORS=$((ERRORS + 1))
+    fi
+fi
+
+# --- Check 2: Remote URL sanity ---
+REMOTE_URL=$(git remote get-url "$REMOTE" 2>/dev/null)
+if [ -z "$REMOTE_URL" ]; then
+    echo -e "${RED}[pre-push] Cannot resolve remote '$REMOTE'${NC}"
+    ERRORS=$((ERRORS + 1))
+fi
+
+# Warn if pushing to upstream (zstackio) directly — usually want to push to fork (origin)
+if echo "$REMOTE_URL" | grep -q "zstackio/" && [ "$REMOTE" = "upstream" ]; then
+    echo -e "${YELLOW}[pre-push] WARNING: Pushing directly to upstream (zstackio). Are you sure?${NC}"
+    echo -e "${YELLOW}  Remote URL: $REMOTE_URL${NC}"
+    echo -e "${YELLOW}  Usually you want to push to 'origin' (your fork) instead.${NC}"
+    # Warning only, don't block
+fi
+
+# --- Check 3: Verify latest commit has a Change-Id ---
+LAST_COMMIT_MSG=$(git log -1 --format=%B)
+if ! echo "$LAST_COMMIT_MSG" | grep -q "^Change-Id: I[0-9a-f]\{40\}"; then
+    echo -e "${RED}[pre-push] Latest commit is missing Change-Id${NC}"
+    echo -e "${YELLOW}  Use 'source scripts/zcommit.sh && zcommit ...' to create commits with Change-Id${NC}"
+    ERRORS=$((ERRORS + 1))
+fi
+
+# --- Check 4: Verify latest commit references a Jira ticket (for fix branches) ---
+if [[ "$BRANCH" =~ ^fix/ ]]; then
+    if ! echo "$LAST_COMMIT_MSG" | grep -qi "ZSTAC-[0-9]\+"; then
+        echo -e "${RED}[pre-push] Latest commit does not reference a ZSTAC ticket${NC}"
+        ERRORS=$((ERRORS + 1))
+    fi
+fi
+
+# --- Check 5: Confirm repo identity (main vs premium) ---
+TOPLEVEL=$(git rev-parse --show-toplevel 2>/dev/null)
+REPO_NAME=$(basename "$TOPLEVEL")
+if [[ "$BRANCH" =~ premium ]] && [[ "$REPO_NAME" != "premium" ]]; then
+    echo -e "${RED}[pre-push] Branch name suggests premium but you're in repo '$REPO_NAME'${NC}"
+    ERRORS=$((ERRORS + 1))
+fi
+
+# --- Summary ---
+if [ $ERRORS -gt 0 ]; then
+    echo ""
+    echo -e "${RED}[pre-push] $ERRORS error(s) found. Push blocked.${NC}"
+    echo -e "${YELLOW}  To bypass: git push --no-verify${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}[pre-push] All checks passed: branch=$BRANCH remote=$REMOTE${NC}"
+exit 0
