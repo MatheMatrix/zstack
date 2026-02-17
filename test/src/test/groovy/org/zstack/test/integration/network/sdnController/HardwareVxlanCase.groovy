@@ -41,6 +41,11 @@ class HardwareVxlanCase extends SubCase {
 
     @Override
     void clean() {
+        // ZSTAC-80186: delete pools created in createEnv() before env.delete()
+        // removes the SDN controller (which now validates no attached pools)
+        queryL2VxlanNetworkPool {}.each { pool ->
+            deleteL2Network { uuid = pool.uuid }
+        }
         env.delete()
     }
 
