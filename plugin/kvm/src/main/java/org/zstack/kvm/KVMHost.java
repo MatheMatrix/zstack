@@ -4469,8 +4469,9 @@ public class KVMHost extends HostBase implements Host {
         rootVolume.setCacheMode(rcf.getResourceConfigValue(KVMGlobalConfig.LIBVIRT_CACHE_MODE, spec.getDestRootVolume().getUuid(), String.class));
 
         String vmCpuMode = rcf.getResourceConfigValue(KVMGlobalConfig.NESTED_VIRTUALIZATION, spec.getVmInventory().getUuid(), String.class);
-        if (vmCpuMode.equals(KVMConstant.CPU_MODE_NONE) || vmCpuMode.equals(KVMConstant.CPU_MODE_HOST_MODEL) || vmCpuMode.equals(KVMConstant.CPU_MODE_HOST_PASSTHROUGH)) {
-            cmd.setNestedVirtualization(vmCpuMode);
+        if (vmCpuMode.equals(KVMConstant.CPU_MODE_NONE) || vmCpuMode.equals(KVMConstant.CPU_MODE_HOST_MODEL) || vmCpuMode.equals(KVMConstant.CPU_MODE_HOST_PASSTHROUGH) || vmCpuMode.equals(KVMConstant.CPU_MODE_HYGON_CUSTOMIZED)) {
+            // For Hygon_Customized, we treat it as host-passthrough during VM start to avoid CPU model mismatch
+            cmd.setNestedVirtualization(vmCpuMode.equals(KVMConstant.CPU_MODE_HYGON_CUSTOMIZED) ? KVMConstant.CPU_MODE_HOST_PASSTHROUGH : vmCpuMode);
         } else {
             cmd.setNestedVirtualization(KVMConstant.CPU_MODE_CUSTOM);
             cmd.setVmCpuModel(vmCpuMode);
