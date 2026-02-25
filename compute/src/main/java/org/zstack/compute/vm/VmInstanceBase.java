@@ -8862,27 +8862,56 @@ public class VmInstanceBase extends AbstractVmInstance {
             }
         }
 
-        // check image cache to ensure image type is not ISO
+        // check image available for reimage
         {
-            SimpleQuery<ImageCacheVO> q = dbf.createQuery(ImageCacheVO.class);
-            q.select(ImageCacheVO_.mediaType);
-            q.add(ImageCacheVO_.imageUuid, Op.EQ, rootVolume.getRootImageUuid());
-            q.setLimit(1);
-            ImageConstant.ImageMediaType imageMediaType = q.findValue();
-            if (imageMediaType == null) {
+            String rootImageUuid = rootVolume.getRootImageUuid();
+
+            if (rootImageUuid == null) {
+                throw new OperationFailureException(err(
+                ORG_ZSTACK_COMPUTE_VM_10305,         VmErrors.RE_IMAGE_CANNOT_FIND_IMAGE_CACHE,
+                        "unable to reset volume[uuid:%s], the root image uuid is not set on the volume",
+                        rootVolume.getUuid()
+                ));
+            }
+
+            boolean imageExists = Q.New(ImageVO.class).eq(ImageVO_.uuid, rootImageUuid).isExists();
+            boolean cacheExistsOnCurrentPs = Q.New(ImageCacheVO.class)
+                    .eq(ImageCacheVO_.imageUuid, rootImageUuid)
+                    .eq(ImageCacheVO_.primaryStorageUuid, rootVolume.getPrimaryStorageUuid())
+                    .isExists();
+
+            if (!imageExists && !cacheExistsOnCurrentPs) {
                 throw new OperationFailureException(err(
                 ORG_ZSTACK_COMPUTE_VM_10305,         VmErrors.RE_IMAGE_CANNOT_FIND_IMAGE_CACHE,
                         "unable to reset volume[uuid:%s] to origin image[uuid:%s]," +
-                                " cannot find image cache.",
-                        rootVolume.getUuid(), rootVolume.getRootImageUuid()
+                                " the image has been deleted and no image cache exists on the current" +
+                                " primary storage[uuid:%s]. This can happen when a cloned VM undergoes" +
+                                " storage migration after its source image is removed.",
+                        rootVolume.getUuid(), rootImageUuid, rootVolume.getPrimaryStorageUuid()
                 ));
             }
-            if (imageMediaType.toString().equals("ISO")) {
+
+            // check image media type is not ISO
+            ImageConstant.ImageMediaType imageMediaType = null;
+            SimpleQuery<ImageCacheVO> q = dbf.createQuery(ImageCacheVO.class);
+            q.select(ImageCacheVO_.mediaType);
+            q.add(ImageCacheVO_.imageUuid, Op.EQ, rootImageUuid);
+            q.setLimit(1);
+            imageMediaType = q.findValue();
+
+            if (imageMediaType == null && imageExists) {
+                imageMediaType = Q.New(ImageVO.class)
+                        .select(ImageVO_.mediaType)
+                        .eq(ImageVO_.uuid, rootImageUuid)
+                        .findValue();
+            }
+
+            if (imageMediaType != null && imageMediaType.toString().equals("ISO")) {
                 throw new OperationFailureException(err(
                 ORG_ZSTACK_COMPUTE_VM_10306,         VmErrors.RE_IMAGE_IMAGE_MEDIA_TYPE_SHOULD_NOT_BE_ISO,
                         "unable to reset volume[uuid:%s] to origin image[uuid:%s]," +
                                 " for image type is ISO",
-                        rootVolume.getUuid(), rootVolume.getRootImageUuid()
+                        rootVolume.getUuid(), rootImageUuid
                 ));
             }
         }

@@ -1,0 +1,638 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1772012531538,
+  "projectRoot": "/home/pandawuu/zstackProject/zstack/worktrees/bugfix/ZSTAC-46893",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Java",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "pom.xml"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "maven",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "test"
+    ],
+    "gitBranches": {
+      "defaultBranch": "master",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "abstraction": {
+      "path": "abstraction",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531518,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "build": {
+      "path": "build",
+      "purpose": "Build output",
+      "fileCount": 14,
+      "lastAccessed": 1772012531522,
+      "keyFiles": [
+        "assembly.xml",
+        "bump_version.py",
+        "context.xml",
+        "debug.sh",
+        "deploy.sh"
+      ]
+    },
+    "compute": {
+      "path": "compute",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531522,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "conf": {
+      "path": "conf",
+      "purpose": null,
+      "fileCount": 16,
+      "lastAccessed": 1772012531522,
+      "keyFiles": [
+        "beanRefContext.xml",
+        "deploydb.sh",
+        "deployuidb.sh",
+        "i18n.json",
+        "log4j-cloud.xml"
+      ]
+    },
+    "configuration": {
+      "path": "configuration",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531523,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "console": {
+      "path": "console",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531523,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "core": {
+      "path": "core",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531525,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 2,
+      "lastAccessed": 1772012531526,
+      "keyFiles": [
+        "TELEMETRY_SPECIFICATION.md",
+        "antora.yml"
+      ]
+    },
+    "externalservice": {
+      "path": "externalservice",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531526,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "header": {
+      "path": "header",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531526,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "identity": {
+      "path": "identity",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531527,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "image": {
+      "path": "image",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531527,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "longjob": {
+      "path": "longjob",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531528,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "network": {
+      "path": "network",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531528,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "plugin": {
+      "path": "plugin",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531529,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "portal": {
+      "path": "portal",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531530,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "premium": {
+      "path": "premium",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1772012531530,
+      "keyFiles": [
+        "OEMNeutral.sh",
+        "pom.xml"
+      ]
+    },
+    "resourceconfig": {
+      "path": "resourceconfig",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531531,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "rest": {
+      "path": "rest",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531531,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "sdk": {
+      "path": "sdk",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531531,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "search": {
+      "path": "search",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531531,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "simulator": {
+      "path": "simulator",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531532,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "storage": {
+      "path": "storage",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531532,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "tag": {
+      "path": "tag",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531533,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "test": {
+      "path": "test",
+      "purpose": "Test files",
+      "fileCount": 2,
+      "lastAccessed": 1772012531533,
+      "keyFiles": [
+        "pom.xml",
+        "runstablilitycase"
+      ]
+    },
+    "testlib": {
+      "path": "testlib",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772012531533,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "utils": {
+      "path": "utils",
+      "purpose": "Utility functions",
+      "fileCount": 1,
+      "lastAccessed": 1772012531533,
+      "keyFiles": [
+        "pom.xml"
+      ]
+    },
+    "abstraction/src": {
+      "path": "abstraction/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531533,
+      "keyFiles": []
+    },
+    "compute/src": {
+      "path": "compute/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531534,
+      "keyFiles": []
+    },
+    "configuration/src": {
+      "path": "configuration/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531534,
+      "keyFiles": []
+    },
+    "console/src": {
+      "path": "console/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531534,
+      "keyFiles": []
+    },
+    "core/src": {
+      "path": "core/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531535,
+      "keyFiles": []
+    },
+    "externalservice/src": {
+      "path": "externalservice/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531535,
+      "keyFiles": []
+    },
+    "header/src": {
+      "path": "header/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531535,
+      "keyFiles": []
+    },
+    "identity/src": {
+      "path": "identity/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531535,
+      "keyFiles": []
+    },
+    "image/src": {
+      "path": "image/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531536,
+      "keyFiles": []
+    },
+    "longjob/src": {
+      "path": "longjob/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531536,
+      "keyFiles": []
+    },
+    "network/src": {
+      "path": "network/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531536,
+      "keyFiles": []
+    },
+    "portal/src": {
+      "path": "portal/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531537,
+      "keyFiles": []
+    },
+    "resourceconfig/src": {
+      "path": "resourceconfig/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531537,
+      "keyFiles": []
+    },
+    "rest/src": {
+      "path": "rest/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531537,
+      "keyFiles": []
+    },
+    "sdk/src": {
+      "path": "sdk/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531537,
+      "keyFiles": []
+    },
+    "search/src": {
+      "path": "search/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531538,
+      "keyFiles": []
+    },
+    "storage/src": {
+      "path": "storage/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531538,
+      "keyFiles": []
+    },
+    "tag/src": {
+      "path": "tag/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531538,
+      "keyFiles": []
+    },
+    "test/src": {
+      "path": "test/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531538,
+      "keyFiles": []
+    },
+    "testlib/src": {
+      "path": "testlib/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531538,
+      "keyFiles": []
+    },
+    "utils/src": {
+      "path": "utils/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772012531538,
+      "keyFiles": []
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "compute/src/main/java/org/zstack/compute/vm/VmInstanceBase.java",
+      "accessCount": 19,
+      "lastAccessed": 1772014546031,
+      "type": "file"
+    },
+    {
+      "path": "storage/src/main/java/org/zstack/storage/volume/VolumeBase.java",
+      "accessCount": 19,
+      "lastAccessed": 1772014580906,
+      "type": "file"
+    },
+    {
+      "path": "test/src/test/groovy/org/zstack/test/integration/storage/snapshot/ReimageVmSaveSnapshotCase.groovy",
+      "accessCount": 6,
+      "lastAccessed": 1772013484711,
+      "type": "file"
+    },
+    {
+      "path": "test/src/test/groovy/org/zstack/test/integration/storage",
+      "accessCount": 4,
+      "lastAccessed": 1772013459924,
+      "type": "directory"
+    },
+    {
+      "path": "",
+      "accessCount": 4,
+      "lastAccessed": 1772014329089,
+      "type": "directory"
+    },
+    {
+      "path": "test",
+      "accessCount": 4,
+      "lastAccessed": 1772014331973,
+      "type": "directory"
+    },
+    {
+      "path": "compute/src/main/java/org/zstack/compute/vm",
+      "accessCount": 3,
+      "lastAccessed": 1772012608342,
+      "type": "directory"
+    },
+    {
+      "path": "plugin/localstorage/src/main/java/org/zstack/storage/primary/local/LocalStorageKvmBackend.java",
+      "accessCount": 3,
+      "lastAccessed": 1772012773340,
+      "type": "file"
+    },
+    {
+      "path": "storage/src/main/java/org/zstack/storage/volume",
+      "accessCount": 2,
+      "lastAccessed": 1772012651430,
+      "type": "directory"
+    },
+    {
+      "path": "compute/src/main/java/org/zstack/compute/vm/VmCapabilitiesJudger.java",
+      "accessCount": 2,
+      "lastAccessed": 1772013010295,
+      "type": "file"
+    },
+    {
+      "path": "header/src/main/java/org/zstack/header/volume",
+      "accessCount": 2,
+      "lastAccessed": 1772013233548,
+      "type": "directory"
+    },
+    {
+      "path": "test/src/test/groovy/org/zstack/test/integration/storage/snapshot",
+      "accessCount": 2,
+      "lastAccessed": 1772014527550,
+      "type": "directory"
+    },
+    {
+      "path": "header/src/main/java/org/zstack/header/vm/ReimageVmInstanceMsg.java",
+      "accessCount": 1,
+      "lastAccessed": 1772012596623,
+      "type": "file"
+    },
+    {
+      "path": "header/src/main/java/org/zstack/header/vm/ReimageVolumeOverlayMsg.java",
+      "accessCount": 1,
+      "lastAccessed": 1772012641348,
+      "type": "file"
+    },
+    {
+      "path": "header/src/main/java/org/zstack/header/volume/ReInitVolumeMsg.java",
+      "accessCount": 1,
+      "lastAccessed": 1772012663083,
+      "type": "file"
+    },
+    {
+      "path": "header/src/main/java/org/zstack/header/vm/AfterReimageVmInstanceExtensionPoint.java",
+      "accessCount": 1,
+      "lastAccessed": 1772012709799,
+      "type": "file"
+    },
+    {
+      "path": "header/src/main/java/org/zstack/header/vm/APIReimageVmInstanceMsg.java",
+      "accessCount": 1,
+      "lastAccessed": 1772012723374,
+      "type": "file"
+    },
+    {
+      "path": "header/src/main/java/org/zstack/header/vm/VmErrors.java",
+      "accessCount": 1,
+      "lastAccessed": 1772012723608,
+      "type": "file"
+    },
+    {
+      "path": "plugin/localstorage/src/main/java/org/zstack/storage/primary/local/LocalStorageBase.java",
+      "accessCount": 1,
+      "lastAccessed": 1772012739533,
+      "type": "file"
+    },
+    {
+      "path": "plugin/sharedMountPointPrimaryStorage/src/main/java/org/zstack/storage/primary/smp/SMPPrimaryStorageBase.java",
+      "accessCount": 1,
+      "lastAccessed": 1772012740136,
+      "type": "file"
+    },
+    {
+      "path": "header/src/main/java/org/zstack/header/storage/primary/PrimaryStorageErrors.java",
+      "accessCount": 1,
+      "lastAccessed": 1772012817948,
+      "type": "file"
+    },
+    {
+      "path": "plugin/sharedMountPointPrimaryStorage/src/main/java/org/zstack/storage/primary/smp/KvmBackend.java",
+      "accessCount": 1,
+      "lastAccessed": 1772012833970,
+      "type": "file"
+    },
+    {
+      "path": "plugin/nfsPrimaryStorage/src/main/java/org/zstack/storage/primary/nfs/NfsPrimaryStorage.java",
+      "accessCount": 1,
+      "lastAccessed": 1772012842434,
+      "type": "file"
+    },
+    {
+      "path": "plugin/ceph/src/main/java/org/zstack/storage/ceph/primary/CephPrimaryStorageBase.java",
+      "accessCount": 1,
+      "lastAccessed": 1772012843405,
+      "type": "file"
+    },
+    {
+      "path": "test/src/test/groovy/org/zstack/test/integration",
+      "accessCount": 1,
+      "lastAccessed": 1772013213103,
+      "type": "directory"
+    },
+    {
+      "path": "test/src/test/groovy",
+      "accessCount": 1,
+      "lastAccessed": 1772013230557,
+      "type": "directory"
+    },
+    {
+      "path": "header/src/main/java/org/zstack/header/volume/VolumeVO_.java",
+      "accessCount": 1,
+      "lastAccessed": 1772013250085,
+      "type": "directory"
+    },
+    {
+      "path": "test/src/test/groovy/org/zstack/test/integration/storage/StorageTest.groovy",
+      "accessCount": 1,
+      "lastAccessed": 1772013251666,
+      "type": "directory"
+    },
+    {
+      "path": "test/src/test/groovy/org/zstack/test/integration/storage/snapshot/ReimageVmWithDeletedImageCase.groovy",
+      "accessCount": 1,
+      "lastAccessed": 1772013525525,
+      "type": "file"
+    },
+    {
+      "path": "conf/i18n",
+      "accessCount": 1,
+      "lastAccessed": 1772014348940,
+      "type": "directory"
+    },
+    {
+      "path": "test/src/test/groovy/org/zstack/test/integration/storage/snapshot/SnapshotTest.groovy",
+      "accessCount": 1,
+      "lastAccessed": 1772014361889,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}
