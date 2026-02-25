@@ -1,10 +1,20 @@
 package org.zstack.test.integration.storage.primary.addon.zbs
 
 import org.springframework.http.HttpEntity
+import org.zstack.core.Platform
+import org.zstack.core.cloudbus.CloudBus
 import org.zstack.core.cloudbus.EventCallback
 import org.zstack.core.cloudbus.EventFacade
 import org.zstack.core.db.DatabaseFacade
 import org.zstack.core.db.Q
+import org.zstack.header.message.MessageReply
+import org.zstack.header.storage.backup.BackupStorageEO
+import org.zstack.header.storage.backup.BackupStorageState
+import org.zstack.header.storage.backup.BackupStorageStatus
+import org.zstack.header.storage.backup.BackupStorageZoneRefVO
+import org.zstack.header.storage.primary.PrimaryStorageConstant
+import org.zstack.header.storage.primary.SelectBackupStorageMsg
+import org.zstack.header.storage.primary.SelectBackupStorageReply
 import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageVO
 import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageSpaceVO
 import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageVO_
@@ -182,6 +192,7 @@ class ZbsPrimaryStorageCase extends SubCase {
             testDataVolumeNegativeScenario()
             testDecodeMdsUriWithSpecialPassword()
             testMdsReconnectAfterMaximumPingFailures()
+            testSelectBackupStoragePreferType()
         }
     }
 
@@ -838,6 +849,54 @@ class ZbsPrimaryStorageCase extends SubCase {
         expungeDataVolume {
             uuid = volUuid
         }
+    }
+
+    void testSelectBackupStoragePreferType() {
+        // ZSTAC-71706: When mixed BS types exist (e.g. VCenter + ImageStore),
+        // the sort using List.indexOf() returns -1 for non-preferred types,
+        // causing them to be incorrectly sorted before preferred types.
+        //
+        // ZBS preferBsTypes = ["ImageStoreBackupStorage"]
+        // The existing env has sftpBackupStorage (type="SftpBackupStorage", not preferred)
+        // We add a fake ImageStoreBackupStorage (preferred) and verify it gets selected.
+
+        def bus = bean(CloudBus.class)
+
+        // Create a fake ImageStoreBackupStorage record
+        def fakeBsUuid = Platform.getUuid()
+        BackupStorageEO bsEO = new BackupStorageEO()
+        bsEO.setUuid(fakeBsUuid)
+        bsEO.setName("fake-imagestore")
+        bsEO.setType("ImageStoreBackupStorage")
+        bsEO.setUrl("http://fake-imagestore")
+        bsEO.setState(BackupStorageState.Enabled)
+        bsEO.setStatus(BackupStorageStatus.Connected)
+        bsEO.setTotalCapacity(SizeUnit.GIGABYTE.toByte(100))
+        bsEO.setAvailableCapacity(SizeUnit.GIGABYTE.toByte(50))
+        dbf.persist(bsEO)
+
+        // Attach the fake BS to the zone
+        BackupStorageZoneRefVO ref = new BackupStorageZoneRefVO()
+        ref.setBackupStorageUuid(fakeBsUuid)
+        ref.setZoneUuid(zone.uuid)
+        dbf.persist(ref)
+
+        // Send SelectBackupStorageMsg to the ZBS primary storage
+        SelectBackupStorageMsg msg = new SelectBackupStorageMsg()
+        msg.setPrimaryStorageUuid(ps.uuid)
+        msg.setRequiredSize(SizeUnit.GIGABYTE.toByte(1))
+        bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, ps.uuid)
+        MessageReply reply = bus.call(msg)
+
+        assert reply.success
+        SelectBackupStorageReply selectReply = reply as SelectBackupStorageReply
+        // The preferred type (ImageStoreBackupStorage) must be selected, not SftpBackupStorage
+        assert selectReply.inventory != null
+        assert selectReply.inventory.type == "ImageStoreBackupStorage"
+        assert selectReply.inventory.uuid == fakeBsUuid
+
+        // Cleanup
+        dbf.removeByPrimaryKey(fakeBsUuid, BackupStorageEO.class)
     }
 
     long getUsedCapacity(String poolName) {
