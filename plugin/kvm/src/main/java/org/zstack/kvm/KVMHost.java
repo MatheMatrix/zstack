@@ -889,7 +889,7 @@ public class KVMHost extends HostBase implements Host {
                         public Class<PingResponse> getReturnClass() {
                             return PingResponse.class;
                         }
-                    }, TimeUnit.SECONDS, HostGlobalConfig.PING_HOST_TIMEOUT.value(Long.class));
+                    }, TimeUnit.SECONDS, HostTrackImpl.getAdaptiveTimeout(self.getUuid()));
                 }).run(new WhileDoneCompletion(trigger) {
                     @Override
                     public void done(ErrorCodeList errorCodeList) {
@@ -5047,7 +5047,7 @@ public class KVMHost extends HostBase implements Host {
                             public Class<PingResponse> getReturnClass() {
                                 return PingResponse.class;
                             }
-                        },TimeUnit.SECONDS, HostGlobalConfig.PING_HOST_TIMEOUT.value(Long.class));
+                        },TimeUnit.SECONDS, HostTrackImpl.getAdaptiveTimeout(self.getUuid()));
                     }
                 });
 

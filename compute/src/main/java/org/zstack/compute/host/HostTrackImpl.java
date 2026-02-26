@@ -39,6 +39,30 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
     private static boolean alwaysStartRightNow = false;
     private static final Cache<String, Long> skippedPingHostDeadline = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS).build();
 
+    // EMA adaptive timeout: tracks per-host exponential moving average of ping response times (in seconds)
+    private static final double EMA_ALPHA = 0.2;
+    private static final double EMA_SAFETY_FACTOR = 3.0;
+    private static final ConcurrentHashMap<String, Double> pingResponseEma = new ConcurrentHashMap<>();
+
+    /**
+     * Returns the adaptive ping timeout for the given host (in seconds).
+     * Uses EMA of observed response times * safety factor, floored by the configured value.
+     */
+    public static long getAdaptiveTimeout(String hostUuid) {
+        long configured = HostGlobalConfig.PING_HOST_TIMEOUT.value(Long.class);
+        Double ema = pingResponseEma.get(hostUuid);
+        if (ema == null) {
+            return configured;
+        }
+        long adaptive = (long) Math.ceil(ema * EMA_SAFETY_FACTOR);
+        return Math.max(configured, adaptive);
+    }
+
+    private static void updatePingResponseEma(String hostUuid, double responseTimeSec) {
+        pingResponseEma.merge(hostUuid, responseTimeSec,
+                (oldEma, sample) -> EMA_ALPHA * sample + (1 - EMA_ALPHA) * oldEma);
+    }
+
     @Autowired
     private DatabaseFacade dbf;
     @Autowired
@@ -136,6 +160,7 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
             PingHostMsg msg = new PingHostMsg();
             msg.setHostUuid(uuid);
             bus.makeLocalServiceId(msg, HostConstant.SERVICE_ID);
+            final long pingStartMs = System.currentTimeMillis();
             bus.send(msg, new CloudBusCallBack(null) {
                 @Override
                 public void run(MessageReply reply) {
@@ -147,6 +172,12 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
                         logger.warn(String.format("[Host Tracker]: unable track host[uuid:%s], %s", uuid, reply.getError()));
                         return ReconnectDecision.DoNothing;
                     }
+
+                    // update EMA with observed response time on successful ping
+                    double responseTimeSec = (System.currentTimeMillis() - pingStartMs) / 1000.0;
+                    updatePingResponseEma(uuid, responseTimeSec);
+                    logger.debug(String.format("[Host Tracker]: host[uuid:%s] ping response time %.2fs, adaptive timeout %ds",
+                            uuid, responseTimeSec, getAdaptiveTimeout(uuid)));
 
                     PingHostReply r = reply.castReply();
                     if (r.isNoReconnect()) {
