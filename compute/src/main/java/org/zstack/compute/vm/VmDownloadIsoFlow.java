@@ -15,6 +15,7 @@ import org.zstack.header.image.ImageBackupStorageRefInventory;
 import org.zstack.header.image.ImageInventory;
 import org.zstack.header.image.ImageStatus;
 import org.zstack.header.message.MessageReply;
+import org.zstack.header.storage.backup.BackupStorageStatus;
 import org.zstack.header.storage.primary.DownloadIsoToPrimaryStorageMsg;
 import org.zstack.header.storage.primary.DownloadIsoToPrimaryStorageReply;
 import org.zstack.header.storage.primary.PrimaryStorageConstant;
@@ -24,7 +25,11 @@ import org.zstack.header.vm.VmInstanceSpec.ImageSpec;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.function.Function;
 
+import javax.persistence.Tuple;
+import javax.persistence.TypedQuery;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
@@ -40,6 +45,38 @@ public class VmDownloadIsoFlow extends NoRollbackFlow {
     private DatabaseFacade dbf;
     @Autowired
     private ErrorFacade errf;
+
+    private String getImageBackupStorageInfo(String imageUuid) {
+        String sql = "select bs.name, bs.status" +
+                " from BackupStorageVO bs, ImageBackupStorageRefVO ref" +
+                " where bs.uuid = ref.backupStorageUuid" +
+                " and ref.imageUuid = :imageUuid";
+        TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
+        q.setParameter("imageUuid", imageUuid);
+        List<Tuple> tuples = q.getResultList();
+        if (tuples.isEmpty()) {
+            return "none";
+        }
+        return tuples.stream()
+                .map(t -> String.format("%s(%s)", t.get(0, String.class), t.get(1, BackupStorageStatus.class)))
+                .collect(Collectors.joining(", ", "[", "]"));
+    }
+
+    private String getZoneBackupStorageInfo(String zoneUuid) {
+        String sql = "select bs.name, bs.status" +
+                " from BackupStorageVO bs, BackupStorageZoneRefVO ref" +
+                " where bs.uuid = ref.backupStorageUuid" +
+                " and ref.zoneUuid = :zoneUuid";
+        TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
+        q.setParameter("zoneUuid", zoneUuid);
+        List<Tuple> tuples = q.getResultList();
+        if (tuples.isEmpty()) {
+            return "none";
+        }
+        return tuples.stream()
+                .map(t -> String.format("%s(%s)", t.get(0, String.class), t.get(1, BackupStorageStatus.class)))
+                .collect(Collectors.joining(", ", "[", "]"));
+    }
 
     @Override
     public void run(final FlowTrigger trigger, Map data) {
@@ -59,10 +96,16 @@ public class VmDownloadIsoFlow extends NoRollbackFlow {
         final String bsUuid = selector.select();
 
         if (bsUuid == null) {
-            throw new OperationFailureException(operr(ORG_ZSTACK_COMPUTE_VM_10084, "cannot find the iso[uuid:%s] in any connected backup storage attached to the zone[uuid:%s]. check below:\n" +
-                                    "1. if the backup storage is attached to the zone where the VM[name: %s, uuid:%s] is running\n" +
-                                    "2. if the backup storage is in connected status, if not, try reconnecting it",
-                            iso.getUuid(), host.getZoneUuid(), spec.getVmInventory().getName(), spec.getVmInventory().getUuid())
+            String isoBsInfo = getImageBackupStorageInfo(iso.getUuid());
+            String zoneBsInfo = getZoneBackupStorageInfo(host.getZoneUuid());
+            throw new OperationFailureException(operr(ORG_ZSTACK_COMPUTE_VM_10084,
+                    "cannot find the iso[name:%s, uuid:%s] in any connected backup storage" +
+                            " attached to the zone[uuid:%s]." +
+                            "\nISO is on backup storage: %s" +
+                            "\nzone attached backup storage: %s" +
+                            "\nsuggestion: attach the ISO's backup storage to the zone," +
+                            " or ensure the backup storage is connected.",
+                    iso.getName(), iso.getUuid(), host.getZoneUuid(), isoBsInfo, zoneBsInfo)
             );
         }
 
