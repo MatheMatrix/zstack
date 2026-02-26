@@ -45,11 +45,16 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
     private static final ConcurrentHashMap<String, Double> pingResponseEma = new ConcurrentHashMap<>();
 
     /**
-     * Returns the adaptive ping timeout for the given host (in seconds).
-     * Uses EMA of observed response times * safety factor, floored by the configured value.
+     * Returns the ping timeout for the given host (in seconds).
+     * When adaptive timeout is enabled (host.ping.adaptiveTimeout.enable=true),
+     * uses EMA of observed response times * safety factor, floored by the configured value.
+     * When disabled, returns the configured ping.timeout directly.
      */
     public static long getAdaptiveTimeout(String hostUuid) {
         long configured = HostGlobalConfig.PING_HOST_TIMEOUT.value(Long.class);
+        if (!HostGlobalConfig.PING_ADAPTIVE_TIMEOUT_ENABLED.value(Boolean.class)) {
+            return configured;
+        }
         Double ema = pingResponseEma.get(hostUuid);
         if (ema == null) {
             return configured;
@@ -58,6 +63,10 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
         return Math.max(configured, adaptive);
     }
 
+    /**
+     * Updates the per-host EMA of ping response times using exponential moving average.
+     * New EMA = alpha * sample + (1 - alpha) * oldEMA.
+     */
     private static void updatePingResponseEma(String hostUuid, double responseTimeSec) {
         pingResponseEma.merge(hostUuid, responseTimeSec,
                 (oldEma, sample) -> EMA_ALPHA * sample + (1 - EMA_ALPHA) * oldEma);
