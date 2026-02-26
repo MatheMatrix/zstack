@@ -56,6 +56,14 @@ public class HostGlobalConfig {
     @GlobalConfigValidation(numberGreaterThan = 1)
     public static GlobalConfig SYNC_HOST_HW_MONITOR_INTERVAL = new GlobalConfig(CATEGORY, "sync.host.hw.monitor.interval");
 
+    @GlobalConfigValidation(numberGreaterThan = -1)
+    @GlobalConfigDef(type = Integer.class, defaultValue = "30", description = "max jitter in seconds added to host reconnect initial delay to prevent thundering herd in large-scale environments")
+    public static GlobalConfig RECONNECT_JITTER_MAX_SECONDS = new GlobalConfig(CATEGORY, "connection.reconnectJitterMaxSeconds");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    @GlobalConfigDef(type = Integer.class, defaultValue = "100", description = "max number of concurrent host reconnect operations to prevent overwhelming the management node")
+    public static GlobalConfig RECONNECT_MAX_CONCURRENCY = new GlobalConfig(CATEGORY, "connection.reconnectMaxConcurrency");
+
     @GlobalConfigValidation
     @GlobalConfigDef(type = String.class, defaultValue = "10501:10999", description = "nbd port range")
     public static GlobalConfig NBD_PORT_RANGE = new GlobalConfig(CATEGORY, "nbd.port.range");
