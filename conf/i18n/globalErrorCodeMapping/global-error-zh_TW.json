@@ -448,6 +448,7 @@
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10050": "Ceph ps[uuid=%s] 根池名称未找到",
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10052": "刪除卷鏈錯誤誤，继續刪除",
   "ORG_ZSTACK_COMPUTE_VM_10320": "VmInstanceStartExtensionPoint[%s] 拒绝啟動 vm[uuid:%s]，因为 %s",
+  "ORG_ZSTACK_COMPUTE_VM_10321": "無法將雲盤[uuid:%s]重置到源鏡像[uuid:%s]，源鏡像已被刪除，不支持對該雲主機執行重置操作",
   "ORG_ZSTACK_COMPUTE_HOST_10013": "网络接口[name:%s]主機[uuid:%s]未找到",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_INTEGRITY_10008": "加密 %s[id:%s] 錯誤誤: %s",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_SMP_10000": "共享挂载點主儲儲[uuid:%s, 名称:%s]無法在附加的叢叢中找到任何可用主機",

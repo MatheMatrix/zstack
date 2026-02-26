@@ -177,11 +177,19 @@ public class VolumeBase extends AbstractVolume implements Volume {
         refreshVO();
 
         VolumeInventory rootVolumeInventory = VolumeInventory.valueOf(self);
-        final long originSize = Q.New(ImageCacheVO.class)
+        final Long originSize = Q.New(ImageCacheVO.class)
                 .select(ImageCacheVO_.size)
                 .limit(1)
                 .eq(ImageCacheVO_.imageUuid, self.getRootImageUuid())
                 .findValue();
+        if (originSize == null) {
+            reply.setError(operr(ORG_ZSTACK_STORAGE_VOLUME_10032,
+                    "cannot find image cache[imageUuid: %s] for reinit volume[uuid: %s]," +
+                            " the origin image may have been deleted",
+                    self.getRootImageUuid(), self.getUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
         // do the re-image op
         FlowChain chain = FlowChainBuilder.newShareFlowChain();
         List<String> systemTags = Q.New(SystemTagVO.class).select(SystemTagVO_.tag)

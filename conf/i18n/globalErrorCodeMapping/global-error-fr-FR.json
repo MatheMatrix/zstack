@@ -448,6 +448,7 @@
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10050": "Ceph ps[uuid=%s] Nom du pool root non trouvé",
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10052": "erreur de suppression de la chaîne de volumes, continuation avec la suppression du volume",
   "ORG_ZSTACK_COMPUTE_VM_10320": "VmInstanceStartExtensionPoint[%s] refuse de démarrer la machine virtuelle[uuid:%s] car %s",
+  "ORG_ZSTACK_COMPUTE_VM_10321": "impossible de réinitialiser le volume[uuid:%s] vers l'image d'origine[uuid:%s], l'image d'origine a été supprimée, la réinitialisation n'est pas prise en charge pour cette VM",
   "ORG_ZSTACK_COMPUTE_HOST_10013": "networkInterface[name:%s] de l'instance[uuid:%s] ne peut pas être trouvé",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_INTEGRITY_10008": "chiffrement %s[id:%s] échoué: %s",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_SMP_10000": "le stockage principal du point de montage partagé [uuid:%s, name:%s] ne peut trouver aucun hôte disponible dans les clusters de calcul connectés",

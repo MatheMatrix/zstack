@@ -448,6 +448,7 @@
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10050": "Ceph ps[uuid=%s] Root-Pool-Name nicht gefunden",
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10052": "Volume-Kettenfehler löschen, mit Volume-Löschung fortfahren",
   "ORG_ZSTACK_COMPUTE_VM_10320": "VmInstanceStartExtensionPoint[%s] verweigert das Starten der virtuellen Maschine[uuid:%s] weil %s",
+  "ORG_ZSTACK_COMPUTE_VM_10321": "Volume[uuid:%s] kann nicht auf das Ursprungsimage[uuid:%s] zurückgesetzt werden, das Ursprungsimage wurde gelöscht, Reimage wird für diese VM nicht unterstützt",
   "ORG_ZSTACK_COMPUTE_HOST_10013": "networkInterface[name:%s] der Instanz[uuid:%s] kann nicht gefunden werden",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_INTEGRITY_10008": "Verschlüsselung %s[id:%s] fehlgeschlagen: %s",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_SMP_10000": "Der primäre Speicher mit gemeinsamem Mount-Punkt[uuid:%s, name:%s] kann keinen verfügbaren Host in den angehängten Compute-Clustern finden",

@@ -448,6 +448,7 @@
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10050": "Ceph ps[uuid=%s]のルートプール名が見つかりません",
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10052": "ボリュームチェーンの削除エラーです。ボリュームの削除を続行します",
   "ORG_ZSTACK_COMPUTE_VM_10320": "VmInstanceStartExtensionPoint[%s]は、%sのため、仮想機械[uuid:%s]の起動を拒否します",
+  "ORG_ZSTACK_COMPUTE_VM_10321": "ボリューム[uuid:%s]を元のイメージ[uuid:%s]にリセットできません。元のイメージが削除されたため、この仮想マシンのリイメージはサポートされていません",
   "ORG_ZSTACK_COMPUTE_HOST_10013": "インスタンス[uuid:%s]のネットワークインターフェース[name:%s]が見つかりません",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_INTEGRITY_10008": "暗号化%s[id:%s]に失敗しました: %s",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_SMP_10000": "共有マウントポイントプライマリストレージ[uuid:%s, name:%s]は、接続されたコンピュートクラスタ内で利用可能なホストを見つけることができません",

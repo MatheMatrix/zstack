@@ -8850,41 +8850,49 @@ public class VmInstanceBase extends AbstractVmInstance {
         self = refreshVO();
         VolumeVO rootVolume = dbf.findByUuid(self.getRootVolumeUuid(), VolumeVO.class);
         // check vm stopped
-        {
-            if (self.getState() != VmInstanceState.Stopped) {
-                throw new ApiMessageInterceptionException(err(
-                ORG_ZSTACK_COMPUTE_VM_10304,         VmErrors.RE_IMAGE_VM_NOT_IN_STOPPED_STATE,
-                        "unable to reset volume[uuid:%s] to origin image[uuid:%s]," +
-                                " the vm[uuid:%s] volume attached to is not in Stopped state, current state is %s",
-                        self.getRootVolumeUuid(), self.getImageUuid(),
-                        self.getUuid(), self.getState()
-                ));
-            }
+        if (self.getState() != VmInstanceState.Stopped) {
+            throw new ApiMessageInterceptionException(err(
+                    ORG_ZSTACK_COMPUTE_VM_10304, VmErrors.RE_IMAGE_VM_NOT_IN_STOPPED_STATE,
+                    "unable to reset volume[uuid:%s] to origin image[uuid:%s]," +
+                            " the vm[uuid:%s] volume attached to is not in Stopped state, current state is %s",
+                    self.getRootVolumeUuid(), self.getImageUuid(),
+                    self.getUuid(), self.getState()
+            ));
+        }
+
+        // check origin image exists (it may have been deleted, e.g. temp image after VM cloning)
+        String rootImageUuid = rootVolume.getRootImageUuid();
+        if (!Q.New(ImageVO.class).eq(ImageVO_.uuid, rootImageUuid).isExists()) {
+            throw new OperationFailureException(err(
+                    ORG_ZSTACK_COMPUTE_VM_10321, VmErrors.RE_IMAGE_ORIGIN_IMAGE_DELETED,
+                    "unable to reset volume[uuid:%s] to origin image[uuid:%s]," +
+                            " the origin image has been deleted," +
+                            " reimage is not supported for this VM",
+                    rootVolume.getUuid(), rootImageUuid
+            ));
         }
 
         // check image cache to ensure image type is not ISO
-        {
-            SimpleQuery<ImageCacheVO> q = dbf.createQuery(ImageCacheVO.class);
-            q.select(ImageCacheVO_.mediaType);
-            q.add(ImageCacheVO_.imageUuid, Op.EQ, rootVolume.getRootImageUuid());
-            q.setLimit(1);
-            ImageConstant.ImageMediaType imageMediaType = q.findValue();
-            if (imageMediaType == null) {
-                throw new OperationFailureException(err(
-                ORG_ZSTACK_COMPUTE_VM_10305,         VmErrors.RE_IMAGE_CANNOT_FIND_IMAGE_CACHE,
-                        "unable to reset volume[uuid:%s] to origin image[uuid:%s]," +
-                                " cannot find image cache.",
-                        rootVolume.getUuid(), rootVolume.getRootImageUuid()
-                ));
-            }
-            if (imageMediaType.toString().equals("ISO")) {
-                throw new OperationFailureException(err(
-                ORG_ZSTACK_COMPUTE_VM_10306,         VmErrors.RE_IMAGE_IMAGE_MEDIA_TYPE_SHOULD_NOT_BE_ISO,
-                        "unable to reset volume[uuid:%s] to origin image[uuid:%s]," +
-                                " for image type is ISO",
-                        rootVolume.getUuid(), rootVolume.getRootImageUuid()
-                ));
-            }
+        SimpleQuery<ImageCacheVO> q = dbf.createQuery(ImageCacheVO.class);
+        q.select(ImageCacheVO_.mediaType);
+        q.add(ImageCacheVO_.imageUuid, Op.EQ, rootImageUuid);
+        q.setLimit(1);
+        ImageConstant.ImageMediaType imageMediaType = q.findValue();
+        if (imageMediaType == null) {
+            throw new OperationFailureException(err(
+                    ORG_ZSTACK_COMPUTE_VM_10305, VmErrors.RE_IMAGE_CANNOT_FIND_IMAGE_CACHE,
+                    "unable to reset volume[uuid:%s] to origin image[uuid:%s]," +
+                            " cannot find image cache.",
+                    rootVolume.getUuid(), rootImageUuid
+            ));
+        }
+        if (imageMediaType.toString().equals("ISO")) {
+            throw new OperationFailureException(err(
+                    ORG_ZSTACK_COMPUTE_VM_10306, VmErrors.RE_IMAGE_IMAGE_MEDIA_TYPE_SHOULD_NOT_BE_ISO,
+                    "unable to reset volume[uuid:%s] to origin image[uuid:%s]," +
+                            " for image type is ISO",
+                    rootVolume.getUuid(), rootImageUuid
+            ));
         }
 
         ReInitVolumeMsg rmsg = new ReInitVolumeMsg();

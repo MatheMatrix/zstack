@@ -448,6 +448,7 @@
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10050": "Ceph ps[uuid=%s] 루트 풀 이름을 찾을 수 없습니다",
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10052": "볼륨 체인 삭제 오류, 볼륨 삭제를 계속 진행합니다",
   "ORG_ZSTACK_COMPUTE_VM_10320": "VmInstanceStartExtensionPoint[%s]가 가상 머신[uuid:%s]을(를) 시작을 거부합니다. 이유: %s",
+  "ORG_ZSTACK_COMPUTE_VM_10321": "볼륨[uuid:%s]을(를) 원본 이미지[uuid:%s]로 재설정할 수 없습니다. 원본 이미지가 삭제되어 이 가상 머신의 리이미지가 지원되지 않습니다",
   "ORG_ZSTACK_COMPUTE_HOST_10013": "인스턴스[uuid:%s]의 네트워크 인터페이스[name:%s]을(를) 찾을 수 없습니다",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_INTEGRITY_10008": "암호화 %s[id:%s] 실패: %s",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_SMP_10000": "공유 마운트 포인트 기본 스토리지[uuid:%s, name:%s]가 연결된 컴퓨트 클러스터 내에서 사용 가능한 호스트를 찾을 수 없습니다",

@@ -448,6 +448,7 @@
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10050": "Ceph ps[uuid=%s] Root Pool Name Tidak Ditemukan",
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10052": "kesalahan rantai hapus volume, lanjutkan dengan penghapusan volume",
   "ORG_ZSTACK_COMPUTE_VM_10320": "VmInstanceStartExtensionPoint[%s] menolak untuk memulai mesin virtual[uuid:%s] karena %s",
+  "ORG_ZSTACK_COMPUTE_VM_10321": "tidak dapat mereset volume[uuid:%s] ke image asal[uuid:%s], image asal telah dihapus, reimage tidak didukung untuk VM ini",
   "ORG_ZSTACK_COMPUTE_HOST_10013": "networkInterface[name:%s] dari instance[uuid:%s] tidak dapat ditemukan",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_INTEGRITY_10008": "enkripsi %s[id:%s] gagal: %s",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_SMP_10000": "penyimpanan utama mount point bersama[uuid:%s, name:%s] tidak dapat menemukan host yang tersedia dalam klaster komputasi yang terhubung",

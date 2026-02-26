@@ -448,6 +448,7 @@
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10050": "Ceph ps[uuid=%s] Корневое имя пула не найдено",
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10052": "ошибка удаления цепочки тома, продолжение удаления тома",
   "ORG_ZSTACK_COMPUTE_VM_10320": "VmInstanceStartExtensionPoint[%s] отказывается запускать виртуальную машину[uuid:%s], так как %s",
+  "ORG_ZSTACK_COMPUTE_VM_10321": "невозможно сбросить том[uuid:%s] к исходному образу[uuid:%s], исходный образ был удалён, переустановка образа не поддерживается для этой ВМ",
   "ORG_ZSTACK_COMPUTE_HOST_10013": "сетевой интерфейс[name:%s] экземпляра[uuid:%s] не найден",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_INTEGRITY_10008": "шифрование %s[id:%s] не удалось: %s",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_SMP_10000": "основное хранилище с общей точкой монтирования[uuid:%s, name:%s] не может найти доступный хост в подключенных вычислительных кластерах",

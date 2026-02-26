@@ -448,6 +448,7 @@
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10050": "Ceph ps[uuid\u003d%s] Root Pool Name Not Found",
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10052": "delete volume chain error, continue with volume deletion",
   "ORG_ZSTACK_COMPUTE_VM_10320": "VmInstanceStartExtensionPoint[%s] refuses to start virtual machine[uuid:%s] because %s",
+  "ORG_ZSTACK_COMPUTE_VM_10321": "unable to reset volume[uuid:%s] to origin image[uuid:%s], the origin image has been deleted, reimage is not supported for this VM",
   "ORG_ZSTACK_COMPUTE_HOST_10013": "networkInterface[name:%s] of instance[uuid:%s] cannot be found",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_INTEGRITY_10008": "encryption %s[id:%s] failed: %s",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_SMP_10000": "the shared mount point primary storage[uuid:%s, name:%s] cannot find any available host within the attached compute clusters",

@@ -448,6 +448,7 @@
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10050": "Ceph ps[uuid=%s] ไม่พบ Root Pool Name",
   "ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10052": "delete volume chain error, ดำเนินการต่อกับการลบ volume",
   "ORG_ZSTACK_COMPUTE_VM_10320": "VmInstanceStartExtensionPoint[%s] ปฏิเสธที่จะเปิด virtual machine[uuid:%s] เนื่องจาก %s",
+  "ORG_ZSTACK_COMPUTE_VM_10321": "ไม่สามารถรีเซ็ต volume[uuid:%s] ไปยัง image ต้นฉบับ[uuid:%s] ได้ image ต้นฉบับถูกลบแล้ว ไม่รองรับการ reimage สำหรับ VM นี้",
   "ORG_ZSTACK_COMPUTE_HOST_10013": "ไม่พบ networkInterface[name:%s] ของ instance[uuid:%s]",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_INTEGRITY_10008": "encryption %s[id:%s] ล้มเหลว: %s",
   "ORG_ZSTACK_CRYPTO_DATACRYPTO_SMP_10000": "ที่เก็บข้อหลักแบบ mount point ที่แชร์[uuid:%s, name:%s] ไม่พบโฮสต์ที่พร้อมใช้งานภายในคลัสเตอร์คอมพิวเตอร์ที่แนบมา",
