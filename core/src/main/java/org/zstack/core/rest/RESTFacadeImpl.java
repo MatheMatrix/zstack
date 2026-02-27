@@ -12,6 +12,7 @@ import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
 import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
 import org.apache.http.impl.nio.reactor.IOReactorConfig;
 import org.apache.http.nio.reactor.IOReactorException;
+import org.apache.http.pool.PoolStats;
 import org.apache.logging.log4j.ThreadContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -81,6 +82,9 @@ public class RESTFacadeImpl implements RESTFacade {
     private AsyncRestTemplate asyncRestTemplate;
     // P0: dedicated ping pool — isolated from business traffic (R2)
     private AsyncRestTemplate pingAsyncRestTemplate;
+    // R5: store connection managers for DumpConnectionPoolStatus observability
+    private PoolingNHttpClientConnectionManager asyncConnManager;
+    private PoolingNHttpClientConnectionManager pingConnManager;
     // ThreadLocal allows asyncJsonPostForPing() to inject the ping template without changing asyncJson() signature
     private static final ThreadLocal<AsyncRestTemplate> ASYNC_TEMPLATE_OVERRIDE = new ThreadLocal<>();
     private String baseUrl;
@@ -186,6 +190,28 @@ public class RESTFacadeImpl implements RESTFacade {
             logger.debug(sb.toString());
         });
 
+        // R5: pool observability — trigger via: kill -USR2 <pid>  or  zstack-ctl dump_connection_pool
+        DebugManager.registerDebugSignalHandler("DumpConnectionPoolStatus", () -> {
+            StringBuilder sb = new StringBuilder();
+            sb.append("\n============= BEGIN: Connection Pool Status (R5) =================\n");
+            if (asyncConnManager != null) {
+                PoolStats s = asyncConnManager.getTotalStats();
+                sb.append(String.format("async-pool   : maxTotal=%-5d leased=%-5d available=%-5d pending=%d%n",
+                        CoreGlobalProperty.REST_FACADE_MAX_TOTAL, s.getLeased(), s.getAvailable(), s.getPending()));
+            } else {
+                sb.append("async-pool   : not initialized\n");
+            }
+            if (pingConnManager != null) {
+                PoolStats s = pingConnManager.getTotalStats();
+                sb.append(String.format("ping-pool(P0): maxTotal=%-5d leased=%-5d available=%-5d pending=%d%n",
+                        3000, s.getLeased(), s.getAvailable(), s.getPending()));
+            } else {
+                sb.append("ping-pool(P0): not initialized\n");
+            }
+            sb.append("============= END: Connection Pool Status ========================\n");
+            logger.debug(sb.toString());
+        });
+
         port = Platform.getManagementNodeServicePort();
 
         IptablesUtils.insertRuleToFilterTable(String.format("-A INPUT -p tcp -m state --state NEW -m tcp --dport %s -j ACCEPT", port));
@@ -215,21 +241,33 @@ public class RESTFacadeImpl implements RESTFacade {
 
         logger.debug(String.format("RESTFacade built callback url: %s", callbackUrl));
         template = RESTFacade.createRestTemplate(CoreGlobalProperty.REST_FACADE_READ_TIMEOUT, CoreGlobalProperty.REST_FACADE_CONNECT_TIMEOUT);
+        // R5: capture connection managers for DumpConnectionPoolStatus observability
+        PoolingNHttpClientConnectionManager[] cmRef = new PoolingNHttpClientConnectionManager[1];
         asyncRestTemplate = createAsyncRestTemplate(
                 CoreGlobalProperty.REST_FACADE_READ_TIMEOUT,
                 CoreGlobalProperty.REST_FACADE_CONNECT_TIMEOUT,
                 CoreGlobalProperty.REST_FACADE_MAX_PER_ROUTE,
-                CoreGlobalProperty.REST_FACADE_MAX_TOTAL);
+                CoreGlobalProperty.REST_FACADE_MAX_TOTAL,
+                cmRef);
+        asyncConnManager = cmRef[0];
         // P0 ping pool: maxPerRoute=1 (one ping/host), maxTotal=3000 (full cluster), short timeouts
         pingAsyncRestTemplate = createAsyncRestTemplate(
                 10000,   // readTimeout = ping timeout (10s)
                 3000,    // connectTimeout = fast fail (3s)
                 1,       // maxPerRoute: one ping per host at a time
-                3000);   // maxTotal: support up to 3000 hosts
+                3000,    // maxTotal: support up to 3000 hosts
+                cmRef);
+        pingConnManager = cmRef[0];
     }
 
-    // timeout are in milliseconds
+    // timeout are in milliseconds; delegates to 5-param overload (backward compat)
     private static AsyncRestTemplate createAsyncRestTemplate(int readTimeout, int connectTimeout, int maxPerRoute, int maxTotal) {
+        return createAsyncRestTemplate(readTimeout, connectTimeout, maxPerRoute, maxTotal, null);
+    }
+
+    // R5: outCm captures the connection manager for observability (DumpConnectionPoolStatus)
+    private static AsyncRestTemplate createAsyncRestTemplate(int readTimeout, int connectTimeout, int maxPerRoute, int maxTotal,
+                                                             PoolingNHttpClientConnectionManager[] outCm) {
         PoolingNHttpClientConnectionManager connectionManager;
         try {
             connectionManager = new PoolingNHttpClientConnectionManager(new DefaultConnectingIOReactor(IOReactorConfig.DEFAULT));
@@ -239,6 +277,7 @@ public class RESTFacadeImpl implements RESTFacade {
 
         connectionManager.setDefaultMaxPerRoute(maxPerRoute);
         connectionManager.setMaxTotal(maxTotal);
+        if (outCm != null) outCm[0] = connectionManager;
 
         CloseableHttpAsyncClient httpAsyncClient = HttpAsyncClients.custom()
                 .setConnectionManager(connectionManager)
