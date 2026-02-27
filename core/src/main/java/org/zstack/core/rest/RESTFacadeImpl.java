@@ -79,6 +79,10 @@ public class RESTFacadeImpl implements RESTFacade {
     private String callbackUrl;
     private TimeoutRestTemplate template;
     private AsyncRestTemplate asyncRestTemplate;
+    // P0: dedicated ping pool — isolated from business traffic (R2)
+    private AsyncRestTemplate pingAsyncRestTemplate;
+    // ThreadLocal allows asyncJsonPostForPing() to inject the ping template without changing asyncJson() signature
+    private static final ThreadLocal<AsyncRestTemplate> ASYNC_TEMPLATE_OVERRIDE = new ThreadLocal<>();
     private String baseUrl;
     private String sendCommandUrl;
     private String callbackHostName;
@@ -216,6 +220,12 @@ public class RESTFacadeImpl implements RESTFacade {
                 CoreGlobalProperty.REST_FACADE_CONNECT_TIMEOUT,
                 CoreGlobalProperty.REST_FACADE_MAX_PER_ROUTE,
                 CoreGlobalProperty.REST_FACADE_MAX_TOTAL);
+        // P0 ping pool: maxPerRoute=1 (one ping/host), maxTotal=3000 (full cluster), short timeouts
+        pingAsyncRestTemplate = createAsyncRestTemplate(
+                10000,   // readTimeout = ping timeout (10s)
+                3000,    // connectTimeout = fast fail (3s)
+                1,       // maxPerRoute: one ping per host at a time
+                3000);   // maxTotal: support up to 3000 hosts
     }
 
     // timeout are in milliseconds
@@ -237,7 +247,8 @@ public class RESTFacadeImpl implements RESTFacade {
         HttpComponentsAsyncClientHttpRequestFactory cf = new HttpComponentsAsyncClientHttpRequestFactory(httpAsyncClient);
         cf.setConnectTimeout(connectTimeout);
         cf.setReadTimeout(readTimeout);
-        cf.setConnectionRequestTimeout(connectTimeout * 2);
+        // R4: connectionRequestTimeout must be < operation timeout (e.g. ping timeout=10s)
+        cf.setConnectionRequestTimeout(Math.min(connectTimeout * 2, CoreGlobalProperty.REST_FACADE_CONNECTION_REQUEST_TIMEOUT));
 
         AsyncRestTemplate asyncRestTemplate = new AsyncRestTemplate(cf);
         RESTFacade.setMessageConverter(asyncRestTemplate.getMessageConverters());
@@ -574,7 +585,8 @@ public class RESTFacadeImpl implements RESTFacade {
                 logger.trace(String.format("json %s [%s], %s", method.toString(), url, req));
             }
 
-            ListenableFuture<ResponseEntity<String>> f = asyncRestTemplate.exchange(url, method, req, String.class);
+            AsyncRestTemplate tmpl = ASYNC_TEMPLATE_OVERRIDE.get() != null ? ASYNC_TEMPLATE_OVERRIDE.get() : asyncRestTemplate;
+            ListenableFuture<ResponseEntity<String>> f = tmpl.exchange(url, method, req, String.class);
             f.addCallback(rsp -> {}, e -> wrapper.fail(err(ORG_ZSTACK_CORE_REST_10003, SysErrors.HTTP_ERROR, e.getLocalizedMessage())));
         } catch (RestClientException e) {
             logger.warn(String.format("Unable to %s to %s: %s", method.toString(), url, e.getMessage()));
@@ -598,6 +610,17 @@ public class RESTFacadeImpl implements RESTFacade {
     public void asyncJsonPost(String url, String body, AsyncRESTCallback callback) {
         Long timeout = timeoutMgr.getTimeout();
         asyncJsonPost(url, body, callback, TimeUnit.MILLISECONDS, timeout);
+    }
+
+    @Override
+    public void asyncJsonPostForPing(String url, Object body, AsyncRESTCallback callback) {
+        // R2: inject dedicated ping pool via ThreadLocal; cleared in finally to prevent leaks
+        ASYNC_TEMPLATE_OVERRIDE.set(pingAsyncRestTemplate);
+        try {
+            asyncJsonPost(url, body, callback);
+        } finally {
+            ASYNC_TEMPLATE_OVERRIDE.remove();
+        }
     }
 
     @Override

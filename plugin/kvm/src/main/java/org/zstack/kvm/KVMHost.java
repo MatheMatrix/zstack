@@ -865,7 +865,7 @@ public class KVMHost extends HostBase implements Host {
                 While.makeRetryWhile(retryCount).each((currentStep, compl) -> {
                     PingCmd cmd = new PingCmd();
                     cmd.hostUuid = self.getUuid();
-                    restf.asyncJsonPost(pingPath, cmd, new JsonAsyncRESTCallback<PingResponse>(compl) {
+                    restf.asyncJsonPostForPing(pingPath, cmd, new JsonAsyncRESTCallback<PingResponse>(compl) {
                         @Override
                         public void fail(ErrorCode err) {
                             try {
@@ -5011,7 +5011,7 @@ public class KVMHost extends HostBase implements Host {
                         cmd.hostUuid = self.getUuid();
                         cmd.kvmagentPhysicalMemoryUsageAlarmThreshold = gcf.getConfigValue(KVMGlobalConfig.CATEGORY, KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_ALARM_THRESHOLD.getName(), Long.class);
                         cmd.kvmagentPhysicalMemoryUsageHardLimit = gcf.getConfigValue(KVMGlobalConfig.CATEGORY, KVMGlobalConfig.KVMAGENT_PHYSICAL_MEMORY_USAGE_HARD_LIMIT.getName(), Long.class);
-                        restf.asyncJsonPost(pingPath, cmd, new JsonAsyncRESTCallback<PingResponse>(trigger) {
+                        restf.asyncJsonPostForPing(pingPath, cmd, new JsonAsyncRESTCallback<PingResponse>(trigger) {
                             @Override
                             public void fail(ErrorCode err) {
                                 trigger.fail(err);

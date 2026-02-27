@@ -38,16 +38,18 @@ public class CoreGlobalProperty {
     public static String LOCALE;
     @GlobalProperty(name = "user.home")
     public static String USER_HOME;
-    @GlobalProperty(name = "RESTFacade.readTimeout", defaultValue = "300000")
+    @GlobalProperty(name = "RESTFacade.readTimeout", defaultValue = "60000")
     public static int REST_FACADE_READ_TIMEOUT;
     @GlobalProperty(name = "RESTFacade.connectTimeout", defaultValue = "15000")
     public static int REST_FACADE_CONNECT_TIMEOUT;
     @GlobalProperty(name = "RESTFacade.echoTimeout", defaultValue = "60")
     public static int REST_FACADE_ECHO_TIMEOUT;
-    @GlobalProperty(name = "RESTFacade.maxPerRoute", defaultValue = "2")
+    @GlobalProperty(name = "RESTFacade.maxPerRoute", defaultValue = "50")
     public static int REST_FACADE_MAX_PER_ROUTE;
-    @GlobalProperty(name = "RESTFacade.maxTotal", defaultValue = "128")
+    @GlobalProperty(name = "RESTFacade.maxTotal", defaultValue = "2048")
     public static int REST_FACADE_MAX_TOTAL;
+    @GlobalProperty(name = "RESTFacade.connectionRequestTimeout", defaultValue = "8000")
+    public static int REST_FACADE_CONNECTION_REQUEST_TIMEOUT;
     /**
      * When set RestServer.maskSensitiveInfo to true, sensitive info will be
      * masked see @NoLogging.
