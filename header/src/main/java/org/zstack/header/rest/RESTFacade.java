@@ -37,6 +37,9 @@ public interface RESTFacade {
     /** P0 control-plane ping — uses dedicated isolated pool (R2). Drop-in replacement for asyncJsonPost on ping paths. */
     void asyncJsonPostForPing(String url, Object body, AsyncRESTCallback callback);
 
+    /** P0 control-plane ping with explicit timeout — uses dedicated isolated pool (R2). */
+    void asyncJsonPostForPing(String url, Object body, AsyncRESTCallback callback, TimeUnit unit, long timeout);
+
     void asyncJsonDelete(String url, String body, Map<String, String> headers, AsyncRESTCallback callback, TimeUnit unit, long timeout);
     void asyncJsonGet(String url, String body, Map<String, String> headers, AsyncRESTCallback callback, TimeUnit unit, long timeout);
 
@@ -132,18 +135,22 @@ public interface RESTFacade {
         SSLContext sslContext = DefaultSSLVerifier.getSSLContext(DefaultSSLVerifier.trustAllCerts);
 
         if (maxTotal > 0 && maxPerRoute > 0) {
-            // R1: explicit pool — must set connection manager AND ssl together
+            // R1: explicit pool with SSL baked into the CM's socket factory registry.
+            // IMPORTANT: HttpClientBuilder silently ignores setSSLContext/setSSLHostnameVerifier
+            // when setConnectionManager() is used — SSL must be registered into the CM instead.
+            org.apache.http.conn.ssl.SSLConnectionSocketFactory sslSf = sslContext != null
+                    ? new org.apache.http.conn.ssl.SSLConnectionSocketFactory(sslContext, new NoopHostnameVerifier())
+                    : org.apache.http.conn.ssl.SSLConnectionSocketFactory.getSocketFactory();
+            org.apache.http.config.Registry<org.apache.http.conn.socket.ConnectionSocketFactory> socketRegistry =
+                    org.apache.http.config.RegistryBuilder.<org.apache.http.conn.socket.ConnectionSocketFactory>create()
+                            .register("http", org.apache.http.conn.socket.PlainConnectionSocketFactory.getSocketFactory())
+                            .register("https", sslSf)
+                            .build();
             org.apache.http.impl.conn.PoolingHttpClientConnectionManager cm =
-                    new org.apache.http.impl.conn.PoolingHttpClientConnectionManager();
+                    new org.apache.http.impl.conn.PoolingHttpClientConnectionManager(socketRegistry);
             cm.setMaxTotal(maxTotal);
             cm.setDefaultMaxPerRoute(maxPerRoute);
-            org.apache.http.impl.client.HttpClientBuilder builder = HttpClients.custom()
-                    .setConnectionManager(cm);
-            if (sslContext != null) {
-                builder.setSSLHostnameVerifier(new NoopHostnameVerifier())
-                       .setSSLContext(sslContext);
-            }
-            factory.setHttpClient(builder.build());
+            factory.setHttpClient(HttpClients.custom().setConnectionManager(cm).build());
         } else if (sslContext != null) {
             // original behavior: only override HttpClient when SSL needed
             factory.setHttpClient(HttpClients.custom()

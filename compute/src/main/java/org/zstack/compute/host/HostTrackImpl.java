@@ -320,6 +320,7 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
             t.cancel();
         }
         trackers.remove(huuid);
+        pingResponseEma.remove(huuid);
         logger.debug(String.format("stop tracking host[uuid:%s]", huuid));
     }
 

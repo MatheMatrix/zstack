@@ -88,6 +88,8 @@ public class RESTFacadeImpl implements RESTFacade {
     private PoolingNHttpClientConnectionManager pingConnManager;
     // ThreadLocal allows asyncJsonPostForPing() to inject the ping template without changing asyncJson() signature
     private static final ThreadLocal<AsyncRestTemplate> ASYNC_TEMPLATE_OVERRIDE = new ThreadLocal<>();
+    // R2: P0 ping pool capacity — covers largest expected cluster (3000 nodes)
+    private static final int PING_POOL_MAX_TOTAL = 3000;
     private String baseUrl;
     private String sendCommandUrl;
     private String callbackHostName;
@@ -205,7 +207,7 @@ public class RESTFacadeImpl implements RESTFacade {
             if (pingConnManager != null) {
                 PoolStats s = pingConnManager.getTotalStats();
                 sb.append(String.format("ping-pool(P0): maxTotal=%-5d leased=%-5d available=%-5d pending=%d%n",
-                        3000, s.getLeased(), s.getAvailable(), s.getPending()));
+                        pingConnManager.getMaxTotal(), s.getLeased(), s.getAvailable(), s.getPending()));
             } else {
                 sb.append("ping-pool(P0): not initialized\n");
             }
@@ -247,16 +249,16 @@ public class RESTFacadeImpl implements RESTFacade {
         asyncRestTemplate = createAsyncRestTemplate(
                 CoreGlobalProperty.REST_FACADE_READ_TIMEOUT,
                 CoreGlobalProperty.REST_FACADE_CONNECT_TIMEOUT,
-                CoreGlobalProperty.REST_FACADE_MAX_PER_ROUTE,
                 CoreGlobalProperty.REST_FACADE_MAX_TOTAL,
+                CoreGlobalProperty.REST_FACADE_MAX_PER_ROUTE,
                 cmRef);
         asyncConnManager = cmRef[0];
-        // P0 ping pool: maxPerRoute=1 (one ping/host), maxTotal=3000 (full cluster), short timeouts
+        // P0 ping pool: maxPerRoute=2 (1 in-flight + 1 queued per host), maxTotal covers full cluster
         pingAsyncRestTemplate = createAsyncRestTemplate(
-                10000,   // readTimeout = ping timeout (10s)
-                3000,    // connectTimeout = fast fail (3s)
-                1,       // maxPerRoute: one ping per host at a time
-                3000,    // maxTotal: support up to 3000 hosts
+                10000,              // readTimeout = ping timeout (10s)
+                3000,               // connectTimeout = fast fail (3s)
+                PING_POOL_MAX_TOTAL, // maxTotal: full cluster capacity
+                2,                  // maxPerRoute: 2 allows 1 in-flight + 1 queued, avoids head-of-line block
                 cmRef);
         pingConnManager = cmRef[0];
 
@@ -271,7 +273,7 @@ public class RESTFacadeImpl implements RESTFacade {
                 if (asyncConnManager != null) {
                     PoolStats s = asyncConnManager.getTotalStats();
                     long maxTotal = CoreGlobalProperty.REST_FACADE_MAX_TOTAL;
-                    if (s.getPending() > 0 || s.getLeased() > maxTotal * 0.8) {
+                    if (s.getPending() > 0 || s.getLeased() * 5 > maxTotal * 4) {
                         logger.warn(String.format("[POOL-ALARM] async-pool HIGH: leased=%d available=%d pending=%d maxTotal=%d",
                                 s.getLeased(), s.getAvailable(), s.getPending(), maxTotal));
                     }
@@ -288,12 +290,13 @@ public class RESTFacadeImpl implements RESTFacade {
     }
 
     // timeout are in milliseconds; delegates to 5-param overload (backward compat)
-    private static AsyncRestTemplate createAsyncRestTemplate(int readTimeout, int connectTimeout, int maxPerRoute, int maxTotal) {
-        return createAsyncRestTemplate(readTimeout, connectTimeout, maxPerRoute, maxTotal, null);
+    // Parameter order matches createRestTemplate: (readTimeout, connectTimeout, maxTotal, maxPerRoute)
+    private static AsyncRestTemplate createAsyncRestTemplate(int readTimeout, int connectTimeout, int maxTotal, int maxPerRoute) {
+        return createAsyncRestTemplate(readTimeout, connectTimeout, maxTotal, maxPerRoute, null);
     }
 
     // R5: outCm captures the connection manager for observability (DumpConnectionPoolStatus)
-    private static AsyncRestTemplate createAsyncRestTemplate(int readTimeout, int connectTimeout, int maxPerRoute, int maxTotal,
+    private static AsyncRestTemplate createAsyncRestTemplate(int readTimeout, int connectTimeout, int maxTotal, int maxPerRoute,
                                                              PoolingNHttpClientConnectionManager[] outCm) {
         PoolingNHttpClientConnectionManager connectionManager;
         try {
@@ -651,7 +654,8 @@ public class RESTFacadeImpl implements RESTFacade {
                 logger.trace(String.format("json %s [%s], %s", method.toString(), url, req));
             }
 
-            AsyncRestTemplate tmpl = ASYNC_TEMPLATE_OVERRIDE.get() != null ? ASYNC_TEMPLATE_OVERRIDE.get() : asyncRestTemplate;
+            AsyncRestTemplate override = ASYNC_TEMPLATE_OVERRIDE.get();
+            AsyncRestTemplate tmpl = override != null ? override : asyncRestTemplate;
             ListenableFuture<ResponseEntity<String>> f = tmpl.exchange(url, method, req, String.class);
             f.addCallback(rsp -> {}, e -> wrapper.fail(err(ORG_ZSTACK_CORE_REST_10003, SysErrors.HTTP_ERROR, e.getLocalizedMessage())));
         } catch (RestClientException e) {
@@ -684,6 +688,17 @@ public class RESTFacadeImpl implements RESTFacade {
         ASYNC_TEMPLATE_OVERRIDE.set(pingAsyncRestTemplate);
         try {
             asyncJsonPost(url, body, callback);
+        } finally {
+            ASYNC_TEMPLATE_OVERRIDE.remove();
+        }
+    }
+
+    @Override
+    public void asyncJsonPostForPing(String url, Object body, AsyncRESTCallback callback, TimeUnit unit, long timeout) {
+        // R2: inject dedicated ping pool via ThreadLocal; cleared in finally to prevent leaks
+        ASYNC_TEMPLATE_OVERRIDE.set(pingAsyncRestTemplate);
+        try {
+            asyncJsonPost(url, body, callback, unit, timeout);
         } finally {
             ASYNC_TEMPLATE_OVERRIDE.remove();
         }
