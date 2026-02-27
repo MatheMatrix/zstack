@@ -31,6 +31,7 @@ import org.zstack.core.telemetry.TelemetryFacade;
 import org.zstack.core.telemetry.TelemetryGlobalProperty;
 import org.zstack.core.thread.AsyncThread;
 import org.zstack.core.thread.CancelablePeriodicTask;
+import org.zstack.core.thread.PeriodicTask;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.thread.ThreadFacadeImpl.TimeoutTaskReceipt;
 import org.zstack.core.timeout.ApiTimeoutManager;
@@ -258,6 +259,32 @@ public class RESTFacadeImpl implements RESTFacade {
                 3000,    // maxTotal: support up to 3000 hosts
                 cmRef);
         pingConnManager = cmRef[0];
+
+        // L1 built-in immune: proactive pool utilization alarm every 60s (R5)
+        thdf.submitPeriodicTask(new PeriodicTask() {
+            @Override public TimeUnit getTimeUnit() { return TimeUnit.SECONDS; }
+            @Override public long getInterval() { return 60; }
+            @Override public String getName() { return "http-pool-health-check"; }
+
+            @Override
+            public void run() {
+                if (asyncConnManager != null) {
+                    PoolStats s = asyncConnManager.getTotalStats();
+                    long maxTotal = CoreGlobalProperty.REST_FACADE_MAX_TOTAL;
+                    if (s.getPending() > 0 || s.getLeased() > maxTotal * 0.8) {
+                        logger.warn(String.format("[POOL-ALARM] async-pool HIGH: leased=%d available=%d pending=%d maxTotal=%d",
+                                s.getLeased(), s.getAvailable(), s.getPending(), maxTotal));
+                    }
+                }
+                if (pingConnManager != null) {
+                    PoolStats s = pingConnManager.getTotalStats();
+                    if (s.getPending() > 0) {
+                        logger.warn(String.format("[POOL-ALARM] ping-pool(P0) CONGESTED: leased=%d available=%d pending=%d — P0 ping may be delayed",
+                                s.getLeased(), s.getAvailable(), s.getPending()));
+                    }
+                }
+            }
+        });
     }
 
     // timeout are in milliseconds; delegates to 5-param overload (backward compat)
