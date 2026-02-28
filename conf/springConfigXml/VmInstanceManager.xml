@@ -29,7 +29,8 @@
         </zstack:plugin>
     </bean>
 
-    <bean id="VmInstanceManager" class="org.zstack.compute.vm.VmInstanceManagerImpl">
+    <!-- FlowChain registry: holds all 12 workflow element lists and builds FlowChainBuilders -->
+    <bean id="VmFlowChainRegistry" class="org.zstack.compute.vm.VmFlowChainRegistry">
         <property name="createVmWorkFlowElements">
             <list>
                 <value>org.zstack.compute.vm.VmImageSelectBackupStorageFlow</value>
@@ -130,18 +131,43 @@
                 <value>org.zstack.compute.vm.ResumeVmOnHypervisorFlow</value>
             </list>
         </property>
+    </bean>
 
+    <!-- Sub-managers extracted from VmInstanceManagerImpl -->
+    <bean id="VmCreationSubManager" class="org.zstack.compute.vm.VmCreationSubManager" />
+
+    <bean id="VmNicApiSubManager" class="org.zstack.compute.vm.VmNicApiSubManager" />
+
+    <bean id="VmQuotaSubManager" class="org.zstack.compute.vm.VmQuotaSubManager">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.identity.ReportQuotaExtensionPoint" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="VmExpungeSubManager" class="org.zstack.compute.vm.VmExpungeSubManager">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint" />
+            <zstack:extension interface="org.zstack.header.Component" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="VmExtensionPointAdapter" class="org.zstack.compute.vm.VmExtensionPointAdapter">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.network.l3.L3NetworkDeleteExtensionPoint" />
+            <zstack:extension interface="org.zstack.header.identity.ResourceOwnerAfterChangeExtensionPoint" />
+            <zstack:extension interface="org.zstack.header.host.AfterChangeHostStatusExtensionPoint" />
+            <zstack:extension interface="org.zstack.header.vm.VmInstanceMigrateExtensionPoint" />
+            <zstack:extension interface="org.zstack.header.vm.VmInstanceBeforeStartExtensionPoint" />
+        </zstack:plugin>
+    </bean>
+
+    <!-- Slim facade: only keeps Service, GlobalApiMessageInterceptor, ManagementNodeReadyExtensionPoint -->
+    <bean id="VmInstanceManager" class="org.zstack.compute.vm.VmInstanceManagerImpl">
         <zstack:plugin>
             <zstack:extension interface="org.zstack.header.Component" />
             <zstack:extension interface="org.zstack.header.Service" />
-            <zstack:extension interface="org.zstack.header.identity.ReportQuotaExtensionPoint" />
             <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint" />
-            <zstack:extension interface="org.zstack.header.network.l3.L3NetworkDeleteExtensionPoint" />
             <zstack:extension interface="org.zstack.header.apimediator.GlobalApiMessageInterceptor" />
-            <zstack:extension interface="org.zstack.header.identity.ResourceOwnerAfterChangeExtensionPoint" />
-            <zstack:extension interface="org.zstack.header.host.AfterChangeHostStatusExtensionPoint"/>
-            <zstack:extension interface="org.zstack.header.vm.VmInstanceMigrateExtensionPoint"/>
-            <zstack:extension interface="org.zstack.header.vm.VmInstanceBeforeStartExtensionPoint"/>
         </zstack:plugin>
     </bean>
 
@@ -217,7 +243,7 @@
             <zstack:extension interface="org.zstack.header.vm.VmPlatformChangedExtensionPoint" />
             <zstack:extension interface="org.zstack.header.Component"/>
         </zstack:plugin>
-        
+
         <property name="supportNicDriverTypes" ref="SupportNicDriverTypes"/>
         <property name="defaultPVNicDriver" value="virtio"/>
         <property name="defaultNicDriver" value="e1000"/>
