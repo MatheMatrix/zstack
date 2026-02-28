@@ -1,6 +1,6 @@
 package org.zstack.sdk;
 
-
+import org.zstack.sdk.VmLocalVolumeCacheInventory;
 
 public class VolumeInventory  {
 
@@ -186,6 +186,14 @@ public class VolumeInventory  {
     }
     public java.lang.String getProtocol() {
         return this.protocol;
+    }
+
+    public VmLocalVolumeCacheInventory localVolumeCache;
+    public void setLocalVolumeCache(VmLocalVolumeCacheInventory localVolumeCache) {
+        this.localVolumeCache = localVolumeCache;
+    }
+    public VmLocalVolumeCacheInventory getLocalVolumeCache() {
+        return this.localVolumeCache;
     }
 
 }

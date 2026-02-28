@@ -4,6 +4,7 @@ import org.zstack.core.Platform;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.Q;
 import org.zstack.header.image.ImagePlatform;
+import org.zstack.header.localVolumeCache.VmLocalVolumeCacheInventory;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.header.storage.primary.PrimaryStorageVO_;
 import org.zstack.header.vm.VmInstanceVO;
@@ -32,6 +33,7 @@ public class VolumeTO extends BaseVirtualDeviceTO {
     public static List<KVMConvertVolumeExtensionPoint> exts;
 
     private String installPath;
+    private Long size;
     private int deviceId;
     private String deviceType = FILE;
     private String volumeUuid;
@@ -52,6 +54,8 @@ public class VolumeTO extends BaseVirtualDeviceTO {
     private int ioThreadId;
     private String ioThreadPin;
     private int controllerIndex;
+    private CacheTO cache;
+
 
     static {
         deviceTypes.put(VolumeProtocol.Vhost, VHOST);
@@ -63,6 +67,7 @@ public class VolumeTO extends BaseVirtualDeviceTO {
 
     public VolumeTO(VolumeTO other) {
         this.installPath = other.installPath;
+        this.size = other.size;
         this.deviceId = other.deviceId;
         this.deviceType = other.deviceType;
         this.volumeUuid = other.volumeUuid;
@@ -81,6 +86,7 @@ public class VolumeTO extends BaseVirtualDeviceTO {
         this.ioThreadId = other.ioThreadId;
         this.ioThreadPin = other.ioThreadPin;
         this.controllerIndex = other.controllerIndex;
+        this.cache = other.cache;
     }
 
     public static List<VolumeTO> valueOf(List<VolumeInventory> vols, KVMHostInventory host) {
@@ -99,6 +105,7 @@ public class VolumeTO extends BaseVirtualDeviceTO {
         VolumeTO to = new VolumeTO();
         to.setResourceUuid(vol.getUuid());
         to.setInstallPath(vol.getInstallPath());
+        to.setSize(vol.getSize());
         if (vol.getDeviceId() != null) {
             to.setDeviceId(vol.getDeviceId());
         }
@@ -136,7 +143,13 @@ public class VolumeTO extends BaseVirtualDeviceTO {
         }
         for (KVMConvertVolumeExtensionPoint ext : exts) {
             to = ext.convertVolumeIfNeed(host, vol, to);
-        }   
+        }
+
+        VmLocalVolumeCacheInventory cacheInv = vol.getLocalVolumeCache();
+        if (cacheInv != null){
+            CacheTO cacheTO = CacheTO.valueOf(cacheInv);
+            to.setCache(cacheTO);
+        }
         return  to;
     }
 
@@ -201,6 +214,10 @@ public class VolumeTO extends BaseVirtualDeviceTO {
     public void setInstallPath(String installPath) {
         this.installPath = installPath;
     }
+
+    public Long getSize() { return size; }
+
+    public void setSize(Long size) { this.size = size; }
 
     public int getDeviceId() {
         return deviceId;
@@ -296,5 +313,13 @@ public class VolumeTO extends BaseVirtualDeviceTO {
 
     public void setControllerIndex(int controllerIndex) {
         this.controllerIndex = controllerIndex;
+    }
+
+    public CacheTO getCache() {
+        return cache;
+    }
+
+    public void setCache(CacheTO cache) {
+        this.cache = cache;
     }
 }

@@ -65,6 +65,11 @@ public class VmInstanceUtils {
         cmsg.setStrategy(msg.getStrategy());
 
         cmsg.setDiskAOs(msg.getDiskAOs());
+        cmsg.setEnableRootVolumeCache(msg.getEnableRootVolumeCache());
+        cmsg.setCacheMode(msg.getCacheMode());
+        cmsg.setRootVolumeCachePoolUuid(msg.getRootVolumeCachePoolUuid());
+        cmsg.setRootVolumeCacheMode(msg.getRootVolumeCacheMode());
+        cmsg.setDataDiskCacheConfigOnIndex(msg.getDataDiskCacheConfigOnIndex());
 
         if (CollectionUtils.isNotEmpty(msg.getDataDiskOfferingUuids()) || CollectionUtils.isNotEmpty(msg.getDataDiskSizes())) {
             cmsg.setPrimaryStorageUuidForDataVolume(getPSUuidForDataVolume(msg.getSystemTags()));

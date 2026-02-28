@@ -329,6 +329,53 @@ doc {
 					optional true
 					since "4.7.0"
 				}
+				column {
+					name "enableRootVolumeCache"
+					enclosedIn "params"
+					desc ""
+					location "body"
+					type "Boolean"
+					optional true
+					since "5.5.6"
+				}
+				column {
+					name "cacheMode"
+					enclosedIn "params"
+					desc ""
+					location "body"
+					type "String"
+					optional true
+					since "5.5.6"
+					values ("WriteBack")
+				}
+				column {
+					name "rootVolumeCachePoolUuid"
+					enclosedIn "params"
+					desc ""
+					location "body"
+					type "String"
+					optional true
+					since "5.5.6"
+				}
+				column {
+					name "rootVolumeCacheMode"
+					enclosedIn "params"
+					desc ""
+					location "body"
+					type "String"
+					optional true
+					since "5.5.6"
+					values ("WriteBack")
+				}
+				column {
+					name "dataDiskCacheConfigOnIndex"
+					enclosedIn "params"
+					desc ""
+					location "body"
+					type "Map"
+					optional true
+					since "5.5.6"
+				}
 			}
         }
 

@@ -1323,6 +1323,11 @@ public class VmInstanceManagerImpl extends AbstractService implements
                         smsg.setDataVolumeSystemTags(msg.getDataVolumeSystemTags());
                         smsg.setDataVolumeSystemTagsOnIndex(msg.getDataVolumeSystemTagsOnIndex());
                         smsg.setDiskAOs(msg.getDiskAOs());
+                        smsg.setEnableRootVolumeCache(msg.getEnableRootVolumeCache());
+                        smsg.setCacheMode(msg.getCacheMode());
+                        smsg.setRootVolumeCachePoolUuid(msg.getRootVolumeCachePoolUuid());
+                        smsg.setRootVolumeCacheMode(msg.getRootVolumeCacheMode());
+                        smsg.setDataDiskCacheConfigOnIndex(msg.getDataDiskCacheConfigOnIndex());
                         bus.makeTargetServiceIdByResourceUuid(smsg, VmInstanceConstant.SERVICE_ID, finalVo.getUuid());
                         bus.send(smsg, new CloudBusCallBack(smsg) {
                             @Override

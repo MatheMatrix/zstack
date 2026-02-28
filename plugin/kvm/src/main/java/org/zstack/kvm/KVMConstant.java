@@ -89,12 +89,29 @@ public interface KVMConstant {
     String GET_VIRTUALIZER_INFO_PATH = "/vm/getvirtualizerinfo";
     String KVM_SCAN_VM_PORT_STATUS = "/host/vm/scanport";
     String GET_DEV_CAPACITY = "/host/dev/capacity";
+    String KVM_GET_BLOCK_DEVICES_PATH = "/host/blockdevices";
     String KVM_CONFIG_PRIMARY_VM_PATH = "/primary/vm/config";
     String KVM_CONFIG_SECONDARY_VM_PATH = "/secondary/vm/config";
     String KVM_START_COLO_SYNC_PATH = "/start/colo/sync";
     String KVM_REGISTER_PRIMARY_VM_HEARTBEAT = "/register/primary/vm/heartbeat";
     String CLEAN_FIRMWARE_FLASH = "/clean/firmware/flash";
     String FSTRIM_VM_PATH = "/vm/fstrim";
+
+    String LOCAL_VOLUME_CACHE_INIT_POOL_PATH = "/localvolumecache/pool/init";
+    String LOCAL_VOLUME_CACHE_CONNECT_POOL_PATH = "/localvolumecache/pool/connect";
+    String LOCAL_VOLUME_CACHE_EXTEND_POOL_PATH = "/localvolumecache/pool/extend";
+    String LOCAL_VOLUME_CACHE_DELETE_POOL_PATH = "/localvolumecache/pool/delete";
+    String LOCAL_VOLUME_CACHE_CHECK_POOL_PATH = "/localvolumecache/pool/check";
+    String LOCAL_VOLUME_CACHE_GET_POOL_CAPACITY_PATH = "/localvolumecache/pool/getcapacity";
+    String LOCAL_VOLUME_CACHE_GC_POOL_PATH = "/localvolumecache/pool/gc";
+
+    String LOCAL_VOLUME_CACHE_CREATE_CACHE_PATH = "/localvolumecache/create";
+    String LOCAL_VOLUME_CACHE_DELETE_CACHE_PATH = "/localvolumecache/delete";
+    String LOCAL_VOLUME_CACHE_FLUSH_CACHE_PATH = "/localvolumecache/flush";
+    String LOCAL_VOLUME_CACHE_GET_CACHE_CAPACITY_PATH = "/localvolumecache/getcapacity";
+
+    String KVM_ATTACH_VOLUME_CACHE_PATH = "/vm/volume/cache/attach";
+    String KVM_DETACH_VOLUME_CACHE_PATH = "/vm/volume/cache/detach";
 
     String ISO_TO = "kvm.isoto";
     String ANSIBLE_PLAYBOOK_NAME = "kvm.py";

@@ -38,6 +38,11 @@ public class CreateVmInstanceMsg extends NeedReplyMessage implements CreateVmIns
     private String guestOsType;
     private String architecture;
     private Boolean virtio;
+    private Boolean enableRootVolumeCache;
+    private String cacheMode;
+    private String rootVolumeCachePoolUuid;
+    private String rootVolumeCacheMode;
+    private Map<Integer, APICreateVmInstanceMsg.VolumeCacheConfig> dataDiskCacheConfigOnIndex;
     private List<String> rootVolumeSystemTags;
     private List<String> dataVolumeSystemTags;
     private Map<String, List<String>> dataVolumeSystemTagsOnIndex;
@@ -383,5 +388,45 @@ public class CreateVmInstanceMsg extends NeedReplyMessage implements CreateVmIns
 
     public void setVirtio(boolean virtio) {
         this.virtio = virtio;
+    }
+
+    public Boolean getEnableRootVolumeCache() {
+        return enableRootVolumeCache;
+    }
+
+    public void setEnableRootVolumeCache(Boolean enableRootVolumeCache) {
+        this.enableRootVolumeCache = enableRootVolumeCache;
+    }
+
+    public String getCacheMode() {
+        return cacheMode;
+    }
+
+    public void setCacheMode(String cacheMode) {
+        this.cacheMode = cacheMode;
+    }
+
+    public String getRootVolumeCachePoolUuid() {
+        return rootVolumeCachePoolUuid;
+    }
+
+    public void setRootVolumeCachePoolUuid(String rootVolumeCachePoolUuid) {
+        this.rootVolumeCachePoolUuid = rootVolumeCachePoolUuid;
+    }
+
+    public String getRootVolumeCacheMode() {
+        return rootVolumeCacheMode;
+    }
+
+    public void setRootVolumeCacheMode(String rootVolumeCacheMode) {
+        this.rootVolumeCacheMode = rootVolumeCacheMode;
+    }
+
+    public Map<Integer, APICreateVmInstanceMsg.VolumeCacheConfig> getDataDiskCacheConfigOnIndex() {
+        return dataDiskCacheConfigOnIndex;
+    }
+
+    public void setDataDiskCacheConfigOnIndex(Map<Integer, APICreateVmInstanceMsg.VolumeCacheConfig> dataDiskCacheConfigOnIndex) {
+        this.dataDiskCacheConfigOnIndex = dataDiskCacheConfigOnIndex;
     }
 }

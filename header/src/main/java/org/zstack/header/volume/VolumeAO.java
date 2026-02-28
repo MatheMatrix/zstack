@@ -1,12 +1,14 @@
 package org.zstack.header.volume;
 
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import org.zstack.header.configuration.DiskOfferingEO;
+import org.zstack.header.localVolumeCache.VmLocalVolumeCacheVO;
 import org.zstack.header.storage.primary.PrimaryStorageEO;
+import org.zstack.header.vo.*;
 import org.zstack.header.vo.ForeignKey;
 import org.zstack.header.vo.ForeignKey.ReferenceOption;
 import org.zstack.header.vo.Index;
-import org.zstack.header.vo.ResourceVO;
-import org.zstack.header.vo.ShadowEntity;
 
 import javax.persistence.*;
 import java.sql.Timestamp;
@@ -85,6 +87,11 @@ public class VolumeAO extends ResourceVO implements ShadowEntity {
 
     @Column
     private String protocol;
+
+    @OneToOne(fetch = FetchType.EAGER)
+    @NotFound(action = NotFoundAction.IGNORE)
+    @JoinColumn(name = "uuid", referencedColumnName = "volumeUuid", insertable = false, updatable = false)
+    private VmLocalVolumeCacheVO localVolumeCache;
 
     @Transient
     private VolumeAO shadow;
@@ -199,6 +206,10 @@ public class VolumeAO extends ResourceVO implements ShadowEntity {
         return type == VolumeType.Memory;
     }
 
+    public boolean isLocalCached() {
+        return localVolumeCache != null;
+    }
+
     public long getSize() {
         return size;
     }
@@ -297,5 +308,13 @@ public class VolumeAO extends ResourceVO implements ShadowEntity {
 
     public void setProtocol(String protocol) {
         this.protocol = protocol;
+    }
+
+    public VmLocalVolumeCacheVO getLocalVolumeCache() {
+        return localVolumeCache;
+    }
+
+    public void setLocalVolumeCache(VmLocalVolumeCacheVO localVolumeCache) {
+        this.localVolumeCache = localVolumeCache;
     }
 }

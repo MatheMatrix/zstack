@@ -29,6 +29,11 @@ public class InstantiateVmFromNewCreatedStruct {
     private Map<String, List<String>> dataVolumeSystemTagsOnIndex;
     private List<String> disableL3Networks;
     private List<String> sshKeyPairUuids;
+    private Boolean enableRootVolumeCache;
+    private String cacheMode;
+    private String rootVolumeCachePoolUuid;
+    private String rootVolumeCacheMode;
+    private Map<Integer, APICreateVmInstanceMsg.VolumeCacheConfig> dataDiskCacheConfigOnIndex;
     private final List<String> candidatePrimaryStorageUuidsForRootVolume = new ArrayList<>();
     private final List<String> candidatePrimaryStorageUuidsForDataVolume = new ArrayList<>();
 
@@ -142,6 +147,11 @@ public class InstantiateVmFromNewCreatedStruct {
         struct.setDataVolumeSystemTagsOnIndex(msg.getDataVolumeSystemTagsOnIndex());
         struct.setDisableL3Networks(msg.getDisableL3Networks());
         struct.setDiskAOs(msg.getDiskAOs());
+        struct.setEnableRootVolumeCache(msg.getEnableRootVolumeCache());
+        struct.setCacheMode(msg.getCacheMode());
+        struct.setRootVolumeCachePoolUuid(msg.getRootVolumeCachePoolUuid());
+        struct.setRootVolumeCacheMode(msg.getRootVolumeCacheMode());
+        struct.setDataDiskCacheConfigOnIndex(msg.getDataDiskCacheConfigOnIndex());
         return struct;
     }
 
@@ -161,6 +171,11 @@ public class InstantiateVmFromNewCreatedStruct {
         struct.setDataVolumeSystemTagsOnIndex(msg.getDataVolumeSystemTagsOnIndex());
         struct.setDisableL3Networks(msg.getDisableL3Networks());
         struct.setDiskAOs(msg.getDiskAOs());
+        struct.setEnableRootVolumeCache(msg.getEnableRootVolumeCache());
+        struct.setCacheMode(msg.getCacheMode());
+        struct.setRootVolumeCachePoolUuid(msg.getRootVolumeCachePoolUuid());
+        struct.setRootVolumeCacheMode(msg.getRootVolumeCacheMode());
+        struct.setDataDiskCacheConfigOnIndex(msg.getDataDiskCacheConfigOnIndex());
         return struct;
     }
 
@@ -242,5 +257,45 @@ public class InstantiateVmFromNewCreatedStruct {
 
     public void setSshKeyPairUuids(List<String> sshKeyPairUuids) {
         this.sshKeyPairUuids = sshKeyPairUuids;
+    }
+
+    public Boolean getEnableRootVolumeCache() {
+        return enableRootVolumeCache;
+    }
+
+    public void setEnableRootVolumeCache(Boolean enableRootVolumeCache) {
+        this.enableRootVolumeCache = enableRootVolumeCache;
+    }
+
+    public String getCacheMode() {
+        return cacheMode;
+    }
+
+    public void setCacheMode(String cacheMode) {
+        this.cacheMode = cacheMode;
+    }
+
+    public String getRootVolumeCachePoolUuid() {
+        return rootVolumeCachePoolUuid;
+    }
+
+    public void setRootVolumeCachePoolUuid(String rootVolumeCachePoolUuid) {
+        this.rootVolumeCachePoolUuid = rootVolumeCachePoolUuid;
+    }
+
+    public String getRootVolumeCacheMode() {
+        return rootVolumeCacheMode;
+    }
+
+    public void setRootVolumeCacheMode(String rootVolumeCacheMode) {
+        this.rootVolumeCacheMode = rootVolumeCacheMode;
+    }
+
+    public Map<Integer, APICreateVmInstanceMsg.VolumeCacheConfig> getDataDiskCacheConfigOnIndex() {
+        return dataDiskCacheConfigOnIndex;
+    }
+
+    public void setDataDiskCacheConfigOnIndex(Map<Integer, APICreateVmInstanceMsg.VolumeCacheConfig> dataDiskCacheConfigOnIndex) {
+        this.dataDiskCacheConfigOnIndex = dataDiskCacheConfigOnIndex;
     }
 }

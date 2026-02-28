@@ -33,6 +33,9 @@ import org.zstack.header.host.*;
 import org.zstack.header.identity.AccountResourceRefInventory;
 import org.zstack.header.identity.ResourceOwnerAfterChangeExtensionPoint;
 import org.zstack.header.image.*;
+import org.zstack.header.localVolumeCache.VmLocalVolumeCacheMode;
+import org.zstack.header.localVolumeCache.VmLocalVolumeCacheState;
+import org.zstack.header.localVolumeCache.VmLocalVolumeCacheVO;
 import org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
@@ -604,6 +607,21 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
             vo.setShareable(true);
         }
 
+        VmLocalVolumeCacheVO cacheVO = null;
+        if (msg.getSystemTag(VolumeSystemTags.VOLUME_CACHE_ENABLE::isMatch) != null) {
+            cacheVO = new VmLocalVolumeCacheVO();
+            cacheVO.setUuid(Platform.getUuid());
+            cacheVO.setVolumeUuid(vo.getUuid());
+            cacheVO.setState(VmLocalVolumeCacheState.Uninstantiated);
+            String cacheModeTag = msg.getSystemTag(VolumeSystemTags.VOLUME_CACHE_MODE::isMatch);
+            String CachePoolTag = msg.getSystemTag(VolumeSystemTags.VOLUME_CACHE_POOL_UUID::isMatch);
+            if (cacheModeTag != null) {
+                cacheVO.setCacheMode(VmLocalVolumeCacheMode.valueOf(VolumeSystemTags.VOLUME_CACHE_MODE.getTokenByTag(cacheModeTag, VolumeSystemTags.CACHE_MODE_TOKEN)));
+            }
+            if (CachePoolTag != null) {
+                cacheVO.setPoolUuid(VolumeSystemTags.VOLUME_CACHE_POOL_UUID.getTokenByTag(CachePoolTag, VolumeSystemTags.CACHE_POOL_UUID_TOKEN));
+            }
+        }
         if (msg.getSystemTags() != null) {
             Iterator<String> iterators = msg.getSystemTags().iterator();
             while (iterators.hasNext()) {
@@ -639,7 +657,9 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
             ext.afterCreateVolume(vo);
         }
         vo = dbf.reload(vo);
-
+        if (cacheVO != null) {
+            dbf.persist(cacheVO);
+        }
         new FireVolumeCanonicalEvent().fireVolumeStatusChangedEvent(null, VolumeInventory.valueOf(vo));
 
         VolumeInventory inv = VolumeInventory.valueOf(vo);

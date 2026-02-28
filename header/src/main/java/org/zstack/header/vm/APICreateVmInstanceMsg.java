@@ -209,6 +209,21 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
     @APIParam(required = false)
     private Boolean virtio;
 
+    @APIParam(required = false)
+    private Boolean enableRootVolumeCache;
+
+    @APIParam(required = false, validValues = {"WriteBack"})
+    private String cacheMode;
+
+    @APIParam(required = false)
+    private String rootVolumeCachePoolUuid;
+
+    @APIParam(required = false, validValues = {"WriteBack"})
+    private String rootVolumeCacheMode;
+
+    @APIParam(required = false)
+    private Map<Integer, VolumeCacheConfig> dataDiskCacheConfigOnIndex;
+
     @PythonClassInventory
     public static class DiskAO {
         private boolean boot;
@@ -223,6 +238,9 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
         private String sourceUuid;
         private List<String> systemTags;
         private String name;
+        private Boolean enableCache;
+        private String cachePoolUuid;
+        private String cacheMode;
 
         public boolean isBoot() {
             return boot;
@@ -318,6 +336,51 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
 
         public void setName(String name) {
             this.name = name;
+        }
+
+        public Boolean getEnableCache() {
+            return enableCache;
+        }
+
+        public void setEnableCache(Boolean enableCache) {
+            this.enableCache = enableCache;
+        }
+
+        public String getCachePoolUuid() {
+            return cachePoolUuid;
+        }
+
+        public void setCachePoolUuid(String cachePoolUuid) {
+            this.cachePoolUuid = cachePoolUuid;
+        }
+
+        public String getCacheMode() {
+            return cacheMode;
+        }
+
+        public void setCacheMode(String cacheMode) {
+            this.cacheMode = cacheMode;
+        }
+    }
+
+    public static class VolumeCacheConfig {
+        private String cachePoolUuid;
+        private String cacheMode;
+
+        public String getCachePoolUuid() {
+            return cachePoolUuid;
+        }
+
+        public void setCachePoolUuid(String cachePoolUuid) {
+            this.cachePoolUuid = cachePoolUuid;
+        }
+
+        public String getCacheMode() {
+            return cacheMode;
+        }
+
+        public void setCacheMode(String cacheMode) {
+            this.cacheMode = cacheMode;
         }
     }
 
@@ -559,6 +622,46 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
 
     public void setVirtio(boolean virtio) {
         this.virtio = virtio;
+    }
+
+    public Boolean getEnableRootVolumeCache() {
+        return enableRootVolumeCache;
+    }
+
+    public void setEnableRootVolumeCache(Boolean enableRootVolumeCache) {
+        this.enableRootVolumeCache = enableRootVolumeCache;
+    }
+
+    public String getCacheMode() {
+        return cacheMode;
+    }
+
+    public void setCacheMode(String cacheMode) {
+        this.cacheMode = cacheMode;
+    }
+
+    public String getRootVolumeCachePoolUuid() {
+        return rootVolumeCachePoolUuid;
+    }
+
+    public void setRootVolumeCachePoolUuid(String rootVolumeCachePoolUuid) {
+        this.rootVolumeCachePoolUuid = rootVolumeCachePoolUuid;
+    }
+
+    public String getRootVolumeCacheMode() {
+        return rootVolumeCacheMode;
+    }
+
+    public void setRootVolumeCacheMode(String rootVolumeCacheMode) {
+        this.rootVolumeCacheMode = rootVolumeCacheMode;
+    }
+
+    public Map<Integer, VolumeCacheConfig> getDataDiskCacheConfigOnIndex() {
+        return dataDiskCacheConfigOnIndex;
+    }
+
+    public void setDataDiskCacheConfigOnIndex(Map<Integer, VolumeCacheConfig> dataDiskCacheConfigOnIndex) {
+        this.dataDiskCacheConfigOnIndex = dataDiskCacheConfigOnIndex;
     }
 
     public static APICreateVmInstanceMsg __example__() {

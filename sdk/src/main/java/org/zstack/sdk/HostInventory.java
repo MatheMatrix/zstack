@@ -236,6 +236,14 @@ public class HostInventory  {
         return this.temperatureStatus;
     }
 
+    public java.util.Set localVolumeCachePools;
+    public void setLocalVolumeCachePools(java.util.Set localVolumeCachePools) {
+        this.localVolumeCachePools = localVolumeCachePools;
+    }
+    public java.util.Set getLocalVolumeCachePools() {
+        return this.localVolumeCachePools;
+    }
+
     public java.lang.String architecture;
     public void setArchitecture(java.lang.String architecture) {
         this.architecture = architecture;

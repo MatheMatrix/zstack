@@ -52,4 +52,12 @@ public class VolumeSystemTags {
     public static PatternedSystemTag VOLUME_QOS = new PatternedSystemTag(String.format("%s::{%s}", VOLUME_QOS_TOKEN, VOLUME_QOS_TOKEN), VolumeVO.class);
 
     public static SystemTag FAST_REVERT = new SystemTag("fast::revert", VolumeVO.class);
+
+    public static PatternedSystemTag VOLUME_CACHE_ENABLE = new PatternedSystemTag("volumeCache::enable", VolumeVO.class);
+
+    public static String CACHE_POOL_UUID_TOKEN = "poolUuid";
+    public static PatternedSystemTag VOLUME_CACHE_POOL_UUID = new PatternedSystemTag(String.format("volumeCache::%s::{%s}", CACHE_POOL_UUID_TOKEN, CACHE_POOL_UUID_TOKEN), VolumeVO.class);
+
+    public static String CACHE_MODE_TOKEN = "cacheMode";
+    public static PatternedSystemTag VOLUME_CACHE_MODE = new PatternedSystemTag(String.format("volumeCache::%s::{%s}", CACHE_MODE_TOKEN, CACHE_MODE_TOKEN ), VolumeVO.class);
 }

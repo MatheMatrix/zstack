@@ -136,7 +136,60 @@ public class VmAllocateHostFlow implements Flow {
             msg.getRequiredPrimaryStorageUuids().addAll(spec.getDiskAOs().stream()
                     .map(APICreateVmInstanceMsg.DiskAO::getPrimaryStorageUuid).filter(Objects::nonNull).collect(Collectors.toList()));
         }
+
+        // Add cache pool requirements as system tags for host allocation filtering
+        addCacheSystemTags(spec, msg);
+
         return msg;
+    }
+
+    private long getTotalCacheSize(VmInstanceSpec spec) {
+        long totalCacheSize = 0;
+        boolean enableRootVolumeCache = Boolean.TRUE.equals(spec.getEnableRootVolumeCache());
+        if (enableRootVolumeCache) {
+            ImageInventory image = spec.getImageSpec().getInventory();
+            if (image != null && image.getSize() != 0) {
+                totalCacheSize += image.getSize();
+            } else if (spec.getRootDiskOffering() != null) {
+                totalCacheSize += spec.getRootDiskOffering().getDiskSize();
+            }
+        }
+        Map<Integer, APICreateVmInstanceMsg.VolumeCacheConfig> dataDiskCacheConfigs = spec.getDataDiskCacheConfigOnIndex();
+        if (dataDiskCacheConfigs != null && !dataDiskCacheConfigs.isEmpty()) {
+            for (Integer index : dataDiskCacheConfigs.keySet()) {
+                APICreateVmInstanceMsg.VolumeCacheConfig dataDiskCacheConfig = dataDiskCacheConfigs.get(index);
+                totalCacheSize += spec.getDataDiskOfferings().get(index).getDiskSize();
+            }
+            
+        }
+        return totalCacheSize;
+    }
+    private List<String> getSpecifiedCachePoolUuids(VmInstanceSpec spec) {
+        List<String> poolUuids = new ArrayList<>();
+        if (spec.getRootVolumeCachePoolUuid() != null) {
+            poolUuids.add(spec.getRootVolumeCachePoolUuid());
+        }
+        Map<Integer, APICreateVmInstanceMsg.VolumeCacheConfig> dataDiskCacheConfigs = spec.getDataDiskCacheConfigOnIndex();
+        if (dataDiskCacheConfigs != null && !dataDiskCacheConfigs.isEmpty()) {
+            for (Integer index : dataDiskCacheConfigs.keySet()) {
+                APICreateVmInstanceMsg.VolumeCacheConfig dataDiskCacheConfig = dataDiskCacheConfigs.get(index);
+                if (dataDiskCacheConfig.getCachePoolUuid() != null) {
+                    poolUuids.add(dataDiskCacheConfig.getCachePoolUuid());
+                }
+            }
+        }
+        return poolUuids;
+    }
+
+    private void addCacheSystemTags(VmInstanceSpec spec, AllocateHostMsg msg) {
+        long totalCacheSize = getTotalCacheSize(spec);
+        if (totalCacheSize > 0) {
+            msg.addSystemTag("volumeCache::requiredSize::" + totalCacheSize);
+        }
+        List<String> specifiedCachePoolUuids = getSpecifiedCachePoolUuids(spec);
+        for (String poolUuid : specifiedCachePoolUuids) {
+            msg.addSystemTag("volumeCache::poolUuid::" + poolUuid);
+        }
     }
 
     @Override

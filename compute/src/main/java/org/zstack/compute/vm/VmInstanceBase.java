@@ -7355,6 +7355,11 @@ public class VmInstanceBase extends AbstractVmInstance {
         }
 
         spec.setDiskAOs(struct.getDiskAOs());
+        spec.setEnableRootVolumeCache(struct.getEnableRootVolumeCache());
+        spec.setCacheMode(struct.getCacheMode());
+        spec.setRootVolumeCachePoolUuid(struct.getRootVolumeCachePoolUuid());
+        spec.setRootVolumeCacheMode(struct.getRootVolumeCacheMode());
+        spec.setDataDiskCacheConfigOnIndex(struct.getDataDiskCacheConfigOnIndex());
 
         List<CdRomSpec> cdRomSpecs = buildVmCdRomSpecsForNewCreated(spec);
         spec.setCdRomSpecs(cdRomSpecs);

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import org.zstack.header.configuration.DiskOfferingInventory;
 import org.zstack.header.configuration.PythonClassInventory;
 import org.zstack.header.image.ImageInventory;
+import org.zstack.header.localVolumeCache.VmLocalVolumeCacheInventory;
 import org.zstack.header.query.ExpandedQueries;
 import org.zstack.header.query.ExpandedQuery;
 import org.zstack.header.search.Inventory;
@@ -156,6 +157,8 @@ public class VolumeInventory implements Serializable {
     private Timestamp lastAttachDate;
     private String protocol;
 
+    private VmLocalVolumeCacheInventory localVolumeCache;
+
     public VolumeInventory() {
     }
 
@@ -183,6 +186,7 @@ public class VolumeInventory implements Serializable {
         this.lastVmInstanceUuid = other.lastVmInstanceUuid;
         this.lastAttachDate = other.lastAttachDate;
         this.protocol = other.protocol;
+        this.localVolumeCache = other.localVolumeCache;
     }
 
 
@@ -213,6 +217,9 @@ public class VolumeInventory implements Serializable {
         inv.setLastVmInstanceUuid(vo.getLastVmInstanceUuid());
         inv.setLastAttachDate(vo.getLastAttachDate());
         inv.setProtocol(vo.getProtocol());
+        if(vo.getLocalVolumeCache() != null) {
+            inv.setLocalVolumeCache(vo.getLocalVolumeCache().toInventory());
+        }
         return inv;
     }
 
@@ -436,5 +443,17 @@ public class VolumeInventory implements Serializable {
 
     public void setProtocol(String protocol) {
         this.protocol = protocol;
+    }
+
+    public VmLocalVolumeCacheInventory getLocalVolumeCache() {
+        return localVolumeCache;
+    }
+
+    public void setLocalVolumeCache(VmLocalVolumeCacheInventory localVolumeCache) {
+        this.localVolumeCache = localVolumeCache;
+    }
+
+    public boolean isLocalCached() {
+        return localVolumeCache != null;
     }
 }

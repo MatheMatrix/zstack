@@ -1,7 +1,10 @@
 package org.zstack.header.host;
 
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import org.zstack.header.allocator.HostCapacityVO;
 import org.zstack.header.cluster.ClusterVO;
+import org.zstack.header.localVolumeCache.VmLocalVolumeCachePoolVO;
 import org.zstack.header.tag.AutoDeleteTag;
 import org.zstack.header.vo.BaseResource;
 import org.zstack.header.vo.EO;
@@ -10,6 +13,7 @@ import org.zstack.header.vo.NoView;
 import org.zstack.header.zone.ZoneVO;
 
 import javax.persistence.*;
+import java.util.Set;
 
 @Entity
 @Table
@@ -38,6 +42,11 @@ public class HostVO extends HostAO {
     @NoView
     private HostHwMonitorStatusVO hwMonitorStatus;
 
+    @OneToMany(fetch = FetchType.EAGER)
+    @NotFound(action = NotFoundAction.IGNORE)
+    @JoinColumn(name = "hostUuid", insertable = false, updatable = false)
+    private Set<VmLocalVolumeCachePoolVO> localVolumeCachePools;
+
     public HostCapacityVO getCapacity() {
         return capacity;
     }
@@ -62,6 +71,14 @@ public class HostVO extends HostAO {
         this.hwMonitorStatus = hwMonitorStatus;
     }
 
+    public Set<VmLocalVolumeCachePoolVO> getLocalVolumeCachePools() {
+        return localVolumeCachePools;
+    }
+
+    public void setLocalVolumeCachePools(Set<VmLocalVolumeCachePoolVO> localVolumeCachePools) {
+        this.localVolumeCachePools = localVolumeCachePools;
+    }
+
     public HostVO() {
     }
 
@@ -80,6 +97,7 @@ public class HostVO extends HostAO {
         this.setCapacity(vo.getCapacity());
         this.setIpmi(vo.getIpmi());
         this.setHwMonitorStatus(vo.getHwMonitorStatus());
+        this.setLocalVolumeCachePools(vo.getLocalVolumeCachePools());
     }
 }
 

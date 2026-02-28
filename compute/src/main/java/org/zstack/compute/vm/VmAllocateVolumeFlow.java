@@ -23,11 +23,8 @@ import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.image.ImageConstant;
 import org.zstack.header.image.ImageConstant.ImageMediaType;
 import org.zstack.header.message.MessageReply;
-import org.zstack.header.vm.VmInstanceConstant;
-import org.zstack.header.vm.VmInstanceSpec;
+import org.zstack.header.vm.*;
 import org.zstack.header.vm.VmInstanceSpec.VolumeSpec;
-import org.zstack.header.vm.VmInstanceVO;
-import org.zstack.header.vm.VmInstanceVO_;
 import org.zstack.header.volume.*;
 import org.zstack.header.volume.VolumeDeletionPolicyManager.VolumeDeletionPolicy;
 import org.zstack.identity.AccountManager;
@@ -76,6 +73,19 @@ public class VmAllocateVolumeFlow implements Flow {
                 }
             });
         }
+        if (!spec.getDataDiskCacheConfigOnIndex().isEmpty() && !CollectionUtils.isEmpty(spec.getDataDiskOfferings())) {
+            List<VolumeSpec> dataVolumeSpecs = spec.getVolumeSpecs().stream()
+                    .filter(s -> s.getType().equals(VolumeType.Data.toString())).collect(Collectors.toList());
+
+            IntStream.range(0, dataVolumeSpecs.size()).forEach(index -> {
+                APICreateVmInstanceMsg.VolumeCacheConfig config = spec.getDataDiskCacheConfigOnIndex().get(index);
+                if (config != null) {
+                    dataVolumeSpecs.get(index).setEnableVolumeCache(true);
+                    dataVolumeSpecs.get(index).setCachePoolUuid(config.getCachePoolUuid());
+                    dataVolumeSpecs.get(index).setCacheMode(config.getCacheMode());
+                }
+            });
+        }
 
         List<VolumeSpec> volumeSpecs = spec.getVolumeSpecs();
         List<CreateVolumeMsg> msgs = new ArrayList<>(volumeSpecs.size());
@@ -93,6 +103,9 @@ public class VmAllocateVolumeFlow implements Flow {
             DebugUtils.Assert(vspec.getType() != null, "VolumeType can not be null!");
 
             if (VolumeType.Root.toString().equals(vspec.getType())) {
+                vspec.setEnableVolumeCache(spec.getEnableRootVolumeCache());
+                vspec.setCachePoolUuid(spec.getRootVolumeCachePoolUuid());
+                vspec.setCacheMode(spec.getRootVolumeCacheMode());
                 msg.setResourceUuid((String) ctx.get("uuid"));
                 msg.setName("ROOT-for-" + spec.getVmInventory().getName());
                 msg.setDescription(String.format("Root volume for VM[uuid:%s]", spec.getVmInventory().getUuid()));
@@ -116,7 +129,13 @@ public class VmAllocateVolumeFlow implements Flow {
             } else {
                 continue;
             }
-
+            if (vspec.getEnableVolumeCache()) {
+                tags.add("volumeCache::enable");
+                tags.add("volumeCache::cacheMode::" + vspec.getCacheMode());
+                if(vspec.getCachePoolUuid() != null) {
+                    tags.add("volumeCache::poolUuid::" + vspec.getCachePoolUuid());
+                }
+            }
             msg.setSystemTags(new ArrayList<>(tags));
             msg.setDiskOfferingUuid(vspec.getDiskOfferingUuid());
             msg.setSize(vspec.getSize());

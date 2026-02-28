@@ -3,6 +3,8 @@ package org.zstack.header.host;
 import org.zstack.header.allocator.HostCapacityInventory;
 import org.zstack.header.cluster.ClusterInventory;
 import org.zstack.header.configuration.PythonClassInventory;
+import org.zstack.header.localVolumeCache.VmLocalVolumeCachePoolInventory;
+import org.zstack.header.localVolumeCache.VmLocalVolumeCachePoolVO;
 import org.zstack.header.query.ExpandedQueries;
 import org.zstack.header.query.ExpandedQuery;
 import org.zstack.header.query.Queryable;
@@ -14,9 +16,7 @@ import org.zstack.header.zone.ZoneInventory;
 import javax.persistence.JoinColumn;
 import java.io.Serializable;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 
 /**
@@ -183,6 +183,8 @@ public class HostInventory implements Serializable {
             joinColumn = @JoinColumn(name = "uuid", referencedColumnName = "temperatureStatus"))
     private HwMonitorStatus temperatureStatus;
 
+    private Set<VmLocalVolumeCachePoolInventory> localVolumeCachePools;
+
     private String architecture;
 
     /**
@@ -234,6 +236,13 @@ public class HostInventory implements Serializable {
             this.setTemperatureStatus(vo.getHwMonitorStatus().getTemperatureStatus());
         }
 
+        if (vo.getLocalVolumeCachePools() != null) {
+            Set<VmLocalVolumeCachePoolInventory> cachePoolInventories = new HashSet<>();
+            for (VmLocalVolumeCachePoolVO cachePoolVO : vo.getLocalVolumeCachePools()) {
+                cachePoolInventories.add(cachePoolVO.toInventory());
+            }
+            this.setLocalVolumeCachePools(cachePoolInventories);
+        }
     }
 
     public HostInventory() {
@@ -497,5 +506,13 @@ public class HostInventory implements Serializable {
 
     public void setTemperatureStatus(HwMonitorStatus temperatureStatus) {
         this.temperatureStatus = temperatureStatus;
+    }
+
+    public Set<VmLocalVolumeCachePoolInventory> getLocalVolumeCachePools() {
+        return localVolumeCachePools;
+    }
+
+    public void setLocalVolumeCachePools(Set<VmLocalVolumeCachePoolInventory> localVolumeCachePools) {
+        this.localVolumeCachePools = localVolumeCachePools;
     }
 }

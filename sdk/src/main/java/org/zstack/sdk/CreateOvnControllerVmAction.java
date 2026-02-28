@@ -110,6 +110,21 @@ public class CreateOvnControllerVmAction extends AbstractAction {
     public java.lang.Boolean virtio;
 
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.Boolean enableRootVolumeCache;
+
+    @Param(required = false, validValues = {"WriteBack"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String cacheMode;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String rootVolumeCachePoolUuid;
+
+    @Param(required = false, validValues = {"WriteBack"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String rootVolumeCacheMode;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.util.Map dataDiskCacheConfigOnIndex;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.util.List diskAOs;
 
     @Param(required = false)

@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.compute.allocator.HostAllocatorManager;
+import org.zstack.core.Platform;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.componentloader.PluginRegistry;
@@ -18,6 +19,7 @@ import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.image.ImageBackupStorageRefVO;
 import org.zstack.header.image.ImageVO;
+import org.zstack.header.localVolumeCache.*;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.storage.backup.BackupStorageVO;
 import org.zstack.header.storage.backup.BackupStorageVO_;
@@ -58,6 +60,23 @@ public class VmInstantiateOtherDiskFlow implements Flow {
 
     VmInstantiateOtherDiskFlow(APICreateVmInstanceMsg.DiskAO diskAO) {
         this.diskAO = diskAO;
+    }
+
+    private VmLocalVolumeCacheVO initCacheRecord() {
+        VmLocalVolumeCacheVO existing = Q.New(VmLocalVolumeCacheVO.class)
+                .eq(VmLocalVolumeCacheVO_.volumeUuid, volumeInventory.getUuid())
+                .find();
+        if (existing != null) {
+            return existing;
+        }
+        VmLocalVolumeCacheVO cacheVO = new VmLocalVolumeCacheVO();
+        cacheVO.setUuid(Platform.getUuid());
+        cacheVO.setVolumeUuid(volumeInventory.getUuid());
+        cacheVO.setState(VmLocalVolumeCacheState.Uninstantiated);
+        cacheVO.setCacheMode(VmLocalVolumeCacheMode.valueOf(diskAO.getCacheMode()));
+        cacheVO.setPoolUuid(diskAO.getCachePoolUuid());
+        dbf.persist(cacheVO);
+        return cacheVO;
     }
 
     @Override
@@ -398,6 +417,23 @@ public class VmInstantiateOtherDiskFlow implements Flow {
                         });
                     }
                 });
+
+                // Enable volume cache if requested for this DiskAO
+                if (Boolean.TRUE.equals(diskAO.getEnableCache())) {
+                    flow(new NoRollbackFlow() {
+                        String __name__ = String.format("create-cache-record-for-diskAO-volume-on-vm-%s", vmUuid);
+
+                        @Override
+                        public void run(final FlowTrigger innerTrigger, Map data) {
+                            if (volumeInventory == null) {
+                                innerTrigger.next();
+                                return;
+                            }
+                            initCacheRecord();
+                            innerTrigger.next();
+                        }
+                    });
+                }
             }
 
             private void setupAttachOtherDiskFlows() {

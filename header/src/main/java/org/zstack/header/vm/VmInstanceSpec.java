@@ -49,6 +49,9 @@ public class VmInstanceSpec implements Serializable {
         private List<String> tags;
         private String allocatedInstallUrl;
         private String associatedVolumeUuid;
+        private boolean enableVolumeCache;
+        private String cachePoolUuid;
+        private String cacheMode;
 
         public String getAssociatedVolumeUuid() {
             return associatedVolumeUuid;
@@ -117,6 +120,30 @@ public class VmInstanceSpec implements Serializable {
 
         public boolean isRoot() {
             return VolumeType.Root.toString().equals(type);
+        }
+
+        public boolean getEnableVolumeCache() {
+            return enableVolumeCache;
+        }
+
+        public void setEnableVolumeCache(boolean enableVolumeCache) {
+            this.enableVolumeCache = enableVolumeCache;
+        }
+
+        public String getCachePoolUuid() {
+            return cachePoolUuid;
+        }
+
+        public void setCachePoolUuid(String cachePoolUuid) {
+            this.cachePoolUuid = cachePoolUuid;
+        }
+
+        public String getCacheMode() {
+            return cacheMode;
+        }
+
+        public void setCacheMode(String cacheMode) {
+            this.cacheMode = cacheMode;
         }
     }
 
@@ -405,6 +432,11 @@ public class VmInstanceSpec implements Serializable {
 
     private List<String> disableL3Networks;
     private List<APICreateVmInstanceMsg.DiskAO> diskAOs;
+    private Boolean enableRootVolumeCache;
+    private String cacheMode;
+    private String rootVolumeCachePoolUuid;
+    private String rootVolumeCacheMode;
+    private Map<Integer, APICreateVmInstanceMsg.VolumeCacheConfig> dataDiskCacheConfigOnIndex;
 
     public List<APICreateVmInstanceMsg.DiskAO> getDiskAOs() {
         return diskAOs;
@@ -412,6 +444,46 @@ public class VmInstanceSpec implements Serializable {
 
     public void setDiskAOs(List<APICreateVmInstanceMsg.DiskAO> diskAOs) {
         this.diskAOs = diskAOs;
+    }
+
+    public Boolean getEnableRootVolumeCache() {
+        return enableRootVolumeCache;
+    }
+
+    public void setEnableRootVolumeCache(Boolean enableRootVolumeCache) {
+        this.enableRootVolumeCache = enableRootVolumeCache;
+    }
+
+    public String getCacheMode() {
+        return cacheMode;
+    }
+
+    public void setCacheMode(String cacheMode) {
+        this.cacheMode = cacheMode;
+    }
+
+    public String getRootVolumeCachePoolUuid() {
+        return rootVolumeCachePoolUuid;
+    }
+
+    public void setRootVolumeCachePoolUuid(String rootVolumeCachePoolUuid) {
+        this.rootVolumeCachePoolUuid = rootVolumeCachePoolUuid;
+    }
+
+    public String getRootVolumeCacheMode() {
+        return rootVolumeCacheMode;
+    }
+
+    public void setRootVolumeCacheMode(String rootVolumeCacheMode) {
+        this.rootVolumeCacheMode = rootVolumeCacheMode;
+    }
+
+    public Map<Integer, APICreateVmInstanceMsg.VolumeCacheConfig> getDataDiskCacheConfigOnIndex() {
+        return dataDiskCacheConfigOnIndex;
+    }
+
+    public void setDataDiskCacheConfigOnIndex(Map<Integer, APICreateVmInstanceMsg.VolumeCacheConfig> dataDiskCacheConfigOnIndex) {
+        this.dataDiskCacheConfigOnIndex = dataDiskCacheConfigOnIndex;
     }
 
     public boolean isSkipIpAllocation() {
