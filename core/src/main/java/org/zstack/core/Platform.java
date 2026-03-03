@@ -17,6 +17,7 @@ import org.zstack.core.config.GlobalConfigFacade;
 import org.zstack.core.db.DatabaseGlobalProperty;
 import org.zstack.core.encrypt.EncryptRSA;
 import org.zstack.core.errorcode.ErrorFacade;
+import org.zstack.header.errorcode.ErrorCategory;
 import org.zstack.core.propertyvalidator.ValidatorTool;
 import org.zstack.core.search.SearchGlobalProperty;
 import org.zstack.core.statemachine.StateMachine;
@@ -985,6 +986,14 @@ public class Platform {
                     .toArray(String[]::new));
         }
 
+        // Auto-fill envelope fields when feature flag is enabled
+        if (CoreGlobalProperty.ERROR_ENVELOPE_V2_ENABLED) {
+            result.setCategory(ErrorCategory.fromSysError(errCode.toString()).name());
+            result.setMessageKey(globalErrorCode);
+            result.setRetryable(isRetryable(errCode));
+            result.setHttpStatus(mapHttpStatus(errCode));
+        }
+
         return result;
     }
 
@@ -1212,4 +1221,55 @@ public class Platform {
     public static boolean isMinimalOn() {
         return StartMode.MINIMAL.toString().equals(CoreGlobalProperty.START_MODE);
     }
+
+    private static boolean isRetryable(Enum errCode) {
+        if (errCode == null) {
+            return false;
+        }
+        String codeName = errCode.name();
+        return codeName.equals("TIMEOUT") ||
+               codeName.equals("IO_ERROR") ||
+               codeName.equals("HTTP_ERROR");
+    }
+
+    private static int mapHttpStatus(Enum errCode) {
+        if (errCode == null) {
+            return 500;
+        }
+        String codeName = errCode.name();
+        switch (codeName) {
+            case "INTERNAL":
+                return 500;
+            case "TIMEOUT":
+                return 504;
+            case "OPERATION_ERROR":
+            case "INVALID_ARGUMENT_ERROR":
+                return 400;
+            case "RESOURCE_NOT_FOUND":
+                return 404;
+            case "CREATE_RESOURCE_ERROR":
+            case "DELETE_RESOURCE_ERROR":
+                return 500;
+            case "CHANGE_RESOURCE_STATE_ERROR":
+                return 409;
+            case "UNKNOWN_MESSAGE_ERROR":
+            case "NO_ROUTE_ERROR":
+                return 500;
+            case "NOT_READY_ERROR":
+            case "UNDELIVERABLE_ERROR":
+            case "MANAGEMENT_NODE_UNAVAILABLE_ERROR":
+                return 503;
+            case "NO_CAPABILITY_ERROR":
+            case "UNIMPLEMENTED_OPERATION_ERROR":
+                return 501;
+            case "HTTP_ERROR":
+                return 502;
+            case "IO_ERROR":
+                return 500;
+            case "CANCEL_ERROR":
+                return 499;
+            default:
+                return 500;
+        }
+}
 }
