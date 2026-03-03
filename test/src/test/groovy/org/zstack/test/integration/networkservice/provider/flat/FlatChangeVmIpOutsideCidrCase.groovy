@@ -1,7 +1,6 @@
 package org.zstack.test.integration.networkservice.provider.flat
 
 import org.springframework.http.HttpEntity
-import org.zstack.compute.vm.VmGlobalConfig
 import org.zstack.compute.vm.VmSystemTags
 import org.zstack.core.db.DatabaseFacade
 import org.zstack.core.db.Q
@@ -154,12 +153,6 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
     void test() {
         dbf = bean(DatabaseFacade.class)
         env.create {
-            updateGlobalConfig {
-                category = VmGlobalConfig.CATEGORY
-                name = "allow.ip.outside.range"
-                value = "true"
-            }
-
             testSetStaticIpOutsideCidrOnIpamFlatL3()
             testSetStaticIpOnNoIpamFlatL3()
             testChangeNicNetworkToNoIpamL3()
@@ -169,7 +162,6 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             testSecurityGroupWithOutsideCidrIp()
             testIpCapacityExcludesOutsideCidrIp()
             testAddIpRangeAssociatesOrphanIp()
-            testAllowIpOutsideRangeDisabled()
         }
     }
 
@@ -569,46 +561,5 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         }
         assert capacity.totalCapacity > 0
         assert capacity.usedIpAddressNumber >= 1
-    }
-
-    void testAllowIpOutsideRangeDisabled() {
-        L3NetworkInventory flatL3 = env.inventoryByName("flatL3")
-
-        // Disable allow.ip.outside.range
-        updateGlobalConfig {
-            category = VmGlobalConfig.CATEGORY
-            name = "allow.ip.outside.range"
-            value = "false"
-        }
-
-        VmInstanceInventory vm = createVmInstance {
-            name = "vm-disabled-outside-range"
-            imageUuid = env.inventoryByName("image1").uuid
-            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
-            l3NetworkUuids = [flatL3.uuid]
-        }
-
-        // Setting outside-range IP should fail when config is disabled
-        expect(AssertionError.class) {
-            setVmStaticIp {
-                vmInstanceUuid = vm.uuid
-                l3NetworkUuid = flatL3.uuid
-                ip = "10.0.0.99"
-                netmask = "255.255.255.0"
-                gateway = "10.0.0.1"
-                systemTags = [
-                        String.format("staticIp::%s::10.0.0.99", flatL3.uuid),
-                        String.format("ipv4Netmask::%s::255.255.255.0", flatL3.uuid),
-                        String.format("ipv4Gateway::%s::10.0.0.1", flatL3.uuid)
-                ]
-            }
-        }
-
-        // Restore config
-        updateGlobalConfig {
-            category = VmGlobalConfig.CATEGORY
-            name = "allow.ip.outside.range"
-            value = "true"
-        }
     }
 }

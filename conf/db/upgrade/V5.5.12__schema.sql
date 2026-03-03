@@ -2,10 +2,12 @@
 CALL ADD_COLUMN('UsedIpVO', 'prefixLen', 'INT', 1, NULL);
 
 -- Backfill prefixLen from IpRangeVO for existing IPv6 UsedIpVO records
-UPDATE UsedIpVO u
-INNER JOIN IpRangeVO r ON u.ipRangeUuid = r.uuid
-SET u.prefixLen = r.prefixLen
-WHERE u.ipVersion = 6 AND u.ipRangeUuid IS NOT NULL AND u.prefixLen IS NULL;
+UPDATE `UsedIpVO` `u`
+INNER JOIN `IpRangeVO` `r` ON `u`.`ipRangeUuid` = `r`.`uuid`
+SET `u`.`prefixLen` = `r`.`prefixLen`
+WHERE `u`.`ipVersion` = 6
+  AND `u`.`ipRangeUuid` IS NOT NULL
+  AND `u`.`prefixLen` IS NULL;
 
 -- Modify ipRangeUuid foreign key constraint to SET NULL on delete (instead of CASCADE)
 -- This allows UsedIpVO records to exist without an IpRange (for IPs outside range)
@@ -18,10 +20,10 @@ BEGIN
     -- Check if the constraint exists
     SELECT COUNT(*)
     INTO constraint_exists
-    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
-    WHERE TABLE_SCHEMA = 'zstack'
-      AND TABLE_NAME = 'UsedIpVO'
-      AND CONSTRAINT_NAME = 'fkUsedIpVOIpRangeEO';
+    FROM `INFORMATION_SCHEMA`.`TABLE_CONSTRAINTS`
+    WHERE `TABLE_SCHEMA` = 'zstack'
+      AND `TABLE_NAME` = 'UsedIpVO'
+      AND `CONSTRAINT_NAME` = 'fkUsedIpVOIpRangeEO';
 
     IF constraint_exists > 0 THEN
         -- Drop the existing constraint
