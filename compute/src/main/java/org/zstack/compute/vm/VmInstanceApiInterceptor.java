@@ -9,8 +9,6 @@ import org.zstack.core.Platform;
 import org.zstack.compute.VmNicUtils;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.componentloader.PluginRegistry;
-import org.zstack.core.config.GlobalConfigVO;
-import org.zstack.core.config.GlobalConfigVO_;
 import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
@@ -601,7 +599,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10130, "ip address [%s] already set to vmNic [uuid:%s]",
                             ip, vmNicVO.getUuid()));
                 }
-                if (!l3NetworkVO.enableIpAddressAllocation()) {
+                if (!l3NetworkVO.IsIpAddressInRangesCheckEnabled()) {
                     continue;
                 }
                 // check if the ip is in the ip range when ipam is enabled
@@ -633,7 +631,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10133, "ip address [%s] already set to vmNic [uuid:%s]",
                             ip, vmNicVO.getUuid()));
                 }
-                if (!l3NetworkVO.enableIpAddressAllocation()) {
+                if (!l3NetworkVO.IsIpAddressInRangesCheckEnabled()) {
                     continue;
                 }
                 if (ipVo.getIpRangeUuid() == null) {
