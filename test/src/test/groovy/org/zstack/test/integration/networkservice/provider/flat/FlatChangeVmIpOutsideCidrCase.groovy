@@ -307,11 +307,6 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             ip = "172.16.0.50"
             netmask = "255.255.0.0"
             gateway = "172.16.0.1"
-            systemTags = [
-                    String.format("staticIp::%s::172.16.0.50", flatL3NoDhcp.uuid),
-                    String.format("ipv4Netmask::%s::255.255.0.0", flatL3NoDhcp.uuid),
-                    String.format("ipv4Gateway::%s::172.16.0.1", flatL3NoDhcp.uuid)
-            ]
             dnsAddresses = ["8.8.8.8"]
         }
 
@@ -647,11 +642,8 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             vmInstanceUuid = orphanVm.uuid
             l3NetworkUuid = capacityL3.uuid
             ip = "172.16.0.70"
-            systemTags = [
-                    String.format("staticIp::%s::172.16.0.70", capacityL3.uuid),
-                    String.format("ipv4Netmask::%s::255.255.0.0", capacityL3.uuid),
-                    String.format("ipv4Gateway::%s::172.16.0.1", capacityL3.uuid)
-            ]
+            netmask = "255.255.0.0"
+            gateway = "172.16.0.1"
         }
 
         // Confirm outside-CIDR UsedIpVO exists
@@ -690,21 +682,15 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             vmInstanceUuid = vm1.uuid
             l3NetworkUuid = capacityL3.uuid
             ip = "10.10.10.100"
-            systemTags = [
-                    String.format("staticIp::%s::10.10.10.100", capacityL3.uuid),
-                    String.format("ipv4Netmask::%s::255.255.255.0", capacityL3.uuid),
-                    String.format("ipv4Gateway::%s::10.10.10.1", capacityL3.uuid)
-            ]
+            netmask = "255.255.255.0"
+            gateway = "10.10.10.1"
         }
         setVmStaticIp {
             vmInstanceUuid = vm2.uuid
             l3NetworkUuid = capacityL3.uuid
             ip = "10.10.10.101"
-            systemTags = [
-                    String.format("staticIp::%s::10.10.10.101", capacityL3.uuid),
-                    String.format("ipv4Netmask::%s::255.255.255.0", capacityL3.uuid),
-                    String.format("ipv4Gateway::%s::10.10.10.1", capacityL3.uuid)
-            ]
+            netmask = "255.255.255.0"
+            gateway = "10.10.10.1"
         }
 
         // Verify both VMs got in-range IPs (ipRangeUuid != null)
@@ -760,11 +746,8 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             vmInstanceUuid = orphanVm1.uuid
             l3NetworkUuid = backfillL3.uuid
             ip = "172.16.0.80"
-            systemTags = [
-                    String.format("staticIp::%s::172.16.0.80", backfillL3.uuid),
-                    String.format("ipv4Netmask::%s::255.255.0.0", backfillL3.uuid),
-                    String.format("ipv4Gateway::%s::172.16.0.1", backfillL3.uuid)
-            ]
+            netmask = "255.255.0.0"
+            gateway = "172.16.0.1"
         }
 
         VmInstanceInventory orphanVm2 = createVmInstance {
@@ -777,11 +760,8 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             vmInstanceUuid = orphanVm2.uuid
             l3NetworkUuid = backfillL3.uuid
             ip = "172.16.0.90"
-            systemTags = [
-                    String.format("staticIp::%s::172.16.0.90", backfillL3.uuid),
-                    String.format("ipv4Netmask::%s::255.255.0.0", backfillL3.uuid),
-                    String.format("ipv4Gateway::%s::172.16.0.1", backfillL3.uuid)
-            ]
+            netmask = "255.255.0.0"
+            gateway = "172.16.0.1"
         }
 
         // Confirm orphan IPs exist
