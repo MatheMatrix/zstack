@@ -577,7 +577,7 @@ public class ImageBase implements Image {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!err.getCauses().isEmpty()) {
-                    reply.setError(err.getCauses().get(0));
+                    reply.setError(err.getRootCause());
                 }
                 bus.reply(msg, reply);
             }

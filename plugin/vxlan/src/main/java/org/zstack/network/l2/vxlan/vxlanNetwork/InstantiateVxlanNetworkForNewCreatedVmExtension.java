@@ -81,7 +81,7 @@ public class InstantiateVxlanNetworkForNewCreatedVmExtension implements PreVmIns
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errList.getCauses().isEmpty()) {
-                    completion.fail(errList.getCauses().get(0));
+                    completion.fail(errList.getRootCause());
                     return;
                 }
                 logger.info(String.format("check and realize vxlan networks[uuid: %s] for vm[uuid: %s] done", vxlanUuids, spec.getVmInventory().getUuid()));

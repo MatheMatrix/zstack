@@ -810,7 +810,7 @@ public class SdnControllerBase {
                         if (errorCodeList.getCauses().isEmpty()) {
                             trigger.next();
                         } else {
-                            trigger.fail(errorCodeList.getCauses().get(0));
+                            trigger.fail(errorCodeList.getRootCause());
                         }
                     }
                 });
@@ -850,7 +850,7 @@ public class SdnControllerBase {
                         if (errorCodeList.getCauses().isEmpty()) {
                             trigger.next();
                         } else {
-                            trigger.fail(errorCodeList.getCauses().get(0));
+                            trigger.fail(errorCodeList.getRootCause());
                         }
                     }
                 });

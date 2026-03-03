@@ -342,7 +342,7 @@ public class VmInstanceExtensionPointEmitter implements Component {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (errorCodeList.getCauses().size() > 0) {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 } else {
                     completion.success();
                 }
@@ -370,7 +370,7 @@ public class VmInstanceExtensionPointEmitter implements Component {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (errorCodeList.getCauses().size() > 0) {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 } else {
                     completion.success();
                 }
@@ -422,7 +422,7 @@ public class VmInstanceExtensionPointEmitter implements Component {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (errorCodeList.getCauses().size() > 0) {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 } else {
                     completion.success();
                 }
@@ -492,7 +492,7 @@ public class VmInstanceExtensionPointEmitter implements Component {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (errorCodeList.getCauses().size() > 0) {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 } else {
                     completion.success();
                 }

@@ -177,7 +177,7 @@ public class VirtualRouterCreatePublicVipFlow implements Flow {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (errorCodeList != null && !errorCodeList.getCauses().isEmpty()) {
-                    chain.fail(errorCodeList.getCauses().get(0));
+                    chain.fail(errorCodeList.getRootCause());
                     return;
                 }
 

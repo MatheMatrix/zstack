@@ -1277,7 +1277,7 @@ public class LoadBalancerBase {
                             @Override
                             public void done(ErrorCodeList errorCodeList) {
                                 if (!CollectionUtils.isEmpty(errorCodeList.getCauses())) {
-                                    trigger.fail(errorCodeList.getCauses().get(0));
+                                    trigger.fail(errorCodeList.getRootCause());
                                     return;
                                 }
                                 trigger.next();

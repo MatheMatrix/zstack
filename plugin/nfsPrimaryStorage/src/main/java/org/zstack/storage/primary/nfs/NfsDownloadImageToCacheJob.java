@@ -236,7 +236,7 @@ public class NfsDownloadImageToCacheJob implements Job {
                             @Override
                             public void done(ErrorCodeList errorCodeList) {
                                 if (!errorCodeList.getCauses().isEmpty()) {
-                                    logger.warn(String.format("failed to saveEncryptAfterCreateImageCache: %s", errorCodeList.getCauses().get(0)));
+                                    logger.warn(String.format("failed to saveEncryptAfterCreateImageCache: %s", errorCodeList.getRootCause()));
                                 }
                                 completion.success(ImageCacheInventory.valueOf(finalCvo));
                             }

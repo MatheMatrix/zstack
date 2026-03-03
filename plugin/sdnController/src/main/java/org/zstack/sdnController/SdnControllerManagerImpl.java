@@ -410,7 +410,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                 if (errorCodeList.getCauses().isEmpty()) {
                     completion.success();
                 } else {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 }
             }
         });
@@ -448,7 +448,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                 if (errorCodeList.getCauses().isEmpty()) {
                     completion.success();
                 } else {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 }
             }
         });

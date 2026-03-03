@@ -202,7 +202,7 @@ public class VxlanNetworkPool extends L2NoVlanNetwork implements L2VxlanNetworkP
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errList.getCauses().isEmpty()) {
-                    reply.setError(errList.getCauses().get(0));
+                    reply.setError(errList.getRootCause());
                 }
                 bus.reply(msg, reply);
             }
@@ -512,7 +512,7 @@ public class VxlanNetworkPool extends L2NoVlanNetwork implements L2VxlanNetworkP
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errList.getCauses().isEmpty()) {
-                    evt.setError(errList.getCauses().get(0));
+                    evt.setError(errList.getRootCause());
                 } else {
                     dbf.remove(vo);
                 }
@@ -638,7 +638,7 @@ public class VxlanNetworkPool extends L2NoVlanNetwork implements L2VxlanNetworkP
                         if (errList.getCauses().isEmpty()) {
                             trigger.next();
                         } else {
-                            trigger.fail(errList.getCauses().get(0));
+                            trigger.fail(errList.getRootCause());
                         }
                     }
                 });
@@ -930,7 +930,7 @@ public class VxlanNetworkPool extends L2NoVlanNetwork implements L2VxlanNetworkP
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errList.getCauses().isEmpty()) {
-                    completion1.fail(errList.getCauses().get(0));
+                    completion1.fail(errList.getRootCause());
                 } else {
                     completion1.success();
                 }
@@ -1048,7 +1048,7 @@ public class VxlanNetworkPool extends L2NoVlanNetwork implements L2VxlanNetworkP
                             if(vtepIpChanged != null && !vtepIpChanged.isEmpty()) {
                                 SQL.New(VtepVO.class).eq(VtepVO_.poolUuid, l2NetworkUuid).in(VtepVO_.hostUuid, vtepIpChanged).delete();
                             }
-                            trigger.fail(errList.getCauses().get(0));
+                            trigger.fail(errList.getRootCause());
                         }
                     }
                 });

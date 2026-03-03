@@ -391,7 +391,7 @@ public class KvmIscsiNodeServer implements Component, KVMStartVmExtensionPoint, 
                 if (errorCodeList.getCauses().isEmpty()) {
                     completion.success();
                 } else {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 }
             }
         });

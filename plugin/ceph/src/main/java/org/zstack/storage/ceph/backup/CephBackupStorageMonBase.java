@@ -475,7 +475,7 @@ public class CephBackupStorageMonBase extends CephMonBase {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (errorCodeList.getCauses().size() == MAX_PING_CNT) {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                     return;
                 }
                 completion.success(pingResult);

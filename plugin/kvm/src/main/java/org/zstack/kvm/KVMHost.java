@@ -894,7 +894,7 @@ public class KVMHost extends HostBase implements Host {
                     @Override
                     public void done(ErrorCodeList errorCodeList) {
                         if (errorCodeList.getCauses().size() == retryCount) {
-                            logger.debug("waiting for kvmagent to start timeout: " + errorCodeList.getCauses().get(0).getDetails());
+                            logger.debug("waiting for kvmagent to start timeout: " + errorCodeList.getRootCause().getDetails());
                         }
                         trigger.next();
                     }

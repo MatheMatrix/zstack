@@ -967,7 +967,7 @@ public class FlatUserdataBackend implements UserdataBackend, KVMHostConnectExten
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
                     logger.error(String.format("apply userdata failed after L2Network changed, because:%s",
-                            errorCodeList.getCauses().get(0)));
+                            errorCodeList.getRootCause()));
                 } else {
                     logger.debug("apply userdata successful after L2Network changed");
                 }

@@ -80,7 +80,7 @@ public abstract class StepRun<T> {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if(errorCodeList.getCauses().size() == stepElements.size()){
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 }else {
                     completion.success();
                 }

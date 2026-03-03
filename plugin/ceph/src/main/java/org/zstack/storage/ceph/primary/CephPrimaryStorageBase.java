@@ -1975,7 +1975,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                 if (errorCodeList.getCauses().isEmpty()) {
                     completion.success(results);
                 } else {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 }
             }
         });
@@ -2452,7 +2452,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                                 @Override
                                 public void done(ErrorCodeList errorCodeList) {
                                     if (!errorCodeList.getCauses().isEmpty()) {
-                                        trigger.fail(operr(ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10004, String.format("failed to saveEncryptAfterCreateImageCache: %s", errorCodeList.getCauses().get(0))));
+                                        trigger.fail(operr(ORG_ZSTACK_STORAGE_CEPH_PRIMARY_10004, String.format("failed to saveEncryptAfterCreateImageCache: %s", errorCodeList.getRootCause())));
                                         return;
                                     }
                                     trigger.next();
@@ -6030,7 +6030,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    reply.setError(errorCodeList.getCauses().get(0));
+                    reply.setError(errorCodeList.getRootCause());
                 }
 
                 bus.reply(msg, reply);

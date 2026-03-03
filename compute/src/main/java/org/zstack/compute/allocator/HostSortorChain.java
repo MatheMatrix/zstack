@@ -197,7 +197,7 @@ public class HostSortorChain implements HostSortorStrategy {
             public void done(ErrorCodeList errorCodeList) {
                 if (selectedHost.get() == null) {
                     if (!errorCodeList.getCauses().isEmpty()) {
-                        completion.fail(errorCodeList.getCauses().get(0));
+                        completion.fail(errorCodeList.getRootCause());
                     } else {
                         completion.fail(operr(ORG_ZSTACK_COMPUTE_ALLOCATOR_10035, "failed to reserve host capacity for all candidate hosts"));
                     }

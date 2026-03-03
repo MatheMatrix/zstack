@@ -995,7 +995,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                     @Override
                     public void done(ErrorCodeList errorCodeList) {
                         if (!errList.getCauses().isEmpty()) {
-                            reply.setError(errList.getCauses().get(0));
+                            reply.setError(errList.getRootCause());
                             bus.reply(msg, reply);
                             recorder.withFailReason(reply.getError().getDetails())
                                     .end(null);
@@ -9033,7 +9033,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                     return;
                 }
 
@@ -9091,7 +9091,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                     return;
                 }
 

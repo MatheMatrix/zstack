@@ -446,7 +446,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    reply.setError(errorCodeList.getCauses().get(0));
+                    reply.setError(errorCodeList.getRootCause());
                 }
 
                 bus.reply(msg, reply);
@@ -1159,7 +1159,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
                 if (errorCodeList.getCauses().isEmpty()) {
                     completion.success(results);
                 } else {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 }
             }
         });

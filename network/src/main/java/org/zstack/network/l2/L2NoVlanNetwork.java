@@ -363,7 +363,7 @@ public class L2NoVlanNetwork implements L2Network {
                                 if (errorCodeList.getCauses().isEmpty()) {
                                     trigger.next();
                                 } else {
-                                    trigger.fail(errorCodeList.getCauses().get(0));
+                                    trigger.fail(errorCodeList.getRootCause());
                                 }
                             }
                         });
@@ -616,7 +616,7 @@ public class L2NoVlanNetwork implements L2Network {
                             @Override
                             public void done(ErrorCodeList errorCodeList) {
                                 if (!errorCodeList.getCauses().isEmpty()) {
-                                    trigger.fail(errorCodeList.getCauses().get(0));
+                                    trigger.fail(errorCodeList.getRootCause());
                                 } else {
                                     trigger.next();
                                 }
@@ -744,7 +744,7 @@ public class L2NoVlanNetwork implements L2Network {
                     @Override
                     public void done(ErrorCodeList errorCodeList) {
                         if (!errorCodeList.getCauses().isEmpty()) {
-                            trigger.fail(errorCodeList.getCauses().get(0));
+                            trigger.fail(errorCodeList.getRootCause());
                         } else {
                             trigger.next();
                         }

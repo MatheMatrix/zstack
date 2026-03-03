@@ -2693,7 +2693,7 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
                 if (errorCodeList.getCauses().isEmpty()) {
                     completion.success();
                 } else {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 }
             }
         });

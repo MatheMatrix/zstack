@@ -1311,7 +1311,7 @@ public class VirtualRouter extends ApplianceVmBase {
                 @Override
                 public void done(ErrorCodeList errorCodeList) {
                     if (errList.getCauses().size() > 0) {
-                        trigger.fail(errList.getCauses().get(0));
+                        trigger.fail(errList.getRootCause());
                     } else {
                         trigger.next();
                     }
