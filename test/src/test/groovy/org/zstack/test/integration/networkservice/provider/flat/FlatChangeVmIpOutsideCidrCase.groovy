@@ -469,7 +469,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
 
     /**
      * VM whose only NIC has outside-CIDR IP on a no-DHCP L3 should NOT trigger
-     * any DHCP apply message (APPLY_DHCP_PATH / BATCH_APPLY_DHCP_PATH) on reboot.
+     * any DHCP apply message for that IP on reboot.
      *
      * Uses "vm-change-to-nodhcp" which was changed to flatL3_noDhcp with IP 172.16.0.60
      * in testChangeNicNetworkOutsideCidrAllowedOnNoDhcpL3 — it has only one NIC,
@@ -490,13 +490,13 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             uuid = vm.uuid
         }
 
-        // Track whether any DHCP apply message is sent
-        boolean dhcpApplied = false
+        // Track whether outside-CIDR IP appears in any DHCP apply message
+        boolean dhcpAppliedForOutsideCidrIp = false
         env.afterSimulator(FlatDhcpBackend.APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
             FlatDhcpBackend.ApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.ApplyDhcpCmd.class)
             for (def dhcp : cmd.dhcp) {
                 if (dhcp.ip == "172.16.0.60") {
-                    dhcpApplied = true
+                    dhcpAppliedForOutsideCidrIp = true
                 }
             }
             return rsp
@@ -506,7 +506,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             for (def dhcpInfo : cmd.dhcpInfos) {
                 for (def dhcp : dhcpInfo.dhcp) {
                     if (dhcp.ip == "172.16.0.60") {
-                        dhcpApplied = true
+                        dhcpAppliedForOutsideCidrIp = true
                     }
                 }
             }
@@ -518,7 +518,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         }
 
         // Outside-CIDR IP 172.16.0.60 must NOT appear in any DHCP apply message
-        assert !dhcpApplied : "DHCP apply should NOT include outside-CIDR IP 172.16.0.60"
+        assert !dhcpAppliedForOutsideCidrIp : "DHCP apply should NOT include outside-CIDR IP 172.16.0.60"
     }
 
     /**
@@ -620,7 +620,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             delegate.netmask = "255.255.255.0"
         }
 
-        // Step 3: create 2 VMs on flatL3_noDhcp — their IPs will be allocated from the new range
+        // Step 3: create 2 VMs on flatL3_noDhcp (no DHCP → no auto IP allocation)
         VmInstanceInventory vm1 = createVmInstance {
             name = "vm-capacity-1"
             imageUuid = env.inventoryByName("image1").uuid
@@ -634,18 +634,42 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             l3NetworkUuids = [flatL3NoDhcp.uuid]
         }
 
+        // Step 4: manually assign in-range IPs via setVmStaticIp (no DHCP means no auto-allocation)
+        setVmStaticIp {
+            vmInstanceUuid = vm1.uuid
+            l3NetworkUuid = flatL3NoDhcp.uuid
+            ip = "10.10.10.100"
+            systemTags = [
+                    String.format("staticIp::%s::10.10.10.100", flatL3NoDhcp.uuid),
+                    String.format("ipv4Netmask::%s::255.255.255.0", flatL3NoDhcp.uuid),
+                    String.format("ipv4Gateway::%s::10.10.10.1", flatL3NoDhcp.uuid)
+            ]
+        }
+        setVmStaticIp {
+            vmInstanceUuid = vm2.uuid
+            l3NetworkUuid = flatL3NoDhcp.uuid
+            ip = "10.10.10.101"
+            systemTags = [
+                    String.format("staticIp::%s::10.10.10.101", flatL3NoDhcp.uuid),
+                    String.format("ipv4Netmask::%s::255.255.255.0", flatL3NoDhcp.uuid),
+                    String.format("ipv4Gateway::%s::10.10.10.1", flatL3NoDhcp.uuid)
+            ]
+        }
+
         // Verify both VMs got in-range IPs (ipRangeUuid != null)
         UsedIpVO ip1 = Q.New(UsedIpVO.class)
                 .eq(UsedIpVO_.vmNicUuid, vm1.vmNics[0].uuid)
                 .find()
         assert ip1 != null && ip1.ipRangeUuid != null : "vm1 should have in-range IP"
+        assert ip1.ip == "10.10.10.100"
 
         UsedIpVO ip2 = Q.New(UsedIpVO.class)
                 .eq(UsedIpVO_.vmNicUuid, vm2.vmNics[0].uuid)
                 .find()
         assert ip2 != null && ip2.ipRangeUuid != null : "vm2 should have in-range IP"
+        assert ip2.ip == "10.10.10.101"
 
-        // Step 4: verify outside-CIDR IPs are still ipRangeUuid=null (not covered by the new range)
+        // Step 5: verify outside-CIDR IPs are still ipRangeUuid=null (not covered by the new range)
         long stillOutsideCount = Q.New(UsedIpVO.class)
                 .eq(UsedIpVO_.l3NetworkUuid, flatL3NoDhcp.uuid)
                 .isNull(UsedIpVO_.ipRangeUuid)
@@ -653,7 +677,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         assert stillOutsideCount == outsideCount :
                 "outside-CIDR IPs (172.16.0.x) should still have ipRangeUuid=null"
 
-        // Step 5: getIpAddressCapacity should only count the 2 in-range IPs, not the outside-CIDR ones
+        // Step 6: getIpAddressCapacity should only count the 2 in-range IPs, not the outside-CIDR ones
         // totalCapacity = 191 (10.10.10.10 ~ 10.10.10.200), usedIpAddressNumber = 2
         GetIpAddressCapacityResult capacity = getIpAddressCapacity {
             l3NetworkUuids = [flatL3NoDhcp.uuid]
@@ -672,15 +696,20 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
     void testAddIpRangeAssociatesOrphanIp() {
         L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_noDhcp")
 
-        // Find a NIC on flatL3_noDhcp with ipRangeUuid=null
-        UsedIpVO orphanIp = Q.New(UsedIpVO.class)
+        // Find orphan IPs on flatL3_noDhcp with ipRangeUuid=null
+        List<UsedIpVO> orphanIps = Q.New(UsedIpVO.class)
                 .eq(UsedIpVO_.l3NetworkUuid, flatL3NoDhcp.uuid)
                 .isNull(UsedIpVO_.ipRangeUuid)
-                .limit(1)
-                .find()
-        assert orphanIp != null : "Should have an orphan IP on flatL3_noDhcp"
+                .list()
+        assert orphanIps.size() > 0 : "Should have orphan IPs on flatL3_noDhcp"
+        long orphanCount = orphanIps.size()
 
-        // Add IP range that covers the orphan IP
+        // Record capacity before adding the new range
+        GetIpAddressCapacityResult beforeCapacity = getIpAddressCapacity {
+            l3NetworkUuids = [flatL3NoDhcp.uuid]
+        }
+
+        // Add IP range that covers the orphan IPs (172.16.0.50, 172.16.0.60)
         IpRangeInventory ipRange = addIpRange {
             delegate.name = "nodhcp-ip-range"
             delegate.l3NetworkUuid = flatL3NoDhcp.uuid
@@ -690,18 +719,29 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             delegate.netmask = "255.255.0.0"
         }
 
-        // Verify orphan IP now has ipRangeUuid backfilled
-        UsedIpVO updatedIp = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.uuid, orphanIp.uuid)
-                .find()
-        assert updatedIp.ipRangeUuid == ipRange.uuid :
-                "ipRangeUuid should be backfilled to the new IP range"
+        // Verify orphan IPs now have ipRangeUuid backfilled
+        for (UsedIpVO orphanIp : orphanIps) {
+            UsedIpVO updatedIp = Q.New(UsedIpVO.class)
+                    .eq(UsedIpVO_.uuid, orphanIp.uuid)
+                    .find()
+            assert updatedIp.ipRangeUuid == ipRange.uuid :
+                    "ipRangeUuid should be backfilled for orphan IP ${orphanIp.ip}"
+        }
 
-        // Verify IP capacity now includes this IP
-        GetIpAddressCapacityResult capacity = getIpAddressCapacity {
+        // No more orphan IPs in the 172.16.0.x range
+        long remainingOrphanCount = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.l3NetworkUuid, flatL3NoDhcp.uuid)
+                .isNull(UsedIpVO_.ipRangeUuid)
+                .count()
+        assert remainingOrphanCount == 0 : "all orphan IPs should now have ipRangeUuid"
+
+        // Verify IP capacity now includes the backfilled IPs
+        GetIpAddressCapacityResult afterCapacity = getIpAddressCapacity {
             l3NetworkUuids = [flatL3NoDhcp.uuid]
         }
-        assert capacity.totalCapacity > 0
-        assert capacity.usedIpAddressNumber >= 1
+        assert afterCapacity.totalCapacity > beforeCapacity.totalCapacity :
+                "totalCapacity should increase after adding new IP range"
+        assert afterCapacity.usedIpAddressNumber == beforeCapacity.usedIpAddressNumber + orphanCount :
+                "usedIpAddressNumber should increase by orphanCount after backfill"
     }
 }
