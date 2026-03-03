@@ -122,6 +122,11 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                     // flatL3_noDhcp: without DHCP — IP can be outside range
                     l3Network {
                         name = "flatL3_noDhcp"
+
+                        service {
+                            provider = SecurityGroupConstant.SECURITY_GROUP_PROVIDER_TYPE
+                            types = [SecurityGroupConstant.SECURITY_GROUP_NETWORK_SERVICE_TYPE]
+                        }
                     }
                 }
 
