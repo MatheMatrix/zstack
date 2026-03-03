@@ -111,3 +111,38 @@ if (Boolean.TRUE.equals(error.getRetryable())) {
 | `IO_ERROR` | 提示存储或网络 I/O 异常，检查物理环境。 |
 | `HTTP_ERROR` | 处理底层的网络通信错误。 |
 | `CANCEL_ERROR` | 默默处理或展示操作已取消的轻提示。 |
+
+
+## 6. 硬性契约 — 不可违反 (Mandatory Contract Rules)
+
+> ⚠️ 以下三条规则为前端团队与后端的硬性约定，任何变更必须经过前后端双方 code review 确认。违反将导致前端返工。
+
+### 规则 1: message/error 字段必须与响应状态一致
+
+- **失败响应**：`error` 字段 **必须** 包含完整的 ErrorCode 对象（含 `code`、`description`、`details` 等）
+- **成功响应**：`error` 字段 **必须** 为 `null`，**绝对禁止** 出现任何错误相关信息
+- **灰色地带禁令**：不允许出现"成功但携带警告/失败原因"的混合态。如需传递警告，必须使用独立的 `warnings` 字段（当前不存在，需另行设计）
+
+```
+// ✅ 正确：失败响应
+{"success": false, "error": {"code": "SYS.1001", "description": "...", ...}}
+
+// ✅ 正确：成功响应
+{"success": true, "error": null}
+
+// ❌ 禁止：成功但带错误信息
+{"success": true, "error": {"code": "SYS.1001", ...}}
+```
+
+### 规则 2: 成功态绝对禁止 message
+
+- 成功响应（`success=true`）中，**不得** 出现 `message`、`errorMessage`、`failReason` 或任何语义上表示"失败原因"的字段
+- `localizedMessage` 字段 **仅** 存在于 ErrorCode 对象内部，成功响应中 ErrorCode 对象为 null，因此 `localizedMessage` 自然不会出现
+- 如果业务需要在成功响应中携带提示信息，**必须** 使用明确区分于错误的字段名（如 `notice`、`tip`），且需单独设计、单独评审
+
+### 规则 3: globalErrorCode 的唯一归属层级 — API 级
+
+- `globalErrorCode` 是 **API 级** 的全局错误标识符，由 `ErrorFacadeImpl` 统一注册和分配
+- **禁止** 在 action 级、task 级或 UI 组件级重新定义或覆盖 `globalErrorCode` 的含义
+- 前端 **仅** 通过 API 响应中的 `globalErrorCode` 进行国际化映射，不会也不应该从其他层级获取此字段
+- 任何新增 `globalErrorCode` 必须在 `ErrorFacadeImpl` 中注册，并同步更新 i18n 资源文件

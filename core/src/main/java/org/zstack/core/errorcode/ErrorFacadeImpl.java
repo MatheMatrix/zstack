@@ -86,10 +86,10 @@ public class ErrorFacadeImpl implements ErrorFacade {
             if (subErr.getLocalizedMessage() != null) {
                 err.setLocalizedMessage(subErr.getLocalizedMessage());
             }
-            if (subErr.getRetryable() != null) {
-                err.setRetryable(subErr.getRetryable());
+            if (subErr.isRetryable()) {
+                err.setRetryable(subErr.isRetryable());
             }
-            if (subErr.getHttpStatus() != null) {
+            if (subErr.getHttpStatus() != 0) {
                 err.setHttpStatus(subErr.getHttpStatus());
             }
         } catch (Exception e) {

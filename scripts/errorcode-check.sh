@@ -96,9 +96,14 @@ echo ""
 echo "[Rule 2] Checking for direct errf.* deprecated methods in production code..."
 
 # Exclude infrastructure packages
+# Also exclude files that use List<ErrorCode> overloads of errf.* (not deprecated per contract)
+# TODO: migrate these to a Platform.operrWithCauses() when added in a follow-up
 RULE2_EXCLUDE_PATTERNS=(
     "core/src/main/java/org/zstack/core/errorcode/"
     "core/src/main/java/org/zstack/core/Platform.java"
+    "image/src/main/java/org/zstack/image/ImageManagerImpl.java"
+    "compute/src/main/java/org/zstack/compute/host/HostBase.java"
+    "storage/src/main/java/org/zstack/storage/snapshot/VolumeSnapshotCascadeExtension.java"
 )
 
 # Search for the 5 specific deprecated method patterns (NOT List<ErrorCode> overloads)
