@@ -77,6 +77,7 @@ public abstract class AbstractHostAllocatorFlow {
             ErrorCode errorCode = new ErrorCode();
             errorCode.setCode(HostAllocatorError.NO_AVAILABLE_HOST.toString());
             errorCode.setDetails(reason);
+            errorCode.setDescription("no available host");
             throw new OperationFailureException(errorCode);
         }
     }

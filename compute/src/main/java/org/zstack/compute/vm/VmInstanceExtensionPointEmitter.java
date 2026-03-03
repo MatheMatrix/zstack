@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.errorcode.ErrorFacade;
+import org.zstack.core.Platform;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.header.Component;
 import org.zstack.header.core.Completion;
@@ -144,8 +145,8 @@ public class VmInstanceExtensionPointEmitter implements Component {
             try {
                 String err = ext.preStopVm(inv);
                 if (err != null) {
-                    return errf.instantiateErrorCode(SysErrors.OPERATION_ERROR, String.format("VmInstanceStopVmExtensionPoint[%s] refuses to stop vm[uuid:%s] because %s",
-                            ext.getClass().getName(), inv.getUuid(), err));
+                    return Platform.operr(SysErrors.OPERATION_ERROR.toString(), "VmInstanceStopVmExtensionPoint[%s] refuses to stop vm[uuid:%s] because %s",
+                            ext.getClass().getName(), inv.getUuid(), err);
                 }
             } catch (Exception e) {
                 logger.warn(String.format("Unhandled exception while calling %s", ext.getClass().getName()), e);

@@ -5,10 +5,10 @@ import org.zstack.header.core.AsyncBackup;
 import org.zstack.header.core.AsyncLatch;
 import org.zstack.header.core.NoErrorCompletion;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.errorcode.SysErrors;
 import org.zstack.utils.DebugUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.core.Platform;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,10 +62,7 @@ public abstract class AsyncBatch extends AbstractCompletion {
                 });
             } catch (Throwable t) {
                 logger.warn("unhandled exception happened", t);
-                ErrorCode code = new ErrorCode();
-                code.setCode(SysErrors.INTERNAL.toString());
-                code.setDescription("an internal error happened");
-                code.setDetails(t.getMessage());
+                ErrorCode code = Platform.inerr("an internal error happened, details: %s", t.getMessage());
                 errors.add(code);
 
                 latch.ack();

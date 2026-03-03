@@ -60,6 +60,7 @@ public class FutureCompletion extends Completion {
             this.timeout = true;
             ErrorCode err = new ErrorCode();
             err.setCode(SysErrors.TIMEOUT.toString());
+            err.setDescription("timeout");
             err.setDetails(String.format("FutureCompletion timeout after %s seconds", TimeUnit.MILLISECONDS.toSeconds(timeout)));
             fail(err);
         }

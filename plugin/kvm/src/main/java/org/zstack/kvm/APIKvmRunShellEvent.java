@@ -1,6 +1,7 @@
 package org.zstack.kvm;
 
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.core.Platform;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.rest.RestResponse;
 
@@ -71,7 +72,7 @@ public class APIKvmRunShellEvent extends APIEvent {
     public static APIKvmRunShellEvent __example__() {
         APIKvmRunShellEvent event = new APIKvmRunShellEvent();
         ShellResult sr = new ShellResult();
-        sr.setErrorCode(new ErrorCode());
+        sr.setErrorCode(Platform.operr("org.zstack.kvm.shell.1", "shell execution example"));
         sr.setReturnCode(100);
         sr.setStderr(null);
         sr.setStdout("hello");

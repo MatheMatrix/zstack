@@ -71,7 +71,13 @@ public class ErrorFacadeImpl implements ErrorFacade {
     private ErrorCode doInstantiateErrorCode(String code, String details, List<ErrorCode> causes) {
         ErrorCodeInfo info = codes.get(code);
         if (info == null) {
-            throw new CloudRuntimeException(String.format("cannot find error code[%s]", code));
+            logger.warn(String.format("Unregistered error code[%s], falling back to INTERNAL", code));
+            ErrorCode fallback = new ErrorCode();
+            fallback.setCode(SysErrors.INTERNAL.toString());
+            fallback.setDescription("unregistered error code");
+            fallback.setDetails(String.format("error code[%s] is not registered. details: %s", code, details));
+            fallback.setGlobalErrorCode(code);
+            return fallback;
         }
 
         if (details != null && details.length() > 4096) {
@@ -89,6 +95,11 @@ public class ErrorFacadeImpl implements ErrorFacade {
         }
 
         err.setCauses(causes);
+
+        if (err.getGlobalErrorCode() == null) {
+            logger.warn(String.format("globalErrorCode not set for error code[%s], falling back to code parameter", code));
+            err.setGlobalErrorCode(code);
+        }
 
         if (dumpOnError) {
             DebugUtils.dumpStackTrace(String.format("An error code%s is instantiated," +

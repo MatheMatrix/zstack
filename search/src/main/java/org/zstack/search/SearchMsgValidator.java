@@ -3,6 +3,7 @@ package org.zstack.search;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.GlobalApiMessageInterceptor;
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.core.Platform;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.search.APISearchMessage;
 import org.zstack.header.search.APISearchMessage.NOLTriple;
@@ -30,7 +31,7 @@ public class SearchMsgValidator implements GlobalApiMessageInterceptor {
             } catch (IllegalArgumentException e) {
                 logger.warn("", e);
                 //ErrorCode err = ErrorCodeFacade.generateErrorCode(ErrorCodeFacade.BuiltinErrors.INVALID_ARGRUMENT.toString(), e.getMessage());
-                throw new ApiMessageInterceptionException(new ErrorCode());
+                throw new ApiMessageInterceptionException(Platform.argerr("invalid search operation: %s", e.getMessage()));
             }
         }
         return msg;
