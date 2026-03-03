@@ -367,8 +367,13 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                         l3Uuid, inRangeCount, outsideRangeCount));
             }
 
-            // when all IPs are outside range and IPAM is enabled, it is allowed —
-            // the processing logic will treat it like the disable-ipam path
+            if (l3NetworkVO.IsIpAddressInRangesCheckEnabled()) {
+                if (outsideRangeCount > 0) {
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10109,
+                            "the static IPs for L3 network[uuid:%s] must be within IP ranges when IPAM is enabled, but got %d outside-range",
+                            l3Uuid, outsideRangeCount));
+                }
+            }
         }
 
         msg.setRequiredIpMap(new HashMap<>());

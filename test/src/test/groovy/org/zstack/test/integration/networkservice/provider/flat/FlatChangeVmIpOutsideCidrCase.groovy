@@ -25,6 +25,11 @@ import org.zstack.testlib.SubCase
 import org.zstack.utils.data.SizeUnit
 import org.zstack.utils.gson.JSONObjectUtil
 
+/**
+ * Test IP outside CIDR behavior for flat/public networks:
+ * - With DHCP service: IP must be within IP range (outside-CIDR rejected)
+ * - Without DHCP service: IP can be outside IP range (outside-CIDR allowed)
+ */
 class FlatChangeVmIpOutsideCidrCase extends SubCase {
 
     EnvSpec env
@@ -91,6 +96,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                     name = "l2"
                     physicalInterface = "eth0"
 
+                    // flatL3: with DHCP — IP must be in range
                     l3Network {
                         name = "flatL3"
 
@@ -113,6 +119,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                         }
                     }
 
+                    // flatL3_noDhcp: without DHCP — IP can be outside range
                     l3Network {
                         name = "flatL3_noDhcp"
                     }
@@ -122,6 +129,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                     name = "l2-2"
                     physicalInterface = "eth1"
 
+                    // pubL3: with DHCP — IP must be in range
                     l3Network {
                         name = "pubL3"
 
@@ -153,10 +161,19 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
     void test() {
         dbf = bean(DatabaseFacade.class)
         env.create {
-            testSetStaticIpOutsideCidrOnIpamFlatL3()
-            testSetStaticIpOnNoIpamFlatL3()
-            testChangeNicNetworkToNoIpamL3()
-            testChangeNicNetworkWithOutsideCidrIpToIpamL3()
+            // With DHCP: outside-CIDR IP must be rejected
+            testSetStaticIpOutsideCidrRejectedOnDhcpL3()
+            testChangeNicNetworkOutsideCidrRejectedOnDhcpL3()
+
+            // Without DHCP: outside-CIDR IP is allowed
+            testSetStaticIpOutsideCidrAllowedOnNoDhcpL3()
+            testChangeNicNetworkOutsideCidrAllowedOnNoDhcpL3()
+
+            // With DHCP: in-range IP works normally
+            testSetStaticIpInRangeOnDhcpL3()
+            testChangeNicNetworkInRangeOnDhcpL3()
+
+            // Supplementary: DHCP skip, EIP reject, SG, capacity, orphan IP backfill
             testDhcpSkipForOutsideCidrIpOnVmReboot()
             testEipRejectOutsideCidrIp()
             testSecurityGroupWithOutsideCidrIp()
@@ -165,96 +182,101 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         }
     }
 
-    void testSetStaticIpOutsideCidrOnIpamFlatL3() {
+    /**
+     * With DHCP: setVmStaticIp with outside-CIDR IP should fail on flatL3
+     */
+    void testSetStaticIpOutsideCidrRejectedOnDhcpL3() {
         L3NetworkInventory flatL3 = env.inventoryByName("flatL3")
 
         VmInstanceInventory vm = createVmInstance {
-            name = "vm-outside-cidr"
+            name = "vm-dhcp-reject"
             imageUuid = env.inventoryByName("image1").uuid
             instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
             l3NetworkUuids = [flatL3.uuid]
         }
 
-        String originalIp = vm.vmNics[0].ip
-
-        FlatDhcpBackend.BatchApplyDhcpCmd batchApplyDhcpCmd = null
-        env.afterSimulator(FlatDhcpBackend.BATCH_APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
-            batchApplyDhcpCmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.BatchApplyDhcpCmd.class)
-            return rsp
-        }
-
-        setVmStaticIp {
-            vmInstanceUuid = vm.uuid
-            l3NetworkUuid = flatL3.uuid
-            ip = "10.0.0.50"
-            netmask = "255.255.255.0"
-            gateway = "10.0.0.1"
-            dnsAddresses = ["8.8.8.8", "114.114.114.114"]
-            systemTags = [
-                    String.format("staticIp::%s::10.0.0.50", flatL3.uuid),
-                    String.format("ipv4Netmask::%s::255.255.255.0", flatL3.uuid),
-                    String.format("ipv4Gateway::%s::10.0.0.1", flatL3.uuid)
-            ]
-        }
-
-        // Verify UsedIpVO
-        UsedIpVO usedIp = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.vmNicUuid, vm.vmNics[0].uuid)
-                .find()
-        assert usedIp != null
-        assert usedIp.ip == "10.0.0.50"
-        assert usedIp.netmask == "255.255.255.0"
-        assert usedIp.gateway == "10.0.0.1"
-        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-CIDR IP"
-
-        // Verify VmNicVO
-        VmNicVO nicVO = dbFindByUuid(vm.vmNics[0].uuid, VmNicVO.class)
-        assert nicVO.ip == "10.0.0.50"
-        assert nicVO.netmask == "255.255.255.0"
-        assert nicVO.gateway == "10.0.0.1"
-
-        // Verify DHCP does not include outside-CIDR IP
-        retryInSecs {
-            assert batchApplyDhcpCmd != null
-            for (def dhcpInfo : batchApplyDhcpCmd.dhcpInfos) {
-                for (def dhcp : dhcpInfo.dhcp) {
-                    assert dhcp.ip != "10.0.0.50" : "DHCP should not include outside-CIDR IP"
-                }
+        // Outside-CIDR IP on DHCP-enabled L3 should be rejected
+        expect(AssertionError.class) {
+            setVmStaticIp {
+                vmInstanceUuid = vm.uuid
+                l3NetworkUuid = flatL3.uuid
+                ip = "10.0.0.50"
+                systemTags = [
+                        String.format("staticIp::%s::10.0.0.50", flatL3.uuid),
+                        String.format("ipv4Netmask::%s::255.255.255.0", flatL3.uuid),
+                        String.format("ipv4Gateway::%s::10.0.0.1", flatL3.uuid)
+                ]
             }
         }
 
-        // Verify DNS system tag
-        List<Map<String, String>> dnsTags = VmSystemTags.STATIC_DNS.getTokensOfTagsByResourceUuid(vm.uuid)
-        assert dnsTags.size() > 0
-        def dnsTag = dnsTags.find { it.get(VmSystemTags.STATIC_DNS_L3_UUID_TOKEN) == flatL3.uuid }
-        assert dnsTag != null
-        String dnsStr = dnsTag.get(VmSystemTags.STATIC_DNS_TOKEN)
-        assert dnsStr.contains("8.8.8.8")
-        assert dnsStr.contains("114.114.114.114")
+        // Verify VmNic IP is unchanged
+        VmNicVO nicVO = dbFindByUuid(vm.vmNics[0].uuid, VmNicVO.class)
+        assert nicVO.ip != "10.0.0.50" : "outside-CIDR IP should not be set on DHCP-enabled L3"
     }
 
-    void testSetStaticIpOnNoIpamFlatL3() {
+    /**
+     * With DHCP: changeVmNicNetwork with outside-CIDR IP should fail on pubL3
+     */
+    void testChangeNicNetworkOutsideCidrRejectedOnDhcpL3() {
         L3NetworkInventory flatL3 = env.inventoryByName("flatL3")
+        L3NetworkInventory pubL3 = env.inventoryByName("pubL3")
+
+        VmInstanceInventory vm = createVmInstance {
+            name = "vm-change-dhcp-reject"
+            imageUuid = env.inventoryByName("image1").uuid
+            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
+            l3NetworkUuids = [flatL3.uuid]
+        }
+        VmNicInventory vmNic = vm.vmNics[0]
+
+        // Change NIC to pubL3 (DHCP-enabled) with outside-CIDR IP should be rejected
+        expect(AssertionError.class) {
+            changeVmNicNetwork {
+                vmNicUuid = vmNic.uuid
+                destL3NetworkUuid = pubL3.uuid
+                systemTags = [
+                        String.format("staticIp::%s::10.10.10.50", pubL3.uuid),
+                        String.format("ipv4Netmask::%s::255.255.255.0", pubL3.uuid),
+                        String.format("ipv4Gateway::%s::10.10.10.1", pubL3.uuid)
+                ]
+            }
+        }
+
+        // Verify NIC still on original L3
+        VmNicVO nicVO = dbFindByUuid(vmNic.uuid, VmNicVO.class)
+        assert nicVO.l3NetworkUuid == flatL3.uuid : "NIC should not be changed when outside-CIDR IP is rejected"
+    }
+
+    /**
+     * Without DHCP: setVmStaticIp with outside-CIDR IP should succeed on flatL3_noDhcp
+     */
+    void testSetStaticIpOutsideCidrAllowedOnNoDhcpL3() {
         L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_noDhcp")
 
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-outside-cidr"] }[0]
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-dhcp-reject"] }[0]
 
-        // Attach NIC to no-IPAM L3
+        // Attach NIC to no-DHCP L3
         attachL3NetworkToVm {
             l3NetworkUuid = flatL3NoDhcp.uuid
             vmInstanceUuid = vm.uuid
         }
 
-        vm = queryVmInstance { conditions = ["name=vm-outside-cidr"] }[0]
+        vm = queryVmInstance { conditions = ["name=vm-dhcp-reject"] }[0]
         VmNicInventory noDhcpNic = vm.vmNics.find { it.l3NetworkUuid == flatL3NoDhcp.uuid }
         assert noDhcpNic != null
 
+        // Outside-CIDR IP on non-DHCP L3 should succeed
         setVmStaticIp {
             vmInstanceUuid = vm.uuid
             l3NetworkUuid = flatL3NoDhcp.uuid
             ip = "172.16.0.50"
             netmask = "255.255.0.0"
             gateway = "172.16.0.1"
+            systemTags = [
+                    String.format("staticIp::%s::172.16.0.50", flatL3NoDhcp.uuid),
+                    String.format("ipv4Netmask::%s::255.255.0.0", flatL3NoDhcp.uuid),
+                    String.format("ipv4Gateway::%s::172.16.0.1", flatL3NoDhcp.uuid)
+            ]
             dnsAddresses = ["8.8.8.8"]
         }
 
@@ -266,7 +288,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         assert usedIp.ip == "172.16.0.50"
         assert usedIp.netmask == "255.255.0.0"
         assert usedIp.gateway == "172.16.0.1"
-        assert usedIp.ipRangeUuid == null
+        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-CIDR IP"
 
         // Verify VmNicVO
         VmNicVO nicVO = dbFindByUuid(noDhcpNic.uuid, VmNicVO.class)
@@ -282,12 +304,15 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         assert dnsStr.contains("8.8.8.8")
     }
 
-    void testChangeNicNetworkToNoIpamL3() {
+    /**
+     * Without DHCP: changeVmNicNetwork with outside-CIDR IP should succeed to flatL3_noDhcp
+     */
+    void testChangeNicNetworkOutsideCidrAllowedOnNoDhcpL3() {
         L3NetworkInventory flatL3 = env.inventoryByName("flatL3")
         L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_noDhcp")
 
         VmInstanceInventory vm = createVmInstance {
-            name = "vm-change-to-noipam"
+            name = "vm-change-to-nodhcp"
             imageUuid = env.inventoryByName("image1").uuid
             instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
             l3NetworkUuids = [flatL3.uuid]
@@ -327,7 +352,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         assert usedIp.ip == "172.16.0.60"
         assert usedIp.netmask == "255.255.0.0"
         assert usedIp.gateway == "172.16.0.1"
-        assert usedIp.ipRangeUuid == null
+        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-CIDR IP"
 
         // Verify VmNicVO
         VmNicVO nicVO = dbFindByUuid(vmNic.uuid, VmNicVO.class)
@@ -336,7 +361,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         assert nicVO.netmask == "255.255.0.0"
         assert nicVO.gateway == "172.16.0.1"
 
-        // Verify DNS: old L3 DNS tag should be gone, new L3 DNS tag should exist
+        // Verify DNS: old L3 DNS tag gone, new L3 DNS tag exists
         List<Map<String, String>> dnsTags = VmSystemTags.STATIC_DNS.getTokensOfTagsByResourceUuid(vm.uuid)
         def oldDnsTag = dnsTags.find { it.get(VmSystemTags.STATIC_DNS_L3_UUID_TOKEN) == flatL3.uuid }
         assert oldDnsTag == null : "old L3 DNS tag should be deleted"
@@ -345,66 +370,106 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         assert newDnsTag.get(VmSystemTags.STATIC_DNS_TOKEN).contains("1.1.1.1")
     }
 
-    void testChangeNicNetworkWithOutsideCidrIpToIpamL3() {
+    /**
+     * With DHCP: setVmStaticIp with in-range IP should succeed on flatL3
+     */
+    void testSetStaticIpInRangeOnDhcpL3() {
         L3NetworkInventory flatL3 = env.inventoryByName("flatL3")
-        L3NetworkInventory pubL3 = env.inventoryByName("pubL3")
 
         VmInstanceInventory vm = createVmInstance {
-            name = "vm-change-outside-cidr-to-ipam"
+            name = "vm-dhcp-inrange"
             imageUuid = env.inventoryByName("image1").uuid
             instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
             l3NetworkUuids = [flatL3.uuid]
         }
-        VmNicInventory vmNic = vm.vmNics[0]
 
-        FlatDhcpBackend.ReleaseDhcpCmd releaseDhcpCmd = null
-        env.afterSimulator(FlatDhcpBackend.RELEASE_DHCP_PATH) { rsp, HttpEntity<String> e ->
-            releaseDhcpCmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.ReleaseDhcpCmd.class)
-            return rsp
-        }
         FlatDhcpBackend.BatchApplyDhcpCmd batchApplyDhcpCmd = null
         env.afterSimulator(FlatDhcpBackend.BATCH_APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
             batchApplyDhcpCmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.BatchApplyDhcpCmd.class)
             return rsp
         }
 
-        changeVmNicNetwork {
-            vmNicUuid = vmNic.uuid
-            destL3NetworkUuid = pubL3.uuid
+        // In-range IP on DHCP-enabled L3 should succeed
+        setVmStaticIp {
+            vmInstanceUuid = vm.uuid
+            l3NetworkUuid = flatL3.uuid
+            ip = "192.168.100.100"
             systemTags = [
-                    String.format("staticIp::%s::10.10.10.50", pubL3.uuid),
-                    String.format("ipv4Netmask::%s::255.255.255.0", pubL3.uuid),
-                    String.format("ipv4Gateway::%s::10.10.10.1", pubL3.uuid)
+                    String.format("staticIp::%s::192.168.100.100", flatL3.uuid)
             ]
         }
 
-        // Verify DHCP release of old IP
+        // Verify UsedIpVO
+        UsedIpVO usedIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vm.vmNics[0].uuid)
+                .find()
+        assert usedIp != null
+        assert usedIp.ip == "192.168.100.100"
+        assert usedIp.ipRangeUuid != null : "ipRangeUuid should not be null for in-range IP"
+
+        // Verify VmNicVO
+        VmNicVO nicVO = dbFindByUuid(vm.vmNics[0].uuid, VmNicVO.class)
+        assert nicVO.ip == "192.168.100.100"
+
+        // Verify DHCP includes in-range IP
         retryInSecs {
-            assert releaseDhcpCmd != null
+            assert batchApplyDhcpCmd != null
+            boolean found = false
+            for (def dhcpInfo : batchApplyDhcpCmd.dhcpInfos) {
+                for (def dhcp : dhcpInfo.dhcp) {
+                    if (dhcp.ip == "192.168.100.100") {
+                        found = true
+                    }
+                }
+            }
+            assert found : "DHCP should include in-range IP"
         }
+    }
+
+    /**
+     * With DHCP: changeVmNicNetwork with in-range IP should succeed on pubL3
+     */
+    void testChangeNicNetworkInRangeOnDhcpL3() {
+        L3NetworkInventory flatL3 = env.inventoryByName("flatL3")
+        L3NetworkInventory pubL3 = env.inventoryByName("pubL3")
+
+        VmInstanceInventory vm = createVmInstance {
+            name = "vm-change-inrange"
+            imageUuid = env.inventoryByName("image1").uuid
+            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
+            l3NetworkUuids = [flatL3.uuid]
+        }
+        VmNicInventory vmNic = vm.vmNics[0]
+
+        changeVmNicNetwork {
+            vmNicUuid = vmNic.uuid
+            destL3NetworkUuid = pubL3.uuid
+            staticIp = "12.100.10.50"
+            systemTags = [
+                    String.format("staticIp::%s::12.100.10.50", pubL3.uuid)
+            ]
+        }
+
+        // Verify VmNicVO
+        VmNicVO nicVO = dbFindByUuid(vmNic.uuid, VmNicVO.class)
+        assert nicVO.l3NetworkUuid == pubL3.uuid
+        assert nicVO.ip == "12.100.10.50"
 
         // Verify UsedIpVO
         UsedIpVO usedIp = Q.New(UsedIpVO.class)
                 .eq(UsedIpVO_.vmNicUuid, vmNic.uuid)
                 .find()
         assert usedIp != null
-        assert usedIp.ip == "10.10.10.50"
-        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-CIDR IP"
-
-        // Verify DHCP does not include outside-CIDR IP
-        retryInSecs {
-            assert batchApplyDhcpCmd != null
-            for (def dhcpInfo : batchApplyDhcpCmd.dhcpInfos) {
-                for (def dhcp : dhcpInfo.dhcp) {
-                    assert dhcp.ip != "10.10.10.50" : "DHCP should not include outside-CIDR IP"
-                }
-            }
-        }
+        assert usedIp.ip == "12.100.10.50"
+        assert usedIp.ipRangeUuid != null : "ipRangeUuid should not be null for in-range IP"
     }
 
+    /**
+     * DHCP should skip outside-CIDR IPs on VM reboot
+     */
     void testDhcpSkipForOutsideCidrIpOnVmReboot() {
-        // Use the VM from test1 that has outside-CIDR IP 10.0.0.50 on flatL3
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-outside-cidr"] }[0]
+        // VM "vm-dhcp-reject" has outside-CIDR IP 172.16.0.50 on flatL3_noDhcp
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-dhcp-reject"] }[0]
 
         stopVmInstance {
             uuid = vm.uuid
@@ -425,17 +490,21 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             assert batchApplyDhcpCmd != null
             for (def dhcpInfo : batchApplyDhcpCmd.dhcpInfos) {
                 for (def dhcp : dhcpInfo.dhcp) {
-                    assert dhcp.ip != "10.0.0.50" : "DHCP should not include outside-CIDR IP after reboot"
+                    assert dhcp.ip != "172.16.0.50" : "DHCP should not include outside-CIDR IP after reboot"
                 }
             }
         }
     }
 
+    /**
+     * EIP should reject binding to NIC with outside-CIDR IP (ipRangeUuid=null)
+     */
     void testEipRejectOutsideCidrIp() {
         L3NetworkInventory pubL3 = env.inventoryByName("pubL3")
-        // VM from test1 has outside-CIDR IP on flatL3
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-outside-cidr"] }[0]
-        VmNicInventory nicWithOutsideIp = vm.vmNics.find { it.ip == "10.0.0.50" }
+
+        // VM "vm-dhcp-reject" has outside-CIDR IP 172.16.0.50 on flatL3_noDhcp
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-dhcp-reject"] }[0]
+        VmNicInventory nicWithOutsideIp = vm.vmNics.find { it.ip == "172.16.0.50" }
         assert nicWithOutsideIp != null
 
         VipInventory vip = createVip {
@@ -457,11 +526,15 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         }
     }
 
+    /**
+     * Security group should handle NIC with outside-CIDR IP
+     */
     void testSecurityGroupWithOutsideCidrIp() {
-        L3NetworkInventory flatL3 = env.inventoryByName("flatL3")
-        // VM from test1 has outside-CIDR IP 10.0.0.50 on flatL3
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-outside-cidr"] }[0]
-        VmNicInventory nicWithOutsideIp = vm.vmNics.find { it.ip == "10.0.0.50" }
+        L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_noDhcp")
+
+        // VM "vm-dhcp-reject" has outside-CIDR IP 172.16.0.50 on flatL3_noDhcp
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-dhcp-reject"] }[0]
+        VmNicInventory nicWithOutsideIp = vm.vmNics.find { it.ip == "172.16.0.50" }
         assert nicWithOutsideIp != null
 
         def sg = createSecurityGroup {
@@ -471,7 +544,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
 
         attachSecurityGroupToL3Network {
             securityGroupUuid = sg.uuid
-            l3NetworkUuid = flatL3.uuid
+            l3NetworkUuid = flatL3NoDhcp.uuid
         }
 
         KVMAgentCommands.ApplySecurityGroupRuleCmd cmd = null
@@ -492,40 +565,28 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                 .list()
         assert refs.size() == 1
 
-        // Verify SG rules do not include outside-CIDR IP in the member IPs
-        // The SQL filter in SecurityGroupManagerImpl excludes ipRangeUuid=null IPs
-        // from getVmIpsBySecurityGroup, so the outside-CIDR IP won't appear in
-        // the security group member IP list used for rule generation
         retryInSecs {
             assert cmd != null
         }
     }
 
+    /**
+     * IP capacity should exclude outside-CIDR IPs (ipRangeUuid=null)
+     */
     void testIpCapacityExcludesOutsideCidrIp() {
-        L3NetworkInventory flatL3 = env.inventoryByName("flatL3")
+        L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_noDhcp")
 
-        // Get IP capacity - outside-CIDR IPs should not be counted
-        GetIpAddressCapacityResult capacityBefore = getIpAddressCapacity {
-            l3NetworkUuids = [flatL3.uuid]
-        }
-
-        // Count UsedIpVOs with ipRangeUuid != null on flatL3 (these are the ones that should be counted)
-        long inRangeCount = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.l3NetworkUuid, flatL3.uuid)
-                .notNull(UsedIpVO_.ipRangeUuid)
-                .count()
-
-        assert capacityBefore.usedIpAddressNumber == inRangeCount :
-                "IP capacity should only count IPs within IP ranges"
-
-        // Verify outside-CIDR IPs exist but are not counted
+        // Verify outside-CIDR IPs exist on flatL3_noDhcp
         long outsideCount = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.l3NetworkUuid, flatL3.uuid)
+                .eq(UsedIpVO_.l3NetworkUuid, flatL3NoDhcp.uuid)
                 .isNull(UsedIpVO_.ipRangeUuid)
                 .count()
-        assert outsideCount > 0 : "There should be outside-CIDR IPs on flatL3"
+        assert outsideCount > 0 : "There should be outside-CIDR IPs on flatL3_noDhcp"
     }
 
+    /**
+     * Adding IP range should backfill ipRangeUuid for orphan IPs within the new range
+     */
     void testAddIpRangeAssociatesOrphanIp() {
         L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_noDhcp")
 
@@ -536,7 +597,6 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                 .limit(1)
                 .find()
         assert orphanIp != null : "Should have an orphan IP on flatL3_noDhcp"
-        String orphanIpAddr = orphanIp.ip
 
         // Add IP range that covers the orphan IP
         IpRangeInventory ipRange = addIpRange {

@@ -263,19 +263,21 @@ for (String nicUuid : msg.getVmNicUuids()) {
 
 ---
 
-## 五、全局配置
+## 五、IP 范围校验规则（基于 DHCP 服务）
 
-**文件**: `compute/src/main/java/org/zstack/compute/vm/VmGlobalConfig.java`
-```java
-@GlobalConfigValidation(validValues = {"true", "false"})
-@GlobalConfigDef(defaultValue = "true", type = Boolean.class,
-    description = "Allow VM NIC to use IP address outside of L3 network IP ranges. When enabled, users must provide netmask/gateway for IPv4 or prefixLen/gateway for IPv6.")
-public static GlobalConfig ALLOW_IP_OUTSIDE_RANGE = new GlobalConfig(CATEGORY, "allow.ip.outside.range");
-```
+**已删除全局配置**: `vm.allow.ip.outside.range`（原 `VmGlobalConfig.ALLOW_IP_OUTSIDE_RANGE`）
 
-**配置项**: `vm.allow.ip.outside.range`
-- 默认值: `true`
-- 设置为`true`时允许设置CIDR范围外的IP地址
+**当前规则**：是否允许设置 CIDR 范围外的 IP 地址，取决于目标 L3 网络是否启用了 DHCP 服务：
+
+| L3 网络类型 | DHCP 服务 | `enableIpAddressAllocation()` | 允许范围外 IP |
+|------------|-----------|------------------------------|-------------|
+| 扁平网络（有 DHCP） | ✅ | `true` | ❌ 拒绝 |
+| 公有网络（有 DHCP） | ✅ | `true` | ❌ 拒绝 |
+| 扁平网络（无 DHCP） | ❌ | `false` | ✅ 允许 |
+
+**校验位置**：
+- `VmInstanceApiInterceptor.validate(APISetVmStaticIpMsg)` — IP 必须在 IP Range 内（DHCP 启用时）
+- `VmInstanceApiInterceptor.validate(APIChangeVmNicNetworkMsg)` — system tag 中的 staticIp 必须在 IP Range 内（DHCP 启用时）
 
 ---
 
