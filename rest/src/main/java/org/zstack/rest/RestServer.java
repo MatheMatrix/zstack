@@ -1440,7 +1440,7 @@ public class RestServer implements Component, CloudBusEventListener {
             String locale = resolveLocale();
             i18nService.localizeErrorCode(reply.getError(), locale);
             response.setError(reply.getError());
-            sendResponse(HttpStatus.SERVICE_UNAVAILABLE.value(), JSONObjectUtil.toJsonString(response), rsp);
+            sendResponse(HttpStatus.SERVICE_UNAVAILABLE.value(), response, rsp);
             return;
         }
 

@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import okhttp3.*;
@@ -120,6 +121,43 @@ public class ZSClient {
             item = object.get("globalErrorCode");
             if (item != null && item.isJsonPrimitive()) {
                 wrapper.setGlobalErrorCode(item.getAsString());
+            }
+            item = object.get("message");
+            if (item != null && item.isJsonPrimitive()) {
+                wrapper.setMessage(item.getAsString());
+            }
+            item = object.get("formatArgs");
+            if (item != null && item.isJsonArray()) {
+                JsonArray arr = item.getAsJsonArray();
+                String[] formatArgs = new String[arr.size()];
+                for (int i = 0; i < arr.size(); i++) {
+                    formatArgs[i] = arr.get(i).getAsString();
+                }
+                wrapper.setFormatArgs(formatArgs);
+            }
+            item = object.get("category");
+            if (item != null && item.isJsonPrimitive()) {
+                wrapper.setCategory(item.getAsString());
+            }
+            item = object.get("messageKey");
+            if (item != null && item.isJsonPrimitive()) {
+                wrapper.setMessageKey(item.getAsString());
+            }
+            item = object.get("params");
+            if (item != null && item.isJsonObject()) {
+                wrapper.setParams(context.deserialize(item, java.util.LinkedHashMap.class));
+            }
+            item = object.get("localizedMessage");
+            if (item != null && item.isJsonPrimitive()) {
+                wrapper.setLocalizedMessage(item.getAsString());
+            }
+            item = object.get("retryable");
+            if (item != null && item.isJsonPrimitive()) {
+                wrapper.setRetryable(item.getAsBoolean());
+            }
+            item = object.get("httpStatus");
+            if (item != null && item.isJsonPrimitive()) {
+                wrapper.setHttpStatus(item.getAsInt());
             }
             return wrapper;
         }

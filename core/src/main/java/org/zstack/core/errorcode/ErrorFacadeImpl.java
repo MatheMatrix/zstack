@@ -56,15 +56,45 @@ public class ErrorFacadeImpl implements ErrorFacade {
 
     private void replaceSystemError(ErrorCodeList err, String details) {
         try {
-            ErrorCode subErr = JSONObjectUtil.toObject(details.substring(details.indexOf("{\"code\":")), ErrorCode.class);
+            int start = details.indexOf('{');
+            if (start < 0) {
+                err.setDetails(details);
+                return;
+            }
+            String jsonStr = details.substring(start);
+            ErrorCode subErr = JSONObjectUtil.toObject(jsonStr, ErrorCode.class);
+            if (subErr == null || subErr.getCode() == null) {
+                err.setDetails(details);
+                return;
+            }
             err.setCode(subErr.getCode());
             err.setElaboration(subErr.getElaboration());
             err.setMessages(subErr.getMessages());
             err.setDescription(subErr.getDescription());
             err.setDetails(subErr.getDetails());
             err.setCause(subErr.getCause());
+            // copy envelope fields if present
+            if (subErr.getGlobalErrorCode() != null) {
+                err.setGlobalErrorCode(subErr.getGlobalErrorCode());
+            }
+            if (subErr.getCategory() != null) {
+                err.setCategory(subErr.getCategory());
+            }
+            if (subErr.getMessageKey() != null) {
+                err.setMessageKey(subErr.getMessageKey());
+            }
+            if (subErr.getLocalizedMessage() != null) {
+                err.setLocalizedMessage(subErr.getLocalizedMessage());
+            }
+            if (subErr.getRetryable() != null) {
+                err.setRetryable(subErr.getRetryable());
+            }
+            if (subErr.getHttpStatus() != null) {
+                err.setHttpStatus(subErr.getHttpStatus());
+            }
         } catch (Exception e) {
-            logger.warn(String.format("%s cannot be cast to ErrorCode type", details));
+            logger.warn(String.format("Failed to parse embedded ErrorCode from details, using raw details: %s", details));
+            err.setDetails(details);
         }
     }
 
