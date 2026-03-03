@@ -75,6 +75,7 @@ import java.util.concurrent.TimeUnit;
  * status 始终为 Idle，新请求会被误判为"已有 GC 在处理"，导致元数据更新丢失。
  * 使用 submit() + ChainTask maxPendingTasks=1 可正确控制并发。</p>
  */
+
 public class UpdateVmInstanceMetadataGC extends TimeBasedGarbageCollector {
     private static final CLogger logger = Utils.getLogger(UpdateVmInstanceMetadataGC.class);
 
