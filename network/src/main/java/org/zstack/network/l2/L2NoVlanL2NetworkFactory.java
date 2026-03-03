@@ -82,7 +82,7 @@ public class L2NoVlanL2NetworkFactory implements L2NetworkFactory, Component, L2
                                 if (errorCodeList.getCauses().isEmpty()) {
                                     trigger.next();
                                 } else {
-                                    trigger.fail(errorCodeList.getCauses().get(0));
+                                    trigger.fail(errorCodeList.getRootCause());
                                 }
                             }
                         });

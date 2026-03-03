@@ -56,22 +56,58 @@ public class ErrorFacadeImpl implements ErrorFacade {
 
     private void replaceSystemError(ErrorCodeList err, String details) {
         try {
-            ErrorCode subErr = JSONObjectUtil.toObject(details.substring(details.indexOf("{\"code\":")), ErrorCode.class);
+            int start = details.indexOf('{');
+            if (start < 0) {
+                err.setDetails(details);
+                return;
+            }
+            String jsonStr = details.substring(start);
+            ErrorCode subErr = JSONObjectUtil.toObject(jsonStr, ErrorCode.class);
+            if (subErr == null || subErr.getCode() == null) {
+                err.setDetails(details);
+                return;
+            }
             err.setCode(subErr.getCode());
             err.setElaboration(subErr.getElaboration());
             err.setMessages(subErr.getMessages());
             err.setDescription(subErr.getDescription());
             err.setDetails(subErr.getDetails());
             err.setCause(subErr.getCause());
+            // copy envelope fields if present
+            if (subErr.getGlobalErrorCode() != null) {
+                err.setGlobalErrorCode(subErr.getGlobalErrorCode());
+            }
+            if (subErr.getCategory() != null) {
+                err.setCategory(subErr.getCategory());
+            }
+            if (subErr.getMessageKey() != null) {
+                err.setMessageKey(subErr.getMessageKey());
+            }
+            if (subErr.getLocalizedMessage() != null) {
+                err.setLocalizedMessage(subErr.getLocalizedMessage());
+            }
+            if (subErr.isRetryable()) {
+                err.setRetryable(subErr.isRetryable());
+            }
+            if (subErr.getHttpStatus() != 0) {
+                err.setHttpStatus(subErr.getHttpStatus());
+            }
         } catch (Exception e) {
-            logger.warn(String.format("%s cannot be cast to ErrorCode type", details));
+            logger.warn(String.format("Failed to parse embedded ErrorCode from details, using raw details: %s", details));
+            err.setDetails(details);
         }
     }
 
     private ErrorCode doInstantiateErrorCode(String code, String details, List<ErrorCode> causes) {
         ErrorCodeInfo info = codes.get(code);
         if (info == null) {
-            throw new CloudRuntimeException(String.format("cannot find error code[%s]", code));
+            logger.warn(String.format("Unregistered error code[%s], falling back to INTERNAL", code));
+            ErrorCode fallback = new ErrorCode();
+            fallback.setCode(SysErrors.INTERNAL.toString());
+            fallback.setDescription("unregistered error code");
+            fallback.setDetails(String.format("error code[%s] is not registered. details: %s", code, details));
+            fallback.setGlobalErrorCode(code);
+            return fallback;
         }
 
         if (details != null && details.length() > 4096) {
@@ -89,6 +125,11 @@ public class ErrorFacadeImpl implements ErrorFacade {
         }
 
         err.setCauses(causes);
+
+        if (err.getGlobalErrorCode() == null) {
+            logger.warn(String.format("globalErrorCode not set for error code[%s], falling back to code parameter", code));
+            err.setGlobalErrorCode(code);
+        }
 
         if (dumpOnError) {
             DebugUtils.dumpStackTrace(String.format("An error code%s is instantiated," +

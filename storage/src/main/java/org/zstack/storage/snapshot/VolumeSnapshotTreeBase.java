@@ -458,7 +458,7 @@ public class VolumeSnapshotTreeBase {
                             trigger.next();
                             return;
                         }
-                        trigger.fail(errList.getCauses().get(0));
+                        trigger.fail(errList.getRootCause());
                     }
                 });
             }
@@ -755,7 +755,7 @@ public class VolumeSnapshotTreeBase {
                             }
                         }
                         if (errors.getCauses().size() > 0) {
-                            trigger.fail(errors.getCauses().get(0));
+                            trigger.fail(errors.getRootCause());
                         } else {
                             trigger.next();
                         }
@@ -1918,7 +1918,7 @@ public class VolumeSnapshotTreeBase {
                                 if (errorCodeList.getCauses().isEmpty()) {
                                     trigger.next();
                                 } else {
-                                    trigger.fail(errorCodeList.getCauses().get(0));
+                                    trigger.fail(errorCodeList.getRootCause());
                                 }
                             }
                         });

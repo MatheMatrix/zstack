@@ -1381,7 +1381,7 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
                     @Override
                     public void done(ErrorCodeList errorCodeList) {
                         if (!errorCodeList.getCauses().isEmpty()) {
-                            logger.warn(String.format("after refresh load balancer listener failed, because:%s", errorCodeList.getCauses().get(0)));
+                            logger.warn(String.format("after refresh load balancer listener failed, because:%s", errorCodeList.getRootCause()));
                         }
                         trigger.next();
                     }
@@ -1453,7 +1453,7 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                     return;
                 }
                 completion.success();
@@ -1512,17 +1512,17 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
                         releaseVipForLoadBalancer(vr, struct, nics, vipUuidsAcquireSuccess, new Completion(completion) {
                             @Override
                             public void success() {
-                                completion.fail(errorCodeList.getCauses().get(0));
+                                completion.fail(errorCodeList.getRootCause());
                             }
 
                             @Override
                             public void fail(ErrorCode errorCode) {
-                                completion.fail(errorCodeList.getCauses().get(0));
+                                completion.fail(errorCodeList.getRootCause());
                             }
                         });
                         return;
                     }
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                     return;
                 }
                 acquiredVipUuids.addAll(vipUuidsAcquireSuccess);
@@ -1565,7 +1565,7 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                     return;
                 }
                 completion.success();

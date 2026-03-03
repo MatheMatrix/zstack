@@ -39,7 +39,7 @@ public class JobResultError {
             return parseErrorCode(error);
         }
         if (error.getCauses().size() == 1) {
-            return JobResultError.valueOf(error.getCauses().get(0));
+            return JobResultError.valueOf(error.getRootCause());
         }
 
         JobResultError result = new JobResultError(error.getMessages(), error.getDetails());

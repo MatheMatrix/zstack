@@ -1615,7 +1615,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
                                         @Override
                                         public void done(ErrorCodeList errorCodeList) {
                                             if (!errorCodeList.getCauses().isEmpty()) {
-                                                logger.warn(String.format("failed to saveEncryptAfterCreateImageCache: %s", errorCodeList.getCauses().get(0)));
+                                                logger.warn(String.format("failed to saveEncryptAfterCreateImageCache: %s", errorCodeList.getRootCause()));
                                             }
                                             completion.success(inv);
                                             chain.next();
@@ -2602,7 +2602,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
             @Override
             public void done(ErrorCodeList err) {
                 if (!err.getCauses().isEmpty()) {
-                    completion.fail(err.getCauses().get(0));
+                    completion.fail(err.getRootCause());
                 } else {
                     completion.success(reply);
                 }

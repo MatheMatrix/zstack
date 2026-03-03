@@ -95,4 +95,7 @@ public class CoreGlobalProperty {
     public static int REST_API_RESULT_MAX_LENGTH;
     @GlobalProperty(name = "pending.queue.minimum.threshold", defaultValue = "50")
     public static int PENDING_QUEUE_MINIMUM_THRESHOLD;
+    @GlobalProperty(name = "errorEnvelopeV2.enabled", defaultValue = "false")
+    @AvailableValues(value = {"true", "false"})
+    public static boolean ERROR_ENVELOPE_V2_ENABLED;
 }

@@ -181,7 +181,7 @@ public class VmAllocateHostAndPrimaryStorageFlow implements Flow {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (errorCodeList.getCauses().size() == psCombos.size()) {
-                    trigger.fail(errorCodeList.getCauses().get(0));
+                    trigger.fail(errorCodeList.getRootCause());
                     return;
                 }
 

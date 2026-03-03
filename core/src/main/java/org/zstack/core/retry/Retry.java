@@ -2,13 +2,13 @@ package org.zstack.core.retry;
 
 import org.zstack.header.Confirm;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.utils.TypeUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import static org.zstack.core.Platform.i18n;
+import org.zstack.core.Platform;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -102,11 +102,7 @@ public abstract class Retry<T> {
                 count --;
 
                 if (count <= 0) {
-                    ErrorCode errorCode = new ErrorCode();
-                    errorCode.setCode(SysErrors.OPERATION_ERROR.toString());
-                    errorCode.setDescription(i18n("an operation[%s] fails after retrying %s times with the interval %s seconds",
-                            __name__, times, interval));
-                    errorCode.setDetails(t.getMessage());
+                    ErrorCode errorCode = Platform.operr("an operation[%s] fails after retrying %s times with the interval %s seconds, details: %s", __name__, times, interval, t.getMessage());
                     logger.warn(errorCode.toString(), t);
 
                     if (onFailure(t)) {

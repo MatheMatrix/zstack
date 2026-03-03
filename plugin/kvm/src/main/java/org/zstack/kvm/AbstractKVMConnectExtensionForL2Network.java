@@ -134,7 +134,7 @@ public abstract class AbstractKVMConnectExtensionForL2Network {
                     @Override
                     public void done(ErrorCodeList errorCodeList) {
                         if (!errorCodeList.getCauses().isEmpty()) {
-                            trigger.fail(errorCodeList.getCauses().get(0));
+                            trigger.fail(errorCodeList.getRootCause());
                             return;
                         }
 
@@ -168,7 +168,7 @@ public abstract class AbstractKVMConnectExtensionForL2Network {
                     @Override
                     public void done(ErrorCodeList errorCodeList) {
                         if (!errorCodeList.getCauses().isEmpty()) {
-                            trigger.fail(errorCodeList.getCauses().get(0));
+                            trigger.fail(errorCodeList.getRootCause());
                             return;
                         }
 
@@ -202,7 +202,7 @@ public abstract class AbstractKVMConnectExtensionForL2Network {
                     @Override
                     public void done(ErrorCodeList errorCodeList) {
                         if (!errorCodeList.getCauses().isEmpty()) {
-                            trigger.fail(errorCodeList.getCauses().get(0));
+                            trigger.fail(errorCodeList.getRootCause());
                             return;
                         }
 

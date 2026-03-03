@@ -743,7 +743,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    reply.setError(errorCodeList.getCauses().get(0));
+                    reply.setError(errorCodeList.getRootCause());
                 }
                 bus.reply(msg, reply);
             }
@@ -820,7 +820,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    reply.setError(errorCodeList.getCauses().get(0));
+                    reply.setError(errorCodeList.getRootCause());
                 }
                 bus.reply(msg, reply);
             }
@@ -965,7 +965,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    reply.setError(errorCodeList.getCauses().get(0));
+                    reply.setError(errorCodeList.getRootCause());
                 }
                 bus.reply(msg, reply);
             }

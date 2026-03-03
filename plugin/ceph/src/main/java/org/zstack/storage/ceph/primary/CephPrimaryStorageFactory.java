@@ -800,7 +800,7 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errList.getCauses().isEmpty()) {
-                    completion.fail(errList.getCauses().get(0));
+                    completion.fail(errList.getRootCause());
                     return;
                 }
                 completion.success();

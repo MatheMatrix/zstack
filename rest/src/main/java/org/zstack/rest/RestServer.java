@@ -47,6 +47,7 @@ import org.zstack.header.Constants;
 import org.zstack.header.MapField;
 import org.zstack.header.apimediator.ApiMediatorConstant;
 import org.zstack.header.exception.CloudRuntimeException;
+import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.identity.IdentityByPassCheck;
 import org.zstack.header.identity.SessionInventory;
 import org.zstack.header.identity.SuppressCredentialCheck;
@@ -410,6 +411,7 @@ public class RestServer implements Component, CloudBusEventListener {
         } else {
             String locale = resolveLocale();
             i18nService.localizeErrorCode(evt.getError(), locale);
+            populateLocalizedMessage(evt.getError());
             response.setError(evt.getError());
         }
 
@@ -919,6 +921,7 @@ public class RestServer implements Component, CloudBusEventListener {
         } else {
             String locale = resolveLocaleFromRequest(req);
             i18nService.localizeErrorCode(evt.getError(), locale);
+            populateLocalizedMessage(evt.getError());
             response.setError(evt.getError());
             sendResponse(HttpStatus.SERVICE_UNAVAILABLE.value(), response, rsp);
         }
@@ -1433,14 +1436,49 @@ public class RestServer implements Component, CloudBusEventListener {
         return LocaleUtils.resolveLocale(acceptLanguage, i18nService.getAvailableLocales());
     }
 
+    private void populateLocalizedMessage(ErrorCode error) {
+        if (error == null || !CoreGlobalProperty.ERROR_ENVELOPE_V2_ENABLED) {
+            return;
+        }
+
+        String localized = error.getMessage();
+        if (localized == null || localized.isEmpty()) {
+            localized = error.getDetails();
+        }
+        if (localized == null || localized.isEmpty()) {
+            localized = error.getElaboration();
+        }
+        if (localized == null || localized.isEmpty()) {
+            localized = error.getDescription();
+        }
+        if (localized == null || localized.isEmpty()) {
+            localized = error.getCode();
+        }
+        error.setLocalizedMessage(localized);
+
+        if (error.getCause() != null) {
+            populateLocalizedMessage(error.getCause());
+        }
+
+        if (error instanceof ErrorCodeList) {
+            List<ErrorCode> causes = ((ErrorCodeList) error).getCauses();
+            if (causes != null) {
+                for (ErrorCode cause : causes) {
+                    populateLocalizedMessage(cause);
+                }
+            }
+        }
+    }
+
     private void sendReplyResponse(MessageReply reply, Api api, HttpServletResponse rsp) throws IOException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
         ApiResponse response = new ApiResponse();
 
         if (!reply.isSuccess()) {
             String locale = resolveLocale();
             i18nService.localizeErrorCode(reply.getError(), locale);
+            populateLocalizedMessage(reply.getError());
             response.setError(reply.getError());
-            sendResponse(HttpStatus.SERVICE_UNAVAILABLE.value(), JSONObjectUtil.toJsonString(response), rsp);
+            sendResponse(HttpStatus.SERVICE_UNAVAILABLE.value(), response, rsp);
             return;
         }
 

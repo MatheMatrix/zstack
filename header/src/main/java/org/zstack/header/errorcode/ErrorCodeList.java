@@ -83,4 +83,26 @@ public class ErrorCodeList extends ErrorCode {
     private String getReadableDetails(ErrorCode errCode) {
         return errCode.getReadableDetails();
     }
+
+    /**
+     * Returns the root cause error by following the first cause chain.
+     * If the first cause is itself an ErrorCodeList, recursively follows
+     * its first cause up to a maximum depth of 5 levels.
+     *
+     * @return the deepest first-cause ErrorCode, or this ErrorCodeList if no causes exist
+     */
+    public ErrorCode getRootCause() {
+        return getRootCause(0);
+    }
+
+    private ErrorCode getRootCause(int depth) {
+        if (causes == null || causes.isEmpty()) {
+            return this;
+        }
+        ErrorCode first = causes.get(0);
+        if (depth < 5 && first instanceof ErrorCodeList) {
+            return ((ErrorCodeList) first).getRootCause(depth + 1);
+        }
+        return first;
+    }
 }

@@ -334,7 +334,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                     return;
                 }
 
@@ -518,7 +518,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                             @Override
                             public void done(ErrorCodeList errorCodeList) {
                                 if (!errorCodeList.getCauses().isEmpty()) {
-                                    trigger.fail(errorCodeList.getCauses().get(0));
+                                    trigger.fail(errorCodeList.getRootCause());
                                     return;
                                 }
 
@@ -579,7 +579,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                     return;
                 }
                 completion.success();

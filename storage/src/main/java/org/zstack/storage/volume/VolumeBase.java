@@ -1312,7 +1312,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
                             @Override
                             public void done(ErrorCodeList errorCodeList) {
                                 if (errList.getCauses().size() > 0) {
-                                    trigger.fail(errList.getCauses().get(0));
+                                    trigger.fail(errList.getRootCause());
                                     return;
                                 }
 
@@ -1760,7 +1760,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
                             @Override
                             public void done(ErrorCodeList errorCodeList) {
                                 if (!errorCodeList.getCauses().isEmpty()) {
-                                    trigger.fail(errorCodeList.getCauses().get(0));
+                                    trigger.fail(errorCodeList.getRootCause());
                                     return;
                                 }
 
@@ -2921,7 +2921,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
                         if (errorCodeList.getCauses().isEmpty()) {
                             trigger.next();
                         } else {
-                            trigger.fail(errorCodeList.getCauses().get(0));
+                            trigger.fail(errorCodeList.getRootCause());
                         }
 
                     }
@@ -3031,7 +3031,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
                             trigger.next();
                             return;
                         }
-                        trigger.fail(errorCodeList.getCauses().get(0));
+                        trigger.fail(errorCodeList.getRootCause());
                     }
                 });
             }

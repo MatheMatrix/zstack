@@ -1487,13 +1487,13 @@ public class L3BasicNetwork implements L3Network {
                     detachNetworkServiceFromL3NetworkMsg(l3VO, refVOS, new Completion(msg) {
                         @Override
                         public void success() {
-                            reply.setError(errorCodeList.getCauses().get(0));
+                            reply.setError(errorCodeList.getRootCause());
                             bus.reply(msg, reply);
                         }
 
                         @Override
                         public void fail(ErrorCode errorCode) {
-                            reply.setError(errorCodeList.getCauses().get(0));
+                            reply.setError(errorCodeList.getRootCause());
                             bus.reply(msg, reply);
                         }
                     });

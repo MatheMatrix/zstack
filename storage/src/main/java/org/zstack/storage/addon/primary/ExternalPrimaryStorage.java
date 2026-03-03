@@ -1530,7 +1530,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    r.setError(errorCodeList.getCauses().get(0));
+                    r.setError(errorCodeList.getRootCause());
                 }
                 bus.reply(msg, r);
             }
@@ -1578,7 +1578,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    reply.setError(errorCodeList.getCauses().get(0));
+                    reply.setError(errorCodeList.getRootCause());
                     bus.reply(msg, reply);
                 } else {
                     bus.reply(msg, reply);
@@ -2260,7 +2260,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                         if (errorCodeList.getCauses().isEmpty()) {
                             trigger.next();
                         } else {
-                            trigger.fail(errorCodeList.getCauses().get(0));
+                            trigger.fail(errorCodeList.getRootCause());
                         }
                     }
                 });

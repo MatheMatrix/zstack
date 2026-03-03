@@ -134,7 +134,7 @@ public class HardwareVxlanNetworkPool extends VxlanNetworkPool {
                         if (errorCodeList.getCauses().isEmpty()) {
                             trigger.next();
                         } else {
-                            trigger.fail(errorCodeList.getCauses().get(0));
+                            trigger.fail(errorCodeList.getRootCause());
                         }
                     }
                 });
@@ -168,7 +168,7 @@ public class HardwareVxlanNetworkPool extends VxlanNetworkPool {
                     @Override
                     public void done(ErrorCodeList errorCodeList) {
                         if (!errorCodeList.getCauses().isEmpty()) {
-                            trigger.fail(errorCodeList.getCauses().get(0));
+                            trigger.fail(errorCodeList.getRootCause());
                         } else {
                             trigger.next();
                         }
@@ -209,7 +209,7 @@ public class HardwareVxlanNetworkPool extends VxlanNetworkPool {
                     @Override
                     public void done(ErrorCodeList errorCodeList) {
                         if (!errorCodeList.getCauses().isEmpty()) {
-                            trigger.fail(errorCodeList.getCauses().get(0));
+                            trigger.fail(errorCodeList.getRootCause());
                         } else {
                             trigger.next();
                         }

@@ -643,7 +643,7 @@ public abstract class BackupStorageBase extends AbstractBackupStorage {
                 if (errorCodeList.getCauses().isEmpty()) {
                     completion.success(results);
                 } else {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 }
             }
         });

@@ -17,6 +17,7 @@ import org.zstack.core.cloudbus.EventFacade;
 import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.errorcode.ErrorFacade;
+import org.zstack.core.Platform;
 import org.zstack.core.job.JobQueueFacade;
 import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.MergeQueue;
@@ -262,19 +263,13 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
         }
 
         public void validate(){
-            ErrorCode errorCode = new ErrorCode();
-            errorCode.setCode(PrimaryStorageErrors.ALLOCATE_ERROR.toString());
-            errorCode.setDescription("Operation is not permitted");
             if (forbidOperationWhenPrimaryStorageDisable && self.getState().equals(PrimaryStorageState.Disabled)) {
                 String error = "Operation is not permitted when primary storage status is 'Disabled', please check primary storage status";
-                errorCode.setDetails(error);
+                throw new OperationFailureException(Platform.operr(PrimaryStorageErrors.ALLOCATE_ERROR.toString(), "Operation is not permitted: %s", error));
             }
             if (forbidOperationWhenPrimaryStorageMaintenance && self.getState().equals(PrimaryStorageState.Maintenance)) {
                 String error = "Operation is not permitted when primary storage status is 'Maintenance', please check primary storage status";
-                errorCode.setDetails(error);
-            }
-            if (null != errorCode.getDetails()){
-                throw new OperationFailureException(errorCode);
+                throw new OperationFailureException(Platform.operr(PrimaryStorageErrors.ALLOCATE_ERROR.toString(), "Operation is not permitted: %s", error));
             }
         }
     }
@@ -451,7 +446,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    reply.setError(errorCodeList.getCauses().get(0));
+                    reply.setError(errorCodeList.getRootCause());
                 }
 
                 bus.reply(msg, reply);
@@ -1164,7 +1159,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
                 if (errorCodeList.getCauses().isEmpty()) {
                     completion.success(results);
                 } else {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 }
             }
         });

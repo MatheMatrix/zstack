@@ -136,7 +136,7 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
                             trigger.next();
                         } else {
                             // todo rollback
-                            trigger.fail(errorCodeList.getCauses().get(0));
+                            trigger.fail(errorCodeList.getRootCause());
                         }
                     }
                 });
@@ -319,7 +319,7 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
                 @Override
                 public void done(ErrorCodeList errorCodeList) {
                     if (!errorCodeList.getCauses().isEmpty()) {
-                        compl.addError(errorCodeList.getCauses().get(0));
+                        compl.addError(errorCodeList.getRootCause());
                     }
                     compl.done();
                 }

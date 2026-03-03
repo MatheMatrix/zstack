@@ -9,6 +9,8 @@ import org.zstack.utils.string.ErrorCodeElaboration;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Objects;
 
 public class ErrorCode implements Serializable, Cloneable {
@@ -28,6 +30,12 @@ public class ErrorCode implements Serializable, Cloneable {
     @APINoSee
     @NoJsonSchema
     private String[] formatArgs;
+    private String category;
+    private String messageKey;
+    private Map<String, String> params;
+    private String localizedMessage;
+    private boolean retryable;
+    private int httpStatus;
 
     public String getMessage() {
         return message;
@@ -43,6 +51,54 @@ public class ErrorCode implements Serializable, Cloneable {
 
     public void setFormatArgs(String[] formatArgs) {
         this.formatArgs = formatArgs == null ? null : formatArgs.clone();
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public String getMessageKey() {
+        return messageKey;
+    }
+
+    public void setMessageKey(String messageKey) {
+        this.messageKey = messageKey;
+    }
+
+    public Map<String, String> getParams() {
+        return params == null ? null : new HashMap<>(params);
+    }
+
+    public void setParams(Map<String, String> params) {
+        this.params = params == null ? null : new HashMap<>(params);
+    }
+
+    public String getLocalizedMessage() {
+        return localizedMessage;
+    }
+
+    public void setLocalizedMessage(String localizedMessage) {
+        this.localizedMessage = localizedMessage;
+    }
+
+    public boolean isRetryable() {
+        return retryable;
+    }
+
+    public void setRetryable(boolean retryable) {
+        this.retryable = retryable;
+    }
+
+    public int getHttpStatus() {
+        return httpStatus;
+    }
+
+    public void setHttpStatus(int httpStatus) {
+        this.httpStatus = httpStatus;
     }
 
     public String getGlobalErrorCode() {
@@ -104,6 +160,12 @@ public class ErrorCode implements Serializable, Cloneable {
         this.message = other.message;
         this.formatArgs = other.formatArgs == null ? null : other.formatArgs.clone();
         this.globalErrorCode = other.globalErrorCode;
+        this.category = other.category;
+        this.messageKey = other.messageKey;
+        this.params = other.params == null ? null : new HashMap<>(other.params);
+        this.localizedMessage = other.localizedMessage;
+        this.retryable = other.retryable;
+        this.httpStatus = other.httpStatus;
     }
 
     public void setCode(String code) {

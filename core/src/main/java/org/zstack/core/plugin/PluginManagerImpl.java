@@ -447,7 +447,7 @@ public class PluginManagerImpl extends AbstractService implements PluginManager 
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    event.setError(errorCodeList.getCauses().get(0));
+                    event.setError(errorCodeList.getRootCause());
                 }
 
                 bus.publish(event);
@@ -476,7 +476,7 @@ public class PluginManagerImpl extends AbstractService implements PluginManager 
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    event.setError(errorCodeList.getCauses().get(0));
+                    event.setError(errorCodeList.getRootCause());
                 }
 
                 bus.publish(event);

@@ -200,7 +200,7 @@ public class VxlanNetwork extends L2NoVlanNetwork implements ReportQuotaExtensio
                             @Override
                             public void done(ErrorCodeList errorCodeList) {
                                 if (!errorCodeList.getCauses().isEmpty()) {
-                                    trigger.fail(errorCodeList.getCauses().get(0));
+                                    trigger.fail(errorCodeList.getRootCause());
                                 } else {
                                     trigger.next();
                                 }

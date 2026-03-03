@@ -463,7 +463,7 @@ public class ExternalPrimaryStorageFactory implements PrimaryStorageFactory, Com
                     completion.success();
                 } else {
                     // todo rollback
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 }
             }
         });
@@ -490,7 +490,7 @@ public class ExternalPrimaryStorageFactory implements PrimaryStorageFactory, Com
                 if (errorCodeList.getCauses().isEmpty()) {
                     completion.success();
                 } else {
-                    completion.fail(errorCodeList.getCauses().get(0));
+                    completion.fail(errorCodeList.getRootCause());
                 }
             }
         });
@@ -705,7 +705,7 @@ public class ExternalPrimaryStorageFactory implements PrimaryStorageFactory, Com
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errList.getCauses().isEmpty()) {
-                    completion.fail(errList.getCauses().get(0));
+                    completion.fail(errList.getRootCause());
                     return;
                 }
                 completion.success();
