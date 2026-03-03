@@ -1,33 +1,4 @@
-> **虚拟机元数据设计文档** | [核心设计](vm-metadata-01-design.md) | [GC 与消息流](vm-metadata-02-gc.md) | [注册与运维](vm-metadata-03-registration.md) | [sblk 二进制协议](vm-metadata-04-sblk.md) | **API 设计**
-
-# 虚拟机元数据设计文档 —— Part 5: API 设计
-
-| 属性 | 值 |
-|------|-----|
-| 文档版本 | 1.0 |
-| 最后更新 | 2026-03-03 |
-| 状态 | 设计中 |
-
-**修订记录**
-
-| 版本 | 日期 | 变更说明 |
-|------|------|----------|
-| 1.0 | 2026-03-03 | 从 Part 1 §12 独立为单独文档；新增 APIReadVmInstanceMetadataFromPrimaryStorageMsg |
-
----
-
-## 目录
-
-1. [概述](#1-概述)
-2. [获取主存储上的虚拟机元数据列表](#2-获取主存储上的虚拟机元数据列表)
-3. [获取指定虚拟机元数据详情](#3-获取指定虚拟机元数据详情)
-4. [注册虚拟机](#4-注册虚拟机)
-5. [检查虚拟机元数据一致性](#5-检查虚拟机元数据一致性)
-6. [运维辅助 API](#6-运维辅助-api仅-cli)
-7. [API 汇总](#7-api-汇总)
-8. [设计合理性分析](#8-设计合理性分析)
-
----
+# API 设计
 
 ## 1. 概述
 
@@ -214,7 +185,7 @@ public class APIRegisterVmInstanceEvent extends APIEvent {
 
 1. **异步 API**（`APIMessage` + `APIEvent`）：注册涉及读取元数据、校验、DB 多表写入、快照链变基等重操作，耗时可达数分钟，必须异步。
 2. **`metadataPath`** 由 §2 API 返回，用户无需手动拼接路径。
-3. **`forceVersionMismatch`** 对应 [Part 1](vm-metadata-01-design.md) §6.3 的版本兼容规则：默认 `false` 时 schemaVersion 不匹配直接拒绝；`true` 时允许同 MAJOR 跨 MINOR 注册（缺失字段置 null）。跨 MAJOR 始终拒绝。
+3. **`forceVersionMismatch`** 对应 [Part 1](vm-metadata-01-design.md) §6.3 的版本兼容规则：默认 `false` 时 schemaVersion（`dbf.getDbVersion()`）不匹配直接拒绝；`true` 时允许跨版本注册（缺失字段置 null）。
 4. **`zoneUuid`** 是必填参数，用于替换元数据中的 `VmInstanceVO.zoneUuid`（跨环境注册时原 Zone 不存在）。
 5. **`clusterUuid`** 用于确定可用 Host 范围。注册后 VM 状态为 Stopped，`clusterUuid` 赋值到 `VmInstanceVO.clusterUuid`（有助于首次启动调度）。
 6. **`hostUuid`** 可选参数，指定后变基操作在该 Host 上执行，也作为首选启动 Host。不指定时由系统选择 cluster 内可用 Host。
@@ -298,7 +269,7 @@ public class APIUpdateVmMetadataMsg extends APIMessage implements VmInstanceMess
 |------|------|------|------|
 | `uuid` | String | 是 | 虚拟机 UUID |
 
-指定 vmUuid，手动触发一次全量元数据更新。用于 GC 达到最大重试次数后的手动恢复，或升级后单独更新指定 VM 的元数据。
+指定 vmUuid，手动触发一次全量元数据更新。用于达到最大重试次数后的手动恢复，或升级后单独更新指定 VM 的元数据。
 
 详见 [Part 3](vm-metadata-03-registration.md) §7.4。
 

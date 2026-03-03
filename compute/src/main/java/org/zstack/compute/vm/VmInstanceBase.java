@@ -148,6 +148,8 @@ public class VmInstanceBase extends AbstractVmInstance {
     private NetworkServiceManager nwServiceMgr;
     @Autowired
     private ResourceDestinationMaker destMaker;
+    @Autowired
+    private org.zstack.compute.vm.metadata.VmMetadataBuilder vmMetadataBuilder;
 
     protected VmInstanceVO self;
     protected VmInstanceVO originalCopy;
@@ -9383,11 +9385,12 @@ public class VmInstanceBase extends AbstractVmInstance {
     /**
      * 处理元数据更新消息。
      *
-     * <p>Layer 2 串行化保证：通过 ChainTask 确保同一 VM 的元数据更新串行执行。
-     * 该消息由 hash 环路由，同一 VM 必定到达同一 MN，因此此处的 ChainTask
-     * 是跨 MN 串行的全局唯一汇聚点。</p>
+     * <p>通过 ChainTask 确保同一 VM 的元数据更新串行执行。
+     * 该消息由 VmMetadataDirtyMarker 发送到本地 VM 服务，
+     * 内部从 DB 全量构建 metadata payload 后写入主存储。</p>
      *
-     * <p>失败路径不创建新 GC，直接返回错误 reply，由 GC 端的 onUpdateFail() 统一处理重试。</p>
+     * <p>失败路径直接返回错误 reply，由 VmMetadataDirtyMarker 的
+     * onFlushFailure() 统一处理重试和指数退避。</p>
      */
     private void handle(UpdateVmInstanceMetadataMsg msg) {
         thdf.chainSubmit(new ChainTask(msg) {
@@ -9410,15 +9413,36 @@ public class VmInstanceBase extends AbstractVmInstance {
     }
 
     private void doHandleUpdateVmInstanceMetadata(UpdateVmInstanceMetadataMsg msg) {
+        // 1. 构建 payload（通过 VmMetadataBuilder 在 @Transactional(readOnly=true) 事务内完成）
+        String metadata = vmMetadataBuilder.buildVmInstanceMetadata(msg.getUuid());
+
+        // 2. Payload 大小保护
+        int payloadSize = metadata.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+        if (payloadSize > org.zstack.compute.vm.metadata.VmMetadataBuilder.REJECT_THRESHOLD) {
+            logger.error(String.format("metadata payload too large: %d bytes for vm[uuid:%s], rejecting",
+                    payloadSize, msg.getUuid()));
+            MessageReply reply = new MessageReply();
+            reply.setError(Platform.operr("metadata payload too large (%d bytes, limit %d) for vm[uuid=%s]",
+                    payloadSize, org.zstack.compute.vm.metadata.VmMetadataBuilder.REJECT_THRESHOLD, msg.getUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
+        if (payloadSize > org.zstack.compute.vm.metadata.VmMetadataBuilder.WARN_THRESHOLD) {
+            logger.warn(String.format("metadata payload large: %d bytes for vm[uuid:%s]",
+                    payloadSize, msg.getUuid()));
+        }
+
+        // 3. 发送到主存储
         Tuple tuple = Q.New(VolumeVO.class).select(VolumeVO_.primaryStorageUuid, VolumeVO_.uuid)
                 .eq(VolumeVO_.vmInstanceUuid, msg.getUuid()).eq(VolumeVO_.type, VolumeType.Root).findTuple();
         String primaryStorageUuid = tuple.get(0, String.class);
         String rootVolumeUuid = tuple.get(1, String.class);
 
         UpdateVmInstanceMetadataOnPrimaryStorageMsg umsg = new UpdateVmInstanceMetadataOnPrimaryStorageMsg();
-        umsg.setMetadata(buildVmInstanceMetadata(msg.getUuid()));
+        umsg.setMetadata(metadata);
         umsg.setPrimaryStorageUuid(primaryStorageUuid);
         umsg.setRootVolumeUuid(rootVolumeUuid);
+        umsg.setStorageStructureChange(msg.isStorageStructureChange());
         bus.makeLocalServiceId(umsg, PrimaryStorageConstant.SERVICE_ID);
         bus.send(umsg, new CloudBusCallBack(msg) {
             @Override
@@ -9426,8 +9450,6 @@ public class VmInstanceBase extends AbstractVmInstance {
                 UpdateVmInstanceMetadataOnPrimaryStorageReply reply = new UpdateVmInstanceMetadataOnPrimaryStorageReply();
 
                 if (!r.isSuccess()) {
-                    // 失败：直接返回错误 reply，不创建新 GC（避免滚雪球膨胀）
-                    // GC 端收到失败 reply 后由 onUpdateFail() 统一走指数退避重试
                     reply.setError(Platform.operr("failed to update vm[uuid=%s] metadata on primary storage",
                             msg.getUuid()).withCause(r.getError()));
                 }
@@ -9435,83 +9457,4 @@ public class VmInstanceBase extends AbstractVmInstance {
             }
         });
     }
-
-    private String buildVmInstanceMetadata(String vmInstanceUuid) {
-        VmInstanceMetadataDTO dto = new VmInstanceMetadataDTO();
-
-        // ── VM 本体 ──
-        VmInstanceVO vm = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, vmInstanceUuid).find();
-        dto.vm = buildResourceMetadata(vm.getUuid(), vm);
-
-        // ── 云盘（挂载的 + 已卸载但 lastVmInstanceUuid 指向本 VM 的） ──
-        List<VolumeVO> volumes = new ArrayList<>();
-        volumes.addAll(Q.New(VolumeVO.class).eq(VolumeVO_.vmInstanceUuid, vmInstanceUuid).list());
-        volumes.addAll(Q.New(VolumeVO.class).isNull(VolumeVO_.vmInstanceUuid)
-                .eq(VolumeVO_.lastVmInstanceUuid, vmInstanceUuid).list());
-        volumes.forEach(v -> dto.volumes.add(buildResourceMetadata(v.getUuid(), v)));
-
-        // ── 网卡 ──
-        List<VmNicVO> nics = Q.New(VmNicVO.class).eq(VmNicVO_.vmInstanceUuid, vmInstanceUuid).list();
-        nics.forEach(n -> dto.nics.add(buildResourceMetadata(n.getUuid(), n)));
-
-        // ── 快照 ──
-        List<String> volumeUuids = volumes.stream().map(VolumeVO::getUuid).collect(Collectors.toList());
-        if (!volumeUuids.isEmpty()) {
-            Q.New(VolumeSnapshotVO.class).in(VolumeSnapshotVO_.volumeUuid, volumeUuids).list()
-                    .forEach(s -> dto.snapshots
-                            .computeIfAbsent(s.getVolumeUuid(), k -> new ArrayList<>())
-                            .add(JSONObjectUtil.toJsonString(s)));
-        }
-
-        // ── 快照组 ──
-        List<VolumeSnapshotGroupVO> groups = Q.New(VolumeSnapshotGroupVO.class)
-                .eq(VolumeSnapshotGroupVO_.vmInstanceUuid, vmInstanceUuid).list();
-        dto.snapshotGroups = groups.stream()
-                .map(JSONObjectUtil::toJsonString).collect(Collectors.toList());
-
-        List<String> groupUuids = groups.stream()
-                .map(VolumeSnapshotGroupVO::getUuid).collect(Collectors.toList());
-        if (!groupUuids.isEmpty()) {
-            dto.snapshotGroupRefs = Q.New(VolumeSnapshotGroupRefVO.class)
-                    .in(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, groupUuids).list()
-                    .stream().map(JSONObjectUtil::toJsonString).collect(Collectors.toList());
-        }
-
-        return JSONObjectUtil.toJsonString(dto);
-    }
-
-    /**
-     * 构建单个资源的 {@link VmInstanceMetadataDTO.ResourceMetadata}。
-     *
-     * <p>VO 全量 JSON 明文存储；SystemTagVO 和 ResourceConfigVO 整体列表序列化为 JSON 数组后
-     * 一次性 Base64 编码，以保护可能包含的密码、密钥等敏感信息。</p>
-     *
-     * @param resourceUuid 资源 UUID
-     * @param vo           资源 VO 对象（VmInstanceVO / VolumeVO / VmNicVO）
-     * @return 填充完毕的 ResourceMetadata
-     */
-    private VmInstanceMetadataDTO.ResourceMetadata buildResourceMetadata(String resourceUuid, Object vo) {
-        VmInstanceMetadataDTO.ResourceMetadata meta = new VmInstanceMetadataDTO.ResourceMetadata();
-        meta.resourceUuid = resourceUuid;
-        meta.vo = JSONObjectUtil.toJsonString(vo);
-
-        // SystemTagVO: 全部 → JSON 数组 → Base64
-        List<SystemTagVO> tagVOs = Q.New(SystemTagVO.class)
-                .eq(SystemTagVO_.resourceUuid, resourceUuid).list();
-        List<String> tagJsons = tagVOs.stream()
-                .map(JSONObjectUtil::toJsonString).collect(Collectors.toList());
-        meta.systemTags = Base64.getEncoder().encodeToString(
-                JSONObjectUtil.toJsonString(tagJsons).getBytes(StandardCharsets.UTF_8));
-
-        // ResourceConfigVO: 全部 → JSON 数组 → Base64
-        List<ResourceConfigVO> cfgVOs = Q.New(ResourceConfigVO.class)
-                .eq(ResourceConfigVO_.resourceUuid, resourceUuid).list();
-        List<String> cfgJsons = cfgVOs.stream()
-                .map(JSONObjectUtil::toJsonString).collect(Collectors.toList());
-        meta.resourceConfigs = Base64.getEncoder().encodeToString(
-                JSONObjectUtil.toJsonString(cfgJsons).getBytes(StandardCharsets.UTF_8));
-
-        return meta;
-    }
 }
-

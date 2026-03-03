@@ -156,7 +156,17 @@ public class VmGlobalConfig {
     public static GlobalConfig VM_METADATA_GC_INITIAL_DELAY_SEC = new GlobalConfig(CATEGORY, "vm.metadata.gc.initialDelaySec");
 
     @GlobalConfigDef(defaultValue = "5", type = Integer.class,
-            description = "Max GC retry count before giving up and publishing MetadataStaleEvent")
+            description = "Max retry count before giving up metadata flush")
     @GlobalConfigValidation(numberGreaterThan = 0)
-    public static GlobalConfig VM_METADATA_GC_MAX_RETRY = new GlobalConfig(CATEGORY, "vm.metadata.gc.maxRetry");
+    public static GlobalConfig VM_METADATA_MAX_RETRY = new GlobalConfig(CATEGORY, "vm.metadata.maxRetry");
+
+    @GlobalConfigDef(defaultValue = "5", type = Long.class,
+            description = "Dirty poller interval in seconds")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_DIRTY_POLL_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.dirty.pollIntervalSec");
+
+    @GlobalConfigDef(defaultValue = "20", type = Integer.class,
+            description = "Max dirty rows to claim per poller cycle")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_DIRTY_BATCH_SIZE = new GlobalConfig(CATEGORY, "vm.metadata.dirty.batchSize");
 }

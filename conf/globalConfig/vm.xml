@@ -360,9 +360,25 @@
 
 	<config>
 		<category>vm</category>
-		<name>vm.metadata.gc.maxRetry</name>
-		<description>Max GC retry count before giving up and publishing MetadataStaleEvent. After this many failed attempts, the GC is marked Done and a stale event is published for the health check job to handle.</description>
+		<name>vm.metadata.maxRetry</name>
+		<description>Max retry count before giving up metadata flush. After this many failed attempts with exponential backoff, the dirty row is deleted and will auto-retry on the next API that modifies this VM.</description>
 		<type>java.lang.Integer</type>
 		<defaultValue>5</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.dirty.pollIntervalSec</name>
+		<description>Dirty poller interval in seconds. The poller acts as a safety net to process dirty rows that were not handled by the immediate triggerFlush path (e.g., rows in backoff, orphaned rows after MN crash).</description>
+		<type>java.lang.Long</type>
+		<defaultValue>5</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.dirty.batchSize</name>
+		<description>Max dirty rows to claim per poller cycle. Controls the batch size of CAS claim in each poller round.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>20</defaultValue>
 	</config>
 </globalConfig>

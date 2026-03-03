@@ -32,6 +32,15 @@ public @interface MetadataImpact {
     Impact value();
 
     /**
+     * API 失败时是否也需要更新元数据。
+     *
+     * <p>默认 false：仅在 API 成功后触发元数据更新。
+     * 设为 true 时，API 执行失败也会触发 markDirty。
+     * 适用于 API 可能部分成功、需要同步最新状态的场景。</p>
+     */
+    boolean updateOnFailure() default false;
+
+    /**
      * API 对虚拟机元数据的影响类型枚举。
      */
     enum Impact {

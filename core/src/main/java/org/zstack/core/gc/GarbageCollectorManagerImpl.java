@@ -202,12 +202,8 @@ public class GarbageCollectorManagerImpl extends AbstractService
     }
 
     private void loadOrphanJobs() {
-        // 框架级正确性修复：MN 宕机后 FK ON DELETE SET NULL 对所有 GC 行生效，
-        // 包括 Done 状态的行。仅加载未完成的孤儿 GC，避免重新触发已完成的 GC。
-        // 使用 notEq(Done) 而非 eq(Idle) 是为了也能加载 Processing 状态的孤儿
-        // （MN 在 GC 执行过程中崩溃时，状态可能停留在 Processing）。
         List<GarbageCollectorVO> vos = Q.New(GarbageCollectorVO.class)
-                .notEq(GarbageCollectorVO_.status, GCStatus.Done)
+                .eq(GarbageCollectorVO_.status, GCStatus.Idle)
                 .isNull(GarbageCollectorVO_.managementNodeUuid)
                 .list();
 
@@ -259,8 +255,6 @@ public class GarbageCollectorManagerImpl extends AbstractService
     private void handleLocalMessage(Message msg) {
         if (msg instanceof TriggerGcJobMsg) {
             handle((TriggerGcJobMsg) msg);
-        } else if (msg instanceof SubmitTimeBasedGarbageCollectorMsg) {
-            handle((SubmitTimeBasedGarbageCollectorMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
@@ -286,12 +280,6 @@ public class GarbageCollectorManagerImpl extends AbstractService
                 return String.format("trigger-gc-job-%s", msg.getUuid());
             }
         });
-    }
-
-    private void handle(final SubmitTimeBasedGarbageCollectorMsg msg) {
-        MessageReply reply = new MessageReply();
-        msg.getGc().submit(msg.getGcInterval(), msg.getUnit());
-        bus.reply(msg, reply);
     }
 
     private void handleApiMessage(APIMessage msg) {

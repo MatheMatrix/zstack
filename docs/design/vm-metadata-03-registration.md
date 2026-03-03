@@ -1,6 +1,4 @@
-> **导航** | [核心设计](vm-metadata-01-design.md) | [GC 与消息流](vm-metadata-02-gc.md) | **注册与运维** | [sblk 二进制协议](vm-metadata-04-sblk.md) | [API 设计](vm-metadata-05-api.md)
-
-# 虚拟机元数据设计文档 —— Part 3: 注册与运维
+# 注册与运维
 
 | 属性 | 值 |
 |------|-----|
@@ -150,7 +148,7 @@ SnapshotGroupVO 和 SnapshotGroupRefVO 在同一事务内一次性创建。
 | 时机 | 操作 |
 |------|------|
 | 注册完成 | 创建 `vm.metadata.registered.not.started` ResourceConfig |
-| VM 首次到达 Running 状态 | 删除该 ResourceConfig，立即触发更新元数据 GC |
+| VM 首次到达 Running 状态 | 删除该 ResourceConfig，立即触发 `markDirty` 更新元数据 |
 | 存在该 ResourceConfig 时 | 任何 `@MetadataImpact` API 的元数据更新被跳过 |
 
 ### 3.4 完整注册步骤
@@ -397,7 +395,7 @@ JSON 解析 / Base64 字段解码 / 校验器任一步骤失败 → 拒绝注册
 - 用户应使用包含实际磁盘数据的存储上的元数据注册
 - 使用错误存储的元数据 → installPath 文件存在性检查失败
 - 存储迁移成功后触发新存储元数据更新
-- GC 异步清理旧存储上的元数据（清理前 double-check 确认 VM 根盘确实不在旧存储上）
+- 异步清理旧存储上的元数据（清理前 double-check 确认 VM 根盘确实不在旧存储上）
 
 ### 5.10 模板虚拟机注册
 
@@ -458,7 +456,7 @@ JSON 解析 / Base64 字段解码 / 校验器任一步骤失败 → 拒绝注册
 
 ### 7.1 运维告警
 
-新增报警器：**更新虚拟机元数据失败**。触发条件：GC 达到最大重试次数仍失败。告警内容包含 vmUuid 和 psUuid。告警级别 WARNING。
+新增报警器：**更新虚拟机元数据失败**。触发条件：达到最大重试次数仍失败。告警内容包含 vmUuid 和 psUuid。告警级别 WARNING。
 
 ### 7.2 一致性检查 API
 
@@ -500,7 +498,7 @@ JSON 解析 / Base64 字段解码 / 校验器任一步骤失败 → 拒绝注册
 
 ### 7.4 手动触发元数据更新 API
 
-`APIUpdateVmMetadataMsg`（仅 admin CLI 使用，UI 不开放）：指定 vmUuid，手动触发一次全量元数据更新。用于 GC 达到最大重试次数后的手动恢复，或升级后单独更新指定 VM 的元数据。
+`APIUpdateVmMetadataMsg`（仅 admin CLI 使用，UI 不开放）：指定 vmUuid，手动触发一次全量元数据更新。用于达到最大重试次数后的手动恢复，或升级后单独更新指定 VM 的元数据。
 
 > **API 详细定义**见 [Part 1 §12.5.1](vm-metadata-01-design.md#1251-手动触发元数据更新)。
 
@@ -519,8 +517,8 @@ JSON 解析 / Base64 字段解码 / 校验器任一步骤失败 → 拒绝注册
 | 数据损坏 | sblk 双 Slot 容错 + local/NFS 原子写入 + 解码校验 | 多级容错 |
 | 大数据量 | 消息直传 + 全局并发控制 | 简化传输，限制资源 |
 | 启动失败 | 注册只保证 DB 一致 + 预检查 API | 职责分离 |
-| 旧元数据 | GC 清理 + 文件存在性校验 | 异步安全清理 |
-| schemaVersion | MAJOR.MINOR 版本号，`force=true` 允许跨版本注册 | patch 不涉及 VO 变更 |
+| 旧元数据 | 异步清理 + 文件存在性校验 | 异步安全清理 |
+| schemaVersion | 数据库版本号（`dbf.getDbVersion()`），`force=true` 允许跨版本注册 | 与数据库 schema 完全一致 |
 | SystemTag 过滤 | 白名单注册 + CI 检查 | 新增 tag 自动被发现 |
 | VO JSON 范围 | 所有非 @Transient 字段 | id 重生成，createDate 保留 |
 | 压缩策略 | 不压缩 | 正常场景 <100KB，简化调试 |

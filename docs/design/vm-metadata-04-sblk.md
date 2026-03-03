@@ -1,55 +1,4 @@
-> **虚拟机元数据设计文档** | [核心设计](vm-metadata-01-design.md) | [GC 与消息流](vm-metadata-02-gc.md) | [注册与运维](vm-metadata-03-registration.md) | **sblk 二进制协议** | [API 设计](vm-metadata-05-api.md)
-
-# 虚拟机元数据设计文档 —— Part 4: sblk 二进制存储协议
-
-> **范围**：仅覆盖共享块存储（sblk）场景下 VM 元数据的二进制存储协议。  
-> 上层 DTO 结构、编码策略、注解拦截器等参见 [Part 1: 核心设计](vm-metadata-01-design.md)；  
-> 注册流程、变基逻辑参见 [Part 3: 注册与运维](vm-metadata-03-registration.md)。
-
----
-
-## 目录
-
-1. [背景](#1-背景)
-2. [设计目标](#2-设计目标)
-3. [整体架构](#3-整体架构)
-   - 3.1 [A/B Dual Slot 机制](#31-ab-dual-slot-机制)
-   - 3.2 [版本管理](#32-版本管理)
-   - 3.3 [Python 2 兼容性](#33-python-2-兼容性)
-4. [二进制布局](#4-二进制布局)
-   - 4.1 [Header Block (512 Bytes)](#41-header-block-512-bytes)
-   - 4.2 [Slot 结构](#42-slot-结构)
-5. [三阶段原子写入](#5-三阶段原子写入)
-   - 5.1 [设计原则](#51-设计原则)
-   - 5.2 [完整流程](#52-完整流程)
-   - 5.3 [崩溃场景完整分析](#53-崩溃场景完整分析)
-   - 5.4 [Header 字段变更对照表](#54-header-字段变更对照表)
-6. [读取与恢复流程](#6-读取与恢复流程)
-   - 6.1 [读取主流程](#61-读取主流程)
-   - 6.2 [三种读取分支](#62-三种读取分支)
-   - 6.3 [Header 损坏恢复流程](#63-header-损坏恢复流程)
-   - 6.4 [Slot 读取优化](#64-slot-读取优化)
-7. [Repair 与 Full-Refresh](#7-repair-与-full-refresh)
-   - 7.1 [pending_op 的性质](#71-pending_op-的性质)
-   - 7.2 [repair_pending_op 策略](#72-repair_pending_op-策略)
-   - 7.3 [Full-Refresh 机制](#73-full-refresh-机制)
-   - 7.4 [操作类型决策机制](#74-操作类型决策机制)
-   - 7.5 [完整状态转换图](#75-完整状态转换图)
-8. [LV 管理与扩容](#8-lv-管理与扩容)
-   - 8.1 [LV 命名规范](#81-lv-命名规范)
-   - 8.2 [LV 大小参数](#82-lv-大小参数)
-   - 8.3 [LV 内部空间分配](#83-lv-内部空间分配)
-   - 8.4 [阶梯扩容策略](#84-阶梯扩容策略)
-   - 8.5 [LV 生命周期](#85-lv-生命周期)
-   - 8.6 [健康检查](#86-健康检查)
-9. [I/O 与字节序技术细节](#9-io-与字节序技术细节)
-   - 9.1 [字节序](#91-字节序)
-   - 9.2 [SHA-256 输出格式](#92-sha-256-输出格式)
-   - 9.3 [O_DIRECT 与扇区原子写](#93-o_direct-与扇区原子写)
-   - 9.4 [O_DIRECT 内存对齐](#94-o_direct-内存对齐)
-   - 9.5 [文件锁](#95-文件锁)
-
----
+# sblk 二进制存储协议
 
 ## 1. 背景
 
@@ -64,6 +13,74 @@ ZStack 共享块存储（sblk）场景下，VM 元数据需要持久化到 LVM L
 
 > **对比 local/NFS**：文件系统场景使用 JSON 明文 + tmp + fsync + rename 原子写，  
 > sblk 因裸块设备特性需要完全不同的存储协议。
+
+### 1.1 灾备接管场景 — AB 双 Slot 的核心驱动力
+
+除常规读写外，sblk 元数据协议必须支持**跨平台灾备接管**场景：
+
+```
+环境：
+  sanA / sanB — 两套拥有相同 LUN（数量和大小）的 SAN 存储
+  zsvA（原平台）/ zsvB（目标平台）— 两套独立的 ZSV 管理平台
+
+操作流程：
+  1. zsvA 将 sanA 添加为 sblk 存储，在上面创建 VM 并正常读写
+  2. zsvB 将 sanB 添加为存储目标（iSCSI server），但不注册为 sblk 存储
+  3. 存储侧配置 sanA → sanB 的 LUN 级数据复制（块级，平台不感知）
+  4. zsvA 的 sanA 发生故障
+  5. zsvB 使用 sanB 注册 sblk 存储，通过扫描 LV 上的元数据恢复 VM
+```
+
+此场景下 LV 元数据的角色发生本质转变：
+
+| | 正常运行 | 灾备接管 |
+|---|---------|---------|
+| **元数据权威来源** | 管理面 DB | **LV 上的元数据** |
+| **LV 元数据角色** | DB 的副本/缓存 | **唯一的 VM 恢复来源** |
+| **管理面 DB 可用？** | ✅ zsvA DB 可用 | ❌ zsvA 故障，zsvB DB 无此 VM 记录 |
+| **full-refresh 可行？** | ✅ 从 DB 重建 | ❌ **无 DB 数据可重建** |
+
+**核心问题**：存储侧复制是**块级别快照**，可能捕获到 LV 正在写入的中间状态。
+
+如果使用简单的单区覆盖写方案（写入中数据被覆盖），此时：
+
+```
+zsvA 正在执行 write_metadata():
+  已写入部分新数据，旧数据已被覆盖
+
+此刻 sanA → sanB 块级复制发生
+
+sanB 上的 LV：
+  payload 部分损坏，checksum 校验失败 → CORRUPTED
+  旧数据已被覆盖 → 不可读
+  zsvB DB 无此 VM 记录 → 无法 full-refresh
+  → VM 不可恢复 ❌
+```
+
+**A/B 双 Slot 方案**在同一场景下：
+
+```
+zsvA 正在执行 write_metadata():
+  Phase 1: 标记 PendingOp, ActiveSlot=A 不变
+  Phase 2: 正在写入 Slot B (inactive)...
+
+此刻 sanA → sanB 块级复制发生
+
+sanB 上的 LV：
+  Header: ActiveSlot=A, PendingOp≠0
+  Slot A: 完整有效（旧数据，写入过程中未被触碰）
+  Slot B: 部分损坏
+
+zsvB 读取:
+  Header → ActiveSlot=A → 读 Slot A → checksum pass
+  → 返回旧元数据 → VM 可注册 ✅
+```
+
+**A/B 双 Slot 的核心保证：写入过程中旧数据始终完好。** 这是灾备场景下 VM 可恢复的前提条件，也是本协议采用 A/B Dual Slot 而非更简单方案的根本原因。
+
+> **方案选型结论**：单区覆盖写方案（无论是否有 Header 哨兵）在灾备接管场景下都会丢失 VM；
+> A/B 双 Slot 是能保证任意复制时刻都有可读数据的最简方案。
+> 协议复杂度是为灾备可靠性买单。
 
 ---
 
@@ -229,8 +246,8 @@ Total:  512B
 **SchemaVersion (4B, offset 56)**
 - Payload JSON 的业务 schema 版本
 - 读 Header 即可判断是否认识该版本，无需解码整个 Slot
-- **编码规则**：`MAJOR << 16 | MINOR`。例如 `"4.10"` → `(4 << 16) | 10 = 0x0004000A = 262154`。解码：`MAJOR = v >> 16`，`MINOR = v & 0xFFFF`
-- Header 中的 SchemaVersion 与 DTO JSON 中的 `schemaVersion` 字符串是同一语义的不同表示，写入时编码、读取时解码
+- **编码规则**：将 `dbf.getDbVersion()` 返回的数据库版本字符串（如 `"4.10.12"`）解析为数字组件后压缩为 uint32：`(A << 20) | (B << 10) | C`。例如 `"4.10.12"` → `(4 << 20) | (10 << 10) | 12 = 0x00402C0C = 4205580`。解码：`A = v >> 20`，`B = (v >> 10) & 0x3FF`，`C = v & 0x3FF`。每个组件最大支持 1023
+- Header 中的 SchemaVersion 与 DTO JSON 中的 `schemaVersion` 字符串（`dbf.getDbVersion()`）是同一语义的不同表示，写入时编码、读取时解码
 
 **Reserved (4B, offset 60)**
 - 将 Checksum 推到 offset 64（8B 对齐）
@@ -382,67 +399,11 @@ Total:   36 + N + 32 B
     new_layout = 当前 Header 中的布局（offset + capacity 不变）
 ```
 
-#### 前置步骤 — 动态决定 op_type（Agent 端执行）
+#### 前置步骤 — 确定 op_type（控制面指定）
 
-> **设计变更**：op_type 不再由管理层面指定，而是由 Host Agent 端在写入时通过对比新旧 payload 的存储拓扑差异动态决定。
+> **op_type 由控制面指定**：`@MetadataImpact(CONFIG)` → `op_type = CONFIG_UPDATE (1)`，`@MetadataImpact(STORAGE)` → `op_type = STORAGE_CHANGE (2)`。管理层面通过 `storageStructureChange` 字段贯穿整条消息链（`UpdateVmInstanceMetadataMsg` → `WriteVmMetadataToPrimaryStorageMsg` → Agent command），Agent 收到命令时直接使用该值，无需自行读取旧 payload 做 diff。
 
-```
-read_and_determine_op_type(lv_path, new_payload):
-
-  1. 读取当前元数据:
-     result = read_metadata(lv_path, lv_size)
-
-  2. 决定 op_type:
-     if result.status == OK and result.payload is not None:
-         if storage_topology_changed(result.payload, new_payload):
-             op_type = STORAGE_CHANGE (2)
-         else:
-             op_type = CONFIG_UPDATE (1)
-     else:
-         op_type = STORAGE_CHANGE (2)   # 首次写入 / 损坏 / 不可读 → 保守
-
-  返回 op_type
-```
-
-**存储拓扑对比函数**：
-
-```python
-def storage_topology_changed(old_json_str, new_json_str):
-    """Return True if storage topology differs between old and new metadata.
-    
-    Compares: volume UUIDs, volume installPaths, snapshot UUIDs, snapshot installPaths.
-    Any difference → True (STORAGE_CHANGE).
-    Only config differences (CPU, memory, tags, etc.) → False (CONFIG_UPDATE).
-
-    注意: DTO 结构中 volumes 是 List<ResourceMetadata>，每个元素的 'vo' 字段
-    是 VO JSON 字符串；snapshots 是 Map<String, List<String>>，key 为 volumeUuid，
-    value 为 VolumeSnapshotVO JSON 字符串列表。
-    此函数仅比较 'vo' 字段中的存储拓扑信息（uuid/installPath），
-    不需要解码 systemTags/resourceConfigs 的 per-Resource Base64 字段。
-    """
-    old = json.loads(old_json_str) if old_json_str else {}
-    new = json.loads(new_json_str)
-
-    def extract_topology(d):
-        # volumes: List<ResourceMetadata> — 需从 rm['vo'] 解析 VO JSON
-        vols = {}
-        for rm in d.get('volumes', []):
-            vo = json.loads(rm['vo'])
-            vols[vo['uuid']] = vo.get('installPath', '')
-        # snapshots: Map<volumeUuid, List<VolumeSnapshotVO JSON>>
-        snaps = {}
-        for vol_uuid, snap_json_list in d.get('snapshots', {}).items():
-            for s_json in snap_json_list:
-                s = json.loads(s_json)
-                snaps[s['uuid']] = s.get('primaryStorageInstallPath', '')
-        return vols, snaps
-
-    old_vols, old_snaps = extract_topology(old)
-    new_vols, new_snaps = extract_topology(new)
-    return old_vols != new_vols or old_snaps != new_snaps
-```
-
-> **注意**：此 diff 逻辑仅适用于 sblk 场景。local/NFS 不使用 OP type（JSON atomic rename 无中间状态）。
+> **注意**：local/NFS 不使用 op_type（JSON atomic rename 无中间状态），`storageStructureChange` 仅在 sblk 场景下转换为 PendingOp 值。
 
 #### Phase 1 — Mark Intent (512B 原子写)
 
@@ -910,9 +871,8 @@ full_refresh(lv_path, lv_size_getter, lv_extend_func):
 
   1. Management plane 从数据库查询 VM 的完整存储拓扑
   2. 生成最新的 payload JSON
-  3. 调用 write_metadata(lv_path, payload, ...)
-     → Agent 端 read + diff 动态决定 op_type
-     → 必然检测到拓扑差异（或 old 不可读）→ op_type = STORAGE_CHANGE (2)
+  3. 调用 write_metadata(lv_path, payload, storageStructureChange=True)
+     → 控制面显式指定 op_type = STORAGE_CHANGE (2)
 
   写入流程:
     Phase 1: PendingOp=2, WriteSeq=old+1
@@ -927,13 +887,9 @@ full_refresh(lv_path, lv_size_getter, lv_extend_func):
 
 #### 7.3.3 Full-refresh 使用 STORAGE_CHANGE(2) 的理由
 
-> **设计变更**：Full-refresh 使用 op=2 而非原设计的 op=1。
+Full-refresh 始终使用 STORAGE_CHANGE(2)，因为：
 
-Full-refresh 自然使用 STORAGE_CHANGE(2)，因为：
-
-- Agent 端 read+diff 动态决定 op_type（见 §5.2）
-- Full-refresh 场景下，old payload 通常不可读（CORRUPTED/STORAGE_CHANGE_INCOMPLETE），或拓扑差异显著
-- 两种情况都导致 `storage_topology_changed()` 返回 True 或回退到保守策略 → op=2
+- Full-refresh 由控制面触发，控制面知道这是全量刷新操作，显式指定 `storageStructureChange=true` → op_type=2
 - 这自然解决了"full-refresh Phase 1 覆盖脏标记"问题：新的 PendingOp=2 与旧的语义一致
 - 不需要引入新的 OP_FULL_REFRESH (3)
 
@@ -949,29 +905,31 @@ Full-refresh 自然使用 STORAGE_CHANGE(2)，因为：
   是否有风险？
   → management plane 知道 full-refresh 失败了
      （write_metadata 会抛异常），会重试。
-  → 重试仍会使用 op=2（Agent 端动态决策），PendingOp 语义一致。
+  → 重试仍会使用 op=2（控制面显式指定），PendingOp 语义一致。
   → 只要 management plane 正确实现重试逻辑，不会误用旧数据。
 ```
 
 ### 7.4 操作类型决策机制
 
-> **设计变更**：op_type 不再由管理层面（调用方）指定，改为 **Agent 端写入时动态决定**。
+> **op_type 由控制面指定**：管理层面根据 `@MetadataImpact` 注解确定 op_type，通过 `storageStructureChange` 字段传递给 Agent。
 
-管理层面调用 `writeMetadata(payload)` 时不传递 op_type。Agent 端在 `write_metadata()` 内部执行以下逻辑（见 §5.2 前置步骤）：
+管理层面调用 `writeMetadata(payload, storageStructureChange)` 时显式指定 op_type。Agent 端直接使用该值：
 
-1. 读取当前 Active Slot 中的 old payload
-2. 调用 `storage_topology_changed(old, new)` 对比存储拓扑
-3. 拓扑有变化 → `op_type = STORAGE_CHANGE (2)`
-4. 仅配置变化 → `op_type = CONFIG_UPDATE (1)`
-5. old 不可读（首次写入/损坏）→ 保守使用 `op_type = STORAGE_CHANGE (2)`
+- `storageStructureChange = false` → `op_type = CONFIG_UPDATE (1)` → `PendingOp = 1`
+- `storageStructureChange = true` → `op_type = STORAGE_CHANGE (2)` → `PendingOp = 2`
+
+**控制面决策规则**：
+- `@MetadataImpact(CONFIG)` 标注的 API（CPU/内存/标签等变更）→ `storageStructureChange = false`
+- `@MetadataImpact(STORAGE)` 标注的 API（磁盘挂载/卸载、快照创建/删除等）→ `storageStructureChange = true`
+- Full-refresh / 首次写入 → `storageStructureChange = true`
+- 多次 `markDirty` 合并时，`storageStructureChange` 采用 OR 升级策略（任一为 true 则结果为 true）
 
 **好处**：
-- 管理层面无需维护 "存储操作 → op_type" 映射表
-- 避免管理层面与 Agent 端对 op_type 判断不一致
-- Full-refresh 自然使用 op=2，无需特殊处理
-- SubmitGCMsg 不需要携带 opType 字段
+- 控制面对 op_type 拥有完整语义信息（知道哪个 API 触发了变更）
+- Agent 无需读取旧 payload 做 diff，减少一次 I/O
+- `VmMetadataDirtyVO` 记录 `storageStructureChange` 字段，Poller 批量处理时直接使用
 
-**对 local/NFS 的影响**：local/NFS 不使用 op_type（JSON atomic rename 无中间状态），`storage_topology_changed()` 只在 sblk 的 `write_metadata()` 内部调用。
+**对 local/NFS 的影响**：local/NFS 不使用 op_type（JSON atomic rename 无中间状态），`storageStructureChange` 仅在 sblk 场景下转换为 PendingOp 值。
 
 ### 7.5 完整状态转换图
 

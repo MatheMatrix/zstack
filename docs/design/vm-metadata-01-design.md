@@ -1,6 +1,4 @@
-> **虚拟机元数据设计文档** | **核心设计** | [GC 与消息流](vm-metadata-02-gc.md) | [注册与运维](vm-metadata-03-registration.md) | [sblk 二进制协议](vm-metadata-04-sblk.md) | [API 设计](vm-metadata-05-api.md)
-
-# 虚拟机元数据设计文档 —— Part 1: 核心设计
+# 核心设计
 
 ## 1. 概述
 
@@ -186,41 +184,32 @@ public interface MetadataWhitelistProvider {
 
 ### 6.1 版本号定义
 
-`schemaVersion` 使用 ZStack 产品的 **`MAJOR.MINOR`** 版本号（如 `"4.10"`），**不包含** patch 号。
+`schemaVersion` 使用 ZStack 数据库版本号，即 **`dbf.getDbVersion()`** 的返回值，与数据库 schema 版本完全一致。
 
-**理由**：patch 版本通常不涉及 VO 字段变更，使用 MAJOR.MINOR 避免不必要的版本不匹配。
+**理由**：schemaVersion 直接反映数据库 schema 版本，VO 字段的增删改由数据库升级脚本驱动，与数据库版本绑定最为准确。
 
-**比较规则**：注册时要求 `metadata.schemaVersion == Platform.getMajorMinorVersion()`，不匹配则拒绝。
+**比较规则**：注册时要求 `metadata.schemaVersion == dbf.getDbVersion()`，不匹配则拒绝。
 
 ### 6.2 版本生命周期
 
-- 序列化时由 `VmMetadataBuilder` 自动填充 `Platform.getMajorMinorVersion()`
-- 注册时若 schemaVersion 与当前平台版本不匹配，拒绝注册
-- 升级后通过全量更新 GC 将所有 VM 的元数据更新到新版本
-- 读取端（全量更新 GC）不依赖旧版本元数据，从 DB 直接构建新版本元数据覆盖写入
+- 序列化时由 `VmMetadataBuilder` 自动填充 `dbf.getDbVersion()`
+- 注册时若 schemaVersion 与当前数据库版本不匹配，拒绝注册
+- 升级后通过全量刷新（批量 `markDirty`，Poller 自动处理）将所有 VM 的元数据更新到新版本
+- 刷写端不依赖旧版本元数据，从 DB 直接构建新版本元数据覆盖写入
 
 ### 6.3 版本兼容规则
 
 **核心规则**：元数据版本不兼容时，默认拒绝注册。仅当注册 API 显式指定 `force=true` 时允许跨版本注册（缺失字段置为 null，warnings 中记录）。
 
-- 同 MAJOR 版本内的 MINOR 版本差异：默认拒绝，`force=true` 允许
-- 跨 MAJOR 版本：直接拒绝，不支持 `force=true`
-- 低于最小兼容版本的元数据直接拒绝注册和迁移
-- 每个 MINOR 版本发布时更新 `MIN_COMPATIBLE_SCHEMA_VERSION` 常量
+- `metadata.schemaVersion == dbf.getDbVersion()` → 匹配，正常注册
+- `metadata.schemaVersion != dbf.getDbVersion()` + `force=false` → 拒绝注册（`METADATA_VERSION_MISMATCH`）
+- `metadata.schemaVersion != dbf.getDbVersion()` + `force=true` → 允许注册，Gson 反序列化时缺失字段自动填充 Java 默认值，warnings 中记录版本差异
 
 ### 6.4 升级时间窗口
 
-- 全量 GC 使用后台 `LongJob` 执行，限制并发（10 VM/批）
+- 升级后批量 `markDirty` 所有已启用元数据的 VM，Poller 自动分批处理，ChainTask 自动限流（详见 [Part 2 §9](vm-metadata-02-dirty-mark.md)）
 - 10 万 VM × 平均 50ms/VM ≈ 5000 秒 ≈ 83 分钟
-- 窗口期内若需注册 VM，可使用 `APIUpgradeVmMetadataOnStorageMsg` 单独升级指定 VM 的元数据
-
-### 6.5 版本迁移链
-
-每个大版本提供 `MetadataMigrator_vX_to_vY`：
-
-- 逐版本迁移，每个 Migrator 处理具体字段转换（重命名/语义变化）
-- 低于 `MIN_COMPATIBLE_SCHEMA_VERSION` 的元数据直接拒绝注册和迁移
-- 原环境不可用时提供独立升级 API/命令：读取旧元数据 → 反序列化（Gson 容忍缺失/多余字段）→ 当前版本重新序列化 → 写回
+- 窗口期内若需注册 VM，可使用 `APIUpdateVmMetadataMsg` 单独更新指定 VM 的元数据
 
 ---
 
@@ -258,9 +247,10 @@ public enum MetadataImpactLevel {
 
 `@MetadataImpact(STORAGE)` 类 API 在设计文档中标识该操作涉及存储拓扑变更。
 
-> **注意**：op_type（CONFIG_UPDATE / STORAGE_CHANGE）不再由管理层面指定，而是由 Host Agent 端在写入时通过对比新旧 payload 的存储拓扑差异动态决定。详见 [Part 4 §5.2](vm-metadata-04-sblk.md)。
+> **op_type 由控制面指定**：`@MetadataImpact(CONFIG)` → OP type=1（`CONFIG_UPDATE`），`@MetadataImpact(STORAGE)` → OP type=2（`STORAGE_CHANGE`）。OP type 通过 `storageStructureChange` 字段贯穿整条消息链（`VmMetadataDirtyVO` → `UpdateVmInstanceMetadataMsg` → `UpdateVmInstanceMetadataOnPrimaryStorageMsg` → `UpdateVmInstanceMetadataOnHypervisorMsg`）。
 >
-> `@MetadataImpact(STORAGE)` 注解仍保留，用于：
+> `@MetadataImpact(STORAGE)` 注解的作用：
+> - **直接影响 Agent 写入行为**：sblk 场景下决定 Header `PendingOp` 字段的值（1 或 2），影响崩溃恢复策略
 > - CI 编译期校验：标识哪些 API 涉及存储变更
 > - 文档和代码可读性：开发者一目了然地知道该 API 涉及存储拓扑
 
@@ -380,7 +370,7 @@ public enum MetadataImpactLevel {
 Resolver 在**两个时机**捕获 vmUuid：
 
 1. **API 执行前**（`BeforeDeliveryMessageInterceptor`）：预解析 vmUuid 并缓存到 `pendingApis` ConcurrentHashMap 中（key = apiId）
-2. **API 成功后**（`beforePublishEvent`）：从 `pendingApis` 读取缓存的 vmUuid，提交 GC
+2. **API 成功后**（`beforePublishEvent`）：从 `pendingApis` 读取缓存的 vmUuid，调用 `markDirty(vmUuid)` 标脏
 
 **执行线程说明**：`beforeDeliveryMessage()` 在消息投递线程中同步执行（`CloudBusImpl3.doSendAndCallbackFromQueue` 内部调用）。Resolver 的 DB 查询在此线程中执行，对单次 API 延迟影响极小（单次简单查询 <1ms）。
 
@@ -436,9 +426,9 @@ public interface VmUuidFromApiResolver {
 
 1. 迁移根盘数据
 2. 在新存储创建元数据文件
-3. 删除旧存储的元数据文件（GC 异步清理，清理前 double-check 确认 VM 根盘确实不在旧存储上）
+3. 删除旧存储的元数据文件（异步清理，清理前 double-check 确认 VM 根盘确实不在旧存储上）
 
-**double-check 实现**：GC 执行旧存储元数据删除前，查询当前根盘位置：
+**double-check 实现**：执行旧存储元数据删除前，查询当前根盘位置：
 
 ```java
 String currentRootPsUuid = Q.New(VolumeVO.class)
@@ -456,7 +446,7 @@ if (oldPsUuid.equals(currentRootPsUuid)) {
 metadataStorageHandler.deleteMetadata(oldPsUuid, vmUuid, ...);
 ```
 
-**竞态安全**：GC 删除与迁移回滚的竞态窗口中，最坏情况是删除了正确位置的元数据。此时下一次 `@MetadataImpact` API 触发的 GC 会重新写入，不会永久丢失。
+**竞态安全**：异步删除与迁移回滚的竞态窗口中，最坏情况是删除了正确位置的元数据。此时下一次 `@MetadataImpact` API 触发的 `markDirty` 会重新写入，不会永久丢失。
 
 ### 9.3 各存储类型实现
 
@@ -484,8 +474,8 @@ metadataStorageHandler.deleteMetadata(oldPsUuid, vmUuid, ...);
 | 事件 | 行为 |
 |------|------|
 | 新创建虚拟机 | 自动创建元数据文件 |
-| VM 删除 | 同步删除元数据文件 + 删除失败时提交 GC 异步重试（注：VM 级联删除 Volume/Snapshot 时，最终会删除 VM 元数据文件本身，无需单独更新元数据） |
-| 存储迁移 | 新存储创建 → 旧存储 GC 异步清理 |
+| VM 删除 | 同步删除元数据文件 + 删除失败时异步重试（注：VM 级联删除 Volume/Snapshot 时，最终会删除 VM 元数据文件本身，无需单独更新元数据） |
+| 存储迁移 | 新存储创建 → 旧存储异步清理 |
 | 不支持的存储类型 | 静默跳过，不创建元数据文件 |
 
 **存储迁移时的元数据生命周期**：
@@ -495,14 +485,14 @@ metadataStorageHandler.deleteMetadata(oldPsUuid, vmUuid, ...);
 ```
 step N-1:  initializeMetadataOnTargetPS(vmUuid, targetPsUuid)
            → 如果 PS 类型支持元数据，创建空 LV / 空 JSON 文件
-           → 后续 GC 写入完整数据
+           → 后续 Poller 刷写完整数据
 
 step N:    deleteMetadataOnSourcePS(vmUuid, sourcePsUuid)
            → 删除旧 LV / 旧 JSON 文件
            → 失败 → 日志告警 + 健康巡检孤儿检测清理
 ```
 
-**迁移元数据创建失败的处理**：initializeMetadata 失败时只记告警，不阻塞迁移。后续 GC 写入时会自动创建（GC handler 检测到 LV 不存在 → 调用 initializeMetadata → 写入数据）。
+**迁移元数据创建失败的处理**：initializeMetadata 失败时只记告警，不阻塞迁移。后续 Poller 刷写时会自动创建（handler 检测到 LV 不存在 → 调用 initializeMetadata → 写入数据）。
 
 ### 9.5 不支持的存储类型
 
@@ -511,7 +501,7 @@ ceph、zbs、vhost 当前版本不支持元数据功能。处理逻辑：
 | 场景 | 行为 |
 |------|------|
 | 全局开关开启，VM 根盘在不支持的存储上 | 静默跳过，不创建元数据文件，不报错 |
-| `@MetadataImpact` 拦截器触发时 | 检查根盘所在存储类型，不支持的存储类型直接跳过 GC 提交 |
+| `@MetadataImpact` 拦截器触发时 | 检查根盘所在存储类型，不支持的存储类型直接跳过 markDirty |
 | 注册 API 指定不支持的存储 | 返回错误 `METADATA_STORAGE_NOT_SUPPORTED` |
 
 ### 9.6 MetadataStorageHandler 接口
@@ -527,7 +517,7 @@ public interface MetadataStorageHandler {
     void deleteMetadata(String psUuid, String vmUuid, Completion completion);
 
     /** 写入元数据（控制面构建好 payload，直接透传到 Agent 写入存储） */
-    void writeMetadata(String psUuid, String vmUuid, String payloadJson, Completion completion);
+    void writeMetadata(String psUuid, String vmUuid, String payloadJson, boolean storageStructureChange, Completion completion);
 
     /**
      * 读取元数据（从存储读取并返回原始 JSON 字符串）
@@ -540,7 +530,7 @@ public interface MetadataStorageHandler {
 }
 ```
 
-> **重要设计约束**：Agent 端不解析 DTO 内容。控制面（Java 端）负责 DTO 的构建、序列化和反序列化。Agent 只负责将控制面传入的 payload 原样写入存储，或从存储读取原样返回。sblk Agent 仅在写入时对比新旧 payload 的存储拓扑差异来决定 op_type（见 Part 4 §5.2）。
+> **重要设计约束**：Agent 端不解析 DTO 内容。控制面（Java 端）负责 DTO 的构建、序列化和反序列化。Agent 只负责将控制面传入的 payload 原样写入存储，或从存储读取原样返回。`storageStructureChange` 参数由控制面指定，sblk Agent 根据此参数设置三阶段写入的 `PendingOp` 字段值（见 [Part 4 §5.2](vm-metadata-04-sblk.md)）。
 
 | 实现类 | 存储类型 | initializeMetadata | writeMetadata | readMetadata | deleteMetadata |
 |--------|---------|-------------------|---------------|--------------|----------------|
@@ -617,7 +607,7 @@ boolean isCacheVm = Q.New(TemplatedVmInstanceCacheVO.class)
         .eq(TemplatedVmInstanceCacheVO_.cacheVmInstanceUuid, vmUuid)
         .isExists();
 if (isCacheVm) {
-    return; // 不提交 GC
+    return; // 跳过 markDirty
 }
 ```
 
@@ -670,18 +660,17 @@ if (isCacheVm) {
 | VmInstanceMetadataFieldProcessor.java | compute/vm/ | 注册字段处理器 |
 | MetadataImpact.java | header/vm/ | API 影响类型注解 |
 | VmUuidFromApiResolver.java | header/vm/ | vmUuid 解析接口 |
+| VmMetadataDirtyVO.java | header/vm/ | 脏标记 VO（替代 GC 框架，见 [Part 2](vm-metadata-02-dirty-mark.md)） |
+| MetadataDirtyPoller.java | compute/vm/ | 周期轮询刷写任务 |
 | UpdateVmInstanceMetadataMsg.java | header/vm/ | MN 内部消息 |
 | UpdateVmInstanceMetadataReply.java | header/vm/ | MN 内部消息回复 |
 | UpdateVmInstanceMetadataOnPrimaryStorageMsg.java | header/vm/ | 主存储消息 |
-| SubmitTimeBasedGarbageCollectorMsg.java | header/gc/ | 跨 MN 提交 GC 消息 |
 | MetadataStorageHandler.java | header/vm/ | 存储层元数据操作接口（§9.6） |
 | MetadataTagPattern.java | header/vm/ | SystemTag 白名单模式定义 |
 | MetadataWhitelistProvider.java | header/vm/ | SystemTag/ResourceConfig/API 白名单注册接口 |
 | MetadataWhitelistChecker.java | test/ | CI 编译期统一白名单检查（@MetadataImpact + SystemTag + ResourceConfig） |
 | MetadataTagAnnotationChecker.java | test/ | CI 编译期 SystemTag 标注检查 |
-| MetadataHealthCheckJob.java | compute/vm/ | 定期健康巡检任务（Part 2 §11） |
 | RegistrationCleanupJob.java | compute/vm/ | 注册崩溃残留清理任务 |
-| MetadataStaleEvent.java | header/vm/ | 元数据过期事件（GC 放弃后发出） |
 | BatchCheckMetadataStatusMsg.java | header/vm/ | 批量检查元数据 Header 状态 |
 | RepairMetadataMsg.java | header/vm/ | 修复元数据 Header（512B 写入） |
 | VmInstanceMetadataStruct.java | header/storage/primary/ | 元数据概要结构体（§12.1） |
@@ -700,10 +689,6 @@ if (isCacheVm) {
 
 | 文件 | 修改内容 |
 |------|----------|
-| UpdateVmInstanceMetadataGC.java | ChainTask 去重、指数退避、retryCount 持久化、owner 归集 |
-| VmMetadataUpdateInterceptor.java | 使用 gc.submit()，统一 NAME 格式，方案 B 远程提交+回退 |
-| VmInstanceBase.java | handler 加 ChainTask 串行化；失败路径不创建新 GC；消息改 makeLocalServiceId |
-| GarbageCollector.java | loadFromVO 加乐观锁（条件更新） |
-| GarbageCollectorManagerImpl.java | 新增 `handle(SubmitTimeBasedGarbageCollectorMsg)` 处理逻辑 |
-| ThreadFacade.java | 预留扩展（`hasPendingTask` 已被 `exceedMaxPendingCallback` 取代，当前无需修改） |
-| ThreadFacadeImpl.java | 预留扩展（当前无需修改） |
+| VmMetadataUpdateInterceptor.java | 使用 `markDirty()` 替代 GC submit，统一 NAME 格式 |
+| VmInstanceBase.java | handler 加 ChainTask 串行化；消息改 makeLocalServiceId |
+| CloudBusImpl3.java | 预留扩展（当前无需修改） |

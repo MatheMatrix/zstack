@@ -267,9 +267,24 @@
         </zstack:plugin>
     </bean>
 
+    <bean id="VmMetadataBuilder" class="org.zstack.compute.vm.metadata.VmMetadataBuilder" />
+
+    <bean id="DefaultVmUuidFromApiResolver" class="org.zstack.compute.vm.metadata.DefaultVmUuidFromApiResolver" />
+    <bean id="VolumeBasedVmUuidFromApiResolver" class="org.zstack.compute.vm.metadata.VolumeBasedVmUuidFromApiResolver" />
+    <bean id="ResourceBasedVmUuidFromApiResolver" class="org.zstack.compute.vm.metadata.ResourceBasedVmUuidFromApiResolver" />
+    <bean id="ReflectionBasedVmUuidFromApiResolver" class="org.zstack.compute.vm.metadata.ReflectionBasedVmUuidFromApiResolver" />
+
     <bean id="VmMetadataUpdateInterceptor" class="org.zstack.compute.vm.metadata.VmMetadataUpdateInterceptor">
         <zstack:plugin>
             <zstack:extension interface="org.zstack.header.Component" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="VmMetadataDirtyMarker" class="org.zstack.compute.vm.metadata.VmMetadataDirtyMarker">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.Component" />
+            <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeChangeListener" />
+            <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint" />
         </zstack:plugin>
     </bean>
 

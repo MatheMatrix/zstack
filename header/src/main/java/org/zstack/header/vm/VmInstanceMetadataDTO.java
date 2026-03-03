@@ -48,20 +48,19 @@ public class VmInstanceMetadataDTO {
         public String vo;
 
         /**
-         * 影响虚拟机 xml 的 SystemTag 列表。
+         * SystemTag 列表的 Base64 编码。
          *
-         * <p>每个元素是 SystemTagVO 的 JSON 明文字符串。
-         * 在构建元数据时已按白名单过滤，仅包含影响 VM xml 生成的 tag。</p>
+         * <p>构建过程：SystemTagVO 列表 → 逐个 JSON 序列化 → 组成 JSON Array 字符串 → Base64 编码。
+         * Base64 编码是为了保护可能包含的密码、密钥等敏感信息。</p>
          */
-        public List<String> systemTags;
+        public String systemTags;
 
         /**
-         * 影响虚拟机 xml 的 ResourceConfig 列表。
+         * ResourceConfig 列表的 Base64 编码。
          *
-         * <p>每个元素是 ResourceConfigVO 的 JSON 明文字符串。
-         * 在构建元数据时已按白名单过滤，仅包含影响 VM xml 生成的 config。</p>
+         * <p>构建过程与 systemTags 一致。</p>
          */
-        public List<String> resourceConfigs;
+        public String resourceConfigs;
     }
 
     /**

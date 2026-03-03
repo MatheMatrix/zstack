@@ -12,10 +12,7 @@ import java.util.Map;
  */
 public abstract class EventBasedGarbageCollector extends GarbageCollector {
     public void load(GarbageCollectorVO vo) {
-        if (!loadFromVO(vo)) {
-            // 乐观锁竞争失败：该 GC 已被其他线程/MN 认领，跳过
-            return;
-        }
+        loadFromVO(vo);
         setup();
         installTriggers();
         logger.debug(String.format("[GC] loaded a job[name:%s, id:%s]", NAME, uuid));
