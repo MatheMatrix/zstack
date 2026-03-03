@@ -686,6 +686,43 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 msg.setIp6(ip6);
             }
         }
+
+        // Reject outside-range IPs when DHCP is enabled
+        if (l3NetworkVO.IsIpAddressInRangesCheckEnabled()) {
+            if (msg.getIp() != null) {
+                String ip = IPv6NetworkUtils.ipv6TagValueToAddress(msg.getIp());
+                int ipVersion = NetworkUtils.isIpv4Address(ip) ? IPv6Constants.IPv4 : IPv6Constants.IPv6;
+                boolean found = false;
+                for (NormalIpRangeVO ipr : ipVersion == IPv6Constants.IPv4 ? ipv4Ranges : ipv6Ranges) {
+                    if (NetworkUtils.isInRange(ip, ipr.getStartIp(), ipr.getEndIp())) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10109,
+                            "the static IPs for L3 network[uuid:%s] must be within IP ranges when IPAM is enabled, but got %d outside-range",
+                            msg.getL3NetworkUuid(), 1));
+                }
+            }
+
+            if (msg.getIp6() != null) {
+                String ip6 = IPv6NetworkUtils.ipv6TagValueToAddress(msg.getIp6());
+                boolean found = false;
+                for (NormalIpRangeVO ipr : ipv6Ranges) {
+                    if (NetworkUtils.isInRange(ip6, ipr.getStartIp(), ipr.getEndIp())) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10109,
+                            "the static IPs for L3 network[uuid:%s] must be within IP ranges when IPAM is enabled, but got %d outside-range",
+                            msg.getL3NetworkUuid(), 1));
+                }
+            }
+        }
+
         if (msg.getIp() != null && !l3NetworkVO.enableIpAddressAllocation()) {
             l3Found = true;
             if (msg.getNetmask() == null) {
