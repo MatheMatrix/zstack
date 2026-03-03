@@ -9,8 +9,6 @@ import org.zstack.header.network.l3.UsedIpVO_
 import org.zstack.header.network.service.NetworkServiceType
 import org.zstack.header.vm.VmNicVO
 import org.zstack.header.vm.VmNicVO_
-import org.zstack.kvm.KVMAgentCommands
-import org.zstack.kvm.KVMSecurityGroupBackend
 import org.zstack.network.securitygroup.SecurityGroupConstant
 import org.zstack.network.securitygroup.VmNicSecurityGroupRefVO
 import org.zstack.network.securitygroup.VmNicSecurityGroupRefVO_
@@ -470,19 +468,48 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
     }
 
     /**
-     * DHCP should skip outside-CIDR IPs on VM reboot
+     * VM whose only NIC has outside-CIDR IP on a no-DHCP L3 should NOT trigger
+     * any DHCP apply message (APPLY_DHCP_PATH / BATCH_APPLY_DHCP_PATH) on reboot.
+     *
+     * Uses "vm-change-to-nodhcp" which was changed to flatL3_noDhcp with IP 172.16.0.60
+     * in testChangeNicNetworkOutsideCidrAllowedOnNoDhcpL3 — it has only one NIC,
+     * on a no-DHCP L3, with all IPs outside any IP range.
      */
     void testDhcpSkipForOutsideCidrIpOnVmReboot() {
-        // VM "vm-dhcp-reject" has outside-CIDR IP 172.16.0.50 on flatL3_noDhcp
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-dhcp-reject"] }[0]
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-change-to-nodhcp"] }[0]
+
+        // Pre-check: VM has only one NIC on flatL3_noDhcp, all IPs outside range
+        assert vm.vmNics.size() == 1
+        List<UsedIpVO> nicIps = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vm.vmNics[0].uuid)
+                .list()
+        assert nicIps.size() > 0
+        assert nicIps.every { it.ipRangeUuid == null } : "all IPs should be outside CIDR"
 
         stopVmInstance {
             uuid = vm.uuid
         }
 
-        FlatDhcpBackend.BatchApplyDhcpCmd batchApplyDhcpCmd = null
+        // Track whether any DHCP apply message is sent
+        boolean dhcpApplied = false
+        env.afterSimulator(FlatDhcpBackend.APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
+            FlatDhcpBackend.ApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.ApplyDhcpCmd.class)
+            for (def dhcp : cmd.dhcp) {
+                if (dhcp.ip == "172.16.0.60") {
+                    dhcpApplied = true
+                }
+            }
+            return rsp
+        }
         env.afterSimulator(FlatDhcpBackend.BATCH_APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
-            batchApplyDhcpCmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.BatchApplyDhcpCmd.class)
+            FlatDhcpBackend.BatchApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.BatchApplyDhcpCmd.class)
+            for (def dhcpInfo : cmd.dhcpInfos) {
+                for (def dhcp : dhcpInfo.dhcp) {
+                    if (dhcp.ip == "172.16.0.60") {
+                        dhcpApplied = true
+                    }
+                }
+            }
             return rsp
         }
 
@@ -490,15 +517,8 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             uuid = vm.uuid
         }
 
-        // Verify DHCP does not include outside-CIDR IP after reboot
-        retryInSecs {
-            assert batchApplyDhcpCmd != null
-            for (def dhcpInfo : batchApplyDhcpCmd.dhcpInfos) {
-                for (def dhcp : dhcpInfo.dhcp) {
-                    assert dhcp.ip != "172.16.0.50" : "DHCP should not include outside-CIDR IP after reboot"
-                }
-            }
-        }
+        // Outside-CIDR IP 172.16.0.60 must NOT appear in any DHCP apply message
+        assert !dhcpApplied : "DHCP apply should NOT include outside-CIDR IP 172.16.0.60"
     }
 
     /**
@@ -532,7 +552,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
     }
 
     /**
-     * Security group should handle NIC with outside-CIDR IP
+     * NIC with all IPs outside CIDR (ipRangeUuid=null) must NOT be added to security group
      */
     void testSecurityGroupWithOutsideCidrIp() {
         L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_noDhcp")
@@ -541,6 +561,12 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-dhcp-reject"] }[0]
         VmNicInventory nicWithOutsideIp = vm.vmNics.find { it.ip == "172.16.0.50" }
         assert nicWithOutsideIp != null
+
+        // Verify this NIC's IPs are all outside range (ipRangeUuid=null)
+        List<UsedIpVO> nicIps = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, nicWithOutsideIp.uuid)
+                .list()
+        assert nicIps.every { it.ipRangeUuid == null } : "all IPs on this NIC should be outside CIDR"
 
         def sg = createSecurityGroup {
             name = "sg-outside-cidr"
@@ -552,41 +578,92 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             l3NetworkUuid = flatL3NoDhcp.uuid
         }
 
-        KVMAgentCommands.ApplySecurityGroupRuleCmd cmd = null
-        env.afterSimulator(KVMSecurityGroupBackend.SECURITY_GROUP_APPLY_RULE_PATH) { rsp, HttpEntity<String> e ->
-            cmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.ApplySecurityGroupRuleCmd.class)
-            return rsp
+        // Adding NIC with all outside-CIDR IPs to security group should be rejected
+        expect(AssertionError.class) {
+            addVmNicToSecurityGroup {
+                securityGroupUuid = sg.uuid
+                vmNicUuids = [nicWithOutsideIp.uuid]
+            }
         }
 
-        addVmNicToSecurityGroup {
-            securityGroupUuid = sg.uuid
-            vmNicUuids = [nicWithOutsideIp.uuid]
-        }
-
-        // Verify SG ref is created
+        // Verify no SG ref is created
         List<VmNicSecurityGroupRefVO> refs = Q.New(VmNicSecurityGroupRefVO.class)
                 .eq(VmNicSecurityGroupRefVO_.vmNicUuid, nicWithOutsideIp.uuid)
                 .eq(VmNicSecurityGroupRefVO_.securityGroupUuid, sg.uuid)
                 .list()
-        assert refs.size() == 1
-
-        retryInSecs {
-            assert cmd != null
-        }
+        assert refs.size() == 0 : "NIC with all outside-CIDR IPs should NOT be in security group"
     }
 
     /**
-     * IP capacity should exclude outside-CIDR IPs (ipRangeUuid=null)
+     * IP capacity should exclude outside-CIDR IPs (ipRangeUuid=null):
+     * Add an IP range to flatL3_noDhcp, create 2 VMs with in-range IPs,
+     * then verify that getIpAddressCapacity only counts in-range IPs and
+     * excludes the previously set outside-CIDR IPs (172.16.0.50, 172.16.0.60).
      */
     void testIpCapacityExcludesOutsideCidrIp() {
         L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_noDhcp")
 
-        // Verify outside-CIDR IPs exist on flatL3_noDhcp
+        // Step 1: confirm outside-CIDR UsedIpVOs do exist from earlier tests
         long outsideCount = Q.New(UsedIpVO.class)
                 .eq(UsedIpVO_.l3NetworkUuid, flatL3NoDhcp.uuid)
                 .isNull(UsedIpVO_.ipRangeUuid)
                 .count()
         assert outsideCount > 0 : "There should be outside-CIDR IPs on flatL3_noDhcp"
+
+        // Step 2: add an IP range (10.10.10.x) that does NOT cover existing outside-CIDR IPs (172.16.0.x)
+        addIpRange {
+            delegate.name = "capacity-test-range"
+            delegate.l3NetworkUuid = flatL3NoDhcp.uuid
+            delegate.startIp = "10.10.10.10"
+            delegate.endIp = "10.10.10.200"
+            delegate.gateway = "10.10.10.1"
+            delegate.netmask = "255.255.255.0"
+        }
+
+        // Step 3: create 2 VMs on flatL3_noDhcp — their IPs will be allocated from the new range
+        VmInstanceInventory vm1 = createVmInstance {
+            name = "vm-capacity-1"
+            imageUuid = env.inventoryByName("image1").uuid
+            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
+            l3NetworkUuids = [flatL3NoDhcp.uuid]
+        }
+        VmInstanceInventory vm2 = createVmInstance {
+            name = "vm-capacity-2"
+            imageUuid = env.inventoryByName("image1").uuid
+            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
+            l3NetworkUuids = [flatL3NoDhcp.uuid]
+        }
+
+        // Verify both VMs got in-range IPs (ipRangeUuid != null)
+        UsedIpVO ip1 = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vm1.vmNics[0].uuid)
+                .find()
+        assert ip1 != null && ip1.ipRangeUuid != null : "vm1 should have in-range IP"
+
+        UsedIpVO ip2 = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vm2.vmNics[0].uuid)
+                .find()
+        assert ip2 != null && ip2.ipRangeUuid != null : "vm2 should have in-range IP"
+
+        // Step 4: verify outside-CIDR IPs are still ipRangeUuid=null (not covered by the new range)
+        long stillOutsideCount = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.l3NetworkUuid, flatL3NoDhcp.uuid)
+                .isNull(UsedIpVO_.ipRangeUuid)
+                .count()
+        assert stillOutsideCount == outsideCount :
+                "outside-CIDR IPs (172.16.0.x) should still have ipRangeUuid=null"
+
+        // Step 5: getIpAddressCapacity should only count the 2 in-range IPs, not the outside-CIDR ones
+        // totalCapacity = 191 (10.10.10.10 ~ 10.10.10.200), usedIpAddressNumber = 2
+        GetIpAddressCapacityResult capacity = getIpAddressCapacity {
+            l3NetworkUuids = [flatL3NoDhcp.uuid]
+        }
+        assert capacity.totalCapacity == 191 :
+                "totalCapacity should be 191 (10.10.10.10~10.10.10.200)"
+        assert capacity.usedIpAddressNumber == 2 :
+                "usedIpAddressNumber should be 2 (only in-range VMs), outside-CIDR IPs are excluded"
+        assert capacity.availableCapacity == 191 - 2 :
+                "availableCapacity should be totalCapacity - usedIpAddressNumber"
     }
 
     /**
