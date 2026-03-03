@@ -2,6 +2,10 @@ package org.zstack.header.vm;
 
 import org.zstack.header.errorcode.ErrorCode;
 
+/**
+ * @deprecated Use {@link org.zstack.header.vm.extensions.VmDestroyExtensionPoint} instead.
+ */
+@Deprecated
 public interface VmInstanceDestroyExtensionPoint {
     String preDestroyVm(VmInstanceInventory inv);
 

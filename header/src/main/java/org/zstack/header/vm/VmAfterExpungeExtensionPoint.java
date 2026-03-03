@@ -2,8 +2,9 @@ package org.zstack.header.vm;
 
 
 /**
- * Created by Mei Lei on 8/23/16.
+ * @deprecated Use {@link org.zstack.header.vm.extensions.VmExpungeExtensionPoint#afterExpunge} instead.
  */
+@Deprecated
 public interface VmAfterExpungeExtensionPoint {
     void vmAfterExpunge(VmInstanceInventory inv);
 }

@@ -4,8 +4,9 @@ import org.zstack.header.core.Completion;
 import org.zstack.header.core.NoErrorCompletion;
 
 /**
- * Created by LiangHanYu on 2022/4/13 13:24
+ * @deprecated Use {@link org.zstack.header.vm.extensions.VmInstanceAttachL3NetworkExtensionPoint#afterAttachL3Network} instead.
  */
+@Deprecated
 public interface VmAfterAttachNicExtensionPoint {
     void afterAttachNic(String nicUuid, VmInstanceInventory vmInstanceInventory, Completion completion);
 

@@ -1,8 +1,9 @@
 package org.zstack.header.vm;
 
 /**
- * Created by Qi Le on 2019-08-21
+ * @deprecated Use {@link org.zstack.header.vm.extensions.VmDbDeleteContext} with a single-phase extension point instead.
  */
+@Deprecated
 public interface VmJustAfterDeleteFromDbExtensionPoint {
     void vmJustAfterDeleteFromDbExtensionPoint(VmInstanceInventory inv, String accountUuid);
 }
