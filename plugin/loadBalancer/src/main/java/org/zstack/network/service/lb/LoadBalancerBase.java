@@ -1046,6 +1046,11 @@ public class LoadBalancerBase {
                         .filter(nic -> !listenerVO.getAttachedVmNics().contains(nic.getUuid()))
                         .collect(Collectors.toList());
 
+                /* filter out nics whose all IPs are outside L3 CIDR range (ipRangeUuid is null) */
+                nics = nics.stream()
+                        .filter(nic -> nic.getUsedIps().stream().anyMatch(ip -> ip.getIpRangeUuid() != null))
+                        .collect(Collectors.toList());
+
                 reply.setInventories(callGetCandidateVmNicsForLoadBalancerExtensionPoint(msg, VmNicInventory.valueOf(nics)));
             }
         }.execute();

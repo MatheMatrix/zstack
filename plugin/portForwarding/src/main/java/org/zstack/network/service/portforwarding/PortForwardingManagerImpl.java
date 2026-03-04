@@ -355,6 +355,14 @@ public class PortForwardingManagerImpl extends AbstractService implements PortFo
                     return new ArrayList<>();
                 }
 
+                // filter out nics whose all IPs are outside L3 CIDR range (ipRangeUuid is null)
+                nics = nics.stream()
+                        .filter(nic -> nic.getUsedIps().stream().anyMatch(ip -> ip.getIpRangeUuid() != null))
+                        .collect(Collectors.toList());
+                if(nics.isEmpty()){
+                    return new ArrayList<>();
+                }
+
                 //3.exclude the vm which  has port forwarding rules that have different VIPs
                 List<String> usedVm = sql("select nic.vmInstanceUuid" +
                         " from PortForwardingRuleVO pf1, VmNicVO nic" +

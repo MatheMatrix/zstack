@@ -375,7 +375,8 @@ public class EipManagerImpl extends AbstractService implements EipManager, VipRe
                 .append(" and nic.vmInstanceUuid = vm.uuid and ip.ipVersion = ").append(vipVersion)
                 .append(" and vm.type in ('").append(StringUtils.join(eipAttachableVmTypes, "','")).append("')")
                 .append(" and vm.state in ").append(sqlStringJoin(attachableVmStates))
-                .append(" and nic.ip is not null and vm.clusterUuid is not null");
+                .append(" and nic.ip is not null and vm.clusterUuid is not null")
+                .append(" and ip.ipRangeUuid is not null");
         if (!vmInPublicL3s.isEmpty()) {
             sqlBuilder.append(" and vm.uuid not in ").append(sqlStringJoin(vmInPublicL3s));
         }
