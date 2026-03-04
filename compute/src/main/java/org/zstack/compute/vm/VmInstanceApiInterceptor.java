@@ -785,8 +785,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         }
 
         // 提取公共条件判断（避免重复计算）
-        boolean needRangeValidation = !(L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)
-            && !l3NetworkVO.enableIpAddressAllocation());
+        boolean needRangeValidation = !L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)
+            && l3NetworkVO.enableIpAddressAllocation();
         boolean allowOutsideRangeOrNoIpam = !l3NetworkVO.enableIpAddressAllocation()
             || L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class);
 
