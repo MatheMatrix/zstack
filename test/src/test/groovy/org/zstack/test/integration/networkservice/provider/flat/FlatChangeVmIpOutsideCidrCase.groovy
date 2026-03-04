@@ -379,7 +379,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                 ip = "10.0.0.50"
             }
         } {
-            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10109")
+            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10131")
         }
 
         VmNicVO nicVO1 = dbFindByUuid(vm1.vmNics[0].uuid, VmNicVO.class)
@@ -398,7 +398,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                 gateway = "10.0.0.1"
             }
         } {
-            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10109")
+            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10131")
         }
 
         // --- public network with IP range + DHCP ---
@@ -412,7 +412,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                 ip = "10.0.0.52"
             }
         } {
-            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10109")
+            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10131")
         }
 
         // --- public network with IP range, no DHCP ---
@@ -428,7 +428,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                 gateway = "10.0.0.1"
             }
         } {
-            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10109")
+            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10131")
         }
     }
 
@@ -455,7 +455,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                 ]
             }
         } {
-            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10109")
+            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10131")
         }
 
         // Verify NIC still on original L3
