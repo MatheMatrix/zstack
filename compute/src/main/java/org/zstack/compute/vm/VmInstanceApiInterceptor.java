@@ -369,7 +369,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                         l3Uuid, inRangeCount, outsideRangeCount));
             }
 
-            if (!L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class) || !l3NetworkVO.enableIpAddressAllocation()) {
+            if (!(L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class) || !l3NetworkVO.enableIpAddressAllocation())) {
                 if (outsideRangeCount > 0) {
                     throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10109,
                             "the static IPs for L3 network[uuid:%s] must be within IP ranges when IPAM is enabled, but got %d outside-range",
