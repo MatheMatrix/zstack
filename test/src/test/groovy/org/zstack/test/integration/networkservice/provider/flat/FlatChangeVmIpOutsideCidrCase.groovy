@@ -1,14 +1,13 @@
 package org.zstack.test.integration.networkservice.provider.flat
 
 import org.springframework.http.HttpEntity
-import org.zstack.compute.vm.VmSystemTags
 import org.zstack.core.db.DatabaseFacade
 import org.zstack.core.db.Q
 import org.zstack.header.network.l3.UsedIpVO
 import org.zstack.header.network.l3.UsedIpVO_
 import org.zstack.header.network.service.NetworkServiceType
 import org.zstack.header.vm.VmNicVO
-import org.zstack.header.vm.VmNicVO_
+import org.zstack.network.l3.L3NetworkGlobalConfig
 import org.zstack.network.securitygroup.SecurityGroupConstant
 import org.zstack.network.securitygroup.VmNicSecurityGroupRefVO
 import org.zstack.network.securitygroup.VmNicSecurityGroupRefVO_
@@ -24,9 +23,24 @@ import org.zstack.utils.data.SizeUnit
 import org.zstack.utils.gson.JSONObjectUtil
 
 /**
- * Test IP outside CIDR behavior for flat/public networks:
- * - With DHCP service: IP must be within IP range (outside-CIDR rejected)
- * - Without DHCP service: IP can be outside IP range (outside-CIDR allowed)
+ * Test IP outside CIDR behavior for flat/public networks controlled by
+ * L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE (default false).
+ *
+ * Network scenarios under global config ON:
+ *   Flat network:
+ *     1. flatL3_noRange_noDhcp  — no IP range, no DHCP
+ *     2. flatL3_range_noDhcp    — has IP range, no DHCP
+ *     3. flatL3_range_dhcp      — has IP range, has DHCP
+ *   Public network:
+ *     4. pubL3_range_noDhcp     — has IP range, no DHCP
+ *     5. pubL3_range_dhcp       — has IP range, has DHCP
+ *
+ * Each scenario tests: setVmStaticIp, changeVmNicNetwork, DHCP, security group.
+ * Flat networks with EIP service also test EIP rejection for outside-range IP.
+ *
+ * Additional tests:
+ *   - Global config OFF: outside-range IPs rejected on all network types
+ *   - Orphan IP backfill when adding IP range (under global config ON)
  */
 class FlatChangeVmIpOutsideCidrCase extends SubCase {
 
@@ -81,10 +95,13 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                     }
 
                     attachPrimaryStorage("local")
-                    attachL2Network("l2")
-                    attachL2Network("l2-2")
-                    attachL2Network("l2-capacity")
+                    attachL2Network("l2-flat-noRange-noDhcp")
+                    attachL2Network("l2-flat-range-noDhcp")
+                    attachL2Network("l2-flat-range-dhcp")
+                    attachL2Network("l2-pub-range-noDhcp")
+                    attachL2Network("l2-pub-range-dhcp")
                     attachL2Network("l2-backfill")
+                    attachL2Network("l2-dest")
                 }
 
                 localPrimaryStorage {
@@ -92,19 +109,37 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                     url = "/local_ps"
                 }
 
+                // ========== Flat: no IP range, no DHCP ==========
                 l2NoVlanNetwork {
-                    name = "l2"
+                    name = "l2-flat-noRange-noDhcp"
                     physicalInterface = "eth0"
 
-                    // flatL3: with DHCP — IP must be in range
                     l3Network {
-                        name = "flatL3"
+                        name = "flatL3_noRange_noDhcp"
 
                         service {
                             provider = FlatNetworkServiceConstant.FLAT_NETWORK_SERVICE_TYPE_STRING
-                            types = [NetworkServiceType.DHCP.toString(),
-                                     UserdataConstant.USERDATA_TYPE_STRING,
-                                     EipConstant.EIP_NETWORK_SERVICE_TYPE]
+                            types = [EipConstant.EIP_NETWORK_SERVICE_TYPE]
+                        }
+                        service {
+                            provider = SecurityGroupConstant.SECURITY_GROUP_PROVIDER_TYPE
+                            types = [SecurityGroupConstant.SECURITY_GROUP_NETWORK_SERVICE_TYPE]
+                        }
+                        // No IP range, no DHCP
+                    }
+                }
+
+                // ========== Flat: has IP range, no DHCP ==========
+                l2NoVlanNetwork {
+                    name = "l2-flat-range-noDhcp"
+                    physicalInterface = "eth1"
+
+                    l3Network {
+                        name = "flatL3_range_noDhcp"
+
+                        service {
+                            provider = FlatNetworkServiceConstant.FLAT_NETWORK_SERVICE_TYPE_STRING
+                            types = [EipConstant.EIP_NETWORK_SERVICE_TYPE]
                         }
                         service {
                             provider = SecurityGroupConstant.SECURITY_GROUP_PROVIDER_TYPE
@@ -118,31 +153,45 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                             gateway = "192.168.100.1"
                         }
                     }
-
-                    // flatL3_noDhcp: without DHCP — IP can be outside range
-                    l3Network {
-                        name = "flatL3_noDhcp"
-
-                        service {
-                            provider = SecurityGroupConstant.SECURITY_GROUP_PROVIDER_TYPE
-                            types = [SecurityGroupConstant.SECURITY_GROUP_NETWORK_SERVICE_TYPE]
-                        }
-                    }
                 }
 
+                // ========== Flat: has IP range, has DHCP ==========
                 l2NoVlanNetwork {
-                    name = "l2-2"
-                    physicalInterface = "eth1"
+                    name = "l2-flat-range-dhcp"
+                    physicalInterface = "eth2"
 
-                    // pubL3: with DHCP — IP must be in range
                     l3Network {
-                        name = "pubL3"
+                        name = "flatL3_range_dhcp"
 
                         service {
                             provider = FlatNetworkServiceConstant.FLAT_NETWORK_SERVICE_TYPE_STRING
                             types = [NetworkServiceType.DHCP.toString(),
+                                     UserdataConstant.USERDATA_TYPE_STRING,
                                      EipConstant.EIP_NETWORK_SERVICE_TYPE]
                         }
+                        service {
+                            provider = SecurityGroupConstant.SECURITY_GROUP_PROVIDER_TYPE
+                            types = [SecurityGroupConstant.SECURITY_GROUP_NETWORK_SERVICE_TYPE]
+                        }
+
+                        ip {
+                            startIp = "192.168.200.10"
+                            endIp = "192.168.200.200"
+                            netmask = "255.255.255.0"
+                            gateway = "192.168.200.1"
+                        }
+                    }
+                }
+
+                // ========== Public: has IP range, no DHCP ==========
+                l2NoVlanNetwork {
+                    name = "l2-pub-range-noDhcp"
+                    physicalInterface = "eth3"
+
+                    l3Network {
+                        name = "pubL3_range_noDhcp"
+                        category = "Public"
+
                         service {
                             provider = SecurityGroupConstant.SECURITY_GROUP_PROVIDER_TYPE
                             types = [SecurityGroupConstant.SECURITY_GROUP_NETWORK_SERVICE_TYPE]
@@ -157,33 +206,63 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                     }
                 }
 
-                // Dedicated L2/L3 for capacity test (no DHCP, no IP range initially)
+                // ========== Public: has IP range, has DHCP ==========
                 l2NoVlanNetwork {
-                    name = "l2-capacity"
-                    physicalInterface = "eth2"
+                    name = "l2-pub-range-dhcp"
+                    physicalInterface = "eth4"
 
                     l3Network {
-                        name = "flatL3_noDhcp_capacity"
+                        name = "pubL3_range_dhcp"
+                        category = "Public"
 
+                        service {
+                            provider = FlatNetworkServiceConstant.FLAT_NETWORK_SERVICE_TYPE_STRING
+                            types = [NetworkServiceType.DHCP.toString(),
+                                     EipConstant.EIP_NETWORK_SERVICE_TYPE]
+                        }
                         service {
                             provider = SecurityGroupConstant.SECURITY_GROUP_PROVIDER_TYPE
                             types = [SecurityGroupConstant.SECURITY_GROUP_NETWORK_SERVICE_TYPE]
+                        }
+
+                        ip {
+                            startIp = "12.100.20.10"
+                            endIp = "12.100.20.200"
+                            netmask = "255.255.255.0"
+                            gateway = "12.100.20.1"
                         }
                     }
                 }
 
-                // Dedicated L2/L3 for orphan IP backfill test (no DHCP, no IP range initially)
+                // ========== Dedicated L2/L3 for orphan IP backfill test ==========
                 l2NoVlanNetwork {
                     name = "l2-backfill"
-                    physicalInterface = "eth3"
+                    physicalInterface = "eth5"
 
                     l3Network {
-                        name = "flatL3_noDhcp_backfill"
+                        name = "flatL3_backfill"
 
                         service {
                             provider = SecurityGroupConstant.SECURITY_GROUP_PROVIDER_TYPE
                             types = [SecurityGroupConstant.SECURITY_GROUP_NETWORK_SERVICE_TYPE]
                         }
+                        // No IP range initially, no DHCP
+                    }
+                }
+
+                // ========== Destination L3 for changeVmNicNetwork tests ==========
+                l2NoVlanNetwork {
+                    name = "l2-dest"
+                    physicalInterface = "eth6"
+
+                    l3Network {
+                        name = "flatL3_dest"
+
+                        service {
+                            provider = SecurityGroupConstant.SECURITY_GROUP_PROVIDER_TYPE
+                            types = [SecurityGroupConstant.SECURITY_GROUP_NETWORK_SERVICE_TYPE]
+                        }
+                        // No IP range, no DHCP — used as changeVmNicNetwork source
                     }
                 }
 
@@ -196,339 +275,277 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
     void test() {
         dbf = bean(DatabaseFacade.class)
         env.create {
-            // With DHCP: outside-CIDR IP must be rejected
-            testSetStaticIpOutsideCidrRejectedOnDhcpL3()
-            testChangeNicNetworkOutsideCidrRejectedOnDhcpL3()
+            // ==========================================
+            // Part 1: Global config OFF — outside-range IPs rejected
+            // ==========================================
+            testGlobalConfigOff_SetStaticIpRejected()
+            testGlobalConfigOff_ChangeNicNetworkRejected()
 
-            // Without DHCP: outside-CIDR IP is allowed
-            testSetStaticIpOutsideCidrAllowedOnNoDhcpL3()
-            testChangeNicNetworkOutsideCidrAllowedOnNoDhcpL3()
+            // ==========================================
+            // Part 2: Global config ON — outside-range IPs allowed
+            // ==========================================
+            turnOnGlobalConfig()
 
-            // With DHCP: in-range IP works normally
-            testSetStaticIpInRangeOnDhcpL3()
-            testChangeNicNetworkInRangeOnDhcpL3()
+            // --- Flat: no IP range, no DHCP ---
+            testSetStaticIp_flatNoRangeNoDhcp()
+            testChangeNicNetwork_flatNoRangeNoDhcp()
+            testDhcpSkip_flatNoRangeNoDhcp()
+            testSecurityGroup_flatNoRangeNoDhcp()
+            testEipReject_flatNoRangeNoDhcp()
 
-            // Supplementary: DHCP skip, EIP reject, SG, capacity, orphan IP backfill
-            testDhcpSkipForOutsideCidrIpOnVmReboot()
-            testEipRejectOutsideCidrIp()
-            testSecurityGroupWithOutsideCidrIp()
-            testIpCapacityExcludesOutsideCidrIps()
+            // --- Flat: has IP range, no DHCP ---
+            testSetStaticIp_flatRangeNoDhcp()
+            testChangeNicNetwork_flatRangeNoDhcp()
+            testDhcpSkip_flatRangeNoDhcp()
+            testSecurityGroup_flatRangeNoDhcp()
+            testEipReject_flatRangeNoDhcp()
+
+            // --- Flat: has IP range, has DHCP ---
+            testSetStaticIp_flatRangeDhcp()
+            testChangeNicNetwork_flatRangeDhcp()
+            testDhcpSkip_flatRangeDhcp()
+            testSecurityGroup_flatRangeDhcp()
+            testEipReject_flatRangeDhcp()
+
+            // --- Public: has IP range, no DHCP ---
+            testSetStaticIp_pubRangeNoDhcp()
+            testChangeNicNetwork_pubRangeNoDhcp()
+            testDhcpSkip_pubRangeNoDhcp()
+            testSecurityGroup_pubRangeNoDhcp()
+
+            // --- Public: has IP range, has DHCP ---
+            testSetStaticIp_pubRangeDhcp()
+            testChangeNicNetwork_pubRangeDhcp()
+            testDhcpSkip_pubRangeDhcp()
+            testSecurityGroup_pubRangeDhcp()
+
+            // ==========================================
+            // Part 3: Orphan IP backfill (global config ON)
+            // ==========================================
             testOrphanIpBackfillOnAddIpRange()
         }
     }
 
-    /**
-     * With DHCP: setVmStaticIp with outside-CIDR IP should fail on flatL3
-     */
-    void testSetStaticIpOutsideCidrRejectedOnDhcpL3() {
-        L3NetworkInventory flatL3 = env.inventoryByName("flatL3")
+    // ================================================================
+    //  Helper: turn global config on / off
+    // ================================================================
 
-        VmInstanceInventory vm = createVmInstance {
-            name = "vm-dhcp-reject"
+    void turnOnGlobalConfig() {
+        updateGlobalConfig {
+            category = L3NetworkGlobalConfig.CATEGORY
+            name = L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.name
+            value = "true"
+        }
+    }
+
+    void turnOffGlobalConfig() {
+        updateGlobalConfig {
+            category = L3NetworkGlobalConfig.CATEGORY
+            name = L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.name
+            value = "false"
+        }
+    }
+
+    // ================================================================
+    //  Helper: create a VM on a given L3
+    // ================================================================
+
+    VmInstanceInventory createVmOnL3(String vmName, String l3Uuid) {
+        return createVmInstance {
+            name = vmName
             imageUuid = env.inventoryByName("image1").uuid
             instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
-            l3NetworkUuids = [flatL3.uuid]
+            l3NetworkUuids = [l3Uuid]
         }
+    }
 
-        // Outside-CIDR IP on DHCP-enabled L3 should be rejected
+    // ================================================================
+    //  Part 1: Global config OFF — reject outside-range IPs
+    // ================================================================
+
+    /**
+     * Config OFF: setVmStaticIp with outside-range IP should fail on all L3 types
+     * that have IP ranges. Error: ORG_ZSTACK_COMPUTE_VM_10109
+     */
+    void testGlobalConfigOff_SetStaticIpRejected() {
+        // --- flat network with IP range + DHCP ---
+        L3NetworkInventory flatL3Dhcp = env.inventoryByName("flatL3_range_dhcp")
+        VmInstanceInventory vm1 = createVmOnL3("vm-configoff-set-flat-dhcp", flatL3Dhcp.uuid)
+
         expectApiFailure {
             setVmStaticIp {
-                vmInstanceUuid = vm.uuid
-                l3NetworkUuid = flatL3.uuid
+                vmInstanceUuid = vm1.uuid
+                l3NetworkUuid = flatL3Dhcp.uuid
                 ip = "10.0.0.50"
-                systemTags = [
-                        String.format("staticIp::%s::10.0.0.50", flatL3.uuid),
-                        String.format("ipv4Netmask::%s::255.255.255.0", flatL3.uuid),
-                        String.format("ipv4Gateway::%s::10.0.0.1", flatL3.uuid)
-                ]
             }
         } {
-            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10131")
+            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10109")
         }
 
-        // Verify VmNic IP is unchanged
-        VmNicVO nicVO = dbFindByUuid(vm.vmNics[0].uuid, VmNicVO.class)
-        assert nicVO.ip != "10.0.0.50" : "outside-CIDR IP should not be set on DHCP-enabled L3"
+        VmNicVO nicVO1 = dbFindByUuid(vm1.vmNics[0].uuid, VmNicVO.class)
+        assert nicVO1.ip != "10.0.0.50" : "outside-range IP should not be set when config OFF"
+
+        // --- flat network with IP range, no DHCP ---
+        L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_range_noDhcp")
+        VmInstanceInventory vm2 = createVmOnL3("vm-configoff-set-flat-nodhcp", flatL3NoDhcp.uuid)
+
+        expectApiFailure {
+            setVmStaticIp {
+                vmInstanceUuid = vm2.uuid
+                l3NetworkUuid = flatL3NoDhcp.uuid
+                ip = "10.0.0.51"
+                netmask = "255.255.255.0"
+                gateway = "10.0.0.1"
+            }
+        } {
+            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10109")
+        }
+
+        // --- public network with IP range + DHCP ---
+        L3NetworkInventory pubL3Dhcp = env.inventoryByName("pubL3_range_dhcp")
+        VmInstanceInventory vm3 = createVmOnL3("vm-configoff-set-pub-dhcp", pubL3Dhcp.uuid)
+
+        expectApiFailure {
+            setVmStaticIp {
+                vmInstanceUuid = vm3.uuid
+                l3NetworkUuid = pubL3Dhcp.uuid
+                ip = "10.0.0.52"
+            }
+        } {
+            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10109")
+        }
+
+        // --- public network with IP range, no DHCP ---
+        L3NetworkInventory pubL3NoDhcp = env.inventoryByName("pubL3_range_noDhcp")
+        VmInstanceInventory vm4 = createVmOnL3("vm-configoff-set-pub-nodhcp", pubL3NoDhcp.uuid)
+
+        expectApiFailure {
+            setVmStaticIp {
+                vmInstanceUuid = vm4.uuid
+                l3NetworkUuid = pubL3NoDhcp.uuid
+                ip = "10.0.0.53"
+                netmask = "255.255.255.0"
+                gateway = "10.0.0.1"
+            }
+        } {
+            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10109")
+        }
     }
 
     /**
-     * With DHCP: changeVmNicNetwork with outside-CIDR IP should fail on pubL3
+     * Config OFF: changeVmNicNetwork with outside-range IP should fail.
+     * Error: ORG_ZSTACK_COMPUTE_VM_10109
      */
-    void testChangeNicNetworkOutsideCidrRejectedOnDhcpL3() {
-        L3NetworkInventory flatL3 = env.inventoryByName("flatL3")
-        L3NetworkInventory pubL3 = env.inventoryByName("pubL3")
+    void testGlobalConfigOff_ChangeNicNetworkRejected() {
+        L3NetworkInventory flatL3Dhcp = env.inventoryByName("flatL3_range_dhcp")
+        L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_range_noDhcp")
 
-        VmInstanceInventory vm = createVmInstance {
-            name = "vm-change-dhcp-reject"
-            imageUuid = env.inventoryByName("image1").uuid
-            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
-            l3NetworkUuids = [flatL3.uuid]
-        }
+        VmInstanceInventory vm = createVmOnL3("vm-configoff-change", flatL3Dhcp.uuid)
         VmNicInventory vmNic = vm.vmNics[0]
 
-        // Change NIC to pubL3 (DHCP-enabled) with outside-CIDR IP should be rejected
+        // changeVmNicNetwork to flatL3_range_noDhcp with outside-range IP
         expectApiFailure {
             changeVmNicNetwork {
                 vmNicUuid = vmNic.uuid
-                destL3NetworkUuid = pubL3.uuid
+                destL3NetworkUuid = flatL3NoDhcp.uuid
                 systemTags = [
-                        String.format("staticIp::%s::10.10.10.50", pubL3.uuid),
-                        String.format("ipv4Netmask::%s::255.255.255.0", pubL3.uuid),
-                        String.format("ipv4Gateway::%s::10.10.10.1", pubL3.uuid)
+                        String.format("staticIp::%s::10.10.10.50", flatL3NoDhcp.uuid),
+                        String.format("ipv4Netmask::%s::255.255.255.0", flatL3NoDhcp.uuid),
+                        String.format("ipv4Gateway::%s::10.10.10.1", flatL3NoDhcp.uuid)
                 ]
             }
         } {
-            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10131")
+            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10109")
         }
 
         // Verify NIC still on original L3
         VmNicVO nicVO = dbFindByUuid(vmNic.uuid, VmNicVO.class)
-        assert nicVO.l3NetworkUuid == flatL3.uuid : "NIC should not be changed when outside-CIDR IP is rejected"
+        assert nicVO.l3NetworkUuid == flatL3Dhcp.uuid : "NIC should remain on original L3"
     }
 
+    // ================================================================
+    //  Part 2: Global config ON — Flat: no IP range, no DHCP
+    // ================================================================
+
     /**
-     * Without DHCP: setVmStaticIp with outside-CIDR IP should succeed on flatL3_noDhcp
+     * Flat/no-range/no-DHCP: setVmStaticIp with outside-range IP should succeed.
+     * Must provide netmask/gateway explicitly (no IP range to default from).
      */
-    void testSetStaticIpOutsideCidrAllowedOnNoDhcpL3() {
-        L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_noDhcp")
+    void testSetStaticIp_flatNoRangeNoDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_noRange_noDhcp")
 
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-dhcp-reject"] }[0]
+        VmInstanceInventory vm = createVmOnL3("vm-flat-noRange-noDhcp-set", l3.uuid)
 
-        // Attach NIC to no-DHCP L3
-        attachL3NetworkToVm {
-            l3NetworkUuid = flatL3NoDhcp.uuid
-            vmInstanceUuid = vm.uuid
-        }
-
-        vm = queryVmInstance { conditions = ["name=vm-dhcp-reject"] }[0]
-        VmNicInventory noDhcpNic = vm.vmNics.find { it.l3NetworkUuid == flatL3NoDhcp.uuid }
-        assert noDhcpNic != null
-
-        // Outside-CIDR IP on non-DHCP L3 should succeed
         setVmStaticIp {
             vmInstanceUuid = vm.uuid
-            l3NetworkUuid = flatL3NoDhcp.uuid
+            l3NetworkUuid = l3.uuid
             ip = "172.16.0.50"
             netmask = "255.255.0.0"
             gateway = "172.16.0.1"
-            dnsAddresses = ["8.8.8.8"]
-        }
-
-        // Verify UsedIpVO
-        UsedIpVO usedIp = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.vmNicUuid, noDhcpNic.uuid)
-                .find()
-        assert usedIp != null
-        assert usedIp.ip == "172.16.0.50"
-        assert usedIp.netmask == "255.255.0.0"
-        assert usedIp.gateway == "172.16.0.1"
-        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-CIDR IP"
-
-        // Verify VmNicVO
-        VmNicVO nicVO = dbFindByUuid(noDhcpNic.uuid, VmNicVO.class)
-        assert nicVO.ip == "172.16.0.50"
-        assert nicVO.netmask == "255.255.0.0"
-        assert nicVO.gateway == "172.16.0.1"
-
-        // Verify DNS system tag
-        List<Map<String, String>> dnsTags = VmSystemTags.STATIC_DNS.getTokensOfTagsByResourceUuid(vm.uuid)
-        def dnsTag = dnsTags.find { it.get(VmSystemTags.STATIC_DNS_L3_UUID_TOKEN) == flatL3NoDhcp.uuid }
-        assert dnsTag != null
-        String dnsStr = dnsTag.get(VmSystemTags.STATIC_DNS_TOKEN)
-        assert dnsStr.contains("8.8.8.8")
-    }
-
-    /**
-     * Without DHCP: changeVmNicNetwork with outside-CIDR IP should succeed to flatL3_noDhcp
-     */
-    void testChangeNicNetworkOutsideCidrAllowedOnNoDhcpL3() {
-        L3NetworkInventory flatL3 = env.inventoryByName("flatL3")
-        L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_noDhcp")
-
-        VmInstanceInventory vm = createVmInstance {
-            name = "vm-change-to-nodhcp"
-            imageUuid = env.inventoryByName("image1").uuid
-            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
-            l3NetworkUuids = [flatL3.uuid]
-        }
-        VmNicInventory vmNic = vm.vmNics[0]
-        String oldIp = vmNic.ip
-
-        FlatDhcpBackend.ReleaseDhcpCmd releaseDhcpCmd = null
-        env.afterSimulator(FlatDhcpBackend.RELEASE_DHCP_PATH) { rsp, HttpEntity<String> e ->
-            releaseDhcpCmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.ReleaseDhcpCmd.class)
-            return rsp
-        }
-
-        changeVmNicNetwork {
-            vmNicUuid = vmNic.uuid
-            destL3NetworkUuid = flatL3NoDhcp.uuid
-            systemTags = [
-                    String.format("staticIp::%s::172.16.0.60", flatL3NoDhcp.uuid),
-                    String.format("ipv4Netmask::%s::255.255.0.0", flatL3NoDhcp.uuid),
-                    String.format("ipv4Gateway::%s::172.16.0.1", flatL3NoDhcp.uuid)
-            ]
-            dnsAddresses = ["1.1.1.1"]
-        }
-
-        // Verify DHCP release of old IP
-        retryInSecs {
-            assert releaseDhcpCmd != null
-            assert releaseDhcpCmd.dhcp.size() == 1
-            assert releaseDhcpCmd.dhcp.get(0).ip == oldIp
-        }
-
-        // Verify UsedIpVO
-        UsedIpVO usedIp = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.vmNicUuid, vmNic.uuid)
-                .find()
-        assert usedIp != null
-        assert usedIp.ip == "172.16.0.60"
-        assert usedIp.netmask == "255.255.0.0"
-        assert usedIp.gateway == "172.16.0.1"
-        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-CIDR IP"
-
-        // Verify VmNicVO
-        VmNicVO nicVO = dbFindByUuid(vmNic.uuid, VmNicVO.class)
-        assert nicVO.l3NetworkUuid == flatL3NoDhcp.uuid
-        assert nicVO.ip == "172.16.0.60"
-        assert nicVO.netmask == "255.255.0.0"
-        assert nicVO.gateway == "172.16.0.1"
-
-        // Verify DNS: old L3 DNS tag gone, new L3 DNS tag exists
-        List<Map<String, String>> dnsTags = VmSystemTags.STATIC_DNS.getTokensOfTagsByResourceUuid(vm.uuid)
-        def oldDnsTag = dnsTags.find { it.get(VmSystemTags.STATIC_DNS_L3_UUID_TOKEN) == flatL3.uuid }
-        assert oldDnsTag == null : "old L3 DNS tag should be deleted"
-        def newDnsTag = dnsTags.find { it.get(VmSystemTags.STATIC_DNS_L3_UUID_TOKEN) == flatL3NoDhcp.uuid }
-        assert newDnsTag != null
-        assert newDnsTag.get(VmSystemTags.STATIC_DNS_TOKEN).contains("1.1.1.1")
-    }
-
-    /**
-     * With DHCP: setVmStaticIp with in-range IP should succeed on flatL3
-     */
-    void testSetStaticIpInRangeOnDhcpL3() {
-        L3NetworkInventory flatL3 = env.inventoryByName("flatL3")
-
-        VmInstanceInventory vm = createVmInstance {
-            name = "vm-dhcp-inrange"
-            imageUuid = env.inventoryByName("image1").uuid
-            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
-            l3NetworkUuids = [flatL3.uuid]
-        }
-
-        FlatDhcpBackend.BatchApplyDhcpCmd batchApplyDhcpCmd = null
-        env.afterSimulator(FlatDhcpBackend.BATCH_APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
-            batchApplyDhcpCmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.BatchApplyDhcpCmd.class)
-            return rsp
-        }
-
-        // In-range IP on DHCP-enabled L3 should succeed
-        setVmStaticIp {
-            vmInstanceUuid = vm.uuid
-            l3NetworkUuid = flatL3.uuid
-            ip = "192.168.100.100"
-            systemTags = [
-                    String.format("staticIp::%s::192.168.100.100", flatL3.uuid)
-            ]
         }
 
         // Verify UsedIpVO
         UsedIpVO usedIp = Q.New(UsedIpVO.class)
                 .eq(UsedIpVO_.vmNicUuid, vm.vmNics[0].uuid)
+                .eq(UsedIpVO_.ip, "172.16.0.50")
                 .find()
         assert usedIp != null
-        assert usedIp.ip == "192.168.100.100"
-        assert usedIp.ipRangeUuid != null : "ipRangeUuid should not be null for in-range IP"
+        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-range IP"
+        assert usedIp.netmask == "255.255.0.0"
+        assert usedIp.gateway == "172.16.0.1"
 
         // Verify VmNicVO
         VmNicVO nicVO = dbFindByUuid(vm.vmNics[0].uuid, VmNicVO.class)
-        assert nicVO.ip == "192.168.100.100"
-
-        // Verify DHCP includes in-range IP
-        retryInSecs {
-            assert batchApplyDhcpCmd != null
-            boolean found = false
-            for (def dhcpInfo : batchApplyDhcpCmd.dhcpInfos) {
-                for (def dhcp : dhcpInfo.dhcp) {
-                    if (dhcp.ip == "192.168.100.100") {
-                        found = true
-                    }
-                }
-            }
-            assert found : "DHCP should include in-range IP"
-        }
+        assert nicVO.ip == "172.16.0.50"
+        assert nicVO.netmask == "255.255.0.0"
+        assert nicVO.gateway == "172.16.0.1"
     }
 
     /**
-     * With DHCP: changeVmNicNetwork with in-range IP should succeed on pubL3
+     * Flat/no-range/no-DHCP: changeVmNicNetwork with outside-range IP should succeed.
      */
-    void testChangeNicNetworkInRangeOnDhcpL3() {
-        L3NetworkInventory flatL3 = env.inventoryByName("flatL3")
-        L3NetworkInventory pubL3 = env.inventoryByName("pubL3")
+    void testChangeNicNetwork_flatNoRangeNoDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_noRange_noDhcp")
+        L3NetworkInventory srcL3 = env.inventoryByName("flatL3_dest")
 
-        VmInstanceInventory vm = createVmInstance {
-            name = "vm-change-inrange"
-            imageUuid = env.inventoryByName("image1").uuid
-            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
-            l3NetworkUuids = [flatL3.uuid]
-        }
+        VmInstanceInventory vm = createVmOnL3("vm-flat-noRange-noDhcp-change", srcL3.uuid)
         VmNicInventory vmNic = vm.vmNics[0]
 
         changeVmNicNetwork {
             vmNicUuid = vmNic.uuid
-            destL3NetworkUuid = pubL3.uuid
-            staticIp = "12.100.10.50"
+            destL3NetworkUuid = l3.uuid
             systemTags = [
-                    String.format("staticIp::%s::12.100.10.50", pubL3.uuid)
+                    String.format("staticIp::%s::172.16.0.60", l3.uuid),
+                    String.format("ipv4Netmask::%s::255.255.0.0", l3.uuid),
+                    String.format("ipv4Gateway::%s::172.16.0.1", l3.uuid)
             ]
         }
 
-        // Verify VmNicVO
         VmNicVO nicVO = dbFindByUuid(vmNic.uuid, VmNicVO.class)
-        assert nicVO.l3NetworkUuid == pubL3.uuid
-        assert nicVO.ip == "12.100.10.50"
+        assert nicVO.l3NetworkUuid == l3.uuid
+        assert nicVO.ip == "172.16.0.60"
 
-        // Verify UsedIpVO
         UsedIpVO usedIp = Q.New(UsedIpVO.class)
                 .eq(UsedIpVO_.vmNicUuid, vmNic.uuid)
+                .eq(UsedIpVO_.ip, "172.16.0.60")
                 .find()
         assert usedIp != null
-        assert usedIp.ip == "12.100.10.50"
-        assert usedIp.ipRangeUuid != null : "ipRangeUuid should not be null for in-range IP"
+        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-range IP"
     }
 
     /**
-     * VM whose only NIC has outside-CIDR IP on a no-DHCP L3 should NOT trigger
-     * any DHCP apply message for that IP on reboot.
-     *
-     * Uses "vm-change-to-nodhcp" which was changed to flatL3_noDhcp with IP 172.16.0.60
-     * in testChangeNicNetworkOutsideCidrAllowedOnNoDhcpL3 — it has only one NIC,
-     * on a no-DHCP L3, with all IPs outside any IP range.
+     * Flat/no-range/no-DHCP: outside-range IP should NOT appear in DHCP messages on reboot.
      */
-    void testDhcpSkipForOutsideCidrIpOnVmReboot() {
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-change-to-nodhcp"] }[0]
+    void testDhcpSkip_flatNoRangeNoDhcp() {
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-flat-noRange-noDhcp-set"] }[0]
 
-        // Pre-check: VM has only one NIC on flatL3_noDhcp, all IPs outside range
-        assert vm.vmNics.size() == 1
-        List<UsedIpVO> nicIps = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.vmNicUuid, vm.vmNics[0].uuid)
-                .list()
-        assert nicIps.size() > 0
-        assert nicIps.every { it.ipRangeUuid == null } : "all IPs should be outside CIDR"
+        stopVmInstance { uuid = vm.uuid }
 
-        stopVmInstance {
-            uuid = vm.uuid
-        }
-
-        // Track whether outside-CIDR IP appears in any DHCP apply message
-        boolean dhcpAppliedForOutsideCidrIp = false
+        boolean dhcpApplied = false
         env.afterSimulator(FlatDhcpBackend.APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
             FlatDhcpBackend.ApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.ApplyDhcpCmd.class)
             for (def dhcp : cmd.dhcp) {
-                if (dhcp.ip == "172.16.0.60") {
-                    dhcpAppliedForOutsideCidrIp = true
-                }
+                if (dhcp.ip == "172.16.0.50") { dhcpApplied = true }
             }
             return rsp
         }
@@ -536,216 +553,751 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             FlatDhcpBackend.BatchApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.BatchApplyDhcpCmd.class)
             for (def dhcpInfo : cmd.dhcpInfos) {
                 for (def dhcp : dhcpInfo.dhcp) {
-                    if (dhcp.ip == "172.16.0.60") {
-                        dhcpAppliedForOutsideCidrIp = true
-                    }
+                    if (dhcp.ip == "172.16.0.50") { dhcpApplied = true }
                 }
             }
             return rsp
         }
 
-        startVmInstance {
-            uuid = vm.uuid
-        }
+        startVmInstance { uuid = vm.uuid }
 
-        // Outside-CIDR IP 172.16.0.60 must NOT appear in any DHCP apply message
-        assert !dhcpAppliedForOutsideCidrIp : "DHCP apply should NOT include outside-CIDR IP 172.16.0.60"
+        assert !dhcpApplied : "DHCP should NOT include outside-range IP 172.16.0.50 on no-DHCP L3"
     }
 
     /**
-     * EIP should reject binding to NIC with outside-CIDR IP (ipRangeUuid=null)
+     * Flat/no-range/no-DHCP: NIC with outside-range IP should NOT be added to security group.
      */
-    void testEipRejectOutsideCidrIp() {
-        L3NetworkInventory pubL3 = env.inventoryByName("pubL3")
+    void testSecurityGroup_flatNoRangeNoDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_noRange_noDhcp")
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-flat-noRange-noDhcp-set"] }[0]
+        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
+        assert nic != null
 
-        // VM "vm-dhcp-reject" has outside-CIDR IP 172.16.0.50 on flatL3_noDhcp
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-dhcp-reject"] }[0]
-        VmNicInventory nicWithOutsideIp = vm.vmNics.find { it.ip == "172.16.0.50" }
-        assert nicWithOutsideIp != null
-
-        VipInventory vip = createVip {
-            name = "vip-outside-cidr"
-            l3NetworkUuid = pubL3.uuid
-        }
-
-        EipInventory eip = createEip {
-            name = "eip-outside-cidr"
-            vipUuid = vip.uuid
-        }
-
-        // EIP attach should fail for NIC with outside-CIDR IP
-        expect(AssertionError.class) {
-            attachEip {
-                eipUuid = eip.uuid
-                vmNicUuid = nicWithOutsideIp.uuid
-            }
-        }
-    }
-
-    /**
-     * NIC with all IPs outside CIDR (ipRangeUuid=null) must NOT be added to security group
-     */
-    void testSecurityGroupWithOutsideCidrIp() {
-        L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_noDhcp")
-
-        // VM "vm-dhcp-reject" has outside-CIDR IP 172.16.0.50 on flatL3_noDhcp
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-dhcp-reject"] }[0]
-        VmNicInventory nicWithOutsideIp = vm.vmNics.find { it.ip == "172.16.0.50" }
-        assert nicWithOutsideIp != null
-
-        // Verify this NIC's IPs are all outside range (ipRangeUuid=null)
         List<UsedIpVO> nicIps = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.vmNicUuid, nicWithOutsideIp.uuid)
+                .eq(UsedIpVO_.vmNicUuid, nic.uuid)
                 .list()
-        assert nicIps.every { it.ipRangeUuid == null } : "all IPs on this NIC should be outside CIDR"
+        assert nicIps.every { it.ipRangeUuid == null } : "all IPs should be outside range"
 
         def sg = createSecurityGroup {
-            name = "sg-outside-cidr"
+            name = "sg-flat-noRange-noDhcp"
             ipVersion = 4
         } as SecurityGroupInventory
 
         attachSecurityGroupToL3Network {
             securityGroupUuid = sg.uuid
-            l3NetworkUuid = flatL3NoDhcp.uuid
+            l3NetworkUuid = l3.uuid
         }
 
-        // Adding NIC with all outside-CIDR IPs to security group should be rejected
         expect(AssertionError.class) {
             addVmNicToSecurityGroup {
                 securityGroupUuid = sg.uuid
-                vmNicUuids = [nicWithOutsideIp.uuid]
+                vmNicUuids = [nic.uuid]
             }
         }
 
-        // Verify no SG ref is created
-        List<VmNicSecurityGroupRefVO> refs = Q.New(VmNicSecurityGroupRefVO.class)
-                .eq(VmNicSecurityGroupRefVO_.vmNicUuid, nicWithOutsideIp.uuid)
+        long refCount = Q.New(VmNicSecurityGroupRefVO.class)
+                .eq(VmNicSecurityGroupRefVO_.vmNicUuid, nic.uuid)
                 .eq(VmNicSecurityGroupRefVO_.securityGroupUuid, sg.uuid)
-                .list()
-        assert refs.size() == 0 : "NIC with all outside-CIDR IPs should NOT be in security group"
+                .count()
+        assert refCount == 0 : "NIC with outside-range IP should NOT be in security group"
     }
 
     /**
-     * Capacity excludes outside-CIDR IPs:
-     *   Create an orphan IP on flatL3_noDhcp_capacity,
-     *   add IP range 10.10.10.x (not covering orphan),
-     *   create 2 VMs + setVmStaticIp with in-range IPs,
-     *   verify getIpAddressCapacity only counts in-range IPs.
+     * Flat/no-range/no-DHCP: EIP should reject binding to NIC with outside-range IP.
      */
-    void testIpCapacityExcludesOutsideCidrIps() {
-        L3NetworkInventory capacityL3 = env.inventoryByName("flatL3_noDhcp_capacity")
+    void testEipReject_flatNoRangeNoDhcp() {
+        L3NetworkInventory pubL3 = env.inventoryByName("pubL3_range_dhcp")
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-flat-noRange-noDhcp-set"] }[0]
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_noRange_noDhcp")
+        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
+        assert nic != null
 
-        // Step 1: create a VM and assign outside-CIDR IP to produce orphan UsedIpVO
-        VmInstanceInventory orphanVm = createVmInstance {
-            name = "vm-capacity-orphan"
-            imageUuid = env.inventoryByName("image1").uuid
-            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
-            l3NetworkUuids = [capacityL3.uuid]
+        VipInventory vip = createVip {
+            name = "vip-flat-noRange-noDhcp"
+            l3NetworkUuid = pubL3.uuid
         }
+        EipInventory eip = createEip {
+            name = "eip-flat-noRange-noDhcp"
+            vipUuid = vip.uuid
+        }
+
+        expect(AssertionError.class) {
+            attachEip {
+                eipUuid = eip.uuid
+                vmNicUuid = nic.uuid
+            }
+        }
+    }
+
+    // ================================================================
+    //  Part 2: Global config ON — Flat: has IP range, no DHCP
+    // ================================================================
+
+    /**
+     * Flat/range/no-DHCP: outside-range IP should succeed; in-range IP also works.
+     */
+    void testSetStaticIp_flatRangeNoDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_range_noDhcp")
+
+        VmInstanceInventory vm = createVmOnL3("vm-flat-range-noDhcp-set", l3.uuid)
+
+        // Outside-range IP should succeed
         setVmStaticIp {
-            vmInstanceUuid = orphanVm.uuid
-            l3NetworkUuid = capacityL3.uuid
-            ip = "172.16.0.70"
-            netmask = "255.255.0.0"
-            gateway = "172.16.0.1"
-        }
-
-        // Confirm outside-CIDR UsedIpVO exists
-        long outsideCount = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.l3NetworkUuid, capacityL3.uuid)
-                .isNull(UsedIpVO_.ipRangeUuid)
-                .count()
-        assert outsideCount > 0 : "There should be outside-CIDR IPs on flatL3_noDhcp_capacity"
-
-        // Step 2: add IP range (10.10.10.x) that does NOT cover existing outside-CIDR IPs (172.16.0.x)
-        addIpRange {
-            delegate.name = "capacity-test-range"
-            delegate.l3NetworkUuid = capacityL3.uuid
-            delegate.startIp = "10.10.10.10"
-            delegate.endIp = "10.10.10.200"
-            delegate.gateway = "10.10.10.1"
-            delegate.netmask = "255.255.255.0"
-        }
-
-        // Step 3: create 2 VMs on capacityL3 (no DHCP → no auto IP allocation)
-        VmInstanceInventory vm1 = createVmInstance {
-            name = "vm-capacity-1"
-            imageUuid = env.inventoryByName("image1").uuid
-            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
-            l3NetworkUuids = [capacityL3.uuid]
-        }
-        VmInstanceInventory vm2 = createVmInstance {
-            name = "vm-capacity-2"
-            imageUuid = env.inventoryByName("image1").uuid
-            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
-            l3NetworkUuids = [capacityL3.uuid]
-        }
-
-        // Step 4: manually assign in-range IPs via setVmStaticIp
-        setVmStaticIp {
-            vmInstanceUuid = vm1.uuid
-            l3NetworkUuid = capacityL3.uuid
-            ip = "10.10.10.100"
+            vmInstanceUuid = vm.uuid
+            l3NetworkUuid = l3.uuid
+            ip = "10.0.0.50"
             netmask = "255.255.255.0"
-            gateway = "10.10.10.1"
+            gateway = "10.0.0.1"
         }
+
+        UsedIpVO usedIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vm.vmNics[0].uuid)
+                .eq(UsedIpVO_.ip, "10.0.0.50")
+                .find()
+        assert usedIp != null
+        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-range IP"
+        assert usedIp.netmask == "255.255.255.0"
+        assert usedIp.gateway == "10.0.0.1"
+
+        VmNicVO nicVO = dbFindByUuid(vm.vmNics[0].uuid, VmNicVO.class)
+        assert nicVO.ip == "10.0.0.50"
+
+        // Also verify in-range IP works
+        VmInstanceInventory vm2 = createVmOnL3("vm-flat-range-noDhcp-inrange", l3.uuid)
         setVmStaticIp {
             vmInstanceUuid = vm2.uuid
-            l3NetworkUuid = capacityL3.uuid
-            ip = "10.10.10.101"
-            netmask = "255.255.255.0"
-            gateway = "10.10.10.1"
+            l3NetworkUuid = l3.uuid
+            ip = "192.168.100.100"
         }
 
-        // Verify both VMs got in-range IPs (ipRangeUuid != null)
-        UsedIpVO ip1 = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.vmNicUuid, vm1.vmNics[0].uuid)
-                .find()
-        assert ip1 != null && ip1.ipRangeUuid != null : "vm1 should have in-range IP"
-        assert ip1.ip == "10.10.10.100"
-
-        UsedIpVO ip2 = Q.New(UsedIpVO.class)
+        UsedIpVO inRangeIp = Q.New(UsedIpVO.class)
                 .eq(UsedIpVO_.vmNicUuid, vm2.vmNics[0].uuid)
+                .eq(UsedIpVO_.ip, "192.168.100.100")
                 .find()
-        assert ip2 != null && ip2.ipRangeUuid != null : "vm2 should have in-range IP"
-        assert ip2.ip == "10.10.10.101"
-
-        // Step 5: verify outside-CIDR IPs are still ipRangeUuid=null
-        long stillOutsideCount = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.l3NetworkUuid, capacityL3.uuid)
-                .isNull(UsedIpVO_.ipRangeUuid)
-                .count()
-        assert stillOutsideCount == outsideCount :
-                "outside-CIDR IPs (172.16.0.x) should still have ipRangeUuid=null"
-
-        // Step 6: capacity should only count 2 in-range IPs, not the outside-CIDR ones
-        GetIpAddressCapacityResult capacity = getIpAddressCapacity {
-            l3NetworkUuids = [capacityL3.uuid]
-        }
-        assert capacity.totalCapacity == 191 :
-                "totalCapacity should be 191 (10.10.10.10~10.10.10.200)"
-        assert capacity.usedIpAddressNumber == 2 :
-                "usedIpAddressNumber should be 2, outside-CIDR IPs are excluded"
-        assert capacity.availableCapacity == 191 - 2 :
-                "availableCapacity should be totalCapacity - usedIpAddressNumber"
+        assert inRangeIp != null
+        assert inRangeIp.ipRangeUuid != null : "ipRangeUuid should not be null for in-range IP"
     }
 
     /**
-     * Adding IP range backfills orphan IPs:
-     *   Create orphan IPs on flatL3_noDhcp_backfill,
-     *   add IP range 172.16.0.x covering the orphan IPs,
-     *   verify ipRangeUuid is backfilled, capacity increases accordingly.
+     * Flat/range/no-DHCP: changeVmNicNetwork with outside-range IP should succeed.
+     */
+    void testChangeNicNetwork_flatRangeNoDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_range_noDhcp")
+        L3NetworkInventory srcL3 = env.inventoryByName("flatL3_dest")
+
+        VmInstanceInventory vm = createVmOnL3("vm-flat-range-noDhcp-change", srcL3.uuid)
+        VmNicInventory vmNic = vm.vmNics[0]
+
+        changeVmNicNetwork {
+            vmNicUuid = vmNic.uuid
+            destL3NetworkUuid = l3.uuid
+            systemTags = [
+                    String.format("staticIp::%s::10.0.0.60", l3.uuid),
+                    String.format("ipv4Netmask::%s::255.255.255.0", l3.uuid),
+                    String.format("ipv4Gateway::%s::10.0.0.1", l3.uuid)
+            ]
+        }
+
+        VmNicVO nicVO = dbFindByUuid(vmNic.uuid, VmNicVO.class)
+        assert nicVO.l3NetworkUuid == l3.uuid
+        assert nicVO.ip == "10.0.0.60"
+
+        UsedIpVO usedIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vmNic.uuid)
+                .eq(UsedIpVO_.ip, "10.0.0.60")
+                .find()
+        assert usedIp != null
+        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-range IP"
+    }
+
+    /**
+     * Flat/range/no-DHCP: outside-range IP should NOT appear in DHCP messages on reboot.
+     */
+    void testDhcpSkip_flatRangeNoDhcp() {
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-flat-range-noDhcp-set"] }[0]
+
+        stopVmInstance { uuid = vm.uuid }
+
+        boolean dhcpApplied = false
+        env.afterSimulator(FlatDhcpBackend.APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
+            FlatDhcpBackend.ApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.ApplyDhcpCmd.class)
+            for (def dhcp : cmd.dhcp) {
+                if (dhcp.ip == "10.0.0.50") { dhcpApplied = true }
+            }
+            return rsp
+        }
+        env.afterSimulator(FlatDhcpBackend.BATCH_APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
+            FlatDhcpBackend.BatchApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.BatchApplyDhcpCmd.class)
+            for (def dhcpInfo : cmd.dhcpInfos) {
+                for (def dhcp : dhcpInfo.dhcp) {
+                    if (dhcp.ip == "10.0.0.50") { dhcpApplied = true }
+                }
+            }
+            return rsp
+        }
+
+        startVmInstance { uuid = vm.uuid }
+
+        assert !dhcpApplied : "DHCP should NOT include outside-range IP 10.0.0.50 on no-DHCP L3"
+    }
+
+    /**
+     * Flat/range/no-DHCP: NIC with outside-range IP should NOT be added to security group.
+     */
+    void testSecurityGroup_flatRangeNoDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_range_noDhcp")
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-flat-range-noDhcp-set"] }[0]
+        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
+        assert nic != null
+
+        List<UsedIpVO> nicIps = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, nic.uuid)
+                .list()
+        assert nicIps.every { it.ipRangeUuid == null } : "all IPs should be outside range"
+
+        def sg = createSecurityGroup {
+            name = "sg-flat-range-noDhcp"
+            ipVersion = 4
+        } as SecurityGroupInventory
+
+        attachSecurityGroupToL3Network {
+            securityGroupUuid = sg.uuid
+            l3NetworkUuid = l3.uuid
+        }
+
+        expect(AssertionError.class) {
+            addVmNicToSecurityGroup {
+                securityGroupUuid = sg.uuid
+                vmNicUuids = [nic.uuid]
+            }
+        }
+
+        long refCount = Q.New(VmNicSecurityGroupRefVO.class)
+                .eq(VmNicSecurityGroupRefVO_.vmNicUuid, nic.uuid)
+                .eq(VmNicSecurityGroupRefVO_.securityGroupUuid, sg.uuid)
+                .count()
+        assert refCount == 0 : "NIC with outside-range IP should NOT be in security group"
+    }
+
+    /**
+     * Flat/range/no-DHCP: EIP should reject binding to NIC with outside-range IP.
+     */
+    void testEipReject_flatRangeNoDhcp() {
+        L3NetworkInventory pubL3 = env.inventoryByName("pubL3_range_dhcp")
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-flat-range-noDhcp-set"] }[0]
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_range_noDhcp")
+        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
+        assert nic != null
+
+        VipInventory vip = createVip {
+            name = "vip-flat-range-noDhcp"
+            l3NetworkUuid = pubL3.uuid
+        }
+        EipInventory eip = createEip {
+            name = "eip-flat-range-noDhcp"
+            vipUuid = vip.uuid
+        }
+
+        expect(AssertionError.class) {
+            attachEip {
+                eipUuid = eip.uuid
+                vmNicUuid = nic.uuid
+            }
+        }
+    }
+
+    // ================================================================
+    //  Part 2: Global config ON — Flat: has IP range, has DHCP
+    // ================================================================
+
+    /**
+     * Flat/range/DHCP: outside-range IP should succeed with global config ON;
+     * in-range IP also works normally.
+     */
+    void testSetStaticIp_flatRangeDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_range_dhcp")
+
+        VmInstanceInventory vm = createVmOnL3("vm-flat-range-dhcp-set", l3.uuid)
+
+        // Outside-range IP should succeed with global config ON
+        setVmStaticIp {
+            vmInstanceUuid = vm.uuid
+            l3NetworkUuid = l3.uuid
+            ip = "10.0.1.50"
+            netmask = "255.255.255.0"
+            gateway = "10.0.1.1"
+        }
+
+        UsedIpVO usedIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vm.vmNics[0].uuid)
+                .eq(UsedIpVO_.ip, "10.0.1.50")
+                .find()
+        assert usedIp != null
+        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-range IP"
+        assert usedIp.netmask == "255.255.255.0"
+        assert usedIp.gateway == "10.0.1.1"
+
+        VmNicVO nicVO = dbFindByUuid(vm.vmNics[0].uuid, VmNicVO.class)
+        assert nicVO.ip == "10.0.1.50"
+
+        // Also verify in-range IP works
+        VmInstanceInventory vm2 = createVmOnL3("vm-flat-range-dhcp-inrange", l3.uuid)
+        setVmStaticIp {
+            vmInstanceUuid = vm2.uuid
+            l3NetworkUuid = l3.uuid
+            ip = "192.168.200.100"
+        }
+
+        UsedIpVO inRangeIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vm2.vmNics[0].uuid)
+                .eq(UsedIpVO_.ip, "192.168.200.100")
+                .find()
+        assert inRangeIp != null
+        assert inRangeIp.ipRangeUuid != null : "ipRangeUuid should not be null for in-range IP"
+    }
+
+    /**
+     * Flat/range/DHCP: changeVmNicNetwork with outside-range IP should succeed.
+     */
+    void testChangeNicNetwork_flatRangeDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_range_dhcp")
+        L3NetworkInventory srcL3 = env.inventoryByName("flatL3_dest")
+
+        VmInstanceInventory vm = createVmOnL3("vm-flat-range-dhcp-change", srcL3.uuid)
+        VmNicInventory vmNic = vm.vmNics[0]
+
+        changeVmNicNetwork {
+            vmNicUuid = vmNic.uuid
+            destL3NetworkUuid = l3.uuid
+            systemTags = [
+                    String.format("staticIp::%s::10.0.1.60", l3.uuid),
+                    String.format("ipv4Netmask::%s::255.255.255.0", l3.uuid),
+                    String.format("ipv4Gateway::%s::10.0.1.1", l3.uuid)
+            ]
+        }
+
+        VmNicVO nicVO = dbFindByUuid(vmNic.uuid, VmNicVO.class)
+        assert nicVO.l3NetworkUuid == l3.uuid
+        assert nicVO.ip == "10.0.1.60"
+
+        UsedIpVO usedIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vmNic.uuid)
+                .eq(UsedIpVO_.ip, "10.0.1.60")
+                .find()
+        assert usedIp != null
+        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-range IP"
+    }
+
+    /**
+     * Flat/range/DHCP: outside-range IP should NOT appear in DHCP messages on reboot,
+     * even though DHCP service is enabled on this L3.
+     */
+    void testDhcpSkip_flatRangeDhcp() {
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-flat-range-dhcp-set"] }[0]
+
+        stopVmInstance { uuid = vm.uuid }
+
+        boolean dhcpAppliedForOutsideIp = false
+        env.afterSimulator(FlatDhcpBackend.APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
+            FlatDhcpBackend.ApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.ApplyDhcpCmd.class)
+            for (def dhcp : cmd.dhcp) {
+                if (dhcp.ip == "10.0.1.50") { dhcpAppliedForOutsideIp = true }
+            }
+            return rsp
+        }
+        env.afterSimulator(FlatDhcpBackend.BATCH_APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
+            FlatDhcpBackend.BatchApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.BatchApplyDhcpCmd.class)
+            for (def dhcpInfo : cmd.dhcpInfos) {
+                for (def dhcp : dhcpInfo.dhcp) {
+                    if (dhcp.ip == "10.0.1.50") { dhcpAppliedForOutsideIp = true }
+                }
+            }
+            return rsp
+        }
+
+        startVmInstance { uuid = vm.uuid }
+
+        assert !dhcpAppliedForOutsideIp : "DHCP should NOT include outside-range IP 10.0.1.50 even on DHCP-enabled L3"
+    }
+
+    /**
+     * Flat/range/DHCP: NIC with outside-range IP should NOT be added to security group.
+     */
+    void testSecurityGroup_flatRangeDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_range_dhcp")
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-flat-range-dhcp-set"] }[0]
+        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
+        assert nic != null
+
+        List<UsedIpVO> nicIps = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, nic.uuid)
+                .list()
+        assert nicIps.every { it.ipRangeUuid == null } : "all IPs should be outside range"
+
+        def sg = createSecurityGroup {
+            name = "sg-flat-range-dhcp"
+            ipVersion = 4
+        } as SecurityGroupInventory
+
+        attachSecurityGroupToL3Network {
+            securityGroupUuid = sg.uuid
+            l3NetworkUuid = l3.uuid
+        }
+
+        expect(AssertionError.class) {
+            addVmNicToSecurityGroup {
+                securityGroupUuid = sg.uuid
+                vmNicUuids = [nic.uuid]
+            }
+        }
+
+        long refCount = Q.New(VmNicSecurityGroupRefVO.class)
+                .eq(VmNicSecurityGroupRefVO_.vmNicUuid, nic.uuid)
+                .eq(VmNicSecurityGroupRefVO_.securityGroupUuid, sg.uuid)
+                .count()
+        assert refCount == 0 : "NIC with outside-range IP should NOT be in security group"
+    }
+
+    /**
+     * Flat/range/DHCP: EIP should reject binding to NIC with outside-range IP.
+     */
+    void testEipReject_flatRangeDhcp() {
+        L3NetworkInventory pubL3 = env.inventoryByName("pubL3_range_dhcp")
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-flat-range-dhcp-set"] }[0]
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_range_dhcp")
+        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
+        assert nic != null
+
+        VipInventory vip = createVip {
+            name = "vip-flat-range-dhcp"
+            l3NetworkUuid = pubL3.uuid
+        }
+        EipInventory eip = createEip {
+            name = "eip-flat-range-dhcp"
+            vipUuid = vip.uuid
+        }
+
+        expect(AssertionError.class) {
+            attachEip {
+                eipUuid = eip.uuid
+                vmNicUuid = nic.uuid
+            }
+        }
+    }
+
+    // ================================================================
+    //  Part 2: Global config ON — Public: has IP range, no DHCP
+    // ================================================================
+
+    /**
+     * Public/range/no-DHCP: outside-range IP should succeed; in-range IP also works.
+     */
+    void testSetStaticIp_pubRangeNoDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("pubL3_range_noDhcp")
+
+        VmInstanceInventory vm = createVmOnL3("vm-pub-range-noDhcp-set", l3.uuid)
+
+        setVmStaticIp {
+            vmInstanceUuid = vm.uuid
+            l3NetworkUuid = l3.uuid
+            ip = "10.0.2.50"
+            netmask = "255.255.255.0"
+            gateway = "10.0.2.1"
+        }
+
+        UsedIpVO usedIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vm.vmNics[0].uuid)
+                .eq(UsedIpVO_.ip, "10.0.2.50")
+                .find()
+        assert usedIp != null
+        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-range IP"
+        assert usedIp.netmask == "255.255.255.0"
+        assert usedIp.gateway == "10.0.2.1"
+
+        VmNicVO nicVO = dbFindByUuid(vm.vmNics[0].uuid, VmNicVO.class)
+        assert nicVO.ip == "10.0.2.50"
+
+        // Also verify in-range IP works
+        VmInstanceInventory vm2 = createVmOnL3("vm-pub-range-noDhcp-inrange", l3.uuid)
+        setVmStaticIp {
+            vmInstanceUuid = vm2.uuid
+            l3NetworkUuid = l3.uuid
+            ip = "12.100.10.100"
+        }
+
+        UsedIpVO inRangeIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vm2.vmNics[0].uuid)
+                .eq(UsedIpVO_.ip, "12.100.10.100")
+                .find()
+        assert inRangeIp != null
+        assert inRangeIp.ipRangeUuid != null : "ipRangeUuid should not be null for in-range IP"
+    }
+
+    /**
+     * Public/range/no-DHCP: changeVmNicNetwork with outside-range IP should succeed.
+     */
+    void testChangeNicNetwork_pubRangeNoDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("pubL3_range_noDhcp")
+        L3NetworkInventory srcL3 = env.inventoryByName("flatL3_dest")
+
+        VmInstanceInventory vm = createVmOnL3("vm-pub-range-noDhcp-change", srcL3.uuid)
+        VmNicInventory vmNic = vm.vmNics[0]
+
+        changeVmNicNetwork {
+            vmNicUuid = vmNic.uuid
+            destL3NetworkUuid = l3.uuid
+            systemTags = [
+                    String.format("staticIp::%s::10.0.2.60", l3.uuid),
+                    String.format("ipv4Netmask::%s::255.255.255.0", l3.uuid),
+                    String.format("ipv4Gateway::%s::10.0.2.1", l3.uuid)
+            ]
+        }
+
+        VmNicVO nicVO = dbFindByUuid(vmNic.uuid, VmNicVO.class)
+        assert nicVO.l3NetworkUuid == l3.uuid
+        assert nicVO.ip == "10.0.2.60"
+
+        UsedIpVO usedIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vmNic.uuid)
+                .eq(UsedIpVO_.ip, "10.0.2.60")
+                .find()
+        assert usedIp != null
+        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-range IP"
+    }
+
+    /**
+     * Public/range/no-DHCP: outside-range IP should NOT appear in DHCP messages on reboot.
+     */
+    void testDhcpSkip_pubRangeNoDhcp() {
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-pub-range-noDhcp-set"] }[0]
+
+        stopVmInstance { uuid = vm.uuid }
+
+        boolean dhcpApplied = false
+        env.afterSimulator(FlatDhcpBackend.APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
+            FlatDhcpBackend.ApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.ApplyDhcpCmd.class)
+            for (def dhcp : cmd.dhcp) {
+                if (dhcp.ip == "10.0.2.50") { dhcpApplied = true }
+            }
+            return rsp
+        }
+        env.afterSimulator(FlatDhcpBackend.BATCH_APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
+            FlatDhcpBackend.BatchApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.BatchApplyDhcpCmd.class)
+            for (def dhcpInfo : cmd.dhcpInfos) {
+                for (def dhcp : dhcpInfo.dhcp) {
+                    if (dhcp.ip == "10.0.2.50") { dhcpApplied = true }
+                }
+            }
+            return rsp
+        }
+
+        startVmInstance { uuid = vm.uuid }
+
+        assert !dhcpApplied : "DHCP should NOT include outside-range IP 10.0.2.50"
+    }
+
+    /**
+     * Public/range/no-DHCP: NIC with outside-range IP should NOT be added to security group.
+     */
+    void testSecurityGroup_pubRangeNoDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("pubL3_range_noDhcp")
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-pub-range-noDhcp-set"] }[0]
+        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
+        assert nic != null
+
+        List<UsedIpVO> nicIps = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, nic.uuid)
+                .list()
+        assert nicIps.every { it.ipRangeUuid == null } : "all IPs should be outside range"
+
+        def sg = createSecurityGroup {
+            name = "sg-pub-range-noDhcp"
+            ipVersion = 4
+        } as SecurityGroupInventory
+
+        attachSecurityGroupToL3Network {
+            securityGroupUuid = sg.uuid
+            l3NetworkUuid = l3.uuid
+        }
+
+        expect(AssertionError.class) {
+            addVmNicToSecurityGroup {
+                securityGroupUuid = sg.uuid
+                vmNicUuids = [nic.uuid]
+            }
+        }
+
+        long refCount = Q.New(VmNicSecurityGroupRefVO.class)
+                .eq(VmNicSecurityGroupRefVO_.vmNicUuid, nic.uuid)
+                .eq(VmNicSecurityGroupRefVO_.securityGroupUuid, sg.uuid)
+                .count()
+        assert refCount == 0 : "NIC with outside-range IP should NOT be in security group"
+    }
+
+    // ================================================================
+    //  Part 2: Global config ON — Public: has IP range, has DHCP
+    // ================================================================
+
+    /**
+     * Public/range/DHCP: outside-range IP should succeed; in-range IP also works.
+     */
+    void testSetStaticIp_pubRangeDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("pubL3_range_dhcp")
+
+        VmInstanceInventory vm = createVmOnL3("vm-pub-range-dhcp-set", l3.uuid)
+
+        setVmStaticIp {
+            vmInstanceUuid = vm.uuid
+            l3NetworkUuid = l3.uuid
+            ip = "10.0.3.50"
+            netmask = "255.255.255.0"
+            gateway = "10.0.3.1"
+        }
+
+        UsedIpVO usedIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vm.vmNics[0].uuid)
+                .eq(UsedIpVO_.ip, "10.0.3.50")
+                .find()
+        assert usedIp != null
+        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-range IP"
+        assert usedIp.netmask == "255.255.255.0"
+        assert usedIp.gateway == "10.0.3.1"
+
+        VmNicVO nicVO = dbFindByUuid(vm.vmNics[0].uuid, VmNicVO.class)
+        assert nicVO.ip == "10.0.3.50"
+
+        // Also verify in-range IP works
+        VmInstanceInventory vm2 = createVmOnL3("vm-pub-range-dhcp-inrange", l3.uuid)
+        setVmStaticIp {
+            vmInstanceUuid = vm2.uuid
+            l3NetworkUuid = l3.uuid
+            ip = "12.100.20.100"
+        }
+
+        UsedIpVO inRangeIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vm2.vmNics[0].uuid)
+                .eq(UsedIpVO_.ip, "12.100.20.100")
+                .find()
+        assert inRangeIp != null
+        assert inRangeIp.ipRangeUuid != null : "ipRangeUuid should not be null for in-range IP"
+    }
+
+    /**
+     * Public/range/DHCP: changeVmNicNetwork with outside-range IP should succeed.
+     */
+    void testChangeNicNetwork_pubRangeDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("pubL3_range_dhcp")
+        L3NetworkInventory srcL3 = env.inventoryByName("flatL3_dest")
+
+        VmInstanceInventory vm = createVmOnL3("vm-pub-range-dhcp-change", srcL3.uuid)
+        VmNicInventory vmNic = vm.vmNics[0]
+
+        changeVmNicNetwork {
+            vmNicUuid = vmNic.uuid
+            destL3NetworkUuid = l3.uuid
+            systemTags = [
+                    String.format("staticIp::%s::10.0.3.60", l3.uuid),
+                    String.format("ipv4Netmask::%s::255.255.255.0", l3.uuid),
+                    String.format("ipv4Gateway::%s::10.0.3.1", l3.uuid)
+            ]
+        }
+
+        VmNicVO nicVO = dbFindByUuid(vmNic.uuid, VmNicVO.class)
+        assert nicVO.l3NetworkUuid == l3.uuid
+        assert nicVO.ip == "10.0.3.60"
+
+        UsedIpVO usedIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vmNic.uuid)
+                .eq(UsedIpVO_.ip, "10.0.3.60")
+                .find()
+        assert usedIp != null
+        assert usedIp.ipRangeUuid == null : "ipRangeUuid should be null for outside-range IP"
+    }
+
+    /**
+     * Public/range/DHCP: outside-range IP should NOT appear in DHCP messages on reboot,
+     * even though DHCP service is enabled on this L3.
+     */
+    void testDhcpSkip_pubRangeDhcp() {
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-pub-range-dhcp-set"] }[0]
+
+        stopVmInstance { uuid = vm.uuid }
+
+        boolean dhcpAppliedForOutsideIp = false
+        env.afterSimulator(FlatDhcpBackend.APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
+            FlatDhcpBackend.ApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.ApplyDhcpCmd.class)
+            for (def dhcp : cmd.dhcp) {
+                if (dhcp.ip == "10.0.3.50") { dhcpAppliedForOutsideIp = true }
+            }
+            return rsp
+        }
+        env.afterSimulator(FlatDhcpBackend.BATCH_APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
+            FlatDhcpBackend.BatchApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.BatchApplyDhcpCmd.class)
+            for (def dhcpInfo : cmd.dhcpInfos) {
+                for (def dhcp : dhcpInfo.dhcp) {
+                    if (dhcp.ip == "10.0.3.50") { dhcpAppliedForOutsideIp = true }
+                }
+            }
+            return rsp
+        }
+
+        startVmInstance { uuid = vm.uuid }
+
+        assert !dhcpAppliedForOutsideIp : "DHCP should NOT include outside-range IP 10.0.3.50 even on DHCP-enabled public L3"
+    }
+
+    /**
+     * Public/range/DHCP: NIC with outside-range IP should NOT be added to security group.
+     */
+    void testSecurityGroup_pubRangeDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("pubL3_range_dhcp")
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-pub-range-dhcp-set"] }[0]
+        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
+        assert nic != null
+
+        List<UsedIpVO> nicIps = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, nic.uuid)
+                .list()
+        assert nicIps.every { it.ipRangeUuid == null } : "all IPs should be outside range"
+
+        def sg = createSecurityGroup {
+            name = "sg-pub-range-dhcp"
+            ipVersion = 4
+        } as SecurityGroupInventory
+
+        attachSecurityGroupToL3Network {
+            securityGroupUuid = sg.uuid
+            l3NetworkUuid = l3.uuid
+        }
+
+        expect(AssertionError.class) {
+            addVmNicToSecurityGroup {
+                securityGroupUuid = sg.uuid
+                vmNicUuids = [nic.uuid]
+            }
+        }
+
+        long refCount = Q.New(VmNicSecurityGroupRefVO.class)
+                .eq(VmNicSecurityGroupRefVO_.vmNicUuid, nic.uuid)
+                .eq(VmNicSecurityGroupRefVO_.securityGroupUuid, sg.uuid)
+                .count()
+        assert refCount == 0 : "NIC with outside-range IP should NOT be in security group"
+    }
+
+    // ================================================================
+    //  Part 3: Orphan IP backfill (global config ON)
+    // ================================================================
+
+    /**
+     * Create orphan IPs on flatL3_backfill (no IP range),
+     * then add an IP range covering the orphan IPs.
+     * Verify ipRangeUuid is backfilled and capacity increases.
      */
     void testOrphanIpBackfillOnAddIpRange() {
-        L3NetworkInventory backfillL3 = env.inventoryByName("flatL3_noDhcp_backfill")
+        L3NetworkInventory backfillL3 = env.inventoryByName("flatL3_backfill")
 
-        // Step 1: create VMs and assign outside-CIDR IPs to produce orphan UsedIpVOs
-        VmInstanceInventory orphanVm1 = createVmInstance {
-            name = "vm-backfill-orphan-1"
-            imageUuid = env.inventoryByName("image1").uuid
-            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
-            l3NetworkUuids = [backfillL3.uuid]
-        }
+        // Step 1: create VMs and assign outside-range IPs
+        VmInstanceInventory orphanVm1 = createVmOnL3("vm-backfill-orphan-1", backfillL3.uuid)
         setVmStaticIp {
             vmInstanceUuid = orphanVm1.uuid
             l3NetworkUuid = backfillL3.uuid
@@ -754,12 +1306,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             gateway = "172.16.0.1"
         }
 
-        VmInstanceInventory orphanVm2 = createVmInstance {
-            name = "vm-backfill-orphan-2"
-            imageUuid = env.inventoryByName("image1").uuid
-            instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
-            l3NetworkUuids = [backfillL3.uuid]
-        }
+        VmInstanceInventory orphanVm2 = createVmOnL3("vm-backfill-orphan-2", backfillL3.uuid)
         setVmStaticIp {
             vmInstanceUuid = orphanVm2.uuid
             l3NetworkUuid = backfillL3.uuid
@@ -773,7 +1320,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                 .eq(UsedIpVO_.l3NetworkUuid, backfillL3.uuid)
                 .isNull(UsedIpVO_.ipRangeUuid)
                 .count()
-        assert outsideCount == 2 : "There should be 2 orphan IPs on flatL3_noDhcp_backfill"
+        assert outsideCount == 2 : "There should be 2 orphan IPs on flatL3_backfill"
 
         // Step 2: record capacity before backfill
         GetIpAddressCapacityResult beforeBackfill = getIpAddressCapacity {
