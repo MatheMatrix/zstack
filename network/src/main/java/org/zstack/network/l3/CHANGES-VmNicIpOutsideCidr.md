@@ -263,99 +263,117 @@ for (String nicUuid : msg.getVmNicUuids()) {
 
 ---
 
-## 五、IP 范围校验规则（基于 DHCP 服务）
+## 五、IP 范围校验规则（基于全局配置）
 
-**已删除全局配置**: `vm.allow.ip.outside.range`（原 `VmGlobalConfig.ALLOW_IP_OUTSIDE_RANGE`）
+**全局配置**: `L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE`（`l3Network.allow.ip.outside.range`，默认 `false`）
 
-**当前规则**：是否允许设置 CIDR 范围外的 IP 地址，取决于目标 L3 网络是否启用了 DHCP 服务：
-
-| L3 网络类型 | DHCP 服务 | `enableIpAddressAllocation()` | 允许范围外 IP |
-|------------|-----------|------------------------------|-------------|
-| 扁平网络（有 DHCP） | ✅ | `true` | ❌ 拒绝 |
-| 公有网络（有 DHCP） | ✅ | `true` | ❌ 拒绝 |
-| 扁平网络（无 DHCP） | ❌ | `false` | ✅ 允许 |
-
-**校验位置**：
-- `VmInstanceApiInterceptor.validate(APISetVmStaticIpMsg)` — IP 必须在 IP Range 内（DHCP 启用时）
-- `VmInstanceApiInterceptor.validate(APIChangeVmNicNetworkMsg)` — system tag 中的 staticIp 必须在 IP Range 内（DHCP 启用时）
-
----
-
-## 六、APIChangeVmNicNetworkMsg 支持设置 IP/掩码/网关
-
-### 6.1 消息新增显式字段（参考 APISetVmStaticIpMsg）
-
-**文件**: `header/src/main/java/org/zstack/header/vm/APIChangeVmNicNetworkMsg.java`
+**文件**: `network/src/main/java/org/zstack/network/l3/L3NetworkGlobalConfig.java`
 ```java
-@APIParam(required = false)
-private String ip;
-@APIParam(required = false)
-private String ip6;
-@APIParam(required = false)
-private String netmask;
-@APIParam(required = false)
-private String gateway;
-@APIParam(required = false)
-private String ipv6Gateway;
-@APIParam(required = false)
-private String ipv6Prefix;
+@GlobalConfigDef(defaultValue = "false", type = Boolean.class, description = "allow setting VM NIC IP address outside L3 network IP ranges")
+@GlobalConfigValidation(validValues = {"true", "false"})
+public static GlobalConfig ALLOW_IP_OUTSIDE_RANGE = new GlobalConfig(CATEGORY, "allow.ip.outside.range");
 ```
 
-**文件**: `header/src/main/java/org/zstack/header/vm/ChangeVmNicNetworkMsg.java`
-```java
-private String ip;
-private String ip6;
-private String netmask;
-private String gateway;
-private String ipv6Gateway;
-private String ipv6Prefix;
-```
+**规则说明**：
+- `allow.ip.outside.range = false`（默认）：IP 必须在 L3 IP Range 内（原有行为）
+- `allow.ip.outside.range = true`：允许设置不在 IP Range 内的 IP 地址，所有 L3 网络生效
 
-通过 API 成员变量直接传入 IP 地址、掩码、网关信息，不再依赖 system tags 传递。
+> 注意：`enableIpAddressAllocation()` 控制的是 L3 上创建云主机网卡是否执行地址分配过程；
+> `allow.ip.outside.range` 控制的是是否校验网卡地址在 L3 IP Range 之内。
+> 两者关系：即使 `enableIpAddressAllocation()` 为 `true`，只要指定地址不在 IP Range 内，也不走 IPAM 分支，走 no-ipam 分支直接创建 UsedIpVO。
 
-### 6.2 Interceptor 校验逻辑
+### 5.1 删除 `IsIpAddressInRangesCheckEnabled()`
+
+移除 `L3NetworkVO.IsIpAddressInRangesCheckEnabled()` 和 `L3NetworkInventory.IsIpAddressInRangesCheckEnabled()` 方法，所有调用处改为判断全局配置。
+
+**文件**:
+- `header/src/main/java/org/zstack/header/network/l3/L3NetworkVO.java` — 删除方法
+- `header/src/main/java/org/zstack/header/network/l3/L3NetworkInventory.java` — 删除方法
+
+### 5.2 VmInstanceApiInterceptor 校验修改
 
 **文件**: `compute/src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java`
 
-在 `validate(APIChangeVmNicNetworkMsg)` 中，直接校验 `msg.getIp()` 和 `msg.getIp6()` 是否已被占用：
+#### validate(APIChangeVmNicNetworkMsg)
+
+1. `staticIp` 范围检查放开：
 ```java
-if (msg.getIp() != null && !msg.getIp().isEmpty()
-        && Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, msg.getIp())
-            .eq(UsedIpVO_.l3NetworkUuid, msg.getDestL3NetworkUuid()).isExists()) {
-    throw new ApiMessageInterceptionException(...);
+// 修改前
+if (!l3NetworkVO.enableIpAddressAllocation()) {
+    found = true;
 }
-if (msg.getIp6() != null && !msg.getIp6().isEmpty()
-        && Q.New(UsedIpVO.class).eq(UsedIpVO_.ip, IPv6NetworkUtils.getIpv6AddressCanonicalString(msg.getIp6()))
-            .eq(UsedIpVO_.l3NetworkUuid, msg.getDestL3NetworkUuid()).isExists()) {
-    throw new ApiMessageInterceptionException(...);
+// 修改后
+if (!l3NetworkVO.enableIpAddressAllocation()
+        || L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
+    found = true;
 }
 ```
 
-### 6.3 API→内部消息传递
-
-**文件**: `compute/src/main/java/org/zstack/compute/vm/VmInstanceBase.java`
-
-在 `handle(APIChangeVmNicNetworkMsg)` 中，逐字段传递给内部消息：
+2. system tag 中 staticIp 范围校验：
 ```java
-ChangeVmNicNetworkMsg cmsg = new ChangeVmNicNetworkMsg();
-// ... 其他字段 ...
-cmsg.setIp(msg.getIp());
-cmsg.setIp6(msg.getIp6());
-cmsg.setNetmask(msg.getNetmask());
-cmsg.setGateway(msg.getGateway());
-cmsg.setIpv6Gateway(msg.getIpv6Gateway());
-cmsg.setIpv6Prefix(msg.getIpv6Prefix());
+// 修改前
+if (l3NetworkVO.IsIpAddressInRangesCheckEnabled()) {
+// 修改后
+if (!L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
 ```
 
-### 6.4 changeVmNicNetwork 处理逻辑
+#### validateStaticIPv4 / validateStaticIPv6
 
-**文件**: `compute/src/main/java/org/zstack/compute/vm/VmInstanceBase.java`
+跳过已有 NIC IP 的范围校验：
+```java
+// 修改前
+if (!l3NetworkVO.IsIpAddressInRangesCheckEnabled()) {
+    continue;
+}
+// 修改后
+if (L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
+    continue;
+}
+```
 
-在 `changeVmNicNetwork()` 的 disable-ipam 分支中，直接从 `msg` 的显式字段读取 IP/掩码/网关，不再通过 `StaticIpOperator.getNicNetworkInfoBySystemTag()` 解析 system tags。
+#### validate(APISetVmStaticIpMsg)
 
-### 6.5 Bug 修复
+1. 范围外 IP 拒绝逻辑：
+```java
+// 修改前
+if (l3NetworkVO.IsIpAddressInRangesCheckEnabled()) {
+// 修改后
+if (!L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
+```
 
-**文件**: `compute/src/main/java/org/zstack/compute/vm/VmInstanceApiInterceptor.java`
+2. netmask/gateway 填充分支 — IPv4：
+```java
+// 修改前
+if (msg.getIp() != null && !l3NetworkVO.enableIpAddressAllocation()) {
+// 修改后
+if (msg.getIp() != null && (!l3NetworkVO.enableIpAddressAllocation()
+        || L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class))) {
+```
 
-1. `getRequiredIpMap()` → `getStaticIp()`：interceptor 中处理 `staticIp` 时应使用 `msg.getStaticIp()` 而非 `msg.getRequiredIpMap()`
-2. 循环变量误用修复：`for` 循环中的迭代变量与外部变量混淆导致逻辑错误
+3. netmask/gateway 填充分支 — IPv6：
+```java
+// 修改前
+if (msg.getIp6() != null && !l3NetworkVO.enableIpAddressAllocation()) {
+// 修改后
+if (msg.getIp6() != null && (!l3NetworkVO.enableIpAddressAllocation()
+        || L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class))) {
+```
+
+### 5.3 L3BasicNetwork.checkIpAvailability() 修改
+
+**文件**: `network/src/main/java/org/zstack/network/l3/L3BasicNetwork.java`
+
+在 `checkIpAvailability()` 方法中，增加全局配置判断，跳过 IP Range 检查：
+```java
+if (!self.enableIpAddressAllocation()) {
+    inRange = true;
+}
+// 新增：全局配置开启时跳过 IP Range 检查
+if (L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
+    inRange = true;
+}
+```
+
+### 5.4 VmInstanceBase 处理逻辑（无需修改）
+
+`VmInstanceBase` 中 `handle(SetVmStaticIpMsg)` 和 `changeVmNicNetwork()` 已通过 `allStaticIpsOutsideRange()` 正确判断：即使 `enableIpAddressAllocation()` 为 `true`，只要 IP 全部不在 IP Range 内，就走 no-ipam 分支直接创建 `UsedIpVO`（`ipRangeUuid = null`）。无需额外修改。

@@ -41,6 +41,7 @@ import org.zstack.header.zone.ZoneState;
 import org.zstack.header.zone.ZoneVO;
 import org.zstack.header.zone.ZoneVO_;
 import org.zstack.network.l3.IpRangeHelper;
+import org.zstack.network.l3.L3NetworkGlobalConfig;
 import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.tag.SystemTagUtils;
 import org.zstack.utils.Utils;
@@ -302,7 +303,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 }
             }
 
-            if (!l3NetworkVO.enableIpAddressAllocation()) {
+            if (!l3NetworkVO.enableIpAddressAllocation()
+                    || L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
                 found = true;
             }
 
@@ -367,7 +369,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                         l3Uuid, inRangeCount, outsideRangeCount));
             }
 
-            if (l3NetworkVO.IsIpAddressInRangesCheckEnabled()) {
+            if (!L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
                 if (outsideRangeCount > 0) {
                     throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10109,
                             "the static IPs for L3 network[uuid:%s] must be within IP ranges when IPAM is enabled, but got %d outside-range",
@@ -604,7 +606,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10130, "ip address [%s] already set to vmNic [uuid:%s]",
                             ip, vmNicVO.getUuid()));
                 }
-                if (!l3NetworkVO.IsIpAddressInRangesCheckEnabled()) {
+                if (L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
                     continue;
                 }
                 // check if the ip is in the ip range when ipam is enabled
@@ -636,7 +638,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10133, "ip address [%s] already set to vmNic [uuid:%s]",
                             ip, vmNicVO.getUuid()));
                 }
-                if (!l3NetworkVO.IsIpAddressInRangesCheckEnabled()) {
+                if (L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
                     continue;
                 }
                 if (ipVo.getIpRangeUuid() == null) {
@@ -687,8 +689,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             }
         }
 
-        // Reject outside-range IPs when DHCP is enabled
-        if (l3NetworkVO.IsIpAddressInRangesCheckEnabled()) {
+        // Reject outside-range IPs when global config is off
+        if (!L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
             if (msg.getIp() != null) {
                 String ip = IPv6NetworkUtils.ipv6TagValueToAddress(msg.getIp());
                 int ipVersion = NetworkUtils.isIpv4Address(ip) ? IPv6Constants.IPv4 : IPv6Constants.IPv6;
@@ -723,7 +725,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             }
         }
 
-        if (msg.getIp() != null && !l3NetworkVO.enableIpAddressAllocation()) {
+        if (msg.getIp() != null && (!l3NetworkVO.enableIpAddressAllocation()
+                || L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class))) {
             l3Found = true;
             if (msg.getNetmask() == null) {
                 if (ipv4Ranges.isEmpty()) {
@@ -743,7 +746,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10138, "ip address [%s] already set to vmNic", msg.getIp()));
             }
         }
-        if (msg.getIp6() != null && !l3NetworkVO.enableIpAddressAllocation()) {
+        if (msg.getIp6() != null && (!l3NetworkVO.enableIpAddressAllocation()
+                || L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class))) {
             l3Found = true;
             if (msg.getIpv6Prefix() == null) {
                 if (ipv6Ranges.isEmpty()) {

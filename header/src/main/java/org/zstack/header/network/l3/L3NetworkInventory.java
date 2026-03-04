@@ -436,15 +436,6 @@ public class L3NetworkInventory implements Serializable {
         return false;
     }
 
-    public boolean IsIpAddressInRangesCheckEnabled() {
-        for (NetworkServiceL3NetworkRefInventory ref : networkServices) {
-            if (ref.getNetworkServiceType().equals(NetworkServiceType.DHCP.toString())) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     public Integer getInternalId() {
         return internalId;

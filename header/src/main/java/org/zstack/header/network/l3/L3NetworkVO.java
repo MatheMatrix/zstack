@@ -127,13 +127,4 @@ public class L3NetworkVO extends L3NetworkAO implements OwnedByAccount {
         return false;
     }
 
-    public boolean IsIpAddressInRangesCheckEnabled() {
-        for (NetworkServiceL3NetworkRefVO ref : networkServices) {
-            if (ref.getNetworkServiceType().equals(NetworkServiceType.DHCP.toString())) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

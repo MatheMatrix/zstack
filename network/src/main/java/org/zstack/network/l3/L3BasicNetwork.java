@@ -792,6 +792,10 @@ public class L3BasicNetwork implements L3Network {
             inRange = true;
         }
 
+        if (L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
+            inRange = true;
+        }
+
         if (ts.isEmpty()) {
             inRange = true;
         } else {
