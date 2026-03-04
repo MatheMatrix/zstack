@@ -3511,7 +3511,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                     staticIpList.add(msg.getIp6());
                 }
 
-                if (!l3NetworkVO.getEnableIPAM()
+                if (!l3NetworkVO.enableIpAddressAllocation()
                         || allStaticIpsOutsideRange(msg.getL3NetworkUuid(), staticIpList)) {
                     setNoIpamStaticIp(msg, new Completion(reply) {
                         @Override
@@ -6359,7 +6359,7 @@ public class VmInstanceBase extends AbstractVmInstance {
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        if (!destL3.getEnableIPAM()
+                        if (!destL3.enableIpAddressAllocation()
                                 || allStaticIpsOutsideRange(destL3.getUuid(),
                                     msg.getRequiredIpMap() != null ? msg.getRequiredIpMap().get(destL3.getUuid()) : null)) {
                             trigger.next();
