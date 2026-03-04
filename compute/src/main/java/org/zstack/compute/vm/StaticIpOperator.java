@@ -20,6 +20,7 @@ import org.zstack.header.tag.SystemTagVO_;
 import org.zstack.header.tag.SystemTagValidator;
 import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmNicVO;
+import org.zstack.network.l3.L3NetworkGlobalConfig;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.TagUtils;
@@ -401,8 +402,15 @@ public class StaticIpOperator implements SystemTagCreateMessageValidator, System
                                         e(VmSystemTags.IPV4_NETMASK_TOKEN, ipRangeVO.getNetmask()))
                         ));
                     } else if (!nicIp.ipv4Netmask.equals(ipRangeVO.getNetmask())) {
-                        throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_COMPUTE_VM_10311, "netmask error, expect: %s, got: %s",
-                                ipRangeVO.getNetmask(), nicIp.ipv4Netmask));
+                        if (L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
+                            newSystags.add(VmSystemTags.IPV4_NETMASK.instantiateTag(
+                                    map(e(VmSystemTags.IPV4_NETMASK_L3_UUID_TOKEN, l3Uuid),
+                                            e(VmSystemTags.IPV4_NETMASK_TOKEN, nicIp.ipv4Netmask))
+                            ));
+                        } else {
+                            throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_COMPUTE_VM_10311, "netmask error, expect: %s, got: %s",
+                                    ipRangeVO.getNetmask(), nicIp.ipv4Netmask));
+                        }
                     }
 
                     if (StringUtils.isEmpty(nicIp.ipv4Gateway)) {
@@ -411,8 +419,15 @@ public class StaticIpOperator implements SystemTagCreateMessageValidator, System
                                         e(VmSystemTags.IPV4_GATEWAY_TOKEN, ipRangeVO.getGateway()))
                         ));
                     } else if (!nicIp.ipv4Gateway.equals(ipRangeVO.getGateway())) {
-                        throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_COMPUTE_VM_10312, "gateway error, expect: %s, got: %s",
-                                ipRangeVO.getGateway(), nicIp.ipv4Gateway));
+                        if (L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
+                            newSystags.add(VmSystemTags.IPV4_GATEWAY.instantiateTag(
+                                    map(e(VmSystemTags.IPV4_GATEWAY_L3_UUID_TOKEN, l3Uuid),
+                                            e(VmSystemTags.IPV4_GATEWAY_TOKEN, nicIp.ipv4Gateway))
+                            ));
+                        } else {
+                            throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_COMPUTE_VM_10312, "gateway error, expect: %s, got: %s",
+                                    ipRangeVO.getGateway(), nicIp.ipv4Gateway));
+                        }
                     }
                 }
             }
@@ -433,8 +448,15 @@ public class StaticIpOperator implements SystemTagCreateMessageValidator, System
                                         e(VmSystemTags.IPV6_PREFIX_TOKEN, ipRangeVO.getPrefixLen()))
                         ));
                     } else if (!nicIp.ipv6Prefix.equals(ipRangeVO.getPrefixLen().toString())) {
-                        throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_COMPUTE_VM_10314, "ipv6 prefix length error, expect: %s, got: %s",
-                                ipRangeVO.getPrefixLen(), nicIp.ipv6Prefix));
+                        if (L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
+                            newSystags.add(VmSystemTags.IPV6_PREFIX.instantiateTag(
+                                    map(e(VmSystemTags.IPV6_PREFIX_L3_UUID_TOKEN, l3Uuid),
+                                            e(VmSystemTags.IPV6_PREFIX_TOKEN, nicIp.ipv6Prefix))
+                            ));
+                        } else {
+                            throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_COMPUTE_VM_10314, "ipv6 prefix length error, expect: %s, got: %s",
+                                    ipRangeVO.getPrefixLen(), nicIp.ipv6Prefix));
+                        }
                     }
 
                     if (StringUtils.isEmpty(nicIp.ipv6Gateway)) {
@@ -444,8 +466,16 @@ public class StaticIpOperator implements SystemTagCreateMessageValidator, System
                                                 IPv6NetworkUtils.ipv6AddressToTagValue(ipRangeVO.getGateway())))
                         ));
                     } else if (!nicIp.ipv6Gateway.equals(ipRangeVO.getGateway())) {
-                        throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_COMPUTE_VM_10315, "gateway error, expect: %s, got: %s",
-                                ipRangeVO.getGateway(), nicIp.ipv6Gateway));
+                        if (L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
+                            newSystags.add(VmSystemTags.IPV6_GATEWAY.instantiateTag(
+                                    map(e(VmSystemTags.IPV6_GATEWAY_L3_UUID_TOKEN, l3Uuid),
+                                            e(VmSystemTags.IPV6_GATEWAY_TOKEN,
+                                                    IPv6NetworkUtils.ipv6AddressToTagValue(nicIp.ipv6Gateway)))
+                            ));
+                        } else {
+                            throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_COMPUTE_VM_10315, "gateway error, expect: %s, got: %s",
+                                    ipRangeVO.getGateway(), nicIp.ipv6Gateway));
+                        }
                     }
                 }
             }
