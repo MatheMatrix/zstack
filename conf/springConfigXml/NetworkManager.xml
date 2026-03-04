@@ -142,12 +142,6 @@
         </zstack:plugin>
     </bean>
 
-    <bean id="UsedIpCascadeExtension" class="org.zstack.network.l3.UsedIpCascadeExtension">
-        <zstack:plugin>
-            <zstack:extension interface="org.zstack.core.cascade.CascadeExtensionPoint" order="-1"/>
-        </zstack:plugin>
-    </bean>
-
     <bean id="SdnControllerCascadeExtension" class="org.zstack.network.l2.SdnControllerCascadeExtension">
         <zstack:plugin>
             <zstack:extension interface="org.zstack.core.cascade.CascadeExtensionPoint"/>

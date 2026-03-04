@@ -319,6 +319,7 @@ public class L3BasicNetwork implements L3Network {
 
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
+                        SQL.New(UsedIpVO.class).eq(UsedIpVO_.ipRangeUuid, iprvo.getUuid()).delete();
                         dbf.remove(iprvo);
                         IpRangeHelper.updateL3NetworkIpversion(iprvo);
 
