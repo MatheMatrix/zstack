@@ -144,7 +144,7 @@
 
     <bean id="UsedIpCascadeExtension" class="org.zstack.network.l3.UsedIpCascadeExtension">
         <zstack:plugin>
-            <zstack:extension interface="org.zstack.core.cascade.CascadeExtensionPoint"/>
+            <zstack:extension interface="org.zstack.core.cascade.CascadeExtensionPoint" order="999"/>
         </zstack:plugin>
     </bean>
 
