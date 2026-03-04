@@ -788,8 +788,6 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
         // 提取公共条件判断（避免重复计算）
         boolean needRangeValidation = !L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)
             && l3NetworkVO.getEnableIPAM();
-        boolean allowOutsideRangeOrNoIpam = !l3NetworkVO.getEnableIPAM()
-            || L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class);
 
         // 范围验证：当需要时检查IP是否在L3网络的IP范围列表中
         if (needRangeValidation) {
@@ -812,13 +810,13 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             }
         }
 
-        // 参数填充和占用检查：当允许范围外IP或IPAM禁用时
-        if (normalizedIp != null && allowOutsideRangeOrNoIpam) {
+        // 参数填充和占用检查
+        if (normalizedIp != null && !l3NetworkVO.enableIpAddressAllocation()) {
             l3Found = true;
             fillIpv4Parameters(msg, ipv4Ranges);
             checkIpOccupied(normalizedIp, msg.getL3NetworkUuid());
         }
-        if (normalizedIp6 != null && allowOutsideRangeOrNoIpam) {
+        if (normalizedIp6 != null && !l3NetworkVO.enableIpAddressAllocation()) {
             l3Found = true;
             fillIpv6Parameters(msg, ipv6Ranges);
             checkIpOccupied(normalizedIp6, msg.getL3NetworkUuid());
