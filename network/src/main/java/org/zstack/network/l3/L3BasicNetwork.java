@@ -789,7 +789,7 @@ public class L3BasicNetwork implements L3Network {
             inRange = true;
         }
 
-        if (!self.enableIpAddressAllocation()) {
+        if (!self.getEnableIPAM()) {
             inRange = true;
         }
 

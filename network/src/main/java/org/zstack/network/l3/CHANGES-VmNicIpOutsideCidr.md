@@ -17,13 +17,20 @@
 public static GlobalConfig ALLOW_IP_OUTSIDE_RANGE = new GlobalConfig(CATEGORY, "allow.ip.outside.range");
 ```
 
-- `false`（默认）：IP 必须在 L3 IP Range 内（原有行为）
+- `false`（默认）：IP 必须在 L3 IP Range 内（`enableIPAM=false` 的网络除外）
 - `true`：允许设置不在 IP Range 内的 IP 地址，全局所有 L3 网络生效
 
-> **`enableIpAddressAllocation()` 与 `allow.ip.outside.range` 的关系**：
-> - `enableIpAddressAllocation()` 控制 L3 上创建网卡是否执行 IPAM 地址分配过程
-> - `allow.ip.outside.range` 控制是否校验网卡地址必须在 IP Range 之内
+> **`enableIPAM` 与 `allow.ip.outside.range` 的关系**：
+> - `enableIPAM`（数据库字段，默认 true）控制 L3 是否启用 IPAM 管理
+> - `enableIPAM=false` 的网络（如 flat/noRange/noDhcp）始终允许设置范围外 IP，无需全局配置
+> - `enableIPAM=true` 的网络需要全局配置 `allow.ip.outside.range=true` 才能设置范围外 IP
+> - `enableIpAddressAllocation()` 仅控制 L3 上创建网卡是否执行 IPAM 地址分配过程，不用于范围校验
 > - 即使 `enableIpAddressAllocation() = true`，只要指定地址不在 IP Range 内，就不走 IPAM 分支，走 no-ipam 分支直接创建 `UsedIpVO`（`ipRangeUuid = null`）
+>
+> **有效网络组合**：
+> - Flat 网络（3 种）：no IP range + no DHCP（enableIPAM=false）、IP range + no DHCP、IP range + DHCP
+> - 公有网络（2 种）：IP range + no DHCP、IP range + DHCP
+> - VPC 网络（1 种）：IP range + DHCP
 
 ### 1.1 删除 `IsIpAddressInRangesCheckEnabled()`
 

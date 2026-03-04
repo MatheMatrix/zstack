@@ -22,22 +22,30 @@ import org.zstack.utils.gson.JSONObjectUtil
 
 /**
  * Test IP outside CIDR behavior for flat/public networks controlled by
- * L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE (default false).
+ * L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE (default false) and L3NetworkVO.enableIPAM.
  *
- * Network scenarios under global config ON:
- *   Flat network:
- *     1. flatL3_noRange_noDhcp  — no IP range, no DHCP
- *     2. flatL3_range_noDhcp    — has IP range, no DHCP
- *     3. flatL3_range_dhcp      — has IP range, has DHCP
- *   Public network:
- *     4. pubL3_range_noDhcp     — has IP range, no DHCP
- *     5. pubL3_range_dhcp       — has IP range, has DHCP
+ * Valid network combinations:
+ *   Flat network (3 combos):
+ *     1. flatL3_noRange_noDhcp  — no IP range, no DHCP  (enableIPAM=false)
+ *     2. flatL3_range_noDhcp    — has IP range, no DHCP  (enableIPAM=true)
+ *     3. flatL3_range_dhcp      — has IP range, has DHCP  (enableIPAM=true)
+ *   Public network (2 combos):
+ *     4. pubL3_range_noDhcp     — has IP range, no DHCP  (enableIPAM=true)
+ *     5. pubL3_range_dhcp       — has IP range, has DHCP  (enableIPAM=true)
+ *   VPC network (1 combo, not tested here):
+ *     - has IP range, has DHCP  (enableIPAM=true)
+ *
+ * Outside-range IP rules:
+ *   - enableIPAM=false: always allow outside-range IPs (no global config needed)
+ *   - enableIPAM=true + global config OFF: outside-range IPs rejected
+ *   - enableIPAM=true + global config ON:  outside-range IPs allowed
  *
  * Each scenario tests: setVmStaticIp, changeVmNicNetwork, DHCP, security group.
  * Flat networks with EIP service also test EIP rejection for outside-range IP.
  *
  * Additional tests:
- *   - Global config OFF: outside-range IPs rejected on all network types
+ *   - Global config OFF: outside-range IPs rejected on enableIPAM=true networks,
+ *     allowed on enableIPAM=false networks
  *   - Orphan IP backfill when adding IP range (under global config ON)
  */
 class FlatChangeVmIpOutsideCidrCase extends SubCase {
@@ -114,6 +122,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
 
                     l3Network {
                         name = "flatL3_noRange_noDhcp"
+                        enableIPAM = false
 
                         service {
                             provider = FlatNetworkServiceConstant.FLAT_NETWORK_SERVICE_TYPE_STRING
@@ -239,6 +248,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
 
                     l3Network {
                         name = "flatL3_backfill"
+                        enableIPAM = false
 
                         service {
                             provider = SecurityGroupConstant.SECURITY_GROUP_PROVIDER_TYPE
@@ -255,6 +265,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
 
                     l3Network {
                         name = "flatL3_dest"
+                        enableIPAM = false
 
                         service {
                             provider = SecurityGroupConstant.SECURITY_GROUP_PROVIDER_TYPE

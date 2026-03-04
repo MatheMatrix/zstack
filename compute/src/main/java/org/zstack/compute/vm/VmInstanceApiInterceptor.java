@@ -111,8 +111,9 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                             "ip address [%s] already set to vmNic [uuid:%s]", ip, vmNicVO.getUuid()));
                 }
 
-                // 2.2 如果允许范围外IP，跳过范围验证
-                if (L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)) {
+                // 2.2 如果允许范围外IP或IPAM未启用，跳过范围验证
+                if (L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)
+                        || !l3NetworkVO.getEnableIPAM()) {
                     continue;
                 }
 
@@ -499,7 +500,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             int outsideRangeCount = rangeCounts[1];
 
             // 如果没有启用IP地址分配或允许范围外IP，则跳过范围检查
-            boolean allowOutsideRange = !l3NetworkVO.enableIpAddressAllocation()
+            boolean allowOutsideRange = !l3NetworkVO.getEnableIPAM()
                     || L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class);
 
             if (!allowOutsideRange) {
@@ -786,8 +787,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
 
         // 提取公共条件判断（避免重复计算）
         boolean needRangeValidation = !L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)
-            && l3NetworkVO.enableIpAddressAllocation();
-        boolean allowOutsideRangeOrNoIpam = !l3NetworkVO.enableIpAddressAllocation()
+            && l3NetworkVO.getEnableIPAM();
+        boolean allowOutsideRangeOrNoIpam = !l3NetworkVO.getEnableIPAM()
             || L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class);
 
         // 范围验证：当需要时检查IP是否在L3网络的IP范围列表中
@@ -963,7 +964,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 }
             }
 
-            if (!l3VO.enableIpAddressAllocation()) {
+            if (!l3VO.getEnableIPAM()) {
                 found = true;
             }
 
@@ -1078,7 +1079,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                 }
             }
 
-            if (!l3NetworkVO.enableIpAddressAllocation()) {
+            if (!l3NetworkVO.getEnableIPAM()) {
                 found = true;
             }
 
@@ -1121,7 +1122,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     }
                 }
 
-                if (!l3NetworkVO.enableIpAddressAllocation()) {
+                if (!l3NetworkVO.getEnableIPAM()) {
                     found = true;
                 }
 
