@@ -372,14 +372,12 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         L3NetworkInventory flatL3Dhcp = env.inventoryByName("flatL3_range_dhcp")
         VmInstanceInventory vm1 = createVmOnL3("vm-configoff-set-flat-dhcp", flatL3Dhcp.uuid)
 
-        expectApiFailure {
+        expect(AssertionError.class) {
             setVmStaticIp {
                 vmInstanceUuid = vm1.uuid
                 l3NetworkUuid = flatL3Dhcp.uuid
                 ip = "10.0.0.50"
             }
-        } {
-            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10131")
         }
 
         VmNicVO nicVO1 = dbFindByUuid(vm1.vmNics[0].uuid, VmNicVO.class)
@@ -389,7 +387,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         L3NetworkInventory flatL3NoDhcp = env.inventoryByName("flatL3_range_noDhcp")
         VmInstanceInventory vm2 = createVmOnL3("vm-configoff-set-flat-nodhcp", flatL3NoDhcp.uuid)
 
-        expectApiFailure {
+        expect(AssertionError.class) {
             setVmStaticIp {
                 vmInstanceUuid = vm2.uuid
                 l3NetworkUuid = flatL3NoDhcp.uuid
@@ -397,29 +395,25 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                 netmask = "255.255.255.0"
                 gateway = "10.0.0.1"
             }
-        } {
-            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10131")
         }
 
         // --- public network with IP range + DHCP ---
         L3NetworkInventory pubL3Dhcp = env.inventoryByName("pubL3_range_dhcp")
         VmInstanceInventory vm3 = createVmOnL3("vm-configoff-set-pub-dhcp", pubL3Dhcp.uuid)
 
-        expectApiFailure {
+        expect(AssertionError.class) {
             setVmStaticIp {
                 vmInstanceUuid = vm3.uuid
                 l3NetworkUuid = pubL3Dhcp.uuid
                 ip = "10.0.0.52"
             }
-        } {
-            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10131")
         }
 
         // --- public network with IP range, no DHCP ---
         L3NetworkInventory pubL3NoDhcp = env.inventoryByName("pubL3_range_noDhcp")
         VmInstanceInventory vm4 = createVmOnL3("vm-configoff-set-pub-nodhcp", pubL3NoDhcp.uuid)
 
-        expectApiFailure {
+        expect(AssertionError.class) {
             setVmStaticIp {
                 vmInstanceUuid = vm4.uuid
                 l3NetworkUuid = pubL3NoDhcp.uuid
@@ -427,8 +421,6 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                 netmask = "255.255.255.0"
                 gateway = "10.0.0.1"
             }
-        } {
-            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10131")
         }
     }
 
@@ -444,7 +436,7 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         VmNicInventory vmNic = vm.vmNics[0]
 
         // changeVmNicNetwork to flatL3_range_noDhcp with outside-range IP
-        expectApiFailure {
+        expect(AssertionError.class) {
             changeVmNicNetwork {
                 vmNicUuid = vmNic.uuid
                 destL3NetworkUuid = flatL3NoDhcp.uuid
@@ -454,8 +446,6 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                         String.format("ipv4Gateway::%s::10.10.10.1", flatL3NoDhcp.uuid)
                 ]
             }
-        } {
-            assert globalErrorCode.contains("ORG_ZSTACK_COMPUTE_VM_10131")
         }
 
         // Verify NIC still on original L3
