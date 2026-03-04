@@ -168,13 +168,11 @@ public class SecurityGroupManagerImpl extends AbstractService implements Securit
 
     private List<String> getVmIpsBySecurityGroup(String sgUuid, int ipVersion){
         List<String> ret = new ArrayList<>();
-        // Exclude IPs outside L3 CIDR range (ipRangeUuid is null)
         String sql = "select ip.ip" +
                 " from VmNicVO nic, VmNicSecurityGroupRefVO ref, SecurityGroupVO sg, UsedIpVO ip" +
                 " where sg.uuid = ref.securityGroupUuid and ref.vmNicUuid = nic.uuid" +
                 " and ref.securityGroupUuid = :sgUuid" +
-                " and nic.uuid = ip.vmNicUuid and ip.ipVersion = :ipVersion" +
-                " and ip.ipRangeUuid is not null";
+                " and nic.uuid = ip.vmNicUuid and ip.ipVersion = :ipVersion";
         TypedQuery<String> internalIpQuery = dbf.getEntityManager().createQuery(sql, String.class);
         internalIpQuery.setParameter("sgUuid", sgUuid);
         internalIpQuery.setParameter("ipVersion", ipVersion);

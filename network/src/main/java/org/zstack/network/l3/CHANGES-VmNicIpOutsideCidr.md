@@ -252,6 +252,6 @@ List<String> getVmNicDns(String vmUuid, String l3NetworkUuid);
 | IP 不在 Range 内 | `null` | no-ipam 分支直接创建 |
 | L3 网络 IP 统计 | — | 排除 `null` 记录 |
 | DHCP 下发 | — | 跳过 `null` 记录 |
-| 安全组计算 | — | 排除 `null` 记录 |
+| 安全组计算 | — | 包含所有记录（不再排除） |
 | EIP / LB / PF 绑定 | — | 禁止 `null` 记录 |
 | 添加 IpRange | — | 自动回填范围内的孤儿 IP |

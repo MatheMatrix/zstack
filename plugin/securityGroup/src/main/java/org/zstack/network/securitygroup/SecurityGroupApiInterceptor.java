@@ -921,20 +921,6 @@ public class SecurityGroupApiInterceptor implements ApiMessageInterceptor, Globa
 
         checkIfL3NetworkSupportSecurityGroup(uuids);
 
-        // Reject NICs whose all IPs are outside L3 IP range
-        for (String nicUuid : uuids) {
-            VmNicVO nicVO = dbf.findByUuid(nicUuid, VmNicVO.class);
-            if (nicVO == null || nicVO.getUsedIps().isEmpty()) {
-                continue;
-            }
-            boolean allOutsideRange = nicVO.getUsedIps().stream()
-                    .allMatch(ip -> ip.getIpRangeUuid() == null);
-            if (allOutsideRange) {
-                throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SECURITYGROUP_10130,
-                        "cannot add VM NIC[uuid:%s] to security group, because all its IP addresses are outside L3 network CIDR range",
-                        nicUuid));
-            }
-        }
 
         msg.setVmNicUuids(uuids);
     }

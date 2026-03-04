@@ -9,8 +9,6 @@ import org.zstack.header.network.service.NetworkServiceType
 import org.zstack.header.vm.VmNicVO
 import org.zstack.network.l3.L3NetworkGlobalConfig
 import org.zstack.network.securitygroup.SecurityGroupConstant
-import org.zstack.network.securitygroup.VmNicSecurityGroupRefVO
-import org.zstack.network.securitygroup.VmNicSecurityGroupRefVO_
 import org.zstack.network.service.eip.EipConstant
 import org.zstack.network.service.flat.FlatDhcpBackend
 import org.zstack.network.service.flat.FlatNetworkServiceConstant
@@ -290,34 +288,29 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             testSetStaticIp_flatNoRangeNoDhcp()
             testChangeNicNetwork_flatNoRangeNoDhcp()
             testDhcpSkip_flatNoRangeNoDhcp()
-            testSecurityGroup_flatNoRangeNoDhcp()
             testEipReject_flatNoRangeNoDhcp()
 
             // --- Flat: has IP range, no DHCP ---
             testSetStaticIp_flatRangeNoDhcp()
             testChangeNicNetwork_flatRangeNoDhcp()
             testDhcpSkip_flatRangeNoDhcp()
-            testSecurityGroup_flatRangeNoDhcp()
             testEipReject_flatRangeNoDhcp()
 
             // --- Flat: has IP range, has DHCP ---
             testSetStaticIp_flatRangeDhcp()
             testChangeNicNetwork_flatRangeDhcp()
             testDhcpSkip_flatRangeDhcp()
-            testSecurityGroup_flatRangeDhcp()
             testEipReject_flatRangeDhcp()
 
             // --- Public: has IP range, no DHCP ---
             testSetStaticIp_pubRangeNoDhcp()
             testChangeNicNetwork_pubRangeNoDhcp()
             testDhcpSkip_pubRangeNoDhcp()
-            testSecurityGroup_pubRangeNoDhcp()
 
             // --- Public: has IP range, has DHCP ---
             testSetStaticIp_pubRangeDhcp()
             testChangeNicNetwork_pubRangeDhcp()
             testDhcpSkip_pubRangeDhcp()
-            testSecurityGroup_pubRangeDhcp()
 
             // ==========================================
             // Part 3: Orphan IP backfill (global config ON)
@@ -554,43 +547,6 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         assert !dhcpApplied : "DHCP should NOT include outside-range IP 172.16.0.50 on no-DHCP L3"
     }
 
-    /**
-     * Flat/no-range/no-DHCP: NIC with outside-range IP should NOT be added to security group.
-     */
-    void testSecurityGroup_flatNoRangeNoDhcp() {
-        L3NetworkInventory l3 = env.inventoryByName("flatL3_noRange_noDhcp")
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-flat-noRange-noDhcp-set"] }[0]
-        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
-        assert nic != null
-
-        List<UsedIpVO> nicIps = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.vmNicUuid, nic.uuid)
-                .list()
-        assert nicIps.every { it.ipRangeUuid == null } : "all IPs should be outside range"
-
-        def sg = createSecurityGroup {
-            name = "sg-flat-noRange-noDhcp"
-            ipVersion = 4
-        } as SecurityGroupInventory
-
-        attachSecurityGroupToL3Network {
-            securityGroupUuid = sg.uuid
-            l3NetworkUuid = l3.uuid
-        }
-
-        expect(AssertionError.class) {
-            addVmNicToSecurityGroup {
-                securityGroupUuid = sg.uuid
-                vmNicUuids = [nic.uuid]
-            }
-        }
-
-        long refCount = Q.New(VmNicSecurityGroupRefVO.class)
-                .eq(VmNicSecurityGroupRefVO_.vmNicUuid, nic.uuid)
-                .eq(VmNicSecurityGroupRefVO_.securityGroupUuid, sg.uuid)
-                .count()
-        assert refCount == 0 : "NIC with outside-range IP should NOT be in security group"
-    }
 
     /**
      * Flat/no-range/no-DHCP: EIP should reject binding to NIC with outside-range IP.
@@ -731,43 +687,6 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         assert !dhcpApplied : "DHCP should NOT include outside-range IP 10.0.0.50 on no-DHCP L3"
     }
 
-    /**
-     * Flat/range/no-DHCP: NIC with outside-range IP should NOT be added to security group.
-     */
-    void testSecurityGroup_flatRangeNoDhcp() {
-        L3NetworkInventory l3 = env.inventoryByName("flatL3_range_noDhcp")
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-flat-range-noDhcp-set"] }[0]
-        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
-        assert nic != null
-
-        List<UsedIpVO> nicIps = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.vmNicUuid, nic.uuid)
-                .list()
-        assert nicIps.every { it.ipRangeUuid == null } : "all IPs should be outside range"
-
-        def sg = createSecurityGroup {
-            name = "sg-flat-range-noDhcp"
-            ipVersion = 4
-        } as SecurityGroupInventory
-
-        attachSecurityGroupToL3Network {
-            securityGroupUuid = sg.uuid
-            l3NetworkUuid = l3.uuid
-        }
-
-        expect(AssertionError.class) {
-            addVmNicToSecurityGroup {
-                securityGroupUuid = sg.uuid
-                vmNicUuids = [nic.uuid]
-            }
-        }
-
-        long refCount = Q.New(VmNicSecurityGroupRefVO.class)
-                .eq(VmNicSecurityGroupRefVO_.vmNicUuid, nic.uuid)
-                .eq(VmNicSecurityGroupRefVO_.securityGroupUuid, sg.uuid)
-                .count()
-        assert refCount == 0 : "NIC with outside-range IP should NOT be in security group"
-    }
 
     /**
      * Flat/range/no-DHCP: EIP should reject binding to NIC with outside-range IP.
@@ -910,43 +829,6 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         assert !dhcpAppliedForOutsideIp : "DHCP should NOT include outside-range IP 10.0.1.50 even on DHCP-enabled L3"
     }
 
-    /**
-     * Flat/range/DHCP: NIC with outside-range IP should NOT be added to security group.
-     */
-    void testSecurityGroup_flatRangeDhcp() {
-        L3NetworkInventory l3 = env.inventoryByName("flatL3_range_dhcp")
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-flat-range-dhcp-set"] }[0]
-        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
-        assert nic != null
-
-        List<UsedIpVO> nicIps = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.vmNicUuid, nic.uuid)
-                .list()
-        assert nicIps.every { it.ipRangeUuid == null } : "all IPs should be outside range"
-
-        def sg = createSecurityGroup {
-            name = "sg-flat-range-dhcp"
-            ipVersion = 4
-        } as SecurityGroupInventory
-
-        attachSecurityGroupToL3Network {
-            securityGroupUuid = sg.uuid
-            l3NetworkUuid = l3.uuid
-        }
-
-        expect(AssertionError.class) {
-            addVmNicToSecurityGroup {
-                securityGroupUuid = sg.uuid
-                vmNicUuids = [nic.uuid]
-            }
-        }
-
-        long refCount = Q.New(VmNicSecurityGroupRefVO.class)
-                .eq(VmNicSecurityGroupRefVO_.vmNicUuid, nic.uuid)
-                .eq(VmNicSecurityGroupRefVO_.securityGroupUuid, sg.uuid)
-                .count()
-        assert refCount == 0 : "NIC with outside-range IP should NOT be in security group"
-    }
 
     /**
      * Flat/range/DHCP: EIP should reject binding to NIC with outside-range IP.
@@ -1086,43 +968,6 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         assert !dhcpApplied : "DHCP should NOT include outside-range IP 10.0.2.50"
     }
 
-    /**
-     * Public/range/no-DHCP: NIC with outside-range IP should NOT be added to security group.
-     */
-    void testSecurityGroup_pubRangeNoDhcp() {
-        L3NetworkInventory l3 = env.inventoryByName("pubL3_range_noDhcp")
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-pub-range-noDhcp-set"] }[0]
-        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
-        assert nic != null
-
-        List<UsedIpVO> nicIps = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.vmNicUuid, nic.uuid)
-                .list()
-        assert nicIps.every { it.ipRangeUuid == null } : "all IPs should be outside range"
-
-        def sg = createSecurityGroup {
-            name = "sg-pub-range-noDhcp"
-            ipVersion = 4
-        } as SecurityGroupInventory
-
-        attachSecurityGroupToL3Network {
-            securityGroupUuid = sg.uuid
-            l3NetworkUuid = l3.uuid
-        }
-
-        expect(AssertionError.class) {
-            addVmNicToSecurityGroup {
-                securityGroupUuid = sg.uuid
-                vmNicUuids = [nic.uuid]
-            }
-        }
-
-        long refCount = Q.New(VmNicSecurityGroupRefVO.class)
-                .eq(VmNicSecurityGroupRefVO_.vmNicUuid, nic.uuid)
-                .eq(VmNicSecurityGroupRefVO_.securityGroupUuid, sg.uuid)
-                .count()
-        assert refCount == 0 : "NIC with outside-range IP should NOT be in security group"
-    }
 
     // ================================================================
     //  Part 2: Global config ON — Public: has IP range, has DHCP
@@ -1236,43 +1081,6 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         assert !dhcpAppliedForOutsideIp : "DHCP should NOT include outside-range IP 10.0.3.50 even on DHCP-enabled public L3"
     }
 
-    /**
-     * Public/range/DHCP: NIC with outside-range IP should NOT be added to security group.
-     */
-    void testSecurityGroup_pubRangeDhcp() {
-        L3NetworkInventory l3 = env.inventoryByName("pubL3_range_dhcp")
-        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-pub-range-dhcp-set"] }[0]
-        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
-        assert nic != null
-
-        List<UsedIpVO> nicIps = Q.New(UsedIpVO.class)
-                .eq(UsedIpVO_.vmNicUuid, nic.uuid)
-                .list()
-        assert nicIps.every { it.ipRangeUuid == null } : "all IPs should be outside range"
-
-        def sg = createSecurityGroup {
-            name = "sg-pub-range-dhcp"
-            ipVersion = 4
-        } as SecurityGroupInventory
-
-        attachSecurityGroupToL3Network {
-            securityGroupUuid = sg.uuid
-            l3NetworkUuid = l3.uuid
-        }
-
-        expect(AssertionError.class) {
-            addVmNicToSecurityGroup {
-                securityGroupUuid = sg.uuid
-                vmNicUuids = [nic.uuid]
-            }
-        }
-
-        long refCount = Q.New(VmNicSecurityGroupRefVO.class)
-                .eq(VmNicSecurityGroupRefVO_.vmNicUuid, nic.uuid)
-                .eq(VmNicSecurityGroupRefVO_.securityGroupUuid, sg.uuid)
-                .count()
-        assert refCount == 0 : "NIC with outside-range IP should NOT be in security group"
-    }
 
     // ================================================================
     //  Part 3: Orphan IP backfill (global config ON)
