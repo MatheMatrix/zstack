@@ -113,7 +113,7 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
 
                 // 2.2 如果允许范围外IP或IPAM未启用，跳过范围验证
                 if (L3NetworkGlobalConfig.ALLOW_IP_OUTSIDE_RANGE.value(Boolean.class)
-                        || !l3NetworkVO.getEnableIPAM()) {
+                        || !l3NetworkVO.enableIpAddressAllocation()) {
                     continue;
                 }
 
