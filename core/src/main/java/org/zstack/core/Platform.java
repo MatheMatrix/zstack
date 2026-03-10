@@ -21,6 +21,7 @@ import org.zstack.core.search.SearchGlobalProperty;
 import org.zstack.core.statemachine.StateMachine;
 import org.zstack.core.statemachine.StateMachineImpl;
 import org.zstack.core.thread.ThreadFacade;
+import org.zstack.core.config.AppConfig;
 import org.zstack.header.Component;
 import org.zstack.header.core.StaticInit;
 import org.zstack.header.core.encrypt.ENCRYPT;
@@ -52,6 +53,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.Inet4Address;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -488,7 +493,14 @@ public class Platform {
                 }
             }
 
-            File globalPropertiesFile = PathUtil.findFileOnClassPath("zstack.properties", true);
+            // Load properties file name from app configuration
+            // This allows OEM customization by replacing app_config.xml during build
+            String propertiesFileName = AppConfig.getPropertiesFileName();
+
+            // Set system property for Spring to use the same file
+            System.setProperty("app.properties.file", propertiesFileName);
+
+            File globalPropertiesFile = PathUtil.findFileOnClassPath(propertiesFileName, true);
 
             in = new FileInputStream(globalPropertiesFile);
             System.getProperties().load(in);

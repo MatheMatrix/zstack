@@ -5,7 +5,7 @@ zstack_service="/etc/init.d/zstack-server"
 tomcat_folder_path=""
 zstack_property_folder=~/.zstack/
 [ ! -d $zstack_property_folder ] && mkdir $zstack_property_folder || exit 1
-old_zstack_property=$zstack_property_folder/zstack.properties-old
+old_zstack_property=""
 tomcat_path_save=$zstack_property_folder/tomcat_path
 
 [ -f $tomcat_path_save ] && tomcat_folder_path=`cat $tomcat_path_save`
@@ -20,6 +20,26 @@ set -u # undefined variables are errors
 error_tmp_file=`mktemp`
 trap "rm $error_tmp_file 2>/dev/null" EXIT
 
+get_properties_file_name(){
+    app_config_file="$1/WEB-INF/classes/zstack/conf/app_config.xml"
+    properties_file="zstack.properties"
+
+    if [ -f "$app_config_file" ]; then
+        configured_file=`sed -n 's:.*<propertiesFile>\(.*\)</propertiesFile>.*:\1:p' "$app_config_file" | head -n 1`
+        if [ -n "$configured_file" ]; then
+            properties_file=$configured_file
+        fi
+    fi
+
+    echo "$properties_file"
+}
+
+set_zstack_property_path(){
+    properties_file_name=`get_properties_file_name "$zstack_folder"`
+    zstack_property="$zstack_folder/WEB-INF/classes/$properties_file_name"
+    old_zstack_property="$zstack_property_folder/${properties_file_name}-old"
+}
+
 help (){
     echo "Usage: $0 [options] [TOMCAT_PATH]
 
@@ -27,7 +47,7 @@ Description:
     ZStack Installer will install zstack.war to the given Tomcat folder.
 It is assumed all tools and services are installed, including Tomcat,
 MySQL server, RabbitMQ server, Ansible etc. The default behavior (without -f)
-will upgrade current ZStack and keep previous zstack.properties.
+will upgrade current ZStack and keep previous management properties file.
     Without command line options, it will pop up a menu for user interaction.
 
 Options:
@@ -195,7 +215,7 @@ config_tomcat(){
 
     webapp_folder=$tomcat_folder_path/webapps
     zstack_folder=$webapp_folder/zstack
-    zstack_property="$zstack_folder/WEB-INF/classes/zstack.properties"
+    set_zstack_property_path
     set_db_config
     tput clear
     tput sgr0
@@ -232,21 +252,21 @@ check_tomcat(){
 }
 
 set_db_config(){
-    #base on old zstack.properties to get current db configurations.
-    if [ -f $zstack_property ];then
-        /bin/cp -f $zstack_property $old_zstack_property
-        db_info=`grep 'DbFacadeDataSource.jdbcUrl' $zstack_property|awk -F'//' '{print $2}'|awk -F'/' '{print $1}'`
+    #base on old management properties file to get current db configurations.
+    if [ -f "$zstack_property" ];then
+        /bin/cp -f "$zstack_property" "$old_zstack_property"
+        db_info=`grep 'DbFacadeDataSource.jdbcUrl' "$zstack_property"|awk -F'//' '{print $2}'|awk -F'/' '{print $1}'`
         db_df_host=`echo $db_info|awk -F: '{print $1}'`
         db_df_port=`echo $db_info|awk -F: '{print $2}'`
-        db_df_user=`grep 'DbFacadeDataSource.user' $zstack_property|awk -F=  '{print $2}'|tr -d '\r'|tr -d '\n'`
-        db_df_passwd=`grep 'DbFacadeDataSource.password' $zstack_property|awk -F=  '{print $2}'|tr -d '\r'|tr -d '\n'`
+        db_df_user=`grep 'DbFacadeDataSource.user' "$zstack_property"|awk -F=  '{print $2}'|tr -d '\r'|tr -d '\n'`
+        db_df_passwd=`grep 'DbFacadeDataSource.password' "$zstack_property"|awk -F=  '{print $2}'|tr -d '\r'|tr -d '\n'`
     else
-        if [ -f $old_zstack_property ]; then
-            db_info=`grep 'DbFacadeDataSource.jdbcUrl' $old_zstack_property|awk -F'//' '{print $2}'|awk -F'/' '{print $1}'`
+        if [ -f "$old_zstack_property" ]; then
+            db_info=`grep 'DbFacadeDataSource.jdbcUrl' "$old_zstack_property"|awk -F'//' '{print $2}'|awk -F'/' '{print $1}'`
             db_df_host=`echo $db_info|awk -F: '{print $1}'`
             db_df_port=`echo $db_info|awk -F: '{print $2}'`
-            db_df_user=`grep 'DbFacadeDataSource.user' $old_zstack_property|awk -F=  '{print $2}'|tr -d '\r'|tr -d '\n'`
-            db_df_passwd=`grep 'DbFacadeDataSource.password' $old_zstack_property|awk -F=  '{print $2}'|tr -d '\r'|tr -d '\n'`
+            db_df_user=`grep 'DbFacadeDataSource.user' "$old_zstack_property"|awk -F=  '{print $2}'|tr -d '\r'|tr -d '\n'`
+            db_df_passwd=`grep 'DbFacadeDataSource.password' "$old_zstack_property"|awk -F=  '{print $2}'|tr -d '\r'|tr -d '\n'`
         else
             db_df_host=localhost
             db_df_port=3306
@@ -296,7 +316,7 @@ if [ $interactive_install -eq 0 ]; then
     tomcat_folder_path=$1
     webapp_folder=$tomcat_folder_path/webapps
     zstack_folder=$webapp_folder/zstack
-    zstack_property="$zstack_folder/WEB-INF/classes/zstack.properties"
+    set_zstack_property_path
     set_db_config
 else
     config_tomcat
@@ -377,11 +397,12 @@ cp $zstack_war $webapp_folder
 cd $webapp_folder
 
 unzip -q -d zstack zstack.war
+set_zstack_property_path
 if [ $fresh_install -eq 1 ]; then
-    sed -i "s/DbFacadeDataSource.user.*/DbFacadeDataSource.user=$db_user_name/" $zstack_property
-    sed -i "s/DbFacadeDataSource.password.*/DbFacadeDataSource.password=$db_user_passwd/" $zstack_property
-    sed -i "s/DbFacadeDataSource.jdbcUrl.*/DbFacadeDataSource.jdbcUrl=jdbc:mysql:\/\/$db_host:$db_port\/zstack/" $zstack_property
-    sed -i "s/RestApiDataSource.jdbcUrl.*/RestApiDataSource.jdbcUrl=jdbc:mysql:\/\/$db_host:$db_port\/zstack_rest/" $zstack_property
+    sed -i "s/DbFacadeDataSource.user.*/DbFacadeDataSource.user=$db_user_name/" "$zstack_property"
+    sed -i "s/DbFacadeDataSource.password.*/DbFacadeDataSource.password=$db_user_passwd/" "$zstack_property"
+    sed -i "s/DbFacadeDataSource.jdbcUrl.*/DbFacadeDataSource.jdbcUrl=jdbc:mysql:\/\/$db_host:$db_port\/zstack/" "$zstack_property"
+    sed -i "s/RestApiDataSource.jdbcUrl.*/RestApiDataSource.jdbcUrl=jdbc:mysql:\/\/$db_host:$db_port\/zstack_rest/" "$zstack_property"
 
     db_script_folder=zstack/WEB-INF/classes/db
     database=$db_script_folder/database.sql
@@ -417,7 +438,7 @@ if [ $fresh_install -eq 1 ]; then
     create_zstack_db  $schema_rest
     update_zstack_db "zstack_quartz" $schema_quartz
 else
-    /bin/cp -f $old_zstack_property $zstack_property
+    /bin/cp -f "$old_zstack_property" "$zstack_property"
 fi
 
 zstack_service_script=$webapp_folder/zstack/WEB-INF/classes/install/zstack-server
@@ -437,6 +458,6 @@ else
     echo -e "$(tput setaf 2)ZStack has been upgraded in $webapp_folder\n$(tput sgr0)"
 fi
 echo -e "$(tput setaf 2)zstack-server has been installed to /etc/init.d . Run \`/etc/init.d/zstack-server start\` to start zstack service.\n$(tput sgr0)"
-[ -f $old_zstack_property ] && echo -e "$(tput setaf 2)Original zstack.properties was saved in $old_zstack_property\n$(tput sgr0)"
+[ -f "$old_zstack_property" ] && echo -e "$(tput setaf 2)Original `basename $zstack_property` was saved in $old_zstack_property\n$(tput sgr0)"
 
 # vim: set et ts=4 sw=4 ai:

@@ -9,6 +9,7 @@ import org.zstack.core.StartMode
 import org.zstack.core.cloudbus.CloudBus
 import org.zstack.core.cloudbus.CloudBusImpl2
 import org.zstack.core.componentloader.ComponentLoader
+import org.zstack.core.config.AppConfig
 import org.zstack.core.db.DatabaseFacade
 import org.zstack.header.AbstractService
 import org.zstack.header.exception.CloudRuntimeException
@@ -261,28 +262,28 @@ abstract class Test extends ApiHelper implements Retry {
         Properties prop = new Properties()
 
         try {
-            prop.load(this.getClass().getClassLoader().getResourceAsStream("zstack.properties"))
+            prop.load(this.getClass().getClassLoader().getResourceAsStream(AppConfig.getPropertiesFileName()))
 
             String user = System.getProperty("DB.user")
             if (user == null) {
                 user = prop.getProperty("DB.user")
                 if (user == null) {
-                    user = prop.getProperty("DbFacadeDataSource.user")
-                }
-                if (user == null) {
-                    throw new CloudRuntimeException("cannot find DB user in zstack.properties, please set either DB.user or DbFacadeDataSource.user")
-                }
+                user = prop.getProperty("DbFacadeDataSource.user")
+            }
+            if (user == null) {
+                throw new CloudRuntimeException(String.format("cannot find DB user in %s, please set either DB.user or DbFacadeDataSource.user", AppConfig.getPropertiesFileName()))
+            }
             }
 
             String password = System.getProperty("DB.password")
             if (password == null) {
                 password = prop.getProperty("DB.password")
                 if (password == null) {
-                    password = prop.getProperty("DbFacadeDataSource.password")
-                }
-                if (password == null) {
-                    throw new CloudRuntimeException("cannot find DB user in zstack.properties, please set either DB.password or DbFacadeDataSource.password")
-                }
+                password = prop.getProperty("DbFacadeDataSource.password")
+            }
+            if (password == null) {
+                throw new CloudRuntimeException(String.format("cannot find DB password in %s, please set either DB.password or DbFacadeDataSource.password", AppConfig.getPropertiesFileName()))
+            }
             }
 
             Map<String, String> hostAndPort = getHostAndPort(System.getProperty("DB.url"))

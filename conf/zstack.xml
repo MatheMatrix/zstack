@@ -22,9 +22,12 @@
         <property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE"/>
         <property name="locations">
             <list>
-                <value>classpath:zstack.properties</value>
+                <!-- Properties file name is dynamically determined by app_config.xml -->
+                <!-- Platform.java sets the system property 'app.properties.file' at startup -->
+                <value>classpath:${app.properties.file}</value>
             </list>
         </property>
+        <property name="ignoreResourceNotFound" value="true"/>
         <property name="ignoreUnresolvablePlaceholders" value="true"/>
     </bean>
 
