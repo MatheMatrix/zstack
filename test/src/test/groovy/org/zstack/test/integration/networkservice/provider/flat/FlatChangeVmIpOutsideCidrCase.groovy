@@ -261,12 +261,18 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
             testChangeNicNetwork_flatRangeNoDhcp()
             testDhcpSkip_flatRangeNoDhcp()
             testEipReject_flatRangeNoDhcp()
+            // In-CIDR-but-outside-range: verify DB records and DHCP skip
+            testSetStaticIpInCidrOutsideRange_flatRangeNoDhcp()
+            testChangeNicNetworkInCidrOutsideRange_flatRangeNoDhcp()
 
             // --- Flat: has IP range, has DHCP ---
             testSetStaticIp_flatRangeDhcp()
             testChangeNicNetwork_flatRangeDhcp()
             testDhcpSkip_flatRangeDhcp()
             testEipReject_flatRangeDhcp()
+            // In-CIDR-but-outside-range: verify DB records and DHCP carries correct ip/netmask/gateway
+            testSetStaticIpInCidrOutsideRange_flatRangeDhcp()
+            testChangeNicNetworkInCidrOutsideRange_flatRangeDhcp()
 
 
             // ==========================================
@@ -419,10 +425,6 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         }
     }
 
-    // ================================================================
-    //  Part 2: Global config ON — Flat: has IP range, no DHCP
-    // ================================================================
-
     /**
      * Flat/range/no-DHCP: outside-range IP should succeed; in-range IP also works.
      */
@@ -566,10 +568,6 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
         }
     }
 
-    // ================================================================
-    //  Part 2: Global config ON — Flat: has IP range, has DHCP
-    // ================================================================
-
     /**
      * Flat/range/DHCP: outside-range IP should succeed with global config ON;
      * in-range IP also works normally.
@@ -712,6 +710,152 @@ class FlatChangeVmIpOutsideCidrCase extends SubCase {
                 eipUuid = eip.uuid
                 vmNicUuid = nic.uuid
             }
+        }
+    }
+
+    /**
+     * Flat/range/DHCP: setVmStaticIp with in-CIDR-but-outside-range IP (192.168.200.201
+     * is in CIDR 192.168.200.0/24 but outside range 10~200).
+     * Specify different netmask/gateway than CIDR default. Verify DB records.
+     * On reboot, intercept DHCP command and verify it carries correct ip/netmask/gateway.
+     */
+    void testSetStaticIpInCidrOutsideRange_flatRangeDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_range_dhcp")
+        VmInstanceInventory vm = queryVmInstance { conditions = ["name=vm-flat-range-dhcp-set"] }[0]
+        VmNicInventory nic = vm.vmNics.find { it.l3NetworkUuid == l3.uuid }
+        assert nic != null
+
+        // Set IP to 192.168.200.201: in CIDR but outside range 10~200
+        // Use different netmask/gateway to clearly distinguish from L3 range defaults
+        setVmStaticIp {
+            vmInstanceUuid = vm.uuid
+            l3NetworkUuid = l3.uuid
+            ip = "192.168.200.201"
+            netmask = "255.255.0.0"
+            gateway = "192.168.0.1"
+        }
+
+        // Verify DB: ipRangeUuid=null, user-supplied netmask/gateway
+        UsedIpVO usedIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, nic.uuid)
+                .eq(UsedIpVO_.ip, "192.168.200.201")
+                .find()
+        assert usedIp != null
+        assert usedIp.ipRangeUuid == null
+        assert usedIp.netmask == "255.255.0.0"
+        assert usedIp.gateway == "192.168.0.1"
+
+        VmNicVO nicVO = dbFindByUuid(nic.uuid, VmNicVO.class)
+        assert nicVO.ip == "192.168.200.201"
+        assert nicVO.netmask == "255.255.0.0"
+        assert nicVO.gateway == "192.168.0.1"
+
+        // On reboot, intercept DHCP command and verify it carries the user-supplied ip/netmask/gateway
+        stopVmInstance { uuid = vm.uuid }
+
+        FlatDhcpBackend.DhcpInfo capturedDhcp = null
+        env.afterSimulator(FlatDhcpBackend.APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
+            FlatDhcpBackend.ApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.ApplyDhcpCmd.class)
+            for (def dhcp : cmd.dhcp) {
+                if (dhcp.ip == "192.168.200.201") { capturedDhcp = dhcp }
+            }
+            return rsp
+        }
+        env.afterSimulator(FlatDhcpBackend.BATCH_APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
+            FlatDhcpBackend.BatchApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.BatchApplyDhcpCmd.class)
+            for (def dhcpInfo : cmd.dhcpInfos) {
+                for (def dhcp : dhcpInfo.dhcp) {
+                    if (dhcp.ip == "192.168.200.201") { capturedDhcp = dhcp }
+                }
+            }
+            return rsp
+        }
+
+        startVmInstance { uuid = vm.uuid }
+
+        retryInSecs {
+            assert capturedDhcp != null : "DHCP should include in-CIDR-but-outside-range IP 192.168.200.201 on DHCP-enabled L3"
+            assert capturedDhcp.netmask == "255.255.0.0" : "DHCP should carry user-supplied netmask, got: ${capturedDhcp.netmask}"
+            assert capturedDhcp.gateway == "192.168.0.1" : "DHCP should carry user-supplied gateway, got: ${capturedDhcp.gateway}"
+            assert capturedDhcp.mac == nic.mac
+        }
+
+        // Restore to outside-CIDR IP for subsequent tests
+        setVmStaticIp {
+            vmInstanceUuid = vm.uuid
+            l3NetworkUuid = l3.uuid
+            ip = "10.0.1.50"
+            netmask = "255.255.255.0"
+            gateway = "10.0.1.1"
+        }
+    }
+
+    /**
+     * Flat/range/DHCP: changeVmNicNetwork with in-CIDR-but-outside-range IP (192.168.200.202).
+     * Specify different netmask/gateway. Verify DB records.
+     * Start the VM, intercept DHCP command and verify it carries correct ip/netmask/gateway.
+     */
+    void testChangeNicNetworkInCidrOutsideRange_flatRangeDhcp() {
+        L3NetworkInventory l3 = env.inventoryByName("flatL3_range_dhcp")
+        L3NetworkInventory srcL3 = env.inventoryByName("flatL3_dest")
+
+        VmInstanceInventory vm = createVmOnL3("vm-flat-range-dhcp-incidr-change", srcL3.uuid)
+        VmNicInventory vmNic = vm.vmNics[0]
+
+        stopVmInstance { uuid = vm.uuid }
+
+        changeVmNicNetwork {
+            vmNicUuid = vmNic.uuid
+            destL3NetworkUuid = l3.uuid
+            systemTags = [
+                    String.format("staticIp::%s::192.168.200.202", l3.uuid),
+                    String.format("ipv4Netmask::%s::255.255.0.0", l3.uuid),
+                    String.format("ipv4Gateway::%s::192.168.0.1", l3.uuid)
+            ]
+        }
+
+        // Verify DB
+        VmNicVO nicVO = dbFindByUuid(vmNic.uuid, VmNicVO.class)
+        assert nicVO.l3NetworkUuid == l3.uuid
+        assert nicVO.ip == "192.168.200.202"
+        assert nicVO.netmask == "255.255.0.0"
+        assert nicVO.gateway == "192.168.0.1"
+
+        UsedIpVO usedIp = Q.New(UsedIpVO.class)
+                .eq(UsedIpVO_.vmNicUuid, vmNic.uuid)
+                .eq(UsedIpVO_.ip, "192.168.200.202")
+                .find()
+        assert usedIp != null
+        assert usedIp.ipRangeUuid == null
+        assert usedIp.netmask == "255.255.0.0"
+        assert usedIp.gateway == "192.168.0.1"
+
+        // Start VM, intercept DHCP and verify correct ip/netmask/gateway
+        FlatDhcpBackend.DhcpInfo capturedDhcp = null
+        env.afterSimulator(FlatDhcpBackend.APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
+            FlatDhcpBackend.ApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.ApplyDhcpCmd.class)
+            for (def dhcp : cmd.dhcp) {
+                if (dhcp.ip == "192.168.200.202") { capturedDhcp = dhcp }
+            }
+            return rsp
+        }
+        env.afterSimulator(FlatDhcpBackend.BATCH_APPLY_DHCP_PATH) { rsp, HttpEntity<String> e ->
+            FlatDhcpBackend.BatchApplyDhcpCmd cmd = JSONObjectUtil.toObject(e.body, FlatDhcpBackend.BatchApplyDhcpCmd.class)
+            for (def dhcpInfo : cmd.dhcpInfos) {
+                for (def dhcp : dhcpInfo.dhcp) {
+                    if (dhcp.ip == "192.168.200.202") { capturedDhcp = dhcp }
+                }
+            }
+            return rsp
+        }
+
+        startVmInstance { uuid = vm.uuid }
+
+        retryInSecs {
+            assert capturedDhcp != null : "DHCP should include in-CIDR-but-outside-range IP 192.168.200.202 on DHCP-enabled L3"
+            assert capturedDhcp.netmask == "255.255.0.0" : "DHCP should carry user-supplied netmask, got: ${capturedDhcp.netmask}"
+            assert capturedDhcp.gateway == "192.168.0.1" : "DHCP should carry user-supplied gateway, got: ${capturedDhcp.gateway}"
+            assert capturedDhcp.mac == vmNic.mac
         }
     }
 
