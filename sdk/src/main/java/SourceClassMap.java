@@ -178,6 +178,7 @@ public class SourceClassMap {
 			put("org.zstack.guesttools.GuestVmScriptInventory", "org.zstack.sdk.GuestVmScriptInventory");
 			put("org.zstack.guesttools.InvocationRecord", "org.zstack.sdk.InvocationRecord");
 			put("org.zstack.guesttools.InvocationRecordDetail", "org.zstack.sdk.InvocationRecordDetail");
+			put("org.zstack.ha.APIGetVmHaNetworkGroupRiskOnHostReply$NetworkGroupStatusDetail", "org.zstack.sdk.NetworkGroupStatusDetail");
 			put("org.zstack.ha.HaNetworkGroupInventory", "org.zstack.sdk.HaNetworkGroupInventory");
 			put("org.zstack.ha.HaStrategyConditionInventory", "org.zstack.sdk.HaStrategyConditionInventory");
 			put("org.zstack.header.acl.AccessControlListEntryInventory", "org.zstack.sdk.AccessControlListEntryInventory");
@@ -1265,6 +1266,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.NativeClusterInventory", "org.zstack.container.entity.NativeClusterInventory");
 			put("org.zstack.sdk.NativeHostInventory", "org.zstack.container.entity.NativeHostInventory");
 			put("org.zstack.sdk.Neighbor", "org.zstack.header.protocol.Neighbor");
+			put("org.zstack.sdk.NetworkGroupStatusDetail", "org.zstack.ha.APIGetVmHaNetworkGroupRiskOnHostReply$NetworkGroupStatusDetail");
 			put("org.zstack.sdk.NetworkReachablePair", "org.zstack.zops.NetworkReachablePair");
 			put("org.zstack.sdk.NetworkRouterAreaRefInventory", "org.zstack.header.protocol.NetworkRouterAreaRefInventory");
 			put("org.zstack.sdk.NetworkRouterFlowMeterRefInventory", "org.zstack.header.flowMeter.NetworkRouterFlowMeterRefInventory");
