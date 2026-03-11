@@ -38,6 +38,8 @@ public class KVMHostDeployArguments extends SyncTimeRequestedDeployArguments {
     private String restartLibvirtd;
     @SerializedName("extra_packages")
     private String extraPackages;
+    @SerializedName("tls_cert_ips")
+    private String tlsCertIps;
 
     private transient boolean forceRun = false;
 
@@ -132,6 +134,14 @@ public class KVMHostDeployArguments extends SyncTimeRequestedDeployArguments {
 
     public void setExtraPackages(String extraPackages) {
         this.extraPackages = extraPackages;
+    }
+
+    public String getTlsCertIps() {
+        return tlsCertIps;
+    }
+
+    public void setTlsCertIps(String tlsCertIps) {
+        this.tlsCertIps = tlsCertIps;
     }
 
     public String getEnableSpiceTls() {
