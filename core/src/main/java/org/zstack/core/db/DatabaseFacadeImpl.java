@@ -1,6 +1,7 @@
 package org.zstack.core.db;
 
 import com.google.common.collect.Maps;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.NestedExceptionUtils;
@@ -454,7 +455,7 @@ public class DatabaseFacadeImpl implements DatabaseFacade, Component {
         }
 
         void installLifeCycleCallback(EntityEvent evt, EntityLifeCycleCallback l) {
-            List<EntityLifeCycleCallback> cbs = listeners.computeIfAbsent(evt, k -> new ArrayList<>());
+            List<EntityLifeCycleCallback> cbs = listeners.computeIfAbsent(evt, k -> new CopyOnWriteArrayList<>());
             if (!cbs.contains(l)) {
                 cbs.add(l);
             }

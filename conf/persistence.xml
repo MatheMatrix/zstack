@@ -223,5 +223,7 @@
         <class>org.zstack.network.hostNetworkInterface.PhysicalSwitchVO</class>
         <class>org.zstack.network.hostNetworkInterface.PhysicalSwitchPortVO</class>
         <class>org.zstack.header.core.external.service.ExternalServiceConfigurationVO</class>
+        <class>org.zstack.header.zwatch.resnotify.ResNotifySubscriptionVO</class>
+        <class>org.zstack.header.zwatch.resnotify.ResNotifyWebhookRefVO</class>
     </persistence-unit>
 </persistence>
