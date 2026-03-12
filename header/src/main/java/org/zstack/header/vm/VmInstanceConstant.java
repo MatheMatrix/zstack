@@ -96,4 +96,6 @@ public interface VmInstanceConstant {
 
     String VM_CDROM_OCCUPANT_ISO = "ISO";
     String VM_CDROM_OCCUPANT_GUEST_TOOLS = "GuestTools";
+
+    String VM_META_SUFFIX = "_meta";
 }

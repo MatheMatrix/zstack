@@ -442,4 +442,24 @@ public class VolumeSnapshotTree {
 
         return findSnapshot(arg -> arg.getUuid().equals(snapshotUuid));
     }
+
+    public List<VolumeSnapshotInventory> levelOrderTraversal() {
+        List<VolumeSnapshotInventory> result = new ArrayList<>();
+        if (this.root == null) {
+            return result;
+        }
+
+        Queue<SnapshotLeaf> queue = new LinkedList<>();
+        queue.offer(this.root);
+
+        while (!queue.isEmpty()) {
+            SnapshotLeaf currentLeaf = queue.poll();
+            result.add(currentLeaf.getInventory());
+            for (SnapshotLeaf child : currentLeaf.getChildren()) {
+                queue.offer(child);
+            }
+        }
+
+        return result;
+    }
 }
