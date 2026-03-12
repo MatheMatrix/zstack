@@ -50,6 +50,8 @@ import org.zstack.header.storage.primary.PrimaryStorageCanonicalEvent.PrimarySto
 import org.zstack.header.storage.primary.PrimaryStorageCanonicalEvent.PrimaryStorageStatusChangedData;
 import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.vm.*;
+import org.zstack.header.vm.metadata.UpdateVmInstanceMetadataOnPrimaryStorageMsg;
+import org.zstack.header.vm.metadata.UpdateVmInstanceMetadataOnPrimaryStorageReply;
 import org.zstack.header.volume.*;
 import org.zstack.storage.volume.VolumeUtils;
 import org.zstack.utils.CollectionDSL;
@@ -417,6 +419,16 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
             handle((DeleteVolumeChainOnPrimaryStorageMsg) msg);
         } else if (msg instanceof CleanUpStorageTrashOnPrimaryStorageMsg) {
             handle((CleanUpStorageTrashOnPrimaryStorageMsg)msg);
+        } else if (msg instanceof UpdateVmInstanceMetadataOnPrimaryStorageMsg) {
+            handle((UpdateVmInstanceMetadataOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof ScanVmInstanceMetadataFromPrimaryStorageMsg) {
+            handle((ScanVmInstanceMetadataFromPrimaryStorageMsg) msg);
+        } else if (msg instanceof GetVmInstanceMetadataFromPrimaryStorageMsg) {
+            handle((GetVmInstanceMetadataFromPrimaryStorageMsg) msg);
+        } else if (msg instanceof CleanupVmInstanceMetadataOnPrimaryStorageMsg) {
+            handle((CleanupVmInstanceMetadataOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof RebaseVolumeBackingFileOnPrimaryStorageMsg) {
+            handle((RebaseVolumeBackingFileOnPrimaryStorageMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
@@ -1772,6 +1784,31 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
         UnlinkBitsOnPrimaryStorageReply reply = new UnlinkBitsOnPrimaryStorageReply();
         bus.reply(msg, reply);
     };
+
+    protected void handle(UpdateVmInstanceMetadataOnPrimaryStorageMsg msg) {
+        UpdateVmInstanceMetadataOnPrimaryStorageReply reply = new UpdateVmInstanceMetadataOnPrimaryStorageReply();
+        bus.reply(msg, reply);
+    }
+
+    protected void handle(GetVmInstanceMetadataFromPrimaryStorageMsg msg) {
+        GetVmInstanceMetadataFromPrimaryStorageReply reply = new GetVmInstanceMetadataFromPrimaryStorageReply();
+        bus.reply(msg, reply);
+    }
+
+    protected void handle(ScanVmInstanceMetadataFromPrimaryStorageMsg msg) {
+        ScanVmInstanceMetadataFromPrimaryStorageReply reply = new ScanVmInstanceMetadataFromPrimaryStorageReply();
+        bus.reply(msg, reply);
+    }
+
+    protected void handle(CleanupVmInstanceMetadataOnPrimaryStorageMsg msg) {
+        CleanupVmInstanceMetadataOnPrimaryStorageReply reply = new CleanupVmInstanceMetadataOnPrimaryStorageReply();
+        bus.reply(msg, reply);
+    }
+
+    protected void handle(RebaseVolumeBackingFileOnPrimaryStorageMsg msg) {
+        RebaseVolumeBackingFileOnPrimaryStorageReply reply = new RebaseVolumeBackingFileOnPrimaryStorageReply();
+        bus.reply(msg, reply);
+    }
 
     // don't attach any cluster
     public boolean isUnmounted() {
