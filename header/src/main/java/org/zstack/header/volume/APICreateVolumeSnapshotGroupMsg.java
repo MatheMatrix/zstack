@@ -11,6 +11,7 @@ import org.zstack.header.storage.snapshot.ConsistentType;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefInventory;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
+import org.zstack.header.vm.MetadataImpact;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.header.vm.VmInstanceVO;
 
@@ -28,6 +29,7 @@ import java.util.concurrent.TimeUnit;
         parameterName = "params"
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 3)
+@MetadataImpact(value = MetadataImpact.Impact.STORAGE, updateOnFailure = true)
 public class APICreateVolumeSnapshotGroupMsg extends APICreateMessage implements VolumeMessage, CreateVolumeSnapshotGroupMessage, APIMultiAuditor {
     /**
      * @desc root volume uuid. See :ref:`VolumeInventory`

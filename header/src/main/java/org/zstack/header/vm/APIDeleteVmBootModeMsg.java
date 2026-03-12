@@ -10,6 +10,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteVmBootModeEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.CONFIG)
 public class APIDeleteVmBootModeMsg extends APIDeleteMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String uuid;

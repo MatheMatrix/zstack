@@ -12,6 +12,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteVmSshKeyEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.CONFIG)
 public class APIDeleteVmSshKeyMsg extends APIMessage implements VmInstanceMessage {
     private String uuid;
 

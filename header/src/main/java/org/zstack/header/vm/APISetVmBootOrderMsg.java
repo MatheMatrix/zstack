@@ -18,6 +18,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.PUT,
         responseClass = APISetVmBootOrderEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.CONFIG)
 public class APISetVmBootOrderMsg extends APIMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String uuid;

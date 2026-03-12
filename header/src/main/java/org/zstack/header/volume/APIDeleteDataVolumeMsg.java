@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 import java.util.List;
 
@@ -42,6 +43,7 @@ import static org.zstack.utils.CollectionDSL.list;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteDataVolumeEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.STORAGE)
 public class APIDeleteDataVolumeMsg extends APIDeleteMessage implements VolumeMessage {
     /**
      * @desc data volume uuid

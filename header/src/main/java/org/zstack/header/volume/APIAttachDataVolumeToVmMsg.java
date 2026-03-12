@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 import org.zstack.header.vm.VmInstanceVO;
 
 /**
@@ -39,6 +40,7 @@ import org.zstack.header.vm.VmInstanceVO;
         parameterName = "params",
         responseClass = APIAttachDataVolumeToVmEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.STORAGE)
 public class APIAttachDataVolumeToVmMsg extends APIMessage implements VolumeMessage {
     /**
      * @desc vm uuid. see :ref:`VmInstanceInventory`

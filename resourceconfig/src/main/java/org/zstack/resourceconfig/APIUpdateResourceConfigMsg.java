@@ -6,11 +6,13 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vo.ResourceVO;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(path = "/resource-configurations/{category}/{name}/{resourceUuid}/actions",
         method = HttpMethod.PUT,
         isAction = true,
         responseClass = APIUpdateResourceConfigEvent.class)
+@MetadataImpact(MetadataImpact.Impact.CONFIG)
 public class APIUpdateResourceConfigMsg extends APIMessage implements ResourceConfigMessage {
     @APIParam
     private String category;

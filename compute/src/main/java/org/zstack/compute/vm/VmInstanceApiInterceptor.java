@@ -21,6 +21,7 @@ import org.zstack.header.image.*;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.network.l2.*;
 import org.zstack.header.network.l3.*;
+import org.zstack.header.storage.primary.APIRegisterVmInstanceMsg;
 import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO;
 import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO_;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;

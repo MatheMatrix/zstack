@@ -10,6 +10,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteVmNicEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.CONFIG)
 public class APIDeleteVmNicMsg extends APIDeleteMessage {
 
     @APIParam(resourceType = VmNicVO.class, successIfResourceNotExisting = true)

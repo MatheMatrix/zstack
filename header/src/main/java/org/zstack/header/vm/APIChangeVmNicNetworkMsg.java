@@ -16,6 +16,7 @@ import java.util.Map;
         method = HttpMethod.POST,
         responseClass = APIChangeVmNicNetworkEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.CONFIG)
 public class APIChangeVmNicNetworkMsg extends APIMessage implements VmInstanceMessage{
     @APIParam(resourceType = VmNicVO.class)
     private String vmNicUuid;
