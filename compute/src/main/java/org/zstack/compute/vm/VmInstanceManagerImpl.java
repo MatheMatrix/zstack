@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.compute.allocator.HostAllocatorManager;
 import org.zstack.compute.vm.quota.*;
+import org.zstack.header.vm.metadata.VmMetadataDirtyService;
 import org.zstack.core.Platform;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.*;
@@ -63,6 +64,10 @@ import org.zstack.header.vm.VmInstanceConstant.VmOperation;
 import org.zstack.header.vm.VmInstanceDeletionPolicyManager.VmInstanceDeletionPolicy;
 import org.zstack.header.vm.cdrom.VmCdRomVO;
 import org.zstack.header.vm.cdrom.VmCdRomVO_;
+import org.zstack.header.vm.metadata.APICleanupVmInstanceMetadataEvent;
+import org.zstack.header.vm.metadata.APICleanupVmInstanceMetadataMsg;
+import org.zstack.header.vm.metadata.APIUpdateVmInstanceMetadataMsg;
+import org.zstack.header.vm.metadata.APIUpdateVmInstanceMetadataEvent;
 import org.zstack.header.volume.*;
 import org.zstack.header.zone.ZoneInventory;
 import org.zstack.header.zone.ZoneVO;
@@ -168,6 +173,8 @@ public class VmInstanceManagerImpl extends AbstractService implements
     private VmFactoryManager vmFactoryManager;
     @Autowired
     protected EventFacade evtf;
+    @Autowired(required = false)
+    private VmMetadataDirtyService vmMetadataDirtyMarker;
 
     private List<VmInstanceExtensionManager> vmExtensionManagers = new ArrayList<>();
     private final static VmConfigSyncHelper vmConfigSyncHelper = new VmConfigSyncHelper();
@@ -239,6 +246,10 @@ public class VmInstanceManagerImpl extends AbstractService implements
             handle((APIGetSpiceCertificatesMsg) msg);
         } else if (msg instanceof APIGetVmsCapabilitiesMsg) {
             handle((APIGetVmsCapabilitiesMsg) msg);
+        } else if (msg instanceof APICleanupVmInstanceMetadataMsg) {
+            handle((APICleanupVmInstanceMetadataMsg) msg);
+        } else if (msg instanceof APIUpdateVmInstanceMetadataMsg) {
+            handle((APIUpdateVmInstanceMetadataMsg) msg);
         } else if (msg instanceof VmInstanceMessage) {
             passThrough((VmInstanceMessage) msg);
         } else {
@@ -2859,5 +2870,68 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 }
             }
         });
+    }
+
+    private void handle(APICleanupVmInstanceMetadataMsg msg) {
+        APICleanupVmInstanceMetadataEvent evt = new APICleanupVmInstanceMetadataEvent(msg.getId());
+
+        List<String> vmUuids = msg.getVmUuids();
+        List<CleanupVmInstanceMetadataOnPrimaryStorageMsg> msgs = new ArrayList<>();
+        for (String vmUuid : vmUuids) {
+            String psUuid = Q.New(VolumeVO.class)
+                    .eq(VolumeVO_.vmInstanceUuid, vmUuid)
+                    .eq(VolumeVO_.type, VolumeType.Root)
+                    .select(VolumeVO_.primaryStorageUuid)
+                    .findValue();
+            if (psUuid == null) {
+                continue;
+            }
+
+            CleanupVmInstanceMetadataOnPrimaryStorageMsg cmsg = new CleanupVmInstanceMetadataOnPrimaryStorageMsg();
+            cmsg.setPrimaryStorageUuid(psUuid);
+            cmsg.setVmUuid(vmUuid);
+            bus.makeTargetServiceIdByResourceUuid(cmsg, PrimaryStorageConstant.SERVICE_ID, psUuid);
+            msgs.add(cmsg);
+        }
+
+        if (msgs.isEmpty()) {
+            evt.setTotalCleaned(0);
+            evt.setTotalFailed(0);
+            evt.setFailedVmUuids(new ArrayList<>());
+            bus.publish(evt);
+            return;
+        }
+
+        bus.send(msgs, new CloudBusListCallBack(msg) {
+            @Override
+            public void run(List<MessageReply> replies) {
+                int totalCleaned = 0;
+                int totalFailed = 0;
+                List<String> failedVmUuids = new ArrayList<>();
+                for (int i = 0; i < replies.size(); i++) {
+                    MessageReply r = replies.get(i);
+                    if (r.isSuccess()) {
+                        totalCleaned++;
+                    } else {
+                        totalFailed++;
+                        failedVmUuids.add(msgs.get(i).getVmUuid());
+                    }
+                }
+                evt.setTotalCleaned(totalCleaned);
+                evt.setTotalFailed(totalFailed);
+                evt.setFailedVmUuids(failedVmUuids);
+                bus.publish(evt);
+            }
+        });
+    }
+
+    private void handle(APIUpdateVmInstanceMetadataMsg msg) {
+        APIUpdateVmInstanceMetadataEvent event = new APIUpdateVmInstanceMetadataEvent(msg.getId());
+        if (vmMetadataDirtyMarker != null) {
+            for (String vmUuid : msg.getVmUuids()) {
+                vmMetadataDirtyMarker.markDirty(vmUuid, true);
+            }
+        }
+        bus.publish(event);
     }
 }

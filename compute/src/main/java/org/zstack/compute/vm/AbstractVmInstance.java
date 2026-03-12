@@ -205,6 +205,12 @@ public abstract class AbstractVmInstance implements VmInstance {
                 APIDestroyVmInstanceMsg.class.getName(),
                 DestroyVmInstanceMsg.class.getName());
 
+        // Registering state: only metadata-related reads, destroy (for cleanup/rollback),
+        // and ChangeVmMetaDataMsg (for state transitions during registration) are allowed.
+        allowedOperations.addState(VmInstanceState.Registering,
+                ChangeVmMetaDataMsg.class.getName(),
+                APIDestroyVmInstanceMsg.class.getName(),
+                DestroyVmInstanceMsg.class.getName());
 
         stateChangeChecker.addState(VmInstanceStateEvent.unknown.toString(),
                 VmInstanceState.Created.toString(),

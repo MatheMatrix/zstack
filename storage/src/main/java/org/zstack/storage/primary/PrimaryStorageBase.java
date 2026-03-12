@@ -50,6 +50,8 @@ import org.zstack.header.storage.primary.PrimaryStorageCanonicalEvent.PrimarySto
 import org.zstack.header.storage.primary.PrimaryStorageCanonicalEvent.PrimaryStorageStatusChangedData;
 import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.vm.*;
+import org.zstack.header.vm.metadata.UpdateVmInstanceMetadataOnPrimaryStorageMsg;
+import org.zstack.header.vm.metadata.UpdateVmInstanceMetadataOnPrimaryStorageReply;
 import org.zstack.header.volume.*;
 import org.zstack.storage.volume.VolumeUtils;
 import org.zstack.utils.CollectionDSL;
@@ -417,6 +419,18 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
             handle((DeleteVolumeChainOnPrimaryStorageMsg) msg);
         } else if (msg instanceof CleanUpStorageTrashOnPrimaryStorageMsg) {
             handle((CleanUpStorageTrashOnPrimaryStorageMsg)msg);
+        } else if (msg instanceof UpdateVmInstanceMetadataOnPrimaryStorageMsg) {
+            handle((UpdateVmInstanceMetadataOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof ReadVmInstanceMetadataOnPrimaryStorageMsg) {
+            handle((ReadVmInstanceMetadataOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof ScanVmInstanceMetadataFromPrimaryStorageMsg) {
+            handle((ScanVmInstanceMetadataFromPrimaryStorageMsg) msg);
+        } else if (msg instanceof GetVmInstanceMetadataFromPrimaryStorageMsg) {
+            handle((GetVmInstanceMetadataFromPrimaryStorageMsg) msg);
+        } else if (msg instanceof CleanupVmInstanceMetadataOnPrimaryStorageMsg) {
+            handle((CleanupVmInstanceMetadataOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof RebaseVolumeBackingFileOnPrimaryStorageMsg) {
+            handle((RebaseVolumeBackingFileOnPrimaryStorageMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
@@ -935,6 +949,10 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
             handle((APICleanUpStorageTrashOnPrimaryStorageMsg) msg);
         } else if (msg instanceof APIAddStorageProtocolMsg) {
             handle((APIAddStorageProtocolMsg) msg);
+        } else if (msg instanceof APIScanVmInstanceMetadataFromPrimaryStorageMsg) {
+            handle((APIScanVmInstanceMetadataFromPrimaryStorageMsg) msg);
+        } else if (msg instanceof APIGetVmInstanceMetadataFromPrimaryStorageMsg) {
+            handle((APIGetVmInstanceMetadataFromPrimaryStorageMsg) msg);
         } else {
             bus.dealWithUnknownMessage(msg);
         }
@@ -1773,6 +1791,40 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
         bus.reply(msg, reply);
     };
 
+    protected void handle(UpdateVmInstanceMetadataOnPrimaryStorageMsg msg) {
+        UpdateVmInstanceMetadataOnPrimaryStorageReply reply = new UpdateVmInstanceMetadataOnPrimaryStorageReply();
+        bus.reply(msg, reply);
+    }
+
+    protected void handle(ReadVmInstanceMetadataOnPrimaryStorageMsg msg) {
+        ReadVmInstanceMetadataOnPrimaryStorageReply reply = new ReadVmInstanceMetadataOnPrimaryStorageReply();
+        bus.reply(msg, reply);
+    }
+
+    protected void handle(GetVmInstanceMetadataFromPrimaryStorageMsg msg) {
+        GetVmInstanceMetadataFromPrimaryStorageReply reply = new GetVmInstanceMetadataFromPrimaryStorageReply();
+        bus.reply(msg, reply);
+    }
+
+    protected void handle(ScanVmInstanceMetadataFromPrimaryStorageMsg msg) {
+        ScanVmInstanceMetadataFromPrimaryStorageReply reply = new ScanVmInstanceMetadataFromPrimaryStorageReply();
+        bus.reply(msg, reply);
+    }
+
+    protected void handle(CleanupVmInstanceMetadataOnPrimaryStorageMsg msg) {
+        CleanupVmInstanceMetadataOnPrimaryStorageReply reply = new CleanupVmInstanceMetadataOnPrimaryStorageReply();
+        bus.reply(msg, reply);
+    }
+
+    /**
+     * 默认实现：不需要 rebase 的存储类型直接返回成功。
+     * LocalStorage / SharedBlock / NFS 各自 override 此方法。
+     */
+    protected void handle(RebaseVolumeBackingFileOnPrimaryStorageMsg msg) {
+        RebaseVolumeBackingFileOnPrimaryStorageReply reply = new RebaseVolumeBackingFileOnPrimaryStorageReply();
+        bus.reply(msg, reply);
+    }
+
     // don't attach any cluster
     public boolean isUnmounted() {
         long count = Q.New(PrimaryStorageClusterRefVO.class)
@@ -1811,5 +1863,46 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
 
     private static String getDeduplicateError(String operationName) {
         return String.format("an other %s task is running, cancel this operation", operationName);
+    }
+
+    private void handle(APIScanVmInstanceMetadataFromPrimaryStorageMsg msg) {
+        APIScanVmInstanceMetadataFromPrimaryStorageReply reply = new APIScanVmInstanceMetadataFromPrimaryStorageReply();
+        ScanVmInstanceMetadataFromPrimaryStorageMsg gmsg = new ScanVmInstanceMetadataFromPrimaryStorageMsg();
+        gmsg.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
+        bus.makeTargetServiceIdByResourceUuid(gmsg, PrimaryStorageConstant.SERVICE_ID, msg.getPrimaryStorageUuid());
+        bus.send(gmsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply r) {
+                if (!r.isSuccess()) {
+                    reply.setError(r.getError());
+                    bus.reply(msg, reply);
+                    return;
+                }
+                ScanVmInstanceMetadataFromPrimaryStorageReply re = r.castReply();
+                reply.setVmInstanceMetadata(re.getVmInstanceMetadata());
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    private void handle(APIGetVmInstanceMetadataFromPrimaryStorageMsg msg) {
+        APIGetVmInstanceMetadataFromPrimaryStorageReply reply = new APIGetVmInstanceMetadataFromPrimaryStorageReply();
+        GetVmInstanceMetadataFromPrimaryStorageMsg gmsg = new GetVmInstanceMetadataFromPrimaryStorageMsg();
+        gmsg.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
+        gmsg.setVmInstanceUuid(msg.getVmInstanceUuid());
+        bus.makeTargetServiceIdByResourceUuid(gmsg, PrimaryStorageConstant.SERVICE_ID, msg.getPrimaryStorageUuid());
+        bus.send(gmsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply r) {
+                if (!r.isSuccess()) {
+                    reply.setError(r.getError());
+                    bus.reply(msg, reply);
+                    return;
+                }
+                GetVmInstanceMetadataFromPrimaryStorageReply re = r.castReply();
+                reply.setMetadata(re.getMetadata());
+                bus.reply(msg, reply);
+            }
+        });
     }
 }

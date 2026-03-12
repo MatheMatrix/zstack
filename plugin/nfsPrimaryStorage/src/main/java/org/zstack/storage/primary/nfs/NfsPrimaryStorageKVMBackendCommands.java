@@ -948,4 +948,82 @@ public class NfsPrimaryStorageKVMBackendCommands {
             this.hashValue = hashValue;
         }
     }
+
+    public static class WriteVmMetadataCmd extends NfsPrimaryStorageAgentCommand {
+        public String metadata;
+        public String metadataPath;
+        public String vmInstanceUuid;
+        public String vmInstanceName;
+        public String architecture;
+        public String schemaVersion;
+    }
+
+    public static class WriteVmMetadataRsp extends NfsPrimaryStorageAgentResponse {
+    }
+
+    public static class ReadVmMetadataCmd extends NfsPrimaryStorageAgentCommand {
+        public String metadataPath;
+    }
+
+    public static class ReadVmMetadataRsp extends NfsPrimaryStorageAgentResponse {
+        public String metadata;
+    }
+
+    public static class GetVmInstanceMetadataCmd extends NfsPrimaryStorageAgentCommand {
+        public String storagePath;
+        public String vmInstanceUuid;
+    }
+
+    public static class VmMetadataAgentEntry {
+        public String uuid;
+        public String name;
+        public String architecture;
+        public String path;
+        public String metadata;
+        public String schemaVersion;
+        public boolean hasSummary;
+        public boolean incomplete;
+    }
+
+    public static class GetVmInstanceMetadataRsp extends NfsPrimaryStorageAgentResponse {
+        public List<VmMetadataAgentEntry> entries = new ArrayList<>();
+    }
+
+    public static class ScanVmMetadataCmd extends NfsPrimaryStorageAgentCommand {
+        public String storagePath;
+        public List<String> vmUuids;
+    }
+
+    public static class ScanVmMetadataRsp extends NfsPrimaryStorageAgentResponse {
+        public List<VmMetadataScanEntry> metadataEntries = new ArrayList<>();
+    }
+
+    public static class VmMetadataScanEntry {
+        public String vmUuid;
+        public String vmName;
+        public String architecture;
+        public String schemaVersion;
+        public String metadataPath;
+        public long sizeBytes;
+        public long lastUpdateTime;
+        public boolean incomplete;
+        public String vmCategory;
+    }
+
+    public static class CleanupVmMetadataCmd extends NfsPrimaryStorageAgentCommand {
+        public String metadataPath;
+    }
+
+    public static class CleanupVmMetadataRsp extends NfsPrimaryStorageAgentResponse {
+    }
+
+    public static class PrefixRebaseBackingFilesCmd extends NfsPrimaryStorageAgentCommand {
+        public List<String> filePaths;
+        public String oldPrefix;
+        public String newPrefix;
+    }
+
+    public static class PrefixRebaseBackingFilesRsp extends NfsPrimaryStorageAgentResponse {
+        public int rebasedCount;
+    }
 }

@@ -55,4 +55,11 @@ public class NfsPrimaryStorageSimulatorConfig {
 
     public Map<String, String> getVolumeBaseImagePaths = new HashMap<String, String>();
     public List<UpdateMountPointCmd> updateMountPointCmds = new ArrayList<>();
+
+    public List<WriteVmMetadataCmd> writeVmMetadataCmds = new ArrayList<>();
+    public List<ReadVmMetadataCmd> readVmMetadataCmds = new ArrayList<>();
+    public List<GetVmInstanceMetadataCmd> getVmInstanceMetadataCmds = new ArrayList<>();
+    public List<ScanVmMetadataCmd> scanVmMetadataCmds = new ArrayList<>();
+    public List<CleanupVmMetadataCmd> cleanupVmMetadataCmds = new ArrayList<>();
+    public volatile String readVmMetadataContent;
 }

@@ -77,6 +77,7 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
 
     public static final String VERIFY_SNAPSHOT_CHAIN_PATH = "/localstorage/snapshot/verifychain";
     public static final String REBASE_SNAPSHOT_BACKING_FILES_PATH = "/localstorage/snapshot/rebasebackingfiles";
+    public static final String PREFIX_REBASE_BACKING_FILES_PATH = "/localstorage/snapshot/prefixrebasebackingfiles";
     public static final String COPY_TO_REMOTE_BITS_PATH = "/localstorage/copytoremote";
 
     public static class SnapshotTO {
@@ -91,6 +92,19 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
 
     public static class RebaseSnapshotBackingFilesCmd extends LocalStorageKvmBackend.AgentCommand {
         public List<SnapshotTO> snapshots;
+    }
+
+    public static class PrefixRebaseBackingFilesCmd extends LocalStorageKvmBackend.AgentCommand {
+        /** 需要检查并 rebase 的 qcow2 文件绝对路径列表（volume + snapshot installPath） */
+        public List<String> filePaths;
+        /** 旧路径前缀（如 "/vmds/"） */
+        public String oldPrefix;
+        /** 新路径前缀（如 "/vmds2/"） */
+        public String newPrefix;
+    }
+
+    public static class PrefixRebaseBackingFilesRsp extends LocalStorageKvmBackend.AgentResponse {
+        public int rebasedCount;
     }
 
     public static class CopyBitsFromRemoteCmd extends LocalStorageKvmBackend.AgentCommand implements HasThreadContext, Serializable {

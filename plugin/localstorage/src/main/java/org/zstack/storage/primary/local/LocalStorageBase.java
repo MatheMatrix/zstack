@@ -3,6 +3,7 @@ package org.zstack.storage.primary.local;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.compute.host.VolumeMigrationTargetHostFilter;
+import org.zstack.compute.vm.VmGlobalConfig;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.cloudbus.EventFacade;
@@ -39,6 +40,8 @@ import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.primary.VolumeSnapshotCapability.VolumeSnapshotArrangementType;
 import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.vm.*;
+import org.zstack.header.vm.metadata.UpdateVmInstanceMetadataOnPrimaryStorageMsg;
+import org.zstack.header.vm.metadata.UpdateVmInstanceMetadataOnPrimaryStorageReply;
 import org.zstack.header.vo.ResourceVO;
 import org.zstack.header.volume.*;
 import org.zstack.storage.primary.*;
@@ -902,6 +905,8 @@ public class LocalStorageBase extends PrimaryStorageBase {
             handle((CommitVolumeSnapshotOnPrimaryStorageMsg) msg);
         } else if (msg instanceof PullVolumeSnapshotOnPrimaryStorageMsg) {
             handle((PullVolumeSnapshotOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof RebaseVolumeBackingFileOnPrimaryStorageMsg) {
+            handle((RebaseVolumeBackingFileOnPrimaryStorageMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
@@ -1634,6 +1639,24 @@ public class LocalStorageBase extends PrimaryStorageBase {
             @Override
             public void fail(ErrorCode errorCode) {
                 PullVolumeSnapshotOnPrimaryStorageReply reply = new PullVolumeSnapshotOnPrimaryStorageReply();
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    private void handle(RebaseVolumeBackingFileOnPrimaryStorageMsg msg) {
+        LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(msg.getHostUuid());
+        LocalStorageHypervisorBackend bkd = f.getHypervisorBackend(self);
+        bkd.handle(msg, msg.getHostUuid(), new ReturnValueCompletion<RebaseVolumeBackingFileOnPrimaryStorageReply>(msg) {
+            @Override
+            public void success(RebaseVolumeBackingFileOnPrimaryStorageReply returnValue) {
+                bus.reply(msg, returnValue);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                RebaseVolumeBackingFileOnPrimaryStorageReply reply = new RebaseVolumeBackingFileOnPrimaryStorageReply();
                 reply.setError(errorCode);
                 bus.reply(msg, reply);
             }
@@ -3328,5 +3351,175 @@ public class LocalStorageBase extends PrimaryStorageBase {
 
     public static class LocalStoragePhysicalCapacityUsage extends PrimaryStorageBase.PhysicalCapacityUsage {
         public long localStorageUsedSize;
+    }
+
+    @Override
+    protected void handle(final UpdateVmInstanceMetadataOnPrimaryStorageMsg msg) {
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return "update-metadata-on-ps-" + self.getUuid();
+            }
+
+            @Override
+            public int getSyncLevel() {
+                return VmGlobalConfig.VM_METADATA_PS_MAX_CONCURRENT.value(Integer.class);
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                final String hostUuid = getHostUuidByResourceUuid(msg.getRootVolumeUuid());
+                LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(hostUuid);
+                LocalStorageHypervisorBackend bkd = f.getHypervisorBackend(self);
+                bkd.handle(msg, hostUuid, new ReturnValueCompletion<UpdateVmInstanceMetadataOnPrimaryStorageReply>(msg) {
+                    @Override
+                    public void success(UpdateVmInstanceMetadataOnPrimaryStorageReply returnValue) {
+                        bus.reply(msg, returnValue);
+                        chain.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        UpdateVmInstanceMetadataOnPrimaryStorageReply reply = new UpdateVmInstanceMetadataOnPrimaryStorageReply();
+                        reply.setError(errorCode);
+                        bus.reply(msg, reply);
+                        chain.next();
+                    }
+                });
+            }
+
+            @Override
+            public String getName() {
+                return "update-metadata-on-ps-" + self.getUuid();
+            }
+        });
+    }
+
+    @Override
+    protected void handle(final ReadVmInstanceMetadataOnPrimaryStorageMsg msg) {
+        ReadVmInstanceMetadataOnPrimaryStorageReply reply = new ReadVmInstanceMetadataOnPrimaryStorageReply();
+        final String hostUuid = msg.getHostUuid();
+        LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(hostUuid);
+        LocalStorageHypervisorBackend bkd = f.getHypervisorBackend(self);
+        bkd.handle(msg, hostUuid, new ReturnValueCompletion<ReadVmInstanceMetadataOnPrimaryStorageReply>(msg) {
+            @Override
+            public void success(ReadVmInstanceMetadataOnPrimaryStorageReply returnValue) {
+                bus.reply(msg, returnValue);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    @Override
+    protected void handle(final GetVmInstanceMetadataFromPrimaryStorageMsg msg) {
+        GetVmInstanceMetadataFromPrimaryStorageReply reply = new GetVmInstanceMetadataFromPrimaryStorageReply();
+
+        List<String> connectedHostUuids = SQL.New(
+                        "select h.hostUuid from LocalStorageHostRefVO h, HostVO host" +
+                                " where h.primaryStorageUuid = :psUuid" +
+                                " and h.hostUuid = host.uuid" +
+                                " and host.status = :hstatus", String.class)
+                .param("psUuid", self.getUuid())
+                .param("hstatus", HostStatus.Connected)
+                .list();
+        if (connectedHostUuids.isEmpty()) {
+            reply.setError(operr("no connected host found for local primary storage[uuid:%s]", self.getUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        String hostUuid = connectedHostUuids.get(0);
+        LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(hostUuid);
+        LocalStorageHypervisorBackend bkd = f.getHypervisorBackend(self);
+        bkd.handle(msg, hostUuid, new ReturnValueCompletion<GetVmInstanceMetadataFromPrimaryStorageReply>(msg) {
+            @Override
+            public void success(GetVmInstanceMetadataFromPrimaryStorageReply returnValue) {
+                bus.reply(msg, returnValue);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    @Override
+    protected void handle(final ScanVmInstanceMetadataFromPrimaryStorageMsg msg) {
+        ScanVmInstanceMetadataFromPrimaryStorageReply reply = new ScanVmInstanceMetadataFromPrimaryStorageReply();
+
+        List<String> connectedHostUuids = SQL.New(
+                        "select h.hostUuid from LocalStorageHostRefVO h, HostVO host" +
+                                " where h.primaryStorageUuid = :psUuid" +
+                                " and h.hostUuid = host.uuid" +
+                                " and host.status = :hstatus", String.class)
+                .param("psUuid", self.getUuid())
+                .param("hstatus", HostStatus.Connected)
+                .list();
+        if (connectedHostUuids.isEmpty()) {
+            reply.setError(operr("no connected host found for local primary storage[uuid:%s]", self.getUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        String hostUuid = connectedHostUuids.get(0);
+        LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(hostUuid);
+        LocalStorageHypervisorBackend bkd = f.getHypervisorBackend(self);
+        bkd.handle(msg, hostUuid, new ReturnValueCompletion<ScanVmInstanceMetadataFromPrimaryStorageReply>(msg) {
+            @Override
+            public void success(ScanVmInstanceMetadataFromPrimaryStorageReply returnValue) {
+                bus.reply(msg, returnValue);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    @Override
+    protected void handle(final CleanupVmInstanceMetadataOnPrimaryStorageMsg msg) {
+        CleanupVmInstanceMetadataOnPrimaryStorageReply reply = new CleanupVmInstanceMetadataOnPrimaryStorageReply();
+
+        // For local storage, metadata is co-located with the root volume on the same host.
+        // Find a connected host that has LocalStorageHostRefVO for this PS.
+        List<String> connectedHostUuids = SQL.New(
+                        "select h.hostUuid from LocalStorageHostRefVO h, HostVO host" +
+                                " where h.primaryStorageUuid = :psUuid" +
+                                " and h.hostUuid = host.uuid" +
+                                " and host.status = :hstatus", String.class)
+                .param("psUuid", self.getUuid())
+                .param("hstatus", HostStatus.Connected)
+                .list();
+
+        if (connectedHostUuids.isEmpty()) {
+            reply.setError(operr("no connected host found for local primary storage[uuid:%s]", self.getUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        String hostUuid = connectedHostUuids.get(0);
+        LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(hostUuid);
+        LocalStorageHypervisorBackend bkd = f.getHypervisorBackend(self);
+        bkd.handle(msg, hostUuid, new ReturnValueCompletion<CleanupVmInstanceMetadataOnPrimaryStorageReply>(msg) {
+            @Override
+            public void success(CleanupVmInstanceMetadataOnPrimaryStorageReply returnValue) {
+                bus.reply(msg, returnValue);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
     }
 }

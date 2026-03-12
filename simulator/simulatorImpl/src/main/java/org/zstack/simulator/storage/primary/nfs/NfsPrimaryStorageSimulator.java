@@ -444,4 +444,53 @@ public class NfsPrimaryStorageSimulator {
         reply(entity, rsp);
         return null;
     }
+
+    @RequestMapping(value=NfsPrimaryStorageKVMBackend.WRITE_VM_METADATA_PATH, method=RequestMethod.POST)
+    private @ResponseBody String writeVmMetadata(HttpServletRequest req) throws InterruptedException {
+        HttpEntity<String> entity = restf.httpServletRequestToHttpEntity(req);
+        WriteVmMetadataCmd cmd = JSONObjectUtil.toObject(entity.getBody(), WriteVmMetadataCmd.class);
+        config.writeVmMetadataCmds.add(cmd);
+        reply(entity, new WriteVmMetadataRsp());
+        return null;
+    }
+
+    @RequestMapping(value=NfsPrimaryStorageKVMBackend.READ_VM_METADATA_PATH, method=RequestMethod.POST)
+    private @ResponseBody String readVmMetadata(HttpServletRequest req) throws InterruptedException {
+        HttpEntity<String> entity = restf.httpServletRequestToHttpEntity(req);
+        ReadVmMetadataCmd cmd = JSONObjectUtil.toObject(entity.getBody(), ReadVmMetadataCmd.class);
+        config.readVmMetadataCmds.add(cmd);
+        ReadVmMetadataRsp rsp = new ReadVmMetadataRsp();
+        rsp.metadata = config.readVmMetadataContent;
+        reply(entity, rsp);
+        return null;
+    }
+
+    @RequestMapping(value=NfsPrimaryStorageKVMBackend.GET_VM_INSTANCE_METADATA_PATH, method=RequestMethod.POST)
+    private @ResponseBody String getVmInstanceMetadata(HttpServletRequest req) throws InterruptedException {
+        HttpEntity<String> entity = restf.httpServletRequestToHttpEntity(req);
+        GetVmInstanceMetadataCmd cmd = JSONObjectUtil.toObject(entity.getBody(), GetVmInstanceMetadataCmd.class);
+        config.getVmInstanceMetadataCmds.add(cmd);
+        GetVmInstanceMetadataRsp rsp = new GetVmInstanceMetadataRsp();
+        reply(entity, rsp);
+        return null;
+    }
+
+    @RequestMapping(value=NfsPrimaryStorageKVMBackend.SCAN_VM_METADATA_PATH, method=RequestMethod.POST)
+    private @ResponseBody String scanVmMetadata(HttpServletRequest req) throws InterruptedException {
+        HttpEntity<String> entity = restf.httpServletRequestToHttpEntity(req);
+        ScanVmMetadataCmd cmd = JSONObjectUtil.toObject(entity.getBody(), ScanVmMetadataCmd.class);
+        config.scanVmMetadataCmds.add(cmd);
+        ScanVmMetadataRsp rsp = new ScanVmMetadataRsp();
+        reply(entity, rsp);
+        return null;
+    }
+
+    @RequestMapping(value=NfsPrimaryStorageKVMBackend.CLEANUP_VM_METADATA_PATH, method=RequestMethod.POST)
+    private @ResponseBody String cleanupVmMetadata(HttpServletRequest req) throws InterruptedException {
+        HttpEntity<String> entity = restf.httpServletRequestToHttpEntity(req);
+        CleanupVmMetadataCmd cmd = JSONObjectUtil.toObject(entity.getBody(), CleanupVmMetadataCmd.class);
+        config.cleanupVmMetadataCmds.add(cmd);
+        reply(entity, new CleanupVmMetadataRsp());
+        return null;
+    }
 }
