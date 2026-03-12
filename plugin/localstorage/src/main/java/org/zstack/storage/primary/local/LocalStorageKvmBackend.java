@@ -43,10 +43,8 @@ import org.zstack.header.rest.RESTFacade;
 import org.zstack.header.storage.backup.*;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.snapshot.*;
+import org.zstack.header.vm.*;
 import org.zstack.header.vm.VmInstanceSpec.ImageSpec;
-import org.zstack.header.vm.VmInstanceState;
-import org.zstack.header.vm.VmInstanceVO;
-import org.zstack.header.vm.VmInstanceVO_;
 import org.zstack.header.volume.*;
 import org.zstack.identity.AccountManager;
 import org.zstack.kvm.*;
@@ -70,6 +68,7 @@ import java.util.stream.Collectors;
 import static org.zstack.core.Platform.inerr;
 import static org.zstack.core.Platform.multiErr;
 import static org.zstack.core.Platform.operr;
+import static org.zstack.header.vm.VmInstanceConstant.VM_META_SUFFIX;
 import static org.zstack.utils.CollectionDSL.list;
 import static org.zstack.utils.CollectionUtils.transformAndRemoveNull;
 
@@ -3794,6 +3793,33 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
             @Override
             public void fail(ErrorCode errorCode) {
                 completion.fail(errorCode);
+            }
+        });
+    }
+
+    @Override
+    void handle(UpdateVmInstanceMetadataOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<UpdateVmInstanceMetadataOnPrimaryStorageReply> completion) {
+        String installPath = Q.New(VolumeVO.class).eq(VolumeVO_.uuid, msg.getRootVolumeUuid()).select(VolumeVO_.installPath).findValue();
+        // /vms_ds/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-829a91b68e794a03865eab8a5918600a/snapshots/f2c31aeede604917aa8cee24848d8bfa.qcow2
+        // /vms_ds/rootVolumes/acct-36c27e8ff05c4780bf6d2fa65700f22e/vol-829a91b68e794a03865eab8a5918600a/829a91b68e794a03865eab8a5918600a.qcow2
+
+        String path = installPath.replaceFirst("^(.+/vol-[^/]+/).*$", "$1");
+        String metadataPath = String.format("%s%s", path, VM_META_SUFFIX);
+
+        UpdateVmInstanceMetadataOnHypervisorMsg umsg = new UpdateVmInstanceMetadataOnHypervisorMsg();
+        umsg.setMetadata(msg.getMetadata());
+        umsg.setMetadataPath(metadataPath);
+        umsg.setHostUuid(hostUuid);
+        bus.makeTargetServiceIdByResourceUuid(umsg, HostConstant.SERVICE_ID, hostUuid);
+        bus.send(umsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply r) {
+                UpdateVmInstanceMetadataOnPrimaryStorageReply reply = new UpdateVmInstanceMetadataOnPrimaryStorageReply();
+                if (!r.isSuccess()) {
+                    reply.setError(Platform.operr("failed to update vm[uuid=%s] on hypervisor.", self.getUuid())
+                            .withCause(r.getError()));
+                }
+                bus.reply(msg, reply);
             }
         });
     }

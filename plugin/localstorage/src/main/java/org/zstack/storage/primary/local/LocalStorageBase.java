@@ -3,6 +3,7 @@ package org.zstack.storage.primary.local;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.zstack.compute.host.VolumeMigrationTargetHostFilter;
+import org.zstack.compute.vm.VmGlobalConfig;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.cloudbus.EventFacade;
@@ -902,6 +903,8 @@ public class LocalStorageBase extends PrimaryStorageBase {
             handle((CommitVolumeSnapshotOnPrimaryStorageMsg) msg);
         } else if (msg instanceof PullVolumeSnapshotOnPrimaryStorageMsg) {
             handle((PullVolumeSnapshotOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof UpdateVmInstanceMetadataOnPrimaryStorageMsg) {
+            handle((UpdateVmInstanceMetadataOnPrimaryStorageMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
@@ -3328,5 +3331,50 @@ public class LocalStorageBase extends PrimaryStorageBase {
 
     public static class LocalStoragePhysicalCapacityUsage extends PrimaryStorageBase.PhysicalCapacityUsage {
         public long localStorageUsedSize;
+    }
+
+    private void handle(final UpdateVmInstanceMetadataOnPrimaryStorageMsg msg) {
+        // Layer 3: PS-level concurrency control (§4)
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return "update-metadata-on-ps-" + self.getUuid();
+            }
+
+            @Override
+            public int getSyncLevel() {
+                return VmGlobalConfig.VM_METADATA_PS_MAX_CONCURRENT.value(Integer.class);
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                doHandleUpdateMetadata(msg);
+                chain.next();
+            }
+
+            @Override
+            public String getName() {
+                return "update-metadata-on-ps-" + self.getUuid();
+            }
+        });
+    }
+
+    private void doHandleUpdateMetadata(final UpdateVmInstanceMetadataOnPrimaryStorageMsg msg) {
+        final String hostUuid = getHostUuidByResourceUuid(msg.getRootVolumeUuid());
+        LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(hostUuid);
+        LocalStorageHypervisorBackend bkd = f.getHypervisorBackend(self);
+        bkd.handle(msg, hostUuid, new ReturnValueCompletion<UpdateVmInstanceMetadataOnPrimaryStorageReply>(msg) {
+            @Override
+            public void success(UpdateVmInstanceMetadataOnPrimaryStorageReply returnValue) {
+                bus.reply(msg, returnValue);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                UpdateVmInstanceMetadataOnPrimaryStorageReply reply = new UpdateVmInstanceMetadataOnPrimaryStorageReply();
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
     }
 }
