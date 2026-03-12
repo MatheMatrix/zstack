@@ -11,12 +11,14 @@ import org.zstack.header.zone.ZoneVO;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/hosts/capacities/cpu-memory",
         method = HttpMethod.GET,
         responseClass = APIGetCpuMemoryCapacityReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetCpuMemoryCapacityMsg extends APISyncCallMessage {
     @APIParam(required = false, resourceType = ZoneVO.class)
     private List<String> zoneUuids;

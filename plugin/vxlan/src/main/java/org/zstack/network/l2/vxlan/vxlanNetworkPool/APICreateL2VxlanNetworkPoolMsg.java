@@ -6,6 +6,7 @@ import org.zstack.header.message.OverriddenApiParam;
 import org.zstack.header.message.OverriddenApiParams;
 import org.zstack.header.network.l2.APICreateL2NetworkMsg;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @OverriddenApiParams({
         @OverriddenApiParam(field = "physicalInterface", param = @APIParam(maxLength = 1024, required = false))
@@ -16,6 +17,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APICreateL2VxlanNetworkPoolEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateL2VxlanNetworkPoolMsg extends APICreateL2NetworkMsg {
 
     @Override

@@ -6,6 +6,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 10/17/2015.
@@ -16,6 +17,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIAttachIsoToVmInstanceEvent.class,
         parameterName = "null"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAttachIsoToVmInstanceMsg extends APIMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;

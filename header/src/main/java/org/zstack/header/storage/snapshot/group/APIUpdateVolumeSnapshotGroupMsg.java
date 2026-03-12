@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.snapshot.SnapshotBackendOperation;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by MaJin on 2019/8/29.
@@ -15,6 +16,7 @@ import org.zstack.header.storage.snapshot.SnapshotBackendOperation;
         isAction = true,
         responseClass = APIUpdateVolumeSnapshotGroupEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateVolumeSnapshotGroupMsg extends APIMessage implements VolumeSnapshotGroupMessage {
     @APIParam(required = false)
     private String name;

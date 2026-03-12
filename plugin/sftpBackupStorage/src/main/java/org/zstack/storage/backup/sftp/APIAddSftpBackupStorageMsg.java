@@ -5,6 +5,7 @@ import org.zstack.header.log.NoLogging;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.backup.APIAddBackupStorageMsg;
+import org.zstack.header.vm.MetadataImpact;
 /**
  * @api
  * add a sftp backup storage
@@ -61,6 +62,7 @@ import org.zstack.header.storage.backup.APIAddBackupStorageMsg;
         responseClass = APIAddSftpBackupStorageEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddSftpBackupStorageMsg extends APIAddBackupStorageMsg {
     @APIParam(maxLength = 255, emptyString = false)
     private String hostname;

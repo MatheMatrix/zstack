@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created with IntelliJ IDEA.
@@ -17,6 +18,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRenewSessionMsg extends APIMessage {
     @APIParam(resourceType = SessionVO.class)
     private String sessionUuid;

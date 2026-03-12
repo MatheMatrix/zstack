@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @author shenjin
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true,
         responseClass = APIUpdateDirectoryEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateDirectoryMsg extends APIMessage implements DirectoryMessage, OperateDirectoryMessage {
     @APIParam(resourceType = DirectoryVO.class)
     private String uuid;

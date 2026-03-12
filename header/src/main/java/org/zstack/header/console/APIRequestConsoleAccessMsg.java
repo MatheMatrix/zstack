@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vm.VmInstanceVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created with IntelliJ IDEA.
@@ -18,6 +19,7 @@ import org.zstack.header.vm.VmInstanceVO;
         parameterName = "params",
         responseClass = APIRequestConsoleAccessEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRequestConsoleAccessMsg extends APIMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;

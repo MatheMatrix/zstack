@@ -11,12 +11,14 @@ import java.util.List;
 import java.util.function.Function;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/task-details",
         method = HttpMethod.GET,
         responseClass = APIGetChainTaskReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetVmTaskMsg extends APIGetChainTaskMsg {
     @APIParam(nonempty = true, resourceType = VmInstanceVO.class)
     private List<String> vmInstanceUuids;

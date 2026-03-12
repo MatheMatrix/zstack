@@ -1,6 +1,9 @@
 package org.zstack.header.search;
 
 import org.zstack.header.message.APIMessage;
+import org.zstack.header.vm.MetadataImpact;
+
+@MetadataImpact(MetadataImpact.Impact.NONE)
 
 public class APIDeleteSearchIndexMsg extends APIMessage {
     private String indexName;

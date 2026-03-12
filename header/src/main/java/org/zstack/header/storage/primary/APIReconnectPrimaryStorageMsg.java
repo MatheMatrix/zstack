@@ -5,6 +5,7 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 4/23/2015.
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIReconnectPrimaryStorageMsg extends APIMessage implements PrimaryStorageMessage {
     @APIParam(resourceType = PrimaryStorageVO.class)
     private String uuid;

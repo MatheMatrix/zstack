@@ -12,6 +12,7 @@ import org.zstack.header.other.APILoginAuditor;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.Map;
+import org.zstack.header.vm.MetadataImpact;
 
 @SuppressCredentialCheck
 @RestRequest(
@@ -21,6 +22,7 @@ import java.util.Map;
         responseClass = APILogInReply.class
 )
 @EncryptionParamAllowed(actions = { EncryptionParamAllowed.ACTION_PUT_USER_INFO_INTO_SYSTEM_TAG })
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APILogInByAccountMsg extends APISessionMessage implements APILoginAuditor, APICaptchaMessage {
     @APIParam
     private String accountName;

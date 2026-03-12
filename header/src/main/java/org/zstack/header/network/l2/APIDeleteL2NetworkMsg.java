@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api delete l2Network
@@ -42,6 +43,7 @@ import static org.zstack.utils.CollectionDSL.list;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteL2NetworkEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteL2NetworkMsg extends APIDeleteMessage implements L2NetworkMessage {
     /**
      * @desc l2Network uuid

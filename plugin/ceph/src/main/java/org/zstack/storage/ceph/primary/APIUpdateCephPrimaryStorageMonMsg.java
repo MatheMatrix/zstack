@@ -9,6 +9,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.PrimaryStorageMessage;
 
 import java.io.Serializable;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by Mei Lei on 6/6/2016.
@@ -19,6 +20,7 @@ import java.io.Serializable;
         method = HttpMethod.PUT,
         responseClass = APIUpdateCephPrimaryStorageMonEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateCephPrimaryStorageMonMsg extends APIMessage implements PrimaryStorageMessage, Serializable {
     @APINoSee
     private String primaryStorageUuid;

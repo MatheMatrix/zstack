@@ -9,6 +9,7 @@ import org.zstack.header.vo.ResourceVO;
 
 import java.util.Arrays;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/resource-configurations/{resourceUuid}/resource-configs/actions",
@@ -16,6 +17,7 @@ import java.util.List;
         parameterName = "params",
         responseClass = APIUpdateResourceConfigsEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateResourceConfigsMsg extends APIMessage {
     @PythonClassInventory
     public static class ResourceConfigAO {

@@ -9,6 +9,7 @@ import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.tag.TagResourceType;
 
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api create data volume from a volume snapshot
@@ -46,6 +47,7 @@ import java.util.concurrent.TimeUnit;
         parameterName = "params"
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 3)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateDataVolumeFromVolumeSnapshotMsg extends APICreateMessage implements APIAuditor {
     /**
      * @desc max length of 255 characters

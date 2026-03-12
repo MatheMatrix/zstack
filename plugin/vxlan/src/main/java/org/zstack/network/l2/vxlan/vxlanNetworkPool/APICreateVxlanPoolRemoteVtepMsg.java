@@ -5,6 +5,7 @@ import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l2.L2NetworkMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 
 @RestRequest(
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APICreateVxlanPoolRemoteVtepEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateVxlanPoolRemoteVtepMsg extends APICreateMessage implements L2NetworkMessage {
 
     @APIParam

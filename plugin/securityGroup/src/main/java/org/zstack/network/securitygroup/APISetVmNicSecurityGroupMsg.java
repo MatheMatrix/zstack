@@ -8,6 +8,7 @@ import org.zstack.header.vm.VmNicVO;
 
 import java.util.List;
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/security-groups/nics/{vmNicUuid}/actions",
@@ -15,6 +16,7 @@ import static java.util.Arrays.asList;
         responseClass = APISetVmNicSecurityGroupEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APISetVmNicSecurityGroupMsg extends APIMessage implements VmNicSecurityGroupMessage {
     @APIParam(resourceType = VmNicVO.class, nonempty = true, required = true)
     private String vmNicUuid;

@@ -4,12 +4,14 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/sdn-controllers/{uuid}",
         method = HttpMethod.DELETE,
         responseClass = APIRemoveSdnControllerEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRemoveSdnControllerMsg extends APIDeleteMessage {
     @APIParam(successIfResourceNotExisting = true, resourceType = SdnControllerVO.class)
     private String uuid;

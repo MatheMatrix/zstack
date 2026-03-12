@@ -6,12 +6,14 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/l2-networks/{l2NetworkUuid}/cluster-candidates",
         method = HttpMethod.GET,
         responseClass = APIGetCandidateClustersForAttachingL2NetworkReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetCandidateClustersForAttachingL2NetworkMsg extends APIGetMessage {
     @APIParam(resourceType = L2NetworkVO.class)
     private String l2NetworkUuid;

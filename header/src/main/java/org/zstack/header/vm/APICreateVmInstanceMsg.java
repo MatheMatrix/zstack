@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api create a new vm instance
@@ -79,6 +80,7 @@ import static org.zstack.utils.CollectionDSL.list;
         parameterName = "params"
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 12)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateVmInstanceMsg extends APICreateMessage implements APIAuditor, NewVmInstanceMessage2 {
     /**
      * @desc max length of 255 characters

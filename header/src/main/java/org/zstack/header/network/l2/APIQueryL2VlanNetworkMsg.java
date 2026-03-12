@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryL2VlanNetworkReply.class, inventoryClass = L2VlanNetworkInventory.class)
 @RestRequest(
@@ -16,6 +17,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIQueryL2VlanNetworkReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryL2VlanNetworkMsg extends APIQueryMessage {
 
 

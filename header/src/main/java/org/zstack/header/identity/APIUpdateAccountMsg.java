@@ -8,6 +8,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
 import java.io.Serializable;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/accounts/{uuid}",
@@ -16,6 +17,7 @@ import java.io.Serializable;
         responseClass = APIUpdateAccountEvent.class
 )
 @EncryptionParamAllowed(forbiddenFields = {"uuid"})
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateAccountMsg extends APIMessage implements AccountMessage, Serializable {
     @APIParam(resourceType = AccountVO.class)
     private String uuid;

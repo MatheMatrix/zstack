@@ -11,6 +11,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 import org.zstack.header.vo.ResourceVO;
 import org.zstack.utils.DebugUtils;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by GuoYi on 11/13/17.
@@ -22,6 +23,7 @@ import org.zstack.utils.DebugUtils;
         parameterName = "params",
         responseClass = APISubmitLongJobEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APISubmitLongJobMsg extends APICreateMessage implements APILongJobAuditor {
     @APIParam(maxLength = 255, required = false)
     private String name;

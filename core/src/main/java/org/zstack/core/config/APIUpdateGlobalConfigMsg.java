@@ -5,6 +5,7 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/global-configurations/{category}/{name}/actions",
@@ -12,6 +13,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true,
         responseClass = APIUpdateGlobalConfigEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateGlobalConfigMsg extends APIMessage {
     @APIParam
     private String category;

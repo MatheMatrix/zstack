@@ -9,6 +9,7 @@ import org.zstack.header.vo.ResourceVO;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 7/13/2015.
@@ -19,6 +20,7 @@ import static org.zstack.utils.CollectionDSL.list;
         isAction = true,
         responseClass = APIRevokeResourceSharingEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRevokeResourceSharingMsg extends APIMessage {
     @APIParam(resourceType = ResourceVO.class, nonempty = true, scope = APIParam.SCOPE_MUST_OWNER)
     private List<String> resourceUuids;

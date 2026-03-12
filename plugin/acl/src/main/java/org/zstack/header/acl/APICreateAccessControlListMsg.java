@@ -8,6 +8,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @author: zhanyong.miao
@@ -20,6 +21,7 @@ import org.zstack.header.tag.TagResourceType;
         responseClass = APICreateAccessControlListEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateAccessControlListMsg extends APICreateMessage implements APIAuditor {
     @APIParam(maxLength = 255)
     private String name;

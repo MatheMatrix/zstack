@@ -6,6 +6,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vo.ResourceVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by MaJin on 2019/2/23.
@@ -13,6 +14,7 @@ import org.zstack.header.vo.ResourceVO;
 
 @RestRequest(path = "/resource-configurations/{resourceUuid}/{category}/{name}",
         method = HttpMethod.GET, responseClass = APIGetResourceConfigReply.class)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetResourceConfigMsg extends APISyncCallMessage implements ResourceConfigMessage {
     @APIParam
     private String category;

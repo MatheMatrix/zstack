@@ -3,6 +3,7 @@ package org.zstack.search;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @ Author : yh.w
@@ -12,6 +13,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIRefreshSearchIndexesReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRefreshSearchIndexesMsg extends APISyncCallMessage {
 
     public static APIRefreshSearchIndexesMsg __example__() {

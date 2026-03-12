@@ -7,12 +7,14 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/load-balancers/servergroups/{uuid}",
         method = HttpMethod.DELETE,
         responseClass = APIDeleteLoadBalancerServerGroupEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteLoadBalancerServerGroupMsg extends APIMessage implements LoadBalancerMessage, APIAuditor{
     @APIParam(resourceType = LoadBalancerServerGroupVO.class, successIfResourceNotExisting = true)
     private String uuid;

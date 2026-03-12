@@ -10,6 +10,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api
@@ -58,6 +59,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteSecurityGroupRuleEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteSecurityGroupRuleMsg extends APIMessage implements APIAuditor {
     /**
      * @desc a list of rule uuid

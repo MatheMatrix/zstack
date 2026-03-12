@@ -6,6 +6,7 @@ import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.network.l3.L3NetworkMessage;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by miao on 16-7-19.
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetL3NetworkDhcpIpAddressReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetL3NetworkDhcpIpAddressMsg extends APISyncCallMessage implements L3NetworkMessage {
     @APIParam(resourceType = L3NetworkVO.class)
     private String l3NetworkUuid;

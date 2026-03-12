@@ -15,6 +15,7 @@ import org.zstack.storage.ceph.CephConstants;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 7/27/2015.
@@ -29,6 +30,7 @@ import java.util.List;
         parameterName = "params",
         responseClass = APIAddBackupStorageEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddCephBackupStorageMsg extends APIAddBackupStorageMsg implements Serializable {
     @APIParam(nonempty = false, emptyString = false)
     @NoLogging(type = NoLogging.Type.Uri)

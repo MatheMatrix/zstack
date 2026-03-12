@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Arrays;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/7/25.
@@ -17,6 +18,7 @@ import java.util.List;
         parameterName = "params",
         responseClass = APIDebugSignalEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDebugSignalMsg extends APIMessage {
     @APIParam
     private List<String> signals;

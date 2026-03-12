@@ -9,6 +9,7 @@ import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.*;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 1/4/2016.
@@ -19,6 +20,7 @@ import java.util.*;
         method = HttpMethod.DELETE,
         responseClass = APIDetachNetworkServiceFromL3NetworkEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDetachNetworkServiceFromL3NetworkMsg extends APIMessage implements L3NetworkMessage {
     /**
      * @desc l3Network uuid

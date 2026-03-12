@@ -6,12 +6,14 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/ssh-key-pair/{uuid}",
         method = HttpMethod.DELETE,
         responseClass = APIDeleteSshKeyPairEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteSshKeyPairMsg extends APIMessage implements SshKeyPairMessage, APIAuditor {
     @APIParam(resourceType = SshKeyPairVO.class)
     private String uuid;

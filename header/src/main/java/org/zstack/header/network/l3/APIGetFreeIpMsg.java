@@ -5,6 +5,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.rest.SDK;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 6/15/2015.
@@ -26,6 +27,7 @@ import org.zstack.header.rest.SDK;
                 "GetFreeIpOfIpRange=/l3-networks/ip-ranges/{ipRangeUuid}/ip/free"
         }
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetFreeIpMsg extends APISyncCallMessage implements L3NetworkMessage {
     @APIParam(resourceType = L3NetworkVO.class, required = false)
     private String l3NetworkUuid;

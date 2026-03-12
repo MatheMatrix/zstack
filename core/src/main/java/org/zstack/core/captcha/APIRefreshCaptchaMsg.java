@@ -6,6 +6,7 @@ import org.zstack.header.identity.SuppressCredentialCheck;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by kayo on 2018/7/6.
@@ -16,6 +17,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIRefreshCaptchaReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRefreshCaptchaMsg extends APISyncCallMessage {
     @APIParam(resourceType = CaptchaVO.class)
     private String uuid;

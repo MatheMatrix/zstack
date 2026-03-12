@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/primary-storage/ceph/osdgroups",
@@ -15,6 +16,7 @@ import java.util.List;
         responseClass = APIQueryCephOsdGroupReply.class
 )
 @AutoQuery(replyClass = APIQueryCephOsdGroupReply.class, inventoryClass = CephOsdGroupInventory.class)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryCephOsdGroupMsg extends APIQueryMessage {
 
     public static List<String> __example__() {

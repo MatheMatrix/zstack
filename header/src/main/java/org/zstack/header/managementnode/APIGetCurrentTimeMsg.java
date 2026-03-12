@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.identity.SuppressCredentialCheck;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by Mei Lei <meilei007@gmail.com> on 11/1/16.
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         responseClass = APIGetCurrentTimeReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetCurrentTimeMsg extends APISyncCallMessage implements APIManagementNodeMessage {
  
     public static APIGetCurrentTimeMsg __example__() {

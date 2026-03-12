@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/nics/{vmNicUuid}/l3-networks/{l3NetworkUuid}",
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIAttachL3NetworkToVmNicEvent.class
 )
 @Deprecated
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAttachL3NetworkToVmNicMsg extends APIMessage {
     /**
      * @desc vm uuid

@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryImageReply.class, inventoryClass = ImageInventory.class)
 @RestRequest(
@@ -15,6 +16,7 @@ import java.util.List;
         method = HttpMethod.GET,
         responseClass = APIQueryImageReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryImageMsg extends APIQueryMessage {
 
  

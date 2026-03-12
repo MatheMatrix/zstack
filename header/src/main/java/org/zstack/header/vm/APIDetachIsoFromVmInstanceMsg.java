@@ -7,6 +7,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 10/17/2015.
@@ -16,6 +17,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIDetachIsoFromVmInstanceEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDetachIsoFromVmInstanceMsg extends APIMessage implements VmInstanceMessage, APIAuditor {
     @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;

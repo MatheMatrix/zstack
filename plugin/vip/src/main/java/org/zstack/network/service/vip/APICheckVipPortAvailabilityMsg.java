@@ -3,12 +3,14 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.message.APIGetMessage;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vips/{vipUuid}/check-port-availability",
         method = HttpMethod.GET,
         responseClass = APICheckVipPortAvailabilityReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICheckVipPortAvailabilityMsg extends APIGetMessage {
 
     @APIParam(resourceType = VipVO.class)

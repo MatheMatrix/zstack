@@ -5,6 +5,7 @@ import org.zstack.header.host.APIAddHostEvent;
 import org.zstack.header.host.APIAddHostMsg;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
 		path = "/hosts/simulators",
@@ -12,6 +13,7 @@ import org.zstack.header.rest.RestRequest;
 		parameterName = "params",
 		responseClass = APIAddHostEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddSimulatorHostMsg extends APIAddHostMsg {
 	@APIParam
 	private long memoryCapacity = 1000000000;

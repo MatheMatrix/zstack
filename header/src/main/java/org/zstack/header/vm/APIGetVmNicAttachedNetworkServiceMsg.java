@@ -4,12 +4,14 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/nics/{vmNicUuid}/attached-networkservices",
         method = HttpMethod.GET,
         responseClass = APIGetVmNicAttachedNetworkServiceReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetVmNicAttachedNetworkServiceMsg extends APISyncCallMessage {
     @APIParam(resourceType = VmNicVO.class)
     private String vmNicUuid;

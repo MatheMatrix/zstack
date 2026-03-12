@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryBackupStorageReply.class, inventoryClass = BackupStorageInventory.class)
 @RestRequest(
@@ -15,6 +16,7 @@ import java.util.List;
         method = HttpMethod.GET,
         responseClass = APIQueryBackupStorageReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryBackupStorageMsg extends APIQueryMessage {
 
  

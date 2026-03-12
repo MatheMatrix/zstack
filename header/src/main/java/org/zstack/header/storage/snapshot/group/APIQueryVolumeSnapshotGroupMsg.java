@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by MaJin on 2019/7/11.
@@ -18,6 +19,7 @@ import java.util.List;
         method = HttpMethod.GET,
         responseClass = APIQueryVolumeSnapshotGroupReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryVolumeSnapshotGroupMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return Collections.singletonList("uuid=" + uuid());

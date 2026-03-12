@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 7/15/2015.
@@ -17,6 +18,7 @@ import static org.zstack.utils.CollectionDSL.list;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteAccountEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteAccountMsg extends APIDeleteMessage implements AccountMessage {
     @APIParam(resourceType = AccountVO.class, successIfResourceNotExisting = true)
     private String uuid;

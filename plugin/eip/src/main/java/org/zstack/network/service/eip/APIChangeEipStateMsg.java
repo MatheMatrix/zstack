@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIChangeEipStateEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeEipStateMsg extends APIMessage implements EipMessage {
     @APIParam(resourceType = EipVO.class)
     private String uuid;

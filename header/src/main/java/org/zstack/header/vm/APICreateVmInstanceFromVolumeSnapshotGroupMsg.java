@@ -20,6 +20,7 @@ import org.zstack.header.zone.ZoneVO;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by MaJin on 2021/3/10.
@@ -31,6 +32,8 @@ import java.util.Map;
         responseClass = APICreateVmInstanceFromVolumeSnapshotGroupEvent.class,
         parameterName = "params"
 )
+
+@MetadataImpact(MetadataImpact.Impact.NONE)
 
 public class APICreateVmInstanceFromVolumeSnapshotGroupMsg extends APICreateMessage implements NewVmInstanceMessage2, APIAuditor {
     @APIParam(maxLength = 255)

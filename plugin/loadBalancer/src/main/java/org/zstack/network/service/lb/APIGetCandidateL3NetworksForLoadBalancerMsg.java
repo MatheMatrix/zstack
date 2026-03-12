@@ -5,6 +5,7 @@ import org.zstack.header.message.APIGetMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @author: zhanyong.miao
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetCandidateL3NetworksForLoadBalancerReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetCandidateL3NetworksForLoadBalancerMsg extends APIGetMessage implements LoadBalancerMessage {
     @APIParam(resourceType = LoadBalancerListenerVO.class)
     private String listenerUuid;

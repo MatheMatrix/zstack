@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by LiangHanYu on 2022/6/20 18:03
@@ -19,6 +20,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIQueryVmInstanceResourceMetadataGroupReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryVmInstanceResourceMetadataGroupMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return asList("uuid=" + uuid());

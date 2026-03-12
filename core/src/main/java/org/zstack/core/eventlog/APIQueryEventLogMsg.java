@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/eventlogs",
@@ -16,6 +17,7 @@ import static java.util.Arrays.asList;
         responseClass = APIQueryEventLogReply.class
 )
 @AutoQuery(replyClass = APIQueryEventLogReply.class, inventoryClass = EventLogInventory.class)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryEventLogMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return asList();

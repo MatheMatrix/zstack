@@ -1,6 +1,9 @@
 package org.zstack.header.storage.backup;
 
 import org.zstack.header.message.APIMessage;
+import org.zstack.header.vm.MetadataImpact;
+
+@MetadataImpact(MetadataImpact.Impact.NONE)
 
 public class APIScanBackupStorageMsg extends APIMessage implements BackupStorageMessage {
     private String backupStorageUuid;

@@ -8,6 +8,7 @@ import org.zstack.utils.network.IPv6Constants;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/{vmInstanceUuid}/actions",
@@ -15,6 +16,7 @@ import java.util.List;
         method = HttpMethod.PUT,
         responseClass = APISetVmDnsEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APISetVmDnsMsg extends APIMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;

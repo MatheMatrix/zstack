@@ -6,6 +6,7 @@ import org.zstack.header.storage.primary.APIAddPrimaryStorageEvent;
 import org.zstack.header.storage.primary.APIAddPrimaryStorageMsg;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/3/27.
@@ -17,6 +18,7 @@ import org.zstack.header.tag.TagResourceType;
         responseClass = APIAddPrimaryStorageEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddSharedMountPointPrimaryStorageMsg extends APIAddPrimaryStorageMsg {
     public APIAddSharedMountPointPrimaryStorageMsg() {
         this.setType(SMPConstants.SMP_TYPE);

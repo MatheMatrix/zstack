@@ -3,6 +3,7 @@ package org.zstack.header.network.service;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api get supported network service types
@@ -33,6 +34,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetNetworkServiceTypesReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetNetworkServiceTypesMsg extends APISyncCallMessage {
  
     public static APIGetNetworkServiceTypesMsg __example__() {

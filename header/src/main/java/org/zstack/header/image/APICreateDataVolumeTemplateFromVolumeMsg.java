@@ -11,6 +11,7 @@ import org.zstack.header.volume.VolumeVO;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
@@ -22,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 )
 @TagResourceType(ImageVO.class)
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 72)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateDataVolumeTemplateFromVolumeMsg extends APICreateMessage implements APIAuditor, CreateDataVolumeTemplateMessage {
     @APIParam(maxLength = 255)
     private String name;

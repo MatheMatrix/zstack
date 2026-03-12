@@ -11,6 +11,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 
 import static org.zstack.header.vm.VmInstanceConstant.USER_VM_TYPE;
+import org.zstack.header.vm.MetadataImpact;
 
 @TagResourceType(InstanceOfferingVO.class)
 @RestRequest(
@@ -19,6 +20,7 @@ import static org.zstack.header.vm.VmInstanceConstant.USER_VM_TYPE;
         parameterName = "params",
         method = HttpMethod.POST
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateInstanceOfferingMsg extends APICreateMessage implements APIAuditor {
     @APIParam(maxLength = 255)
     private String name;

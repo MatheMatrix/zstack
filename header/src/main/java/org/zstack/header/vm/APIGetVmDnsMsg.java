@@ -5,12 +5,14 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.utils.network.IPv6Constants;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/{vmInstanceUuid}/dns",
         method = HttpMethod.GET,
         responseClass = APIGetVmDnsReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetVmDnsMsg extends APISyncCallMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;

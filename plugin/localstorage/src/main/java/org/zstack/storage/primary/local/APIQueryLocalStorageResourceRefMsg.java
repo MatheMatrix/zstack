@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 11/14/2015.
@@ -17,6 +18,7 @@ import java.util.List;
         method = HttpMethod.GET,
         responseClass = APIQueryLocalStorageResourceRefReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryLocalStorageResourceRefMsg extends APIQueryMessage {
  
     public static List<String> __example__() {

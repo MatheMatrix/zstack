@@ -11,6 +11,7 @@ import org.zstack.header.acl.AccessControlListVO;
 
 import java.util.Arrays;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @author: zhanyong.miao
@@ -21,6 +22,7 @@ import java.util.List;
         method = HttpMethod.DELETE,
         responseClass = APIRemoveAccessControlListFromLoadBalancerEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRemoveAccessControlListFromLoadBalancerMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
     @APIParam(resourceType = AccessControlListVO.class, nonempty = true)
     private List<String> aclUuids;

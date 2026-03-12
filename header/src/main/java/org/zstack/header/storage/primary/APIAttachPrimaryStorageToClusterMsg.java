@@ -5,6 +5,7 @@ import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api attach primary storage to a cluster
@@ -39,6 +40,7 @@ import org.zstack.header.rest.RestRequest;
         parameterName = "params",
         responseClass = APIAttachPrimaryStorageToClusterEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAttachPrimaryStorageToClusterMsg extends APIMessage implements PrimaryStorageMessage {
     /**
      * @desc uuid of cluster this primary storage is attaching to

@@ -8,6 +8,7 @@ import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vm.VmNicVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api
@@ -49,6 +50,7 @@ import org.zstack.header.vm.VmNicVO;
         method = HttpMethod.DELETE,
         responseClass = APIDetachPortForwardingRuleEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDetachPortForwardingRuleMsg extends APIMessage implements APIAuditor {
     /**
      * @desc rule uuid

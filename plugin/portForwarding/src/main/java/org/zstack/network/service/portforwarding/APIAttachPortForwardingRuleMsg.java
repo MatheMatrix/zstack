@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vm.VmNicVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api
@@ -50,6 +51,7 @@ import org.zstack.header.vm.VmNicVO;
         parameterName = "params",
         responseClass = APIAttachPortForwardingRuleEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAttachPortForwardingRuleMsg extends APIMessage {
     /**
      * @desc rule uuid

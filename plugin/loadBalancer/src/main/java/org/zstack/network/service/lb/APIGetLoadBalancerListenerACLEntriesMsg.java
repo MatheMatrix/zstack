@@ -7,12 +7,14 @@ import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/load-balancers/listeners/access-control-lists/entries",
         method = HttpMethod.GET,
         responseClass = APIGetLoadBalancerListenerACLEntriesReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetLoadBalancerListenerACLEntriesMsg extends APISyncCallMessage {
     @APIParam(resourceType = LoadBalancerListenerVO.class, required = false)
     private List<String> listenerUuids;

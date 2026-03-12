@@ -5,6 +5,7 @@ import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api detach l2Network from a cluster
@@ -39,6 +40,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIDetachL2NetworkFromClusterEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDetachL2NetworkFromClusterMsg extends APIMessage implements L2NetworkMessage {
     /**
      * @desc l2Network uuid

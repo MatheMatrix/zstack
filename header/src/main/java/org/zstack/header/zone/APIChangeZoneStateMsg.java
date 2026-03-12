@@ -5,6 +5,7 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 
 /**
@@ -46,6 +47,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIChangeZoneStateEvent.class,
         method = HttpMethod.PUT
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeZoneStateMsg extends APIMessage implements ZoneMessage {
     /**
      * @desc zone uuid

@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.sshkeypair.SshKeyPairConstant;
+import org.zstack.header.vm.MetadataImpact;
 
 @TagResourceType(VolumeVO.class)
 @RestRequest(
@@ -15,6 +16,7 @@ import org.zstack.sshkeypair.SshKeyPairConstant;
         responseClass = APICreateSshKeyPairEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateSshKeyPairMsg extends APICreateMessage {
     @APIParam(maxLength = 255, validRegexValues = SshKeyPairConstant.SSH_KEY_PAIR_NAME_REGEX)
     private String name;

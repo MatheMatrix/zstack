@@ -16,6 +16,7 @@ import org.zstack.header.zone.ZoneVO;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by MaJin on 2021/3/10.
@@ -28,6 +29,7 @@ import java.util.concurrent.TimeUnit;
         parameterName = "params"
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 72)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateVmInstanceFromVolumeSnapshotMsg extends APICreateMessage implements NewVmInstanceMessage2, APIAuditor {
     @APIParam(maxLength = 255)
     private String name;

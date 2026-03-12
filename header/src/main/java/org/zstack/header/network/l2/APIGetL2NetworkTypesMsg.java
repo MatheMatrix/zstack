@@ -3,6 +3,7 @@ package org.zstack.header.network.l2;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api get supported l2Network types
@@ -33,6 +34,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetL2NetworkTypesReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetL2NetworkTypesMsg extends APISyncCallMessage {
  
     public static APIGetL2NetworkTypesMsg __example__() {

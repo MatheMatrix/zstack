@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 
 @RestRequest(
@@ -12,6 +13,8 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIChangeSecurityGroupRuleEvent.class,
         isAction = true
 )
+
+@MetadataImpact(MetadataImpact.Impact.NONE)
 
 public class APIChangeSecurityGroupRuleMsg extends APIMessage{
     @APIParam(resourceType = SecurityGroupRuleVO.class, nonempty = true)

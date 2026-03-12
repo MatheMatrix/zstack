@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.rest.SDK;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.volume.VolumeVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/8/30.
@@ -28,6 +29,7 @@ import org.zstack.header.volume.VolumeVO;
                 "GetBackupStorageForCreatingImageFromVolumeSnapshot=/images/volume-snapshots/{volumeSnapshotUuid}/candidate-backup-storage",
         }
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetCandidateBackupStorageForCreatingImageMsg extends APISyncCallMessage {
     @APIParam(resourceType = VolumeVO.class, required = false)
     private String volumeUuid;

@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.backup.APIAddBackupStorageEvent;
 import org.zstack.header.storage.backup.APIAddBackupStorageMsg;
+import org.zstack.header.vm.MetadataImpact;
 
 
 @RestRequest(
@@ -12,6 +13,7 @@ import org.zstack.header.storage.backup.APIAddBackupStorageMsg;
         parameterName = "params",
         responseClass = APIAddBackupStorageEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddSimulatorBackupStorageMsg extends APIAddBackupStorageMsg {
 	private long totalCapacity;
 	private long availableCapacity;

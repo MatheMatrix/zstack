@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by camile on 5/19/2017.
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateLoadBalancerListenerEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateLoadBalancerListenerMsg extends APIMessage implements LoadBalancerListenerMsg , LoadBalancerMessage {
     @APIParam(resourceType = LoadBalancerListenerVO.class)
     private String uuid;

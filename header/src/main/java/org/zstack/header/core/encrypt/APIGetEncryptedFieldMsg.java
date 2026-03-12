@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @author hanyu.liang
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetEncryptedFieldReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetEncryptedFieldMsg extends APISyncCallMessage {
     @APIParam(required = false)
     private String encryptedType;

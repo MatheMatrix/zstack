@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryVirtualRouterOfferingReply.class, inventoryClass = VirtualRouterOfferingInventory.class)
 @RestRequest(
@@ -16,6 +17,7 @@ import static java.util.Arrays.asList;
         responseClass = APIQueryVirtualRouterOfferingReply.class,
         method = HttpMethod.GET
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryVirtualRouterOfferingMsg extends APIQueryMessage {
 
 

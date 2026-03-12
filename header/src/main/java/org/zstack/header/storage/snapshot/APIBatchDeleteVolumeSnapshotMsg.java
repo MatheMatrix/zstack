@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/volume-snapshots/batch-delete",
@@ -25,6 +26,7 @@ import java.util.concurrent.TimeUnit;
         responseClass = APIBatchDeleteVolumeSnapshotEvent.class
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 6)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIBatchDeleteVolumeSnapshotMsg extends APIDeleteMessage implements APIMultiAuditor, APIBatchRequest {
     /**
      * @desc volume snapshot uuid

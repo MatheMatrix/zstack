@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.volume.VolumeProtocol;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/primary-storage/protocols",
@@ -12,6 +13,7 @@ import org.zstack.header.volume.VolumeProtocol;
         method = HttpMethod.POST,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddStorageProtocolMsg extends APIMessage implements PrimaryStorageMessage {
     /**
      * @desc primary storage uuid

@@ -6,6 +6,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.backup.BackupStorageMessage;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/backup-storage/sftp/{uuid}/actions",
@@ -13,6 +14,7 @@ import org.zstack.header.storage.backup.BackupStorageMessage;
         responseClass = APIReconnectSftpBackupStorageEvent.class,
         method = HttpMethod.PUT
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIReconnectSftpBackupStorageMsg extends APIMessage implements BackupStorageMessage {
     @APIParam(resourceType = SftpBackupStorageVO.class)
     private String uuid;

@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/metadata/cleanup",
@@ -14,6 +15,7 @@ import java.util.List;
         responseClass = APICleanupVmInstanceMetadataEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICleanupVmInstanceMetadataMsg extends APIMessage {
     @APIParam(required = false, resourceType = PrimaryStorageVO.class)
     private List<String> primaryStorageUuids;

@@ -2,10 +2,12 @@ package org.zstack.header.core.encrypt;
 
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by mingjian.deng on 16/12/28.
  */
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateEncryptKeyMsg extends APIMessage {
 
     @APIParam

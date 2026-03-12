@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vo.ResourceVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/4/16.
@@ -15,6 +16,7 @@ import org.zstack.header.vo.ResourceVO;
         responseClass = APIChangeResourceOwnerEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeResourceOwnerMsg extends APIMessage {
     @APIParam(resourceType = AccountVO.class)
     private String accountUuid;

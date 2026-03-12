@@ -3,6 +3,9 @@ package org.zstack.header.query;
 import org.zstack.header.message.APIMessage;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
+
+@MetadataImpact(MetadataImpact.Impact.NONE)
 
 public class APIGenerateInventoryQueryDetailsMsg extends APIMessage {
     private String outputDir;

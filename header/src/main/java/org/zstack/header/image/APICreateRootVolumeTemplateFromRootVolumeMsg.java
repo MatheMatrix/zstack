@@ -11,6 +11,7 @@ import org.zstack.header.volume.VolumeVO;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/images/root-volume-templates/from/volumes/{rootVolumeUuid}",
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 )
 @TagResourceType(ImageVO.class)
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 72)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateRootVolumeTemplateFromRootVolumeMsg extends APICreateMessage implements APIAuditor, CreateRootVolumeTemplateMessage {
     @APIParam(maxLength = 255)
     private String name;

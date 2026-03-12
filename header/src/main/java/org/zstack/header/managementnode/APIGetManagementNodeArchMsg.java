@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.identity.SuppressCredentialCheck;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 
 /**
@@ -17,6 +18,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIGetManagementNodeArchReply.class
 )
 @SuppressCredentialCheck
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetManagementNodeArchMsg extends APISyncCallMessage implements APIManagementNodeMessage {
 
     public static APIGetManagementNodeArchMsg __example__() {

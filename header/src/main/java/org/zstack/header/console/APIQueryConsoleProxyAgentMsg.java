@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/3/15.
@@ -19,6 +20,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIQueryConsoleProxyAgentReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryConsoleProxyAgentMsg extends APIQueryMessage {
 
     public static List<String> __example__() {

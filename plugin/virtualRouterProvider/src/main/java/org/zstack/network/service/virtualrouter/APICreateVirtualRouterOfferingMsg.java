@@ -10,6 +10,7 @@ import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 import org.zstack.header.zone.ZoneVO;
+import org.zstack.header.vm.MetadataImpact;
 
 @TagResourceType(InstanceOfferingVO.class)
 @RestRequest(
@@ -18,6 +19,7 @@ import org.zstack.header.zone.ZoneVO;
 		parameterName = "params",
 		method = HttpMethod.POST
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateVirtualRouterOfferingMsg extends APICreateInstanceOfferingMsg {
 	@APIParam(resourceType = ZoneVO.class)
 	private String zoneUuid;

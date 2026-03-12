@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryIpRangeReply.class, inventoryClass = IpRangeInventory.class)
 @RestRequest(
@@ -16,6 +17,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIQueryIpRangeReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryIpRangeMsg extends APIQueryMessage {
 
     public static List<String> __example__() {

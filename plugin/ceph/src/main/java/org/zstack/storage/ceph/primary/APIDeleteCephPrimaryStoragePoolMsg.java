@@ -9,6 +9,7 @@ import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.PrimaryStorageMessage;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2017/2/28.
@@ -18,6 +19,7 @@ import org.zstack.header.storage.primary.PrimaryStorageVO;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteCephPrimaryStoragePoolEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteCephPrimaryStoragePoolMsg extends APIMessage implements PrimaryStorageMessage, APIAuditor {
     @APIParam(resourceType = CephPrimaryStoragePoolVO.class, successIfResourceNotExisting = true)
     private String uuid;

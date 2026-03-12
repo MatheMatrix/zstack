@@ -3,6 +3,7 @@ package org.zstack.header.identity;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created with IntelliJ IDEA.
@@ -16,6 +17,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIValidateSessionReply.class,
         method = HttpMethod.GET
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIValidateSessionMsg extends APISessionMessage {
     @APIParam
     private String sessionUuid;

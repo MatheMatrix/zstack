@@ -6,6 +6,9 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
+import org.zstack.header.vm.MetadataImpact;
+
+@MetadataImpact(MetadataImpact.Impact.NONE)
 
 public abstract class APIAddBackupStorageMsg extends APICreateMessage implements APIAuditor {
     /**

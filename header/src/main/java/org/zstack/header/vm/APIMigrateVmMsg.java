@@ -8,6 +8,7 @@ import org.zstack.header.message.DefaultTimeout;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api live migrate vm to another host
@@ -44,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 )
 @SkipVmTracer(replyClass = APIMigrateVmEvent.class)
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 1)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIMigrateVmMsg extends APIMessage implements VmInstanceMessage, MigrateVmMessage, CheckAttachedVolumesMessage {
     /**
      * @desc vm uuid

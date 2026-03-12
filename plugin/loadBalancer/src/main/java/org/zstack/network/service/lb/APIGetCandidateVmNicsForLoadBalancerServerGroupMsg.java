@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by shixin.ruan on 2020/11/09.
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetCandidateVmNicsForLoadBalancerServerGroupReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetCandidateVmNicsForLoadBalancerServerGroupMsg extends APISyncCallMessage implements LoadBalancerMessage {
     @APIParam(resourceType = LoadBalancerServerGroupVO.class, required = false)
     private String servergroupUuid;

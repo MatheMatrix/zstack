@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2017/2/28.
@@ -19,6 +20,7 @@ import static java.util.Arrays.asList;
         responseClass = APIQueryCephPrimaryStoragePoolReply.class
 )
 @AutoQuery(replyClass = APIQueryCephPrimaryStoragePoolReply.class, inventoryClass = CephPrimaryStoragePoolInventory.class)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryCephPrimaryStoragePoolMsg extends APIQueryMessage {
 
     public static List<String> __example__() {

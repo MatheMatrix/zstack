@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api change l3Network state
@@ -39,6 +40,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIChangeL3NetworkStateEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeL3NetworkStateMsg extends APIMessage implements L3NetworkMessage {
     /**
      * @desc l3Network uuid

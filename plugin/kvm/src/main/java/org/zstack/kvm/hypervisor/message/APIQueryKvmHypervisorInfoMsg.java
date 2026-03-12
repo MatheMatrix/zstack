@@ -9,6 +9,7 @@ import org.zstack.kvm.hypervisor.datatype.KvmHypervisorInfoInventory;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by Wenhao.Zhang on 23/02/23
@@ -19,6 +20,7 @@ import static java.util.Arrays.asList;
         responseClass = APIQueryKvmHypervisorInfoReply.class,
         method = HttpMethod.GET
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryKvmHypervisorInfoMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return asList("uuid=" + uuid());

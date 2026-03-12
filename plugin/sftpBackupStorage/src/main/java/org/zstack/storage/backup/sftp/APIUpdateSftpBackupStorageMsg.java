@@ -6,6 +6,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.backup.APIUpdateBackupStorageEvent;
 import org.zstack.header.storage.backup.APIUpdateBackupStorageMsg;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 6/15/2015.
@@ -16,6 +17,7 @@ import org.zstack.header.storage.backup.APIUpdateBackupStorageMsg;
         method = HttpMethod.PUT,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateSftpBackupStorageMsg extends APIUpdateBackupStorageMsg {
     @APIParam(maxLength = 255, required = false)
     private String username;

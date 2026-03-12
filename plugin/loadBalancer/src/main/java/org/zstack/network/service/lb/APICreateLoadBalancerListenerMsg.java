@@ -11,6 +11,7 @@ import org.zstack.header.tag.TagResourceType;
 import org.zstack.header.acl.AccessControlListVO;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 8/8/2015.
@@ -22,6 +23,7 @@ import java.util.List;
         responseClass = APICreateLoadBalancerListenerEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateLoadBalancerListenerMsg extends APICreateMessage implements LoadBalancerMessage, APIAuditor {
     @APIParam(resourceType = LoadBalancerVO.class)
     private String loadBalancerUuid;

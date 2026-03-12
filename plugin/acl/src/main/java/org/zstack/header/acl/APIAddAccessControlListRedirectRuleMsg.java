@@ -11,6 +11,7 @@ import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.vm.MetadataImpact;
 
 @TagResourceType(AccessControlListVO.class)
 @RestRequest(
@@ -19,6 +20,7 @@ import org.zstack.header.tag.TagResourceType;
         responseClass = APIAddAccessControlListEntryEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddAccessControlListRedirectRuleMsg extends APICreateMessage implements APIAuditor {
     @APIParam(maxLength = 255, required = false)
     private String name;

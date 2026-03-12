@@ -5,6 +5,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/11/29.
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetCandidateVmNicsForLoadBalancerReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetCandidateVmNicsForLoadBalancerMsg extends APISyncCallMessage implements LoadBalancerMessage {
     @APIParam(resourceType = LoadBalancerListenerVO.class)
     private String listenerUuid;

@@ -9,6 +9,7 @@ import org.zstack.header.zone.ZoneVO;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @author shenjin
@@ -19,6 +20,7 @@ import java.util.List;
         method = HttpMethod.DELETE,
         responseClass = APIRemoveResourcesFromDirectoryEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRemoveResourcesFromDirectoryMsg extends APIMessage implements DirectoryMessage{
     @APIParam(resourceType = ResourceVO.class, nonempty = true)
     private List<String> resourceUuids;

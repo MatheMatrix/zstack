@@ -6,6 +6,7 @@ import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vo.ResourceVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by LiangHanYu on 2022/7/5 17:44
@@ -15,6 +16,7 @@ import org.zstack.header.vo.ResourceVO;
         method = HttpMethod.GET,
         responseClass = APIGetMemorySnapshotGroupReferenceReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetMemorySnapshotGroupReferenceMsg extends APISyncCallMessage {
     @APIParam(resourceType = ResourceVO.class)
     private String resourceUuid;

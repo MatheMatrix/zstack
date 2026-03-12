@@ -3,6 +3,7 @@ package org.zstack.header.core.progress;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2017/3/21.
@@ -12,6 +13,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetTaskProgressReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetTaskProgressMsg extends APISyncCallMessage {
     private String apiId;
 

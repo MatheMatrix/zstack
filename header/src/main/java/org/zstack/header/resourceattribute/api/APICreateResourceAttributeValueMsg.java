@@ -12,6 +12,7 @@ import org.zstack.utils.StringDSL;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/resource-attributes/{keyUuid}/resources",
@@ -19,6 +20,7 @@ import static org.zstack.utils.CollectionDSL.list;
         responseClass = APICreateResourceAttributeValueEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateResourceAttributeValueMsg extends APIMessage implements ResourceAttributeMessage {
     @APIParam(resourceType = ResourceAttributeKeyVO.class)
     private String keyUuid;

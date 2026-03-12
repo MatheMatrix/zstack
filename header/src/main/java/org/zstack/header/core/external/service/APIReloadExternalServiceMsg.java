@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/external/services",
@@ -11,6 +12,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIReloadExternalServiceEvent.class,
         method = HttpMethod.PUT
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIReloadExternalServiceMsg extends APIMessage {
     @APIParam
     private String name;

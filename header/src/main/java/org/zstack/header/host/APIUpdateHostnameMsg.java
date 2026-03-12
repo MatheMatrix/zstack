@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/hosts/hostname/{uuid}/actions",
@@ -11,6 +12,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateHostnameEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateHostnameMsg extends APIMessage implements HostMessage {
     @APIParam(resourceType = HostVO.class)
     private String uuid;

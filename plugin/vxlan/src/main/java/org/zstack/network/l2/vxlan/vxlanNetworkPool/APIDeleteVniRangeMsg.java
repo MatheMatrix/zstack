@@ -10,6 +10,7 @@ import org.zstack.header.network.l2.L2NetworkVO;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by weiwang on 03/05/2017.
@@ -19,6 +20,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteVniRangeEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteVniRangeMsg extends APIDeleteMessage implements L2NetworkMessage, APIAuditor {
     @APIParam(resourceType = VniRangeVO.class, successIfResourceNotExisting = true)
     private String uuid;

@@ -10,6 +10,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by kayo on 2018/7/26.
@@ -18,6 +19,7 @@ import java.util.List;
         method = HttpMethod.PUT,
         isAction = true,
         responseClass = APIUpdateRoleEvent.class)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateRoleMsg extends APIMessage implements RoleMessage {
     @APIParam(resourceType = RoleVO.class)
     private String uuid;

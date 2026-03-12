@@ -11,6 +11,7 @@ import org.zstack.header.storage.primary.PrimaryStorageVO;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 8/6/2015.
@@ -21,6 +22,7 @@ import java.util.List;
         responseClass = APIAddMonToCephPrimaryStorageEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddMonToCephPrimaryStorageMsg extends APIMessage implements PrimaryStorageMessage {
     @APIParam(resourceType = CephPrimaryStorageVO.class)
     private String uuid;

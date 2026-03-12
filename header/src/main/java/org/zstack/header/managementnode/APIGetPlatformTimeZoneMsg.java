@@ -3,6 +3,7 @@ package org.zstack.header.managementnode;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by Qi Le on 2021/3/15
@@ -12,6 +13,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetPlatformTimeZoneReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetPlatformTimeZoneMsg extends APISyncCallMessage implements APIManagementNodeMessage {
     public static APIGetPlatformTimeZoneMsg __example__() {
         APIGetPlatformTimeZoneMsg msg = new APIGetPlatformTimeZoneMsg();

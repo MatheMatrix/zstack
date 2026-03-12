@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.volume.VolumeVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by MaJin on 2021/1/7.
@@ -16,6 +17,7 @@ import org.zstack.header.volume.VolumeVO;
         method = HttpMethod.PUT,
         responseClass = APISetVmBootVolumeEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APISetVmBootVolumeMsg extends APIMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;

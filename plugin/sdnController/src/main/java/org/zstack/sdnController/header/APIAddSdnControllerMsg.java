@@ -6,6 +6,7 @@ import org.zstack.header.message.*;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.vm.MetadataImpact;
 
 @TagResourceType(SdnControllerVO.class)
 @RestRequest(
@@ -14,6 +15,7 @@ import org.zstack.header.tag.TagResourceType;
         responseClass = APIAddSdnControllerEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddSdnControllerMsg extends APICreateMessage implements APIAuditor {
     @APIParam(maxLength = 255)
     private String vendorType;

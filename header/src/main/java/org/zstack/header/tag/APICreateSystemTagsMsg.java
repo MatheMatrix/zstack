@@ -9,6 +9,7 @@ import org.zstack.header.vo.ResourceVO;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/system-tags/{resourceUuid}/tags",
@@ -16,6 +17,7 @@ import static org.zstack.utils.CollectionDSL.list;
         responseClass = APICreateSystemTagsEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateSystemTagsMsg extends APIMessage {
     @APIParam
     private String resourceType;

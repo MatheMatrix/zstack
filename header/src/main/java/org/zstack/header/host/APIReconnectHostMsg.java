@@ -5,6 +5,7 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api reestablish connection to hypervisor agent
@@ -37,6 +38,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIReconnectHostMsg extends APIMessage implements HostMessage {
     /**
      * @desc host uuid

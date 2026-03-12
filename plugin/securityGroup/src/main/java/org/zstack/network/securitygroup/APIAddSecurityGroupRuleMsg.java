@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api
@@ -102,6 +103,7 @@ import static java.util.Arrays.asList;
         responseClass = APIAddSecurityGroupRuleEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddSecurityGroupRuleMsg extends APIMessage implements AddSecurityGroupRuleMessage {
     /**
      * @inventory

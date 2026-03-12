@@ -9,6 +9,7 @@ import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.header.tag.TagResourceType;
 
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api create a new data volume
@@ -46,6 +47,7 @@ import java.util.concurrent.TimeUnit;
         responseClass = APICreateDataVolumeEvent.class
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 3)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateDataVolumeMsg extends APICreateMessage implements APIAuditor, VolumeCreateMessage {
     /**
      * @desc max length of 255 characters

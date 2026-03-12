@@ -16,6 +16,7 @@ import org.zstack.header.storage.snapshot.SnapshotBackendOperation;
 import org.zstack.header.vm.VmInstanceVO;
 
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/volume-snapshots/group/{uuid}/actions",
@@ -25,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 )
 
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 24)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRevertVmFromSnapshotGroupMsg extends APIMessage implements VolumeSnapshotGroupMessage, APIAuditor {
     @APIParam(resourceType = VolumeSnapshotGroupVO.class)
     private String uuid;

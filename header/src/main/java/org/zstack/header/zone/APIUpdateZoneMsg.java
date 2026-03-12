@@ -5,6 +5,7 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 6/14/2015.
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateZoneEvent.class,
         method = HttpMethod.PUT
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateZoneMsg extends APIMessage implements ZoneMessage {
     @APIParam(maxLength = 255, required = false)
     private String name;

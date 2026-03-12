@@ -5,6 +5,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APIGetMessage;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.network.service.vip.VipVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
@@ -13,6 +14,7 @@ import org.zstack.network.service.vip.VipVO;
         method = HttpMethod.GET,
         responseClass = APIGetEipAttachableVmNicsReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetEipAttachableVmNicsMsg extends APIGetMessage {
     @APIParam(required = false, resourceType = EipVO.class)
     private String eipUuid;

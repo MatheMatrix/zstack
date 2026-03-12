@@ -4,12 +4,14 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/global-configurations/{category}/{name}",
         method = HttpMethod.GET,
         responseClass = APIGetGlobalConfigOptionsReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetGlobalConfigOptionsMsg extends APISyncCallMessage {
     @APIParam
     private String category;

@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by shixin on 03/22/2015.
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteCertificateEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteCertificateMsg extends APIDeleteMessage {
     @APIParam(resourceType = CertificateVO.class, successIfResourceNotExisting = true)
     private String uuid;

@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQuerySshKeyPairReply.class, inventoryClass = SshKeyPairInventory.class)
 @RestRequest(
@@ -15,6 +16,7 @@ import java.util.List;
         responseClass = APIQuerySshKeyPairReply.class,
         method = HttpMethod.GET
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQuerySshKeyPairMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return Collections.singletonList("uuid=" + uuid());

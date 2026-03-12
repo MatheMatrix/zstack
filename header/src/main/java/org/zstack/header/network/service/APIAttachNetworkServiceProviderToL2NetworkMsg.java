@@ -4,6 +4,9 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l2.L2NetworkVO;
+import org.zstack.header.vm.MetadataImpact;
+
+@MetadataImpact(MetadataImpact.Impact.NONE)
 
 public class APIAttachNetworkServiceProviderToL2NetworkMsg extends APIMessage {
     @APIParam

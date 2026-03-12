@@ -6,6 +6,7 @@ import org.zstack.header.configuration.APIUpdateInstanceOfferingMsg;
 import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 7/31/2015.
@@ -16,6 +17,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateVirtualRouterOfferingMsg extends APIUpdateInstanceOfferingMsg {
     private Boolean isDefault;
     @APIParam(resourceType = ImageVO.class, required = false)

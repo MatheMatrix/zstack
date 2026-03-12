@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /*
 @RestRequest(
@@ -18,6 +19,7 @@ import static java.util.Arrays.asList;
 		parameterName = "params"
 )
 */
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateVirtualRouterVmMsg extends APICreateVmInstanceMsg {
 	@APIParam(resourceType = L3NetworkVO.class)
     private String managementNetworkUuid;

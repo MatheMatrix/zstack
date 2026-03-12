@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryVolumeReply.class, inventoryClass = VolumeInventory.class)
 @RestRequest(
@@ -16,6 +17,7 @@ import static java.util.Arrays.asList;
         responseClass = APIQueryVolumeReply.class,
         method = HttpMethod.GET
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryVolumeMsg extends APIQueryMessage {
 
 

@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 @TagResourceType(ImageVO.class)
 @RestRequest(
@@ -21,6 +22,7 @@ import java.util.concurrent.TimeUnit;
         responseClass = APIAddImageEvent.class
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 72)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddImageMsg extends APICreateMessage implements APIAuditor, AddImageMessage {
     @APIParam(maxLength = 255)
     private String name;

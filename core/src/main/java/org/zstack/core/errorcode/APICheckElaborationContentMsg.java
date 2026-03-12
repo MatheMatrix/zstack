@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by mingjian.deng on 2018/12/21.
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APICheckElaborationContentReply.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICheckElaborationContentMsg extends APISyncCallMessage {
     @APIParam(nonempty = true, emptyString = false, required = false)
     private String elaborateFile;

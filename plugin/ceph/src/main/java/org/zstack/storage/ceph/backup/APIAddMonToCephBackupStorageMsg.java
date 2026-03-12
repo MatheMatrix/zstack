@@ -11,6 +11,7 @@ import org.zstack.header.storage.backup.BackupStorageVO;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 8/1/2015.
@@ -21,6 +22,7 @@ import java.util.List;
         parameterName = "params",
         responseClass = APIAddMonToCephBackupStorageEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddMonToCephBackupStorageMsg extends APIMessage implements BackupStorageMessage {
     @APIParam(resourceType = CephBackupStorageVO.class)
     private String uuid;

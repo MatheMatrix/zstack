@@ -4,9 +4,11 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGenerateSqlForeignKeyMsg extends APIMessage {
     private String outputPath;
     private List<String> basePackageNames;

@@ -8,6 +8,7 @@ import org.zstack.header.network.l3.L3NetworkConstant;
 import org.zstack.header.network.l3.L3NetworkMessage;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @Action(category = L3NetworkConstant.ACTION_CATEGORY)
 @RestRequest(
@@ -16,6 +17,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true,
         responseClass = APIChangeL3NetworkDhcpIpAddressEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeL3NetworkDhcpIpAddressMsg extends APIMessage implements L3NetworkMessage {
     @APIParam(resourceType = L3NetworkVO.class, checkAccount = true, operationTarget = true)
     private String l3NetworkUuid;

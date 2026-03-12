@@ -10,6 +10,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryResourceAttributeValueReply.class, inventoryClass = ResourceAttributeValueInventory.class)
 @RestRequest(
@@ -17,6 +18,7 @@ import static org.zstack.utils.CollectionDSL.list;
         responseClass = APIQueryResourceAttributeValueReply.class,
         method = HttpMethod.GET
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryResourceAttributeValueMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return list("keyUuid=" + uuid(ResourceAttributeKeyVO.class));

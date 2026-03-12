@@ -10,6 +10,7 @@ import org.zstack.network.hostNetworkInterface.HostNetworkInterfaceVO;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/hostNetworkInterface/lldp/actions",
@@ -17,6 +18,7 @@ import java.util.List;
         responseClass = APIChangeHostNetworkInterfaceLldpModeEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeHostNetworkInterfaceLldpModeMsg extends APIMessage implements APIAuditor {
     @APIParam(resourceType = HostNetworkInterfaceVO.class)
     private List<String> interfaceUuids;

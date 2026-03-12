@@ -6,6 +6,7 @@ import org.zstack.header.host.HostVO;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api start a vm instance
@@ -39,6 +40,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
 )
 @SkipVmTracer(replyClass = APIStartVmInstanceEvent.class)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIStartVmInstanceMsg extends APIMessage implements VmInstanceMessage, CheckAttachedVolumesMessage {
     /**
      * @desc vm uuid

@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/3/15.
@@ -18,6 +19,7 @@ import static org.zstack.utils.CollectionDSL.list;
         responseClass = APIReconnectConsoleProxyAgentEvent.class,
         method = HttpMethod.PUT
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIReconnectConsoleProxyAgentMsg extends APIMessage implements ConsoleProxyAgentMessage {
     @APIParam(required = false, nonempty = true)
     private List<String> agentUuids;

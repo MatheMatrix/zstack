@@ -8,9 +8,11 @@ import org.zstack.header.vo.ResourceVO;
 
 import java.util.Arrays;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(path = "/resource-configurations/{resourceUuid}/{category}",
         method = HttpMethod.GET, responseClass = APIGetResourceConfigsReply.class)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetResourceConfigsMsg  extends APISyncCallMessage implements ResourceConfigMessage {
     @APIParam
     private String category;

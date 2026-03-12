@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/5/19.
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetVolumeCapabilitiesReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetVolumeCapabilitiesMsg extends APISyncCallMessage implements VolumeMessage {
     @APIParam(resourceType = VolumeVO.class)
     private String uuid;

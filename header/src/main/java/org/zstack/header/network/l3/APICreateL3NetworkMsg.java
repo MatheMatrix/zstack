@@ -9,6 +9,7 @@ import org.zstack.header.network.l2.L2NetworkVO;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api create l3Network
@@ -49,6 +50,7 @@ import org.zstack.header.tag.TagResourceType;
         responseClass = APICreateL3NetworkEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateL3NetworkMsg extends APICreateMessage implements APIAuditor {
     /**
      * @desc max length of 255 characters

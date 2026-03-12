@@ -3,9 +3,11 @@ package org.zstack.query;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(path = "/batch-queries", method = HttpMethod.GET, responseClass = APIBatchQueryReply.class)
 @Deprecated
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIBatchQueryMsg extends APISyncCallMessage {
     private String script;
 

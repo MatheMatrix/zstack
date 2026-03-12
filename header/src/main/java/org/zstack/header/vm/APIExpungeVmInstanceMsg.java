@@ -7,6 +7,7 @@ import org.zstack.header.message.DefaultTimeout;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 11/12/2015.
@@ -18,6 +19,7 @@ import java.util.concurrent.TimeUnit;
         method = HttpMethod.PUT
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 3)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIExpungeVmInstanceMsg extends APIMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String uuid;

@@ -4,6 +4,9 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
+
+@MetadataImpact(MetadataImpact.Impact.NONE)
 
 public class APICreateSearchIndexMsg extends APIMessage {
     @APIParam

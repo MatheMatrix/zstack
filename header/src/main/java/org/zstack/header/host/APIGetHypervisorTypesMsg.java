@@ -3,6 +3,7 @@ package org.zstack.header.host;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api
@@ -31,6 +32,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetHypervisorTypesReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetHypervisorTypesMsg extends APISyncCallMessage {
  
     public static APIGetHypervisorTypesMsg __example__() {

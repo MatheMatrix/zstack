@@ -9,6 +9,7 @@ import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 import org.zstack.network.service.vip.VipVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 8/8/2015.
@@ -20,6 +21,7 @@ import org.zstack.network.service.vip.VipVO;
         responseClass = APICreateLoadBalancerEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateLoadBalancerMsg extends APICreateMessage implements APIAuditor {
     @APIParam(maxLength = 255)
     private String name;

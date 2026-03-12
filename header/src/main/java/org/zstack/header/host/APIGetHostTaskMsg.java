@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by MaJin on 2019/7/3.
@@ -21,6 +22,7 @@ import static org.zstack.utils.CollectionDSL.list;
         method = HttpMethod.GET,
         responseClass = APIGetChainTaskReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetHostTaskMsg extends APIGetChainTaskMsg {
     @APIParam(nonempty = true, resourceType = HostVO.class)
     private List<String> hostUuids;

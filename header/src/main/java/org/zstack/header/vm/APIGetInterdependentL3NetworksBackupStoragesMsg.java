@@ -9,6 +9,7 @@ import org.zstack.header.storage.backup.BackupStorageVO;
 import org.zstack.header.zone.ZoneVO;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by Qi Le on 2022/3/9
@@ -18,6 +19,7 @@ import java.util.List;
         method = HttpMethod.GET,
         responseClass = APIGetInterdependentL3NetworksBackupStoragesReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetInterdependentL3NetworksBackupStoragesMsg extends APISyncCallMessage {
     @APIParam(resourceType = ZoneVO.class)
     private String zoneUuid;

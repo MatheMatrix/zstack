@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2017/5/7.
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateWebhookEvent.class
 )
 @Deprecated
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateWebhookMsg extends APIMessage {
     @APIParam(resourceType = WebhookVO.class)
     private String uuid;

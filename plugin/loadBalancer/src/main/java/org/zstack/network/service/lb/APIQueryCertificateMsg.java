@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by shixin on 03/22/2018.
@@ -19,6 +20,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIQueryCertificateReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryCertificateMsg extends APIQueryMessage {
 
     public static List<String> __example__() {

@@ -11,6 +11,7 @@ import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.tag.TagResourceType;
 
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 @TagResourceType(VmInstanceVO.class)
 @RestRequest(
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
         parameterName = "params"
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 3)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRegisterVmInstanceFromMetadataMsg extends APICreateMessage {
     @APIParam
     private String metadataContent;

@@ -5,6 +5,7 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/4/9.
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIReconnectBackupStorageEvent.class,
         method = HttpMethod.PUT
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIReconnectBackupStorageMsg extends APIMessage implements BackupStorageMessage {
     @APIParam(resourceType = BackupStorageVO.class)
     private String uuid;

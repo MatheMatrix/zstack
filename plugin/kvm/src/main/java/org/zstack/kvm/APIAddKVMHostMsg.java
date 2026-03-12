@@ -11,6 +11,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api
@@ -68,6 +69,7 @@ import java.util.concurrent.TimeUnit;
         responseClass = APIAddHostEvent.class
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 3)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddKVMHostMsg extends APIAddHostMsg implements AddKVMHostMessage {
     /**
      * @desc user name used for ssh login.

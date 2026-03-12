@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 11/15/2015.
@@ -17,6 +18,7 @@ import java.util.List;
         responseClass = APIRecoverImageEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRecoverImageMsg extends APIMessage implements ImageMessage {
     @APIParam(resourceType = ImageVO.class)
     private String imageUuid;

@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vm.VmNicVO;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/security-groups/nics/{vmNicUuid}/security-policy/actions",
@@ -12,6 +13,7 @@ import org.zstack.header.vm.VmNicVO;
         responseClass = APIChangeVmNicSecurityPolicyEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeVmNicSecurityPolicyMsg extends APIMessage implements VmNicSecurityGroupMessage {
     @APIParam(resourceType = VmNicVO.class)
     private String vmNicUuid;

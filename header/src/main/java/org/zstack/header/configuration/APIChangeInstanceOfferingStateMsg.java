@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created with IntelliJ IDEA.
@@ -17,6 +18,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true,
         responseClass = APIChangeInstanceOfferingStateEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeInstanceOfferingStateMsg extends APIMessage implements InstanceOfferingMessage {
     @APIParam(resourceType = InstanceOfferingVO.class)
     private String uuid;

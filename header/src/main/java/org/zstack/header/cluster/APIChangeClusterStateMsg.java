@@ -5,6 +5,7 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api change state of cluster. See field 'state' of :ref:`ClusterInventory` for details.
@@ -44,6 +45,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true,
         responseClass = APIChangeClusterStateEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeClusterStateMsg extends APIMessage implements ClusterMessage {
     /**
      * @desc cluster uuid

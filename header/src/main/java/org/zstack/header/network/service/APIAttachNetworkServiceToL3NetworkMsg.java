@@ -8,6 +8,7 @@ import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.*;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api attach network service to l3Network
@@ -51,6 +52,7 @@ import java.util.*;
         responseClass = APIAttachNetworkServiceToL3NetworkEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAttachNetworkServiceToL3NetworkMsg extends APIMessage implements L3NetworkMessage {
     /**
      * @desc l3Network uuid

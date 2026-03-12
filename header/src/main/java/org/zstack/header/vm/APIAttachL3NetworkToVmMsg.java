@@ -10,6 +10,7 @@ import org.zstack.utils.network.NicIpAddressInfo;
 
 import java.util.List;
 import java.util.Map;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api attach a nic to vm. If vm is running, user is responsible for running DHCP client software inside
@@ -45,6 +46,7 @@ import java.util.Map;
         method = HttpMethod.POST,
         responseClass = APIAttachL3NetworkToVmEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAttachL3NetworkToVmMsg extends APIMessage implements VmInstanceMessage {
     /**
      * @desc vm uuid

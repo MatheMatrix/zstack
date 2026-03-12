@@ -9,6 +9,7 @@ import org.zstack.identity.imports.entity.AccountThirdPartyAccountSourceRefInven
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryThirdPartyAccountSourceBindingReply.class, inventoryClass = AccountThirdPartyAccountSourceRefInventory.class)
 @RestRequest(
@@ -16,6 +17,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIQueryThirdPartyAccountSourceBindingReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryThirdPartyAccountSourceBindingMsg extends APIQueryMessage {
 
     public static List<String> __example__() {

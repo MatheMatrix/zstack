@@ -6,12 +6,14 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/ldap/bindings/{accountUuid}",
         method = HttpMethod.DELETE,
         responseClass = APIDeleteLdapBindingEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteLdapBindingMsg extends APIMessage {
     @APIParam(resourceType = AccountVO.class)
     private String accountUuid;

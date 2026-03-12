@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.HashSet;
 import java.util.Set;
+import org.zstack.header.vm.MetadataImpact;
 
 
 
@@ -20,6 +21,7 @@ import java.util.Set;
         method = HttpMethod.PUT,
         responseClass = APIKvmRunShellEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIKvmRunShellMsg extends APIMessage {
     @APIParam(resourceType = HostVO.class, nonempty = true)
     private Set<String> hostUuids;

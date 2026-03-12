@@ -5,6 +5,7 @@ import org.zstack.header.managementnode.ManagementNodeVO;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by LiangHanYu on 2021/5/20 14:51
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true,
         method = HttpMethod.PUT,
         responseClass = APICleanQueueEvent.class)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICleanQueueMsg extends APIMessage {
     @APIParam()
     private String signatureName;

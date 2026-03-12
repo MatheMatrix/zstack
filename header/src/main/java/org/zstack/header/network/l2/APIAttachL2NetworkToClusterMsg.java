@@ -6,6 +6,7 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api attach l2Network to cluster
@@ -41,6 +42,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIAttachL2NetworkToClusterEvent.class,
         parameterName = "null"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAttachL2NetworkToClusterMsg extends APIMessage implements L2NetworkMessage {
     /**
      * @desc l2Network uuid

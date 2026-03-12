@@ -9,6 +9,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryRoleAccountRefReply.class, inventoryClass = RoleAccountRefInventory.class)
 @RestRequest(
@@ -16,6 +17,7 @@ import static org.zstack.utils.CollectionDSL.list;
         method = HttpMethod.GET,
         responseClass = APIQueryRoleAccountRefReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryRoleAccountRefMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return list("roleUuid=686cb963323e491e955a0fd0b49dd743");

@@ -3,6 +3,7 @@ package org.zstack.header.network.l2;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api get supported vSwitch types
@@ -34,6 +35,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetVSwitchTypesReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetVSwitchTypesMsg extends APISyncCallMessage {
 
     public static APIGetVSwitchTypesMsg __example__() {

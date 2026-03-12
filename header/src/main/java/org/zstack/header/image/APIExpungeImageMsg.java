@@ -8,6 +8,7 @@ import org.zstack.header.storage.backup.BackupStorageVO;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 11/15/2015.
@@ -18,6 +19,7 @@ import java.util.List;
         responseClass = APIExpungeImageEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIExpungeImageMsg extends APIMessage implements ImageMessage {
     @APIParam(required = false, resourceType = ImageVO.class)
     // used for cloudformation

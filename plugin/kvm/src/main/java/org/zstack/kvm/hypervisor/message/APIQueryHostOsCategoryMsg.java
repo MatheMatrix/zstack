@@ -9,6 +9,7 @@ import org.zstack.kvm.hypervisor.datatype.HostOsCategoryInventory;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryHostOsCategoryReply.class, inventoryClass = HostOsCategoryInventory.class)
 @RestRequest(
@@ -16,6 +17,7 @@ import static java.util.Arrays.asList;
         responseClass = APIQueryHostOsCategoryReply.class,
         method = HttpMethod.GET
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryHostOsCategoryMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return asList("architecture=x86_64", "osReleaseVersion=\"centos core 7.6.1810\"");

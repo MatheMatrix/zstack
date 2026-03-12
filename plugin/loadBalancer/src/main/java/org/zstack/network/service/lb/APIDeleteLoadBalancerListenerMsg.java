@@ -7,6 +7,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 8/8/2015.
@@ -16,6 +17,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteLoadBalancerListenerEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteLoadBalancerListenerMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
     @APINoSee
     private String loadBalancerUuid;

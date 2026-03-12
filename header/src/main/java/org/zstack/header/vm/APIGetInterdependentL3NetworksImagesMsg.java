@@ -9,6 +9,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.zone.ZoneVO;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/8/23.
@@ -18,6 +19,7 @@ import java.util.List;
         method = HttpMethod.GET,
         responseClass = APIGetInterdependentL3NetworkImageReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetInterdependentL3NetworksImagesMsg extends APISyncCallMessage {
     @APIParam(resourceType = ZoneVO.class)
     private String zoneUuid;

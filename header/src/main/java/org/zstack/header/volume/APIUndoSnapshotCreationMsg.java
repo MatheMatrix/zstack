@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @ Author : yh.w
@@ -16,6 +17,7 @@ import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
         method = HttpMethod.PUT,
         responseClass = APIUndoSnapshotCreationEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUndoSnapshotCreationMsg extends APIMessage implements VolumeMessage {
 
     @APIParam(resourceType = VolumeVO.class)

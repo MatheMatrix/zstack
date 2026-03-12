@@ -5,6 +5,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.ldap.entity.LdapServerVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by lining on 2017/12/03.
@@ -14,6 +15,7 @@ import org.zstack.ldap.entity.LdapServerVO;
         method = HttpMethod.GET,
         responseClass = APIGetLdapEntryReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetCandidateLdapEntryForBindingMsg extends APISyncCallMessage {
 
     @APIParam

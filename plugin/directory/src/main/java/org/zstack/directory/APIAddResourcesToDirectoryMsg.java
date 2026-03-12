@@ -10,6 +10,7 @@ import org.zstack.header.zone.ZoneVO;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @author shenjin
@@ -21,6 +22,7 @@ import java.util.List;
         responseClass = APIAddResourcesToDirectoryEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddResourcesToDirectoryMsg extends APIMessage implements DirectoryMessage {
     @APIParam(resourceType = ResourceVO.class, nonempty = true)
     private List<String> resourceUuids;

@@ -6,6 +6,7 @@ import org.zstack.header.query.AutoQuery;
 import org.zstack.header.rest.RestRequest;
 import java.util.List;
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Create by lining at 2018/12/26
@@ -17,6 +18,7 @@ import static java.util.Arrays.asList;
         responseClass = APIQueryVmCdRomReply.class,
         method = HttpMethod.GET
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryVmCdRomMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return asList("name=cd-1");

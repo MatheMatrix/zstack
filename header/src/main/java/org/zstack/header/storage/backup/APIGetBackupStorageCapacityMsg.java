@@ -8,6 +8,7 @@ import org.zstack.header.zone.ZoneVO;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
@@ -16,6 +17,7 @@ import java.util.List;
         method = HttpMethod.GET,
         responseClass = APIGetBackupStorageCapacityReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetBackupStorageCapacityMsg extends APISyncCallMessage {
     @APIParam(required = false, resourceType = ZoneVO.class)
     private List<String> zoneUuids;

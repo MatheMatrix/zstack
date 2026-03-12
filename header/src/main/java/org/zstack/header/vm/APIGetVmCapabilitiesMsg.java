@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/5/17.
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIGetVmCapabilitiesReply.class,
         method = HttpMethod.GET
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetVmCapabilitiesMsg extends APISyncCallMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String uuid;

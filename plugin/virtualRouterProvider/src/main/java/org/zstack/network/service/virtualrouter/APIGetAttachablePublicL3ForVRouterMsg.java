@@ -5,12 +5,14 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vm.VmInstanceMessage;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/appliances/virtual-routers/{vmInstanceUuid}/attachable-public-l3s",
         method = HttpMethod.GET,
         responseClass = APIGetAttachablePublicL3ForVRouterReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetAttachablePublicL3ForVRouterMsg extends APISyncCallMessage implements VmInstanceMessage {
     @APIParam(resourceType = VirtualRouterVmVO.class)
     private String vmInstanceUuid;

@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Arrays;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2017/5/7.
@@ -19,6 +20,7 @@ import java.util.List;
         responseClass = APIQueryWebhookReply.class
 )
 @Deprecated
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryWebhookMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return Arrays.asList("name=test");

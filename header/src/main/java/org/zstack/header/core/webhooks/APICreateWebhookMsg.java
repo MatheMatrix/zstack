@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2017/5/7.
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APICreateWebhookEvent.class
 )
 @Deprecated
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateWebhookMsg extends APICreateMessage {
     @APIParam(maxLength = 255)
     private String name;

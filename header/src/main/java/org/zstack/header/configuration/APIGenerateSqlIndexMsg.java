@@ -3,9 +3,11 @@ package org.zstack.header.configuration;
 import org.zstack.header.message.APIMessage;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGenerateSqlIndexMsg extends APIMessage {
     private String outputPath;
     private List<String> basePackageNames;

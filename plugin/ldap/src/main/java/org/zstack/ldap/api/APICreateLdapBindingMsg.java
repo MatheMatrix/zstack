@@ -6,6 +6,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.ldap.entity.LdapServerVO;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/ldap/bindings",
@@ -13,6 +14,7 @@ import org.zstack.ldap.entity.LdapServerVO;
         parameterName = "params",
         responseClass = APICreateLdapBindingEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateLdapBindingMsg extends APIMessage {
     @APIParam(maxLength = 255)
     private String ldapUid;

@@ -7,6 +7,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.utils.data.SizeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/templatedVmInstance/{uuid}/actions",
@@ -14,6 +15,7 @@ import org.zstack.utils.data.SizeUnit;
         isAction = true,
         responseClass = APIUpdateTemplatedVmInstanceEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateTemplatedVmInstanceMsg extends APIMessage implements VmInstanceMessage, APIAuditor {
     @APIParam(resourceType = TemplatedVmInstanceVO.class)
     private String uuid;

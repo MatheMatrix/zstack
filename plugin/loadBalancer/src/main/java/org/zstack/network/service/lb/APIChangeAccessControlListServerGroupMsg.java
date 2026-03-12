@@ -11,6 +11,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Arrays;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/load-balancers/listener/acl/{aclUuid}/servergroup/actions",
@@ -18,6 +19,7 @@ import java.util.List;
         responseClass = APIChangeAccessControlListServerGroupEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeAccessControlListServerGroupMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
     @APIParam(resourceType = LoadBalancerServerGroupVO.class, nonempty = true)
     private List<String> serverGroupUuids;

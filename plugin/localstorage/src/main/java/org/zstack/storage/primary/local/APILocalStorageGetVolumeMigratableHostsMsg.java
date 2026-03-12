@@ -7,6 +7,7 @@ import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.PrimaryStorageMessage;
 import org.zstack.header.volume.VolumeVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 11/18/2015.
@@ -16,6 +17,7 @@ import org.zstack.header.volume.VolumeVO;
         method = HttpMethod.GET,
         responseClass = APILocalStorageGetVolumeMigratableReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APILocalStorageGetVolumeMigratableHostsMsg extends APISyncCallMessage implements PrimaryStorageMessage {
     @APIParam(resourceType = VolumeVO.class)
     private String volumeUuid;

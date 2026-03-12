@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.identity.imports.entity.SyncCreatedAccountStrategy;
 import org.zstack.identity.imports.entity.SyncDeletedAccountStrategy;
 import org.zstack.ldap.entity.LdapServerVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by Wenhao.Zhang on 2024/06/04
@@ -17,6 +18,7 @@ import org.zstack.ldap.entity.LdapServerVO;
         isAction = true,
         responseClass = APISyncAccountsFromLdapServerEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APISyncAccountsFromLdapServerMsg extends APIMessage {
     @APIParam(resourceType = LdapServerVO.class)
     private String uuid;

@@ -6,6 +6,7 @@ import org.zstack.header.identity.role.RoleVO;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/identities/accounts/{accountUuid}/roles/{roleUuid}",
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         parameterName = "params",
         responseClass = APIAttachRoleToAccountEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAttachRoleToAccountMsg extends APIMessage implements RoleMessage {
     @APIParam(resourceType = RoleVO.class)
     private String roleUuid;

@@ -9,8 +9,10 @@ import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(path = "/identities/roles", method = HttpMethod.POST, responseClass = APICreateRoleEvent.class, parameterName = "params")
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateRoleMsg extends APICreateMessage {
     @APIParam(maxLength = 255)
     private String name;

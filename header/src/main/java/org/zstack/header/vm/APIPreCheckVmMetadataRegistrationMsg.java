@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.header.zone.ZoneVO;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/metadata/pre-check",
@@ -14,6 +15,7 @@ import org.zstack.header.zone.ZoneVO;
         responseClass = APIPreCheckVmMetadataRegistrationReply.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIPreCheckVmMetadataRegistrationMsg extends APISyncCallMessage {
     @APIParam
     private String metadataContent;

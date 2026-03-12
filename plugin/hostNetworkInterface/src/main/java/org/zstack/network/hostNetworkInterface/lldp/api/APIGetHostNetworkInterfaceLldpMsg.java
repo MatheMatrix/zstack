@@ -5,12 +5,14 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.network.hostNetworkInterface.HostNetworkInterfaceVO;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/hostNetworkInterface/lldp/{interfaceUuid}/info",
         method = HttpMethod.GET,
         responseClass = APIGetHostNetworkInterfaceLldpReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetHostNetworkInterfaceLldpMsg extends APISyncCallMessage {
     @APIParam(resourceType = HostNetworkInterfaceVO.class)
     private String interfaceUuid;

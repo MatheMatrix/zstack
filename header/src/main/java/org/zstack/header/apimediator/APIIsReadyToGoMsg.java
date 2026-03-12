@@ -5,6 +5,7 @@ import org.zstack.header.identity.SuppressCredentialCheck;
 import org.zstack.header.managementnode.APIManagementNodeMessage;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @SuppressCredentialCheck
 @RestRequest(
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIIsReadyToGoReply.class,
         category = "other"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIIsReadyToGoMsg extends APISyncCallMessage implements APIManagementNodeMessage {
     private String managementNodeId;
 

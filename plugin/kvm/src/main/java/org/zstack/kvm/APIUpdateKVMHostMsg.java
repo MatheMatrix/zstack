@@ -6,6 +6,7 @@ import org.zstack.header.host.APIUpdateHostMsg;
 import org.zstack.header.log.NoLogging;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 6/15/2015.
@@ -16,6 +17,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateHostEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateKVMHostMsg extends APIUpdateHostMsg {
     @APIParam(maxLength = 255, required = false, emptyString = false)
     private String username;

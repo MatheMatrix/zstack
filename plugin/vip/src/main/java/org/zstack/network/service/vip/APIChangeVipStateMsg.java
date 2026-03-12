@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIChangeVipStateEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeVipStateMsg extends APIMessage implements VipMessage {
     @APIParam(resourceType = VipVO.class)
     private String uuid;

@@ -9,6 +9,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by GuoYi on 3/12/18
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
         method = HttpMethod.PUT
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 24)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateClusterOSMsg extends APICreateMessage implements ClusterMessage {
     @APIParam(resourceType = ClusterVO.class)
     private String uuid;

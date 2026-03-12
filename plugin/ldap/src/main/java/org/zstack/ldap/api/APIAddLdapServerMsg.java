@@ -13,6 +13,7 @@ import org.zstack.ldap.LdapConstant;
 import org.zstack.ldap.entity.LdapEncryptionType;
 import org.zstack.ldap.entity.LdapServerType;
 import org.zstack.ldap.entity.LdapServerVO;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/ldap/servers",
@@ -20,6 +21,7 @@ import org.zstack.ldap.entity.LdapServerVO;
         responseClass = APIAddLdapServerEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddLdapServerMsg extends APIMessage implements APIAuditor {
     @APIParam(maxLength = 255)
     private String name;

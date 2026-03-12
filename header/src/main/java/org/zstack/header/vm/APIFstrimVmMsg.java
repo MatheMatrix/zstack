@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/{uuid}/actions",
@@ -12,6 +13,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.POST,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIFstrimVmMsg extends APIMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String uuid;

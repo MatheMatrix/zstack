@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @author shenjin
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteDirectoryEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteDirectoryMsg extends APIDeleteMessage implements DirectoryMessage, OperateDirectoryMessage {
     @APIParam(resourceType = DirectoryVO.class, successIfResourceNotExisting = true)
     private String uuid;

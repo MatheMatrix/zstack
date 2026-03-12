@@ -8,6 +8,7 @@ import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.backup.BackupStorageVO;
 import org.zstack.header.storage.backup.ImageHashAlgorithm;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @ Author : yh.w
@@ -19,6 +20,7 @@ import org.zstack.header.storage.backup.ImageHashAlgorithm;
         responseClass = APICalculateImageHashEvent.class,
         method = HttpMethod.PUT
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICalculateImageHashMsg extends APIMessage implements ImageMessage, APIAuditor {
 
     @APIParam(resourceType = ImageVO.class)

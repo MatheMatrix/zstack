@@ -5,12 +5,14 @@ import org.zstack.header.host.HostVO;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/volumes/{volumeUuid}/hosts",
         method = HttpMethod.DELETE,
         responseClass = APIDetachDataVolumeFromHostEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDetachDataVolumeFromHostMsg extends APIMessage implements VolumeMessage {
     @APIParam(resourceType = VolumeVO.class)
     private String volumeUuid;

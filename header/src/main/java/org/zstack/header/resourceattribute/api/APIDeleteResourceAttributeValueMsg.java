@@ -11,12 +11,14 @@ import org.zstack.header.vm.VmInstanceVO;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/resource-attributes/{keyUuid}/resources",
         method = HttpMethod.DELETE,
         responseClass = APIDeleteResourceAttributeValueEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteResourceAttributeValueMsg extends APIMessage implements ResourceAttributeMessage {
     @APIParam(resourceType = ResourceAttributeKeyVO.class)
     private String keyUuid;

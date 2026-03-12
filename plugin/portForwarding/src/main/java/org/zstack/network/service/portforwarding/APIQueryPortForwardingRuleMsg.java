@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryPortForwardingRuleReply.class, inventoryClass = PortForwardingRuleInventory.class)
 @RestRequest(
@@ -16,6 +17,7 @@ import static java.util.Arrays.asList;
         optionalPaths = {"/port-forwarding/{uuid}"},
         responseClass = APIQueryPortForwardingRuleReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryPortForwardingRuleMsg extends APIQueryMessage {
 
     public static List<String> __example__() {

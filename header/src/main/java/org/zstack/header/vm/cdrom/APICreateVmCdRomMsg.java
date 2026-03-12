@@ -11,6 +11,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 import org.zstack.header.vm.VmInstanceMessage;
 import org.zstack.header.vm.VmInstanceVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Create by lining at 2018/12/29
@@ -22,6 +23,7 @@ import org.zstack.header.vm.VmInstanceVO;
         responseClass = APICreateVmCdRomEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateVmCdRomMsg extends APICreateMessage implements APIAuditor, VmInstanceMessage {
     @APIParam(maxLength = 255)
     private String name;

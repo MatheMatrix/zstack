@@ -7,6 +7,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.zone.ZoneVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api create l2Network
@@ -42,6 +43,8 @@ import org.zstack.header.zone.ZoneVO;
  * @result see :ref:`APICreateL2NetworkEvent`
  * @since 0.1.0
  */
+
+@MetadataImpact(MetadataImpact.Impact.NONE)
 
 public abstract class APICreateL2NetworkMsg extends APICreateMessage implements APIAuditor {
     /**

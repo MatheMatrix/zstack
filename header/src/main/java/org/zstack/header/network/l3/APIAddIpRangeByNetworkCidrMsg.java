@@ -5,6 +5,7 @@ import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
@@ -15,6 +16,7 @@ import org.zstack.header.tag.TagResourceType;
         parameterName = "params",
         responseClass = APIAddIpRangeByNetworkCidrEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddIpRangeByNetworkCidrMsg extends APICreateMessage implements L3NetworkMessage {
     @APIParam(maxLength = 255)
     private String name;

@@ -5,6 +5,7 @@ import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.zone.ZoneVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @author shenjin
@@ -16,6 +17,7 @@ import org.zstack.header.zone.ZoneVO;
         responseClass = APICreateDirectoryEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateDirectoryMsg extends APICreateMessage implements OperateDirectoryMessage {
     @APIParam(maxLength = 255)
     private String name;

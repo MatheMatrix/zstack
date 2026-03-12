@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @ Author : yh.w
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true,
         responseClass = APIUpdatePriorityConfigEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdatePriorityConfigMsg extends APIMessage {
 
     @APIParam(resourceType = VmPriorityConfigVO.class)

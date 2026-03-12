@@ -3,6 +3,7 @@ package org.zstack.header.storage.backup;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api get supported backup storage types
@@ -32,6 +33,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetBackupStorageTypesReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetBackupStorageTypesMsg extends APISyncCallMessage {
  
     public static APIGetBackupStorageTypesMsg __example__() {

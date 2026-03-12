@@ -8,6 +8,7 @@ import org.zstack.header.network.l2.APICreateL2NetworkMsg;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.zone.ZoneVO;
 import org.zstack.network.l2.vxlan.vxlanNetworkPool.VxlanNetworkPoolVO;
+import org.zstack.header.vm.MetadataImpact;
 
 @OverriddenApiParams({
         @OverriddenApiParam(field = "physicalInterface", param = @APIParam(maxLength = 1024, required = false)),
@@ -19,6 +20,7 @@ import org.zstack.network.l2.vxlan.vxlanNetworkPool.VxlanNetworkPoolVO;
         responseClass = APICreateL2VxlanNetworkEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateL2VxlanNetworkMsg extends APICreateL2NetworkMsg {
     @APIParam(required = false, numberRange = {1, 16777214})
     private Integer vni;

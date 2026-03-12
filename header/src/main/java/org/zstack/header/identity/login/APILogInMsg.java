@@ -11,6 +11,7 @@ import org.zstack.header.other.APILoginAuditor;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.Map;
+import org.zstack.header.vm.MetadataImpact;
 
 @SuppressCredentialCheck
 @RestRequest(
@@ -19,6 +20,7 @@ import java.util.Map;
         method = HttpMethod.PUT,
         responseClass = APILogInReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APILogInMsg extends APISessionMessage implements APILoginAuditor {
     @APIParam
     private String username;

@@ -8,6 +8,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api create a new zone
@@ -42,6 +43,7 @@ import org.zstack.header.rest.RestRequest;
         parameterName = "params",
         responseClass = APICreateZoneEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateZoneMsg extends APICreateMessage implements APIAuditor {
     /**
      * @desc max length of 255 characters

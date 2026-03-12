@@ -8,6 +8,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l2.L2NetworkMessage;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by weiwang on 09/03/2017.
@@ -18,6 +19,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APICreateVniRangeEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateVniRangeMsg extends APICreateMessage implements L2NetworkMessage, APIAuditor {
 
     @APIParam(maxLength = 255)

@@ -12,6 +12,7 @@ import org.zstack.header.vm.VmNicVO;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api
@@ -54,6 +55,7 @@ import java.util.List;
         method = HttpMethod.DELETE,
         responseClass = APIDetachEipEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDetachEipMsg extends APIMessage implements EipMessage, APIMultiAuditor {
     /**
      * @desc eip uuid

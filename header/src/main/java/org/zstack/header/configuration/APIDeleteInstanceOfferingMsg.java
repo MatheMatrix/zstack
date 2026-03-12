@@ -4,12 +4,14 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/instance-offerings/{uuid}",
         method = HttpMethod.DELETE,
         responseClass = APIDeleteInstanceOfferingEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteInstanceOfferingMsg extends APIDeleteMessage implements InstanceOfferingMessage {
     @APIParam(resourceType = InstanceOfferingVO.class, successIfResourceNotExisting = true)
     private String uuid;

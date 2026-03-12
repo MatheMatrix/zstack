@@ -12,6 +12,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 7/18/2015.
@@ -21,6 +22,7 @@ import java.util.List;
         method = HttpMethod.DELETE,
         responseClass = APIDetachL3NetworkFromVmEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDetachL3NetworkFromVmMsg extends APIMessage implements VmInstanceMessage, APIMultiAuditor {
     @APIParam(resourceType = VmNicVO.class)
     private String vmNicUuid;

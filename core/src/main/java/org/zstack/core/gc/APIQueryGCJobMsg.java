@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2017/3/5.
@@ -19,6 +20,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIQueryGCJobReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryGCJobMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return asList("name=gc", "state=Enabled");

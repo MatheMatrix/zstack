@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vm.VmInstanceVO;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/ssh-key-pair/{sshKeyPairUuid}/vm-instance/{vmInstanceUuid}",
@@ -12,6 +13,7 @@ import org.zstack.header.vm.VmInstanceVO;
         responseClass = APIAttachSshKeyPairToVmInstanceEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAttachSshKeyPairToVmInstanceMsg extends APIMessage implements SshKeyPairMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String vmInstanceUuid;

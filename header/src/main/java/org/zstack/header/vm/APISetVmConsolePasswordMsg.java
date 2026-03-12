@@ -7,6 +7,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
 import java.io.Serializable;
+import org.zstack.header.vm.MetadataImpact;
 
 
 /**
@@ -18,6 +19,7 @@ import java.io.Serializable;
         method = HttpMethod.PUT,
         responseClass = APISetVmConsolePasswordEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APISetVmConsolePasswordMsg extends APIMessage implements VmInstanceMessage, Serializable {
     @APIParam(resourceType = VmInstanceVO.class)
     private String uuid;

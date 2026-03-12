@@ -1,9 +1,11 @@
 package org.zstack.header.configuration;
 
 import org.zstack.header.message.APIMessage;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGenerateApiTypeScriptDefinitionMsg extends APIMessage {
     private String outputPath;
 

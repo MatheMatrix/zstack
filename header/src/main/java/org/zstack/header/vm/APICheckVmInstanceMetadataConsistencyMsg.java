@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/metadata/consistency-check",
@@ -14,6 +15,7 @@ import java.util.List;
         responseClass = APICheckVmInstanceMetadataConsistencyReply.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICheckVmInstanceMetadataConsistencyMsg extends APISyncCallMessage {
     @APIParam(required = false, resourceType = VmInstanceVO.class)
     private List<String> vmUuids;

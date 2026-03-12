@@ -9,6 +9,7 @@ import org.zstack.header.network.l3.*;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api
@@ -55,6 +56,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APICreateVipEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateVipMsg extends APICreateMessage implements L3NetworkMessage, IpAllocateMessage, APIAuditor {
     /**
      * @desc max length of 255 characters

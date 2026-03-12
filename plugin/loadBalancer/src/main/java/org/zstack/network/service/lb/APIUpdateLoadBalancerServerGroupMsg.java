@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/load-balancers/servergroups/{uuid}/actions",
@@ -12,6 +13,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateLoadBalancerServerGroupEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateLoadBalancerServerGroupMsg extends APIMessage implements LoadBalancerMessage{
     @APIParam(resourceType = LoadBalancerServerGroupVO.class)
     private String uuid;

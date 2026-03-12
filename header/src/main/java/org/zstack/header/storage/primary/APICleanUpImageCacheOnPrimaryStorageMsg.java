@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/7/21.
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         responseClass = APICleanUpImageCacheOnPrimaryStorageEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICleanUpImageCacheOnPrimaryStorageMsg extends APIMessage implements PrimaryStorageMessage {
     @APIParam(resourceType = PrimaryStorageVO.class)
     private String uuid;

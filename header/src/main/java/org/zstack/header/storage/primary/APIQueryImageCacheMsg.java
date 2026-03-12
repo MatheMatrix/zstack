@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by mingjian.deng on 2018/5/25.
@@ -17,6 +18,7 @@ import java.util.List;
         method = HttpMethod.GET,
         responseClass = APIQueryImageCacheReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryImageCacheMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return Collections.singletonList("uuid=" + uuid());

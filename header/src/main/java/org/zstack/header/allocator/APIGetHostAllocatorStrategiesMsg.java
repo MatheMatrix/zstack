@@ -3,6 +3,7 @@ package org.zstack.header.allocator;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created with IntelliJ IDEA.
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetHostAllocatorStrategiesReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetHostAllocatorStrategiesMsg extends APISyncCallMessage {
  
     public static APIGetHostAllocatorStrategiesMsg __example__() {

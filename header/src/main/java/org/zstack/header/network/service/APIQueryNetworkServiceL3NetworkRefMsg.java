@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryNetworkServiceL3NetworkRefReply.class, inventoryClass = NetworkServiceL3NetworkRefInventory.class)
 @RestRequest(
@@ -15,6 +16,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIQueryNetworkServiceL3NetworkRefReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryNetworkServiceL3NetworkRefMsg extends APIQueryMessage {
 
 

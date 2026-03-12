@@ -10,6 +10,7 @@ import org.zstack.header.other.APILoginAuditor;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.Map;
+import org.zstack.header.vm.MetadataImpact;
 
 @SuppressCredentialCheck
 @RestRequest(
@@ -17,6 +18,7 @@ import java.util.Map;
         method = HttpMethod.DELETE,
         responseClass = APILogOutReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APILogOutMsg extends APISessionMessage implements APILoginAuditor {
     private String sessionUuid;
 

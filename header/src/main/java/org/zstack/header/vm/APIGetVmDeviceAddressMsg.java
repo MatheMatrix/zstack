@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by MaJin on 2020/7/22.
@@ -16,6 +17,7 @@ import java.util.List;
         method = HttpMethod.GET,
         responseClass = APIGetVmDeviceAddressReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetVmDeviceAddressMsg extends APISyncCallMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String uuid;

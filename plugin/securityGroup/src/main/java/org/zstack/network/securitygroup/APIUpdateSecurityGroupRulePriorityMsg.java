@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.List;
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/security-groups/{securityGroupUuid}/rules/priority/actions",
@@ -14,6 +15,8 @@ import static java.util.Arrays.asList;
         responseClass = APIUpdateSecurityGroupRulePriorityEvent.class,
         isAction = true
 )
+ 
+@MetadataImpact(MetadataImpact.Impact.NONE)
  
 public class APIUpdateSecurityGroupRulePriorityMsg extends APIMessage implements SecurityGroupMessage {
     public static class SecurityGroupRulePriorityAO {

@@ -10,6 +10,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api delete a zone. All descendant resources, for example cluster/host/vm, are deleted in
@@ -43,6 +44,7 @@ import static org.zstack.utils.CollectionDSL.list;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteZoneEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteZoneMsg extends APIDeleteMessage implements ZoneMessage {
     /**
      * @desc zone uuid

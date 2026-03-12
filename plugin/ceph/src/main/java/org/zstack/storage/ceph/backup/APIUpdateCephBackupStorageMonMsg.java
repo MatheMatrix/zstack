@@ -9,6 +9,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.backup.BackupStorageMessage;
 
 import java.io.Serializable;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by Mei Lei on 6/3/2016.
@@ -19,6 +20,7 @@ import java.io.Serializable;
         isAction = true,
         responseClass = APIUpdateCephBackupStorageMonEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateCephBackupStorageMonMsg extends APIMessage implements BackupStorageMessage, Serializable {
     @APINoSee
     private String backupStorageUuid;

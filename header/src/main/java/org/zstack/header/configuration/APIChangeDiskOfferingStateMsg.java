@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created with IntelliJ IDEA.
@@ -17,6 +18,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         responseClass = APIChangeDiskOfferingStateEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeDiskOfferingStateMsg extends APIMessage implements DiskOfferingMessage {
     @APIParam(resourceType = DiskOfferingVO.class)
     private String uuid;

@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by MaJin on 2021/3/29.
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetUploadImageJobDetailsReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetUploadImageJobDetailsMsg extends APISyncCallMessage {
     @APIParam
     private String imageId;

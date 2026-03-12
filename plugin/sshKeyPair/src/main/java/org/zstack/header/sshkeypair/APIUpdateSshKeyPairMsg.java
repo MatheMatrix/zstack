@@ -7,6 +7,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.sshkeypair.SshKeyPairConstant;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/ssh-key-pair/{uuid}/actions",
@@ -14,6 +15,7 @@ import org.zstack.sshkeypair.SshKeyPairConstant;
         responseClass = APIUpdateSshKeyPairEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateSshKeyPairMsg extends APIMessage implements SshKeyPairMessage, APIAuditor {
     @APIParam(resourceType = SshKeyPairVO.class, maxLength = 32)
     private String uuid;

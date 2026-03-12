@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/l3-networks/{l3NetworkUuid}/hostroute",
@@ -11,6 +12,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIAddHostRouteToL3NetworkEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddHostRouteToL3NetworkMsg extends APIMessage implements L3NetworkMessage {
     /**
      * @desc l3Network uuid

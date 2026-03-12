@@ -6,6 +6,7 @@ import org.zstack.header.message.*;
 import org.zstack.header.network.l2.L2NetworkMessage;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.network.l2.vxlan.vxlanNetworkPool.VxlanNetworkPoolVO;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/l2-networks/vxlan/vteps",
@@ -13,6 +14,7 @@ import org.zstack.network.l2.vxlan.vxlanNetworkPool.VxlanNetworkPoolVO;
         responseClass = APICreateVxlanVtepEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateVxlanVtepMsg extends  APICreateMessage implements L2NetworkMessage {
     @APIParam(resourceType = HostVO.class)
     private String hostUuid;

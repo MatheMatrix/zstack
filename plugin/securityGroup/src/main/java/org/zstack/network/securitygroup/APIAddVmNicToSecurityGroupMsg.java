@@ -9,6 +9,7 @@ import org.zstack.header.vm.VmNicVO;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api
@@ -59,6 +60,7 @@ import static java.util.Arrays.asList;
         responseClass = APIAddVmNicToSecurityGroupEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddVmNicToSecurityGroupMsg extends APIMessage {
     /**
      * @desc security group uuid

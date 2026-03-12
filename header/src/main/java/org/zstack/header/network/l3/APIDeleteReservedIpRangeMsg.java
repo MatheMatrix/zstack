@@ -6,6 +6,7 @@ import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @Action(category = L3NetworkConstant.ACTION_CATEGORY)
 @RestRequest(
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteReservedIpRangeEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteReservedIpRangeMsg extends APIDeleteMessage implements L3NetworkMessage, IpRangeMessage {
     /**
      * @desc ip range uuid

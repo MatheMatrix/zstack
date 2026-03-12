@@ -10,6 +10,7 @@ import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.header.tag.TagResourceType;
 
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
@@ -21,6 +22,7 @@ import java.util.concurrent.TimeUnit;
         parameterName = "params"
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 72)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateDataVolumeFromVolumeTemplateMsg extends APICreateMessage implements APIAuditor, VolumeCreateMessage {
     @APIParam(resourceType = ImageVO.class)
     private String imageUuid;

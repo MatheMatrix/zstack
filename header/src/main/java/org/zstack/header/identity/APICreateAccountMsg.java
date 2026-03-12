@@ -9,6 +9,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/accounts",
@@ -17,6 +18,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APICreateAccountEvent.class
 )
 @EncryptionParamAllowed
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateAccountMsg extends APICreateMessage implements APIAuditor {
     @APIParam(maxLength = 255)
     private String name;

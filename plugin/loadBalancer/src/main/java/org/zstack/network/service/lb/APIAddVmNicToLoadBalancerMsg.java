@@ -11,6 +11,7 @@ import org.zstack.header.vm.VmNicVO;
 
 import java.util.Arrays;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 8/8/2015.
@@ -21,6 +22,7 @@ import java.util.List;
         parameterName = "params",
         responseClass = APIAddVmNicToLoadBalancerEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddVmNicToLoadBalancerMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
     @APIParam(resourceType = VmNicVO.class, nonempty = true)
     private List<String> vmNicUuids;

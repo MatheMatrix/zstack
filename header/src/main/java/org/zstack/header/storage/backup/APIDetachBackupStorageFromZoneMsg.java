@@ -6,6 +6,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.zone.ZoneVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api detach backup storage from a zone
@@ -39,6 +40,7 @@ import org.zstack.header.zone.ZoneVO;
         method = HttpMethod.DELETE,
         responseClass = APIDetachBackupStorageFromZoneEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDetachBackupStorageFromZoneMsg extends APIMessage implements BackupStorageMessage {
     /**
      * @desc backup storage uuid

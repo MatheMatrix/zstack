@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api remove dns from l3Network
@@ -38,6 +39,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIRemoveDnsFromL3NetworkEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRemoveDnsFromL3NetworkMsg extends APIMessage implements L3NetworkMessage {
     /**
      * @desc l3Network uuid

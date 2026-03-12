@@ -10,6 +10,7 @@ import org.zstack.header.storage.primary.PrimaryStorageVO;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 8/6/2015.
@@ -19,6 +20,7 @@ import java.util.List;
         method = HttpMethod.DELETE,
         responseClass = APIRemoveMonFromCephPrimaryStorageEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRemoveMonFromCephPrimaryStorageMsg extends APIMessage implements PrimaryStorageMessage {
     @APIParam(resourceType = PrimaryStorageVO.class)
     private String uuid;

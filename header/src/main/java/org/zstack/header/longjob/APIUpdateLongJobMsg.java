@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  *  * Created on 2/3/2020
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         responseClass = APIUpdateLongJobEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateLongJobMsg extends APIMessage implements LongJobMessage {
     @APIParam(resourceType = LongJobVO.class, scope = APIParam.SCOPE_MUST_OWNER)
     private String uuid;

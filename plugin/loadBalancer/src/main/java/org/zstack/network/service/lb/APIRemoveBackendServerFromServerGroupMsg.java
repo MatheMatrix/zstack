@@ -10,6 +10,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vm.VmNicVO;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/load-balancers/servergroups/{serverGroupUuid}/backendservers/actions",
@@ -17,6 +18,7 @@ import java.util.List;
         method = HttpMethod.PUT,
         responseClass = APIRemoveBackendServerFromServerGroupEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRemoveBackendServerFromServerGroupMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
     @APIParam(resourceType = LoadBalancerServerGroupVO.class, nonempty = true)
     private String serverGroupUuid;

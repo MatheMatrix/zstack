@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/load-balancers/servergroups/{serverGroupUuid}/backendserver/actions",
@@ -19,6 +20,7 @@ import java.util.Map;
         responseClass = APIChangeLoadBalancerBackendServerEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeLoadBalancerBackendServerMsg extends APIMessage implements LoadBalancerMessage , APIAuditor{
     @APIParam(resourceType = LoadBalancerServerGroupVO.class, nonempty = true)
     private String serverGroupUuid;

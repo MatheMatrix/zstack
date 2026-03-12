@@ -10,12 +10,14 @@ import java.util.List;
 import java.util.function.Function;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/core/task-details",
         method = HttpMethod.GET,
         responseClass = APIGetChainTaskReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetChainTaskMsg extends APISyncCallMessage {
     @APIParam(nonempty = false, required = false)
     private List<String> syncSignatures;

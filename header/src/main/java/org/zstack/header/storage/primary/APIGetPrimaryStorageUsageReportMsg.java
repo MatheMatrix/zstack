@@ -6,12 +6,14 @@ import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/primary-storage/{primaryStorageUuid}/usage/report",
         method = HttpMethod.GET,
         responseClass = APIGetPrimaryStorageUsageReportReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetPrimaryStorageUsageReportMsg extends APISyncCallMessage {
     @APIParam(resourceType = PrimaryStorageVO.class)
     private String primaryStorageUuid;

@@ -9,6 +9,7 @@ import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 import org.zstack.utils.network.IPv6Constants;
+import org.zstack.header.vm.MetadataImpact;
 
 @TagResourceType(L3NetworkVO.class)
 @RestRequest(
@@ -17,6 +18,7 @@ import org.zstack.utils.network.IPv6Constants;
         responseClass = APIAddIpRangeEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddIpv6RangeMsg extends APICreateMessage implements L3NetworkMessage, APIAuditor {
     /**
      * @desc l3Network uuid

@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l2.L2NetworkMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by shixin.ruan on 09/19/2019.
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateSdnControllerEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateSdnControllerMsg extends APIMessage implements L2NetworkMessage {
     @APIParam(resourceType = SdnControllerVO.class)
     private String uuid;

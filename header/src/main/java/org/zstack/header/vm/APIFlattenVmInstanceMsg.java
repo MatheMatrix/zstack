@@ -10,6 +10,7 @@ import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 36)
 @RestRequest(path = "/vm-instances/{uuid}/actions",
@@ -17,6 +18,7 @@ import java.util.concurrent.TimeUnit;
         responseClass = APIFlattenVmInstanceEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIFlattenVmInstanceMsg extends APIMessage implements VmInstanceMessage, APIAuditor {
     @APIParam(resourceType = VmInstanceVO.class)
     private String uuid;

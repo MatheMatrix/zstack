@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryVmNicInSecurityGroupReply.class, inventoryClass = VmNicSecurityGroupRefInventory.class)
 @RestRequest(
@@ -15,6 +16,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIQueryVmNicInSecurityGroupReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryVmNicInSecurityGroupMsg extends APIQueryMessage {
 
     public static List<String> __example__() {

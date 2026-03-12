@@ -5,6 +5,7 @@ import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by david on 8/31/16.
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteExportedImageFromBackupStorageEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteExportedImageFromBackupStorageMsg extends APIMessage implements BackupStorageMessage {
     @APIParam(resourceType = BackupStorageVO.class)
     private String backupStorageUuid;

@@ -7,6 +7,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @author: zhanyong.miao
@@ -18,6 +19,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIAddAccessControlListEntryEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddAccessControlListEntryMsg extends APICreateMessage implements APIAuditor {
     @APIParam(resourceType = AccessControlListVO.class)
     private String aclUuid;

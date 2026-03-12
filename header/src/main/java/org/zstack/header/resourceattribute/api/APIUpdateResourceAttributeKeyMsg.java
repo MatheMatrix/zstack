@@ -9,6 +9,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/resource-attributes/{uuid}/actions",
@@ -16,6 +17,7 @@ import java.util.List;
         isAction = true,
         responseClass = APIUpdateResourceAttributeKeyEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateResourceAttributeKeyMsg extends APIMessage implements ResourceAttributeMessage {
     @APIParam(required = true, resourceType = ResourceAttributeKeyVO.class)
     private String uuid;

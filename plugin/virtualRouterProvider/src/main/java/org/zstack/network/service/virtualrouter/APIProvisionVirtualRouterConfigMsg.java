@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vm.VmInstanceMessage;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
@@ -14,6 +15,7 @@ import org.zstack.header.vm.VmInstanceMessage;
         responseClass = APIProvisionVirtualRouterConfigEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIProvisionVirtualRouterConfigMsg extends APIMessage implements VmInstanceMessage {
     @APIParam(resourceType = VirtualRouterVmVO.class)
     private String vmInstanceUuid;

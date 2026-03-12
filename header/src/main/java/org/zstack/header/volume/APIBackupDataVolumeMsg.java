@@ -3,6 +3,7 @@ package org.zstack.header.volume;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.storage.backup.BackupStorageVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api backup data volume to a backup storage
@@ -30,6 +31,7 @@ import org.zstack.header.storage.backup.BackupStorageVO;
  * @since 0.1.0
  */
 @Deprecated
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIBackupDataVolumeMsg extends APIMessage implements VolumeMessage {
     /**
      * @desc data volume uuid

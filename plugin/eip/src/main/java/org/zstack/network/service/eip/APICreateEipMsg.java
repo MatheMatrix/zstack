@@ -10,6 +10,7 @@ import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vm.VmNicVO;
 import org.zstack.network.service.vip.VipVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api
@@ -61,6 +62,7 @@ import org.zstack.network.service.vip.VipVO;
         responseClass = APICreateEipEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateEipMsg extends APICreateMessage implements APIAuditor {
     /**
      * @desc max length of 255 characters

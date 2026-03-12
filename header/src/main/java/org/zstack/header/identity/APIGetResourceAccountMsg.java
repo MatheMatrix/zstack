@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/4/8.
@@ -18,6 +19,7 @@ import static org.zstack.utils.CollectionDSL.list;
         method = HttpMethod.GET,
         responseClass = APIGetResourceAccountReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetResourceAccountMsg extends APISyncCallMessage {
     @APIParam(nonempty = true)
     private List<String> resourceUuids;

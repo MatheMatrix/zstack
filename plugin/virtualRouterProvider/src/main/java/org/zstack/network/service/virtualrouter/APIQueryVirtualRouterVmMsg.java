@@ -9,6 +9,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
@@ -19,6 +20,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIQueryApplianceVmReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryVirtualRouterVmMsg extends APIQueryApplianceVmMsg {
 
     public static List<String> __example__() {

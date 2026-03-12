@@ -5,6 +5,7 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api change backup storage state
@@ -39,6 +40,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIChangeBackupStorageStateEvent.class,
         method = HttpMethod.PUT
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeBackupStorageStateMsg extends APIMessage implements BackupStorageMessage {
     /**
      * @desc backup storage uuid

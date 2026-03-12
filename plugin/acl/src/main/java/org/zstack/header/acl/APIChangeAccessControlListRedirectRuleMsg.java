@@ -6,6 +6,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/access-control-lists/redirectRules/{uuid}/actions",
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIChangeAccessControlListRedirectRuleEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeAccessControlListRedirectRuleMsg extends APIMessage implements APIAuditor {
     @APIParam(resourceType = AccessControlListEntryVO.class)
     private String uuid;

@@ -4,9 +4,11 @@ import org.zstack.header.log.NoLogging;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.vo.ResourceVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public abstract class APIAbstractCreateTagMsg extends APIMessage {
     @APIParam
     private String resourceType;

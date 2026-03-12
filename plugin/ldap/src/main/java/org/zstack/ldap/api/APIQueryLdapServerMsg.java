@@ -9,6 +9,7 @@ import org.zstack.ldap.entity.LdapServerInventory;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryLdapServerReply.class, inventoryClass = LdapServerInventory.class)
 @RestRequest(
@@ -17,6 +18,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIQueryLdapServerReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryLdapServerMsg extends APIQueryMessage {
 
     public static List<String> __example__() {

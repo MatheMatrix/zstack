@@ -9,6 +9,7 @@ import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.PrimaryStorageMessage;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2017/2/28.
@@ -19,6 +20,7 @@ import org.zstack.header.storage.primary.PrimaryStorageVO;
         parameterName = "params",
         responseClass = APIAddCephPrimaryStoragePoolEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddCephPrimaryStoragePoolMsg extends APICreateMessage implements PrimaryStorageMessage, APIAuditor {
     @APIParam(resourceType = PrimaryStorageVO.class)
     private String primaryStorageUuid;

@@ -7,12 +7,14 @@ import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/host/get-block-devices",
         method = HttpMethod.GET,
         responseClass = APIGetPhysicalMachineBlockDevicesReply.class
 )
+    @MetadataImpact(MetadataImpact.Impact.NONE)
     public class APIGetPhysicalMachineBlockDevicesMsg extends APISyncCallMessage {
     @APIParam(maxLength = 255)
     private String username;

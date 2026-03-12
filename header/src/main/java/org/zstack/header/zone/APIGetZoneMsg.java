@@ -3,12 +3,14 @@ package org.zstack.header.zone;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/zones/{uuid}/info",
         method = HttpMethod.GET,
         responseClass = APIGetZoneReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetZoneMsg extends APISyncCallMessage {
     private String uuid;
 

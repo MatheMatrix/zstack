@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APICreateMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by camile on 5/18/2017.
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true
         //parameterName = "updateLoadBalancer"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateLoadBalancerMsg extends APICreateMessage  implements LoadBalancerMessage {
     @APIParam(resourceType = LoadBalancerVO.class)
     private String uuid;

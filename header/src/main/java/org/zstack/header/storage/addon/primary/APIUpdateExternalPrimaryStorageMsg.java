@@ -5,6 +5,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.APIUpdatePrimaryStorageMsg;
 import org.zstack.header.storage.primary.PrimaryStorageMessage;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/primary-storage/addon/{uuid}/actions",
@@ -12,6 +13,7 @@ import org.zstack.header.storage.primary.PrimaryStorageMessage;
         method = HttpMethod.PUT,
         responseClass = APIUpdateExternalPrimaryStorageEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateExternalPrimaryStorageMsg extends APIUpdatePrimaryStorageMsg implements PrimaryStorageMessage {
     @APIParam(required = false)
     private String config;

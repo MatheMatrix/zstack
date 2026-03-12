@@ -4,12 +4,14 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/templatedVmInstance/{uuid}",
         method = HttpMethod.DELETE,
         responseClass = APIDeleteTemplatedVmInstanceEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteTemplatedVmInstanceMsg extends APIDeleteMessage implements VmInstanceMessage {
     @APIParam(resourceType = TemplatedVmInstanceVO.class, successIfResourceNotExisting = true)
     private String uuid;

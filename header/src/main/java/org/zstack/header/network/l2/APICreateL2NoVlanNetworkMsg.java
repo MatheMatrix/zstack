@@ -3,6 +3,7 @@ package org.zstack.header.network.l2;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
@@ -13,6 +14,7 @@ import org.zstack.header.tag.TagResourceType;
         responseClass = APICreateL2NetworkEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateL2NoVlanNetworkMsg extends APICreateL2NetworkMsg {
     @Override
     public String getType() {

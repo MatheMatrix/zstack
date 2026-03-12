@@ -5,12 +5,14 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/{vmUuid}/metadata",
         method = HttpMethod.GET,
         responseClass = APIReadVmInstanceMetadataReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIReadVmInstanceMetadataMsg extends APISyncCallMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String vmUuid;

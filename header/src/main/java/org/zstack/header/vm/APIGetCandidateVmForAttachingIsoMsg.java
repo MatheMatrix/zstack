@@ -5,6 +5,7 @@ import org.zstack.header.image.ImageVO;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/9/20.
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetCandidateVmForAttachingIsoReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetCandidateVmForAttachingIsoMsg extends APISyncCallMessage {
     @APIParam(resourceType = ImageVO.class)
     private String isoUuid;

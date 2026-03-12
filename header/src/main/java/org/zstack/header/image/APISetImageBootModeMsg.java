@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/images/{uuid}/actions",
@@ -11,6 +12,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         responseClass = APISetImageBootModeEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APISetImageBootModeMsg extends APIMessage implements ImageMessage {
     @APIParam(resourceType = ImageVO.class)
     private String uuid;

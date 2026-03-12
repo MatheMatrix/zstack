@@ -11,6 +11,7 @@ import org.zstack.header.tag.TagResourceType;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 @TagResourceType(ResourceAttributeKeyVO.class)
 @RestRequest(
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
         parameterName = "params"
 )
 @DefaultTimeout(timeunit = TimeUnit.SECONDS, value = 5)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateResourceAttributeKeyMsg extends APICreateMessage {
     @APIParam(maxLength = 255)
     private String name;

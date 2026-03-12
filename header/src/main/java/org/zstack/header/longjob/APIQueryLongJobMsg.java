@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Arrays;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by GuoYi on 11/13/17.
@@ -18,6 +19,7 @@ import java.util.List;
         method = HttpMethod.GET,
         responseClass = APIQueryLongJobReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryLongJobMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return Arrays.asList();

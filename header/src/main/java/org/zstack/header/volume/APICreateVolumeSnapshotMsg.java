@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api create a volume snapshot from volume
@@ -45,6 +46,7 @@ import java.util.concurrent.TimeUnit;
         parameterName = "params"
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 3)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateVolumeSnapshotMsg extends APICreateMessage implements VolumeMessage, APIAuditor {
     /**
      * @desc volume uuid. See :ref:`VolumeInventory`

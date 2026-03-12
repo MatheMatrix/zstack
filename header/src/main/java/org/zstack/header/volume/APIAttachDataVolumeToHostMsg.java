@@ -5,6 +5,7 @@ import org.zstack.header.host.HostVO;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/volumes/{volumeUuid}/hosts/{hostUuid}",
@@ -12,6 +13,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIAttachDataVolumeToHostEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAttachDataVolumeToHostMsg extends APIMessage implements VolumeMessage {
     @APIParam(resourceType = VolumeVO.class)
     private String volumeUuid;

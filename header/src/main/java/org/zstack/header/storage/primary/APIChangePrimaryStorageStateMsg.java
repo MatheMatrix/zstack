@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api change primary storage state
@@ -38,6 +39,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIChangePrimaryStorageStateEvent.class,
         method = HttpMethod.PUT
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangePrimaryStorageStateMsg extends APIMessage implements PrimaryStorageMessage {
     /**
      * @desc primary storage uuid

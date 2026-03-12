@@ -12,6 +12,7 @@ import org.zstack.storage.ceph.CephConstants;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 7/28/2015.
@@ -26,6 +27,7 @@ import java.util.List;
         responseClass = APIAddPrimaryStorageEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddCephPrimaryStorageMsg extends APIAddPrimaryStorageMsg {
     @APIParam(nonempty = false, emptyString = false)
     @NoLogging(type = NoLogging.Type.Uri)

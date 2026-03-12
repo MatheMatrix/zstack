@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/security-groups/{securityGroupUuid}/rules/state/actions",
@@ -15,6 +16,7 @@ import static java.util.Arrays.asList;
         responseClass = APIChangeSecurityGroupRuleStateEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangeSecurityGroupRuleStateMsg extends APIMessage implements SecurityGroupMessage {
     @APIParam(required = true, nonempty = true)
     private String securityGroupUuid;

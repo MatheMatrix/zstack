@@ -5,12 +5,14 @@ import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/volumes/batch-sync-volumes",
         method = HttpMethod.POST,
         responseClass = APIBatchSyncVolumeSizeReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIBatchSyncVolumeSizeMsg extends APISyncCallMessage {
     @APIParam(resourceType = ClusterVO.class)
     private String clusterUuid;

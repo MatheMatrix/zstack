@@ -10,12 +10,14 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/images/{uuid}",
         method = HttpMethod.DELETE,
         responseClass = APIDeleteImageEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteImageMsg extends APIDeleteMessage implements ImageMessage {
     @APIParam(resourceType = ImageVO.class, successIfResourceNotExisting = true)
     private String uuid;

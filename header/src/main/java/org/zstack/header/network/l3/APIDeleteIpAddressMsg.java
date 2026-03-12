@@ -8,6 +8,7 @@ import org.zstack.header.tag.TagResourceType;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @TagResourceType(L3NetworkVO.class)
 @Action(category = L3NetworkConstant.ACTION_CATEGORY)
@@ -16,6 +17,7 @@ import java.util.List;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteIpAddressEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteIpAddressMsg extends APIDeleteMessage implements L3NetworkMessage {
     /**
      * @desc l3Network uuid

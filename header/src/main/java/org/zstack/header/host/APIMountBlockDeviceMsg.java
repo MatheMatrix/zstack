@@ -5,6 +5,7 @@ import org.zstack.header.log.NoLogging;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/host/mount-block-device",
@@ -12,6 +13,7 @@ import org.zstack.header.rest.RestRequest;
         parameterName = "params",
         responseClass = APIMountBlockDeviceEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIMountBlockDeviceMsg extends APIMessage {
     @APIParam(maxLength = 255)
     private String username;

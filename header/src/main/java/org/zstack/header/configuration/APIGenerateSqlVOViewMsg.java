@@ -4,9 +4,11 @@ import org.zstack.header.message.APIMessage;
 
 import java.util.Arrays;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGenerateSqlVOViewMsg extends APIMessage {
     private List<String> basePackageNames;
 

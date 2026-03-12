@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
@@ -18,6 +19,7 @@ import static java.util.Arrays.asList;
         responseClass = APIQueryUserTagReply.class,
         method = HttpMethod.GET
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryUserTagMsg extends APIQueryMessage {
  
     public static List<String> __example__() {

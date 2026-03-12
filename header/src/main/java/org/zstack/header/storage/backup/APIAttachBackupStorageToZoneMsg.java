@@ -6,6 +6,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.zone.ZoneVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api attach backup storage to a zone
@@ -40,6 +41,7 @@ import org.zstack.header.zone.ZoneVO;
         parameterName = "params",
         responseClass = APIAttachBackupStorageToZoneEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAttachBackupStorageToZoneMsg extends APIMessage implements BackupStorageMessage {
     /**
      * @desc zone uuid. See :ref:`ZoneInventory`

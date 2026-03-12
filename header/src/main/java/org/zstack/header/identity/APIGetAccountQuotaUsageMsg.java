@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 2/22/2016.
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetAccountQuotaUsageReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetAccountQuotaUsageMsg extends APISyncCallMessage implements AccountMessage {
     @APIParam(resourceType = AccountVO.class)
     private String uuid;

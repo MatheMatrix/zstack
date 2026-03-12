@@ -5,6 +5,7 @@ import org.zstack.header.log.NoLogging;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @Author : jingwang
@@ -16,6 +17,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateHostIpmiEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateHostIpmiMsg extends APIMessage implements HostMessage {
     @APIParam(resourceType = HostEO.class)
     private String uuid;

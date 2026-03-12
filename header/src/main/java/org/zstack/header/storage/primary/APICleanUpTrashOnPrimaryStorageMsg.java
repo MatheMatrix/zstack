@@ -7,6 +7,7 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by mingjian.deng on 2018/12/10.
@@ -17,6 +18,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APICleanUpTrashOnPrimaryStorageEvent.class,
         method = HttpMethod.PUT
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICleanUpTrashOnPrimaryStorageMsg extends APIMessage implements PrimaryStorageMessage, APIBatchRequest {
     @APIParam(resourceType = PrimaryStorageVO.class)
     private String uuid;

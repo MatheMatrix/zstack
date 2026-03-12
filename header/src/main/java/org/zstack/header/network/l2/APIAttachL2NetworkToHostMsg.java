@@ -5,6 +5,7 @@ import org.zstack.header.host.HostVO;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/l2-networks/{l2NetworkUuid}/hosts/{hostUuid}",
@@ -12,6 +13,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIAttachL2NetworkToHostEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAttachL2NetworkToHostMsg extends APIMessage implements L2NetworkMessage {
     /**
      * @desc l2Network uuid

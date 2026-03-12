@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 
 @RestRequest(
@@ -11,6 +12,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetVmInstanceMetadataFromPrimaryStorageReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetVmInstanceMetadataFromPrimaryStorageMsg extends APISyncCallMessage implements PrimaryStorageMessage {
     @APIParam(resourceType = PrimaryStorageVO.class)
     private String uuid;

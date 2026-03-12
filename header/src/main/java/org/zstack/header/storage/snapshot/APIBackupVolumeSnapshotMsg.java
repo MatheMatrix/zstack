@@ -4,6 +4,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.storage.backup.BackupStorageVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api back up volume snapshot to backup storage
@@ -31,6 +32,8 @@ import org.zstack.header.storage.backup.BackupStorageVO;
  * @result see :ref:`APIBackupVolumeSnapshotEvent`
  * @since 0.1.0
  */
+
+@MetadataImpact(MetadataImpact.Impact.NONE)
 
 public class APIBackupVolumeSnapshotMsg extends APIMessage implements VolumeSnapshotMessage {
     /**

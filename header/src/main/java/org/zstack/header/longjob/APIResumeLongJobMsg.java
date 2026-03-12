@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/longjobs/{uuid}/actions",
@@ -11,6 +12,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         responseClass = APIResumeLongJobEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIResumeLongJobMsg extends APIMessage implements LongJobMessage {
     @APIParam(resourceType = LongJobVO.class, scope = APIParam.SCOPE_MUST_OWNER)
     private String uuid;

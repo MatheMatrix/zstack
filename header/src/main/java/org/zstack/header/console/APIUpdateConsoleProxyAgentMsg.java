@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/consoles/agents/{uuid}/actions",
@@ -11,6 +12,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateConsoleProxyAgentEvent.class,
         method = HttpMethod.PUT
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateConsoleProxyAgentMsg extends APIMessage implements ConsoleProxyAgentMessage {
     @APIParam(resourceType = ConsoleProxyAgentVO.class)
     private String uuid;

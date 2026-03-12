@@ -9,6 +9,7 @@ import org.zstack.network.hostNetworkInterface.lldp.entity.HostNetworkInterfaceL
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryHostNetworkInterfaceLldpReply.class, inventoryClass = HostNetworkInterfaceLldpInventory.class)
 @RestRequest(
@@ -17,6 +18,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIQueryHostNetworkInterfaceLldpReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryHostNetworkInterfaceLldpMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return asList();

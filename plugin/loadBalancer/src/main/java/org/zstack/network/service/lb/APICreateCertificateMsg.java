@@ -8,6 +8,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by shixin on 03/22/2018.
@@ -19,6 +20,7 @@ import org.zstack.header.tag.TagResourceType;
         responseClass = APICreateCertificateEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateCertificateMsg extends APICreateMessage implements APIAuditor {
     @APIParam(maxLength = 255)
     private String name;

@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQuerySftpBackupStorageReply.class, inventoryClass = SftpBackupStorageInventory.class)
 @RestRequest(
@@ -16,6 +17,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIQuerySftpBackupStorageReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQuerySftpBackupStorageMsg extends APIQueryMessage {
 
 

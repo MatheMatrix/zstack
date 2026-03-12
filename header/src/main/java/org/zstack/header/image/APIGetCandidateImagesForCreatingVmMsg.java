@@ -5,6 +5,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
+import org.zstack.header.vm.MetadataImpact;
 
 
 @RestRequest(
@@ -12,6 +13,7 @@ import org.zstack.header.storage.primary.PrimaryStorageVO;
         method = HttpMethod.GET,
         responseClass = APIGetCandidateImagesForCreatingVmReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetCandidateImagesForCreatingVmMsg extends APISyncCallMessage {
     @APIParam(resourceType = PrimaryStorageVO.class)
     private String primaryStorageUuid;

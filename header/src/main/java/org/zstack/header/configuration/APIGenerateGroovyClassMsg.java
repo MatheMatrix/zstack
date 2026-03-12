@@ -3,6 +3,7 @@ package org.zstack.header.configuration;
 import org.zstack.header.message.APIMessage;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created with IntelliJ IDEA.
@@ -10,6 +11,7 @@ import java.util.List;
  * Time: 10:24 PM
  * To change this template use File | Settings | File Templates.
  */
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGenerateGroovyClassMsg extends APIMessage {
     private String outputPath;
     private List<String> basePackageNames;

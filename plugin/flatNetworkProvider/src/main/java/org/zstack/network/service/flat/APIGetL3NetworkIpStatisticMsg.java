@@ -8,6 +8,7 @@ import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
 
 import static org.zstack.network.service.flat.IpStatisticConstants.*;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by Qi Le on 2019/9/9
@@ -17,6 +18,7 @@ import static org.zstack.network.service.flat.IpStatisticConstants.*;
         method = HttpMethod.GET,
         responseClass = APIGetL3NetworkIpStatisticReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetL3NetworkIpStatisticMsg extends APISyncCallMessage implements L3NetworkMessage {
     @APIParam(resourceType = L3NetworkVO.class)
     private String l3NetworkUuid;

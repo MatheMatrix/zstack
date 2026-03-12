@@ -6,6 +6,7 @@ import org.zstack.header.host.HostVO;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/register",
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIRegisterVmInstanceReply.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRegisterVmInstanceMsg extends APIMessage implements PrimaryStorageMessage {
     @APIParam()
     private String metadataPath;

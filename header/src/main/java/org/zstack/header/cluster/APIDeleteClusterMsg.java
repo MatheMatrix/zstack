@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api delete a cluster. All descendant resources, for example hosts/vm are deleted in cascade as well
@@ -40,6 +41,7 @@ import static org.zstack.utils.CollectionDSL.list;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteClusterEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteClusterMsg extends APIDeleteMessage implements ClusterMessage {
     /**
      * @desc cluster uuid

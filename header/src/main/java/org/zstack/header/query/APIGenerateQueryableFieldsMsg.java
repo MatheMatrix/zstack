@@ -1,9 +1,11 @@
 package org.zstack.header.query;
 
 import org.zstack.header.message.APIMessage;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGenerateQueryableFieldsMsg extends APIMessage {
     public final static String PYTHON_FORMAT = "python";
     private String format = PYTHON_FORMAT;

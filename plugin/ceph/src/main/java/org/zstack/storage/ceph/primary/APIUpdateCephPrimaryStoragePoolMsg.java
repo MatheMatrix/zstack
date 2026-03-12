@@ -7,6 +7,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.PrimaryStorageMessage;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by AlanJager on 2017/9/4.
@@ -17,6 +18,7 @@ import org.zstack.header.storage.primary.PrimaryStorageMessage;
         method = HttpMethod.PUT,
         responseClass = APIUpdateCephPrimaryStoragePoolEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateCephPrimaryStoragePoolMsg extends APIMessage implements PrimaryStorageMessage {
     @APINoSee
     private String primaryStorageUuid;

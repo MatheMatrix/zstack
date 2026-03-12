@@ -6,6 +6,7 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.APIAddPrimaryStorageEvent;
 import org.zstack.header.storage.primary.APIAddPrimaryStorageMsg;
 import org.zstack.header.storage.primary.PrimaryStorageConstant;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/primary-storage/addon",
@@ -13,6 +14,7 @@ import org.zstack.header.storage.primary.PrimaryStorageConstant;
         responseClass = APIAddPrimaryStorageEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddExternalPrimaryStorageMsg extends APIAddPrimaryStorageMsg {
     @APIParam(maxLength = 255, emptyString = false)
     private String identity;

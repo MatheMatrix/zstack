@@ -4,8 +4,10 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(path = "/identities/accounts/{accountUuid}/roles/{roleUuid}", method = HttpMethod.DELETE, responseClass = APIDetachRoleFromAccountEvent.class)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDetachRoleFromAccountMsg extends APIDeleteMessage implements RoleMessage {
     @APIParam
     private String roleUuid;

@@ -4,12 +4,14 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
     path = "/security-groups/{securityGroupUuid}/rules/validation",
     method = HttpMethod.GET,
     responseClass = APIValidateSecurityGroupRuleReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIValidateSecurityGroupRuleMsg extends APISyncCallMessage {
 
     @APIParam(resourceType = SecurityGroupVO.class, required = true, nonempty = true)

@@ -5,6 +5,7 @@ import org.zstack.header.identity.SuppressCredentialCheck;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/login/procedures",
@@ -12,6 +13,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIGetLoginProceduresReply.class
 )
 @SuppressCredentialCheck
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetLoginProceduresMsg extends APISyncCallMessage {
     @APIParam
     private String username;

@@ -5,6 +5,7 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2017/3/5.
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.PUT,
         responseClass = APITriggerGCJobEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APITriggerGCJobMsg extends APIMessage implements GarbageCollectorMessage {
     @APIParam(resourceType = GarbageCollectorVO.class)
     private String uuid;

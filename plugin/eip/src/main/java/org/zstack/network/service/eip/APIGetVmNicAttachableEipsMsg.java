@@ -5,12 +5,14 @@ import org.zstack.header.message.APIGetMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vm.*;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/nics/{vmNicUuid}/candidate-eips",
         method = HttpMethod.GET,
         responseClass = APIGetVmNicAttachableEipsReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetVmNicAttachableEipsMsg extends APIGetMessage {
     @APIParam(resourceType = VmNicVO.class)
     private String vmNicUuid;

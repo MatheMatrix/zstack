@@ -7,6 +7,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by shixin on 03/26/2018.
@@ -17,6 +18,7 @@ import org.zstack.header.rest.RestRequest;
         parameterName = "params",
         responseClass = APIAddCertificateToLoadBalancerListenerEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddCertificateToLoadBalancerListenerMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
     @APIParam(resourceType = CertificateVO.class, nonempty = true)
     private String certificateUuid;

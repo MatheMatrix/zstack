@@ -8,6 +8,7 @@ import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @ Author : yh.w
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
         isAction = true
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 24)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIShrinkVolumeSnapshotMsg extends APIMessage implements VolumeSnapshotMessage {
     @APIParam(resourceType = VolumeSnapshotVO.class)
     private String uuid;

@@ -9,6 +9,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api delete ip range
@@ -43,6 +44,7 @@ import static org.zstack.utils.CollectionDSL.list;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteIpRangeEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteIpRangeMsg extends APIDeleteMessage implements L3NetworkMessage, IpRangeMessage {
     /**
      * @desc ip range uuid

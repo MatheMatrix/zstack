@@ -8,6 +8,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2017/5/1.
@@ -17,6 +18,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIGetResourceNamesReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetResourceNamesMsg extends APISyncCallMessage {
     @APIParam(nonempty = true)
     private List<String> uuids;

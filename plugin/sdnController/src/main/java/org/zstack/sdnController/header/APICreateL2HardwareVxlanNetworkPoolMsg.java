@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l2.APICreateL2NetworkMsg;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/l2-networks/hardware-vxlan-pool",
@@ -11,6 +12,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APICreateL2HardwareVxlanNetworkPoolEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateL2HardwareVxlanNetworkPoolMsg extends APICreateL2NetworkMsg {
     @APIParam(resourceType = SdnControllerVO.class)
     private String sdnControllerUuid;

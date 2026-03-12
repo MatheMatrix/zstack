@@ -11,6 +11,7 @@ import java.util.List;
 
 import static org.zstack.header.message.APIDeleteMessage.DeletionMode.Permissive;
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 
 /**
@@ -44,6 +45,7 @@ import static org.zstack.utils.CollectionDSL.list;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteHostEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteHostMsg extends APIDeleteMessage implements HostMessage {
     /**
      * @desc host uuid

@@ -6,6 +6,7 @@ import org.zstack.header.message.APIEvent;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api detach primary storage from a cluster
@@ -39,6 +40,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIDetachPrimaryStorageFromClusterEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDetachPrimaryStorageFromClusterMsg extends APIMessage implements PrimaryStorageMessage {
     /**
      * @desc primary storage uuid

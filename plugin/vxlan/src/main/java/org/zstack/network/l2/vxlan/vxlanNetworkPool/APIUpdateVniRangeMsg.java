@@ -8,6 +8,7 @@ import org.zstack.header.network.l2.L2NetworkMessage;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @author: kefeng.wang
@@ -19,6 +20,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateVniRangeEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateVniRangeMsg extends APIMessage implements L2NetworkMessage, APIAuditor {
     @APIParam(resourceType = VniRangeVO.class)
     private String uuid;

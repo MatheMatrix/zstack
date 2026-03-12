@@ -6,6 +6,7 @@ import org.zstack.header.storage.primary.APIAddPrimaryStorageEvent;
 import org.zstack.header.storage.primary.APIAddPrimaryStorageMsg;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 7/1/2015.
@@ -17,6 +18,7 @@ import org.zstack.header.tag.TagResourceType;
         responseClass = APIAddPrimaryStorageEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddLocalPrimaryStorageMsg extends APIAddPrimaryStorageMsg {
     @Override
     public String getType() {

@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Collections;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by MaJin on 2019/7/12.
@@ -16,6 +17,7 @@ import java.util.List;
         method = HttpMethod.GET,
         responseClass = APICheckVolumeSnapshotGroupAvailabilityReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICheckVolumeSnapshotGroupAvailabilityMsg extends APISyncCallMessage {
     @APIParam(resourceType = VolumeSnapshotGroupVO.class)
     private List<String> uuids;

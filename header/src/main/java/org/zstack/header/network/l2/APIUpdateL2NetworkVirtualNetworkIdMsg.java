@@ -6,6 +6,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by boce.wang on 03/20/2024.
@@ -16,6 +17,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIUpdateL2NetworkVirtualNetworkIdEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateL2NetworkVirtualNetworkIdMsg extends APIMessage implements L2NetworkMessage, APIAuditor {
     @APIParam(resourceType = L2NetworkVO.class)
     private String uuid;

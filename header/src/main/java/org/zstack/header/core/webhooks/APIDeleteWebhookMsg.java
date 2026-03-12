@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2017/5/7.
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIDeleteWebhookEvent.class
 )
 @Deprecated
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteWebhookMsg extends APIDeleteMessage {
     @APIParam(resourceType = WebhookVO.class, successIfResourceNotExisting = true)
     private String uuid;

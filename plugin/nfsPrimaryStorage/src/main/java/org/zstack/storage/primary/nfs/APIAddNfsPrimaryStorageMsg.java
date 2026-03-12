@@ -6,6 +6,7 @@ import org.zstack.header.storage.primary.APIAddPrimaryStorageEvent;
 import org.zstack.header.storage.primary.APIAddPrimaryStorageMsg;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api
@@ -59,6 +60,7 @@ import org.zstack.header.tag.TagResourceType;
         responseClass = APIAddPrimaryStorageEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddNfsPrimaryStorageMsg extends APIAddPrimaryStorageMsg {
     public APIAddNfsPrimaryStorageMsg() {
         this.setType(NfsPrimaryStorageConstant.NFS_PRIMARY_STORAGE_TYPE);

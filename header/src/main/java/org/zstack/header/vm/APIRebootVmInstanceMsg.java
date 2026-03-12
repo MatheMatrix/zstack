@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api reboot a vm instance
@@ -37,6 +38,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APIRebootVmInstanceEvent.class
 )
 @SkipVmTracer(replyClass = APIRebootVmInstanceEvent.class)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIRebootVmInstanceMsg extends APIMessage implements VmInstanceMessage, CheckAttachedVolumesMessage {
     /**
      * @desc vm uuid

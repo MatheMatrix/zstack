@@ -11,6 +11,7 @@ import org.zstack.header.tag.TagResourceType;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
@@ -22,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 )
 @TagResourceType(ImageVO.class)
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 72)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateRootVolumeTemplateFromVolumeSnapshotMsg extends APICreateMessage implements APIAuditor, CreateRootVolumeTemplateMessage {
     @APIParam(resourceType = VolumeSnapshotVO.class)
     private String snapshotUuid;

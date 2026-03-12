@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by frank on 7/14/2015.
@@ -15,6 +16,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true,
         method = HttpMethod.PUT
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateQuotaMsg extends APIMessage implements AccountMessage {
     @APIParam(resourceType = AccountVO.class)
     private String identityUuid;

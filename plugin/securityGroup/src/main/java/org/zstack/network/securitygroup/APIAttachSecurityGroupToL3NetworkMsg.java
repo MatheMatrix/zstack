@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api
@@ -50,6 +51,7 @@ import org.zstack.header.rest.RestRequest;
         parameterName = "params",
         responseClass = APIAttachSecurityGroupToL3NetworkEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAttachSecurityGroupToL3NetworkMsg extends APIMessage implements SecurityGroupMessage {
     @APIParam(resourceType=SecurityGroupVO.class)
     private String securityGroupUuid;

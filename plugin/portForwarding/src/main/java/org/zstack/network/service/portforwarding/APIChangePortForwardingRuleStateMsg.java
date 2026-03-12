@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  */
@@ -13,6 +14,7 @@ import org.zstack.header.rest.RestRequest;
         isAction = true,
         responseClass = APIChangePortForwardingRuleStateEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIChangePortForwardingRuleStateMsg extends APIMessage {
     @APIParam(resourceType = PortForwardingRuleVO.class)
     private String uuid;

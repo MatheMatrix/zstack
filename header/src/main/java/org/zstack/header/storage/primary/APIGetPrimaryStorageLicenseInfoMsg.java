@@ -4,12 +4,14 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/primary-storage/{uuid}/license",
         method = HttpMethod.GET,
         responseClass = APIGetPrimaryStorageLicenseInfoReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetPrimaryStorageLicenseInfoMsg extends APISyncCallMessage {
     @APIParam(resourceType = PrimaryStorageVO.class)
     private String uuid;

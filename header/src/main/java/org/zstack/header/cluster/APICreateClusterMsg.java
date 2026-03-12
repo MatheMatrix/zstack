@@ -9,6 +9,7 @@ import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 import org.zstack.header.zone.ZoneVO;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api create a new cluster in zone
@@ -48,6 +49,7 @@ import org.zstack.header.zone.ZoneVO;
         method = HttpMethod.POST,
         responseClass = APICreateClusterEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APICreateClusterMsg extends APICreateMessage implements CreateClusterMessage, APIAuditor {
     /**
      * @desc uuid of zone this cluster is going to create in

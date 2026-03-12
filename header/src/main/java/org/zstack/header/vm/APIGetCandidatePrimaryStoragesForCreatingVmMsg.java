@@ -11,6 +11,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by MaJin on 2017-08-16.
@@ -20,6 +21,8 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIGetCandidatePrimaryStoragesForCreatingVmReply.class
 )
+
+@MetadataImpact(MetadataImpact.Impact.NONE)
 
 public class APIGetCandidatePrimaryStoragesForCreatingVmMsg extends APISyncCallMessage {
     @APIParam(resourceType = ImageVO.class)

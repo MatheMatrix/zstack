@@ -6,6 +6,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.network.l3.L3NetworkMessage;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api delete vip
@@ -38,6 +39,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteVipEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteVipMsg extends APIDeleteMessage implements L3NetworkMessage, VipMessage {
     /**
      * @ignore

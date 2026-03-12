@@ -6,6 +6,7 @@ import org.zstack.header.rest.APINoSee;
 import org.zstack.header.storage.backup.BackupStorageVO;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api delete a copy of volume snapshot from one or more backup storage
@@ -41,6 +42,7 @@ import java.util.List;
  * @result see :ref:`APIDeleteVolumeSnapshotFromBackupStorageEvent`
  * @since 0.1.0
  */
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteVolumeSnapshotFromBackupStorageMsg extends APIDeleteMessage implements VolumeSnapshotMessage {
     /**
      * @desc volume snapshot uuid

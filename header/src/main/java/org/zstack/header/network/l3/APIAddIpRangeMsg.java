@@ -8,6 +8,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api add a ip range to l3Network
@@ -54,6 +55,7 @@ import org.zstack.header.tag.TagResourceType;
         responseClass = APIAddIpRangeEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddIpRangeMsg extends APICreateMessage implements L3NetworkMessage, APIAuditor {
     /**
      * @desc l3Network uuid

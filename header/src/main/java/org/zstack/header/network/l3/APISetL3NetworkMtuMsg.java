@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by weiwang on 18/05/2017.
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         responseClass = APISetL3NetworkMtuEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APISetL3NetworkMtuMsg extends APIMessage implements L3NetworkMessage {
     @APIParam(resourceType = L3NetworkVO.class)
     private String l3NetworkUuid;

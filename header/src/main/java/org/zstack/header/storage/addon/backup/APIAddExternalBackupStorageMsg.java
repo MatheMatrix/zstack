@@ -5,6 +5,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.backup.APIAddBackupStorageMsg;
 import org.zstack.header.storage.backup.BackupStorageConstant;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/backup-storage/addon",
@@ -12,6 +13,7 @@ import org.zstack.header.storage.backup.BackupStorageConstant;
         responseClass = APIAddExternalBackupStorageEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddExternalBackupStorageMsg extends APIAddBackupStorageMsg {
     @APIParam(maxLength = 255, emptyString = false)
     private String identity;

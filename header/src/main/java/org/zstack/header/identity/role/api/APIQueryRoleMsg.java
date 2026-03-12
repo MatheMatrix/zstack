@@ -9,10 +9,12 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryRoleReply.class, inventoryClass = RoleInventory.class)
 @RestRequest(path = "/identities/roles", optionalPaths = {"/identities/roles/{uuid}"},
         method = HttpMethod.GET, responseClass = APIQueryRoleReply.class)
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryRoleMsg extends APIQueryMessage {
 
     public static List<String> __example__() {

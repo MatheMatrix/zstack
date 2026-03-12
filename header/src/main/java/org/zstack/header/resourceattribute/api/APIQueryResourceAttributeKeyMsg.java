@@ -9,6 +9,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 @AutoQuery(replyClass = APIQueryResourceAttributeKeyReply.class, inventoryClass = ResourceAttributeKeyInventory.class)
 @RestRequest(
@@ -17,6 +18,7 @@ import static org.zstack.utils.CollectionDSL.list;
         responseClass = APIQueryResourceAttributeKeyReply.class,
         method = HttpMethod.GET
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIQueryResourceAttributeKeyMsg extends APIQueryMessage {
     public static List<String> __example__() {
         return list("name=OperationsPersonnel");

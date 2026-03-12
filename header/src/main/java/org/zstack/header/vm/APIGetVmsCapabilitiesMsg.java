@@ -7,6 +7,7 @@ import org.zstack.header.rest.RestRequest;
 
 import java.util.Arrays;
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @ Author : yh.w
@@ -18,6 +19,7 @@ import java.util.List;
         responseClass = APIGetVmsCapabilitiesEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetVmsCapabilitiesMsg extends APIMessage {
     @APIParam(nonempty = true)
     private List<String> vmUuids;

@@ -10,6 +10,7 @@ import org.zstack.identity.imports.entity.SyncDeletedAccountStrategy;
 import org.zstack.ldap.entity.LdapEncryptionType;
 import org.zstack.ldap.entity.LdapServerType;
 import org.zstack.ldap.entity.LdapServerVO;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/ldap/servers/{ldapServerUuid}",
@@ -17,6 +18,7 @@ import org.zstack.ldap.entity.LdapServerVO;
         responseClass = APIUpdateLdapServerEvent.class,
         isAction = true
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIUpdateLdapServerMsg extends APIMessage {
     @APIParam(maxLength = 32, resourceType = LdapServerVO.class)
     private String ldapServerUuid;

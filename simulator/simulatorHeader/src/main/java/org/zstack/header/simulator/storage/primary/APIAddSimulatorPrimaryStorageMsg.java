@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.APIAddPrimaryStorageEvent;
 import org.zstack.header.storage.primary.APIAddPrimaryStorageMsg;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/primary-storage/simulators",
@@ -11,6 +12,7 @@ import org.zstack.header.storage.primary.APIAddPrimaryStorageMsg;
         responseClass = APIAddPrimaryStorageEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddSimulatorPrimaryStorageMsg extends APIAddPrimaryStorageMsg {
 	private long totalCapacity = 100000000;
     private long availableCapacity = 10000000;

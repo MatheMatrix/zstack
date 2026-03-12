@@ -9,6 +9,7 @@ import org.zstack.header.vm.VmNicVO;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api
@@ -55,6 +56,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteVmNicFromSecurityGroupEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteVmNicFromSecurityGroupMsg extends APIMessage {
     /**
      * @desc security group uuid

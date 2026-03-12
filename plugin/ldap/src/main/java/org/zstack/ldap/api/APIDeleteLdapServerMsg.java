@@ -9,6 +9,7 @@ import org.zstack.ldap.entity.LdapServerVO;
 import java.util.List;
 
 import static org.zstack.utils.CollectionDSL.list;
+import org.zstack.header.vm.MetadataImpact;
 
 
 @RestRequest(
@@ -16,6 +17,7 @@ import static org.zstack.utils.CollectionDSL.list;
         method = HttpMethod.DELETE,
         responseClass = APIDeleteLdapServerEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIDeleteLdapServerMsg extends APIDeleteMessage {
     @APIParam(resourceType = LdapServerVO.class, successIfResourceNotExisting = true)
     private String uuid;

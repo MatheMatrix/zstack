@@ -12,6 +12,7 @@ import org.zstack.header.rest.RestRequest;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * Created by xing5 on 2016/8/17.
@@ -21,6 +22,7 @@ import static java.util.Arrays.asList;
         method = HttpMethod.GET,
         responseClass = APIGetCandidateZonesClustersHostsForCreatingVmReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetCandidateZonesClustersHostsForCreatingVmMsg extends APISyncCallMessage {
     @APIParam(resourceType = InstanceOfferingVO.class, required = false)
     private String instanceOfferingUuid;

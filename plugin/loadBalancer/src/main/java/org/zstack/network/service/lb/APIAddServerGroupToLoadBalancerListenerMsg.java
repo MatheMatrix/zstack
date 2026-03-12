@@ -7,6 +7,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/load-balancers/listeners/{listenerUuid}/servergroups",
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         parameterName = "params",
         responseClass = APIAddServerGroupToLoadBalancerListenerEvent.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIAddServerGroupToLoadBalancerListenerMsg extends APIMessage implements LoadBalancerMessage, APIAuditor {
     @APIParam(resourceType = LoadBalancerServerGroupVO.class, nonempty = true)
     private String serverGroupUuid;

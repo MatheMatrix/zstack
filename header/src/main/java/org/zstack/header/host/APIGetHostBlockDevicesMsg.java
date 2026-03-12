@@ -4,12 +4,14 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/hosts/{uuid}/get-block-devices",
         method = HttpMethod.GET,
         responseClass = APIGetHostBlockDevicesReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetHostBlockDevicesMsg extends APISyncCallMessage implements HostMessage {
     @APIParam(nonempty = true, resourceType = HostVO.class)
     private String uuid;

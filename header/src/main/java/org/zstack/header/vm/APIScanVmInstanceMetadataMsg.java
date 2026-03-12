@@ -7,12 +7,14 @@ import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
 
 import java.util.List;
+import org.zstack.header.vm.MetadataImpact;
 
 @RestRequest(
         path = "/vm-instances/metadata/scan",
         method = HttpMethod.GET,
         responseClass = APIScanVmInstanceMetadataReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIScanVmInstanceMetadataMsg extends APISyncCallMessage {
     @APIParam(required = false, resourceType = PrimaryStorageVO.class)
     private List<String> primaryStorageUuids;

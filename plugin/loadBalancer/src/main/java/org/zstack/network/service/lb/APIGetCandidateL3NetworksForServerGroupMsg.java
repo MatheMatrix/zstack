@@ -4,6 +4,7 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIGetMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @author: sulin.sheng
@@ -14,6 +15,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetCandidateL3NetworksForServerGroupReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetCandidateL3NetworksForServerGroupMsg extends APIGetMessage implements LoadBalancerMessage {
     @APIParam(resourceType = LoadBalancerServerGroupVO.class, required = false)
     private String serverGroupUuid;

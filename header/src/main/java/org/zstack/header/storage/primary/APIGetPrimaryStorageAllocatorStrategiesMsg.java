@@ -3,6 +3,7 @@ package org.zstack.header.storage.primary;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.MetadataImpact;
 
 /**
  * @api get allocation strategy of primary storage
@@ -32,6 +33,7 @@ import org.zstack.header.rest.RestRequest;
         method = HttpMethod.GET,
         responseClass = APIGetPrimaryStorageAllocatorStrategiesReply.class
 )
+@MetadataImpact(MetadataImpact.Impact.NONE)
 public class APIGetPrimaryStorageAllocatorStrategiesMsg extends APISyncCallMessage {
  
     public static APIGetPrimaryStorageAllocatorStrategiesMsg __example__() {
