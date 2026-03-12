@@ -133,4 +133,87 @@ public class VmGlobalConfig {
     @GlobalConfigValidation(validValues = {"None", "AuthenticAMD"})
     @BindResourceConfig(value = {VmInstanceVO.class})
     public static GlobalConfig VM_CPUID_VENDOR = new GlobalConfig(CATEGORY, "vm.cpuid.vendor");
+
+    @GlobalConfigValidation(validValues = {"true", "false"})
+    public static GlobalConfig VM_METADATA = new GlobalConfig(CATEGORY, "vm.metadata");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_PS_MAX_CONCURRENT = new GlobalConfig(CATEGORY, "vm.metadata.ps.maxConcurrent");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_GLOBAL_MAX_CONCURRENT = new GlobalConfig(CATEGORY, "vm.metadata.global.maxConcurrent");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_GC_INITIAL_DELAY_SEC = new GlobalConfig(CATEGORY, "vm.metadata.gc.initialDelaySec");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_MAX_RETRY = new GlobalConfig(CATEGORY, "vm.metadata.maxRetry");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_DIRTY_POLL_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.dirty.pollIntervalSec");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_DIRTY_BATCH_SIZE = new GlobalConfig(CATEGORY, "vm.metadata.dirty.batchSize");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_UPGRADE_REFRESH_DELAY = new GlobalConfig(CATEGORY, "vm.metadata.upgrade.refreshDelaySec");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_UPGRADE_REFRESH_BATCH_SIZE = new GlobalConfig(CATEGORY, "vm.metadata.upgrade.refreshBatchSize");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_NODE_LEFT_DELAY = new GlobalConfig(CATEGORY, "vm.metadata.nodeLeft.delaySec");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_STALE_RECOVERY_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.staleRecovery.intervalSec");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_STALE_RECOVERY_BATCH_SIZE = new GlobalConfig(CATEGORY, "vm.metadata.staleRecovery.batchSize");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_STALE_RECOVERY_MAX_CYCLES = new GlobalConfig(CATEGORY, "vm.metadata.staleRecovery.maxCycles");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_PENDING_API_TIMEOUT = new GlobalConfig(CATEGORY, "vm.metadata.pendingApi.timeoutMinutes");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_RETRY_BASE_DELAY = new GlobalConfig(CATEGORY, "vm.metadata.retry.baseDelaySeconds");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_RETRY_MAX_EXPONENT = new GlobalConfig(CATEGORY, "vm.metadata.retry.maxExponent");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_INIT_BATCH_SIZE = new GlobalConfig(CATEGORY, "vm.metadata.init.batchSize");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_INIT_BATCH_DELAY = new GlobalConfig(CATEGORY, "vm.metadata.init.batchDelaySec");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_ORPHAN_CHECK_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.orphanCheck.intervalSec");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_ZOMBIE_CLAIM_THRESHOLD = new GlobalConfig(CATEGORY, "vm.metadata.zombieClaim.thresholdMinutes");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_STALE_CLAIM_THRESHOLD = new GlobalConfig(CATEGORY, "vm.metadata.staleClaim.thresholdMinutes");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_TRIGGER_FLUSH_STALE = new GlobalConfig(CATEGORY, "vm.metadata.triggerFlush.staleMinutes");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_DELETE_MAX_RETRY = new GlobalConfig(CATEGORY, "vm.metadata.delete.maxRetry");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_DELETE_BASE_DELAY = new GlobalConfig(CATEGORY, "vm.metadata.delete.baseDelaySec");
+
+    public static GlobalConfig VM_METADATA_LAST_REFRESH_VERSION = new GlobalConfig(CATEGORY, "vm.metadata.lastRefreshVersion");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_CONTENT_CHECK_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.contentCheck.intervalSec");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_CONTENT_CHECK_BATCH_SIZE = new GlobalConfig(CATEGORY, "vm.metadata.contentCheck.batchSize");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_STORAGE_ORPHAN_CHECK_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.storageOrphanCheck.intervalSec");
 }
