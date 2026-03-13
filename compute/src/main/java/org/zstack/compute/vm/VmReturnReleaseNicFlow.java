@@ -6,10 +6,13 @@ import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
+import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
+import org.zstack.header.core.Completion;
 import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.workflow.NoRollbackFlow;
+import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l3.L3NetworkConstant;
@@ -34,6 +37,10 @@ public class VmReturnReleaseNicFlow extends NoRollbackFlow {
     protected CloudBus bus;
     @Autowired
     protected VmInstanceDeletionPolicyManager deletionPolicyMgr;
+    @Autowired
+    protected VmInstanceManager vmMgr;
+    @Autowired
+    protected PluginRegistry pluginRgty;
 
     @Override
     public void run(FlowTrigger chain, Map data) {
@@ -43,6 +50,77 @@ public class VmReturnReleaseNicFlow extends NoRollbackFlow {
             return;
         }
 
+        List<VmNicInventory> vmNics = spec.getVmInventory().getVmNics();
+
+        // Phase 1: call BeforeReleaseVmNicExtensionPoint, then factory.beforeReleaseVmNic for each NIC
+        new While<>(vmNics).each((nic, wcomp) -> {
+            callBeforeReleaseVmNicExtensions(nic, new Completion(wcomp) {
+                @Override
+                public void success() {
+                    VmNicType type = VmNicType.valueOf(nic.getType());
+                    VmInstanceNicFactory vnicFactory = vmMgr.getVmInstanceNicFactory(type);
+                    if (vnicFactory == null) {
+                        wcomp.done();
+                        return;
+                    }
+                    vnicFactory.beforeReleaseVmNic(nic, new Completion(wcomp) {
+                        @Override
+                        public void success() {
+                            wcomp.done();
+                        }
+
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            logger.warn(String.format("failed to call beforeReleaseVmNic for nic[uuid:%s]: %s, continue anyway",
+                                    nic.getUuid(), errorCode));
+                            wcomp.done();
+                        }
+                    });
+                }
+
+                @Override
+                public void fail(ErrorCode errorCode) {
+                    logger.warn(String.format("failed beforeReleaseVmNic extension for nic[uuid:%s]: %s, continue anyway",
+                            nic.getUuid(), errorCode));
+                    wcomp.done();
+                }
+            });
+        }).run(new WhileDoneCompletion(chain) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                returnIpsAndReleaseNics(spec, data, chain);
+            }
+        });
+    }
+
+    private void callBeforeReleaseVmNicExtensions(VmNicInventory nic, Completion completion) {
+        List<BeforeReleaseVmNicExtensionPoint> exts = pluginRgty.getExtensionList(BeforeReleaseVmNicExtensionPoint.class);
+        if (exts.isEmpty()) {
+            completion.success();
+            return;
+        }
+
+        new While<>(exts).each((ext, ecomp) -> ext.beforeReleaseVmNic(nic, new Completion(ecomp) {
+            @Override
+            public void success() {
+                ecomp.done();
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                logger.warn(String.format("beforeReleaseVmNic extension failed for nic[uuid:%s]: %s, continue",
+                        nic.getUuid(), errorCode));
+                ecomp.done();
+            }
+        })).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                completion.success();
+            }
+        });
+    }
+
+    private void returnIpsAndReleaseNics(VmInstanceSpec spec, Map data, FlowTrigger chain) {
         List<ReturnIpMsg> msgs = new ArrayList<>(spec.getVmInventory().getVmNics().size());
         for (VmNicInventory nic : spec.getVmInventory().getVmNics()) {
             for (UsedIpInventory ip : nic.getUsedIps()) {

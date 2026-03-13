@@ -1,5 +1,6 @@
 package org.zstack.header.vm;
 
+import org.zstack.header.core.Completion;
 import org.zstack.header.network.l2.VSwitchType;
 import org.zstack.header.network.l3.UsedIpInventory;
 
@@ -40,4 +41,21 @@ public interface VmInstanceNicFactory {
     default void releaseVmNic(VmNicInventory nic) {
         return;
     }
+
+    /**
+     * Called after VmNicVO is persisted in VmAllocateNicFlow.
+     * SDN controllers (e.g. ZNS) use this to create network ports and allocate IPs.
+     */
+    default void afterCreateVmNic(VmNicInventory nic, VmInstanceSpec spec, Completion completion) {
+        completion.success();
+    }
+
+    /**
+     * Called before NIC resources are released in VmReturnReleaseNicFlow.
+     * SDN controllers (e.g. ZNS) use this to delete network ports.
+     */
+    default void beforeReleaseVmNic(VmNicInventory nic, Completion completion) {
+        completion.success();
+    }
+
 }

@@ -47,6 +47,7 @@ import org.zstack.header.network.l2.L2NetworkClusterRefVO_;
 import org.zstack.header.network.l2.L2NetworkType;
 import org.zstack.header.network.l2.L2NetworkVO;
 import org.zstack.header.network.l2.L2NetworkVO_;
+import org.zstack.header.network.l2.VSwitchType;
 import org.zstack.header.rest.RESTFacade;
 import org.zstack.header.rest.SyncHttpCallHandler;
 import org.zstack.header.tag.FormTagExtensionPoint;
@@ -127,6 +128,7 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
     public static final VolumeFormat VMDK_FORMAT = new VolumeFormat(VolumeConstant.VOLUME_FORMAT_VMDK, hypervisorType);
     private List<KVMHostConnectExtensionPoint> connectExtensions = new ArrayList<>();
     private final Map<L2NetworkType, KVMCompleteNicInformationExtensionPoint> completeNicInfoExtensions = new HashMap<>();
+    private final Map<L2NetworkType, Map<VSwitchType, KVMCompleteNicInformationExtensionPoint>> vswitchNicInfoExtensions = new HashMap<>();
     private int maxDataVolumeNum;
 
     private final Map<SocketChannel, Long> socketTimeoutMap = new ConcurrentHashMap<>();
@@ -358,16 +360,42 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
     protected void populateExtensions() {
         connectExtensions = pluginRgty.getExtensionList(KVMHostConnectExtensionPoint.class);
         for (KVMCompleteNicInformationExtensionPoint ext : pluginRgty.getExtensionList(KVMCompleteNicInformationExtensionPoint.class)) {
-            KVMCompleteNicInformationExtensionPoint old = completeNicInfoExtensions.get(ext.getL2NetworkTypeVmNicOn());
-            if (old != null) {
-                throw new CloudRuntimeException(String.format("duplicate KVMCompleteNicInformationExtensionPoint[%s, %s] for type[%s]",
-                        old.getClass().getName(), ext.getClass().getName(), ext.getL2NetworkTypeVmNicOn()));
+            VSwitchType vswitchType = ext.getVSwitchTypeVmNicOn();
+            if (vswitchType == null) {
+                KVMCompleteNicInformationExtensionPoint old = completeNicInfoExtensions.get(ext.getL2NetworkTypeVmNicOn());
+                if (old != null) {
+                    throw new CloudRuntimeException(String.format("duplicate KVMCompleteNicInformationExtensionPoint[%s, %s] for type[%s]",
+                            old.getClass().getName(), ext.getClass().getName(), ext.getL2NetworkTypeVmNicOn()));
+                }
+                completeNicInfoExtensions.put(ext.getL2NetworkTypeVmNicOn(), ext);
+            } else {
+                Map<VSwitchType, KVMCompleteNicInformationExtensionPoint> map =
+                        vswitchNicInfoExtensions.computeIfAbsent(ext.getL2NetworkTypeVmNicOn(), k -> new HashMap<>());
+                KVMCompleteNicInformationExtensionPoint old = map.get(vswitchType);
+                if (old != null) {
+                    throw new CloudRuntimeException(String.format("duplicate KVMCompleteNicInformationExtensionPoint[%s, %s] for type[%s]+vswitch[%s]",
+                            old.getClass().getName(), ext.getClass().getName(), ext.getL2NetworkTypeVmNicOn(), vswitchType));
+                }
+                map.put(vswitchType, ext);
             }
-            completeNicInfoExtensions.put(ext.getL2NetworkTypeVmNicOn(), ext);
         }
     }
 
     public KVMCompleteNicInformationExtensionPoint getCompleteNicInfoExtension(L2NetworkType type) {
+        return getCompleteNicInfoExtension(type, null);
+    }
+
+    public KVMCompleteNicInformationExtensionPoint getCompleteNicInfoExtension(L2NetworkType type, VSwitchType vswitchType) {
+        if (vswitchType != null) {
+            Map<VSwitchType, KVMCompleteNicInformationExtensionPoint> map = vswitchNicInfoExtensions.get(type);
+            if (map != null) {
+                KVMCompleteNicInformationExtensionPoint extp = map.get(vswitchType);
+                if (extp != null) {
+                    return extp;
+                }
+            }
+        }
+
         KVMCompleteNicInformationExtensionPoint extp = completeNicInfoExtensions.get(type);
         if (extp == null) {
             throw new IllegalArgumentException(String.format("unble to fine KVMCompleteNicInformationExtensionPoint supporting L2NetworkType[%s]", type));

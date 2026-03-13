@@ -15,6 +15,7 @@ public class VSwitchType {
     private boolean attachToCluster = true;
     private String sdnControllerType = null;
     private boolean useDpdk = false;
+    private boolean nicLifecycleManagedByFactory = false;
     private Map<VmNicType.VmNicSubType, VmNicType> nicTypes = Collections.synchronizedMap(new HashMap<>());
 
     public VSwitchType(String typeName) {
@@ -62,6 +63,14 @@ public class VSwitchType {
 
     public void setUseDpdk(boolean useDpdk) {
         this.useDpdk = useDpdk;
+    }
+
+    public boolean isNicLifecycleManagedByFactory() {
+        return nicLifecycleManagedByFactory;
+    }
+
+    public void setNicLifecycleManagedByFactory(boolean nicLifecycleManagedByFactory) {
+        this.nicLifecycleManagedByFactory = nicLifecycleManagedByFactory;
     }
 
     public void addVmNicType(VmNicType.VmNicSubType subType, VmNicType nicType) {

@@ -11,6 +11,7 @@ import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.SQLBatch;
 import org.zstack.core.errorcode.ErrorFacade;
+import org.zstack.header.core.Completion;
 import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.core.workflow.Flow;
 import org.zstack.header.core.workflow.FlowRollback;
@@ -115,7 +116,6 @@ public class VmAllocateNicFlow implements Flow {
             }
             VmInstanceNicFactory vnicFactory = vmMgr.getVmInstanceNicFactory(type);
 
-
             VmNicInventory nic = new VmNicInventory();
             if (customNicUuid != null) {
                 nic.setUuid(customNicUuid);
@@ -196,7 +196,29 @@ public class VmAllocateNicFlow implements Flow {
                     addVmNicConfig(nicVO, spec, nicSpec);
                 }
             }.execute();
-            wcomp.done();
+            vnicFactory.afterCreateVmNic(nic, spec, new Completion(wcomp) {
+                @Override
+                public void success() {
+                    callAfterAllocateVmNicExtensions(nic, spec, new Completion(wcomp) {
+                        @Override
+                        public void success() {
+                            wcomp.done();
+                        }
+
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            errs.add(errorCode);
+                            wcomp.allDone();
+                        }
+                    });
+                }
+
+                @Override
+                public void fail(ErrorCode errorCode) {
+                    errs.add(errorCode);
+                    wcomp.allDone();
+                }
+            });
 
         }).run(new WhileDoneCompletion(trigger) {
             @Override
@@ -245,17 +267,123 @@ public class VmAllocateNicFlow implements Flow {
             return;
         }
         logger.debug(String.format("%s nic need for delete", destNics.size()));
-        for (VmNicInventory vmNic : destNics) {
-            for (VmDetachNicExtensionPoint ext : pluginRgty.getExtensionList(VmDetachNicExtensionPoint.class)) {
-                ext.afterDetachNic(vmNic);
-            }
 
+        new While<>(destNics).each((vmNic, wcomp) -> {
             VmNicType type = VmNicType.valueOf(vmNic.getType());
             VmInstanceNicFactory vnicFactory = vmMgr.getVmInstanceNicFactory(type);
+            Completion rollbackCompletion = new Completion(wcomp) {
+                @Override
+                public void success() {
+                    wcomp.done();
+                }
+
+                @Override
+                public void fail(ErrorCode errorCode) {
+                    logger.warn(String.format("rollback nic[uuid:%s] failed: %s", vmNic.getUuid(), errorCode));
+                    wcomp.done();
+                }
+            };
+
+            callBeforeReleaseVmNicExtensions(vmNic, new Completion(wcomp) {
+                @Override
+                public void success() {
+                    if (vnicFactory != null) {
+                        vnicFactory.beforeReleaseVmNic(vmNic, new Completion(wcomp) {
+                            @Override
+                            public void success() {
+                                doRollbackNic(vmNic, vnicFactory, rollbackCompletion);
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                logger.warn(String.format("failed to release nic[uuid:%s] on rollback: %s", vmNic.getUuid(), errorCode));
+                                doRollbackNic(vmNic, vnicFactory, rollbackCompletion);
+                            }
+                        });
+                    } else {
+                        doRollbackNic(vmNic, null, rollbackCompletion);
+                    }
+                }
+
+                @Override
+                public void fail(ErrorCode errorCode) {
+                    logger.warn(String.format("failed beforeReleaseVmNic extension for nic[uuid:%s] on rollback: %s", vmNic.getUuid(), errorCode));
+                    doRollbackNic(vmNic, vnicFactory, rollbackCompletion);
+                }
+            });
+        }).run(new WhileDoneCompletion(chain) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                dbf.removeByPrimaryKeys(destNics.stream().map(VmNicInventory::getUuid).collect(Collectors.toList()), VmNicVO.class);
+                chain.rollback();
+            }
+        });
+    }
+
+    private void doRollbackNic(VmNicInventory vmNic, VmInstanceNicFactory vnicFactory, Completion completion) {
+        for (VmDetachNicExtensionPoint ext : pluginRgty.getExtensionList(VmDetachNicExtensionPoint.class)) {
+            ext.afterDetachNic(vmNic);
+        }
+        if (vnicFactory != null) {
             vnicFactory.releaseVmNic(vmNic);
         }
-        dbf.removeByPrimaryKeys(destNics.stream().map(VmNicInventory::getUuid).collect(Collectors.toList()), VmNicVO.class);
-        chain.rollback();
-        return;
+        completion.success();
+    }
+
+    private void callAfterAllocateVmNicExtensions(VmNicInventory nic, VmInstanceSpec spec, Completion completion) {
+        List<AfterAllocateVmNicExtensionPoint> exts = pluginRgty.getExtensionList(AfterAllocateVmNicExtensionPoint.class);
+        if (exts.isEmpty()) {
+            completion.success();
+            return;
+        }
+
+        new While<>(exts).each((ext, ecomp) -> ext.afterAllocateVmNic(nic, spec, new Completion(ecomp) {
+            @Override
+            public void success() {
+                ecomp.done();
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                ecomp.addError(errorCode);
+                ecomp.allDone();
+            }
+        })).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                if (!errorCodeList.getCauses().isEmpty()) {
+                    completion.fail(errorCodeList.getCauses().get(0));
+                } else {
+                    completion.success();
+                }
+            }
+        });
+    }
+
+    private void callBeforeReleaseVmNicExtensions(VmNicInventory nic, Completion completion) {
+        List<BeforeReleaseVmNicExtensionPoint> exts = pluginRgty.getExtensionList(BeforeReleaseVmNicExtensionPoint.class);
+        if (exts.isEmpty()) {
+            completion.success();
+            return;
+        }
+
+        new While<>(exts).each((ext, ecomp) -> ext.beforeReleaseVmNic(nic, new Completion(ecomp) {
+            @Override
+            public void success() {
+                ecomp.done();
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                logger.warn(String.format("beforeReleaseVmNic extension failed for nic[uuid:%s]: %s, continue",
+                        nic.getUuid(), errorCode));
+                ecomp.done();
+            }
+        })).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                completion.success();
+            }
+        });
     }
 }

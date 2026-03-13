@@ -47,7 +47,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         L2NetworkCreateExtensionPoint, L2NetworkDeleteExtensionPoint, InstantiateResourceOnAttachingNicExtensionPoint,
         PreVmInstantiateResourceExtensionPoint, VmReleaseResourceExtensionPoint,
         ReleaseNetworkServiceOnDetachingNicExtensionPoint, SecurityGroupGetSdnBackendExtensionPoint,
-        AfterAddIpRangeExtensionPoint, IpRangeDeletionExtensionPoint, GetSdnControllerExtensionPoint {
+        GetSdnControllerExtensionPoint {
     private static final CLogger logger = Utils.getLogger(SdnControllerManagerImpl.class);
     private static final Logger log = LoggerFactory.getLogger(SdnControllerManagerImpl.class);
 
@@ -460,8 +460,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                 continue;
             }
 
-            VSwitchType vSwitchType = VSwitchType.valueOf(l2VO.getvSwitchType());
-            if (vSwitchType.getSdnControllerType() == null) {
+            if (shouldSkipSdnForNic(l2VO)) {
                 continue;
             }
 
@@ -486,8 +485,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
     @Override
     public void instantiateResourceOnAttachingNic(VmInstanceSpec spec, L3NetworkInventory l3, Completion completion) {
         L2NetworkVO l2NetworkVO = dbf.findByUuid(l3.getL2NetworkUuid(), L2NetworkVO.class);
-        VSwitchType vSwitchType = VSwitchType.valueOf(l2NetworkVO.getvSwitchType());
-        if (vSwitchType.getSdnControllerType() == null) {
+        if (shouldSkipSdnForNic(l2NetworkVO)) {
             completion.success();
             return;
         }
@@ -509,8 +507,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
     @Override
     public void releaseResourceOnAttachingNic(VmInstanceSpec spec, L3NetworkInventory l3, NoErrorCompletion completion) {
         L2NetworkVO l2NetworkVO = dbf.findByUuid(l3.getL2NetworkUuid(), L2NetworkVO.class);
-        VSwitchType vSwitchType = VSwitchType.valueOf(l2NetworkVO.getvSwitchType());
-        if (vSwitchType.getSdnControllerType() == null) {
+        if (shouldSkipSdnForNic(l2NetworkVO)) {
             completion.done();
             return;
         }
@@ -547,8 +544,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
     public void releaseResourceOnDetachingNic(VmInstanceSpec spec, VmNicInventory nic, NoErrorCompletion completion) {
         L3NetworkVO l3Vo = dbf.findByUuid(nic.getL3NetworkUuid(), L3NetworkVO.class);
         L2NetworkVO l2NetworkVO = dbf.findByUuid(l3Vo.getL2NetworkUuid(), L2NetworkVO.class);
-        VSwitchType vSwitchType = VSwitchType.valueOf(l2NetworkVO.getvSwitchType());
-        if (vSwitchType.getSdnControllerType() == null) {
+        if (shouldSkipSdnForNic(l2NetworkVO)) {
             completion.done();
             return;
         }
@@ -612,8 +608,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                 continue;
             }
 
-            VSwitchType vSwitchType = VSwitchType.valueOf(l2VO.getvSwitchType());
-            if (vSwitchType.getSdnControllerType() ==null) {
+            if (shouldSkipSdnForNic(l2VO)) {
                 continue;
             }
 
@@ -661,8 +656,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                 continue;
             }
 
-            VSwitchType vSwitchType = VSwitchType.valueOf(l2VO.getvSwitchType());
-            if (vSwitchType.getSdnControllerType() ==null) {
+            if (shouldSkipSdnForNic(l2VO)) {
                 continue;
             }
 
@@ -682,6 +676,15 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         }
 
         removeLogicalPort(nicMaps, completion);
+    }
+
+    /**
+     * Returns true if the L2 network should be skipped for SDN port management:
+     * either it has no SDN controller type, or its NIC lifecycle is managed by a NicFactory.
+     */
+    private boolean shouldSkipSdnForNic(L2NetworkVO l2VO) {
+        VSwitchType vSwitchType = VSwitchType.valueOf(l2VO.getvSwitchType());
+        return vSwitchType.getSdnControllerType() == null || vSwitchType.isNicLifecycleManagedByFactory();
     }
 
     @Override
@@ -779,78 +782,6 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
     }
 
 
-    @Override
-    public void afterAddIpRange(IpRangeInventory ipr, List<String> systemTags) {
-        L3NetworkVO l3vo = dbf.findByUuid(ipr.getL3NetworkUuid(), L3NetworkVO.class);
-        if (l3vo == null) {
-            logger.warn(String.format(
-                    "l3 network[uuid:%s] not found when adding ipRange[uuid:%s], skip syncing to sdn controller",
-                    ipr.getL3NetworkUuid(), ipr.getUuid()));
-            return;
-        }
-        L3NetworkInventory l3Network = L3NetworkInventory.valueOf(l3vo);
-        SdnControllerVO sdnControllerVO = getSdnControllerVO(l3Network);
-        if (sdnControllerVO == null) {
-            return;
-        }
-        SdnControllerFactory factory = getSdnControllerFactory(sdnControllerVO.getVendorType());
-        SdnControllerL2 controller = factory.getSdnControllerL2(sdnControllerVO);
-        controller.addL3NetworkIpRange(l3Network, ipr, new Completion(null) {
-            @Override
-            public void success() {
-                logger.debug(String.format("success to create l3 network[uuid:%s] ipRange on sdn controller[uuid:%s]",
-                        l3Network.getUuid(), sdnControllerVO.getUuid()));
-            }
-
-            @Override
-            public void fail(ErrorCode errorCode) {
-                logger.warn(String.format("failed to create l3 network[uuid:%s] ipRange on sdn controller[uuid:%s], because: %s",
-                        l3Network.getUuid(), sdnControllerVO.getUuid(), errorCode.getDetails()));
-            }
-        });
-    }
-
-    @Override
-    public void preDeleteIpRange(IpRangeInventory ipRange) {
-    }
-
-    @Override
-    public void beforeDeleteIpRange(IpRangeInventory ipRange) {
-    }
-
-    @Override
-    public void afterDeleteIpRange(IpRangeInventory ipRange) {
-        L3NetworkVO l3vo = dbf.findByUuid(ipRange.getL3NetworkUuid(), L3NetworkVO.class);
-        if (l3vo == null) {
-            logger.warn(String.format("l3 network[uuid:%s] not found when deleting ipRange[uuid:%s], skip syncing to sdn controller",
-                    ipRange.getL3NetworkUuid(), ipRange.getUuid()));
-            return;
-        }
-        L3NetworkInventory l3Network = L3NetworkInventory.valueOf(l3vo);
-        SdnControllerVO sdnControllerVO = getSdnControllerVO(l3Network);
-        if (sdnControllerVO == null) {
-            return;
-        }
-        SdnControllerFactory factory = getSdnControllerFactory(sdnControllerVO.getVendorType());
-        SdnControllerL2 controller = factory.getSdnControllerL2(sdnControllerVO);
-        controller.deleteL3NetworkIpRange(l3Network, ipRange, new Completion(null) {
-            @Override
-            public void success() {
-                logger.debug(String.format("success to delete l3 network[uuid:%s] ipRange on sdn controller[uuid:%s]",
-                        l3Network.getUuid(), sdnControllerVO.getUuid()));
-            }
-
-            @Override
-            public void fail(ErrorCode errorCode) {
-                logger.warn(String.format("failed to delete l3 network[uuid:%s] ipRange on sdn controller[uuid:%s], because: %s",
-                        l3Network.getUuid(), sdnControllerVO.getUuid(), errorCode.getDetails()));
-            }
-        });
-    }
-
-    @Override
-    public void failedToDeleteIpRange(IpRangeInventory ipRange, ErrorCode errorCode) {
-    }
 
     private SdnControllerVO getSdnControllerVO(L2NetworkInventory l2Network) {
         String sdnControllerUuid = L3NetworkHelper.getSdnControllerUuidFromL2Uuid(l2Network.getUuid());
