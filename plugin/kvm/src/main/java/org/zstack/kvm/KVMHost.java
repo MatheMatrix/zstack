@@ -4178,7 +4178,8 @@ public class KVMHost extends HostBase implements Host {
         /* all l3 networks of the nic has same l2 network */
         L3NetworkInventory l3Inv = L3NetworkInventory.valueOf(dbf.findByUuid(nic.getL3NetworkUuid(), L3NetworkVO.class));
         L2NetworkInventory l2inv = getL2NetworkTypeFromL3NetworkUuid(nic.getL3NetworkUuid());
-        KVMCompleteNicInformationExtensionPoint extp = factory.getCompleteNicInfoExtension(L2NetworkType.valueOf(l2inv.getType()));
+        VSwitchType vswitchType = l2inv.getvSwitchType() != null ? VSwitchType.valueOf(l2inv.getvSwitchType()) : null;
+        KVMCompleteNicInformationExtensionPoint extp = factory.getCompleteNicInfoExtension(L2NetworkType.valueOf(l2inv.getType()), vswitchType);
         NicTO to = extp.completeNicInformation(l2inv, l3Inv, nic);
 
         if (to.getUseVirtio() == null) {

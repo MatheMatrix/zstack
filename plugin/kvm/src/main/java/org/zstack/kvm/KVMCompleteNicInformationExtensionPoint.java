@@ -11,4 +11,10 @@ public interface KVMCompleteNicInformationExtensionPoint {
 	NicTO completeNicInformation(L2NetworkInventory l2Network, L3NetworkInventory l3Network, VmNicInventory nic);
 	String getBridgeName(L2NetworkInventory l2Network);
 	L2NetworkType getL2NetworkTypeVmNicOn();
+
+	/**
+	 * Override to register a VSwitchType-specific extension for the same L2NetworkType.
+	 * Returns null (default) for the default extension of this L2 type.
+	 */
+	default VSwitchType getVSwitchTypeVmNicOn() { return null; }
 }
