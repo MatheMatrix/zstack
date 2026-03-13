@@ -248,7 +248,8 @@ public class KVMRealizeL2VlanNetworkBackend implements L2NetworkRealizationExten
 		to.setMetaData(String.valueOf(vlanId));
         to.setMtu(new MtuGetter().getMtu(l3Network.getUuid()));
         to.setVlanId(String.valueOf(vlanId));
-        if (l2Network.getvSwitchType().equals(L2NetworkConstant.VSWITCH_TYPE_OVN_DPDK)) {
+        if (l2Network.getvSwitchType().equals(L2NetworkConstant.VSWITCH_TYPE_OVN_DPDK)
+                || l2Network.getvSwitchType().equals(L2NetworkConstant.VSWITCH_TYPE_ZNS)) {
             to.setSrcPath(L2NetworkConstant.OVN_DPDK_VNIC_SRC_PATH + nic.getInternalName());
         }
 
