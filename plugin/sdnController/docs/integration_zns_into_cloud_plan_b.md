@@ -15,51 +15,25 @@ ZStack 已经定义SdnControllerVO， 目前已经有 H3cVcfcSdnController，Sug
 - ZnsControllerVO: 继承SdnControllerVO, 无额外字段, 需要建表SQL(仅uuid主键关联)
 - ZnsSdnControllerFactory: 实现SdnControllerFactory接口, 注册vendorType为"ZNS"
 - ZnsSdnController: 实现SdnController接口, 处理控制器生命周期（创建/删除/重连）; addHost/removeHost 仅操作数据库，不修改物理机配置
-- ZnsSdnControllerL2: 实现SdnControllerL2接口, 所有方法直接调用completion.success()返回成功
+- ZnsSdnControllerL2: 实现SdnControllerL2接口
 - ZnsSdnControllerConstant: 定义常量 ZNS_CONTROLLER = "ZNS"
 
 ## 创建SDN控制器
-用户在ZNS页面创建computer Manager的时候，ZNS 调用 cloud API 创建: APIAddSdnControllerMsg, 
-同时携带一个SystemTags: computerManagerUuid::xxxx, cloud侧根据这个tag把computer Manager和SdnController关联起来
+必须现在ZNS完成添加computer Manager的操作，才能在Cloud侧创建对应的SdnController。
+UI调用: APIAddSdnControllerMsg, 同时携带一个SystemTags: computerManagerUuid::xxxx, cloud侧根据这个tag把computer Manager和SdnController关联起来
 
-用户在ZNS页面添加Host的时候，调用 cloud API: APISdnControllerAddHostMsg 添加 SdnControllerHostRefVO
-用户在ZNS页面删除Host的时候，调用 cloud API: APISdnControllerRemoveHostMsg 删除 SdnControllerHostRefVO
+然后cloud通过获取ZNS host的参数, 设置SdnControllerHostRefVO的vSwitchType为OvnKernel或者OvnDpdk, 来区分物理机部署的ovs类型。
 
-需要对现有API做以下调整：
+需要对现有API做以下调整：APISdnControllerAddHostMsg/APISdnControllerRemoveHostMsg zns controller不支持这两个API
 
-### APISdnControllerAddHostMsg
-1. nicNames 改为可选参数（ZNS场景不需要指定物理网卡）
-2. vSwitchType 的 validValues 增加 "OvnDpdk", "OvnKernel"（复用OVN的物理机部署类型，表示物理机部署了ovs）
-3. 如果是ZNS Controller, addHost仅保存SdnControllerHostRefVO到数据库，不需要调用SdnController.addHost()修改物理机配置
-4. SdnControllerApiInterceptor中当nicNames为null时（ZNS场景），跳过bondMode相关校验
-
-### APISdnControllerRemoveHostMsg
-1. vSwitchType 的 validValues 增加 "OvnDpdk", "OvnKernel"
-2. 如果是ZNS Controller, removeHost仅删除SdnControllerHostRefVO数据库记录，不需要调用SdnController.removeHost()修改物理机配置
-
-Cloud UI不能手动添加ZNS控制器.
-
-## ZNS创建Segment
-用户在ZNS页面创建Segment, ZNS 调用 cloud API 创建L2 network, L3 network
-创建过程中如果L2创建成功但L3创建失败，需要回滚删除已创建的L2 Network
-Cloud侧不能创建/删除/修改ZNS L2Network, L3Network
-
-用户在ZNS页面修改Segment, ZNS 主动调用 cloud API 修改对应的L2 Network, L3 Network参数
-
-用户在ZNS页面删除Segment, ZNS 调用 cloud API 删除L3 network, L2 network
-
-用户在ZNS页面给Segment添加cidr, ZNS 调用 cloud API 创建Ip Range
-用户在ZNS页面给Segment删除cidr, ZNS 调用 cloud API 删除Ip Range
-
-用户在ZNS页面给Segment添加Transport Zone, ZNS 调用 cloud API: APIAttachL2NetworkToClusterMsg
-根据Transport Zone对应的computer Manager, 添加segment所属computer Manager
-用户在ZNS页面给Segment删除Transport Zone, ZNS 调用 cloud API: APIDetachL2NetworkFromClusterMsg
-根据Transport Zone对应的computer Manager, 删除segment所属computer Manager
 
 ## 创建VmNic
 用户在cloud侧创建虚拟机/applianceVm; 给虚拟机/applianceVm 添加网卡, Cloud调用 ZNS API 创建segment port, ZNS负责IP地址管理
 用户在cloud侧删除虚拟机/applianceVm; 给虚拟机/applianceVm 删除网卡,Cloud调用 ZNS API 删除segment port
 cloud调用zns segment port API的时候, 需要携带一个SystemTags: computerManagerUuid::xxxx
+
+
+## 删除SDN控制器
 
 ## 同步
 
@@ -103,12 +77,12 @@ ZNS L2Network virtualNetworkId: Vlan Id or Geneve Id
 - L2NetworkConstant中新增: `L2_GENEVE_NETWORK_TYPE = "L2GeneveNetwork"`
 - ZnsVmNicFactory: 注册 `new VSwitchType("ZNS")`, 绑定对应的VmNicType
 
-ZNS L2 API不需要调用Sdn backend。ZnsSdnControllerL2的所有方法直接调用completion.success()返回成功。
-
-## L2NetworkClusterRefVO
+## 创建L2Network
+- 处理逻辑类似ovn controller, 但是调用ZNS API创建segment
 
 ### APIAttachL2NetworkToClusterMsg, APIDetachL2NetworkFromClusterMsg
-对vSwitchType = ZNS类型的, 仅仅保存数据库，不需要下发到物理机
+- 处理逻辑类似ovn controller，
+- 根据ZNS Host和transport zone的关系，把zns segment关联到transport zone
 
 ### APIChangeL2NetworkVlanIdMsg 
 - L2GeneveNetwork类型不支持修改VlanId, 需要在L2NetworkApiInterceptor中拦截: 如果L2Network的type为L2GeneveNetwork, 抛出ApiMessageInterceptionException
