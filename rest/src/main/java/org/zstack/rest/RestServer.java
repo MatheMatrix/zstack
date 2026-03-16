@@ -39,6 +39,8 @@ import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.identity.IdentityByPassCheck;
 import org.zstack.header.identity.SessionInventory;
 import org.zstack.header.identity.SuppressCredentialCheck;
+import org.zstack.header.identity.ExternalTenantContext;
+import org.zstack.header.identity.ExternalTenantProvider;
 import org.zstack.header.log.MaskSensitiveInfo;
 import org.zstack.header.message.*;
 import org.zstack.header.message.APIEvent;
@@ -143,6 +145,7 @@ public class RestServer implements Component, CloudBusEventListener {
     RateLimiter rateLimiter = new RateLimiter(RestGlobalProperty.REST_RATE_LIMITS);
 
     private Map<RestAuthenticationType, RestAuthenticationBackend> restAuthBackends = new HashMap<RestAuthenticationType, RestAuthenticationBackend>();
+    private Map<String, ExternalTenantProvider> externalTenantProviders = new HashMap<>();
 
     private List<RestServletRequestInterceptor> interceptors = new ArrayList<>();
 
@@ -962,7 +965,37 @@ public class RestServer implements Component, CloudBusEventListener {
             session = bkd.doAuth(params);
         }
 
-        if (APIQueryMessage.class.isAssignableFrom(api.apiClass)) {
+        // 解析外部租户 Header（AK 和 OAuth 两条路径都支持）
+        if (session != null) {
+            String tenantSource = req.getHeader(RestConstants.HEADER_TENANT_SOURCE);
+            String tenantId = req.getHeader(RestConstants.HEADER_TENANT_ID);
+            String tenantUser = req.getHeader(RestConstants.HEADER_TENANT_USER);
+
+            if (tenantSource != null && tenantId != null) {
+                tenantSource = tenantSource.trim();
+                tenantId = tenantId.trim();
+
+                ExternalTenantProvider provider = externalTenantProviders.get(tenantSource);
+                if (provider == null) {
+                    throw new RestException(HttpStatus.BAD_REQUEST.value(),
+                        String.format("unknown tenant source: %s", tenantSource));
+                }
+
+                ExternalTenantContext ctx = new ExternalTenantContext();
+                ctx.setSource(tenantSource);
+                ctx.setTenantId(tenantId);
+                if (tenantUser != null) {
+                    ctx.setUserId(tenantUser.trim());
+                }
+
+                provider.validateTenant(ctx);
+                session.setExternalTenantContext(ctx);
+                ExternalTenantContext.setCurrent(ctx);
+            }
+        }
+
+        try {
+            if (APIQueryMessage.class.isAssignableFrom(api.apiClass)) {
             handleQueryApi(api, session, req, rsp);
             return;
         }
@@ -1078,6 +1111,9 @@ public class RestServer implements Component, CloudBusEventListener {
         msg.setClientBrowser(requestInfo.get().clientBrowser);
         msg.setServiceId(ApiMediatorConstant.SERVICE_ID);
         sendMessage(msg, api, rsp);
+        } finally {
+            ExternalTenantContext.clearCurrent();
+        }
     }
 
     private void checkTime(String dateStr, boolean checkTimeZone) throws RestException {
@@ -1352,6 +1388,10 @@ public class RestServer implements Component, CloudBusEventListener {
                         bkd.getClass().getName(), old.getClass().getName(), bkd.getAuthenticationType()));
             }
             restAuthBackends.put(bkd.getAuthenticationType(), bkd);
+        }
+
+        for (ExternalTenantProvider p : pluginRgty.getExtensionList(ExternalTenantProvider.class)) {
+            externalTenantProviders.put(p.getSource(), p);
         }
 
         extensions.addAll(pluginRgty.getExtensionList(RestAPIExtensionPoint.class));
