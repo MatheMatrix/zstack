@@ -3,7 +3,9 @@ package org.zstack.devtool;
 import org.zstack.devtool.checker.ApiHelperChecker;
 import org.zstack.devtool.checker.GlobalConfigDocChecker;
 import org.zstack.devtool.checker.SdkChecker;
+import org.zstack.devtool.generator.ApiHelperGenerator;
 import org.zstack.devtool.generator.GlobalConfigDocGenerator;
+import org.zstack.devtool.generator.SdkGenerator;
 import org.zstack.devtool.model.ApiMessageInfo;
 import org.zstack.devtool.model.GlobalConfigInfo;
 import org.zstack.devtool.scanner.ApiMessageScanner;
@@ -89,12 +91,12 @@ public class DevTool {
             generateGlobalConfig();
         }
 
-        // SDK and ApiHelper generation requires compilation (use ./runMavenProfile)
-        if ("sdk".equals(target)) {
-            System.out.println("[SDK] Generate not supported yet. Run: ./runMavenProfile sdk");
+        if ("all".equals(target) || "sdk".equals(target)) {
+            generateSdk();
         }
-        if ("apihelper".equals(target)) {
-            System.out.println("[ApiHelper] Generate not supported yet. Run: ./runMavenProfile apihelper");
+
+        if ("all".equals(target) || "apihelper".equals(target)) {
+            generateApiHelper();
         }
     }
 
@@ -158,6 +160,20 @@ public class DevTool {
 
     // --- SDK ---
 
+    private void generateSdk() {
+        List<ApiMessageInfo> messages = getApiMessages();
+        if (messages.isEmpty()) {
+            System.out.println("[SDK] WARN - no API messages found.");
+            return;
+        }
+
+        Path sdkDir = projectRoot.resolve("sdk/src/main/java/org/zstack/sdk");
+        SdkGenerator generator = new SdkGenerator();
+        int created = generator.generate(messages, sdkDir, true);
+        System.out.println("[SDK] Generated " + created + " new file(s), " +
+                messages.size() + " total API messages");
+    }
+
     private boolean checkSdk() {
         List<ApiMessageInfo> messages = getApiMessages();
         if (messages.isEmpty()) {
@@ -198,6 +214,25 @@ public class DevTool {
         ApiHelperChecker.CheckResult result = checker.check(messages, apiHelperFile);
         result.print();
         return result.passed();
+    }
+
+    private void generateApiHelper() {
+        List<ApiMessageInfo> messages = getApiMessages();
+        if (messages.isEmpty()) {
+            System.out.println("[ApiHelper] WARN - no API messages found.");
+            return;
+        }
+
+        Path apiHelperFile = projectRoot.resolve(
+                "testlib/src/main/java/org/zstack/testlib/ApiHelper.groovy");
+        if (!Files.exists(apiHelperFile)) {
+            apiHelperFile = projectRoot.resolve(
+                    "premium/test-premium/src/main/groovy/org/zstack/testlib/ApiHelper.groovy");
+        }
+
+        ApiHelperGenerator generator = new ApiHelperGenerator();
+        int added = generator.generate(messages, apiHelperFile);
+        System.out.println("[ApiHelper] Added " + added + " new method(s)");
     }
 
     // --- API message scanning (shared by SDK + ApiHelper) ---
@@ -311,7 +346,7 @@ public class DevTool {
         System.out.println();
         System.out.println("Commands:");
         System.out.println("  check [globalconfig|sdk|apihelper|all]     Check if generated files are up to date");
-        System.out.println("  generate [globalconfig|all]                Generate missing files");
+        System.out.println("  generate [globalconfig|sdk|apihelper|all]  Generate missing files");
         System.out.println("  scan [globalconfig|sdk|apihelper|all]      List all scanned items (debug)");
         System.out.println();
         System.out.println("Examples:");
@@ -320,5 +355,8 @@ public class DevTool {
         System.out.println("  dev-tool check sdk              Check SDK action files only");
         System.out.println("  dev-tool check apihelper         Check ApiHelper.groovy methods");
         System.out.println("  dev-tool generate globalconfig  Generate missing GlobalConfig docs");
+        System.out.println("  dev-tool generate sdk           Generate missing SDK action/result files");
+        System.out.println("  dev-tool generate apihelper     Generate missing ApiHelper.groovy methods");
+        System.out.println("  dev-tool generate all           Generate all missing files");
     }
 }
