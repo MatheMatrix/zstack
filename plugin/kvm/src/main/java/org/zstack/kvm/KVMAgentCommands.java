@@ -5205,4 +5205,96 @@ public class KVMAgentCommands {
         }
     }
 
+    public static class KvmAttachModelCmd extends AgentCommand {
+        @GrayVersion(value = "5.5.12")
+        private String vmInstanceUuid;
+        @GrayVersion(value = "5.5.12")
+        private String zdfsUrl;
+        @GrayVersion(value = "5.5.12")
+        private String juicefsSubdir;
+        @GrayVersion(value = "5.5.12")
+        private String mountPath;
+
+        public String getVmInstanceUuid() {
+            return vmInstanceUuid;
+        }
+
+        public void setVmInstanceUuid(String vmInstanceUuid) {
+            this.vmInstanceUuid = vmInstanceUuid;
+        }
+
+        public String getZdfsUrl() {
+            return zdfsUrl;
+        }
+
+        public void setZdfsUrl(String zdfsUrl) {
+            this.zdfsUrl = zdfsUrl;
+        }
+
+        public String getJuicefsSubdir() {
+            return juicefsSubdir;
+        }
+
+        public void setJuicefsSubdir(String juicefsSubdir) {
+            this.juicefsSubdir = juicefsSubdir;
+        }
+
+        public String getMountPath() {
+            return mountPath;
+        }
+
+        public void setMountPath(String mountPath) {
+            this.mountPath = mountPath;
+        }
+    }
+
+    public static class KvmAttachModelResponse extends AgentResponse {
+        @GrayVersion(value = "5.5.12")
+        private String status;
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+    }
+
+    public static class KvmDetachModelCmd extends AgentCommand {
+        @GrayVersion(value = "5.5.12")
+        private String vmInstanceUuid;
+        @GrayVersion(value = "5.5.12")
+        private String mountPath;
+
+        public String getVmInstanceUuid() {
+            return vmInstanceUuid;
+        }
+
+        public void setVmInstanceUuid(String vmInstanceUuid) {
+            this.vmInstanceUuid = vmInstanceUuid;
+        }
+
+        public String getMountPath() {
+            return mountPath;
+        }
+
+        public void setMountPath(String mountPath) {
+            this.mountPath = mountPath;
+        }
+    }
+
+    public static class KvmDetachModelResponse extends AgentResponse {
+        @GrayVersion(value = "5.5.12")
+        private String status;
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+    }
+
 }
