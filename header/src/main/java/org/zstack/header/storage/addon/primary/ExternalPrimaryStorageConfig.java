@@ -9,6 +9,11 @@ package org.zstack.header.storage.addon.primary;
  */
 public interface ExternalPrimaryStorageConfig {
     /**
+     * The identity of the external primary storage plugin (e.g. "zbs").
+     */
+    String getIdentity();
+
+    /**
      * Return a desensitized copy of this config with sensitive fields masked.
      * The original object must not be modified.
      */

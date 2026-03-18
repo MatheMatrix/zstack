@@ -28,6 +28,11 @@ public class Config implements ExternalPrimaryStorageConfig {
     private static final Pattern URI_CREDENTIAL_PATTERN = Pattern.compile(":[^:@]*@");
 
     private List<String> mdsUrls;
+
+    @Override
+    public String getIdentity() {
+        return ZbsConstants.IDENTITY;
+    }
     private List<Pool> pools;
     private String logicalPoolName;
     private transient List<String> poolNames;

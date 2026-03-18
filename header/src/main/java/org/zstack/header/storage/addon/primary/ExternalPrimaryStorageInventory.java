@@ -2,7 +2,10 @@ package org.zstack.header.storage.addon.primary;
 
 import org.zstack.header.search.Inventory;
 import org.zstack.header.storage.primary.PrimaryStorageInventory;
+import org.zstack.utils.BeanUtils;
+import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
+import org.zstack.utils.logging.CLogger;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -12,7 +15,22 @@ import java.util.stream.Collectors;
 
 @Inventory(mappingVOClass = ExternalPrimaryStorageVO.class)
 public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
+    private static final CLogger logger = Utils.getLogger(ExternalPrimaryStorageInventory.class);
     private static final Map<String, Class<? extends ExternalPrimaryStorageConfig>> configClassRegistry = new ConcurrentHashMap<>();
+
+    static {
+        for (Class<? extends ExternalPrimaryStorageConfig> clz : BeanUtils.reflections.getSubTypesOf(ExternalPrimaryStorageConfig.class)) {
+            if (clz.isInterface()) {
+                continue;
+            }
+            try {
+                ExternalPrimaryStorageConfig instance = clz.newInstance();
+                configClassRegistry.put(instance.getIdentity(), clz);
+            } catch (Exception e) {
+                logger.warn(String.format("failed to register ExternalPrimaryStorageConfig: %s", clz.getName()), e);
+            }
+        }
+    }
 
     private String identity;
 
@@ -54,16 +72,6 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
     private List<String> outputProtocols;
 
     private String defaultProtocol;
-
-    /**
-     * Register config class for an external primary storage identity.
-     * The config class must implement {@link ExternalPrimaryStorageConfig} so that
-     * ZStack can call {@link ExternalPrimaryStorageConfig#desensitize()} before
-     * outputting config to API responses or logs.
-     */
-    public static void registerConfigClass(String identity, Class<? extends ExternalPrimaryStorageConfig> configClass) {
-        configClassRegistry.put(identity, configClass);
-    }
 
     public ExternalPrimaryStorageInventory() {
         super();
