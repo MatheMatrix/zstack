@@ -1,17 +1,18 @@
 package org.zstack.storage.zbs;
 
-import org.zstack.header.log.NoLogging;
+import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageConfig;
+import org.zstack.utils.gson.JSONObjectUtil;
 
-import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
  * @author Xingwei Yu
  * @date 2024/4/2 11:13
  */
-public class Config implements Serializable {
+public class Config implements ExternalPrimaryStorageConfig {
     public static class Pool {
         public String logicalName;
         public String aliasName;
@@ -24,11 +25,23 @@ public class Config implements Serializable {
         public Pool() {}
     }
 
-    @NoLogging(type = NoLogging.Type.Uri)
+    private static final Pattern URI_CREDENTIAL_PATTERN = Pattern.compile(":[^:@]*@");
+
     private List<String> mdsUrls;
     private List<Pool> pools;
     private String logicalPoolName;
     private transient List<String> poolNames;
+
+    @Override
+    public ExternalPrimaryStorageConfig desensitize() {
+        Config copy = JSONObjectUtil.toObject(JSONObjectUtil.toJsonString(this), Config.class);
+        if (copy.mdsUrls != null) {
+            copy.mdsUrls = copy.mdsUrls.stream()
+                    .map(url -> URI_CREDENTIAL_PATTERN.matcher(url).replaceFirst(":*****@"))
+                    .collect(Collectors.toList());
+        }
+        return copy;
+    }
 
     public List<String> getMdsUrls() {
         return mdsUrls;

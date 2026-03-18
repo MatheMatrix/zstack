@@ -1,6 +1,5 @@
 package org.zstack.header.storage.addon.primary;
 
-import org.zstack.header.log.NoLogging;
 import org.zstack.header.search.Inventory;
 import org.zstack.header.storage.primary.PrimaryStorageInventory;
 import org.zstack.utils.gson.JSONObjectUtil;
@@ -13,7 +12,7 @@ import java.util.stream.Collectors;
 
 @Inventory(mappingVOClass = ExternalPrimaryStorageVO.class)
 public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
-    private static final Map<String, String> configClassRegistry = new ConcurrentHashMap<>();
+    private static final Map<String, Class<? extends ExternalPrimaryStorageConfig>> configClassRegistry = new ConcurrentHashMap<>();
 
     private String identity;
 
@@ -31,7 +30,6 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
      * ]
      * }
      */
-    @NoLogging(behavior = NoLogging.Behavior.Auto, classNameField = "configClassName")
     private LinkedHashMap config;
 
     /**
@@ -57,15 +55,14 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
 
     private String defaultProtocol;
 
-    private transient String configClassName;
-
     /**
      * Register config class for an external primary storage identity.
-     * Each plugin should call this at startup so that LogSafeGson can auto-discover
-     * @NoLogging fields in config for desensitization.
+     * The config class must implement {@link ExternalPrimaryStorageConfig} so that
+     * ZStack can call {@link ExternalPrimaryStorageConfig#desensitize()} before
+     * outputting config to API responses or logs.
      */
-    public static void registerConfigClass(String identity, Class<?> configClass) {
-        configClassRegistry.put(identity, configClass.getName());
+    public static void registerConfigClass(String identity, Class<? extends ExternalPrimaryStorageConfig> configClass) {
+        configClassRegistry.put(identity, configClass);
     }
 
     public ExternalPrimaryStorageInventory() {
@@ -75,11 +72,18 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
     public ExternalPrimaryStorageInventory(ExternalPrimaryStorageVO lvo) {
         super(lvo);
         identity = lvo.getIdentity();
-        config = JSONObjectUtil.toObject(lvo.getConfig(), LinkedHashMap.class);
         addonInfo = JSONObjectUtil.toObject(lvo.getAddonInfo(), LinkedHashMap.class);
         outputProtocols = lvo.getOutputProtocols().stream().map(PrimaryStorageOutputProtocolRefVO::getOutputProtocol).collect(Collectors.toList());
         defaultProtocol = lvo.getDefaultProtocol();
-        configClassName = configClassRegistry.get(identity);
+
+        Class<? extends ExternalPrimaryStorageConfig> configClass = configClassRegistry.get(identity);
+        if (configClass != null) {
+            ExternalPrimaryStorageConfig typedConfig = JSONObjectUtil.toObject(lvo.getConfig(), configClass);
+            ExternalPrimaryStorageConfig desensitized = typedConfig.desensitize();
+            config = JSONObjectUtil.toObject(JSONObjectUtil.toJsonString(desensitized), LinkedHashMap.class);
+        } else {
+            config = JSONObjectUtil.toObject(lvo.getConfig(), LinkedHashMap.class);
+        }
     }
 
     public static ExternalPrimaryStorageInventory valueOf(ExternalPrimaryStorageVO lvo) {
