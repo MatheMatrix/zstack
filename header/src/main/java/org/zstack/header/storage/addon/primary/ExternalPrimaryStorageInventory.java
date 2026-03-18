@@ -1,17 +1,20 @@
 package org.zstack.header.storage.addon.primary;
 
+import org.zstack.header.log.NoLogging;
 import org.zstack.header.search.Inventory;
 import org.zstack.header.storage.primary.PrimaryStorageInventory;
 import org.zstack.utils.gson.JSONObjectUtil;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Inventory(mappingVOClass = ExternalPrimaryStorageVO.class)
 public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
+    private static final Map<String, String> configClassRegistry = new ConcurrentHashMap<>();
+
     private String identity;
 
     /**
@@ -28,6 +31,7 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
      * ]
      * }
      */
+    @NoLogging(behavior = NoLogging.Behavior.Auto, classNameField = "configClassName")
     private LinkedHashMap config;
 
     /**
@@ -53,6 +57,17 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
 
     private String defaultProtocol;
 
+    private transient String configClassName;
+
+    /**
+     * Register config class for an external primary storage identity.
+     * Each plugin should call this at startup so that LogSafeGson can auto-discover
+     * @NoLogging fields in config for desensitization.
+     */
+    public static void registerConfigClass(String identity, Class<?> configClass) {
+        configClassRegistry.put(identity, configClass.getName());
+    }
+
     public ExternalPrimaryStorageInventory() {
         super();
     }
@@ -61,43 +76,14 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
         super(lvo);
         identity = lvo.getIdentity();
         config = JSONObjectUtil.toObject(lvo.getConfig(), LinkedHashMap.class);
-        desensitizeConfig(config);
         addonInfo = JSONObjectUtil.toObject(lvo.getAddonInfo(), LinkedHashMap.class);
         outputProtocols = lvo.getOutputProtocols().stream().map(PrimaryStorageOutputProtocolRefVO::getOutputProtocol).collect(Collectors.toList());
         defaultProtocol = lvo.getDefaultProtocol();
+        configClassName = configClassRegistry.get(identity);
     }
 
     public static ExternalPrimaryStorageInventory valueOf(ExternalPrimaryStorageVO lvo) {
         return new ExternalPrimaryStorageInventory(lvo);
-    }
-
-    private static void desensitizeConfig(Map config) {
-        if (config == null) return;
-        desensitizeUrlList(config, "mdsUrls");
-        desensitizeUrlList(config, "mdsInfos");
-    }
-
-    private static void desensitizeUrlList(Map config, String key) {
-        Object urls = config.get(key);
-        if (urls instanceof List) {
-            List<String> desensitized = new ArrayList<>();
-            for (Object url : (List) urls) {
-                desensitized.add(desensitizeUrl(String.valueOf(url)));
-            }
-            config.put(key, desensitized);
-        }
-    }
-
-    private static String desensitizeUrl(String url) {
-        int atIndex = url.lastIndexOf('@');
-        if (atIndex > 0) {
-            int schemeIndex = url.indexOf("://");
-            if (schemeIndex >= 0 && schemeIndex < atIndex) {
-                return url.substring(0, schemeIndex + 3) + "***" + url.substring(atIndex);
-            }
-            return "***" + url.substring(atIndex);
-        }
-        return url;
     }
 
     public String getIdentity() {

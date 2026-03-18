@@ -1,6 +1,8 @@
 package org.zstack.storage.zbs;
 
+import org.zstack.header.log.NoLogging;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -9,7 +11,7 @@ import java.util.stream.Collectors;
  * @author Xingwei Yu
  * @date 2024/4/2 11:13
  */
-public class Config {
+public class Config implements Serializable {
     public static class Pool {
         public String logicalName;
         public String aliasName;
@@ -22,6 +24,7 @@ public class Config {
         public Pool() {}
     }
 
+    @NoLogging(type = NoLogging.Type.Uri)
     private List<String> mdsUrls;
     private List<Pool> pools;
     private String logicalPoolName;

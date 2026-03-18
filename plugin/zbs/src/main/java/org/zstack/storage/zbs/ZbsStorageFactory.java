@@ -24,6 +24,10 @@ public class ZbsStorageFactory implements ExternalPrimaryStorageSvcBuilder, Back
     private static CLogger logger = Utils.getLogger(ZbsStorageFactory.class);
     public static final ExternalStorageFencerType fencerType = new ExternalStorageFencerType(ZbsConstants.IDENTITY, VolumeProtocol.CBD.toString());
 
+    static {
+        ExternalPrimaryStorageInventory.registerConfigClass(ZbsConstants.IDENTITY, Config.class);
+    }
+
     private List<String> preferBackupStorageTypes;
 
     @Override

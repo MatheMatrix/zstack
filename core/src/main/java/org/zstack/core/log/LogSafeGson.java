@@ -87,8 +87,22 @@ public class LogSafeGson {
                     return value;
                 }
 
-                Class<?> clz = Class.forName((String) classNameField.get(obj));
-                return mayHasSensitiveInfo(clz) ? JSONObjectUtil.toObject((String) value, clz) : value;
+                String className = (String) classNameField.get(obj);
+                if (className == null) {
+                    return value;
+                }
+
+                Class<?> clz = Class.forName(className);
+                if (!mayHasSensitiveInfo(clz)) {
+                    return value;
+                }
+
+                if (value instanceof String) {
+                    return JSONObjectUtil.toObject((String) value, clz);
+                } else if (value instanceof Map) {
+                    return JSONObjectUtil.toObject(JSONObjectUtil.toJsonString(value), clz);
+                }
+                return value;
             } catch (IllegalAccessException | ClassNotFoundException e) {
                 return null;
             }
