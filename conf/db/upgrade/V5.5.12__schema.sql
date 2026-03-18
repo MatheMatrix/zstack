@@ -178,3 +178,20 @@ DELIMITER ;
 
 CALL ModifyUsedIpVOForeignKey();
 DROP PROCEDURE IF EXISTS ModifyUsedIpVOForeignKey;
+
+-- ZSTAC-83157: Add VM model mount feature
+CREATE TABLE IF NOT EXISTS `zstack`.`VmModelMountVO` (
+    `uuid` VARCHAR(32) NOT NULL,
+    `vmInstanceUuid` VARCHAR(32) NOT NULL,
+    `modelUuid` VARCHAR(32) NOT NULL,
+    `modelName` VARCHAR(256) NOT NULL,
+    `juicefsSubdir` VARCHAR(512) NOT NULL,
+    `mountPath` VARCHAR(512) NOT NULL,
+    `status` VARCHAR(32) NOT NULL,
+    `createDate` TIMESTAMP NOT NULL DEFAULT '0000-00-00 00:00:00',
+    `lastOpDate` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`uuid`),
+    KEY `idx_vm` (`vmInstanceUuid`),
+    CONSTRAINT `fk_VmModelMount_vm` FOREIGN KEY (`vmInstanceUuid`)
+        REFERENCES `VmInstanceEO`(`uuid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

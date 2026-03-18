@@ -95,6 +95,8 @@ public interface KVMConstant {
     String KVM_REGISTER_PRIMARY_VM_HEARTBEAT = "/register/primary/vm/heartbeat";
     String CLEAN_FIRMWARE_FLASH = "/clean/firmware/flash";
     String FSTRIM_VM_PATH = "/vm/fstrim";
+    String KVM_ATTACH_AI_MODEL_PATH = "/aimodel/attach";
+    String KVM_DETACH_AI_MODEL_PATH = "/aimodel/detach";
 
     String ISO_TO = "kvm.isoto";
     String ANSIBLE_PLAYBOOK_NAME = "kvm.py";
