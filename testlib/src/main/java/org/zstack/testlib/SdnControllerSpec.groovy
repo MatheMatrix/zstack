@@ -1,6 +1,9 @@
 package org.zstack.testlib
 
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.zstack.sdk.SdnControllerInventory
 import org.zstack.sdnController.h3cVcfc.H3cVcfcCommands
@@ -25,6 +28,9 @@ import org.zstack.sugonSdnController.controller.api.types.Project
 import org.zstack.sugonSdnController.controller.api.types.VirtualMachine
 import org.zstack.sugonSdnController.controller.api.types.VirtualMachineInterface
 import org.zstack.sugonSdnController.controller.api.types.VirtualNetwork
+import org.zstack.utils.gson.JSONObjectUtil
+
+import javax.servlet.http.HttpServletRequest
 
 /**
  * Created by shixin.ruan on 2019/09/26.
@@ -288,6 +294,144 @@ class SdnControllerSpec extends Spec implements HasSession {
                 String json = ApiSerializer.serializeObject("virtual-machine-interface", rsp);
                 ResponseEntity<String> response = new ResponseEntity<String>(json, HttpStatus.OK);
                 return response.getBody()
+            }
+
+            // ===================== ZNS Simulators =====================
+
+            // Helper: trigger ZNS async callback in a separate thread
+            def triggerZnsCallback = { HttpEntity<String> entity, EnvSpec spec, Object data ->
+                String jobUuid = entity.headers.getFirst("x-job-uuid")
+                String webhook = entity.headers.getFirst("x-web-hook")
+                if (!jobUuid || !webhook) return
+
+                Thread.start {
+                    Thread.sleep(100)
+                    def cmd = [taskUuid: jobUuid, success: true, status: "completed", data: data]
+                    def headers = new HttpHeaders()
+                    headers.setContentType(MediaType.APPLICATION_JSON)
+                    def body = JSONObjectUtil.toJsonString(cmd)
+                    headers.set("commandpath", "/zns/callback")
+                    spec.restTemplate.exchange(webhook, HttpMethod.POST,
+                            new HttpEntity<String>(body, headers), String.class)
+                }
+            }
+
+            // GET /zns/api/v1/fabric/compute-managers/{uuid}
+            simulator("/zns/api/v1/fabric/compute-managers/[^/]+") {
+                return [success: true, data: [uuid: "cm-uuid-1", name: "cm-1", connectionStatus: "connected"]]
+            }
+
+            // GET /zns/api/v1/fabric/compute-collections
+            simulator("/zns/api/v1/fabric/compute-collections") {
+                return [success: true, data: [
+                        [uuid: "cc-1", name: "cluster-1", computeManagerId: "cm-uuid-1"],
+                        [uuid: "cc-2", name: "cluster-2", computeManagerId: "cm-uuid-1"]
+                ], total: 2]
+            }
+
+            // GET /zns/api/v1/fabric/discovered-nodes
+            simulator("/zns/api/v1/fabric/discovered-nodes") {
+                return [success: true, data: [
+                        [uuid: "dn-1", name: "kvm-1", managementIp: "127.0.0.1", clusterId: "cc-1", transportNodeProfileId: "tnp-dpdk"],
+                        [uuid: "dn-2", name: "kvm-2", managementIp: "127.0.0.2", clusterId: "cc-1", transportNodeProfileId: "tnp-dpdk"]
+                ], total: 2]
+            }
+
+            // GET /zns/api/v1/fabric/transport-zones
+            simulator("/zns/api/v1/fabric/transport-zones") {
+                return [success: true, data: [
+                        [uuid: "tz-1", name: "tz-overlay", type: "overlay"]
+                ], total: 1]
+            }
+
+            // GET /zns/api/v1/fabric/transport-node-profiles/{uuid}
+            simulator("/zns/api/v1/fabric/transport-node-profiles/[^/]+") { HttpServletRequest req, HttpEntity<String> entity, EnvSpec spec ->
+                def uri = req.getRequestURI()
+                def profileUuid = uri.tokenize("/").last()
+                if (profileUuid == "tnp-kernel") {
+                    return [success: true, data: [uuid: "tnp-kernel", name: "tnp-kernel", hostSwitchProfiles: ["hsp-kernel"]]]
+                }
+                return [success: true, data: [uuid: "tnp-dpdk", name: "tnp-dpdk", hostSwitchProfiles: ["hsp-dpdk"]]]
+            }
+
+            // GET /zns/api/v1/fabric/host-switch-profiles/{uuid}
+            simulator("/zns/api/v1/fabric/host-switch-profiles/[^/]+") { HttpServletRequest req, HttpEntity<String> entity, EnvSpec spec ->
+                def uri = req.getRequestURI()
+                def hspUuid = uri.tokenize("/").last()
+                if (hspUuid == "hsp-kernel") {
+                    return [success: true, data: [uuid: "hsp-kernel", name: "hsp-kernel", switchType: "kernel"]]
+                }
+                return [success: true, data: [uuid: "hsp-dpdk", name: "hsp-dpdk", switchType: "dpdk"]]
+            }
+
+            // /zns/api/v1/segments — GET(list) / POST(create) / DELETE(batch)
+            simulator("/zns/api/v1/segments") { HttpServletRequest req, HttpEntity<String> entity, EnvSpec spec ->
+                if (req.method == "GET") {
+                    return [success: true, data: [
+                            [uuid: "zns-sg-1", name: "sg-1", transport_type: "overlay", virtual_network_id: 100,
+                             transport_zone_uuid: "tz-1",
+                             cms: [cmsUuid: "cm-uuid-1", ExternalIds: [:]],
+                             ipams: [[ip_cidr: "10.0.1.0/24", gateway_ip: "10.0.1.1", prefix: 24,
+                                      ip_ranges: [[StartIp: "10.0.1.10", EndIp: "10.0.1.100"]]]]],
+                            [uuid: "zns-sg-2", name: "sg-2", transport_type: "overlay", virtual_network_id: 200,
+                             transport_zone_uuid: "tz-1",
+                             cms: [cmsUuid: "cm-uuid-1", ExternalIds: [:]],
+                             ipams: [[ip_cidr: "10.0.2.0/24", gateway_ip: "10.0.2.1", prefix: 24,
+                                      ip_ranges: [[StartIp: "10.0.2.10", EndIp: "10.0.2.100"]]]]]
+                    ], total: 2]
+                }
+                // POST(create) or DELETE(batch) → async callback
+                def data = [uuid: "zns-sg-new", name: "new-seg", transport_type: "overlay"]
+                triggerZnsCallback(entity, spec, data)
+                return [:]
+            }
+
+            // /zns/api/v1/segments/{uuid} — GET(single) / PATCH(update)
+            simulator("/zns/api/v1/segments/[^/]+") { HttpServletRequest req, HttpEntity<String> entity, EnvSpec spec ->
+                def uri = req.getRequestURI()
+                def segUuid = uri.tokenize("/").last()
+                if (req.method == "GET") {
+                    return [success: true, data: [uuid: segUuid, name: "seg-" + segUuid, transport_type: "overlay"]]
+                }
+                // PATCH → async callback
+                def data = [uuid: segUuid, name: "seg-" + segUuid, transport_type: "overlay"]
+                triggerZnsCallback(entity, spec, data)
+                return [:]
+            }
+
+            // /zns/api/v1/segments/{uuid}/ports — GET(list) / POST(create) / DELETE(batch)
+            simulator("/zns/api/v1/segments/[^/]+/ports") { HttpServletRequest req, HttpEntity<String> entity, EnvSpec spec ->
+                if (req.method == "GET") {
+                    return [success: true, data: [], total: 0]
+                }
+                // POST(create) or DELETE(batch) → async callback
+                def data = [uuid: "zns-port-new", segment_uuid: "zns-sg-1", mac: "00:00:00:00:00:01"]
+                triggerZnsCallback(entity, spec, data)
+                return [:]
+            }
+
+            // /zns/api/v1/segments/{uuid}/ports/{portUuid} — GET / PATCH
+            simulator("/zns/api/v1/segments/[^/]+/ports/[^/]+") { HttpServletRequest req, HttpEntity<String> entity, EnvSpec spec ->
+                def uri = req.getRequestURI()
+                def portUuid = uri.tokenize("/").last()
+                if (req.method == "GET") {
+                    return [success: true, data: [uuid: portUuid, segment_uuid: "zns-sg-1"]]
+                }
+                // PATCH → async callback
+                def data = [uuid: portUuid, segment_uuid: "zns-sg-1"]
+                triggerZnsCallback(entity, spec, data)
+                return [:]
+            }
+
+            // /zns/api/v1/segments/{uuid}/used-ips — GET
+            simulator("/zns/api/v1/segments/[^/]+/used-ips") {
+                return [success: true, data: [], total: 0]
+            }
+
+            // POST /zns/api/v1/fabric/compute-managers/{uuid}/sync-jobs
+            simulator("/zns/api/v1/fabric/compute-managers/[^/]+/sync-jobs") { HttpServletRequest req, HttpEntity<String> entity, EnvSpec spec ->
+                triggerZnsCallback(entity, spec, [:])
+                return [:]
             }
         }
     }

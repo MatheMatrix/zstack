@@ -10,6 +10,6 @@ CREATE TABLE IF NOT EXISTS `L2GeneveNetworkVO` (
     `uuid` varchar(32) NOT NULL,
     `geneveId` int(10) unsigned NOT NULL,
     PRIMARY KEY (`uuid`),
-    CONSTRAINT `fkL2GeneveNetworkVOL2NetworkVO` FOREIGN KEY (`uuid`) REFERENCES `L2NetworkVO` (`uuid`) ON DELETE CASCADE
+    CONSTRAINT `fkL2GeneveNetworkVOL2NetworkEO` FOREIGN KEY (`uuid`) REFERENCES `L2NetworkEO` (`uuid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
