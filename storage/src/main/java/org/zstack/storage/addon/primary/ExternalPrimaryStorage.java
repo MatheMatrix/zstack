@@ -55,6 +55,7 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -409,7 +410,7 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
 
 
         BackupStorageSelector selector = pluginRgty.getExtensionFromMap(externalVO.getIdentity(), BackupStorageSelector.class);
-        List<String> preferBsTypes = selector.getPreferBackupStorageTypes();
+        List<String> preferBsTypes = new ArrayList<>(selector.getPreferBackupStorageTypes());
         if (!CollectionUtils.isEmpty(msg.getRequiredBackupStorageTypes())) {
             preferBsTypes.retainAll(msg.getRequiredBackupStorageTypes());
         }
