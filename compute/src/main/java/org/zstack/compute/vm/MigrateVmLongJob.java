@@ -65,14 +65,24 @@ public class MigrateVmLongJob implements LongJob {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private List<String> getBackupTaskLongJobUuids(String jobData) {
         Map<String, Object> raw = JSONObjectUtil.toObject(jobData, LinkedHashMap.class);
-        Object uuids = raw.get("backupTaskLongJobUuids");
-        if (uuids instanceof List) {
-            return (List<String>) uuids;
+        Object uuids = raw == null ? null : raw.get("backupTaskLongJobUuids");
+        if (!(uuids instanceof List<?>)) {
+            return null;
         }
-        return null;
+
+        List<String> result = new ArrayList<>();
+        for (Object item : (List<?>) uuids) {
+            if (item == null) {
+                continue;
+            }
+            String uuid = String.valueOf(item).trim();
+            if (!uuid.isEmpty()) {
+                result.add(uuid);
+            }
+        }
+        return result.isEmpty() ? null : result;
     }
 
     private void cancelBackupLongJobsThenMigrate(List<String> backupTaskLongJobUuids,
