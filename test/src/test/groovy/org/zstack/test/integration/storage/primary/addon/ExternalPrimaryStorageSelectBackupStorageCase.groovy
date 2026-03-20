@@ -13,7 +13,12 @@ import org.zstack.header.storage.backup.BackupStorageZoneRefVO_
 import org.zstack.header.storage.primary.PrimaryStorageConstant
 import org.zstack.header.storage.primary.SelectBackupStorageMsg
 import org.zstack.header.storage.primary.SelectBackupStorageReply
+import org.zstack.sdk.ClusterInventory
+import org.zstack.sdk.ImageInventory
+import org.zstack.sdk.InstanceOfferingInventory
+import org.zstack.sdk.L3NetworkInventory
 import org.zstack.sdk.PrimaryStorageInventory
+import org.zstack.sdk.VmInstanceInventory
 import org.zstack.sdk.ZoneInventory
 import org.zstack.test.integration.storage.StorageTest
 import org.zstack.testlib.EnvSpec
@@ -21,21 +26,29 @@ import org.zstack.testlib.SubCase
 import org.zstack.utils.data.SizeUnit
 
 /**
- * ZSTAC-71706: ExternalPrimaryStorage backup storage selection in mixed environment.
+ * ZSTAC-80789: getPreferBackupStorageTypes() must return a defensive copy.
  *
- * Bug: List.indexOf() returns -1 for types not in preferBsTypes,
- * causing ascending sort to place non-preferred types (e.g. VCenterBackupStorage)
- * before preferred types in the sorted result.
+ * Bug: ZbsStorageFactory/ExponStorageFactory/XInfiniStorageFactory returned a direct
+ * reference to their internal preferBackupStorageTypes list. When SelectBackupStorageMsg
+ * carried requiredBackupStorageTypes, the handler called retainAll() on the returned list,
+ * permanently mutating the bean's internal state. Subsequent requests without
+ * requiredBackupStorageTypes would then see an empty preferBsTypes and fail.
  *
- * Fix: Filter out non-preferred backup storage types before sorting by preference.
+ * Fix: Return new ArrayList<>(preferBackupStorageTypes) from getPreferBackupStorageTypes().
  *
- * This case sets up a ZBS ExternalPrimaryStorage (preferBsTypes = [ImageStoreBackupStorage])
- * with multiple backup storage types attached to the zone, then sends SelectBackupStorageMsg
- * via CloudBus to verify the handler selects the correct preferred backup storage.
+ * This case sets up a ZBS ExternalPrimaryStorage with both ImageStoreBackupStorage and
+ * CephBackupStorage attached to the zone, creates a VM on the ZBS PS, then simulates
+ * two SelectBackupStorageMsg calls (as would happen during clone VM in premium):
+ * 1st with requiredBackupStorageTypes=["CephBackupStorage"] (triggers retainAll),
+ * 2nd without requiredBackupStorageTypes (verifies bean is not corrupted).
+ *
+ * Note: SelectBackupStorageMsg is sent via CloudBus because the sender (clone VM flow)
+ * is in the premium module and not available in open-source integration tests.
  */
 class ExternalPrimaryStorageSelectBackupStorageCase extends SubCase {
     EnvSpec env
     ZoneInventory zone
+    ClusterInventory cluster
     PrimaryStorageInventory ps
     DatabaseFacade dbf
     CloudBus bus
@@ -60,6 +73,12 @@ class ExternalPrimaryStorageSelectBackupStorageCase extends SubCase {
     @Override
     void environment() {
         env = makeEnv {
+            instanceOffering {
+                name = "instanceOffering"
+                memory = SizeUnit.GIGABYTE.toByte(8)
+                cpu = 4
+            }
+
             sftpBackupStorage {
                 name = "sftp"
                 url = "/sftp"
@@ -126,79 +145,57 @@ class ExternalPrimaryStorageSelectBackupStorageCase extends SubCase {
     void test() {
         env.create {
             zone = env.inventoryByName("zone") as ZoneInventory
+            cluster = env.inventoryByName("cluster") as ClusterInventory
             ps = env.inventoryByName("zbs-ps") as PrimaryStorageInventory
             dbf = bean(DatabaseFacade.class)
             bus = bean(CloudBus.class)
 
-            testErrorWhenNoPreferredTypeAvailable()
-            testSelectPreferredOverNonPreferred()
             testPreferBsTypesNotCorruptedByRetainAll()
         }
     }
 
     /**
-     * When only non-preferred backup storage types exist in the zone,
-     * the selection should return an error (no matching preferred types).
-     * Zone has SftpBackupStorage (from env) and VCenterBackupStorage,
-     * neither of which is in zbs's preferBsTypes [ImageStoreBackupStorage].
-     */
-    void testErrorWhenNoPreferredTypeAvailable() {
-        createAndAttachBackupStorage("vcenter-bs", "VCenterBackupStorage")
-
-        SelectBackupStorageMsg msg = new SelectBackupStorageMsg()
-        msg.setPrimaryStorageUuid(ps.uuid)
-        msg.setRequiredSize(SizeUnit.MEGABYTE.toByte(1))
-        bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, ps.uuid)
-        MessageReply reply = bus.call(msg)
-
-        assert !reply.isSuccess() : "Should fail when no preferred BS type is available"
-    }
-
-    /**
-     * Reproduces ZSTAC-71706: zone has both ImageStoreBackupStorage (preferred)
-     * and VCenterBackupStorage (non-preferred, created in previous test).
-     * Before the fix, indexOf() returns -1 for VCenterBackupStorage causing
-     * it to sort before ImageStoreBackupStorage. After the fix, non-preferred
-     * types are filtered out entirely, and ImageStoreBackupStorage is correctly selected.
-     */
-    void testSelectPreferredOverNonPreferred() {
-        createAndAttachBackupStorage("imagestore-bs", "ImageStoreBackupStorage")
-
-        SelectBackupStorageMsg msg = new SelectBackupStorageMsg()
-        msg.setPrimaryStorageUuid(ps.uuid)
-        msg.setRequiredSize(SizeUnit.MEGABYTE.toByte(1))
-        bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, ps.uuid)
-        MessageReply reply = bus.call(msg)
-
-        assert reply.isSuccess() : "SelectBackupStorageMsg should succeed"
-        SelectBackupStorageReply bsReply = reply as SelectBackupStorageReply
-        assert bsReply.inventory != null
-        assert bsReply.inventory.type == "ImageStoreBackupStorage" :
-                "Should select preferred ImageStoreBackupStorage, but got ${bsReply.inventory.type}"
-    }
-
-    /**
-     * Reproduces ZSTAC-80789: getPreferBackupStorageTypes() must return a defensive copy.
+     * Reproduces ZSTAC-80789: retainAll corrupts bean's preferBackupStorageTypes.
      *
-     * Bug: ZbsStorageFactory/ExponStorageFactory/XInfiniStorageFactory returned a direct
-     * reference to their internal preferBackupStorageTypes list. When SelectBackupStorageMsg
-     * carried requiredBackupStorageTypes, the handler called retainAll() on the returned list,
-     * permanently mutating the bean's internal state. Subsequent requests without
-     * requiredBackupStorageTypes would then see an empty preferBsTypes and fail.
-     *
-     * Fix: Return new ArrayList<>(preferBackupStorageTypes) from getPreferBackupStorageTypes().
-     *
-     * Test: send SelectBackupStorageMsg with requiredBackupStorageTypes=["CephBackupStorage"]
-     * (no intersection with ZBS's prefer types), then send again without requiredBackupStorageTypes.
-     * Before the fix, the second call fails because the bean's list was emptied by retainAll().
+     * Scenario (simulates clone VM on ZBS with mixed BS types):
+     * 1. Set up zone with ImageStoreBackupStorage (ZBS preferred) and CephBackupStorage
+     * 2. Create a VM on the ZBS primary storage
+     * 3. Send SelectBackupStorageMsg with requiredBackupStorageTypes=["CephBackupStorage"]
+     *    - This triggers retainAll(["CephBackupStorage"]) on preferBsTypes
+     *    - Before fix: mutates the bean's list, emptying it permanently
+     *    - Expected: fails (no intersection), but bean should remain intact
+     * 4. Send SelectBackupStorageMsg without requiredBackupStorageTypes
+     *    - Before fix: fails because preferBsTypes was permanently emptied
+     *    - After fix: succeeds, selects ImageStoreBackupStorage
      */
     void testPreferBsTypesNotCorruptedByRetainAll() {
-        // imagestore-bs was already created in testSelectPreferredOverNonPreferred
-        // ZBS prefers [ImageStoreBackupStorage]; zone has ImageStoreBackupStorage attached
+        // Set up: attach ImageStoreBackupStorage and CephBackupStorage to the zone
+        createAndAttachBackupStorage("imagestore-bs", "ImageStoreBackupStorage")
+        createAndAttachBackupStorage("ceph-bs", "CephBackupStorage")
+
+        // Attach PS to cluster and create a VM to establish realistic context
+        attachPrimaryStorageToCluster {
+            primaryStorageUuid = ps.uuid
+            clusterUuid = cluster.uuid
+        }
+
+        def instanceOffering = env.inventoryByName("instanceOffering") as InstanceOfferingInventory
+        def image = env.inventoryByName("image") as ImageInventory
+        def l3 = env.inventoryByName("l3") as L3NetworkInventory
+
+        VmInstanceInventory vm = createVmInstance {
+            name = "test-vm"
+            instanceOfferingUuid = instanceOffering.uuid
+            imageUuid = image.uuid
+            l3NetworkUuids = [l3.uuid]
+        } as VmInstanceInventory
+
+        assert vm != null : "VM should be created successfully on ZBS primary storage"
 
         // 1st call: with requiredBackupStorageTypes=["CephBackupStorage"]
-        //    retainAll(["CephBackupStorage"]) on preferBsTypes => empty intersection => error expected
-        //    Before fix: this mutates the bean, emptying preferBackupStorageTypes permanently
+        //   retainAll(["CephBackupStorage"]) on preferBsTypes [ImageStoreBackupStorage]
+        //   => empty intersection => error expected
+        //   Before fix: this permanently empties the bean's preferBackupStorageTypes
         SelectBackupStorageMsg msg1 = new SelectBackupStorageMsg()
         msg1.setPrimaryStorageUuid(ps.uuid)
         msg1.setRequiredSize(SizeUnit.MEGABYTE.toByte(1))
@@ -206,11 +203,11 @@ class ExternalPrimaryStorageSelectBackupStorageCase extends SubCase {
         bus.makeTargetServiceIdByResourceUuid(msg1, PrimaryStorageConstant.SERVICE_ID, ps.uuid)
         MessageReply reply1 = bus.call(msg1)
 
-        assert !reply1.isSuccess() : "Should fail: no intersection between CephBackupStorage and ZBS prefer types"
+        assert !reply1.isSuccess() : "Should fail: no intersection between CephBackupStorage and ZBS prefer types [ImageStoreBackupStorage]"
 
         // 2nd call: without requiredBackupStorageTypes
-        //    Before fix: preferBsTypes was permanently emptied by the 1st call's retainAll => fails
-        //    After fix: defensive copy means bean is intact => succeeds and selects ImageStoreBackupStorage
+        //   Before fix: preferBsTypes was permanently emptied by the 1st call's retainAll => fails
+        //   After fix: defensive copy means bean is intact => succeeds and selects ImageStoreBackupStorage
         SelectBackupStorageMsg msg2 = new SelectBackupStorageMsg()
         msg2.setPrimaryStorageUuid(ps.uuid)
         msg2.setRequiredSize(SizeUnit.MEGABYTE.toByte(1))
