@@ -132,6 +132,7 @@ class ExternalPrimaryStorageSelectBackupStorageCase extends SubCase {
 
             testErrorWhenNoPreferredTypeAvailable()
             testSelectPreferredOverNonPreferred()
+            testPreferBsTypesNotCorruptedByRetainAll()
         }
     }
 
@@ -174,6 +175,55 @@ class ExternalPrimaryStorageSelectBackupStorageCase extends SubCase {
         assert bsReply.inventory != null
         assert bsReply.inventory.type == "ImageStoreBackupStorage" :
                 "Should select preferred ImageStoreBackupStorage, but got ${bsReply.inventory.type}"
+    }
+
+    /**
+     * Reproduces ZSTAC-80789: getPreferBackupStorageTypes() must return a defensive copy.
+     *
+     * Bug: ZbsStorageFactory/ExponStorageFactory/XInfiniStorageFactory returned a direct
+     * reference to their internal preferBackupStorageTypes list. When SelectBackupStorageMsg
+     * carried requiredBackupStorageTypes, the handler called retainAll() on the returned list,
+     * permanently mutating the bean's internal state. Subsequent requests without
+     * requiredBackupStorageTypes would then see an empty preferBsTypes and fail.
+     *
+     * Fix: Return new ArrayList<>(preferBackupStorageTypes) from getPreferBackupStorageTypes().
+     *
+     * Test: send SelectBackupStorageMsg with requiredBackupStorageTypes=["CephBackupStorage"]
+     * (no intersection with ZBS's prefer types), then send again without requiredBackupStorageTypes.
+     * Before the fix, the second call fails because the bean's list was emptied by retainAll().
+     */
+    void testPreferBsTypesNotCorruptedByRetainAll() {
+        // imagestore-bs was already created in testSelectPreferredOverNonPreferred
+        // ZBS prefers [ImageStoreBackupStorage]; zone has ImageStoreBackupStorage attached
+
+        // 1st call: with requiredBackupStorageTypes=["CephBackupStorage"]
+        //    retainAll(["CephBackupStorage"]) on preferBsTypes => empty intersection => error expected
+        //    Before fix: this mutates the bean, emptying preferBackupStorageTypes permanently
+        SelectBackupStorageMsg msg1 = new SelectBackupStorageMsg()
+        msg1.setPrimaryStorageUuid(ps.uuid)
+        msg1.setRequiredSize(SizeUnit.MEGABYTE.toByte(1))
+        msg1.setRequiredBackupStorageTypes(["CephBackupStorage"])
+        bus.makeTargetServiceIdByResourceUuid(msg1, PrimaryStorageConstant.SERVICE_ID, ps.uuid)
+        MessageReply reply1 = bus.call(msg1)
+
+        assert !reply1.isSuccess() : "Should fail: no intersection between CephBackupStorage and ZBS prefer types"
+
+        // 2nd call: without requiredBackupStorageTypes
+        //    Before fix: preferBsTypes was permanently emptied by the 1st call's retainAll => fails
+        //    After fix: defensive copy means bean is intact => succeeds and selects ImageStoreBackupStorage
+        SelectBackupStorageMsg msg2 = new SelectBackupStorageMsg()
+        msg2.setPrimaryStorageUuid(ps.uuid)
+        msg2.setRequiredSize(SizeUnit.MEGABYTE.toByte(1))
+        bus.makeTargetServiceIdByResourceUuid(msg2, PrimaryStorageConstant.SERVICE_ID, ps.uuid)
+        MessageReply reply2 = bus.call(msg2)
+
+        assert reply2.isSuccess() :
+                "ZSTAC-80789: second SelectBackupStorageMsg should succeed but failed - " +
+                "preferBackupStorageTypes was corrupted by previous retainAll()"
+        SelectBackupStorageReply bsReply2 = reply2 as SelectBackupStorageReply
+        assert bsReply2.inventory != null
+        assert bsReply2.inventory.type == "ImageStoreBackupStorage" :
+                "Should select ImageStoreBackupStorage, but got ${bsReply2.inventory.type}"
     }
 
     private void createAndAttachBackupStorage(String name, String type) {
