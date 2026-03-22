@@ -317,4 +317,53 @@
 		<type>java.lang.Boolean</type>
 		<defaultValue>false</defaultValue>
 	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.enabled</name>
+		<description>enable vm metadata</description>
+		<type>java.lang.Boolean</type>
+		<defaultValue>false</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.lastRefreshVersion</name>
+		<description>Last completed upgrade refresh version, prevents duplicate triggers across MNs. Internal use only</description>
+		<type>java.lang.String</type>
+		<defaultValue>5.0.0</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.flush.concurrency</name>
+		<description>Max concurrent metadata flush tasks per management node</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>10</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.flush.pollInterval</name>
+		<description>Metadata dirty poller interval in seconds</description>
+		<type>java.lang.Long</type>
+		<defaultValue>5</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.flush.batchSize</name>
+		<description>Max dirty rows claimed per poll cycle</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>20</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.cleanup.gc.interval</name>
+		<description>Metadata cleanup GC retry interval in hours</description>
+		<type>java.lang.Long</type>
+		<defaultValue>8</defaultValue>
+	</config>
+
 </globalConfig>
