@@ -10,6 +10,7 @@ import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
 import org.zstack.header.vm.VmInstanceMessage;
+import org.zstack.header.vm.metadata.MetadataImpact;
 import org.zstack.header.vm.VmInstanceVO;
 
 /**
@@ -22,6 +23,7 @@ import org.zstack.header.vm.VmInstanceVO;
         responseClass = APICreateVmCdRomEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(value = MetadataImpact.Impact.CONFIG, resolver = "DefaultVmUuidFromApiResolver")
 public class APICreateVmCdRomMsg extends APICreateMessage implements APIAuditor, VmInstanceMessage {
     @APIParam(maxLength = 255)
     private String name;

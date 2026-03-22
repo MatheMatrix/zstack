@@ -317,4 +317,236 @@
 		<type>java.lang.Boolean</type>
 		<defaultValue>false</defaultValue>
 	</config>
+
+	<config>
+		<category>vm</category>
+		<name>deletion.gcInterval</name>
+		<description>update vm metadata interval</description>
+		<type>java.lang.Long</type>
+		<defaultValue>30</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata</name>
+		<description>save vm metadata</description>
+		<type>java.lang.Boolean</type>
+		<defaultValue>false</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.ps.maxConcurrent</name>
+		<description>Max concurrent metadata writes per primary storage per MN. In dual-MN the actual global concurrency per PS = 2 × this value.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>5</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.global.maxConcurrent</name>
+		<description>Max concurrent VM metadata updates globally per MN. In dual-MN the actual global concurrency = 2 × this value.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>10</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.gc.initialDelaySec</name>
+		<description>Initial GC delay in seconds after API success. The first metadata update attempt happens after this delay.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>10</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.maxRetry</name>
+		<description>Max retry count before giving up metadata flush. After this many failed attempts with exponential backoff, the dirty row is deleted and will auto-retry on the next API that modifies this VM.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>5</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.dirty.pollIntervalSec</name>
+		<description>Dirty poller interval in seconds. The poller acts as a safety net to process dirty rows that were not handled by the immediate triggerFlush path (e.g., rows in backoff, orphaned rows after MN crash).</description>
+		<type>java.lang.Long</type>
+		<defaultValue>5</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.dirty.batchSize</name>
+		<description>Max dirty rows to claim per poller cycle. Controls the batch size of CAS claim in each poller round.</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>20</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.upgrade.refreshDelaySec</name>
+		<description>Delay in seconds before full refresh after upgrade, waiting for rolling upgrade to complete</description>
+		<type>java.lang.Long</type>
+		<defaultValue>600</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.upgrade.refreshBatchSize</name>
+		<description>Upgrade full refresh SQL batch size</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>1000</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.nodeLeft.delaySec</name>
+		<description>Delay in seconds after nodeLeft before takeover, reduces zombie MN race condition</description>
+		<type>java.lang.Long</type>
+		<defaultValue>5</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.staleRecovery.intervalSec</name>
+		<description>MetadataStaleRecoveryTask scan interval in seconds</description>
+		<type>java.lang.Long</type>
+		<defaultValue>1800</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.staleRecovery.batchSize</name>
+		<description>MetadataStaleRecoveryTask rows per scan batch</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>100</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.staleRecovery.maxCycles</name>
+		<description>Max consecutive stale recovery cycles per VM before circuit-break</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>10</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.pendingApi.timeoutMinutes</name>
+		<description>Pending API timeout cleanup threshold in minutes</description>
+		<type>java.lang.Long</type>
+		<defaultValue>45</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.retry.baseDelaySeconds</name>
+		<description>Exponential backoff base delay in seconds</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>10</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.retry.maxExponent</name>
+		<description>Exponential backoff max exponent</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>10</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.init.batchSize</name>
+		<description>Batch size per round when enabling metadata (false to true init)</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>200</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.init.batchDelaySec</name>
+		<description>Delay in seconds between init batches to prevent IO storm</description>
+		<type>java.lang.Long</type>
+		<defaultValue>5</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.orphanCheck.intervalSec</name>
+		<description>Orphan metadata detection interval in seconds</description>
+		<type>java.lang.Long</type>
+		<defaultValue>3600</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.zombieClaim.thresholdMinutes</name>
+		<description>Zombie claim threshold in minutes: claimed dirty rows older than this are released</description>
+		<type>java.lang.Long</type>
+		<defaultValue>15</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.staleClaim.thresholdMinutes</name>
+		<description>Stale claim threshold in minutes for background recovery task</description>
+		<type>java.lang.Long</type>
+		<defaultValue>30</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.triggerFlush.staleMinutes</name>
+		<description>Inline stale claim takeover threshold in minutes for triggerFlushForVm hot path</description>
+		<type>java.lang.Long</type>
+		<defaultValue>10</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.delete.maxRetry</name>
+		<description>Max retry count for deleteMetadata in ExpungeVmInstanceFlow</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>3</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.delete.baseDelaySec</name>
+		<description>Base delay in seconds for deleteMetadata retry backoff</description>
+		<type>java.lang.Long</type>
+		<defaultValue>30</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.lastRefreshVersion</name>
+		<description>Last completed upgrade refresh version, prevents duplicate triggers across MNs. Internal use only</description>
+		<type>java.lang.String</type>
+		<defaultValue></defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.contentCheck.intervalSec</name>
+		<description>Metadata content drift detection interval in seconds (default 6h)</description>
+		<type>java.lang.Long</type>
+		<defaultValue>21600</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.contentCheck.batchSize</name>
+		<description>Batch size for metadata content drift detection keyset pagination</description>
+		<type>java.lang.Integer</type>
+		<defaultValue>50</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.storageOrphanCheck.intervalSec</name>
+		<description>Storage-level orphan metadata detection interval in seconds. Scans primary storages for metadata files whose VM no longer exists or has migrated away.</description>
+		<type>java.lang.Long</type>
+		<defaultValue>3600</defaultValue>
+	</config>
 </globalConfig>
