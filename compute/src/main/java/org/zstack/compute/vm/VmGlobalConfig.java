@@ -133,4 +133,9 @@ public class VmGlobalConfig {
     @GlobalConfigValidation(validValues = {"None", "AuthenticAMD"})
     @BindResourceConfig(value = {VmInstanceVO.class})
     public static GlobalConfig VM_CPUID_VENDOR = new GlobalConfig(CATEGORY, "vm.cpuid.vendor");
+
+    @GlobalConfigValidation(validValues = {"true", "false"})
+    public static GlobalConfig VM_METADATA = new GlobalConfig(CATEGORY, "vm.metadata.enabled");
+
+    public static GlobalConfig VM_METADATA_LAST_REFRESH_VERSION = new GlobalConfig(CATEGORY, "vm.metadata.lastRefreshVersion");
 }
