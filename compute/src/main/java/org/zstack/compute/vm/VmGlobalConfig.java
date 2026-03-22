@@ -133,4 +133,40 @@ public class VmGlobalConfig {
     @GlobalConfigValidation(validValues = {"None", "AuthenticAMD"})
     @BindResourceConfig(value = {VmInstanceVO.class})
     public static GlobalConfig VM_CPUID_VENDOR = new GlobalConfig(CATEGORY, "vm.cpuid.vendor");
+
+    @GlobalConfigValidation(validValues = {"true", "false"})
+    public static GlobalConfig VM_METADATA_ENABLED = new GlobalConfig(CATEGORY, "vm.metadata.enabled");
+
+    @GlobalConfigValidation()
+    public static GlobalConfig VM_METADATA_LAST_REFRESH_VERSION = new GlobalConfig(CATEGORY, "vm.metadata.lastRefreshVersion");
+
+    @GlobalConfigValidation(numberGreaterThan = 0, numberLessThan = 100)
+    public static GlobalConfig VM_METADATA_FLUSH_CONCURRENCY = new GlobalConfig(CATEGORY, "vm.metadata.flush.concurrency");
+
+    @GlobalConfigValidation(numberGreaterThan = 0, numberLessThan = 300)
+    public static GlobalConfig VM_METADATA_FLUSH_POLL_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.flush.pollInterval");
+
+    @GlobalConfigValidation(numberGreaterThan = 0, numberLessThan = 1000)
+    public static GlobalConfig VM_METADATA_FLUSH_BATCH_SIZE = new GlobalConfig(CATEGORY, "vm.metadata.flush.batchSize");
+
+    @GlobalConfigValidation(numberGreaterThan = 0, numberLessThan = 168)
+    public static GlobalConfig VM_METADATA_CLEANUP_GC_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.cleanup.gc.interval");
+
+    @GlobalConfigValidation(numberGreaterThan = 0, numberLessThan = 100)
+    public static GlobalConfig VM_METADATA_FLUSH_MAX_RETRY = new GlobalConfig(CATEGORY, "vm.metadata.flush.maxRetry");
+
+    @GlobalConfigValidation(numberGreaterThan = 0, numberLessThan = 120)
+    public static GlobalConfig VM_METADATA_FLUSH_ZOMBIE_CLAIM_THRESHOLD = new GlobalConfig(CATEGORY, "vm.metadata.flush.zombieClaimThreshold");
+
+    @GlobalConfigValidation(numberGreaterThan = 0, numberLessThan = 86400)
+    public static GlobalConfig VM_METADATA_MAINTENANCE_CONTENT_DRIFT_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.maintenance.contentDriftInterval");
+
+    @GlobalConfigValidation(numberGreaterThan = 0, numberLessThan = 86400)
+    public static GlobalConfig VM_METADATA_MAINTENANCE_STALE_RECOVERY_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.maintenance.staleRecoveryInterval");
+
+    @GlobalConfigValidation(numberGreaterThan = 0, numberLessThan = 1000)
+    public static GlobalConfig VM_METADATA_MAINTENANCE_STALE_RECOVERY_MAX_CYCLES = new GlobalConfig(CATEGORY, "vm.metadata.maintenance.staleRecoveryMaxCycles");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig VM_METADATA_PAYLOAD_REJECT_THRESHOLD = new GlobalConfig(CATEGORY, "vm.metadata.payload.rejectThreshold");
 }
