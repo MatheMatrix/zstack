@@ -9,6 +9,7 @@ import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.other.APIAuditor;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.tag.TagResourceType;
+import org.zstack.header.vm.metadata.MetadataImpact;
 
 
 @TagResourceType(VmNicVO.class)
@@ -18,6 +19,7 @@ import org.zstack.header.tag.TagResourceType;
         responseClass = APICreateVmNicEvent.class,
         parameterName = "params"
 )
+@MetadataImpact(value = MetadataImpact.Impact.CONFIG, resolver = "DefaultVmUuidFromApiResolver")
 public class APICreateVmNicMsg extends APICreateMessage implements APIAuditor {
 
     /**

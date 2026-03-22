@@ -30,7 +30,8 @@ public enum VmInstanceState {
     Error(null),
     NoState(VmInstanceStateEvent.noState),
     Unknown(VmInstanceStateEvent.unknown),
-    Crashed(VmInstanceStateEvent.crashed);
+    Crashed(VmInstanceStateEvent.crashed),
+    Registering(null);
 
     public static List<VmInstanceState> intermediateStates = new ArrayList<>();
 
@@ -52,6 +53,7 @@ public enum VmInstanceState {
         offlineStates.add(Destroyed);
         offlineStates.add(VolumeMigrating);
         offlineStates.add(Crashed);
+        offlineStates.add(Registering);
 
         Created.transactions(
                 new Transaction(VmInstanceStateEvent.starting, VmInstanceState.Starting),
