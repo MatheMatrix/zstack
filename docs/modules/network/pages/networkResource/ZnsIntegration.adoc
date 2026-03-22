@@ -81,6 +81,50 @@ ZNS 侧需保证同一个 cluster 内所有 node 的 `transportNodeProfileId` �
 ** `HostSwitchProfileData.type`：枚举值 `dpdk` 或 `kernel`，用于推导 `SdnControllerHostRefVO.vSwitchType`
 ** `HostSwitchProfileData.transportZoneIds`：关联的 transport zone UUID 列表，建立反向缓存 `transportZoneUuid → Set<clusterUuid>`
 
+* 调用 `GET /zns/api/v1/fabric/transport-zones` 获取 transport zone 列表，并缓存到当前 `ZnsSdnControllerVO` 关联的数据中。建议新增 `ZnsTransportZone` 数据表，主要字段如下：
++
+[cols="2,3,2"]
+|===
+|字段 |来源 |说明
+
+|`isDefault`
+|transport zone 返回字段
+|是否为默认 transport zone
+
+|`description`
+|transport zone 返回字段
+|描述信息
+
+|`name`
+|transport zone 返回字段
+|transport zone 名称
+
+|`physicalNetwork`
+|transport zone 返回字段
+|物理网络标识
+
+|`status`
+|transport zone 返回字段
+|当前状态
+
+|`tags`
+|transport zone 返回字段
+|标签信息
+
+|`type`
+|transport zone 返回字段
+|类型，典型值为 `vlan` 或 `overlay`
+
+|`znsSdnControllerUuid`
+|当前 `ZnsSdnControllerVO.uuid`
+|外键，关联到所属 ZNS SDN Controller
+
+|===
+
+[NOTE]
+这里的缓存不只是 `transportZoneUuid → Set<clusterUuid>` 反向索引，还包括 transport zone 自身的元数据。
+前者用于根据 host/profile 关系反查 cluster，后者用于后续创建 Cloud L2Network 时选择默认 transport zone，并为 `segment.transport_zone_uuid` 的解释提供基础数据。
+
 [NOTE]
 OpenAPI 中 `HostSwitchProfileData` 同时有 `type`（枚举：`dpdk | kernel`）和 `switchType`（字符串描述，如 `"OVS"`）两个字段。
 推导 `vSwitchType` 使用的是 `type` 枚举字段。
@@ -101,7 +145,9 @@ OpenAPI 中 `HostSwitchProfileData` 同时有 `type`（枚举：`dpdk | kernel`�
 |`ZNS`
 
 |===
-* 以上步骤完成后，Cloud 侧就完成了 SdnControllerHostRefVO 的初始化，建立了 ZNS Host 和 Cloud Host 的映射关系。
+* 以上步骤完成后，Cloud 侧就完成了 SdnControllerHostRefVO 的初始化，同时持有两类 transport zone 缓存：
+** transport zone 元数据缓存：保存到建议新增的 `ZnsTransportZone`
+** `transportZoneUuid → Set<clusterUuid>` 反向缓存：用于 segment 和 cluster 的关联
 * 根据 computerManagerUuid 从 ZNS 获取 segments 列表。
 ** 根据 segment 信息创建 L2Network、L3Network
 ** 根据 segment.ipam 信息创建 IpRange
@@ -279,6 +325,34 @@ ZNS L2Network 的类型定义：
 === 创建 L2Network
 
 处理逻辑类似 OVN Controller，但调用 ZNS API 创建 segment。
+
+创建 ZNS 二层网络时，Cloud 需要先根据 L2 类型从已缓存的 transport zone 中选择默认 transport zone：
+
+[cols="2,2,3"]
+|===
+|Cloud L2 类型 |默认 transport zone.type |说明
+
+|`L2VlanNetwork`
+|`vlan`
+|LAN 网络默认使用 vlan 类型的 transport zone
+
+|`L2NoVlanNetwork`
+|`vlan`
+|NoVlan 网络默认使用 vlan 类型的 transport zone
+
+|`L2GeneveNetwork`
+|`overlay`
+|Geneve 网络默认使用 overlay 类型的 transport zone
+
+|===
+
+[NOTE]
+ZNS 基于 OVN 实现，OVN 不能提供类似 Cloud 的 cluster 能力。
+因此 Cloud 创建的 L2Network 在 OVN 侧默认可在该 transport zone 覆盖的全部物理机上使用，而不是由 OVN 提供 cluster 级隔离。
+
+[NOTE]
+Cloud 侧会额外施加一层调度约束：只有二层网络实际加载了某个 cluster 后，该 cluster 中的物理机才允许用于创建虚拟机。
+也就是说，transport zone 决定的是底层网络可达范围，`L2NetworkClusterRefVO` 决定的是 Cloud 侧可调度范围。
 
 ==== APIAttachL2NetworkToClusterMsg / APIDetachL2NetworkFromClusterMsg
 
