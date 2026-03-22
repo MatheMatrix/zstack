@@ -316,8 +316,12 @@ class SdnControllerSpec extends Spec implements HasSession {
                 }
             }
 
-            // GET /zns/api/v1/fabric/compute-managers/{uuid}
-            simulator("/zns/api/v1/fabric/compute-managers/[^/]+") {
+            // GET/DELETE /zns/api/v1/fabric/compute-managers/{uuid}
+            simulator("/zns/api/v1/fabric/compute-managers/[^/]+") { HttpServletRequest req, HttpEntity<String> entity, EnvSpec spec ->
+                if (req.method == "DELETE") {
+                    triggerZnsCallback(entity, spec, [:])
+                    return [:]
+                }
                 return [success: true, data: [uuid: "cm-uuid-1", name: "cm-1", connectionStatus: "connected"]]
             }
 
@@ -359,9 +363,9 @@ class SdnControllerSpec extends Spec implements HasSession {
                 def uri = req.getRequestURI()
                 def hspUuid = uri.tokenize("/").last()
                 if (hspUuid == "hsp-kernel") {
-                    return [success: true, data: [uuid: "hsp-kernel", name: "hsp-kernel", switchType: "kernel"]]
+                    return [success: true, data: [uuid: "hsp-kernel", name: "hsp-kernel", type: "kernel", switchType: "OVS"]]
                 }
-                return [success: true, data: [uuid: "hsp-dpdk", name: "hsp-dpdk", switchType: "dpdk"]]
+                return [success: true, data: [uuid: "hsp-dpdk", name: "hsp-dpdk", type: "dpdk", switchType: "OVS"]]
             }
 
             // /zns/api/v1/segments — GET(list) / POST(create) / DELETE(batch)
