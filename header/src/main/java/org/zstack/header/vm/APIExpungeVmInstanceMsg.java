@@ -5,6 +5,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.DefaultTimeout;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.metadata.MetadataImpact;
 
 import java.util.concurrent.TimeUnit;
 
@@ -18,6 +19,7 @@ import java.util.concurrent.TimeUnit;
         method = HttpMethod.PUT
 )
 @DefaultTimeout(timeunit = TimeUnit.HOURS, value = 3)
+@MetadataImpact(value = MetadataImpact.Impact.STORAGE, resolver = "vmUuidDirectResolver", field = "uuid")
 public class APIExpungeVmInstanceMsg extends APIMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmInstanceVO.class)
     private String uuid;
