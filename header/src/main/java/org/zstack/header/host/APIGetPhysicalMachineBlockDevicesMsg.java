@@ -13,7 +13,7 @@ import java.util.List;
         method = HttpMethod.GET,
         responseClass = APIGetPhysicalMachineBlockDevicesReply.class
 )
-    public class APIGetPhysicalMachineBlockDevicesMsg extends APISyncCallMessage {
+public class APIGetPhysicalMachineBlockDevicesMsg extends APISyncCallMessage {
     @APIParam(maxLength = 255)
     private String username;
     @APIParam(required = false, maxLength = 255)

@@ -317,4 +317,28 @@
 		<type>java.lang.Boolean</type>
 		<defaultValue>false</defaultValue>
 	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.enabled</name>
+		<description>enable vm metadata</description>
+		<type>java.lang.Boolean</type>
+		<defaultValue>false</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.lastRefreshVersion</name>
+		<description>Last completed upgrade refresh version, prevents duplicate triggers across MNs. Internal use only</description>
+		<type>java.lang.String</type>
+		<defaultValue>5.0.0</defaultValue>
+	</config>
+
+	<config>
+		<category>vm</category>
+		<name>vm.metadata.cleanup.gcIntervalSec</name>
+		<description>GC retry interval in seconds for metadata cleanup that failed during VM expunge</description>
+		<type>java.lang.Long</type>
+		<defaultValue>300</defaultValue>
+	</config>
 </globalConfig>
