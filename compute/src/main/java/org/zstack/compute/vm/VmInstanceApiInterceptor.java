@@ -29,8 +29,10 @@ import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO_;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.cdrom.*;
+import org.zstack.header.vm.metadata.APIRegisterVmInstanceFromMetadataMsg;
 import org.zstack.header.vm.devices.VmInstanceResourceMetadataGroupVO;
 import org.zstack.header.vm.devices.VmInstanceResourceMetadataGroupVO_;
+import org.zstack.header.vm.metadata.VmInstanceMetadataConstants;
 import org.zstack.header.volume.*;
 import org.zstack.network.l2.L2NetworkHostUtils;
 import org.zstack.resourceconfig.ResourceConfigFacade;
@@ -166,6 +168,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             validate((APIConvertTemplatedVmInstanceToVmInstanceMsg) msg);
         } else if (msg instanceof APIDeleteTemplatedVmInstanceMsg) {
             validate((APIDeleteTemplatedVmInstanceMsg) msg);
+        } else if (msg instanceof APIRegisterVmInstanceFromMetadataMsg) {
+            validate((APIRegisterVmInstanceFromMetadataMsg) msg);
         }
 
         if (msg instanceof NewVmInstanceMessage2) {
@@ -1317,5 +1321,43 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     "vm[uuid:%s] can only fstrim when state is Running, current state is %s", msg.getUuid(), state));
         }
         msg.setHostUuid(t.get(1, String.class));
+    }
+
+    private void validate(APIRegisterVmInstanceFromMetadataMsg msg) {
+        String path = msg.getMetadataPath();
+        if (path == null || path.isEmpty()) {
+            throw new ApiMessageInterceptionException(argerr("metadataPath cannot be empty"));
+        }
+
+        validateMetadataPath(path);
+
+        if (!(path.endsWith(VmInstanceMetadataConstants.FILE_METADATA_SUFFIX) || path.endsWith(VmInstanceMetadataConstants.SBLK_METADATA_LV_SUFFIX))) {
+            throw new ApiMessageInterceptionException(argerr("metadataPath must end with %s or %s",
+                    VmInstanceMetadataConstants.FILE_METADATA_SUFFIX, VmInstanceMetadataConstants.SBLK_METADATA_LV_SUFFIX));
+        }
+    }
+
+    private void validateMetadataPath(String path) {
+        if (!path.startsWith("/")) {
+            throw new ApiMessageInterceptionException(argerr("metadataPath must be an absolute path starting with '/'"));
+        }
+
+        if (path.contains("..")) {
+            throw new ApiMessageInterceptionException(argerr(
+                    "metadataPath contains illegal '..' sequence, path traversal is not allowed"));
+        }
+
+        if (path.contains("//")) {
+            throw new ApiMessageInterceptionException(argerr(
+                    "metadataPath contains illegal '//' sequence"));
+        }
+
+        // Only allow safe characters: alphanumeric, hyphen, underscore, period, forward slash
+        String safePattern = "^[a-zA-Z0-9_\\-./]+$";
+        if (!path.matches(safePattern)) {
+            throw new ApiMessageInterceptionException(argerr(
+                    "metadataPath contains illegal characters, only alphanumeric characters, " +
+                            "hyphen (-), underscore (_), period (.), and forward slash (/) are allowed"));
+        }
     }
 }
