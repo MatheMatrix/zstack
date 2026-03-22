@@ -6,6 +6,7 @@ import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.vm.VmInstanceMessage;
+import org.zstack.header.vm.metadata.MetadataImpact;
 
 /**
  * Create by lining at 2018/12/30
@@ -16,6 +17,7 @@ import org.zstack.header.vm.VmInstanceMessage;
         isAction = true,
         responseClass = APIUpdateVmCdRomEvent.class
 )
+@MetadataImpact(value = MetadataImpact.Impact.CONFIG, resolver = "DefaultVmUuidFromApiResolver")
 public class APIUpdateVmCdRomMsg extends APIMessage implements VmInstanceMessage {
     @APIParam(resourceType = VmCdRomVO.class)
     private String uuid;
