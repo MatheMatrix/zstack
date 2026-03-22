@@ -23,14 +23,19 @@ import org.zstack.header.network.l2.*;
 import org.zstack.header.network.l3.*;
 import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO;
 import org.zstack.header.storage.primary.PrimaryStorageClusterRefVO_;
+import org.zstack.header.storage.primary.PrimaryStorageVO;
+import org.zstack.header.storage.primary.PrimaryStorageVO_;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO_;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.cdrom.*;
+import org.zstack.header.vm.metadata.APIRegisterVmInstanceFromMetadataMsg;
 import org.zstack.header.vm.devices.VmInstanceResourceMetadataGroupVO;
 import org.zstack.header.vm.devices.VmInstanceResourceMetadataGroupVO_;
+import org.zstack.header.vm.metadata.VmInstanceMetadataConstants;
+import org.zstack.header.vm.metadata.VmMetadataPathBuildExtensionPoint;
 import org.zstack.header.volume.*;
 import org.zstack.network.l2.L2NetworkHostUtils;
 import org.zstack.resourceconfig.ResourceConfigFacade;
@@ -166,6 +171,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             validate((APIConvertTemplatedVmInstanceToVmInstanceMsg) msg);
         } else if (msg instanceof APIDeleteTemplatedVmInstanceMsg) {
             validate((APIDeleteTemplatedVmInstanceMsg) msg);
+        } else if (msg instanceof APIRegisterVmInstanceFromMetadataMsg) {
+            validate((APIRegisterVmInstanceFromMetadataMsg) msg);
         }
 
         if (msg instanceof NewVmInstanceMessage2) {
@@ -410,6 +417,13 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
 
         if (vo.getState() != VmInstanceState.Stopped) {
             throw new ApiMessageInterceptionException(argerr("vm nic driver type can be updated only when the vm is stopped"));
+        }
+
+        boolean isConsistent = Q.New(VmNicVO.class).eq(VmNicVO_.uuid, msg.getVmNicUuid())
+                .eq(VmNicVO_.vmInstanceUuid, msg.getVmInstanceUuid()).isExists();
+        if (!isConsistent) {
+            throw new ApiMessageInterceptionException(argerr("vmNicUuid[%s] does not belong to vmInstanceUuid[%s]",
+                    msg.getVmNicUuid(), msg.getVmInstanceUuid()));
         }
     }
 
@@ -1318,5 +1332,35 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
                     "vm[uuid:%s] can only fstrim when state is Running, current state is %s", msg.getUuid(), state));
         }
         msg.setHostUuid(t.get(1, String.class));
+    }
+
+    private void validate(APIRegisterVmInstanceFromMetadataMsg msg) {
+        String path = msg.getMetadataPath();
+        if (StringUtils.isEmpty(path)) {
+            throw new ApiMessageInterceptionException(argerr("metadataPath cannot be empty or null"));
+        }
+
+        // Delegate path validation to the storage-type-specific extension
+        String psUuid = msg.getPrimaryStorageUuid();
+        String psType = Q.New(PrimaryStorageVO.class)
+                .select(PrimaryStorageVO_.type)
+                .eq(PrimaryStorageVO_.uuid, psUuid)
+                .findValue();
+        if (psType == null) {
+            throw new ApiMessageInterceptionException(argerr(
+                    "primary storage[uuid:%s] not found", psUuid));
+        }
+
+        VmMetadataPathBuildExtensionPoint ext =
+                pluginRgty.getExtensionFromMap(psType, VmMetadataPathBuildExtensionPoint.class);
+        if (ext == null) {
+            throw new ApiMessageInterceptionException(argerr(
+                    "primary storage[uuid:%s, type:%s] does not support vm metadata", psUuid, psType));
+        }
+
+        String error = ext.validateMetadataPath(psUuid, path);
+        if (error != null) {
+            throw new ApiMessageInterceptionException(argerr(error));
+        }
     }
 }
