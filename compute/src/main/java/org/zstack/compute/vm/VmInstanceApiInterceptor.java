@@ -29,6 +29,7 @@ import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO_;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.cdrom.*;
+import org.zstack.header.vm.metadata.APIRegisterVmInstanceFromMetadataMsg;
 import org.zstack.header.vm.devices.VmInstanceResourceMetadataGroupVO;
 import org.zstack.header.vm.devices.VmInstanceResourceMetadataGroupVO_;
 import org.zstack.header.volume.*;
@@ -166,6 +167,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             validate((APIConvertTemplatedVmInstanceToVmInstanceMsg) msg);
         } else if (msg instanceof APIDeleteTemplatedVmInstanceMsg) {
             validate((APIDeleteTemplatedVmInstanceMsg) msg);
+        } else if (msg instanceof APIRegisterVmInstanceFromMetadataMsg) {
+            validate((APIRegisterVmInstanceFromMetadataMsg) msg);
         }
 
         if (msg instanceof NewVmInstanceMessage2) {
@@ -183,6 +186,35 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             APIDeleteTemplatedVmInstanceEvent evt = new APIDeleteTemplatedVmInstanceEvent(msg.getId());
             bus.publish(evt);
             throw new StopRoutingException();
+        }
+    }
+
+    private void validate(APIRegisterVmInstanceFromMetadataMsg msg) {
+        String path = msg.getMetadataPath();
+        if (path == null || path.isEmpty()) {
+            throw new ApiMessageInterceptionException(argerr("metadataPath cannot be empty"));
+        }
+
+        if (!path.startsWith("/")) {
+            throw new ApiMessageInterceptionException(argerr("metadataPath must be an absolute path starting with '/'"));
+        }
+
+        if (path.contains("..")) {
+            throw new ApiMessageInterceptionException(argerr(
+                    "metadataPath contains illegal '..' sequence, path traversal is not allowed"));
+        }
+
+        if (path.contains("//")) {
+            throw new ApiMessageInterceptionException(argerr(
+                    "metadataPath contains illegal '//' sequence"));
+        }
+
+        // Only allow safe characters: alphanumeric, hyphen, underscore, period, forward slash
+        String safePattern = "^[a-zA-Z0-9_\\-./]+$";
+        if (!path.matches(safePattern)) {
+            throw new ApiMessageInterceptionException(argerr(
+                    "metadataPath contains illegal characters, only alphanumeric characters, " +
+                            "hyphen (-), underscore (_), period (.), and forward slash (/) are allowed"));
         }
     }
 

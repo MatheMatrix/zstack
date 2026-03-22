@@ -1,0 +1,38 @@
+package org.zstack.header.vm.metadata
+
+import org.zstack.header.vm.VmInstanceInventory
+import org.zstack.header.errorcode.ErrorCode
+
+doc {
+
+	title "从元数据注册云主机返回"
+
+	ref {
+		name "inventory"
+		path "org.zstack.header.vm.metadata.APIRegisterVmInstanceFromMetadataEvent.inventory"
+		desc "云主机详情"
+		type "VmInstanceInventory"
+		since "5.0.0"
+		clz VmInstanceInventory.class
+	}
+	field {
+		name "warnings"
+		desc "注册过程中的警告信息列表"
+		type "List"
+		since "5.0.0"
+	}
+	field {
+		name "success"
+		desc "操作是否成功"
+		type "boolean"
+		since "5.0.0"
+	}
+	ref {
+		name "error"
+		path "org.zstack.header.vm.metadata.APIRegisterVmInstanceFromMetadataEvent.error"
+		desc "错误码，若不为null，则表示操作失败, 操作成功时该字段为null"
+		type "ErrorCode"
+		since "5.0.0"
+		clz ErrorCode.class
+	}
+}

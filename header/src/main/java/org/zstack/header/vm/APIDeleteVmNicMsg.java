@@ -4,12 +4,14 @@ import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIDeleteMessage;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.rest.RestRequest;
+import org.zstack.header.vm.metadata.MetadataImpact;
 
 @RestRequest(
         path = "/nics/{uuid}",
         method = HttpMethod.DELETE,
         responseClass = APIDeleteVmNicEvent.class
 )
+@MetadataImpact(value = MetadataImpact.Impact.CONFIG, resolver = "PreCaptureNicBasedVmUuidFromApiResolver")
 public class APIDeleteVmNicMsg extends APIDeleteMessage {
 
     @APIParam(resourceType = VmNicVO.class, successIfResourceNotExisting = true)
