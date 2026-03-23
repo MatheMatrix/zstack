@@ -17,7 +17,6 @@ import org.zstack.header.storage.primary.PrimaryStorageHostRefVO
 import org.zstack.header.storage.primary.PrimaryStorageHostRefVO_
 import org.zstack.header.storage.primary.PrimaryStorageStatus
 import org.zstack.header.storage.primary.SelectBackupStorageMsg
-import org.zstack.header.storage.primary.SelectBackupStorageReply
 import org.zstack.header.message.MessageReply
 import org.zstack.storage.zbs.MdsStatus
 import org.zstack.storage.zbs.MdsUri
@@ -187,7 +186,7 @@ class ZbsPrimaryStorageCase extends SubCase {
             testDataVolumeNegativeScenario()
             testDecodeMdsUriWithSpecialPassword()
             testMdsReconnectAfterMaximumPingFailures()
-            testPreferBsTypesNotCorruptedByRetainAll()
+            testCloneVmNotCorruptPreferBsTypes()
         }
     }
 
@@ -864,20 +863,32 @@ class ZbsPrimaryStorageCase extends SubCase {
     }
 
     /**
-     * ZSTAC-80789: getPreferBackupStorageTypes() must return a defensive copy.
+     * ZSTAC-80789: Clone VM with a target PS whose required BS types differ from
+     * the current PS's preferred BS types corrupts the Factory bean.
      *
-     * Bug: ZbsStorageFactory returned a direct reference to its internal
-     * preferBackupStorageTypes list. When SelectBackupStorageMsg carried
-     * requiredBackupStorageTypes, the handler called retainAll() on that list,
-     * permanently mutating the bean. Subsequent requests would see an empty
-     * preferBsTypes and fail with a different error code.
+     * Reproduction path (MevocoVmInstanceBase.java "allocate-bs" flow):
+     *   1. Clone VM (full=true) with primaryStorageUuidForRootVolume pointing to
+     *      a PS that requires "CephBackupStorage"
+     *   2. MevocoVmInstanceBase calls getRequiredBackupStorageTypes(requiredPsUuid)
+     *      and sets requiredBackupStorageTypes=["CephBackupStorage"] on SelectBackupStorageMsg
+     *   3. ExternalPrimaryStorage.handle(SelectBackupStorageMsg) calls
+     *      retainAll(requiredTypes) directly on the ZbsStorageFactory bean's
+     *      preferBackupStorageTypes list (which is ["ImageStoreBackupStorage"])
+     *   4. retainAll empties the bean's list permanently (no intersection)
+     *   5. Next clone (without specifying target PS) fails because the factory
+     *      bean now reports empty preferBsTypes
+     *
+     * This test simulates the exact SelectBackupStorageMsg that MevocoVmInstanceBase
+     * sends during the "allocate-bs" flow, verifying the bean is not corrupted.
      */
-    void testPreferBsTypesNotCorruptedByRetainAll() {
+    void testCloneVmNotCorruptPreferBsTypes() {
         def bus = bean(CloudBus.class)
 
-        // 1st call: requiredBackupStorageTypes=["CephBackupStorage"]
-        // No intersection with ZBS prefer types [ImageStoreBackupStorage] => error expected
-        // Before fix: retainAll empties the bean's internal list permanently
+        // Simulate 1st clone: target PS requires "CephBackupStorage" (e.g. Ceph PS)
+        // This is what MevocoVmInstanceBase sends when primaryStorageUuidForRootVolume
+        // points to a Ceph PS — getRequiredBackupStorageTypes() returns ["CephBackupStorage"]
+        // No intersection with ZBS prefer types ["ImageStoreBackupStorage"] => should fail
+        // Before fix: retainAll() empties the bean's internal list permanently
         SelectBackupStorageMsg msg1 = new SelectBackupStorageMsg()
         msg1.setPrimaryStorageUuid(ps.uuid)
         msg1.setRequiredSize(SizeUnit.MEGABYTE.toByte(1))
@@ -885,14 +896,13 @@ class ZbsPrimaryStorageCase extends SubCase {
         bus.makeTargetServiceIdByResourceUuid(msg1, PrimaryStorageConstant.SERVICE_ID, ps.uuid)
         MessageReply reply1 = bus.call(msg1)
 
-        assert !reply1.isSuccess(): "Should fail: no intersection between CephBackupStorage and ZBS prefer types"
-        String error1 = (reply1 as SelectBackupStorageReply).error.details
+        assert !reply1.isSuccess(): "1st clone should fail: no intersection between CephBackupStorage and ZBS prefer types"
+        String error1 = reply1.error.details
 
-        // 2nd call: same as 1st (with requiredBackupStorageTypes=["CephBackupStorage"])
-        // Before fix: bean was corrupted, preferBsTypes is empty => error code is
-        //   "no backup storage type specified" (ADDON_PRIMARY_10010), NOT the normal
-        //   "no intersection" error — because the prefer list itself is empty
-        // After fix: defensive copy means bean is intact => same error as 1st call
+        // Simulate 2nd clone: same requiredBackupStorageTypes to verify bean not corrupted
+        // Before fix: bean corrupted — preferBsTypes is empty — fails with
+        //   "no backup storage type specified" (a different error than above)
+        // After fix: defensive copy keeps bean intact — same error as 1st clone
         SelectBackupStorageMsg msg2 = new SelectBackupStorageMsg()
         msg2.setPrimaryStorageUuid(ps.uuid)
         msg2.setRequiredSize(SizeUnit.MEGABYTE.toByte(1))
@@ -900,13 +910,13 @@ class ZbsPrimaryStorageCase extends SubCase {
         bus.makeTargetServiceIdByResourceUuid(msg2, PrimaryStorageConstant.SERVICE_ID, ps.uuid)
         MessageReply reply2 = bus.call(msg2)
 
-        assert !reply2.isSuccess(): "Should fail: still no intersection"
-        String error2 = (reply2 as SelectBackupStorageReply).error.details
+        assert !reply2.isSuccess(): "2nd clone should fail: still no intersection"
+        String error2 = reply2.error.details
 
-        // Key assertion: both calls should produce the same error
-        // Before fix: 1st call gets "Didn't find any available backup storage"
-        //             2nd call gets "no backup storage type specified" (bean corrupted)
-        // After fix: both calls get the same error message
+        // Key assertion: both calls must produce the same error
+        // Before fix: 1st gets "Didn't find any available backup storage"
+        //             2nd gets "no backup storage type specified" (bean corrupted)
+        // After fix: both get the same error (bean not corrupted)
         assert error1 == error2:
                 "ZSTAC-80789: error messages differ between 1st and 2nd call, " +
                 "indicating preferBackupStorageTypes was corrupted by retainAll(). " +
