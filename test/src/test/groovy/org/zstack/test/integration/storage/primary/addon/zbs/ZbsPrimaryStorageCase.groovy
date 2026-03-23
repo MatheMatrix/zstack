@@ -1,6 +1,7 @@
 package org.zstack.test.integration.storage.primary.addon.zbs
 
 import org.springframework.http.HttpEntity
+import org.zstack.core.cloudbus.CloudBus
 import org.zstack.core.cloudbus.EventCallback
 import org.zstack.core.cloudbus.EventFacade
 import org.zstack.core.db.DatabaseFacade
@@ -11,9 +12,13 @@ import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageVO_
 import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageSpaceVO_
 import org.zstack.header.storage.primary.PrimaryStorageCapacityVO
 import org.zstack.header.storage.primary.PrimaryStorageCapacityVO_
+import org.zstack.header.storage.primary.PrimaryStorageConstant
 import org.zstack.header.storage.primary.PrimaryStorageHostRefVO
 import org.zstack.header.storage.primary.PrimaryStorageHostRefVO_
 import org.zstack.header.storage.primary.PrimaryStorageStatus
+import org.zstack.header.storage.primary.SelectBackupStorageMsg
+import org.zstack.header.storage.primary.SelectBackupStorageReply
+import org.zstack.header.message.MessageReply
 import org.zstack.storage.zbs.MdsStatus
 import org.zstack.storage.zbs.MdsUri
 import org.zstack.sdk.*
@@ -182,6 +187,7 @@ class ZbsPrimaryStorageCase extends SubCase {
             testDataVolumeNegativeScenario()
             testDecodeMdsUriWithSpecialPassword()
             testMdsReconnectAfterMaximumPingFailures()
+            testPreferBsTypesNotCorruptedByRetainAll()
         }
     }
 
@@ -855,5 +861,55 @@ class ZbsPrimaryStorageCase extends SubCase {
                 .find()
 
         return cap.totalCapacity - cap.availableCapacity
+    }
+
+    /**
+     * ZSTAC-80789: getPreferBackupStorageTypes() must return a defensive copy.
+     *
+     * Bug: ZbsStorageFactory returned a direct reference to its internal
+     * preferBackupStorageTypes list. When SelectBackupStorageMsg carried
+     * requiredBackupStorageTypes, the handler called retainAll() on that list,
+     * permanently mutating the bean. Subsequent requests would see an empty
+     * preferBsTypes and fail with a different error code.
+     */
+    void testPreferBsTypesNotCorruptedByRetainAll() {
+        def bus = bean(CloudBus.class)
+
+        // 1st call: requiredBackupStorageTypes=["CephBackupStorage"]
+        // No intersection with ZBS prefer types [ImageStoreBackupStorage] => error expected
+        // Before fix: retainAll empties the bean's internal list permanently
+        SelectBackupStorageMsg msg1 = new SelectBackupStorageMsg()
+        msg1.setPrimaryStorageUuid(ps.uuid)
+        msg1.setRequiredSize(SizeUnit.MEGABYTE.toByte(1))
+        msg1.setRequiredBackupStorageTypes(["CephBackupStorage"])
+        bus.makeTargetServiceIdByResourceUuid(msg1, PrimaryStorageConstant.SERVICE_ID, ps.uuid)
+        MessageReply reply1 = bus.call(msg1)
+
+        assert !reply1.isSuccess(): "Should fail: no intersection between CephBackupStorage and ZBS prefer types"
+        String error1 = (reply1 as SelectBackupStorageReply).error.details
+
+        // 2nd call: same as 1st (with requiredBackupStorageTypes=["CephBackupStorage"])
+        // Before fix: bean was corrupted, preferBsTypes is empty => error code is
+        //   "no backup storage type specified" (ADDON_PRIMARY_10010), NOT the normal
+        //   "no intersection" error — because the prefer list itself is empty
+        // After fix: defensive copy means bean is intact => same error as 1st call
+        SelectBackupStorageMsg msg2 = new SelectBackupStorageMsg()
+        msg2.setPrimaryStorageUuid(ps.uuid)
+        msg2.setRequiredSize(SizeUnit.MEGABYTE.toByte(1))
+        msg2.setRequiredBackupStorageTypes(["CephBackupStorage"])
+        bus.makeTargetServiceIdByResourceUuid(msg2, PrimaryStorageConstant.SERVICE_ID, ps.uuid)
+        MessageReply reply2 = bus.call(msg2)
+
+        assert !reply2.isSuccess(): "Should fail: still no intersection"
+        String error2 = (reply2 as SelectBackupStorageReply).error.details
+
+        // Key assertion: both calls should produce the same error
+        // Before fix: 1st call gets "Didn't find any available backup storage"
+        //             2nd call gets "no backup storage type specified" (bean corrupted)
+        // After fix: both calls get the same error message
+        assert error1 == error2:
+                "ZSTAC-80789: error messages differ between 1st and 2nd call, " +
+                "indicating preferBackupStorageTypes was corrupted by retainAll(). " +
+                "1st: [${error1}], 2nd: [${error2}]"
     }
 }
