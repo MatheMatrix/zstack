@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS `ZnsTransportZoneVO` (
     `isDefault` tinyint(1) NOT NULL DEFAULT 0,
     `tags` text DEFAULT NULL,
     `znsSdnControllerUuid` varchar(32) NOT NULL,
-    `createDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `lastOpDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `createDate`         timestamp       NOT NULL DEFAULT '0000-00-00 00:00:00',
+    `lastOpDate`         timestamp       NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`uuid`),
     CONSTRAINT `fkZnsTransportZoneVOSdnControllerVO` FOREIGN KEY (`znsSdnControllerUuid`) REFERENCES `SdnControllerVO` (`uuid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
