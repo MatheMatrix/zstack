@@ -80,34 +80,21 @@ public class VmDetachNicFlow extends NoRollbackFlow {
             return;
         }
 
-        // Call BeforeReleaseVmNicExtensionPoint, then factory.beforeReleaseVmNic
-        callBeforeReleaseVmNicExtensions(nic, new Completion(trigger) {
+        VmNicType nicType = VmNicType.valueOf(nic.getType());
+        VmInstanceNicFactory vnicFactory = vmMgr.getVmInstanceNicFactory(nicType);
+        if (vnicFactory == null) {
+            returnIpsAndDeleteNic(nic, trigger);
+            return;
+        }
+        vnicFactory.beforeReleaseVmNic(nic, new Completion(trigger) {
             @Override
             public void success() {
-                VmNicType nicType = VmNicType.valueOf(nic.getType());
-                VmInstanceNicFactory vnicFactory = vmMgr.getVmInstanceNicFactory(nicType);
-                if (vnicFactory == null) {
-                    returnIpsAndDeleteNic(nic, trigger);
-                    return;
-                }
-                vnicFactory.beforeReleaseVmNic(nic, new Completion(trigger) {
-                    @Override
-                    public void success() {
-                        returnIpsAndDeleteNic(nic, trigger);
-                    }
-
-                    @Override
-                    public void fail(ErrorCode errorCode) {
-                        logger.warn(String.format("beforeReleaseVmNic failed for nic[uuid:%s]: %s, continue detach",
-                                nic.getUuid(), errorCode));
-                        returnIpsAndDeleteNic(nic, trigger);
-                    }
-                });
+                returnIpsAndDeleteNic(nic, trigger);
             }
 
             @Override
             public void fail(ErrorCode errorCode) {
-                logger.warn(String.format("beforeReleaseVmNic extension failed for nic[uuid:%s]: %s, continue detach",
+                logger.warn(String.format("beforeReleaseVmNic failed for nic[uuid:%s]: %s, continue detach",
                         nic.getUuid(), errorCode));
                 returnIpsAndDeleteNic(nic, trigger);
             }
@@ -130,35 +117,51 @@ public class VmDetachNicFlow extends NoRollbackFlow {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 dbf.removeByPrimaryKey(nic.getUuid(), VmNicVO.class);
-                trigger.next();
+
+                callAfterReleaseVmNicExtensions(nic, new Completion(trigger) {
+                    @Override
+                    public void success() {
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        logger.warn(String.format("afterReleaseVmNic extensions failed for nic[uuid:%s]: %s, continue",
+                                nic.getUuid(), errorCode));
+                        trigger.next();
+                    }
+                });
             }
         });
     }
 
-    private void callBeforeReleaseVmNicExtensions(VmNicInventory nic, Completion completion) {
-        List<BeforeReleaseVmNicExtensionPoint> exts = pluginRgty.getExtensionList(BeforeReleaseVmNicExtensionPoint.class);
+    private void callAfterReleaseVmNicExtensions(VmNicInventory nic, Completion completion) {
+        List<AfterReleaseVmNicExtensionPoint> exts = pluginRgty.getExtensionList(AfterReleaseVmNicExtensionPoint.class);
         if (exts.isEmpty()) {
             completion.success();
             return;
         }
 
-        new While<>(exts).each((ext, ecomp) -> ext.beforeReleaseVmNic(nic, new Completion(ecomp) {
-            @Override
-            public void success() {
-                ecomp.done();
-            }
+        new While<>(exts).each((ext, wcomp) -> {
+            ext.afterReleaseVmNic(nic, new Completion(wcomp) {
+                @Override
+                public void success() {
+                    wcomp.done();
+                }
 
-            @Override
-            public void fail(ErrorCode errorCode) {
-                logger.warn(String.format("beforeReleaseVmNic extension failed for nic[uuid:%s]: %s, continue",
-                        nic.getUuid(), errorCode));
-                ecomp.done();
-            }
-        })).run(new WhileDoneCompletion(completion) {
+                @Override
+                public void fail(ErrorCode errorCode) {
+                    logger.warn(String.format("afterReleaseVmNic extension failed for nic[uuid:%s]: %s, continue",
+                            nic.getUuid(), errorCode));
+                    wcomp.done();
+                }
+            });
+        }).run(new WhileDoneCompletion(completion) {
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 completion.success();
             }
         });
     }
+
 }

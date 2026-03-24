@@ -52,35 +52,23 @@ public class VmReturnReleaseNicFlow extends NoRollbackFlow {
 
         List<VmNicInventory> vmNics = spec.getVmInventory().getVmNics();
 
-        // Phase 1: call BeforeReleaseVmNicExtensionPoint, then factory.beforeReleaseVmNic for each NIC
+        // Phase 1: call factory.beforeReleaseVmNic for each NIC
         new While<>(vmNics).each((nic, wcomp) -> {
-            callBeforeReleaseVmNicExtensions(nic, new Completion(wcomp) {
+            VmNicType type = VmNicType.valueOf(nic.getType());
+            VmInstanceNicFactory vnicFactory = vmMgr.getVmInstanceNicFactory(type);
+            if (vnicFactory == null) {
+                wcomp.done();
+                return;
+            }
+            vnicFactory.beforeReleaseVmNic(nic, new Completion(wcomp) {
                 @Override
                 public void success() {
-                    VmNicType type = VmNicType.valueOf(nic.getType());
-                    VmInstanceNicFactory vnicFactory = vmMgr.getVmInstanceNicFactory(type);
-                    if (vnicFactory == null) {
-                        wcomp.done();
-                        return;
-                    }
-                    vnicFactory.beforeReleaseVmNic(nic, new Completion(wcomp) {
-                        @Override
-                        public void success() {
-                            wcomp.done();
-                        }
-
-                        @Override
-                        public void fail(ErrorCode errorCode) {
-                            logger.warn(String.format("failed to call beforeReleaseVmNic for nic[uuid:%s]: %s, continue anyway",
-                                    nic.getUuid(), errorCode));
-                            wcomp.done();
-                        }
-                    });
+                    wcomp.done();
                 }
 
                 @Override
                 public void fail(ErrorCode errorCode) {
-                    logger.warn(String.format("failed beforeReleaseVmNic extension for nic[uuid:%s]: %s, continue anyway",
+                    logger.warn(String.format("failed to call beforeReleaseVmNic for nic[uuid:%s]: %s, continue anyway",
                             nic.getUuid(), errorCode));
                     wcomp.done();
                 }
@@ -93,32 +81,6 @@ public class VmReturnReleaseNicFlow extends NoRollbackFlow {
         });
     }
 
-    private void callBeforeReleaseVmNicExtensions(VmNicInventory nic, Completion completion) {
-        List<BeforeReleaseVmNicExtensionPoint> exts = pluginRgty.getExtensionList(BeforeReleaseVmNicExtensionPoint.class);
-        if (exts.isEmpty()) {
-            completion.success();
-            return;
-        }
-
-        new While<>(exts).each((ext, ecomp) -> ext.beforeReleaseVmNic(nic, new Completion(ecomp) {
-            @Override
-            public void success() {
-                ecomp.done();
-            }
-
-            @Override
-            public void fail(ErrorCode errorCode) {
-                logger.warn(String.format("beforeReleaseVmNic extension failed for nic[uuid:%s]: %s, continue",
-                        nic.getUuid(), errorCode));
-                ecomp.done();
-            }
-        })).run(new WhileDoneCompletion(completion) {
-            @Override
-            public void done(ErrorCodeList errorCodeList) {
-                completion.success();
-            }
-        });
-    }
 
     private void returnIpsAndReleaseNics(VmInstanceSpec spec, Map data, FlowTrigger chain) {
         List<ReturnIpMsg> msgs = new ArrayList<>(spec.getVmInventory().getVmNics().size());
@@ -144,6 +106,7 @@ public class VmReturnReleaseNicFlow extends NoRollbackFlow {
         })).run(new WhileDoneCompletion(chain) {
             @Override
             public void done(ErrorCodeList errorCodeList) {
+                List<VmNicInventory> releasedNics = new ArrayList<>();
                 for (VmNicInventory nic : spec.getVmInventory().getVmNics()) {
                     VmNicVO vo = dbf.findByUuid(nic.getUuid(), VmNicVO.class);
                     if (VmInstanceConstant.USER_VM_TYPE.equals(spec.getVmInventory().getType())) {
@@ -160,8 +123,57 @@ public class VmReturnReleaseNicFlow extends NoRollbackFlow {
                     } else {
                         dbf.remove(vo);
                     }
+                    releasedNics.add(nic);
                 }
-                chain.next();
+
+                callAfterReleaseVmNicExtensions(releasedNics, new Completion(chain) {
+                    @Override
+                    public void success() {
+                        chain.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        logger.warn(String.format("afterReleaseVmNic extensions failed: %s, continue anyway", errorCode));
+                        chain.next();
+                    }
+                });
+            }
+        });
+    }
+
+    private void callAfterReleaseVmNicExtensions(List<VmNicInventory> nics, Completion completion) {
+        List<AfterReleaseVmNicExtensionPoint> exts = pluginRgty.getExtensionList(AfterReleaseVmNicExtensionPoint.class);
+        if (exts.isEmpty() || nics.isEmpty()) {
+            completion.success();
+            return;
+        }
+
+        new While<>(nics).each((nic, wcomp) -> {
+            new While<>(exts).each((ext, wcomp2) -> {
+                ext.afterReleaseVmNic(nic, new Completion(wcomp2) {
+                    @Override
+                    public void success() {
+                        wcomp2.done();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        logger.warn(String.format("afterReleaseVmNic extension failed for nic[uuid:%s]: %s, continue",
+                                nic.getUuid(), errorCode));
+                        wcomp2.done();
+                    }
+                });
+            }).run(new WhileDoneCompletion(wcomp) {
+                @Override
+                public void done(ErrorCodeList errorCodeList) {
+                    wcomp.done();
+                }
+            });
+        }).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                completion.success();
             }
         });
     }

@@ -97,14 +97,7 @@ public class VmAllocateNicFlow implements Flow {
             int deviceId = deviceIdBitmap.nextClearBit(0);
             deviceIdBitmap.set(deviceId);
             MacOperator mo = new MacOperator();
-            String customMac = mo.getMac(spec.getVmInventory().getUuid(), nw.getUuid());
-            if (customMac != null){
-                mo.deleteCustomMacSystemTag(spec.getVmInventory().getUuid(), nw.getUuid(), customMac);
-                customMac = customMac.toLowerCase();
-            } else {
-                customMac = MacOperator.generateMacWithDeviceId((short) deviceId);
-            }
-            final String mac = customMac;
+            final String mac = allocateMac(mo, spec, nw, deviceId);
             CustomNicOperator nicOperator = new CustomNicOperator(spec.getVmInventory().getUuid(),nw.getUuid());
             final String customNicUuid = nicOperator.getCustomNicId();
 
@@ -113,104 +106,31 @@ public class VmAllocateNicFlow implements Flow {
             if (type == null) {
                 errs.add(Platform.operr("there is no available nicType on L3 network [%s]", nw.getUuid()));
                 wcomp.allDone();
+                return;
             }
             VmInstanceNicFactory vnicFactory = vmMgr.getVmInstanceNicFactory(type);
 
-            VmNicInventory nic = new VmNicInventory();
-            if (customNicUuid != null) {
-                nic.setUuid(customNicUuid);
-            } else {
-                nic.setUuid(Platform.getUuid());
-            }
-            /* the first ip is ipv4 address for dual stack nic */
-            nic.setVmInstanceUuid(spec.getVmInventory().getUuid());
-            nic.setL3NetworkUuid(nw.getUuid());
-            nic.setMac(mac);
-            nic.setHypervisorType(spec.getDestHost() == null ?
-                    spec.getVmInventory().getHypervisorType() : spec.getDestHost().getHypervisorType());
+            VmNicInventory nic = buildNicInventory(spec, nicSpec, nw, mac, customNicUuid, deviceId, disableL3Networks);
             if (mo.checkDuplicateMac(nic.getHypervisorType(), nic.getL3NetworkUuid(), nic.getMac())) {
-                trigger.fail(operr("Duplicate mac address [%s]", nic.getMac()));
+                errs.add(operr("Duplicate mac address [%s]", nic.getMac()));
+                wcomp.allDone();
                 return;
             }
 
-            if (!StringUtils.isEmpty(nicSpec.getNicDriverType())) {
-                nic.setDriverType(nicSpec.getNicDriverType());
-            } else {
-                boolean vmImageHasVirtio = VmSystemTags.VIRTIO.hasTag(spec.getVmInventory().getUuid());
-                nicManager.setNicDriverType(nic, vmImageHasVirtio,
-                        ImagePlatform.valueOf(spec.getVmInventory().getPlatform()).isParaVirtualization(),
-                        spec.getVmInventory());
-            }
-
-            nic.setDeviceId(deviceId);
-            nic.setInternalName(VmNicVO.generateNicInternalName(spec.getVmInventory().getInternalId(), nic.getDeviceId()));
-            nic.setState(disableL3Networks.contains(nic.getL3NetworkUuid()) ? VmNicState.disable.toString() : VmNicState.enable.toString());
-            new SQLBatch() {
-                @Override
-                protected void scripts() {
-                    VmNicVO nicVO = vnicFactory.createVmNic(nic, spec);
-                    if (!nw.enableIpAddressAllocation() && nicNetworkInfoMap != null
-                            && nicNetworkInfoMap.containsKey(nw.getUuid())
-                            && spec.getVmInventory().getType().equals(VmInstanceConstant.USER_VM_TYPE)) {
-                        NicIpAddressInfo nicNicIpAddressInfo = nicNetworkInfoMap.get(nic.getL3NetworkUuid());
-                        if (!nicNicIpAddressInfo.ipv6Address.isEmpty()) {
-                            UsedIpVO vo = new UsedIpVO();
-                            vo.setUuid(Platform.getUuid());
-                            vo.setIp(IPv6NetworkUtils.getIpv6AddressCanonicalString(nicNicIpAddressInfo.ipv6Address));
-                            vo.setNetmask(IPv6NetworkUtils.getFormalNetmaskOfNetworkCidr(nicNicIpAddressInfo.ipv6Address+"/"+ nicNicIpAddressInfo.ipv6Prefix));
-                            vo.setGateway(nicNicIpAddressInfo.ipv6Gateway.isEmpty() ? "" : IPv6NetworkUtils.getIpv6AddressCanonicalString(nicNicIpAddressInfo.ipv6Gateway));
-                            vo.setIpVersion(IPv6Constants.IPv6);
-                            vo.setVmNicUuid(nic.getUuid());
-                            vo.setL3NetworkUuid(nic.getL3NetworkUuid());
-                            vo.setIpInBinary(NetworkUtils.ipStringToBytes(vo.getIp()));
-                            vo.setIpRangeUuid(new StaticIpOperator().getIpRangeUuid(nic.getL3NetworkUuid(), vo.getIp()));
-                            nic.setUsedIpUuid(vo.getUuid());
-                            nicVO.setUsedIpUuid(vo.getUuid());
-                            nicVO.setIp(vo.getIp());
-                            nicVO.setNetmask(vo.getNetmask());
-                            nicVO.setGateway(vo.getGateway());
-                            dbf.persist(vo);
-                        }
-                        if (!nicNicIpAddressInfo.ipv4Address.isEmpty()) {
-                            UsedIpVO vo = new UsedIpVO();
-                            vo.setUuid(Platform.getUuid());
-                            vo.setIp(nicNicIpAddressInfo.ipv4Address);
-                            vo.setGateway(nicNicIpAddressInfo.ipv4Gateway);
-                            vo.setNetmask(nicNicIpAddressInfo.ipv4Netmask);
-                            vo.setIpVersion(IPv6Constants.IPv4);
-                            vo.setVmNicUuid(nic.getUuid());
-                            vo.setL3NetworkUuid(nic.getL3NetworkUuid());
-                            vo.setIpInLong(NetworkUtils.ipv4StringToLong(vo.getIp()));
-                            vo.setIpInBinary(NetworkUtils.ipStringToBytes(vo.getIp()));
-                            vo.setIpRangeUuid(new StaticIpOperator().getIpRangeUuid(nic.getL3NetworkUuid(), vo.getIp()));
-                            nic.setUsedIpUuid(vo.getUuid());
-                            nicVO.setUsedIpUuid(vo.getUuid());
-                            nicVO.setIp(vo.getIp());
-                            nicVO.setNetmask(vo.getNetmask());
-                            nicVO.setGateway(vo.getGateway());
-                            dbf.persist(vo);
-                        }
-                    }
-                    nics.add(nic);
-                    nicVO = dbf.updateAndRefresh(nicVO);
-                    addVmNicConfig(nicVO, spec, nicSpec);
-                }
-            }.execute();
-            vnicFactory.afterCreateVmNic(nic, spec, new Completion(wcomp) {
+            callBeforeAllocateVmNicExtensions(nic, spec, new Completion(wcomp) {
                 @Override
                 public void success() {
-                    callAfterAllocateVmNicExtensions(nic, spec, new Completion(wcomp) {
+                    new SQLBatch() {
                         @Override
-                        public void success() {
-                            wcomp.done();
+                        protected void scripts() {
+                            VmNicVO nicVO = vnicFactory.createVmNic(nic, spec);
+                            persistStaticIpIfNeeded(nic, nicVO, nw, nicNetworkInfoMap, spec);
+                            nics.add(nic);
+                            nicVO = dbf.updateAndRefresh(nicVO);
+                            addVmNicConfig(nicVO, spec, nicSpec);
                         }
-
-                        @Override
-                        public void fail(ErrorCode errorCode) {
-                            errs.add(errorCode);
-                            wcomp.allDone();
-                        }
-                    });
+                    }.execute();
+                    wcomp.done();
                 }
 
                 @Override
@@ -230,6 +150,92 @@ public class VmAllocateNicFlow implements Flow {
                 }
             }
         });
+    }
+
+    private String allocateMac(MacOperator mo, VmInstanceSpec spec, L3NetworkInventory nw, int deviceId) {
+        String vmUuid = spec.getVmInventory().getUuid();
+        String customMac = mo.getMac(vmUuid, nw.getUuid());
+        if (customMac != null) {
+            mo.deleteCustomMacSystemTag(vmUuid, nw.getUuid(), customMac);
+            return customMac.toLowerCase();
+        }
+        return MacOperator.generateMacWithDeviceId((short) deviceId);
+    }
+
+    private VmNicInventory buildNicInventory(VmInstanceSpec spec, VmNicSpec nicSpec,
+                                              L3NetworkInventory nw, String mac, String customNicUuid,
+                                              int deviceId, List<String> disableL3Networks) {
+        VmNicInventory nic = new VmNicInventory();
+        nic.setUuid(customNicUuid != null ? customNicUuid : Platform.getUuid());
+        /* the first ip is ipv4 address for dual stack nic */
+        nic.setVmInstanceUuid(spec.getVmInventory().getUuid());
+        nic.setL3NetworkUuid(nw.getUuid());
+        nic.setMac(mac);
+        nic.setHypervisorType(spec.getDestHost() == null ?
+                spec.getVmInventory().getHypervisorType() : spec.getDestHost().getHypervisorType());
+
+        if (!StringUtils.isEmpty(nicSpec.getNicDriverType())) {
+            nic.setDriverType(nicSpec.getNicDriverType());
+        } else {
+            boolean vmImageHasVirtio = VmSystemTags.VIRTIO.hasTag(spec.getVmInventory().getUuid());
+            nicManager.setNicDriverType(nic, vmImageHasVirtio,
+                    ImagePlatform.valueOf(spec.getVmInventory().getPlatform()).isParaVirtualization(),
+                    spec.getVmInventory());
+        }
+
+        nic.setDeviceId(deviceId);
+        nic.setInternalName(VmNicVO.generateNicInternalName(spec.getVmInventory().getInternalId(), nic.getDeviceId()));
+        nic.setState(disableL3Networks.contains(nic.getL3NetworkUuid()) ? VmNicState.disable.toString() : VmNicState.enable.toString());
+        return nic;
+    }
+
+    private void persistStaticIpIfNeeded(VmNicInventory nic, VmNicVO nicVO,
+                                          L3NetworkInventory nw, Map<String, NicIpAddressInfo> nicNetworkInfoMap,
+                                          VmInstanceSpec spec) {
+        if (nw.enableIpAddressAllocation() || nicNetworkInfoMap == null
+                || !nicNetworkInfoMap.containsKey(nw.getUuid())
+                || !spec.getVmInventory().getType().equals(VmInstanceConstant.USER_VM_TYPE)) {
+            return;
+        }
+
+        NicIpAddressInfo nicIpAddressInfo = nicNetworkInfoMap.get(nic.getL3NetworkUuid());
+        if (!nicIpAddressInfo.ipv6Address.isEmpty()) {
+            UsedIpVO vo = new UsedIpVO();
+            vo.setUuid(Platform.getUuid());
+            vo.setIp(IPv6NetworkUtils.getIpv6AddressCanonicalString(nicIpAddressInfo.ipv6Address));
+            vo.setNetmask(IPv6NetworkUtils.getFormalNetmaskOfNetworkCidr(nicIpAddressInfo.ipv6Address + "/" + nicIpAddressInfo.ipv6Prefix));
+            vo.setGateway(nicIpAddressInfo.ipv6Gateway.isEmpty() ? "" : IPv6NetworkUtils.getIpv6AddressCanonicalString(nicIpAddressInfo.ipv6Gateway));
+            vo.setIpVersion(IPv6Constants.IPv6);
+            vo.setVmNicUuid(nic.getUuid());
+            vo.setL3NetworkUuid(nic.getL3NetworkUuid());
+            vo.setIpInBinary(NetworkUtils.ipStringToBytes(vo.getIp()));
+            vo.setIpRangeUuid(new StaticIpOperator().getIpRangeUuid(nic.getL3NetworkUuid(), vo.getIp()));
+            nic.setUsedIpUuid(vo.getUuid());
+            nicVO.setUsedIpUuid(vo.getUuid());
+            nicVO.setIp(vo.getIp());
+            nicVO.setNetmask(vo.getNetmask());
+            nicVO.setGateway(vo.getGateway());
+            dbf.persist(vo);
+        }
+        if (!nicIpAddressInfo.ipv4Address.isEmpty()) {
+            UsedIpVO vo = new UsedIpVO();
+            vo.setUuid(Platform.getUuid());
+            vo.setIp(nicIpAddressInfo.ipv4Address);
+            vo.setGateway(nicIpAddressInfo.ipv4Gateway);
+            vo.setNetmask(nicIpAddressInfo.ipv4Netmask);
+            vo.setIpVersion(IPv6Constants.IPv4);
+            vo.setVmNicUuid(nic.getUuid());
+            vo.setL3NetworkUuid(nic.getL3NetworkUuid());
+            vo.setIpInLong(NetworkUtils.ipv4StringToLong(vo.getIp()));
+            vo.setIpInBinary(NetworkUtils.ipStringToBytes(vo.getIp()));
+            vo.setIpRangeUuid(new StaticIpOperator().getIpRangeUuid(nic.getL3NetworkUuid(), vo.getIp()));
+            nic.setUsedIpUuid(vo.getUuid());
+            nicVO.setUsedIpUuid(vo.getUuid());
+            nicVO.setIp(vo.getIp());
+            nicVO.setNetmask(vo.getNetmask());
+            nicVO.setGateway(vo.getGateway());
+            dbf.persist(vo);
+        }
     }
 
     private void addVmNicConfig(VmNicVO vmNicVO, VmInstanceSpec vmSpec, VmNicSpec nicSpec) {
@@ -258,6 +264,73 @@ public class VmAllocateNicFlow implements Flow {
         }
     }
 
+    private void callBeforeAllocateVmNicExtensions(VmNicInventory nic, VmInstanceSpec spec, Completion completion) {
+        List<BeforeAllocateVmNicExtensionPoint> exts = pluginRgty.getExtensionList(BeforeAllocateVmNicExtensionPoint.class);
+        if (exts.isEmpty()) {
+            completion.success();
+            return;
+        }
+
+        new While<>(exts).each((ext, wcomp) -> {
+            ext.beforeAllocateVmNic(nic, spec, new Completion(wcomp) {
+                @Override
+                public void success() {
+                    wcomp.done();
+                }
+
+                @Override
+                public void fail(ErrorCode errorCode) {
+                    wcomp.addError(errorCode);
+                    wcomp.allDone();
+                }
+            });
+        }).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                if (errorCodeList.getCauses().isEmpty()) {
+                    completion.success();
+                } else {
+                    completion.fail(errorCodeList.getCauses().get(0));
+                }
+            }
+        });
+    }
+
+    private void callAfterReleaseVmNicExtensions(List<VmNicInventory> nics, Completion completion) {
+        List<AfterReleaseVmNicExtensionPoint> exts = pluginRgty.getExtensionList(AfterReleaseVmNicExtensionPoint.class);
+        if (exts.isEmpty() || nics.isEmpty()) {
+            completion.success();
+            return;
+        }
+
+        new While<>(nics).each((nic, wcomp) -> {
+            new While<>(exts).each((ext, wcomp2) -> {
+                ext.afterReleaseVmNic(nic, new Completion(wcomp2) {
+                    @Override
+                    public void success() {
+                        wcomp2.done();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        logger.warn(String.format("failed to call afterReleaseVmNic for nic[uuid:%s], %s", nic.getUuid(), errorCode));
+                        wcomp2.done();
+                    }
+                });
+            }).run(new WhileDoneCompletion(wcomp) {
+                @Override
+                public void done(ErrorCodeList errorCodeList) {
+                    wcomp.done();
+                }
+            });
+        }).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                completion.success();
+            }
+        });
+    }
+
     @Override
     public void rollback(final FlowRollback chain, Map data) {
         final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
@@ -267,122 +340,28 @@ public class VmAllocateNicFlow implements Flow {
             return;
         }
         logger.debug(String.format("%s nic need for delete", destNics.size()));
+        for (VmNicInventory vmNic : destNics) {
+            for (VmDetachNicExtensionPoint ext : pluginRgty.getExtensionList(VmDetachNicExtensionPoint.class)) {
+                ext.afterDetachNic(vmNic);
+            }
 
-        new While<>(destNics).each((vmNic, wcomp) -> {
             VmNicType type = VmNicType.valueOf(vmNic.getType());
             VmInstanceNicFactory vnicFactory = vmMgr.getVmInstanceNicFactory(type);
-            Completion rollbackCompletion = new Completion(wcomp) {
-                @Override
-                public void success() {
-                    wcomp.done();
-                }
-
-                @Override
-                public void fail(ErrorCode errorCode) {
-                    logger.warn(String.format("rollback nic[uuid:%s] failed: %s", vmNic.getUuid(), errorCode));
-                    wcomp.done();
-                }
-            };
-
-            callBeforeReleaseVmNicExtensions(vmNic, new Completion(wcomp) {
-                @Override
-                public void success() {
-                    if (vnicFactory != null) {
-                        vnicFactory.beforeReleaseVmNic(vmNic, new Completion(wcomp) {
-                            @Override
-                            public void success() {
-                                doRollbackNic(vmNic, vnicFactory, rollbackCompletion);
-                            }
-
-                            @Override
-                            public void fail(ErrorCode errorCode) {
-                                logger.warn(String.format("failed to release nic[uuid:%s] on rollback: %s", vmNic.getUuid(), errorCode));
-                                doRollbackNic(vmNic, vnicFactory, rollbackCompletion);
-                            }
-                        });
-                    } else {
-                        doRollbackNic(vmNic, null, rollbackCompletion);
-                    }
-                }
-
-                @Override
-                public void fail(ErrorCode errorCode) {
-                    logger.warn(String.format("failed beforeReleaseVmNic extension for nic[uuid:%s] on rollback: %s", vmNic.getUuid(), errorCode));
-                    doRollbackNic(vmNic, vnicFactory, rollbackCompletion);
-                }
-            });
-        }).run(new WhileDoneCompletion(chain) {
-            @Override
-            public void done(ErrorCodeList errorCodeList) {
-                dbf.removeByPrimaryKeys(destNics.stream().map(VmNicInventory::getUuid).collect(Collectors.toList()), VmNicVO.class);
-                chain.rollback();
-            }
-        });
-    }
-
-    private void doRollbackNic(VmNicInventory vmNic, VmInstanceNicFactory vnicFactory, Completion completion) {
-        for (VmDetachNicExtensionPoint ext : pluginRgty.getExtensionList(VmDetachNicExtensionPoint.class)) {
-            ext.afterDetachNic(vmNic);
-        }
-        if (vnicFactory != null) {
             vnicFactory.releaseVmNic(vmNic);
         }
-        completion.success();
-    }
+        dbf.removeByPrimaryKeys(destNics.stream().map(VmNicInventory::getUuid).collect(Collectors.toList()), VmNicVO.class);
 
-    private void callAfterAllocateVmNicExtensions(VmNicInventory nic, VmInstanceSpec spec, Completion completion) {
-        List<AfterAllocateVmNicExtensionPoint> exts = pluginRgty.getExtensionList(AfterAllocateVmNicExtensionPoint.class);
-        if (exts.isEmpty()) {
-            completion.success();
-            return;
-        }
-
-        new While<>(exts).each((ext, ecomp) -> ext.afterAllocateVmNic(nic, spec, new Completion(ecomp) {
+        callAfterReleaseVmNicExtensions(destNics, new Completion(chain) {
             @Override
             public void success() {
-                ecomp.done();
+                chain.rollback();
             }
 
             @Override
             public void fail(ErrorCode errorCode) {
-                ecomp.addError(errorCode);
-                ecomp.allDone();
-            }
-        })).run(new WhileDoneCompletion(completion) {
-            @Override
-            public void done(ErrorCodeList errorCodeList) {
-                if (!errorCodeList.getCauses().isEmpty()) {
-                    completion.fail(errorCodeList.getCauses().get(0));
-                } else {
-                    completion.success();
-                }
-            }
-        });
-    }
-
-    private void callBeforeReleaseVmNicExtensions(VmNicInventory nic, Completion completion) {
-        List<BeforeReleaseVmNicExtensionPoint> exts = pluginRgty.getExtensionList(BeforeReleaseVmNicExtensionPoint.class);
-        if (exts.isEmpty()) {
-            completion.success();
-            return;
-        }
-
-        new While<>(exts).each((ext, ecomp) -> ext.beforeReleaseVmNic(nic, new Completion(ecomp) {
-            @Override
-            public void success() {
-                ecomp.done();
-            }
-
-            @Override
-            public void fail(ErrorCode errorCode) {
-                logger.warn(String.format("beforeReleaseVmNic extension failed for nic[uuid:%s]: %s, continue",
-                        nic.getUuid(), errorCode));
-                ecomp.done();
-            }
-        })).run(new WhileDoneCompletion(completion) {
-            @Override
-            public void done(ErrorCodeList errorCodeList) {
-                completion.success();
+                // best-effort: log and continue rollback even if SDN cleanup fails
+                logger.warn(String.format("afterReleaseVmNic extensions failed during rollback: %s", errorCode));
+                chain.rollback();
             }
         });
     }
