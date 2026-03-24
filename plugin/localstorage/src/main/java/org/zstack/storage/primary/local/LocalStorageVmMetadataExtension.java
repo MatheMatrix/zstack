@@ -96,7 +96,7 @@ public class LocalStorageVmMetadataExtension implements VmMetadataPathBuildExten
         String[] markers = {"/rootVolumes/", "/dataVolumes/", "/volumeSnapshots/", "/memory/"};
         for (String marker : markers) {
             int idx = path.indexOf(marker);
-            if (idx > 0) {
+            if (idx >= 0) {
                 return path.substring(0, idx + 1);
             }
         }

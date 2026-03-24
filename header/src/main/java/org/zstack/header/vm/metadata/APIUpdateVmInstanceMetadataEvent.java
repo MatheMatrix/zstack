@@ -3,8 +3,6 @@ package org.zstack.header.vm.metadata;
 import org.zstack.header.message.APIEvent;
 import org.zstack.header.rest.RestResponse;
 
-import java.util.Map;
-
 @RestResponse(fieldsTo = {"all"})
 public class APIUpdateVmInstanceMetadataEvent extends APIEvent {
     public APIUpdateVmInstanceMetadataEvent() {

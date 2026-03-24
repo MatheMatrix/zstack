@@ -2064,6 +2064,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
     @Override
     public void handle(UpdateVmInstanceMetadataOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<UpdateVmInstanceMetadataOnPrimaryStorageReply> completion) {
         WriteVmMetadataCmd cmd = new WriteVmMetadataCmd();
+        cmd.setUuid(msg.getPrimaryStorageUuid());
         cmd.metadata = msg.getMetadata();
         cmd.metadataPath = msg.getMetadataPath();
         cmd.vmUuid = msg.getVmInstanceUuid();
@@ -2099,6 +2100,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
     @Override
     public void handle(GetVmInstanceMetadataFromPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<GetVmInstanceMetadataFromPrimaryStorageReply> completion) {
         NfsPrimaryStorageKVMBackendCommands.GetVmInstanceMetadataCmd cmd = new NfsPrimaryStorageKVMBackendCommands.GetVmInstanceMetadataCmd();
+        cmd.setUuid(msg.getPrimaryStorageUuid());
         cmd.metadataPath = msg.getMetadataPath();
 
         KVMHostAsyncHttpCallMsg hmsg = new KVMHostAsyncHttpCallMsg();
@@ -2130,6 +2132,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
     @Override
     public void handle(ScanVmInstanceMetadataFromPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<ScanVmInstanceMetadataFromPrimaryStorageReply> completion) {
         NfsPrimaryStorageKVMBackendCommands.ScanVmMetadataCmd cmd = new NfsPrimaryStorageKVMBackendCommands.ScanVmMetadataCmd();
+        cmd.setUuid(msg.getPrimaryStorageUuid());
         cmd.metadataDir = msg.getMetadataDir();
 
         KVMHostAsyncHttpCallMsg hmsg = new KVMHostAsyncHttpCallMsg();
@@ -2152,6 +2155,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
                 }
 
                 ScanVmInstanceMetadataFromPrimaryStorageReply r = new ScanVmInstanceMetadataFromPrimaryStorageReply();
+                rsp.metadataEntries.forEach(entry -> entry.setHostUuid(hostUuid));
                 r.setVmInstanceMetadata(rsp.metadataEntries);
                 completion.success(r);
             }
@@ -2161,6 +2165,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
     @Override
     public void handle(CleanupVmInstanceMetadataOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<CleanupVmInstanceMetadataOnPrimaryStorageReply> completion) {
         CleanupVmMetadataCmd cmd = new CleanupVmMetadataCmd();
+        cmd.setUuid(msg.getPrimaryStorageUuid());
         cmd.metadataPath = msg.getMetadataPath();
 
         KVMHostAsyncHttpCallMsg hmsg = new KVMHostAsyncHttpCallMsg();

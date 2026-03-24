@@ -66,7 +66,15 @@ public class VmExpungeMetadataFlow extends NoRollbackFlow {
             trigger.next();
             return;
         }
-        String metadataPath = ext.buildVmMetadataPath(psUuid, vmUuid);
+        final String metadataPath;
+        try {
+            metadataPath = ext.buildVmMetadataPath(psUuid, vmUuid);
+        } catch (Exception e) {
+            logger.warn(String.format("[MetadataExpunge] failed to build metadata path for vm[uuid:%s] on ps[uuid:%s], " +
+                    "skip metadata cleanup: %s", vmUuid, psUuid, e.getMessage()));
+            trigger.next();
+            return;
+        }
 
         CleanupVmInstanceMetadataOnPrimaryStorageMsg cmsg = new CleanupVmInstanceMetadataOnPrimaryStorageMsg();
         cmsg.setPrimaryStorageUuid(psUuid);

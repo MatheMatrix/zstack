@@ -3368,9 +3368,20 @@ public class LocalStorageBase extends PrimaryStorageBase {
 
             @Override
             public void run(SyncTaskChain chain) {
-                final String hostUuid = getHostUuidByResourceUuid(msg.getRootVolumeUuid());
-                LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(hostUuid);
-                LocalStorageHypervisorBackend bkd = f.getHypervisorBackend(self);
+                final String hostUuid;
+                final LocalStorageHypervisorBackend bkd;
+                try {
+                    hostUuid = getHostUuidByResourceUuid(msg.getRootVolumeUuid());
+                    LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(hostUuid);
+                    bkd = f.getHypervisorBackend(self);
+                } catch (Exception e) {
+                    UpdateVmInstanceMetadataOnPrimaryStorageReply reply = new UpdateVmInstanceMetadataOnPrimaryStorageReply();
+                    reply.setError(operr("failed to resolve host for vm metadata update on local primary storage[uuid:%s], rootVolumeUuid[%s]: %s",
+                            self.getUuid(), msg.getRootVolumeUuid(), e.getMessage()));
+                    bus.reply(msg, reply);
+                    chain.next();
+                    return;
+                }
                 bkd.handle(msg, hostUuid, new ReturnValueCompletion<UpdateVmInstanceMetadataOnPrimaryStorageReply>(msg, chain) {
                     @Override
                     public void success(UpdateVmInstanceMetadataOnPrimaryStorageReply returnValue) {
@@ -3406,15 +3417,16 @@ public class LocalStorageBase extends PrimaryStorageBase {
 
         if (hostUuid == null) {
             if (msg.getRootVolumeUuid() == null) {
-                reply.setError(operr("cannot determine host for vm metadata cleanup on local primary storage[uuid:%s]," +
+                reply.setError(operr("cannot determine host for vm metadata get on local primary storage[uuid:%s]," +
                         " rootVolumeUuid is null", self.getUuid()));
                 bus.reply(msg, reply);
                 return;
             }
-            hostUuid = getHostUuidByResourceUuid(msg.getRootVolumeUuid());
-            if (hostUuid == null) {
-                reply.setError(operr("cannot determine host for metadata get on local primary storage[uuid:%s]," +
-                        " rootVolumeUuid and hostUuid are both absent", self.getUuid()));
+            try {
+                hostUuid = getHostUuidByResourceUuid(msg.getRootVolumeUuid());
+            } catch (Exception e) {
+                reply.setError(operr("cannot determine host for vm metadata get on local primary storage[uuid:%s], rootVolumeUuid[%s]: %s",
+                        self.getUuid(), msg.getRootVolumeUuid(), e.getMessage()));
                 bus.reply(msg, reply);
                 return;
             }

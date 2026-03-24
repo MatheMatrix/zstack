@@ -91,7 +91,7 @@ public class APIRegisterVmInstanceFromMetadataMsg extends APIMessage {
 
     public static APIRegisterVmInstanceFromMetadataMsg __example__() {
         APIRegisterVmInstanceFromMetadataMsg msg = new APIRegisterVmInstanceFromMetadataMsg();
-        msg.metadataPath = "/vm-metadata/vm-uuid/metadata.json";
+        msg.metadataPath = "/mnt/ps/vm-metadata/vm-uuid.vmmeta";
         msg.primaryStorageUuid = uuid(PrimaryStorageVO.class);
         msg.zoneUuid = uuid(ZoneVO.class);
         msg.clusterUuid = uuid(ClusterVO.class);
