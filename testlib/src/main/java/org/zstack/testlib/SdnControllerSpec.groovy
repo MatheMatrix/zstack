@@ -302,7 +302,16 @@ class SdnControllerSpec extends Spec implements HasSession {
             def triggerZnsCallback = { HttpEntity<String> entity, EnvSpec spec, Object data ->
                 String jobUuid = entity.headers.getFirst("x-job-uuid")
                 String webhook = entity.headers.getFirst("x-web-hook")
-                if (!jobUuid || !webhook) return
+                    List<String> missingHeaders = []
+                    if (!jobUuid) {
+                        missingHeaders.add("x-job-uuid")
+                    }
+                    if (!webhook) {
+                        missingHeaders.add("x-web-hook")
+                    }
+                    if (!missingHeaders.isEmpty()) {
+                        throw new IllegalStateException("Missing required ZNS callback header(s): ${missingHeaders.join(', ')}")
+                    }
 
                 Thread.start {
                     Thread.sleep(100)
