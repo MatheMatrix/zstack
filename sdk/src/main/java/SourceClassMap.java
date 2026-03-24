@@ -458,6 +458,13 @@ public class SourceClassMap {
 			put("org.zstack.iam2.api.Attribute", "org.zstack.sdk.iam2.api.Attribute");
 			put("org.zstack.iam2.api.ErrorResult", "org.zstack.sdk.iam2.api.ErrorResult");
 			put("org.zstack.iam2.container.ContainerClusterInventory", "org.zstack.sdk.iam2.container.ContainerClusterInventory");
+			put("org.zstack.iam2.container.IAM2ContainerResyncErrorType", "org.zstack.sdk.iam2.container.IAM2ContainerResyncErrorType");
+			put("org.zstack.iam2.container.IAM2ContainerResyncItemInventory", "org.zstack.sdk.iam2.container.IAM2ContainerResyncItemInventory");
+			put("org.zstack.iam2.container.IAM2ContainerResyncItemStatus", "org.zstack.sdk.iam2.container.IAM2ContainerResyncItemStatus");
+			put("org.zstack.iam2.container.IAM2ContainerResyncJobInventory", "org.zstack.sdk.iam2.container.IAM2ContainerResyncJobInventory");
+			put("org.zstack.iam2.container.IAM2ContainerResyncJobStatus", "org.zstack.sdk.iam2.container.IAM2ContainerResyncJobStatus");
+			put("org.zstack.iam2.container.IAM2ContainerResyncPhase", "org.zstack.sdk.iam2.container.IAM2ContainerResyncPhase");
+			put("org.zstack.iam2.container.IAM2ContainerResyncScope", "org.zstack.sdk.iam2.container.IAM2ContainerResyncScope");
 			put("org.zstack.iam2.entity.AttributeType", "org.zstack.sdk.iam2.entity.AttributeType");
 			put("org.zstack.iam2.entity.IAM2AttributeInventory", "org.zstack.sdk.iam2.entity.IAM2AttributeInventory");
 			put("org.zstack.iam2.entity.IAM2OrganizationAttributeInventory", "org.zstack.sdk.iam2.entity.IAM2OrganizationAttributeInventory");
@@ -1638,6 +1645,13 @@ public class SourceClassMap {
 			put("org.zstack.sdk.iam2.api.ErrorResult", "org.zstack.iam2.api.ErrorResult");
 			put("org.zstack.sdk.iam2.api.Permission", "org.zstack.iam2.api.APIGetIAM2VirtualIDAPIPermissionReply$Permission");
 			put("org.zstack.sdk.iam2.container.ContainerClusterInventory", "org.zstack.iam2.container.ContainerClusterInventory");
+			put("org.zstack.sdk.iam2.container.IAM2ContainerResyncErrorType", "org.zstack.iam2.container.IAM2ContainerResyncErrorType");
+			put("org.zstack.sdk.iam2.container.IAM2ContainerResyncItemInventory", "org.zstack.iam2.container.IAM2ContainerResyncItemInventory");
+			put("org.zstack.sdk.iam2.container.IAM2ContainerResyncItemStatus", "org.zstack.iam2.container.IAM2ContainerResyncItemStatus");
+			put("org.zstack.sdk.iam2.container.IAM2ContainerResyncJobInventory", "org.zstack.iam2.container.IAM2ContainerResyncJobInventory");
+			put("org.zstack.sdk.iam2.container.IAM2ContainerResyncJobStatus", "org.zstack.iam2.container.IAM2ContainerResyncJobStatus");
+			put("org.zstack.sdk.iam2.container.IAM2ContainerResyncPhase", "org.zstack.iam2.container.IAM2ContainerResyncPhase");
+			put("org.zstack.sdk.iam2.container.IAM2ContainerResyncScope", "org.zstack.iam2.container.IAM2ContainerResyncScope");
 			put("org.zstack.sdk.iam2.entity.AttributeType", "org.zstack.iam2.entity.AttributeType");
 			put("org.zstack.sdk.iam2.entity.IAM2AttributeInventory", "org.zstack.iam2.entity.IAM2AttributeInventory");
 			put("org.zstack.sdk.iam2.entity.IAM2OrganizationAttributeInventory", "org.zstack.iam2.entity.IAM2OrganizationAttributeInventory");
