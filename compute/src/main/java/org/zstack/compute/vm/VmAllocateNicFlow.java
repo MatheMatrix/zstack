@@ -117,17 +117,20 @@ public class VmAllocateNicFlow implements Flow {
                 return;
             }
 
+            // Persist VmNicVO first so that ResourceVO entry exists before extensions
+            // (e.g. SDN controllers) attempt to create SystemTags referencing the NIC UUID.
+            VmNicVO nicVO = vnicFactory.createVmNic(nic, spec);
+
             callBeforeAllocateVmNicExtensions(nic, spec, new Completion(wcomp) {
                 @Override
                 public void success() {
                     new SQLBatch() {
                         @Override
                         protected void scripts() {
-                            VmNicVO nicVO = vnicFactory.createVmNic(nic, spec);
                             persistStaticIpIfNeeded(nic, nicVO, nw, nicNetworkInfoMap, spec);
                             nics.add(nic);
-                            nicVO = dbf.updateAndRefresh(nicVO);
-                            addVmNicConfig(nicVO, spec, nicSpec);
+                            VmNicVO updated = dbf.updateAndRefresh(nicVO);
+                            addVmNicConfig(updated, spec, nicSpec);
                         }
                     }.execute();
                     wcomp.done();
