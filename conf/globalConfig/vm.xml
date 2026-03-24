@@ -334,11 +334,4 @@
 		<defaultValue>5.0.0</defaultValue>
 	</config>
 
-	<config>
-		<category>vm</category>
-		<name>vm.metadata.cleanup.gcIntervalSec</name>
-		<description>GC retry interval in seconds for metadata cleanup that failed during VM expunge</description>
-		<type>java.lang.Long</type>
-		<defaultValue>300</defaultValue>
-	</config>
 </globalConfig>

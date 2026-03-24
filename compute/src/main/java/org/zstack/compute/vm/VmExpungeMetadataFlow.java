@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class VmExpungeMetadataFlow extends NoRollbackFlow {
     private static final CLogger logger = Utils.getLogger(VmExpungeMetadataFlow.class);
+    private static final long CLEANUP_GC_INTERVAL_SEC = 300;
 
     @Autowired
     private CloudBus bus;
@@ -116,10 +117,10 @@ public class VmExpungeMetadataFlow extends NoRollbackFlow {
         gc.rootVolumeUuid = rootVolumeUuid;
         gc.metadataPath = metadataPath;
         gc.hostUuid = hostUuid;
-        gc.deduplicateSubmit(VmGlobalConfig.VM_METADATA_CLEANUP_GC_INTERVAL.value(Long.class), TimeUnit.SECONDS);
+        gc.deduplicateSubmit(CLEANUP_GC_INTERVAL_SEC, TimeUnit.SECONDS);
 
         logger.info(String.format("[MetadataExpunge] submitted GC job [%s] for vm[uuid:%s] on ps[uuid:%s], " +
                         "retry interval: %d seconds", gc.NAME, vmUuid, psUuid,
-                VmGlobalConfig.VM_METADATA_CLEANUP_GC_INTERVAL.value(Long.class)));
+                CLEANUP_GC_INTERVAL_SEC));
     }
 }

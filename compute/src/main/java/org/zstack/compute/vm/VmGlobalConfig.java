@@ -134,9 +134,6 @@ public class VmGlobalConfig {
     @BindResourceConfig(value = {VmInstanceVO.class})
     public static GlobalConfig VM_CPUID_VENDOR = new GlobalConfig(CATEGORY, "vm.cpuid.vendor");
 
-    @GlobalConfigValidation(numberGreaterThan = 0)
-    public static GlobalConfig VM_METADATA_CLEANUP_GC_INTERVAL = new GlobalConfig(CATEGORY, "vm.metadata.cleanup.gcIntervalSec");
-
     @GlobalConfigValidation(validValues = {"true", "false"})
     public static GlobalConfig VM_METADATA = new GlobalConfig(CATEGORY, "vm.metadata.enabled");
 
