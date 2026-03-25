@@ -186,3 +186,48 @@ INSERT IGNORE INTO `ActiveAlarmTemplateVO` (`uuid`,`alarmName`,`comparisonOperat
 
 -- ZSTAC-74908: Add resourceType to TagPatternVO to scope AI model tags away from VM pages
 CALL ADD_COLUMN('TagPatternVO', 'resourceType', 'VARCHAR(128)', 1, NULL);
+
+-- ZSTAC-83685: Re-add columns that were only in V5.5.6 schema but missed on upgrade from H84r 5.5.6
+-- (flyway skips V5.5.6__schema.sql when DB is already at that version)
+CALL ADD_COLUMN('ModelServiceVO', 'version', 'VARCHAR(255)', 1, NULL);
+CALL ADD_COLUMN('ApplicationDevelopmentServiceVO', 'packageVersion', 'VARCHAR(255)', 1, NULL);
+
+-- ZSTAC-83685: Backfill version data (ported from V5.5.6 UpgradeApplicationDevelopmentServiceVersion)
+DROP PROCEDURE IF EXISTS BackfillModelServiceVersion_83685;
+
+DELIMITER $$
+
+CREATE PROCEDURE BackfillModelServiceVersion_83685()
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+    END;
+
+    -- 1. ModelServiceVO: set version to readable (x.y.z) extracted from installPath for App type
+    UPDATE `zstack`.`ModelServiceVO`
+    SET `version` = SUBSTRING_INDEX(
+        SUBSTRING_INDEX(`installPath`, '_', -1),
+        '/', 1
+    )
+    WHERE `type` = 'App'
+      AND `installPath` IS NOT NULL
+      AND (`version` IS NULL OR `version` = '' OR `version` LIKE '%:%')
+      AND SUBSTRING_INDEX(
+            SUBSTRING_INDEX(`installPath`, '_', -1),
+            '/', 1
+          ) REGEXP '^[0-9]+\\.[0-9]+';
+
+    -- 2. ApplicationDevelopmentServiceVO.packageVersion: sync from ModelServiceVO.version
+    UPDATE `zstack`.`ApplicationDevelopmentServiceVO` a
+    INNER JOIN `zstack`.`ModelServiceInstanceGroupVO` g ON a.`uuid` = g.`uuid`
+    INNER JOIN `zstack`.`ModelServiceVO` m ON g.`modelServiceUuid` = m.`uuid`
+    SET a.`packageVersion` = m.`version`
+    WHERE (a.`packageVersion` IS NULL OR a.`packageVersion` LIKE '%:%')
+      AND m.`version` IS NOT NULL AND TRIM(m.`version`) != '';
+
+END $$
+
+DELIMITER ;
+CALL BackfillModelServiceVersion_83685();
+DROP PROCEDURE IF EXISTS BackfillModelServiceVersion_83685;
