@@ -31,6 +31,7 @@ public class AllocateHostMsg extends NeedReplyMessage {
     private long oldMemoryCapacity = 0;
     private AllocationScene allocationScene;
     private String architecture;
+    private String sessionAccountUuid;
 
     public List<Set<String>> getOptionalPrimaryStorageUuids() {
         return optionalPrimaryStorageUuids;
@@ -210,5 +211,13 @@ public class AllocateHostMsg extends NeedReplyMessage {
 
     public void setArchitecture(String architecture) {
         this.architecture = architecture;
+    }
+
+    public String getSessionAccountUuid() {
+        return sessionAccountUuid;
+    }
+
+    public void setSessionAccountUuid(String sessionAccountUuid) {
+        this.sessionAccountUuid = sessionAccountUuid;
     }
 }

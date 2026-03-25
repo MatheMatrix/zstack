@@ -9,6 +9,7 @@ import org.zstack.core.config.GlobalConfigVO_;
 import org.zstack.core.db.Q;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.allocator.*;
+import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
@@ -144,6 +145,8 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
             } else {
                 fail(ofe.getErrorCode());
             }
+        } catch (ApiMessageInterceptionException e) {
+            fail(e.getError());
         } catch (Throwable t) {
             logger.warn("unhandled throwable", t);
             String errMsg = t != null ? t.toString() : "unknown error";

@@ -37,6 +37,7 @@ public class HostAllocatorSpec {
     private long oldMemoryCapacity = 0;
     private AllocationScene allocationScene;
     private String architecture;
+    private String sessionAccountUuid;
 
     public AllocationScene getAllocationScene() {
         return allocationScene;
@@ -222,6 +223,14 @@ public class HostAllocatorSpec {
         this.architecture = architecture;
     }
 
+    public String getSessionAccountUuid() {
+        return sessionAccountUuid;
+    }
+
+    public void setSessionAccountUuid(String sessionAccountUuid) {
+        this.sessionAccountUuid = sessionAccountUuid;
+    }
+
     public static HostAllocatorSpec fromAllocationMsg(AllocateHostMsg msg) {
         HostAllocatorSpec spec = new HostAllocatorSpec();
         spec.setAllocatorStrategy(msg.getAllocatorStrategy());
@@ -250,6 +259,7 @@ public class HostAllocatorSpec {
         msg.getOptionalPrimaryStorageUuids().forEach(spec::addOptionalPrimaryStorageUuids);
         spec.setAllocationScene(msg.getAllocationScene());
         spec.setArchitecture(msg.getArchitecture());
+        spec.setSessionAccountUuid(msg.getSessionAccountUuid());
         if (msg.getSystemTags() != null && !msg.getSystemTags().isEmpty()){
             spec.setSystemTags(new ArrayList<String>(msg.getSystemTags()));
         }
