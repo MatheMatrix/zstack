@@ -29,6 +29,7 @@ import org.zstack.sugonSdnController.controller.api.types.VirtualMachine
 import org.zstack.sugonSdnController.controller.api.types.VirtualMachineInterface
 import org.zstack.sugonSdnController.controller.api.types.VirtualNetwork
 import org.zstack.utils.gson.JSONObjectUtil
+import org.zstack.network.zns.ZnsSdnControllerConstant
 
 import javax.servlet.http.HttpServletRequest
 
@@ -300,14 +301,14 @@ class SdnControllerSpec extends Spec implements HasSession {
 
             // Helper: trigger ZNS async callback in a separate thread
             def triggerZnsCallback = { HttpEntity<String> entity, EnvSpec spec, Object data ->
-                String jobUuid = entity.headers.getFirst("x-job-uuid")
-                String webhook = entity.headers.getFirst("x-web-hook")
+                String jobUuid = entity.headers.getFirst(ZnsSdnControllerConstant.ZNS_HEADER_JOB_UUID)
+                String webhook = entity.headers.getFirst(ZnsSdnControllerConstant.ZNS_HEADER_WEBHOOK)
                     List<String> missingHeaders = []
                     if (!jobUuid) {
-                        missingHeaders.add("x-job-uuid")
+                        missingHeaders.add(ZnsSdnControllerConstant.ZNS_HEADER_JOB_UUID)
                     }
                     if (!webhook) {
-                        missingHeaders.add("x-web-hook")
+                        missingHeaders.add(ZnsSdnControllerConstant.ZNS_HEADER_WEBHOOK)
                     }
                     if (!missingHeaders.isEmpty()) {
                         throw new IllegalStateException("Missing required ZNS callback header(s): ${missingHeaders.join(', ')}")
@@ -315,7 +316,7 @@ class SdnControllerSpec extends Spec implements HasSession {
 
                 Thread.start {
                     Thread.sleep(100)
-                    def cmd = [taskUuid: jobUuid, success: true, status: "completed", data: data]
+                    def cmd = [taskUuid: jobUuid, success: true, status: ZnsSdnControllerConstant.ZNS_CALLBACK_STATUS_COMPLETED, data: data]
                     def headers = new HttpHeaders()
                     headers.setContentType(MediaType.APPLICATION_JSON)
                     def body = JSONObjectUtil.toJsonString(cmd)
