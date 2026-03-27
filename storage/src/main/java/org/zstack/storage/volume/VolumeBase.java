@@ -3272,7 +3272,10 @@ public class VolumeBase extends AbstractVolume implements Volume {
 
         PluginRegistry pluginRgty = Platform.getComponentLoader().getComponent(PluginRegistry.class);
         MaxDataVolumeNumberExtensionPoint ext = pluginRgty.getExtensionFromMap(hypervisorType, MaxDataVolumeNumberExtensionPoint.class);
-        int maxDataVolumeNum = ext == null ? VolumeConstant.DEFAULT_MAX_DATA_VOLUME_NUMBER : ext.getMaxDataVolumeNumber();
+        boolean isRunning = VmInstanceState.Running.toString().equals(vmInv.getState())
+                || VmInstanceState.Paused.toString().equals(vmInv.getState());
+        int maxDataVolumeNum = ext == null ? VolumeConstant.DEFAULT_MAX_DATA_VOLUME_NUMBER
+                : (isRunning ? ext.getMaxDataVolumeNumberForRunningVm() : ext.getMaxDataVolumeNumber());
 
         long vmDataVolumeUsage = Q.New(VolumeVO.class)
                 .eq(VolumeVO_.type, VolumeType.Data)

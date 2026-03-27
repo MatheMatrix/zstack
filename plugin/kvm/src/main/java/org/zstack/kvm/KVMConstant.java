@@ -160,6 +160,11 @@ public interface KVMConstant {
 
     Integer DEFAULT_MAX_NIC_QUEUE_NUMBER = 12;
 
+    // Maximum data volumes for hot-plug (running VM) due to PCI bus slot constraints.
+    // i440fx provides 32 PCI slots; ~12 are reserved by system devices and libvirt PCI bridge,
+    // leaving ~20 slots for hot-plugged virtio-blk data volumes (SharedBlock storage scenario).
+    int KVM_MAX_DATA_VOLUME_NUMBER_HOT_PLUG = 20;
+
     String CONNECT_HOST_PRIMARYSTORAGE_ERROR = "psError";
 
     String VIRTUALIZER_QEMU_KVM = "qemu-kvm";
