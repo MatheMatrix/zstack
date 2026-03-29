@@ -346,9 +346,21 @@ public class ApiTimeoutManagerImpl implements ApiTimeoutManager, Component,
         } else if (msg instanceof NeedReplyMessage) {
             NeedReplyMessage nmsg = (NeedReplyMessage) msg;
             if (nmsg.getTimeout() == -1) {
-                MessageTimeoutDsc mtd = evalTimeout(getMessageTimeout());
+                long resolvedTimeout = getMessageTimeout();
+                MessageTimeoutDsc mtd = evalTimeout(resolvedTimeout);
                 nmsg.setTimeout(mtd.getMessageTimeout());
                 nmsg.setMessageDeadline(mtd.getMessageDeadline());
+
+                if (logger.isTraceEnabled()) {
+                    Map<Object, Object> tc = TaskContext.getTaskContext();
+                    logger.trace(String.format("setMessageTimeout: msg=%s, getMessageTimeout()=%d, " +
+                                    "evalResult=[timeout=%d, deadline=%d], taskContext=%s, currentTime=%d, thread=%s",
+                            msg.getClass().getSimpleName(), resolvedTimeout,
+                            mtd.getMessageTimeout(), mtd.getMessageDeadline(),
+                            tc != null ? tc.toString() : "null",
+                            timer.getCurrentTimeMillis(),
+                            Thread.currentThread().getName()));
+                }
             }
         }
     }

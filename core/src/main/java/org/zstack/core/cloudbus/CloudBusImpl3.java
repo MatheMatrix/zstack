@@ -363,6 +363,9 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
     public FutureCompletion send(NeedReplyMessage msg, CloudBusCallBack callback) {
         evaluateMessageTimeout(msg);
         if (msg.getTimeout() <= 1) {
+            logger.warn(String.format("message timeout too short, rejecting: msg=%s, id=%s, timeout=%d, deadline=%d, serviceId=%s",
+                    msg.getClass().getSimpleName(), msg.getId(), msg.getTimeout(), msg.getMessageDeadline(),
+                    msg.getServiceId()));
             callback.run(createTimeoutReply(msg));
             return SEND_CONFIRMED;
         }
