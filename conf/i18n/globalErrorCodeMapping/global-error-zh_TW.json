@@ -4716,5 +4716,6 @@
   "ORG_ZSTACK_ZWATCH_FUNCTION_10013": "未知參數",
   "ORG_ZSTACK_VPCFIREWALL_10034": "無法添加防火墙規则[%d]，因为只有TCP协议可以使用TCP標誌",
   "ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_VYOS_10007": "無法停止虚拟路由器VM[uuid:%s]上的DHCP服務器，因为%s",
-  "ORG_ZSTACK_VPCFIREWALL_10035": "無法添加防火墙規则[%d]因为%s"
+  "ORG_ZSTACK_VPCFIREWALL_10035": "無法添加防火墙規则[%d]因为%s",
+  "ORG_ZSTACK_AI_10157": "virtiofs 已停用 (ai.virtiofs.enabled=false)。請啟用該設定以將模型掛載到虛擬機器：UpdateGlobalConfig category=ai name=virtiofs.enabled value=true"
 }

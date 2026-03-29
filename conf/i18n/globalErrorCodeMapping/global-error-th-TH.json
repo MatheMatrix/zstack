@@ -4716,5 +4716,6 @@
   "ORG_ZSTACK_ZWATCH_FUNCTION_10013": "ตรวจพบอาร์กิวเมนต์ที่ไม่รู้จัก โปรดตรวจสอบว่าพารามิเตอร์บรรทัดคำสั่งทั้งหมดถูกต้อง และอ้างอิงเอกสารสำหรับรายการอาร์กิวเมนต์ที่รองรับ",
   "ORG_ZSTACK_VPCFIREWALL_10034": "ไม่สามารถเพิ่มกฎไฟร์วอลล์[%d] เนื่องจากมีเพียงโปรโตคอล TCP ที่รองรับ TCP flags ในสภาพแวดล้อมนี้",
   "ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_VYOS_10007": "ไม่สามารถหยุดเซิร์ฟเวอร์ DHCP บนอินสแตนซ์เราเตอร์เสมือน [uuid:%s] เนื่องจาก %s",
-  "ORG_ZSTACK_VPCFIREWALL_10035": "ไม่สามารถเพิ่มกฎไฟร์วอลล์[%d] เนื่องจากเกิดข้อผิดพลาด %s"
+  "ORG_ZSTACK_VPCFIREWALL_10035": "ไม่สามารถเพิ่มกฎไฟร์วอลล์[%d] เนื่องจากเกิดข้อผิดพลาด %s",
+  "ORG_ZSTACK_AI_10157": "virtiofs ถูกปิดใช้งาน (ai.virtiofs.enabled=false) โปรดเปิดใช้งานเพื่อเมานต์โมเดลไปยัง VM: UpdateGlobalConfig category=ai name=virtiofs.enabled value=true"
 }
