@@ -57,6 +57,7 @@ import org.zstack.network.service.NetworkServiceHelper.HostRouteInfo;
 import org.zstack.network.service.NetworkServiceManager;
 import org.zstack.network.service.NetworkServiceProviderLookup;
 import org.zstack.network.service.flat.IpStatisticConstants.VmType;
+import org.zstack.network.service.userdata.UserdataConstant;
 import org.zstack.network.service.vip.VipVO;
 import org.zstack.header.network.service.SdnControllerDhcp;
 import org.zstack.sdnController.SdnControllerManager;
@@ -2855,27 +2856,41 @@ public class FlatDhcpBackend extends AbstractService implements NetworkServiceDh
             return;
         }
 
-        flushDhcpConfig(L3NetworkInventory.valueOf(l3VO), new Completion(completion) {
-            @Override
-            public void success() {
-                Map<String, String> dhcpServerMap = getExistingDhcpServerIp(l3VO.getUuid(), IPv6Constants.DUAL_STACK);
-                if (dhcpServerMap.isEmpty()) {
+        // If userdata service is also enabled on this L3 network, the namespace is shared,
+        // so only flush DHCP config. Otherwise, delete the namespace and dnsmasq entirely.
+        String userdataProviderType = new NetworkProviderFinder().getNetworkProviderTypeByNetworkServiceType(
+                l3VO.getUuid(), UserdataConstant.USERDATA_TYPE_STRING);
+        boolean userdataEnabled = userdataProviderType != null;
+
+        if (userdataEnabled) {
+            flushDhcpConfig(L3NetworkInventory.valueOf(l3VO), new Completion(completion) {
+                @Override
+                public void success() {
+                    Map<String, String> dhcpServerMap = getExistingDhcpServerIp(l3VO.getUuid(), IPv6Constants.DUAL_STACK);
+                    if (dhcpServerMap.isEmpty()) {
+                        completion.success();
+                        return;
+                    }
+
+                    for (Map.Entry<String, String> e : dhcpServerMap.entrySet()) {
+                        deleteDhcpServerIp(l3VO.getUuid(), e.getKey(), e.getValue());
+                    }
+
                     completion.success();
-                    return;
                 }
 
-                for (Map.Entry<String, String> e : dhcpServerMap.entrySet()) {
-                    deleteDhcpServerIp(l3VO.getUuid(), e.getKey(), e.getValue());
+                @Override
+                public void fail(ErrorCode errorCode) {
+                    completion.fail(errorCode);
                 }
-
-                completion.success();
+            });
+        } else {
+            Map<String, String> dhcpServerMap = getExistingDhcpServerIp(l3VO.getUuid(), IPv6Constants.DUAL_STACK);
+            for (Map.Entry<String, String> e : dhcpServerMap.entrySet()) {
+                deleteDhcpServerIp(l3VO.getUuid(), e.getKey(), e.getValue());
             }
-
-            @Override
-            public void fail(ErrorCode errorCode) {
-                completion.fail(errorCode);
-            }
-        });
+            deleteNameSpace(L3NetworkInventory.valueOf(l3VO), completion);
+        }
     }
 
     private void doArpingOnHost(CheckIpAvailabilityMsg msg, HostInventory host, L2NetworkInventory l2Inv, ReturnValueCompletion<List<String>> completion) {
