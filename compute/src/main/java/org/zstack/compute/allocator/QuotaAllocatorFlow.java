@@ -52,6 +52,13 @@ public class QuotaAllocatorFlow extends AbstractHostAllocatorFlow {
 
         throwExceptionIfIAmTheFirstFlow();
 
+        // skip quota check if the operator is admin
+        String sessionAccountUuid = spec.getSessionAccountUuid();
+        if (sessionAccountUuid != null && AccountConstant.isAdminPermission(sessionAccountUuid)) {
+            next(candidates);
+            return;
+        }
+
         final String vmInstanceUuid = spec.getVmInstance().getUuid();
         final String accountUuid = Account.getAccountUuidOfResource(vmInstanceUuid);
         if (accountUuid == null || AccountConstant.isAdminPermission(accountUuid)) {
