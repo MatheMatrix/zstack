@@ -84,4 +84,8 @@
     <message>
         <name>org.zstack.header.storage.primary.APIAddStorageProtocolMsg</name>
     </message>
+
+    <message>
+        <name>org.zstack.header.storage.primary.APIScanVmInstanceMetadataFromPrimaryStorageMsg</name>
+    </message>
 </service>

@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS `zstack`.`VmMetadataDirtyVO` (
     INDEX `idx_VmMetadataDirtyVO_unclaimed` (`managementNodeUuid`, `nextRetryTime`, `lastOpDate`),
     CONSTRAINT `fkVmMetadataDirtyVOVmInstanceEO` FOREIGN KEY (`vmInstanceUuid`)  REFERENCES `VmInstanceEO` (`uuid`) ON DELETE CASCADE,
     CONSTRAINT `fkVmMetadataDirtyVOManagementNodeVO` FOREIGN KEY (`managementNodeUuid`) REFERENCES `ManagementNodeVO` (`uuid`) ON DELETE SET NULL
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE IF NOT EXISTS `zstack`.`VmMetadataFlushStateVO` (
     `vmInstanceUuid` VARCHAR(32) NOT NULL,
@@ -24,4 +24,4 @@ CREATE TABLE IF NOT EXISTS `zstack`.`VmMetadataFlushStateVO` (
     `createDate` timestamp NOT NULL DEFAULT '1999-12-31 23:59:59',
     PRIMARY KEY (`vmInstanceUuid`),
     CONSTRAINT `fkVmMetadataFlushStateVOVmInstanceEO` FOREIGN KEY (`vmInstanceUuid`)  REFERENCES `VmInstanceEO` (`uuid`) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
