@@ -655,10 +655,10 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
                         changeStatus(PrimaryStorageStatus.Connected);
                         logger.debug(String.format("successfully connected primary storage[uuid:%s]", self.getUuid()));
 
-                        RecalculatePrimaryStorageCapacityMsg rmsg = new RecalculatePrimaryStorageCapacityMsg();
-                        rmsg.setPrimaryStorageUuid(self.getUuid());
-                        bus.makeLocalServiceId(rmsg, PrimaryStorageConstant.SERVICE_ID);
-                        bus.send(rmsg);
+                        SyncPrimaryStorageCapacityMsg smsg = new SyncPrimaryStorageCapacityMsg();
+                        smsg.setPrimaryStorageUuid(self.getUuid());
+                        bus.makeLocalServiceId(smsg, PrimaryStorageConstant.SERVICE_ID);
+                        bus.send(smsg);
 
                         tracker.track(self.getUuid());
 
