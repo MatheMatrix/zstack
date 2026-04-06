@@ -78,6 +78,7 @@ public interface EncryptedResourceKeyManager {
         private String resourceType;
         private String keyProviderUuid;
         private String keyProviderName;
+        private Integer keyVersion;
         private String dekBase64;
         private String secretRef;
         private boolean createdNewKey;
@@ -113,6 +114,14 @@ public interface EncryptedResourceKeyManager {
 
         public void setKeyProviderName(String keyProviderName) {
             this.keyProviderName = keyProviderName;
+        }
+
+        public Integer getKeyVersion() {
+            return keyVersion;
+        }
+
+        public void setKeyVersion(Integer keyVersion) {
+            this.keyVersion = keyVersion;
         }
 
         public String getDekBase64() {
