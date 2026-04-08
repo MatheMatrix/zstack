@@ -5,6 +5,7 @@ import org.zstack.header.message.CancelMessage;
 public class CancelDownloadFileOnBackupStorageHostMsg extends CancelMessage implements BackupStorageMessage {
     private String backupStorageUuid;
     private String backupStorageHostUuid;
+    private String taskUuid;
 
     @Override
     public String getBackupStorageUuid() {
@@ -21,5 +22,13 @@ public class CancelDownloadFileOnBackupStorageHostMsg extends CancelMessage impl
 
     public void setBackupStorageHostUuid(String backupStorageHostUuid) {
         this.backupStorageHostUuid = backupStorageHostUuid;
+    }
+
+    public String getTaskUuid() {
+        return taskUuid;
+    }
+
+    public void setTaskUuid(String taskUuid) {
+        this.taskUuid = taskUuid;
     }
 }
