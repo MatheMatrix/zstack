@@ -887,22 +887,22 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
         evtf.on(PrimaryStorageCanonicalEvent.PRIMARY_STORAGE_HOST_STATUS_CHANGED_PATH, new EventCallback() {
             @Override
             protected void run(Map tokens, Object data) {
-                PrimaryStorageCanonicalEvent.PrimaryStorageHostStatusChangeData d =
-                        (PrimaryStorageCanonicalEvent.PrimaryStorageHostStatusChangeData)data;
-                if (d.getNewStatus() == PrimaryStorageHostStatus.Disconnected &&
-                        d.getOldStatus() != PrimaryStorageHostStatus.Disconnected &&
-                        noStorageAccessible(d.getHostUuid())){
-                    ChangeHostConnectionStateMsg msg = new ChangeHostConnectionStateMsg();
-                    msg.setHostUuid(d.getHostUuid());
-                    msg.setConnectionStateEvent(HostStatusEvent.disconnected.toString());
-                    msg.setCause("base cause: host disconnected from other status and has no connected primary storage attached");
-                    bus.makeTargetServiceIdByResourceUuid(msg, HostConstant.SERVICE_ID, d.getHostUuid());
-                    bus.send(msg);
-
-                    new HostBase.HostDisconnectedCanonicalEvent(d.getHostUuid(),
-                            operr("primary storage[uuid:%s] becomes disconnected, the host has no connected primary storage attached",
-                                    d.getPrimaryStorageUuid())).fire();
-                }
+//                PrimaryStorageCanonicalEvent.PrimaryStorageHostStatusChangeData d =
+//                        (PrimaryStorageCanonicalEvent.PrimaryStorageHostStatusChangeData)data;
+//                if (d.getNewStatus() == PrimaryStorageHostStatus.Disconnected &&
+//                        d.getOldStatus() != PrimaryStorageHostStatus.Disconnected &&
+//                        noStorageAccessible(d.getHostUuid())){
+//                    ChangeHostConnectionStateMsg msg = new ChangeHostConnectionStateMsg();
+//                    msg.setHostUuid(d.getHostUuid());
+//                    msg.setConnectionStateEvent(HostStatusEvent.disconnected.toString());
+//                    msg.setCause("base cause: host disconnected from other status and has no connected primary storage attached");
+//                    bus.makeTargetServiceIdByResourceUuid(msg, HostConstant.SERVICE_ID, d.getHostUuid());
+//                    bus.send(msg);
+//
+//                    new HostBase.HostDisconnectedCanonicalEvent(d.getHostUuid(),
+//                            operr("primary storage[uuid:%s] becomes disconnected, the host has no connected primary storage attached",
+//                                    d.getPrimaryStorageUuid())).fire();
+//                }
             }
         });
     }
