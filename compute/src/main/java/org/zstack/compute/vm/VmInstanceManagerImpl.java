@@ -1128,6 +1128,24 @@ public class VmInstanceManagerImpl extends AbstractService implements
                     ImageVO.class.getSimpleName(),
                     finalVo.getUuid(),
                     VmInstanceVO.class.getSimpleName(), false);
+
+            // ZSTAC-83991: copySystemTag blindly copies all image tags
+            // including bootMode, which may duplicate the API-specified
+            // bootMode. Use recreate to ensure only one bootMode tag.
+            List<String> apiSysTags = cmsg != null ? cmsg.getSystemTags() : msg.getSystemTags();
+            if (apiSysTags != null) {
+                apiSysTags.stream()
+                        .filter(VmSystemTags.BOOT_MODE::isMatch)
+                        .findFirst()
+                        .ifPresent(bootModeTag -> {
+                            String bootMode = VmSystemTags.BOOT_MODE.getTokenByTag(
+                                    bootModeTag, VmSystemTags.BOOT_MODE_TOKEN);
+                            SystemTagCreator c = VmSystemTags.BOOT_MODE.newSystemTagCreator(finalVo.getUuid());
+                            c.setTagByTokens(Collections.singletonMap(VmSystemTags.BOOT_MODE_TOKEN, bootMode));
+                            c.recreate = true;
+                            c.create();
+                        });
+            }
         }
 
         if (ImageArchitecture.aarch64.toString().equals(finalVo.getArchitecture())) {
