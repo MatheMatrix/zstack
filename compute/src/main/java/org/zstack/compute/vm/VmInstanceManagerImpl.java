@@ -60,6 +60,7 @@ import org.zstack.header.storage.backup.BackupStorageVO_;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.tag.SystemTagCreateMessageValidator;
 import org.zstack.header.tag.SystemTagVO;
+import org.zstack.header.tag.SystemTagVO_;
 import org.zstack.header.tag.SystemTagValidator;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
@@ -1114,6 +1115,10 @@ public class VmInstanceManagerImpl extends AbstractService implements
             creator.create();
         }
 
+        // NOTE: InstanceOffering tag copy uses blind copySystemTag because
+        // instance offerings typically don't carry bootMode tags. If that
+        // changes, this path should adopt the same prefix-filtering as the
+        // image tag copy below.
         if (finalVo.getInstanceOfferingUuid() != null) {
             tagMgr.copySystemTag(
                     finalVo.getInstanceOfferingUuid(),
@@ -1123,11 +1128,40 @@ public class VmInstanceManagerImpl extends AbstractService implements
         }
 
         if (msg.getImageUuid() != null) {
-            tagMgr.copySystemTag(
-                    msg.getImageUuid(),
-                    ImageVO.class.getSimpleName(),
-                    finalVo.getUuid(),
-                    VmInstanceVO.class.getSimpleName(), false);
+            // ZSTAC-83991: Before copying image system tags, compute the
+            // intersection with API-specified tags and exclude those to
+            // avoid duplicates (e.g. bootMode in both API and image).
+            List<String> apiSysTags = cmsg != null
+                    ? cmsg.getSystemTags() : msg.getSystemTags();
+            Set<String> apiTagPrefixes = new HashSet<>();
+            if (apiSysTags != null) {
+                for (String tag : apiSysTags) {
+                    int sep = tag.indexOf("::");
+                    apiTagPrefixes.add(sep > 0 ? tag.substring(0, sep) : tag);
+                }
+            }
+
+            SimpleQuery<SystemTagVO> imgTagQuery = dbf.createQuery(SystemTagVO.class);
+            imgTagQuery.add(SystemTagVO_.resourceUuid, Op.EQ, msg.getImageUuid());
+            imgTagQuery.add(SystemTagVO_.resourceType, Op.EQ, ImageVO.class.getSimpleName());
+            imgTagQuery.add(SystemTagVO_.inherent, Op.EQ, false);
+            List<SystemTagVO> imageTags = imgTagQuery.list();
+
+            for (SystemTagVO stag : imageTags) {
+                String tag = stag.getTag();
+                int sep = tag.indexOf("::");
+                String prefix = sep > 0 ? tag.substring(0, sep) : tag;
+
+                if (apiTagPrefixes.contains(prefix)) {
+                    continue;
+                }
+
+                SystemTagVO ntag = new SystemTagVO(stag);
+                ntag.setUuid(Platform.getUuid());
+                ntag.setResourceType(VmInstanceVO.class.getSimpleName());
+                ntag.setResourceUuid(finalVo.getUuid());
+                dbf.persist(ntag);
+            }
         }
 
         if (ImageArchitecture.aarch64.toString().equals(finalVo.getArchitecture())) {
