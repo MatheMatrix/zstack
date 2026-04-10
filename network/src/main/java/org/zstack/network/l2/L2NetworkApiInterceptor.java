@@ -146,7 +146,7 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
         }
         String sdnControllerUuid = L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID
                 .getTokenByResourceUuid(msg.getL2NetworkUuid(), L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID_TOKEN);
-        if (msg.getType().equals(L2NetworkConstant.L2_VLAN_NETWORK_TYPE)) {
+        if (L2NetworkConstant.L2_VLAN_NETWORK_TYPE.equals(msg.getType())) {
             if (msg.getVlan() == null) {
                 throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_L2_10016, "vlan is required for " +
                         "ChangeL2NetworkVlanId with type[%s]", msg.getType()));
@@ -190,7 +190,7 @@ public class L2NetworkApiInterceptor implements ApiMessageInterceptor {
                 throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_L2_10018, "There has been a l2Network attached to cluster with virtual network id[%s] and physical interface[%s]. Failed to change L2 network[uuid:%s]",
                         msg.getVlan(), l2.getPhysicalInterface(), l2.getUuid()));
             }
-        } else if (msg.getType().equals(L2NetworkConstant.L2_NO_VLAN_NETWORK_TYPE)) {
+        } else if (L2NetworkConstant.L2_NO_VLAN_NETWORK_TYPE.equals(msg.getType())) {
             if (msg.getVlan() != null) {
                 throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_L2_10019, "vlan is not allowed for " +
                         "ChangeL2NetworkVlanId with type[%s]", msg.getType()));
