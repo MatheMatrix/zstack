@@ -6036,9 +6036,8 @@ public class KVMHost extends HostBase implements Host {
 
                     @Override
                     public boolean skip(Map data) {
-                        return CoreGlobalProperty.UNIT_TEST_ON
-                                || !KVMGlobalConfig.LIBVIRT_TLS_ENABLED.value(Boolean.class)
-                                || !KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.value(Boolean.class);
+                        return !KVMGlobalConfig.LIBVIRT_TLS_ENABLED.value(Boolean.class)
+                                || !rcf.getResourceConfigValue(KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE, self.getUuid(), Boolean.class);
                     }
 
                     @Override

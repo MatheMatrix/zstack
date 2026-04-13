@@ -1,6 +1,9 @@
 package org.zstack.test.integration.kvm.vm.migrate
 
 import org.springframework.http.HttpEntity
+import org.zstack.compute.host.HostSystemTags
+import org.zstack.core.jsonlabel.JsonLabel
+import org.zstack.header.host.HostVO
 import org.zstack.kvm.KVMAgentCommands
 import org.zstack.kvm.KVMConstant
 import org.zstack.kvm.KVMGlobalConfig
@@ -18,9 +21,13 @@ import org.zstack.utils.gson.JSONObjectUtil
  * Verify that the libvirt TLS configuration (ZSTAC-81343) is correctly
  * propagated in the MigrateVmCmd sent to kvmagent.
  *
+ * Also verify that TLS certificates are updated on host reconnect
+ * when migration network IPs change (ZSTAC-83696).
+ *
  * Key logic under test (KVMHost.java):
  *   cmd.setUseTls(LIBVIRT_TLS_ENABLED && RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE)
  *   cmd.setSrcHostManagementIp(srcHostMnIp)
+ *   reconnect flow: "update-tls-certs-if-needed" sends UpdateTlsCertCmd
  */
 class LibvirtTlsMigrateCase extends SubCase {
     EnvSpec env
@@ -130,6 +137,14 @@ class LibvirtTlsMigrateCase extends SubCase {
             testMigrateWithTlsDisabled()
             testMigrateWithRestartLibvirtdDisabled()
             testGlobalConfigValidation()
+
+            // ZSTAC-83696: TLS cert update on host reconnect
+            testReconnectUpdatesTlsCertWithExtraIps()
+            testReconnectTlsCertOnlyManagementIp()
+            testReconnectSkipsTlsCertWhenTlsDisabled()
+            testReconnectSkipsTlsCertWhenCaMissing()
+            testReconnectNotBlockedByTlsCertFailure()
+            testReconnectUsesResourceConfigNotGlobalConfig()
         }
     }
 
@@ -263,5 +278,300 @@ class LibvirtTlsMigrateCase extends SubCase {
             name = "libvirt.tls.enabled"
             value = "true"
         }
+    }
+
+    /**
+     * ZSTAC-83696 Case 5: TLS enabled + host has extra IPs (migration network)
+     *   => reconnect should send UpdateTlsCertCmd with managementIp + extraIps
+     */
+    void testReconnectUpdatesTlsCertWithExtraIps() {
+        def host1 = env.inventoryByName("kvm1") as HostInventory
+
+        KVMGlobalConfig.LIBVIRT_TLS_ENABLED.updateValue("true")
+
+        // Seed CA cert/key into JsonLabel (simulating what ansible deploy stores)
+        new JsonLabel().create("libvirtTLSCA", "-----BEGIN CERTIFICATE-----\nFAKE_CA\n-----END CERTIFICATE-----")
+        new JsonLabel().create("libvirtTLSPrivateKey", "-----BEGIN RSA PRIVATE KEY-----\nFAKE_KEY\n-----END RSA PRIVATE KEY-----")
+
+        // Add extra IPs (migration network) via system tag
+        createSystemTag {
+            resourceType = HostVO.class.simpleName
+            resourceUuid = host1.uuid
+            tag = "extraips::10.0.100.1,10.0.100.2"
+        }
+
+        KVMAgentCommands.UpdateTlsCertCmd cmd = null
+        env.afterSimulator(KVMConstant.KVM_UPDATE_TLS_CERT_PATH) { rsp, HttpEntity<String> e ->
+            cmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.UpdateTlsCertCmd.class)
+            return rsp
+        }
+
+        reconnectHost {
+            uuid = host1.uuid
+        }
+
+        assert cmd != null : "UpdateTlsCertCmd should have been sent on reconnect"
+        assert cmd.caCert != null : "caCert should be populated"
+        assert cmd.caKey != null : "caKey should be populated"
+        assert cmd.certIps.contains(host1.managementIp) :
+                "certIps should contain management IP"
+        assert cmd.certIps.contains("10.0.100.1") :
+                "certIps should contain extra migration IP 10.0.100.1"
+        assert cmd.certIps.contains("10.0.100.2") :
+                "certIps should contain extra migration IP 10.0.100.2"
+
+        // Cleanup
+        HostSystemTags.EXTRA_IPS.delete(host1.uuid)
+        new JsonLabel().delete("libvirtTLSCA")
+        new JsonLabel().delete("libvirtTLSPrivateKey")
+    }
+
+    /**
+     * ZSTAC-83696 Case 6: TLS enabled + no extra IPs
+     *   => certIps should only contain management IP
+     */
+    void testReconnectTlsCertOnlyManagementIp() {
+        def host1 = env.inventoryByName("kvm1") as HostInventory
+
+        KVMGlobalConfig.LIBVIRT_TLS_ENABLED.updateValue("true")
+
+        new JsonLabel().create("libvirtTLSCA", "-----BEGIN CERTIFICATE-----\nFAKE_CA\n-----END CERTIFICATE-----")
+        new JsonLabel().create("libvirtTLSPrivateKey", "-----BEGIN RSA PRIVATE KEY-----\nFAKE_KEY\n-----END RSA PRIVATE KEY-----")
+
+        // Ensure no EXTRA_IPS tag exists
+        HostSystemTags.EXTRA_IPS.delete(host1.uuid)
+
+        KVMAgentCommands.UpdateTlsCertCmd cmd = null
+        env.afterSimulator(KVMConstant.KVM_UPDATE_TLS_CERT_PATH) { rsp, HttpEntity<String> e ->
+            cmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.UpdateTlsCertCmd.class)
+            return rsp
+        }
+
+        reconnectHost {
+            uuid = host1.uuid
+        }
+
+        assert cmd != null : "UpdateTlsCertCmd should have been sent"
+        assert cmd.certIps == host1.managementIp :
+                "certIps should only contain management IP when no extra IPs exist"
+
+        // Cleanup
+        new JsonLabel().delete("libvirtTLSCA")
+        new JsonLabel().delete("libvirtTLSPrivateKey")
+    }
+
+    /**
+     * ZSTAC-83696 Case 7: TLS disabled => UpdateTlsCertCmd should NOT be sent
+     */
+    void testReconnectSkipsTlsCertWhenTlsDisabled() {
+        def host1 = env.inventoryByName("kvm1") as HostInventory
+
+        KVMGlobalConfig.LIBVIRT_TLS_ENABLED.updateValue("false")
+
+        boolean updateTlsCertCalled = false
+        env.afterSimulator(KVMConstant.KVM_UPDATE_TLS_CERT_PATH) { rsp, HttpEntity<String> e ->
+            updateTlsCertCalled = true
+            return rsp
+        }
+
+        reconnectHost {
+            uuid = host1.uuid
+        }
+
+        assert !updateTlsCertCalled :
+                "UpdateTlsCertCmd should NOT be sent when TLS is disabled"
+
+        // Restore default
+        KVMGlobalConfig.LIBVIRT_TLS_ENABLED.updateValue("true")
+    }
+
+    /**
+     * ZSTAC-83696 Case 8: TLS enabled but CA cert/key missing in DB
+     *   => should skip gracefully, not block reconnect
+     */
+    void testReconnectSkipsTlsCertWhenCaMissing() {
+        def host1 = env.inventoryByName("kvm1") as HostInventory
+
+        KVMGlobalConfig.LIBVIRT_TLS_ENABLED.updateValue("true")
+
+        // Ensure no CA cert/key in database
+        new JsonLabel().delete("libvirtTLSCA")
+        new JsonLabel().delete("libvirtTLSPrivateKey")
+
+        boolean updateTlsCertCalled = false
+        env.afterSimulator(KVMConstant.KVM_UPDATE_TLS_CERT_PATH) { rsp, HttpEntity<String> e ->
+            updateTlsCertCalled = true
+            return rsp
+        }
+
+        // Reconnect should succeed even without CA
+        reconnectHost {
+            uuid = host1.uuid
+        }
+
+        assert !updateTlsCertCalled :
+                "UpdateTlsCertCmd should NOT be sent when CA cert/key is missing"
+    }
+
+    /**
+     * ZSTAC-83696 Case 9: UpdateTlsCertCmd returns failure
+     *   => reconnect should still succeed (cert update is non-blocking)
+     */
+    void testReconnectNotBlockedByTlsCertFailure() {
+        def host1 = env.inventoryByName("kvm1") as HostInventory
+
+        KVMGlobalConfig.LIBVIRT_TLS_ENABLED.updateValue("true")
+
+        new JsonLabel().create("libvirtTLSCA", "-----BEGIN CERTIFICATE-----\nFAKE_CA\n-----END CERTIFICATE-----")
+        new JsonLabel().create("libvirtTLSPrivateKey", "-----BEGIN RSA PRIVATE KEY-----\nFAKE_KEY\n-----END RSA PRIVATE KEY-----")
+
+        // Simulate kvmagent returning a failure for cert update
+        env.afterSimulator(KVMConstant.KVM_UPDATE_TLS_CERT_PATH) { rsp, HttpEntity<String> e ->
+            def r = new KVMAgentCommands.UpdateTlsCertResponse()
+            r.success = false
+            r.error = "simulated cert generation failure"
+            return r
+        }
+
+        // Reconnect should still succeed despite cert update failure
+        reconnectHost {
+            uuid = host1.uuid
+        }
+
+        // If we reach here, reconnect was not blocked — test passes
+
+        // Cleanup
+        new JsonLabel().delete("libvirtTLSCA")
+        new JsonLabel().delete("libvirtTLSPrivateKey")
+    }
+
+    /**
+     * ZSTAC-83696 Case 10: Ensure the "update-tls-certs-if-needed" flow skip condition
+     * is consistent with the migrate useTls parameter across all global/resource config combos.
+     *
+     * Invariant: whenever migrate would set useTls=true (meaning TLS certs are needed),
+     * the reconnect cert-update flow must NOT be skipped. Conversely, when useTls=false,
+     * the flow should be skipped (certs are not needed).
+     *
+     * The original bug: migrate used rcf.getResourceConfigValue() (resource-level, true),
+     * but skip() used GlobalConfig.value() (global, false). This caused useTls=true
+     * but cert update skipped → "Certificate does not match the hostname" on migration.
+     */
+    void testReconnectUsesResourceConfigNotGlobalConfig() {
+        def host1 = env.inventoryByName("kvm1") as HostInventory
+        def host2 = env.inventoryByName("kvm2") as HostInventory
+        def vm = env.inventoryByName("vm") as VmInstanceInventory
+
+        KVMGlobalConfig.LIBVIRT_TLS_ENABLED.updateValue("true")
+
+        new JsonLabel().create("libvirtTLSCA", "-----BEGIN CERTIFICATE-----\nFAKE_CA\n-----END CERTIFICATE-----")
+        new JsonLabel().create("libvirtTLSPrivateKey", "-----BEGIN RSA PRIVATE KEY-----\nFAKE_KEY\n-----END RSA PRIVATE KEY-----")
+
+        // ---- Scenario A: global=false, host-level=true ----
+        // This is the exact production bug scenario.
+        // Migrate should use TLS (resource=true), cert update must NOT be skipped.
+        KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.updateValue("false")
+        updateResourceConfig {
+            category = KVMGlobalConfig.CATEGORY
+            name = KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.name
+            value = "true"
+            resourceUuid = host1.uuid
+        }
+
+        // Verify migrate useTls=true (resource-level wins)
+        KVMAgentCommands.MigrateVmCmd migrateCmd = null
+        env.afterSimulator(KVMConstant.KVM_MIGRATE_VM_PATH) { rsp, HttpEntity<String> e ->
+            migrateCmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.MigrateVmCmd.class)
+            return rsp
+        }
+        migrateVm {
+            vmInstanceUuid = vm.uuid
+            hostUuid = host2.uuid
+        }
+        assert migrateCmd.useTls :
+                "Scenario A: useTls should be true (resource-level restartLibvirtd=true)"
+
+        // Verify cert update flow is NOT skipped on reconnect
+        KVMAgentCommands.UpdateTlsCertCmd certCmd = null
+        env.afterSimulator(KVMConstant.KVM_UPDATE_TLS_CERT_PATH) { rsp, HttpEntity<String> e ->
+            certCmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.UpdateTlsCertCmd.class)
+            return rsp
+        }
+        reconnectHost {
+            uuid = host1.uuid
+        }
+        assert certCmd != null :
+                "Scenario A: cert update must NOT be skipped when host-level restartLibvirtd=true (useTls=true)"
+
+        // ---- Scenario B: global=false, host-level=false (no override) ----
+        // Migrate should NOT use TLS, cert update should be skipped. Both consistent.
+        KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.updateValue("false")
+        updateResourceConfig {
+            category = KVMGlobalConfig.CATEGORY
+            name = KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.name
+            value = "false"
+            resourceUuid = host1.uuid
+        }
+
+        migrateCmd = null
+        env.afterSimulator(KVMConstant.KVM_MIGRATE_VM_PATH) { rsp, HttpEntity<String> e ->
+            migrateCmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.MigrateVmCmd.class)
+            return rsp
+        }
+        migrateVm {
+            vmInstanceUuid = vm.uuid
+            hostUuid = host1.uuid
+        }
+        assert !migrateCmd.useTls :
+                "Scenario B: useTls should be false (both global and resource=false)"
+
+        boolean certUpdateCalled = false
+        env.afterSimulator(KVMConstant.KVM_UPDATE_TLS_CERT_PATH) { rsp, HttpEntity<String> e ->
+            certUpdateCalled = true
+            return rsp
+        }
+        reconnectHost {
+            uuid = host1.uuid
+        }
+        assert !certUpdateCalled :
+                "Scenario B: cert update should be skipped when restartLibvirtd=false (useTls=false)"
+
+        // ---- Scenario C: global=true, host-level=true ----
+        // Both true, both should agree: useTls=true, cert update runs.
+        KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.updateValue("true")
+        updateResourceConfig {
+            category = KVMGlobalConfig.CATEGORY
+            name = KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.name
+            value = "true"
+            resourceUuid = host1.uuid
+        }
+
+        migrateCmd = null
+        env.afterSimulator(KVMConstant.KVM_MIGRATE_VM_PATH) { rsp, HttpEntity<String> e ->
+            migrateCmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.MigrateVmCmd.class)
+            return rsp
+        }
+        migrateVm {
+            vmInstanceUuid = vm.uuid
+            hostUuid = host2.uuid
+        }
+        assert migrateCmd.useTls :
+                "Scenario C: useTls should be true (both global and resource=true)"
+
+        certCmd = null
+        env.afterSimulator(KVMConstant.KVM_UPDATE_TLS_CERT_PATH) { rsp, HttpEntity<String> e ->
+            certCmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.UpdateTlsCertCmd.class)
+            return rsp
+        }
+        reconnectHost {
+            uuid = host1.uuid
+        }
+        assert certCmd != null :
+                "Scenario C: cert update must run when restartLibvirtd=true (useTls=true)"
+
+        // Cleanup
+        KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.updateValue("true")
+        new JsonLabel().delete("libvirtTLSCA")
+        new JsonLabel().delete("libvirtTLSPrivateKey")
     }
 }
