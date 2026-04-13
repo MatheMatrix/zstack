@@ -18,6 +18,10 @@ import org.zstack.utils.gson.JSONObjectUtil
  * Verify that the libvirt TLS configuration (ZSTAC-81343) is correctly
  * propagated in the MigrateVmCmd sent to kvmagent.
  *
+ * TLS certificate deployment is now handled by SSH-based detection +
+ * ansible deploy (ZSTAC-83696), which skips in unit tests. Only
+ * migration TLS flag propagation is tested here.
+ *
  * Key logic under test (KVMHost.java):
  *   cmd.setUseTls(LIBVIRT_TLS_ENABLED && RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE)
  *   cmd.setSrcHostManagementIp(srcHostMnIp)
