@@ -13,6 +13,7 @@ public class HaStartVmInstanceMsg extends NeedReplyMessage implements VmInstance
     private String judgerClassName;
     private List<String> softAvoidHostUuids;
     private String haReason;
+    private String requiredClusterUuid;
 
     public String getJudgerClassName() {
         return judgerClassName;
@@ -45,5 +46,13 @@ public class HaStartVmInstanceMsg extends NeedReplyMessage implements VmInstance
 
     public void setHaReason(String haReason) {
         this.haReason = haReason;
+    }
+
+    public String getRequiredClusterUuid() {
+        return requiredClusterUuid;
+    }
+
+    public void setRequiredClusterUuid(String requiredClusterUuid) {
+        this.requiredClusterUuid = requiredClusterUuid;
     }
 }

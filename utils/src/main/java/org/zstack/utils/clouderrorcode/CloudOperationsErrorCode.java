@@ -1894,6 +1894,10 @@ public class CloudOperationsErrorCode {
 
     public static final String ORG_ZSTACK_HA_10036 = "ORG_ZSTACK_HA_10036";
 
+    public static final String ORG_ZSTACK_HA_10037 = "ORG_ZSTACK_HA_10037";
+
+    public static final String ORG_ZSTACK_HA_10038 = "ORG_ZSTACK_HA_10038";
+
     public static final String ORG_ZSTACK_NETWORK_SERVICE_SLB_10000 = "ORG_ZSTACK_NETWORK_SERVICE_SLB_10000";
 
     public static final String ORG_ZSTACK_NETWORK_SERVICE_SLB_10001 = "ORG_ZSTACK_NETWORK_SERVICE_SLB_10001";

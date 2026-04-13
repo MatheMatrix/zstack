@@ -7171,9 +7171,11 @@ public class VmInstanceBase extends AbstractVmInstance {
         }
 
         if (msg instanceof HaStartVmInstanceMsg) {
+            spec.setRequiredClusterUuid(((HaStartVmInstanceMsg) msg).getRequiredClusterUuid());
             spec.setSoftAvoidHostUuids(((HaStartVmInstanceMsg) msg).getSoftAvoidHostUuids());
             spec.setAllocationScene(AllocationScene.Auto);
         } else if (msg instanceof StartVmInstanceMsg) {
+            spec.setRequiredClusterUuid(((StartVmInstanceMsg) msg).getRequiredClusterUuid());
             spec.setRequiredHostUuid(((StartVmInstanceMsg) msg).getHostUuid());
             spec.setSoftAvoidHostUuids(((StartVmInstanceMsg) msg).getSoftAvoidHostUuids());
             if (((StartVmInstanceMsg) msg).getAllocationScene() != null) {
