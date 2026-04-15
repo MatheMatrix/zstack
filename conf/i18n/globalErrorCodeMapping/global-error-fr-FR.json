@@ -847,6 +847,7 @@
   "ORG_ZSTACK_ZWATCH_ALARM_10025": "la métrique ne possède pas l'étiquette spécifiée[%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10023": "étiquette en double définie pour l'alarme avec UUID [uuid:%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10029": "la métrique[%s] est restreinte aux administrateurs et n'est pas disponible pour votre rôle utilisateur actuel.",
+  "ORG_ZSTACK_ZWATCH_ALARM_10030": "URL invalide[%s]",
   "ORG_ZSTACK_NETWORK_SERVICE_LB_10171": "impossible de modifier le serveur backend car vmincs et les IPs du serveur sont null",
   "ORG_ZSTACK_ZWATCH_ALARM_10028": "l'espace de noms[%s] ne contient pas la métrique[%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10027": "l'espace de noms[%s] n'est pas pris en charge",

@@ -847,6 +847,7 @@
   "ORG_ZSTACK_ZWATCH_ALARM_10025": "the metric does not have the specified label[%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10023": "duplicate label defined for the alarm with UUID [uuid:%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10029": "the metric[%s] is restricted to administrators and is not available for your current user role.",
+  "ORG_ZSTACK_ZWATCH_ALARM_10030": "invalid url[%s]",
   "ORG_ZSTACK_NETWORK_SERVICE_LB_10171": "could not modify backend server because vmincs and server IPs are null",
   "ORG_ZSTACK_ZWATCH_ALARM_10028": "namespace[%s] does not contain the metric[%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10027": "namespace[%s] is not supported",

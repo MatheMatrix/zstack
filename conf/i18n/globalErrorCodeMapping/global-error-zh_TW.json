@@ -847,6 +847,7 @@
   "ORG_ZSTACK_ZWATCH_ALARM_10025": "指標[%s]不儲在標签[%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10023": "重复標签[key:%s, 操作符:%s, 值:%s]告警[uuid:%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10029": "指標[%s]仅管理員可见，當前用戶不可用",
+  "ORG_ZSTACK_ZWATCH_ALARM_10030": "無效的URL[%s]",
   "ORG_ZSTACK_NETWORK_SERVICE_LB_10171": "無法更改後端服務器，因为 vmincs 和 serverips 为空",
   "ORG_ZSTACK_ZWATCH_ALARM_10028": "命名空間[%s]不儲在度量[%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10027": "命名空間[%s]不支持",

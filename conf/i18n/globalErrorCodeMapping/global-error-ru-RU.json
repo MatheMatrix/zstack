@@ -847,6 +847,7 @@
   "ORG_ZSTACK_ZWATCH_ALARM_10025": "метрика не содержит указанную метку[%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10023": "дублирующаяся метка определена для сигнала тревоги с UUID [uuid:%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10029": "метрика[%s] ограничена для администраторов и недоступна для вашей текущей роли пользователя.",
+  "ORG_ZSTACK_ZWATCH_ALARM_10030": "недопустимый URL[%s]",
   "ORG_ZSTACK_NETWORK_SERVICE_LB_10171": "не удалось изменить backend-сервер, так как vmincs и IP-адреса серверов равны null",
   "ORG_ZSTACK_ZWATCH_ALARM_10028": "namespace[%s] не содержит метрику[%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10027": "namespace[%s] не поддерживается",
