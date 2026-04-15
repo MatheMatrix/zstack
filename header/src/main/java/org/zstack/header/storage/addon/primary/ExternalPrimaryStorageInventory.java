@@ -2,16 +2,36 @@ package org.zstack.header.storage.addon.primary;
 
 import org.zstack.header.search.Inventory;
 import org.zstack.header.storage.primary.PrimaryStorageInventory;
+import org.zstack.utils.BeanUtils;
+import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
+import org.zstack.utils.logging.CLogger;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Inventory(mappingVOClass = ExternalPrimaryStorageVO.class)
 public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
+    private static final CLogger logger = Utils.getLogger(ExternalPrimaryStorageInventory.class);
+    private static final Map<String, Class<? extends ExternalPrimaryStorageConfig>> configClassRegistry = new ConcurrentHashMap<>();
+
+    static {
+        for (Class<? extends ExternalPrimaryStorageConfig> clz : BeanUtils.reflections.getSubTypesOf(ExternalPrimaryStorageConfig.class)) {
+            if (clz.isInterface()) {
+                continue;
+            }
+            try {
+                ExternalPrimaryStorageConfig instance = clz.newInstance();
+                configClassRegistry.put(instance.getIdentity(), clz);
+            } catch (Exception e) {
+                logger.warn(String.format("failed to register ExternalPrimaryStorageConfig: %s", clz.getName()), e);
+            }
+        }
+    }
+
     private String identity;
 
     /**
@@ -60,44 +80,22 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
     public ExternalPrimaryStorageInventory(ExternalPrimaryStorageVO lvo) {
         super(lvo);
         identity = lvo.getIdentity();
-        config = JSONObjectUtil.toObject(lvo.getConfig(), LinkedHashMap.class);
-        desensitizeConfig(config);
         addonInfo = JSONObjectUtil.toObject(lvo.getAddonInfo(), LinkedHashMap.class);
         outputProtocols = lvo.getOutputProtocols().stream().map(PrimaryStorageOutputProtocolRefVO::getOutputProtocol).collect(Collectors.toList());
         defaultProtocol = lvo.getDefaultProtocol();
+
+        Class<? extends ExternalPrimaryStorageConfig> configClass = configClassRegistry.get(identity);
+        if (configClass != null) {
+            ExternalPrimaryStorageConfig typedConfig = JSONObjectUtil.toObject(lvo.getConfig(), configClass);
+            ExternalPrimaryStorageConfig desensitized = typedConfig.desensitize();
+            config = JSONObjectUtil.toObject(JSONObjectUtil.toJsonString(desensitized), LinkedHashMap.class);
+        } else {
+            config = JSONObjectUtil.toObject(lvo.getConfig(), LinkedHashMap.class);
+        }
     }
 
     public static ExternalPrimaryStorageInventory valueOf(ExternalPrimaryStorageVO lvo) {
         return new ExternalPrimaryStorageInventory(lvo);
-    }
-
-    private static void desensitizeConfig(Map config) {
-        if (config == null) return;
-        desensitizeUrlList(config, "mdsUrls");
-        desensitizeUrlList(config, "mdsInfos");
-    }
-
-    private static void desensitizeUrlList(Map config, String key) {
-        Object urls = config.get(key);
-        if (urls instanceof List) {
-            List<String> desensitized = new ArrayList<>();
-            for (Object url : (List) urls) {
-                desensitized.add(desensitizeUrl(String.valueOf(url)));
-            }
-            config.put(key, desensitized);
-        }
-    }
-
-    private static String desensitizeUrl(String url) {
-        int atIndex = url.lastIndexOf('@');
-        if (atIndex > 0) {
-            int schemeIndex = url.indexOf("://");
-            if (schemeIndex >= 0 && schemeIndex < atIndex) {
-                return url.substring(0, schemeIndex + 3) + "***" + url.substring(atIndex);
-            }
-            return "***" + url.substring(atIndex);
-        }
-        return url;
     }
 
     public String getIdentity() {

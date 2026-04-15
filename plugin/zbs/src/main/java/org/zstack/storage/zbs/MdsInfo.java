@@ -1,5 +1,8 @@
 package org.zstack.storage.zbs;
 
+import org.zstack.header.log.NoLogging;
+
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -9,9 +12,10 @@ import java.util.stream.Collectors;
  * @author Xingwei Yu
  * @date 2024/4/10 23:18
  */
-public class MdsInfo {
+public class MdsInfo implements Serializable {
     private String username;
-    private String password;
+    @NoLogging
+    private transient String password;
     private int port = 22;
     private String addr;
     private String externalAddr;
