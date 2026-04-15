@@ -1,23 +1,16 @@
 package org.zstack.test.integration.storage.primary.nfs.capacity
 
-import org.springframework.http.HttpEntity
 import org.zstack.core.db.DatabaseFacade
-import org.zstack.core.db.SQL
 import org.zstack.header.storage.primary.PrimaryStorageCapacityVO
 import org.zstack.header.volume.VolumeVO
-import org.zstack.header.volume.VolumeVO_
 import org.zstack.sdk.GetPrimaryStorageCapacityResult
 import org.zstack.sdk.PrimaryStorageInventory
 import org.zstack.sdk.VmInstanceInventory
 import org.zstack.test.integration.storage.StorageTest
 import org.zstack.testlib.EnvSpec
 import org.zstack.testlib.SubCase
-import org.zstack.testlib.NfsPrimaryStorageSpec
 import org.zstack.storage.primary.nfs.NfsPrimaryStorageKVMBackend
-import org.zstack.storage.primary.nfs.NfsPrimaryStorageKVMBackendCommands
 import org.zstack.utils.data.SizeUnit
-import org.zstack.utils.gson.JSONObjectUtil
-import org.zstack.header.image.ImageConstant
 import org.zstack.header.network.service.NetworkServiceType
 import org.zstack.network.securitygroup.SecurityGroupConstant
 import org.zstack.network.service.virtualrouter.VirtualRouterConstant
@@ -180,93 +173,58 @@ class NfsSyncVolumeSizeCapacityCase extends SubCase {
         VmInstanceInventory vm = env.inventoryByName("vm")
         String rootVolumeUuid = vm.rootVolumeUuid
 
-        // Ensure the volume has a known non-zero size in DB
-        long initialSize = SizeUnit.GIGABYTE.toByte(20)
-        SQL.New(VolumeVO.class)
-                .eq(VolumeVO_.uuid, rootVolumeUuid)
-                .set(VolumeVO_.size, initialSize)
-                .update()
-
         long sizeIncrease = SizeUnit.GIGABYTE.toByte(10)
-        long newSize = initialSize + sizeIncrease
-
-        // Mock the NFS agent to report the volume has grown
-        env.simulator(NfsPrimaryStorageKVMBackend.GET_VOLUME_SIZE_PATH) { HttpEntity<String> e, EnvSpec espec ->
-            def rsp = new NfsPrimaryStorageKVMBackendCommands.GetVolumeActualSizeRsp()
-            rsp.size = newSize
-            rsp.actualSize = newSize
-            return rsp
-        }
-
-        // Mock remount to avoid physical capacity changes during reconnect
-        env.simulator(NfsPrimaryStorageKVMBackend.REMOUNT_PATH) { HttpEntity<String> e, EnvSpec espec ->
-            def cmd = JSONObjectUtil.toObject(e.getBody(), NfsPrimaryStorageKVMBackendCommands.RemountCmd.class)
-            NfsPrimaryStorageSpec spec = espec.specByUuid(cmd.uuid) as NfsPrimaryStorageSpec
-            def rsp = new NfsPrimaryStorageKVMBackendCommands.NfsPrimaryStorageAgentResponse()
-            rsp.totalCapacity = spec.totalCapacity
-            rsp.availableCapacity = spec.availableCapacity
-            return rsp
-        }
 
         // Step 1: Baseline — reconnect to establish consistent capacity
         reconnectPrimaryStorage {
             uuid = ps.uuid
         }
 
+        VolumeVO volBefore = dbf.findByUuid(rootVolumeUuid, VolumeVO.class)
+        long initialSize = volBefore.getSize()
+        long newSize = initialSize + sizeIncrease
+
         GetPrimaryStorageCapacityResult baseline = getPrimaryStorageCapacity {
             primaryStorageUuids = [ps.uuid]
         }
 
-        // Step 2: Trigger volume size sync — agent reports larger size
+        PrimaryStorageCapacityVO capBefore = dbf.findByUuid(ps.uuid, PrimaryStorageCapacityVO.class)
+        logger.info("BASELINE: vol.size=${initialSize}, ps.available=${capBefore.availableCapacity}")
+
+        // Step 2: hijack the NFS agent response to report larger volume size
+        env.hijackSimulator(NfsPrimaryStorageKVMBackend.GET_VOLUME_SIZE_PATH) { rsp ->
+            rsp.size = newSize
+            rsp.actualSize = newSize
+            return rsp
+        }
+
+        // Step 3: Trigger volume size sync — agent reports larger size
         syncVolumeSize {
             uuid = rootVolumeUuid
         }
 
         // Verify volume size was updated in DB
-        VolumeVO vol = dbf.findByUuid(rootVolumeUuid, VolumeVO.class)
-        logger.info("after syncVolumeSize: vol.size=${vol.getSize()}, expected=${newSize}")
+        VolumeVO volAfter = dbf.findByUuid(rootVolumeUuid, VolumeVO.class)
+        assert volAfter.getSize() == newSize :
+                "syncVolumeSize should update VolumeVO.size to the value from agent. " +
+                "expected=${newSize}, actual=${volAfter.getSize()}"
 
-        GetPrimaryStorageCapacityResult afterSync = getPrimaryStorageCapacity {
-            primaryStorageUuids = [ps.uuid]
-        }
+        PrimaryStorageCapacityVO capAfter = dbf.findByUuid(ps.uuid, PrimaryStorageCapacityVO.class)
+        logger.info("AFTER SYNC: vol.size=${volAfter.getSize()}, ps.available=${capAfter.availableCapacity}")
+        logger.info("DIFF: sizeIncrease=${sizeIncrease}, capacityDrop=${capBefore.availableCapacity - capAfter.availableCapacity}")
 
-        logger.info("capacity: baseline.available=${baseline.availableCapacity}, afterSync.available=${afterSync.availableCapacity}")
+        // Core assertion: availableCapacity must decrease by the size increase
+        // Before fix: capAfter.availableCapacity == capBefore.availableCapacity (no adjustment)
+        // After fix: capAfter.availableCapacity == capBefore.availableCapacity - sizeIncrease
+        assert capAfter.availableCapacity < capBefore.availableCapacity :
+                "ZSTAC-80937: availableCapacity should decrease when volume size increases via syncVolumeSize. " +
+                "before=${capBefore.availableCapacity}, after=${capAfter.availableCapacity}, " +
+                "sizeIncrease=${sizeIncrease}"
 
-        // Core assertion: if the volume size increased, availableCapacity must decrease
-        // Before fix: afterSync.availableCapacity == baseline.availableCapacity (no adjustment)
-        // After fix: afterSync.availableCapacity < baseline.availableCapacity
-        if (vol.getSize() == newSize) {
-            // Sync worked — verify capacity adjustment
-            assert afterSync.availableCapacity < baseline.availableCapacity :
-                    "ZSTAC-80937: availableCapacity should decrease when volume size increases via sync. " +
-                    "baseline=${baseline.availableCapacity}, afterSync=${afterSync.availableCapacity}, " +
-                    "sizeIncrease=${sizeIncrease}"
-        } else {
-            // Sync mock didn't work — fall back to recalculate-based verification
-            logger.info("sync mock did not take effect, verifying via recalculate path")
+        assert capAfter.availableCapacity == capBefore.availableCapacity - sizeIncrease :
+                "ZSTAC-80937: availableCapacity should decrease by exactly the size increase. " +
+                "expected=${capBefore.availableCapacity - sizeIncrease}, actual=${capAfter.availableCapacity}"
 
-            // Directly update vol size in DB (simulating backend growth)
-            SQL.New(VolumeVO.class)
-                    .eq(VolumeVO_.uuid, rootVolumeUuid)
-                    .set(VolumeVO_.size, newSize)
-                    .update()
-
-            // Reconnect triggers recalculate which reads actual vol.size from DB
-            reconnectPrimaryStorage {
-                uuid = ps.uuid
-            }
-
-            GetPrimaryStorageCapacityResult afterRecalc = getPrimaryStorageCapacity {
-                primaryStorageUuids = [ps.uuid]
-            }
-
-            // After recalculation, capacity should reflect the new larger volume size
-            assert afterRecalc.availableCapacity < baseline.availableCapacity :
-                    "ZSTAC-80937: availableCapacity should decrease after recalculate catches volume growth. " +
-                    "baseline=${baseline.availableCapacity}, afterRecalc=${afterRecalc.availableCapacity}, " +
-                    "sizeIncrease=${sizeIncrease}"
-
-            logger.info("VERIFIED via recalculate: capacity dropped from ${baseline.availableCapacity} to ${afterRecalc.availableCapacity}")
-        }
+        logger.info("VERIFIED: capacity dropped from ${capBefore.availableCapacity} to ${capAfter.availableCapacity} (delta=${sizeIncrease})")
     }
 }
