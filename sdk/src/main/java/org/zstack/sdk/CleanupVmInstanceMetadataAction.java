@@ -25,8 +25,11 @@ public class CleanupVmInstanceMetadataAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, nonempty = true, nullElements = false, emptyString = true, noTrim = false)
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.util.List vmUuids;
+
+    @Param(required = false)
+    public boolean cleanAllVmMetadata;
 
     @Param(required = false)
     public java.util.List systemTags;

@@ -43,6 +43,16 @@ public class APICleanupVmInstanceMetadataEvent extends APIEvent {
         this.failedVmUuids = failedVmUuids;
     }
 
+    private List<String> failedPrimaryStorageUuids;
+
+    public List<String> getFailedPrimaryStorageUuids() {
+        return failedPrimaryStorageUuids;
+    }
+
+    public void setFailedPrimaryStorageUuids(List<String> failedPrimaryStorageUuids) {
+        this.failedPrimaryStorageUuids = failedPrimaryStorageUuids;
+    }
+
     public static APICleanupVmInstanceMetadataEvent __example__() {
         APICleanupVmInstanceMetadataEvent evt = new APICleanupVmInstanceMetadataEvent();
         evt.totalCleaned = 5;

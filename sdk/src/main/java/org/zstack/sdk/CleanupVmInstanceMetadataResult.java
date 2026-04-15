@@ -27,4 +27,12 @@ public class CleanupVmInstanceMetadataResult {
         return this.failedVmUuids;
     }
 
+    public java.util.List failedPrimaryStorageUuids;
+    public void setFailedPrimaryStorageUuids(java.util.List failedPrimaryStorageUuids) {
+        this.failedPrimaryStorageUuids = failedPrimaryStorageUuids;
+    }
+    public java.util.List getFailedPrimaryStorageUuids() {
+        return this.failedPrimaryStorageUuids;
+    }
+
 }

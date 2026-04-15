@@ -2170,6 +2170,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
         CleanupVmMetadataCmd cmd = new CleanupVmMetadataCmd();
         cmd.setUuid(msg.getPrimaryStorageUuid());
         cmd.metadataPath = msg.getMetadataPath();
+        cmd.cleanAllVmMetadata = msg.isCleanAllVmMetadata();
 
         KVMHostAsyncHttpCallMsg hmsg = new KVMHostAsyncHttpCallMsg();
         hmsg.setCommand(cmd);
@@ -2191,6 +2192,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
                 }
 
                 CleanupVmInstanceMetadataOnPrimaryStorageReply r = new CleanupVmInstanceMetadataOnPrimaryStorageReply();
+                r.setCleanedCount(rsp.cleanedCount);
                 completion.success(r);
             }
         });

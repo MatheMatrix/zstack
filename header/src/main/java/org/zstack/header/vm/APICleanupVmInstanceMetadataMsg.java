@@ -14,8 +14,11 @@ import java.util.List;
         isAction = true
 )
 public class APICleanupVmInstanceMetadataMsg extends APIMessage {
-    @APIParam(resourceType = VmInstanceVO.class, nonempty = true)
+    @APIParam(resourceType = VmInstanceVO.class, required = false)
     private List<String> vmUuids;
+
+    @APIParam(required = false)
+    private boolean cleanAllVmMetadata;
 
     public List<String> getVmUuids() {
         return vmUuids;
@@ -25,9 +28,18 @@ public class APICleanupVmInstanceMetadataMsg extends APIMessage {
         this.vmUuids = vmUuids;
     }
 
+    public boolean isCleanAllVmMetadata() {
+        return cleanAllVmMetadata;
+    }
+
+    public void setCleanAllVmMetadata(boolean cleanAllVmMetadata) {
+        this.cleanAllVmMetadata = cleanAllVmMetadata;
+    }
+
     public static APICleanupVmInstanceMetadataMsg __example__() {
         APICleanupVmInstanceMetadataMsg msg = new APICleanupVmInstanceMetadataMsg();
         msg.vmUuids = java.util.Arrays.asList(uuid(), uuid());
+        msg.cleanAllVmMetadata = false;
         return msg;
     }
 }

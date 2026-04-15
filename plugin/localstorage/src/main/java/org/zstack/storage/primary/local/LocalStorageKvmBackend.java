@@ -946,9 +946,11 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
 
     public static class CleanupVmMetadataCmd extends AgentCommand {
         public String metadataPath;
+        public boolean cleanAllVmMetadata;
     }
 
     public static class CleanupVmMetadataRsp extends AgentResponse {
+        public int cleanedCount;
     }
 
     public static class PrefixRebaseBackingFilesCmd extends LocalStorageKvmBackend.AgentCommand {
@@ -3945,11 +3947,13 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
     void handle(CleanupVmInstanceMetadataOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<CleanupVmInstanceMetadataOnPrimaryStorageReply> completion) {
         CleanupVmMetadataCmd cmd = new CleanupVmMetadataCmd();
         cmd.metadataPath = msg.getMetadataPath();
+        cmd.cleanAllVmMetadata = msg.isCleanAllVmMetadata();
 
         httpCall(CLEANUP_VM_METADATA_PATH, hostUuid, cmd, CleanupVmMetadataRsp.class, new ReturnValueCompletion<CleanupVmMetadataRsp>(completion) {
             @Override
             public void success(CleanupVmMetadataRsp rsp) {
                 CleanupVmInstanceMetadataOnPrimaryStorageReply reply = new CleanupVmInstanceMetadataOnPrimaryStorageReply();
+                reply.setCleanedCount(rsp.cleanedCount);
                 completion.success(reply);
             }
 
