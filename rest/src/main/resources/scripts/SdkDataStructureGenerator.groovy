@@ -37,7 +37,16 @@ class SdkDataStructureGenerator implements SdkTemplate {
         Reflections reflections = Platform.getReflections()
         responseClasses = reflections.getTypesAnnotatedWith(RestResponse.class)
         laterResolvedClasses.addAll(reflections.getTypesAnnotatedWith(SDK.class)
-                .findAll() { !Message.class.isAssignableFrom(it) })
+                .findAll() {
+                    !Message.class.isAssignableFrom(it) && !excludedFromSdkGeneration(it)
+                })
+    }
+
+    static boolean excludedFromSdkGeneration(Class clz) {
+        if (clz == null) {
+            return true
+        }
+        return clz.getName().startsWith("org.zstack.test.")
     }
 
     @Override
@@ -128,6 +137,10 @@ ${dstToSrc.join("\n")}
             return
         }
 
+        if (excludedFromSdkGeneration(clz)) {
+            return
+        }
+
         if (clz.isAnnotationPresent(NoSDK.class)) {
             return
         }
@@ -202,7 +215,13 @@ ${output.join("\n")}
                 || short.class == clz || char.class == clz || boolean.class == clz || float.class == clz
                 || double.class == clz) {
             return false
-        } else if (clz.getCanonicalName().startsWith("org.zstack")) {
+        }
+        if (clz.getName().startsWith("groovy.") || clz.getName().startsWith("org.codehaus.groovy.")) {
+            return false
+        }
+
+        def canonicalName = clz.getCanonicalName()
+        if (canonicalName != null && canonicalName.startsWith("org.zstack")) {
             return true
         } else {
             throw new CloudRuntimeException("${clz.getName()} is neither JRE class nor ZStack class")
@@ -210,6 +229,10 @@ ${output.join("\n")}
     }
 
     def addToLaterResolvedClassesIfNeed(Class clz) {
+        if (excludedFromSdkGeneration(clz)) {
+            return
+        }
+
         if (clz.isAnnotationPresent(NoSDK.class)) {
             return
         }
@@ -219,6 +242,9 @@ ${output.join("\n")}
         }
 
         Platform.reflections.getSubTypesOf(clz).forEach({ i ->
+            if (excludedFromSdkGeneration(i)) {
+                return
+            }
             if (!sdkFileMap.containsKey(i) && !i.isAnnotationPresent(NoSDK.class)) {
                 laterResolvedClasses.add(i)
             }

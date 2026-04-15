@@ -84,4 +84,12 @@ public class EventSubscriptionInventory  {
         return this.emergencyLevel;
     }
 
+    public java.lang.Boolean hidden;
+    public void setHidden(java.lang.Boolean hidden) {
+        this.hidden = hidden;
+    }
+    public java.lang.Boolean getHidden() {
+        return this.hidden;
+    }
+
 }
