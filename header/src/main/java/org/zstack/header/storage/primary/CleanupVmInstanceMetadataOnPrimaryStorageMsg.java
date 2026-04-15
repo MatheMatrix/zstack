@@ -49,4 +49,14 @@ public class CleanupVmInstanceMetadataOnPrimaryStorageMsg extends NeedReplyMessa
     public void setHostUuid(String hostUuid) {
         this.hostUuid = hostUuid;
     }
+
+    private boolean cleanAllVmMetadata;
+
+    public boolean isCleanAllVmMetadata() {
+        return cleanAllVmMetadata;
+    }
+
+    public void setCleanAllVmMetadata(boolean cleanAllVmMetadata) {
+        this.cleanAllVmMetadata = cleanAllVmMetadata;
+    }
 }
