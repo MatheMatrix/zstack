@@ -847,6 +847,7 @@
   "ORG_ZSTACK_ZWATCH_ALARM_10025": "메트릭에 지정된 라벨[%s]이 없습니다",
   "ORG_ZSTACK_ZWATCH_ALARM_10023": "UUID [uuid:%s]가 있는 알람에 중복된 라벨이 정의되어 있습니다",
   "ORG_ZSTACK_ZWATCH_ALARM_10029": "메트릭[%s]은 관리자에게만 제한되어 있으며, 현재 사용자 역할에서는 사용할 수 없습니다",
+  "ORG_ZSTACK_ZWATCH_ALARM_10030": "잘못된 URL[%s]",
   "ORG_ZSTACK_NETWORK_SERVICE_LB_10171": "vmincs와 서버 IP가 null이므로 백엔드 서버를 수정할 수 없습니다",
   "ORG_ZSTACK_ZWATCH_ALARM_10028": "네임스페이스[%s]에 메트릭[%s]이 포함되어 있지 않습니다",
   "ORG_ZSTACK_ZWATCH_ALARM_10027": "네임스페이스[%s]가 지원되지 않습니다",

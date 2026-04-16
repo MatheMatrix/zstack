@@ -847,6 +847,7 @@
   "ORG_ZSTACK_ZWATCH_ALARM_10025": "メトリクスに、指定されたラベル[%s]がありません",
   "ORG_ZSTACK_ZWATCH_ALARM_10023": "UUID [uuid:%s]のアラームに重複するラベルが定義されています",
   "ORG_ZSTACK_ZWATCH_ALARM_10029": "メトリクス[%s]は管理者向けに制限されており、現在のユーザーロールでは利用できません",
+  "ORG_ZSTACK_ZWATCH_ALARM_10030": "無効なURL[%s]",
   "ORG_ZSTACK_NETWORK_SERVICE_LB_10171": "vmincsとサーバーIPがnullのため、バックエンドサーバーを変更できませんでした",
   "ORG_ZSTACK_ZWATCH_ALARM_10028": "名前空間[%s]にはメトリクス[%s]が含まれていません",
   "ORG_ZSTACK_ZWATCH_ALARM_10027": "名前空間[%s]はサポートされていません",
