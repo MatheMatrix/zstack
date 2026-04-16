@@ -2196,8 +2196,6 @@ public class VolumeBase extends AbstractVolume implements Volume {
                     self.setActualSize(r.getActualSize());
                 }
 
-                self = dbf.updateAndRefresh(self);
-
                 // adjust primary storage available capacity when volume size changes
                 if (self.getPrimaryStorageUuid() != null && newSize != oldSize) {
                     long sizeDiff = newSize - oldSize;
@@ -2215,6 +2213,8 @@ public class VolumeBase extends AbstractVolume implements Volume {
                         bus.send(imsg);
                     }
                 }
+
+                self = dbf.updateAndRefresh(self);
 
                 VolumeSize size = new VolumeSize();
                 size.actualSize = self.getActualSize();

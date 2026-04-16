@@ -1,0 +1,32 @@
+{
+  "phase": 5,
+  "issue": "ZSTAC-80937",
+  "title": "TDD GREEN - Fix PS availableCapacity drift on syncVolumeSize",
+  "status": "GREEN",
+  "data": {
+    "root_cause": "VolumeBase.syncVolumeVolumeSize() updates VolumeVO.size from the agent-reported value but does not send DecreasePrimaryStorageCapacityMsg/IncreasePrimaryStorageCapacityMsg to adjust the primary storage availableCapacity. Over time, every syncVolumeSize that reports a different size causes availableCapacity to drift from reality, inflating the storage pool allocation rate.",
+    "bug_location": "storage/src/main/java/org/zstack/storage/volume/VolumeBase.java:syncVolumeVolumeSize()",
+    "solution": "Record oldSize before the sync RPC. After receiving the reply, compare newSize vs oldSize. If the volume grew, send DecreasePrimaryStorageCapacityMsg with the delta. If it shrank, send IncreasePrimaryStorageCapacityMsg with the absolute delta. This keeps PS availableCapacity in sync with actual volume size changes.",
+    "files_modified": [
+      "storage/src/main/java/org/zstack/storage/volume/VolumeBase.java"
+    ],
+    "tdd_cycle": {
+      "phase": "GREEN",
+      "test_file": "test/src/test/groovy/org/zstack/test/integration/storage/primary/nfs/capacity/NfsSyncVolumeSizeCapacityCase.groovy",
+      "test_class": "NfsSyncVolumeSizeCapacityCase",
+      "test_method": "testSyncVolumeSizeAdjustsCapacity",
+      "expected_result": "PASS - availableCapacity decreases by 10GB after syncVolumeSize reports a larger volume size",
+      "reproduction_steps": [
+        "1. Create a VM with a root volume on NFS primary storage",
+        "2. Record baseline PS availableCapacity",
+        "3. Mock NFS GET_VOLUME_SIZE_PATH to return volume size + 10GB",
+        "4. Call APISyncVolumeSizeMsg on the root volume",
+        "5. Assert VolumeVO.size is updated (passes)",
+        "6. Assert PS availableCapacity decreased by 10GB (passes with fix)"
+      ]
+    },
+    "fix_reverted": false,
+    "fix_file": "storage/src/main/java/org/zstack/storage/volume/VolumeBase.java",
+    "fix_description": "After updating VolumeVO.size, compare newSize vs oldSize. If different, send DecreasePrimaryStorageCapacityMsg (size grew) or IncreasePrimaryStorageCapacityMsg (size shrank) to keep PS availableCapacity in sync."
+  }
+}
