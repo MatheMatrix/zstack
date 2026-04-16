@@ -6,7 +6,7 @@
   "data": {
     "root_cause": "VolumeBase.syncVolumeVolumeSize() updates VolumeVO.size from the agent-reported value but does not send DecreasePrimaryStorageCapacityMsg/IncreasePrimaryStorageCapacityMsg to adjust the primary storage availableCapacity. Over time, every syncVolumeSize that reports a different size causes availableCapacity to drift from reality, inflating the storage pool allocation rate.",
     "bug_location": "storage/src/main/java/org/zstack/storage/volume/VolumeBase.java:syncVolumeVolumeSize()",
-    "solution": "Record oldSize before the sync RPC. After receiving the reply, compare newSize vs oldSize. If the volume grew, send DecreasePrimaryStorageCapacityMsg with the delta. If it shrank, send IncreasePrimaryStorageCapacityMsg with the absolute delta. This keeps PS availableCapacity in sync with actual volume size changes.",
+    "solution": "In syncVolumeVolumeSize(), capture oldSize before updating. After dbf.updateAndRefresh(), compare newSize vs oldSize: if size grew, send DecreasePrimaryStorageCapacityMsg with the diff; if size shrank, send IncreasePrimaryStorageCapacityMsg with the abs diff. This keeps PS availableCapacity in sync with actual volume size changes.",
     "files_modified": [
       "storage/src/main/java/org/zstack/storage/volume/VolumeBase.java"
     ],
@@ -27,6 +27,6 @@
     },
     "fix_reverted": false,
     "fix_file": "storage/src/main/java/org/zstack/storage/volume/VolumeBase.java",
-    "fix_description": "After updating VolumeVO.size, compare newSize vs oldSize. If different, send DecreasePrimaryStorageCapacityMsg (size grew) or IncreasePrimaryStorageCapacityMsg (size shrank) to keep PS availableCapacity in sync."
+    "fix_description": "After updating VolumeVO.size in syncVolumeVolumeSize(), compare newSize vs oldSize and send DecreasePrimaryStorageCapacityMsg (size grew) or IncreasePrimaryStorageCapacityMsg (size shrank) to keep PS availableCapacity in sync."
   }
 }

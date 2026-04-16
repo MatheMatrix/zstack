@@ -2169,7 +2169,6 @@ public class VolumeBase extends AbstractVolume implements Volume {
 
     private void syncVolumeVolumeSize(final ReturnValueCompletion<VolumeSize> completion) {
         refreshVO();
-        long oldSize = self.getSize();
         SyncVolumeSizeOnPrimaryStorageMsg smsg = new SyncVolumeSizeOnPrimaryStorageMsg();
         smsg.setPrimaryStorageUuid(self.getPrimaryStorageUuid());
         smsg.setVolumeUuid(self.getUuid());
@@ -2185,7 +2184,10 @@ public class VolumeBase extends AbstractVolume implements Volume {
 
                 refreshVO();
                 SyncVolumeSizeOnPrimaryStorageReply r = reply.castReply();
+
+                long oldSize = self.getSize();
                 long newSize = r.getSize();
+
                 self.setSize(newSize);
 
                 if (!r.isWithInternalSnapshot()) {
@@ -2196,25 +2198,24 @@ public class VolumeBase extends AbstractVolume implements Volume {
                     self.setActualSize(r.getActualSize());
                 }
 
-                // adjust primary storage available capacity when volume size changes
-                if (self.getPrimaryStorageUuid() != null && newSize != oldSize) {
-                    long sizeDiff = newSize - oldSize;
-                    if (sizeDiff > 0) {
+                self = dbf.updateAndRefresh(self);
+
+                if (newSize != oldSize && self.getPrimaryStorageUuid() != null) {
+                    long diff = newSize - oldSize;
+                    if (diff > 0) {
                         DecreasePrimaryStorageCapacityMsg dmsg = new DecreasePrimaryStorageCapacityMsg();
                         dmsg.setPrimaryStorageUuid(self.getPrimaryStorageUuid());
-                        dmsg.setDiskSize(sizeDiff);
+                        dmsg.setDiskSize(diff);
                         bus.makeTargetServiceIdByResourceUuid(dmsg, PrimaryStorageConstant.SERVICE_ID, self.getPrimaryStorageUuid());
                         bus.send(dmsg);
                     } else {
                         IncreasePrimaryStorageCapacityMsg imsg = new IncreasePrimaryStorageCapacityMsg();
                         imsg.setPrimaryStorageUuid(self.getPrimaryStorageUuid());
-                        imsg.setDiskSize(Math.abs(sizeDiff));
+                        imsg.setDiskSize(-diff);
                         bus.makeTargetServiceIdByResourceUuid(imsg, PrimaryStorageConstant.SERVICE_ID, self.getPrimaryStorageUuid());
                         bus.send(imsg);
                     }
                 }
-
-                self = dbf.updateAndRefresh(self);
 
                 VolumeSize size = new VolumeSize();
                 size.actualSize = self.getActualSize();
