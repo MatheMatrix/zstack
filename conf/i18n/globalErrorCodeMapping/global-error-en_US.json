@@ -2569,6 +2569,7 @@
   "ORG_ZSTACK_ROUTEPROTOCOL_10017": "Router ID[%s] is not unique within this cloud system",
   "ORG_ZSTACK_ROUTEPROTOCOL_10016": "Router ID[%s] does not conform to IPv4 format",
   "ORG_ZSTACK_AI_VM_10011": "Cannot retrieve status from instance due to an empty instance URL. Please provide a valid instance URL and try again.",
+  "ORG_ZSTACK_AI_VM_10012": "Insufficient GPU resources: spec[%s] requires %d device(s), but only %d available",
   "ORG_ZSTACK_HYBRID_BACKUP_10000": "%s can only be invoked by an administrative account in a cloud environment.",
   "ORG_ZSTACK_EXTERNALSERVICE_CRONJOB_10001": "The cron daemon is not running. Please ensure it is started and configured correctly.",
   "ORG_ZSTACK_ROUTEPROTOCOL_10003": "[%s] does not conform to IPv4 address format",

@@ -8778,6 +8778,8 @@ public class CloudOperationsErrorCode {
 
     public static final String ORG_ZSTACK_AI_VM_10011 = "ORG_ZSTACK_AI_VM_10011";
 
+    public static final String ORG_ZSTACK_AI_VM_10012 = "ORG_ZSTACK_AI_VM_10012";
+
     public static final String ORG_ZSTACK_OVF_DATATYPE_10000 = "ORG_ZSTACK_OVF_DATATYPE_10000";
 
     public static final String ORG_ZSTACK_OVF_DATATYPE_10001 = "ORG_ZSTACK_OVF_DATATYPE_10001";

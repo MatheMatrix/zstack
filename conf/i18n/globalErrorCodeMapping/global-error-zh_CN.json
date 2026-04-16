@@ -2569,6 +2569,7 @@
   "ORG_ZSTACK_ROUTEPROTOCOL_10017": "路由器ID[%s]在该系统中不是唯一的",
   "ORG_ZSTACK_ROUTEPROTOCOL_10016": "路由器ID[%s]未格式化为IPv4地址",
   "ORG_ZSTACK_AI_VM_10011": "无法从带有空URL的实例获取状态，报告失败",
+  "ORG_ZSTACK_AI_VM_10012": "GPU资源不足：规格[%s]需要%d个GPU设备，当前可用%d个",
   "ORG_ZSTACK_HYBRID_BACKUP_10000": "%s 只能由管理员账号调用",
   "ORG_ZSTACK_EXTERNALSERVICE_CRONJOB_10001": "crond 没有运行",
   "ORG_ZSTACK_ROUTEPROTOCOL_10003": "[%s] 不符合IPv4地址格式",
