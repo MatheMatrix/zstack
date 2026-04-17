@@ -94,4 +94,6 @@
         </zstack:plugin>
     </bean>
 
+    <bean id="DirtySyncTracker" class="org.zstack.sdnController.DirtySyncTrackerImpl" />
+
 </beans>

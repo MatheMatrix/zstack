@@ -5,4 +5,6 @@ public enum SdnControllerFlowDataParam {
     SDN_CONTROLLER_PASSWORD,
     SDN_CONTROLLER_USERNAME,
     SDN_CONTROLLER_CHANGED,
+    SYNC_DRY_RUN,
+    SYNC_STATS,
 }

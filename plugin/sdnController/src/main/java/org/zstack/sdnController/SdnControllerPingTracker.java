@@ -1,6 +1,7 @@
 package org.zstack.sdnController;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.cloudbus.ResourceDestinationMaker;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.config.GlobalConfig;
@@ -27,6 +28,9 @@ import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by shixin on 06/26/2025.
@@ -43,6 +47,10 @@ public class SdnControllerPingTracker extends PingTracker implements
     protected PluginRegistry pluginRgty;
     @Autowired
     protected SdnControllerManager sdnMgr;
+    @Autowired
+    private DirtySyncTracker dirtySyncTracker;
+
+    private final Map<String, AtomicInteger> consecutivePingSuccessCount = new ConcurrentHashMap<>();
 
     public String getResourceName() {
         return "sdn controller";
@@ -81,9 +89,9 @@ public class SdnControllerPingTracker extends PingTracker implements
             return;
         }
 
-
         if (!reply.isSuccess()) {
             logger.warn(String.format("[SDN Ping Tracker]: unable to ping the sdn controller[uuid: %s], %s", resourceUuid, reply.getError()));
+            consecutivePingSuccessCount.remove(resourceUuid);
             new SdnControllerBase(vo).changeSdnControllerStatus(SdnControllerStatus.Disconnected);
             return;
         }
@@ -91,11 +99,47 @@ public class SdnControllerPingTracker extends PingTracker implements
         SdnControllerStatus oldStatus = vo.getStatus();
         if (oldStatus == SdnControllerStatus.Disconnected) {
             // when reconnect successfully, it will fire event: SdnControllerStatus.Connected
+            consecutivePingSuccessCount.remove(resourceUuid);
             ReconnectSdnControllerMsg msg = new ReconnectSdnControllerMsg();
             msg.setControllerUuid(resourceUuid);
             bus.makeTargetServiceIdByResourceUuid(msg, SdnControllerConstant.SERVICE_ID, resourceUuid);
             bus.send(msg);
+            return;
         }
+
+        // Ping success on Connected controller: count consecutive successes and trigger sync if needed
+        if (vo.getStatus() == SdnControllerStatus.Connected) {
+            int count = consecutivePingSuccessCount
+                    .computeIfAbsent(resourceUuid, k -> new AtomicInteger(0))
+                    .incrementAndGet();
+
+            SdnControllerFactory factory = sdnMgr.getSdnControllerFactory(vo.getVendorType());
+            if (factory.isSyncEnabled() && dirtySyncTracker.needsSync(resourceUuid)) {
+                int threshold = factory.getSyncPingSuccessThreshold();
+                if (count >= threshold) {
+                    consecutivePingSuccessCount.remove(resourceUuid);
+                    dirtySyncTracker.clearNeedSync(resourceUuid);
+                    triggerSync(resourceUuid);
+                }
+            }
+        }
+    }
+
+    private void triggerSync(String controllerUuid) {
+        logger.info(String.format("[SDN Ping Tracker]: triggering sync for controller[uuid:%s] after consecutive ping successes", controllerUuid));
+        SyncSdnControllerDataMsg msg = new SyncSdnControllerDataMsg();
+        msg.setControllerUuid(controllerUuid);
+        bus.makeTargetServiceIdByResourceUuid(msg, SdnControllerConstant.SERVICE_ID, controllerUuid);
+        bus.send(msg, new CloudBusCallBack(null) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    logger.warn(String.format("[SDN Ping Tracker]: sync failed for controller[uuid:%s], re-marking needsSync: %s",
+                            controllerUuid, reply.getError()));
+                    dirtySyncTracker.markNeedSync(controllerUuid);
+                }
+            }
+        });
     }
 
     private void trackOurs() {
@@ -154,6 +198,7 @@ public class SdnControllerPingTracker extends PingTracker implements
 
     @Override
     public void deleteNetworkServiceOfSdnController(String sdnControllerUuid, Completion completion) {
+        consecutivePingSuccessCount.remove(sdnControllerUuid);
         super.untrack(sdnControllerUuid);
         completion.success();
     }

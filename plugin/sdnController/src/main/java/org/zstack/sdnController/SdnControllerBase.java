@@ -79,6 +79,9 @@ public class SdnControllerBase {
 
     public SdnControllerVO self;
 
+    // Consecutive sync failure tracking (in-memory, per controller)
+    private static final java.util.Map<String, Integer> consecutiveFailCount = new java.util.concurrent.ConcurrentHashMap<>();
+
     public SdnControllerBase(SdnControllerVO self) {
         this.self = self;
     }
@@ -141,6 +144,23 @@ public class SdnControllerBase {
 
     private void handle(SyncSdnControllerDataMsg msg) {
         SyncSdnControllerDataReply reply = new SyncSdnControllerDataReply();
+
+        SdnControllerFactory factory = sdnMgr.getSdnControllerFactory(self.getVendorType());
+        if (!factory.isSyncEnabled()) {
+            logger.info(String.format("sync is disabled for sdn controller[uuid:%s], skip", self.getUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        if (self.getStatus() != SdnControllerStatus.Connected) {
+            logger.info(String.format("sdn controller[uuid:%s] is not connected (status=%s), skip sync",
+                    self.getUuid(), self.getStatus()));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        boolean dryRun = factory.isDryRun();
+
         // Run a sync chain that only syncs data, without touching connection status
         thdf.chainSubmit(new ChainTask(reply) {
             @Override
@@ -152,13 +172,19 @@ public class SdnControllerBase {
             public void run(SyncTaskChain chain) {
                 FlowChain flowChain = sdnMgr.getSyncChain(self);
                 flowChain.getData().put(SDN_CONTROLLER_UUID, self.getUuid());
+                flowChain.getData().put(SYNC_DRY_RUN, dryRun);
                 flowChain.setName(String.format("sync-sdn-controller-data-%s-%s", self.getUuid(), self.getName()));
 
-                // Start the chain; flows in factory-provided chain should perform data sync operations
                 flowChain.done(new FlowDoneHandler(msg) {
                     @Override
                     public void handle(Map data) {
+                        populateSyncReply(reply, data, dryRun);
                         bus.reply(msg, reply);
+
+                        // Reset consecutive fail count and fire completion event
+                        consecutiveFailCount.remove(self.getUuid());
+                        fireSyncCompletedEvent(reply);
+
                         chain.next();
                     }
                 }).error(new FlowErrorHandler(msg) {
@@ -166,7 +192,14 @@ public class SdnControllerBase {
                     public void handle(ErrorCode errCode, Map data) {
                         SyncSdnControllerDataReply r = new SyncSdnControllerDataReply();
                         r.setError(errCode);
+                        populateSyncReply(r, data, dryRun);
                         bus.reply(msg, r);
+
+                        // Increment consecutive fail count and check alarm threshold
+                        int failCount = consecutiveFailCount.merge(self.getUuid(), 1, Integer::sum);
+                        fireSyncFailedEvent(errCode, failCount);
+                        checkSyncAlarm(failCount, factory);
+
                         chain.next();
                     }
                 }).start();
@@ -177,6 +210,63 @@ public class SdnControllerBase {
                 return String.format("sync-sdn-controller-data-%s", self.getUuid());
             }
         });
+    }
+
+    private void populateSyncReply(SyncSdnControllerDataReply reply, Map data, boolean dryRun) {
+        reply.setDryRun(dryRun);
+        if (data == null) return;
+        Object statsObj = data.get(SYNC_STATS);
+        if (statsObj == null) return;
+        try {
+            java.lang.reflect.Method getToCreateCount = statsObj.getClass().getMethod("getToCreateCount");
+            java.lang.reflect.Method getToDeleteCount = statsObj.getClass().getMethod("getToDeleteCount");
+            java.lang.reflect.Method getToUpdateCount = statsObj.getClass().getMethod("getToUpdateCount");
+            java.lang.reflect.Method getFailedCount = statsObj.getClass().getMethod("getFailedCount");
+            reply.setToCreateCount((int) getToCreateCount.invoke(statsObj));
+            reply.setToDeleteCount((int) getToDeleteCount.invoke(statsObj));
+            reply.setToUpdateCount((int) getToUpdateCount.invoke(statsObj));
+            reply.setFailedCount((int) getFailedCount.invoke(statsObj));
+        } catch (Exception e) {
+            logger.warn(String.format("failed to read sync stats: %s", e.getMessage()));
+        }
+    }
+
+    private void fireSyncCompletedEvent(SyncSdnControllerDataReply reply) {
+        SdnControllerCanonicalEvents.SdnControllerSyncCompletedData d =
+                new SdnControllerCanonicalEvents.SdnControllerSyncCompletedData();
+        d.setSdnControllerUuid(self.getUuid());
+        d.setToCreateCount(reply.getToCreateCount());
+        d.setToDeleteCount(reply.getToDeleteCount());
+        d.setToUpdateCount(reply.getToUpdateCount());
+        d.setFailedCount(reply.getFailedCount());
+        d.setDryRun(reply.isDryRun());
+        d.setScope("FULL");
+        evtf.fire(SdnControllerCanonicalEvents.SDN_CONTROLLER_SYNC_COMPLETED_PATH, d);
+    }
+
+    private void fireSyncFailedEvent(ErrorCode errCode, int failCount) {
+        SdnControllerCanonicalEvents.SdnControllerSyncFailedData d =
+                new SdnControllerCanonicalEvents.SdnControllerSyncFailedData();
+        d.setSdnControllerUuid(self.getUuid());
+        d.setErrorCode(errCode.getCode());
+        d.setErrorDetails(errCode.getDetails());
+        d.setConsecutiveFailCount(failCount);
+        evtf.fire(SdnControllerCanonicalEvents.SDN_CONTROLLER_SYNC_FAILED_PATH, d);
+    }
+
+    private void checkSyncAlarm(int failCount, SdnControllerFactory factory) {
+        int alarmThreshold = factory.getSyncFailAlarmThreshold();
+
+        if (failCount >= alarmThreshold && (failCount - alarmThreshold) % 5 == 0) {
+            logger.error(String.format("[sync-alarm] controller[uuid:%s] has %d consecutive sync failures (threshold=%d)",
+                    self.getUuid(), failCount, alarmThreshold));
+            SdnControllerCanonicalEvents.SdnControllerSyncAlarmData d =
+                    new SdnControllerCanonicalEvents.SdnControllerSyncAlarmData();
+            d.setSdnControllerUuid(self.getUuid());
+            d.setConsecutiveFailCount(failCount);
+            d.setAlarmThreshold(alarmThreshold);
+            evtf.fire(SdnControllerCanonicalEvents.SDN_CONTROLLER_SYNC_ALARM_PATH, d);
+        }
     }
 
     public void changeSdnControllerStatus(SdnControllerStatus status) {

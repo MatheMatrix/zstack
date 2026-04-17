@@ -66,6 +66,8 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
     private SecurityGroupManager sgMgr;
     @Autowired
     private SdnControllerPingTracker pingTracker;
+    @Autowired
+    private DirtySyncTracker dirtySyncTracker;
 
     private Map<String, SdnControllerFactory> sdnControllerFactories = Collections.synchronizedMap(new HashMap<String, SdnControllerFactory>());
 
@@ -405,6 +407,8 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
                 @Override
                 public void fail(ErrorCode errorCode) {
+                    // Mark controller needsSync — port creation failed, ZNS may be out of sync
+                    dirtySyncTracker.markNeedSync(e.getKey());
                     wcomp.addError(errorCode);
                     wcomp.allDone();
                 }
@@ -443,6 +447,8 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
                 @Override
                 public void fail(ErrorCode errorCode) {
+                    // Mark controller needsSync — port deletion failed, ZNS may be out of sync
+                    dirtySyncTracker.markNeedSync(e.getKey());
                     wcomp.addError(errorCode);
                     wcomp.allDone();
                 }

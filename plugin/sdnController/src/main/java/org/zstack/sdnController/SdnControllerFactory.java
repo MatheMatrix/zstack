@@ -26,4 +26,12 @@ public interface SdnControllerFactory {
     default SdnControllerDhcp getSdnControllerDhcp(String l2NetworkUuid) {return null;};
 
     default FlowChain getSyncChain() {return FlowChainBuilder.newSimpleFlowChain();};
+
+    default boolean isSyncEnabled() { return false; }
+
+    default boolean isDryRun() { return false; }
+
+    default int getSyncFailAlarmThreshold() { return 3; }
+
+    default int getSyncPingSuccessThreshold() { return 10; }
 }
