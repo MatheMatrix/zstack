@@ -33,6 +33,12 @@ public class APIEvent extends Event implements APIResponse {
     @NeedJsonSchema
     protected ErrorCode error;
 
+    /**
+     * @desc if the API was intercepted and converted to a ticket, this field contains the ticket UUID
+     * @nullable
+     */
+    protected String ticketUuid;
+
     @Override
     public final Type getType() {
         if (type == null) {
@@ -69,6 +75,14 @@ public class APIEvent extends Event implements APIResponse {
     public void setError(ErrorCode errorCode) {
         this.success = false;
         this.error = errorCode;
+    }
+
+    public String getTicketUuid() {
+        return ticketUuid;
+    }
+
+    public void setTicketUuid(String ticketUuid) {
+        this.ticketUuid = ticketUuid;
     }
 
     @Override
