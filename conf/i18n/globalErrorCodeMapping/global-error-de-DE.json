@@ -4716,5 +4716,6 @@
   "ORG_ZSTACK_SDNCONTROLLER_10025": "SDN-Controller [UUID:%s] nicht gefunden.",
   "ORG_ZSTACK_ZBOX_10002": "",
   "ORG_ZSTACK_BILLING_10020": "Das Konto[uuid=%s] hat eine Preisliste angehängt",
-  "ORG_ZSTACK_BAREMETAL2_GATEWAY_10046": "Fehler beim Zerstören des Bereitstellungsnetzwerks im Gateway[uuid:%s], weil %s"
+  "ORG_ZSTACK_BAREMETAL2_GATEWAY_10046": "Fehler beim Zerstören des Bereitstellungsnetzwerks im Gateway[uuid:%s], weil %s",
+  "ORG_ZSTACK_AI_10157": "virtiofs ist deaktiviert (ai.virtiofs.enabled=false). Bitte aktivieren Sie es, um Modelle auf VMs einzuhängen: UpdateGlobalConfig category=ai name=virtiofs.enabled value=true"
 }

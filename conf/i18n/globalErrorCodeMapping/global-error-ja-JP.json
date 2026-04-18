@@ -4716,5 +4716,6 @@
   "ORG_ZSTACK_PCIDEVICE_10063": "PCIデバイス[%s]がすべて使用可能ではありません",
   "ORG_ZSTACK_PCIDEVICE_10058": "ホスト [%s] のメンテナンスモードへの移行に失敗しました。PCIデバイスの存在により、VM [%s] は自動移行できません。",
   "ORG_ZSTACK_PCIDEVICE_10052": "VM[%s]の他のPCIデバイスを取り外してから、再試行してください",
-  "ORG_ZSTACK_CRYPTO_SECURITYMACHINE_THIRDPARTY_INFOSEC_10024": "大規模ファイルのHMAC暗号化に失敗しました、コード: %s、詳細: %s"
+  "ORG_ZSTACK_CRYPTO_SECURITYMACHINE_THIRDPARTY_INFOSEC_10024": "大規模ファイルのHMAC暗号化に失敗しました、コード: %s、詳細: %s",
+  "ORG_ZSTACK_AI_10157": "virtiofs が無効です (ai.virtiofs.enabled=false)。VM にモデルをマウントするには有効にしてください：UpdateGlobalConfig category=ai name=virtiofs.enabled value=true"
 }

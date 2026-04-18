@@ -4716,5 +4716,6 @@
   "ORG_ZSTACK_COMPUTE_VM_10129": "메시지 %s에서 vmUuid를 검색할 수 없습니다",
   "ORG_ZSTACK_COMPUTE_VM_10127": "실행 중인 VM[uuid:%s]의 CPU를 줄일 수 없습니다",
   "ORG_ZSTACK_IAM2_ATTRIBUTE_PROJECT_10007": "잘못된 날짜 또는 시간[%s]으로, 현재 타임스탬프[%s]보다 이전일 수 없습니다.",
-  "ORG_ZSTACK_NETWORK_SERVICE_LB_10077": "세션 쿠키 이름 [%s]이(가) 잘못되었습니다. [%d]자 미만이어야 합니다"
+  "ORG_ZSTACK_NETWORK_SERVICE_LB_10077": "세션 쿠키 이름 [%s]이(가) 잘못되었습니다. [%d]자 미만이어야 합니다",
+  "ORG_ZSTACK_AI_10157": "virtiofs가 비활성화되었습니다 (ai.virtiofs.enabled=false). VM에 모델을 마운트하려면 활성화하세요: UpdateGlobalConfig category=ai name=virtiofs.enabled value=true"
 }

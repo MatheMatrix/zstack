@@ -4720,5 +4720,6 @@
   "ORG_ZSTACK_VPCFIREWALL_10035": "could not add firewall rule[%d] because of a %s error",
   "ORG_ZSTACK_DGPU_10010": "Available License not found, please apply addon license for product dGPU.",
   "ORG_ZSTACK_DGPU_10011": "Addon license for product dGPU has expired, please renew it.",
-  "ORG_ZSTACK_DGPU_10012": "Insufficient dGPU GPU number licensed. Your license permits %d GPU, there are %d GPU used, shared: %d, need: %d."
+  "ORG_ZSTACK_DGPU_10012": "Insufficient dGPU GPU number licensed. Your license permits %d GPU, there are %d GPU used, shared: %d, need: %d.",
+  "ORG_ZSTACK_AI_10157": "virtiofs is disabled (ai.virtiofs.enabled=false). Please enable it to mount models to VMs: UpdateGlobalConfig category=ai name=virtiofs.enabled value=true"
 }
