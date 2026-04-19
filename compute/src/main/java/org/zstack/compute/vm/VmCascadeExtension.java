@@ -293,7 +293,26 @@ public class VmCascadeExtension extends AbstractAsyncCascadeExtension {
 
     private void handleDeletionCleanup(CascadeAction action, Completion completion) {
         dbf.eoCleanup(VmInstanceVO.class);
+        cleanupOrphanTemplatedVmInstance();
         completion.success();
+    }
+
+    private void cleanupOrphanTemplatedVmInstance() {
+        // TemplatedVmInstanceVO.uuid FK→VmInstanceEO has no real MySQL FK constraint,
+        // so after VmInstanceEO is hard-deleted, TemplatedVmInstanceVO/CacheVO become orphans.
+        List<String> orphanUuids = SQL.New("select t.uuid from TemplatedVmInstanceVO t" +
+                " where t.uuid not in (select vm.uuid from VmInstanceEO vm)", String.class).list();
+        if (orphanUuids.isEmpty()) {
+            return;
+        }
+
+        // Delete CacheVO first (child), then VO (parent)
+        SQL.New(TemplatedVmInstanceCacheVO.class)
+                .in(TemplatedVmInstanceCacheVO_.templatedVmInstanceUuid, orphanUuids)
+                .hardDelete();
+        SQL.New(TemplatedVmInstanceVO.class)
+                .in(TemplatedVmInstanceVO_.uuid, orphanUuids)
+                .hardDelete();
     }
 
     protected List<DetachNicFromVmMsg> handleDeletionForIpRange(List<VmDeletionStruct> vminvs, List<IpRangeInventory> iprs) {
