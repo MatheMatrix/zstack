@@ -959,9 +959,9 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
     }
 
     protected void handle(APITakeoverPrimaryStorageMsg msg) {
-        APITakeoverPrimaryStorageEvent event = new APITakeoverPrimaryStorageEvent(msg.getId());
-        event.setError(operr("takeover not supported for primary storage type[%s]", self.getType()));
-        bus.publish(event);
+        APITakeoverPrimaryStorageReply reply = new APITakeoverPrimaryStorageReply();
+        reply.setError(operr("takeover not supported for primary storage type[%s]", self.getType()));
+        bus.reply(msg, reply);
     }
 
     private void handle(APIAddStorageProtocolMsg msg) {

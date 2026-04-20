@@ -49,12 +49,6 @@ public class TakeoverPrimaryStorageAction extends AbstractAction {
     @Param(required = false)
     public String requestIp;
 
-    @NonAPIParam
-    public long timeout = -1;
-
-    @NonAPIParam
-    public long pollingInterval = -1;
-
 
     private Result makeResult(ApiResult res) {
         Result ret = new Result();
@@ -96,7 +90,7 @@ public class TakeoverPrimaryStorageAction extends AbstractAction {
         info.httpMethod = "PUT";
         info.path = "/primary-storage/{uuid}/takeover";
         info.needSession = true;
-        info.needPoll = true;
+        info.needPoll = false;
         info.parameterName = "takeoverPrimaryStorage";
         return info;
     }

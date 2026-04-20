@@ -1,6 +1,6 @@
 package org.zstack.header.storage.primary
 
-import org.zstack.header.storage.primary.APITakeoverPrimaryStorageEvent
+import org.zstack.header.storage.primary.APITakeoverPrimaryStorageReply
 
 doc {
 	title "TakeoverPrimaryStorage"
@@ -64,7 +64,7 @@ dryRun=true时仅执行一致性预检：若一致（无需接管）则返回错
 		}
 
 		response {
-			clz APITakeoverPrimaryStorageEvent.class
+			clz APITakeoverPrimaryStorageReply.class
 		}
 	}
 }

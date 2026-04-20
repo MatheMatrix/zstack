@@ -9,7 +9,7 @@ doc {
 
 	ref {
 		name "inventory"
-		path "org.zstack.header.storage.primary.APITakeoverPrimaryStorageEvent.inventory"
+		path "org.zstack.header.storage.primary.APITakeoverPrimaryStorageReply.inventory"
 		desc "主存储信息"
 		type "PrimaryStorageInventory"
 		since "5.0.0"
@@ -23,7 +23,7 @@ doc {
 	}
 	ref {
 		name "error"
-		path "org.zstack.header.storage.primary.APITakeoverPrimaryStorageEvent.error"
+		path "org.zstack.header.storage.primary.APITakeoverPrimaryStorageReply.error"
 		desc "错误码，若不为null，则表示操作失败, 操作成功时该字段为null"
 		type "ErrorCode"
 		since "5.0.0"

@@ -3,6 +3,7 @@ package org.zstack.header.storage.primary;
 import org.springframework.http.HttpMethod;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.APIParam;
+import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.message.DefaultTimeout;
 import org.zstack.header.rest.RestRequest;
 
@@ -10,12 +11,12 @@ import java.util.concurrent.TimeUnit;
 
 @RestRequest(
         path = "/primary-storage/{uuid}/takeover",
-        responseClass = APITakeoverPrimaryStorageEvent.class,
+        responseClass = APITakeoverPrimaryStorageReply.class,
         method = HttpMethod.PUT,
         isAction = true
 )
-@DefaultTimeout(timeunit = TimeUnit.HOURS, value = 1)
-public class APITakeoverPrimaryStorageMsg extends APIMessage implements PrimaryStorageMessage {
+@DefaultTimeout(timeunit = TimeUnit.HOURS, value = 3)
+public class APITakeoverPrimaryStorageMsg extends APISyncCallMessage implements PrimaryStorageMessage {
     @APIParam(resourceType = PrimaryStorageVO.class)
     private String uuid;
 

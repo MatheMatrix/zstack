@@ -1,20 +1,13 @@
 package org.zstack.header.storage.primary;
 
-import org.zstack.header.message.APIEvent;
+import org.zstack.header.message.APIReply;
 import org.zstack.header.rest.RestResponse;
 
 import java.util.Collections;
 
 @RestResponse(fieldsTo = {"all"})
-public class APITakeoverPrimaryStorageEvent extends APIEvent {
+public class APITakeoverPrimaryStorageReply extends APIReply {
     private PrimaryStorageInventory inventory;
-
-    public APITakeoverPrimaryStorageEvent() {
-    }
-
-    public APITakeoverPrimaryStorageEvent(String apiId) {
-        super(apiId);
-    }
 
     public PrimaryStorageInventory getInventory() {
         return inventory;
@@ -24,8 +17,8 @@ public class APITakeoverPrimaryStorageEvent extends APIEvent {
         this.inventory = inventory;
     }
 
-    public static APITakeoverPrimaryStorageEvent __example__() {
-        APITakeoverPrimaryStorageEvent event = new APITakeoverPrimaryStorageEvent();
+    public static APITakeoverPrimaryStorageReply __example__() {
+        APITakeoverPrimaryStorageReply reply = new APITakeoverPrimaryStorageReply();
 
         PrimaryStorageInventory ps = new PrimaryStorageInventory();
         ps.setName("PS1");
@@ -33,7 +26,7 @@ public class APITakeoverPrimaryStorageEvent extends APIEvent {
         ps.setType("SharedBlock");
         ps.setAttachedClusterUuids(Collections.singletonList(uuid()));
 
-        event.setInventory(ps);
-        return event;
+        reply.setInventory(ps);
+        return reply;
     }
 }
