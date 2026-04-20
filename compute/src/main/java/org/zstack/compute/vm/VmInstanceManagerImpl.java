@@ -1,142 +1,69 @@
 package org.zstack.compute.vm;
 
-import com.google.common.collect.Maps;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.validator.routines.DomainValidator;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
-import org.zstack.compute.allocator.HostAllocatorManager;
-import org.zstack.compute.vm.quota.*;
-import org.zstack.configuration.DiskOfferingSystemTags;
-import org.zstack.configuration.InstanceOfferingSystemTags;
-import org.zstack.configuration.OfferingUserConfigUtils;
-import org.zstack.core.Platform;
-import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.*;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.config.GlobalConfig;
 import org.zstack.core.config.GlobalConfigBeforeUpdateExtensionPoint;
-import org.zstack.core.config.GlobalConfigUpdateExtensionPoint;
 import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
-import org.zstack.core.errorcode.ErrorFacade;
-import org.zstack.core.jsonlabel.JsonLabel;
 import org.zstack.core.thread.*;
-import org.zstack.core.workflow.FlowChainBuilder;
-import org.zstack.core.workflow.ShareFlow;
-import org.zstack.directory.ResourceDirectoryRefVO;
 import org.zstack.header.AbstractService;
-import org.zstack.header.allocator.AllocateHostDryRunReply;
-import org.zstack.header.allocator.DesignatedAllocateHostMsg;
-import org.zstack.header.allocator.HostAllocatorConstant;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.GlobalApiMessageInterceptor;
-import org.zstack.header.cluster.ClusterInventory;
-import org.zstack.header.cluster.ClusterVO;
-import org.zstack.header.configuration.*;
-import org.zstack.header.configuration.userconfig.DiskOfferingUserConfig;
-import org.zstack.header.configuration.userconfig.InstanceOfferingUserConfig;
-import org.zstack.header.core.*;
-import org.zstack.header.core.workflow.*;
+import org.zstack.header.core.workflow.FlowChain;
 import org.zstack.header.errorcode.ErrorCode;
-import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudConfigureFailException;
 import org.zstack.header.exception.CloudRuntimeException;
-import org.zstack.header.host.*;
 import org.zstack.header.identity.*;
 import org.zstack.header.identity.Quota.QuotaPair;
-import org.zstack.header.identity.quota.QuotaMessageHandler;
-import org.zstack.header.image.*;
-import org.zstack.header.image.ImageConstant.ImageMediaType;
-import org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint;
+import org.zstack.header.image.ImageBootMode;
 import org.zstack.header.message.*;
-import org.zstack.header.network.l3.*;
-import org.zstack.header.storage.backup.BackupStorageInventory;
-import org.zstack.header.storage.backup.BackupStorageType;
-import org.zstack.header.storage.backup.BackupStorageVO;
-import org.zstack.header.storage.backup.BackupStorageVO_;
-import org.zstack.header.storage.primary.*;
 import org.zstack.header.tag.SystemTagCreateMessageValidator;
 import org.zstack.header.tag.SystemTagVO;
 import org.zstack.header.tag.SystemTagValidator;
 import org.zstack.header.vm.*;
-import org.zstack.header.vm.VmInstanceConstant.VmOperation;
-import org.zstack.header.vm.VmInstanceDeletionPolicyManager.VmInstanceDeletionPolicy;
-import org.zstack.header.vm.cdrom.VmCdRomVO;
-import org.zstack.header.vm.cdrom.VmCdRomVO_;
-import org.zstack.header.volume.*;
-import org.zstack.header.zone.ZoneInventory;
-import org.zstack.header.zone.ZoneVO;
+import org.zstack.header.volume.VolumeType;
+import org.zstack.header.volume.VolumeVO;
+import org.zstack.header.volume.VolumeVO_;
 import org.zstack.identity.AccountManager;
 import org.zstack.identity.QuotaUtil;
-import org.zstack.network.l3.L3NetworkManager;
-import org.zstack.resourceconfig.*;
-import org.zstack.tag.*;
-import org.zstack.utils.*;
-import org.zstack.utils.function.Function;
+import org.zstack.tag.PatternedSystemTag;
+import org.zstack.tag.SystemTagUtils;
+import org.zstack.tag.TagManager;
+import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
-import org.zstack.utils.network.IPv6NetworkUtils;
-import org.zstack.utils.network.NetworkUtils;
+import org.zstack.utils.function.Function;
 
-import javax.persistence.PersistenceException;
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
-import java.sql.SQLIntegrityConstraintViolationException;
-import java.sql.Timestamp;
 import java.util.*;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
-import static java.lang.Integer.parseInt;
-import static java.lang.Integer.valueOf;
 import static java.util.Arrays.asList;
-import static org.zstack.core.Platform.*;
-import static org.zstack.utils.CollectionDSL.*;
-import static org.zstack.utils.CollectionUtils.merge;
-import static org.zstack.utils.CollectionUtils.transformToList;
+import static org.zstack.core.Platform.argerr;
+import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
+/**
+ * Thin facade for VmInstance service.
+ * Delegates to sub-managers extracted during God Class refactoring:
+ *   - VmFlowChainRegistry: FlowChain builders and element lists
+ *   - VmCreationSubManager: VM creation and candidate query handlers
+ *   - VmNicApiSubManager: NIC create/delete/query handlers
+ *   - VmQuotaSubManager: Quota definitions (registered as separate bean)
+ *   - VmExpungeSubManager: Expunge periodic task (registered as separate bean)
+ *   - VmExtensionPointAdapter: Extension point implementations (registered as separate bean)
+ */
 public class VmInstanceManagerImpl extends AbstractService implements
         VmInstanceManager,
-        ReportQuotaExtensionPoint,
         ManagementNodeReadyExtensionPoint,
-        L3NetworkDeleteExtensionPoint,
-        ResourceOwnerAfterChangeExtensionPoint,
-        GlobalApiMessageInterceptor,
-        AfterChangeHostStatusExtensionPoint,
-        VmInstanceMigrateExtensionPoint,
-        VmInstanceBeforeStartExtensionPoint {
+        GlobalApiMessageInterceptor {
     private static final CLogger logger = Utils.getLogger(VmInstanceManagerImpl.class);
-    private List<String> createVmWorkFlowElements;
-    private List<String> stopVmWorkFlowElements;
-    private List<String> rebootVmWorkFlowElements;
-    private List<String> startVmWorkFlowElements;
-    private List<String> destroyVmWorkFlowElements;
-    private List<String> migrateVmWorkFlowElements;
-    private List<String> attachIsoWorkFlowElements;
-    private List<String> detachIsoWorkFlowElements;
-    private List<String> attachVolumeWorkFlowElements;
-    private List<String> expungeVmWorkFlowElements;
-    private List<String> pauseVmWorkFlowElements;
-    private List<String> resumeVmWorkFlowElements;
-    private FlowChainBuilder createVmFlowBuilder;
-    private FlowChainBuilder stopVmFlowBuilder;
-    private FlowChainBuilder rebootVmFlowBuilder;
-    private FlowChainBuilder startVmFlowBuilder;
-    private FlowChainBuilder destroyVmFlowBuilder;
-    private FlowChainBuilder migrateVmFlowBuilder;
-    private FlowChainBuilder attachVolumeFlowBuilder;
-    private FlowChainBuilder attachIsoFlowBuilder;
-    private FlowChainBuilder detachIsoFlowBuilder;
-    private FlowChainBuilder expungeVmFlowBuilder;
-    private FlowChainBuilder pauseVmFlowBuilder;
-    private FlowChainBuilder resumeVmFlowBuilder;
+
     private static final Set<Class> allowedMessageAfterSoftDeletion = new HashSet<>();
-    private Future<Void> expungeVmTask;
 
     static {
         allowedMessageAfterSoftDeletion.add(VmInstanceDeletionMsg.class);
@@ -149,33 +76,27 @@ public class VmInstanceManagerImpl extends AbstractService implements
     @Autowired
     private PluginRegistry pluginRgty;
     @Autowired
-    private DbEntityLister dl;
-    @Autowired
     private AccountManager acntMgr;
     @Autowired
     private TagManager tagMgr;
     @Autowired
-    private ErrorFacade errf;
-    @Autowired
-    private ResourceDestinationMaker destMaker;
-    @Autowired
     private ThreadFacade thdf;
-    @Autowired
-    private VmInstanceDeletionPolicyManager deletionPolicyMgr;
-    @Autowired
-    private HostAllocatorManager hostAllocatorMgr;
-    @Autowired
-    protected VmInstanceExtensionPointEmitter extEmitter;
-    @Autowired
-    protected L3NetworkManager l3nm;
-    @Autowired
-    private ResourceConfigFacade rcf;
     @Autowired
     private VmFactoryManager vmFactoryManager;
     @Autowired
     protected EventFacade evtf;
 
+    // --- Sub-managers injected via Spring XML ---
+    @Autowired
+    private VmFlowChainRegistry flowChainRegistry;
+    @Autowired
+    private VmCreationSubManager creationSubManager;
+    @Autowired
+    private VmNicApiSubManager nicApiSubManager;
+
     private List<VmInstanceExtensionManager> vmExtensionManagers = new ArrayList<>();
+
+    // ==================== Message Routing ====================
 
     @Override
     public void handleMessage(Message msg) {
@@ -210,7 +131,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
 
     private void handleLocalMessage(Message msg) {
         if (msg instanceof CreateVmInstanceMsg) {
-            handle((CreateVmInstanceMsg) msg);
+            creationSubManager.handle((CreateVmInstanceMsg) msg);
         } else if (msg instanceof VmInstanceMessage) {
             passThrough((VmInstanceMessage) msg);
         } else {
@@ -220,29 +141,29 @@ public class VmInstanceManagerImpl extends AbstractService implements
 
     private void handleApiMessage(APIMessage msg) {
         if (msg instanceof APICreateVmInstanceMsg) {
-            handle((APICreateVmInstanceMsg) msg);
-        } else if(msg instanceof APICreateVmNicMsg) {
-            handle((APICreateVmNicMsg) msg);
+            creationSubManager.handle((APICreateVmInstanceMsg) msg);
+        } else if (msg instanceof APICreateVmNicMsg) {
+            nicApiSubManager.handle((APICreateVmNicMsg) msg);
         } else if (msg instanceof APIGetVmNicAttachedNetworkServiceMsg) {
-            handle((APIGetVmNicAttachedNetworkServiceMsg) msg);
+            nicApiSubManager.handle((APIGetVmNicAttachedNetworkServiceMsg) msg);
         } else if (msg instanceof APIDeleteVmNicMsg) {
-            handle((APIDeleteVmNicMsg) msg);
+            nicApiSubManager.handle((APIDeleteVmNicMsg) msg);
         } else if (msg instanceof APIGetCandidateZonesClustersHostsForCreatingVmMsg) {
-            handle((APIGetCandidateZonesClustersHostsForCreatingVmMsg) msg);
+            creationSubManager.handle((APIGetCandidateZonesClustersHostsForCreatingVmMsg) msg);
         } else if (msg instanceof APIGetCandidatePrimaryStoragesForCreatingVmMsg) {
-            handle((APIGetCandidatePrimaryStoragesForCreatingVmMsg) msg);
+            creationSubManager.handle((APIGetCandidatePrimaryStoragesForCreatingVmMsg) msg);
         } else if (msg instanceof APIGetInterdependentL3NetworksImagesMsg) {
-            handle((APIGetInterdependentL3NetworksImagesMsg) msg);
+            creationSubManager.handle((APIGetInterdependentL3NetworksImagesMsg) msg);
         } else if (msg instanceof APIGetInterdependentL3NetworksBackupStoragesMsg) {
-            handle((APIGetInterdependentL3NetworksBackupStoragesMsg) msg);
+            creationSubManager.handle((APIGetInterdependentL3NetworksBackupStoragesMsg) msg);
         } else if (msg instanceof APIGetCandidateVmForAttachingIsoMsg) {
-            handle((APIGetCandidateVmForAttachingIsoMsg) msg);
+            creationSubManager.handle((APIGetCandidateVmForAttachingIsoMsg) msg);
         } else if (msg instanceof APIUpdatePriorityConfigMsg) {
-            handle((APIUpdatePriorityConfigMsg) msg);
+            creationSubManager.handle((APIUpdatePriorityConfigMsg) msg);
         } else if (msg instanceof APIGetSpiceCertificatesMsg) {
-            handle((APIGetSpiceCertificatesMsg) msg);
+            creationSubManager.handle((APIGetSpiceCertificatesMsg) msg);
         } else if (msg instanceof APIGetVmsCapabilitiesMsg) {
-            handle((APIGetVmsCapabilitiesMsg) msg);
+            creationSubManager.handle((APIGetVmsCapabilitiesMsg) msg);
         } else if (msg instanceof VmInstanceMessage) {
             passThrough((VmInstanceMessage) msg);
         } else {
@@ -250,1397 +171,17 @@ public class VmInstanceManagerImpl extends AbstractService implements
         }
     }
 
-    private void handle(APIGetInterdependentL3NetworksBackupStoragesMsg msg) {
-        final String accountUuid = msg.getSession().getAccountUuid();
-        APIGetInterdependentL3NetworksBackupStoragesReply reply =
-                new APIGetInterdependentL3NetworksBackupStoragesReply();
-        if (msg.getBackupStorageUuid() != null) {
-            BackupStorageVO bsvo = Q.New(BackupStorageVO.class)
-                    .eq(BackupStorageVO_.uuid, msg.getBackupStorageUuid())
-                    .find();
-            if (bsvo == null) {
-                reply.setInventories(new ArrayList<>());
-            } else {
-                reply.setInventories(getInterdependentL3NetworksByBackupStorageUuids(Collections.singletonList(bsvo),
-                        msg.getZoneUuid(), accountUuid, false));
-            }
-        } else {
-            reply.setInventories(getInterdependentBackupStoragesByL3NetworkUuids(msg.getL3NetworkUuids()));
-        }
-
-        bus.reply(msg, reply);
-    }
-
-    private void handle(final APIGetVmsCapabilitiesMsg msg) {
-        APIGetVmsCapabilitiesReply reply = new APIGetVmsCapabilitiesReply();
-        Map<String, VmCapabilities> vmsCaps = Maps.newConcurrentMap();
-        msg.getVmUuids()
-                .parallelStream()
-                .forEach(v -> {
-                    vmsCaps.put(v, new VmCapabilitiesJudger().judge(v));
-                });
-
-        reply.setVmsCaps(vmsCaps);
-        bus.reply(msg, reply);
-    }
-
-    private void handle(final APIUpdatePriorityConfigMsg msg) {
-        final APIUpdatePriorityConfigEvent evt = new APIUpdatePriorityConfigEvent(msg.getId());
-
-        VmPriorityOperator.PriorityStruct struct = new VmPriorityOperator.PriorityStruct();
-        struct.setCpuShares(msg.getCpuShares());
-        struct.setOomScoreAdj(msg.getOomScoreAdj());
-        VmPriorityConfigVO vmPriorityConfigVO = new VmPriorityOperator().updatePriorityConfig(msg.getUuid(), struct);
-        if (vmPriorityConfigVO != null) {
-            for (UpdatePriorityConfigExtensionPoint exp : pluginRgty.getExtensionList(UpdatePriorityConfigExtensionPoint.class)) {
-                exp.afterUpdatePriorityConfig(vmPriorityConfigVO);
-            }
-        }
-        bus.publish(evt);
-    }
-
-    private void handle(APIGetSpiceCertificatesMsg msg) {
-        APIGetSpiceCertificatesReply reply = new APIGetSpiceCertificatesReply();
-        String certificateStr = new JsonLabel().get("spiceCA", String.class);
-        if (StringUtils.isNotEmpty(certificateStr)) {
-            reply.setCertificateStr(certificateStr);
-        } else {
-            reply.setError(operr(ORG_ZSTACK_COMPUTE_VM_10232, "Spice certificate does not exist, Please check if spice tls is enabled"));
-        }
-        bus.reply(msg, reply);
-    }
-
-    @Transactional(readOnly = true)
-    private void handle(APIGetCandidateVmForAttachingIsoMsg msg) {
-        APIGetCandidateVmForAttachingIsoReply reply = new APIGetCandidateVmForAttachingIsoReply();
-
-        String sql = "select bs" +
-                " from BackupStorageVO bs, ImageBackupStorageRefVO ref" +
-                " where ref.imageUuid = :isoUuid" +
-                " and bs.uuid = ref.backupStorageUuid";
-        TypedQuery<BackupStorageVO> q = dbf.getEntityManager().createQuery(sql, BackupStorageVO.class);
-        q.setParameter("isoUuid", msg.getIsoUuid());
-        List<BackupStorageVO> bss = q.getResultList();
-        if (bss.isEmpty()) {
-            reply.setInventories(new ArrayList<>());
-            bus.reply(msg, reply);
-            return;
-        }
-
-        List<String> psUuids = new ArrayList<>();
-        List<String> psTypes = new ArrayList<>();
-        for (BackupStorageVO bs : bss) {
-            BackupStorageType bsType = BackupStorageType.valueOf(bs.getType());
-            List<String> lst = bsType.findRelatedPrimaryStorage(bs.getUuid());
-            if (lst != null) {
-                psUuids.addAll(lst);
-            } else {
-                psTypes.addAll(hostAllocatorMgr.getPrimaryStorageTypesByBackupStorageTypeFromMetrics(bs.getType()));
-            }
-        }
-
-        List<VmInstanceVO> vms = new ArrayList<>();
-        if (!psUuids.isEmpty()) {
-            sql = "select vm" +
-                    " from VmInstanceVO vm, VolumeVO vol" +
-                    " where vol.type = :volType" +
-                    " and vol.vmInstanceUuid = vm.uuid" +
-                    " and vm.state in (:vmStates)" +
-                    " and vol.primaryStorageUuid in (:psUuids)";
-            TypedQuery<VmInstanceVO> vmq = dbf.getEntityManager().createQuery(sql, VmInstanceVO.class);
-            vmq.setParameter("volType", VolumeType.Root);
-            vmq.setParameter("vmStates", asList(VmInstanceState.Running, VmInstanceState.Stopped));
-            vmq.setParameter("psUuids", psUuids);
-            vms.addAll(vmq.getResultList());
-        }
-
-        if (!psTypes.isEmpty()) {
-            sql = "select vm" +
-                    " from VmInstanceVO vm, VolumeVO vol, PrimaryStorageVO ps" +
-                    " where vol.type = :volType" +
-                    " and vol.vmInstanceUuid = vm.uuid" +
-                    " and vm.state in (:vmStates)" +
-                    " and vol.primaryStorageUuid = ps.uuid" +
-                    " and ps.type in (:psTypes)";
-            TypedQuery<VmInstanceVO> vmq = dbf.getEntityManager().createQuery(sql, VmInstanceVO.class);
-            vmq.setParameter("volType", VolumeType.Root);
-            vmq.setParameter("vmStates", asList(VmInstanceState.Running, VmInstanceState.Stopped));
-            vmq.setParameter("psTypes", psTypes);
-            vms.addAll(vmq.getResultList());
-        }
-
-        List<VmInstanceInventory> result = VmInstanceInventory.valueOf(vms);
-
-        for (VmAttachIsoExtensionPoint ext : pluginRgty.getExtensionList(VmAttachIsoExtensionPoint.class)) {
-            ext.filtCandidateVms(msg.getIsoUuid(), result);
-        }
-        reply.setInventories(result);
-        bus.reply(msg, reply);
-    }
-
-    private void handle(APIGetInterdependentL3NetworksImagesMsg msg) {
-        final String accountUuid = msg.getSession().getAccountUuid();
-        if (msg.getImageUuid() != null) {
-                thdf.singleFlightSubmit(new SingleFlightTask(msg)
-                        .setSyncSignature(String.format("get-interdependent-l3-by-image-%s-in-zone-%s",
-                                msg.getImageUuid(),
-                                msg.getZoneUuid()))
-                        .run((completion) -> completion.success(getInterdependentL3NetworksByImageUuid(msg, accountUuid)))
-                        .done(((result) -> {
-                            APIGetInterdependentL3NetworkImageReply reply = new APIGetInterdependentL3NetworkImageReply();
-                            if (!result.isSuccess()) {
-                                reply.setError(result.getErrorCode());
-                            } else {
-                                reply.setInventories((List<L3NetworkInventory>) result.getResult());
-                            }
-
-                            bus.reply(msg, reply);
-                        })));
-        } else if (msg.getL3NetworkUuids() != null) {
-            getInterdependentImagesByL3NetworkUuids(msg);
-        } else {
-            thdf.singleFlightSubmit(new SingleFlightTask(msg)
-                    .setSyncSignature(String.format("get-interdependent-l3-by-zone-%s",
-                            msg.getZoneUuid()))
-                    .run((completion) -> completion.success(getInterdependentL3NetworksByImageUuid(msg, accountUuid)))
-                    .done(((result) -> {
-                        APIGetInterdependentL3NetworkImageReply reply = new APIGetInterdependentL3NetworkImageReply();
-                        if (!result.isSuccess()) {
-                            reply.setError(result.getErrorCode());
-                        } else {
-                            reply.setInventories((List<L3NetworkInventory>) result.getResult());
-                        }
-
-                        bus.reply(msg, reply);
-                    })));
-        }
-    }
-
-    private List<BackupStorageVO> listIntersection(List<BackupStorageVO> a, List<BackupStorageVO> b) {
-        List<BackupStorageVO> ret = new ArrayList<>();
-        for (BackupStorageVO s : a) {
-            if (b.stream().filter(it -> it.getUuid().equals(s.getUuid())).findAny().isPresent()) {
-                ret.add(s);
-            }
-        }
-
-        return ret;
-    }
-
-    @Transactional(readOnly = true)
-    private List<BackupStorageInventory> getInterdependentBackupStoragesByL3NetworkUuids(List<String> l3s) {
-        List<List<BackupStorageVO>> bss = new ArrayList<>();
-        for (String l3uuid : l3s) {
-            String sql = "select ps" +
-                    " from PrimaryStorageVO ps, L2NetworkClusterRefVO l2ref," +
-                    " L3NetworkVO l3, PrimaryStorageClusterRefVO psref" +
-                    " where ps.uuid = psref.primaryStorageUuid" +
-                    " and psref.clusterUuid = l2ref.clusterUuid" +
-                    " and l2ref.l2NetworkUuid = l3.l2NetworkUuid" +
-                    " and l3.uuid = :l3uuid";
-            TypedQuery<PrimaryStorageVO> psq = dbf.getEntityManager().createQuery(sql, PrimaryStorageVO.class);
-            psq.setParameter("l3uuid", l3uuid);
-            List<PrimaryStorageVO> pss = psq.getResultList();
-
-            List<BackupStorageVO> lst = new ArrayList<>();
-            for (PrimaryStorageVO ps : pss) {
-                PrimaryStorageType psType = PrimaryStorageType.valueOf(ps.getType());
-                List<String> bsUuids = psType.findBackupStorage(ps.getUuid());
-
-                if (!bsUuids.isEmpty()) {
-                    // the primary storage has bound backup storage, e.g. ceph
-                    sql = "select bs from BackupStorageVO bs where bs.uuid in (:uuids)";
-                    TypedQuery<BackupStorageVO> bq = dbf.getEntityManager().createQuery(sql, BackupStorageVO.class);
-                    bq.setParameter("uuids", bsUuids);
-                    lst.addAll(bq.getResultList());
-                } else {
-                    logger.warn(String.format("the primary storage[uuid:%s, type:%s] needs a bound backup storage," +
-                            " but seems it's not added", ps.getUuid(), ps.getType()));
-                }
-            }
-
-            bss.add(lst);
-        }
-
-        List<BackupStorageVO> selectedBss = new ArrayList<>();
-        for (List<BackupStorageVO> lst : bss) {
-            selectedBss.addAll(lst);
-        }
-
-        for (List<BackupStorageVO> l : bss) {
-            selectedBss = listIntersection(selectedBss, l);
-        }
-
-        return BackupStorageInventory.valueOf(selectedBss);
-    }
-
-    @Transactional(readOnly = true)
-    private void getInterdependentImagesByL3NetworkUuids(APIGetInterdependentL3NetworksImagesMsg msg) {
-        APIGetInterdependentL3NetworkImageReply reply = new APIGetInterdependentL3NetworkImageReply();
-
-        List<BackupStorageInventory> bss = getInterdependentBackupStoragesByL3NetworkUuids(msg.getL3NetworkUuids());
-
-        if (bss.isEmpty()) {
-            reply.setInventories(new ArrayList<>());
-            bus.reply(msg, reply);
-            return;
-        }
-
-        List<String> bsUuids = bss.stream().map(BackupStorageInventory::getUuid).collect(Collectors.toList());
-        String sql = "select img" +
-                " from ImageVO img, ImageBackupStorageRefVO iref, BackupStorageZoneRefVO zref, BackupStorageVO bs" +
-                " where img.uuid = iref.imageUuid" +
-                " and iref.backupStorageUuid = zref.backupStorageUuid" +
-                " and bs.uuid = zref.backupStorageUuid" +
-                " and bs.uuid in (:uuids)" +
-                " and zref.zoneUuid = :zoneUuid" +
-                " group by img.uuid";
-        TypedQuery<ImageVO> iq = dbf.getEntityManager().createQuery(sql, ImageVO.class);
-        iq.setParameter("uuids", bsUuids);
-        iq.setParameter("zoneUuid", msg.getZoneUuid());
-        List<ImageVO> vos = iq.getResultList();
-        reply.setInventories(ImageInventory.valueOf(vos));
-        bus.reply(msg, reply);
-    }
-
-    @Transactional(readOnly = true)
-    private List<L3NetworkInventory> getInterdependentL3NetworksByImageUuid(APIGetInterdependentL3NetworksImagesMsg msg, String accountUuid) {
-        List<BackupStorageVO> bss = null;
-        if (msg.getImageUuid() != null) {
-            String sql = "select bs" +
-                    " from BackupStorageVO bs, ImageBackupStorageRefVO ref, BackupStorageZoneRefVO zref" +
-                    " where bs.uuid = ref.backupStorageUuid" +
-                    " and ref.imageUuid = :imgUuid" +
-                    " and ref.backupStorageUuid = zref.backupStorageUuid" +
-                    " and zref.zoneUuid = :zoneUuid";
-            TypedQuery<BackupStorageVO> bsq = dbf.getEntityManager().createQuery(sql, BackupStorageVO.class);
-            bsq.setParameter("imgUuid", msg.getImageUuid());
-            bsq.setParameter("zoneUuid", msg.getZoneUuid());
-            bss = bsq.getResultList();
-        } else {
-            String sql = "select bs" +
-                    " from BackupStorageVO bs, BackupStorageZoneRefVO zref" +
-                    " where bs.uuid = zref.backupStorageUuid" +
-                    " and zref.zoneUuid = :zoneUuid";
-            TypedQuery<BackupStorageVO> bsq = dbf.getEntityManager().createQuery(sql, BackupStorageVO.class);
-            bsq.setParameter("zoneUuid", msg.getZoneUuid());
-            bss = bsq.getResultList();
-        }
-
-        if (bss.isEmpty()) {
-            throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10233, "the image[uuid:%s] is not on any backup storage that has been attached to the zone[uuid:%s]",
-                            msg.getImageUuid(), msg.getZoneUuid()));
-        }
-
-        List<L3NetworkInventory> l3s = getInterdependentL3NetworksByBackupStorageUuids(bss, msg.getZoneUuid(), accountUuid, msg.getRaiseException());
-
-        List<String> bsUuids = bss.stream().map(BackupStorageVO::getUuid).collect(Collectors.toList());
-        for (GetInterdependentL3NetworksExtensionPoint ext : pluginRgty.getExtensionList(GetInterdependentL3NetworksExtensionPoint.class)) {
-            l3s = ext.afterFilterByImage(l3s, bsUuids, msg.getImageUuid());
-        }
-
-        return l3s;
-    }
-
-    @Transactional(readOnly = true)
-    private List<L3NetworkInventory> getInterdependentL3NetworksByBackupStorageUuids(List<BackupStorageVO> bss, String zoneUuid, String accountUuid, boolean raiseException) {
-        List<String> psUuids = new ArrayList<>();
-        List<L3NetworkVO> l3s = new ArrayList<>();
-        for (BackupStorageVO bs : bss) {
-            BackupStorageType bsType = BackupStorageType.valueOf(bs.getType());
-            List<String> relatedPrimaryStorageUuids = bsType.findRelatedPrimaryStorage(bs.getUuid());
-            if (relatedPrimaryStorageUuids == null) {
-                // the backup storage has no strongly-bound primary storage
-                List<String> psTypes = hostAllocatorMgr.getPrimaryStorageTypesByBackupStorageTypeFromMetrics(bs.getType());
-                psUuids.addAll(Q.New(PrimaryStorageVO.class)
-                        .select(PrimaryStorageVO_.uuid)
-                        .in(PrimaryStorageVO_.type, psTypes)
-                        .eq(PrimaryStorageVO_.zoneUuid, zoneUuid)
-                        .listValues());
-                l3s.addAll(SQL.New("select l3" +
-                                " from L3NetworkVO l3, L2NetworkClusterRefVO l2ref," +
-                                " PrimaryStorageClusterRefVO psref, PrimaryStorageVO ps" +
-                                " where l3.l2NetworkUuid = l2ref.l2NetworkUuid" +
-                                " and l2ref.clusterUuid = psref.clusterUuid" +
-                                " and psref.primaryStorageUuid = ps.uuid" +
-                                " and ps.type in (:psTypes)" +
-                                " and ps.zoneUuid = l3.zoneUuid" +
-                                " and l3.zoneUuid = :zoneUuid" +
-                                " group by l3.uuid")
-                        .param("psTypes", psTypes)
-                        .param("zoneUuid", zoneUuid)
-                        .list());
-            } else if (!relatedPrimaryStorageUuids.isEmpty()) {
-                // the backup storage has strongly-bound primary storage, e.g. ceph
-                psUuids.addAll(Q.New(PrimaryStorageVO.class)
-                        .select(PrimaryStorageVO_.uuid)
-                        .in(PrimaryStorageVO_.uuid, relatedPrimaryStorageUuids)
-                        .eq(PrimaryStorageVO_.zoneUuid, zoneUuid)
-                        .listValues());
-                l3s.addAll(SQL.New("select l3" +
-                                " from L3NetworkVO l3, L2NetworkClusterRefVO l2ref," +
-                                " PrimaryStorageClusterRefVO psref, PrimaryStorageVO ps" +
-                                " where l3.l2NetworkUuid = l2ref.l2NetworkUuid" +
-                                " and l2ref.clusterUuid = psref.clusterUuid" +
-                                " and psref.primaryStorageUuid = ps.uuid" +
-                                " and ps.uuid in (:psUuids)" +
-                                " and ps.zoneUuid = l3.zoneUuid" +
-                                " and l3.zoneUuid = :zoneUuid" +
-                                " group by l3.uuid")
-                        .param("psUuids", relatedPrimaryStorageUuids)
-                        .param("zoneUuid", zoneUuid)
-                        .list());
-            } else {
-                // relatedPrimaryStorageUuids is not null, but size is 0
-                logger.warn(String.format("the backup storage[uuid:%s, type: %s] needs a strongly-bound primary storage," +
-                        " but seems the primary storage is not added", bs.getUuid(), bs.getType()));
-            }
-        }
-
-        if (l3s.isEmpty()) {
-            if (psUuids.isEmpty()) {
-                if (raiseException) {
-                    throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10234, "no primary storage accessible to the backup storage[uuid:%s, type:%s] is found",
-                            bss.get(0).getUuid(), bss.get(0).getType()));
-                }
-                logger.warn(String.format("no primary storage accessible to the backup storage[uuid:%s, type:%s] is found",
-                        bss.get(0).getUuid(), bss.get(0).getType()));
-                return new ArrayList<>();
-            }
-
-            Long clusterNum = SQL.New("select count(distinct cl)" +
-                            " from ClusterVO cl, PrimaryStorageClusterRefVO psref, PrimaryStorageVO ps" +
-                            " where cl.uuid = psref.clusterUuid" +
-                            " and psref.primaryStorageUuid in (:psUuids)" +
-                            " and ps.zoneUuid = cl.zoneUuid" +
-                            " and cl.zoneUuid = :zoneUuid" +
-                            " group by cl.uuid", Long.class)
-                    .param("psUuids", psUuids)
-                    .param("zoneUuid", zoneUuid)
-                    .find();
-
-            if (clusterNum == null || clusterNum == 0) {
-                if (raiseException) {
-                    throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10235, "the primary storages[uuids:%s] has not attached any cluster on the zone[uuid:%s]",
-                            psUuids, zoneUuid));
-                }
-                logger.warn(String.format("the primary storages[uuids:%s] has not attached any cluster on the zone[uuid:%s]", psUuids, zoneUuid));
-                return new ArrayList<>();
-            }
-
-            Long l2Num = SQL.New("select count(distinct l2)" +
-                            " from L2NetworkVO l2, L2NetworkClusterRefVO l2ref, PrimaryStorageClusterRefVO psref, PrimaryStorageVO ps" +
-                            " where l2.uuid = l2ref.l2NetworkUuid" +
-                            " and psref.primaryStorageUuid in (:psUuids)" +
-                            " and l2ref.clusterUuid = psref.clusterUuid" +
-                            " and ps.zoneUuid = l2.zoneUuid" +
-                            " and l2.zoneUuid = :zoneUuid", Long.class)
-                    .param("psUuids", psUuids)
-                    .param("zoneUuid", zoneUuid)
-                    .find();
-            if (l2Num == null || l2Num == 0) {
-                if (raiseException) {
-                    throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10236, "no l2Networks found in clusters that have attached to primary storages[uuids:%s]",
-                            psUuids));
-                }
-                logger.warn(String.format("no l2Networks found in clusters that have attached to primary storages[uuids:%s]", psUuids));
-                return new ArrayList<>();
-            }
-        }
-
-        List<String> l3UuidListOfCurrentAccount;
-        if (!AccountConstant.isAdminPermission(accountUuid)) {
-            l3UuidListOfCurrentAccount = acntMgr.getResourceUuidsCanAccessByAccount(accountUuid, L3NetworkVO.class);
-        } else {
-            l3UuidListOfCurrentAccount = null;
-        }
-
-        if (l3UuidListOfCurrentAccount == null) {
-            return L3NetworkInventory.valueOf(l3s);
-        }
-        return L3NetworkInventory.valueOf(l3s.stream()
-                .filter(vo -> l3UuidListOfCurrentAccount.contains(vo.getUuid()))
-                .collect(Collectors.toList()));
-    }
-
-    private void handle(APIGetCandidateZonesClustersHostsForCreatingVmMsg msg) {
-        DesignatedAllocateHostMsg amsg = new DesignatedAllocateHostMsg();
-
-        ImageVO image = dbf.findByUuid(msg.getImageUuid(), ImageVO.class);
-        amsg.setImage(ImageInventory.valueOf(image));
-        amsg.setZoneUuid(msg.getZoneUuid());
-        amsg.setClusterUuid(msg.getClusterUuid());
-
-        InstanceOfferingVO insvo = null;
-        if (msg.getInstanceOfferingUuid() == null) {
-            amsg.setCpuCapacity(msg.getCpuNum());
-            amsg.setMemoryCapacity(msg.getMemorySize());
-        } else {
-            insvo = dbf.findByUuid(msg.getInstanceOfferingUuid(), InstanceOfferingVO.class);
-            amsg.setCpuCapacity(insvo.getCpuNum());
-            amsg.setMemoryCapacity(insvo.getMemorySize());
-        }
-
-        long diskSize = 0;
-        List<DiskOfferingInventory> diskOfferings = new ArrayList<>();
-        if (msg.getDataDiskOfferingUuids() != null) {
-            SimpleQuery<DiskOfferingVO> q = dbf.createQuery(DiskOfferingVO.class);
-            q.add(DiskOfferingVO_.uuid, Op.IN, msg.getDataDiskOfferingUuids());
-            List<DiskOfferingVO> dvos = q.list();
-            diskOfferings.addAll(DiskOfferingInventory.valueOf(dvos));
-        }
-
-        if (image.getMediaType() == ImageMediaType.ISO) {
-            if (msg.getRootDiskOfferingUuid() == null) {
-                diskSize = msg.getRootDiskSize();
-            } else {
-                DiskOfferingVO rootDiskOffering = dbf.findByUuid(msg.getRootDiskOfferingUuid(), DiskOfferingVO.class);
-                diskOfferings.add(DiskOfferingInventory.valueOf(rootDiskOffering));
-            }
-        } else {
-            diskSize = image.getSize();
-        }
-
-        diskSize += diskOfferings.stream().mapToLong(DiskOfferingInventory::getDiskSize).sum();
-        amsg.setDiskSize(diskSize);
-        amsg.setL3NetworkUuids(msg.getL3NetworkUuids());
-        amsg.setVmOperation(VmOperation.NewCreate.toString());
-        amsg.setDryRun(true);
-        amsg.setListAllHosts(true);
-        amsg.setAllocatorStrategy(HostAllocatorConstant.DESIGNATED_HOST_ALLOCATOR_STRATEGY_TYPE);
-
-        if (image.getBackupStorageRefs().size() == 1) {
-            amsg.setRequiredBackupStorageUuid(image.getBackupStorageRefs().iterator().next().getBackupStorageUuid());
-        } else {
-            if (msg.getZoneUuid() == null) {
-                throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10237, "zoneUuid must be set because the image[name:%s, uuid:%s] is on multiple backup storage",
-                                image.getName(), image.getUuid()));
-            }
-
-            ImageBackupStorageSelector selector = new ImageBackupStorageSelector();
-            selector.setZoneUuid(msg.getZoneUuid());
-            selector.setImageUuid(image.getUuid());
-            amsg.setRequiredBackupStorageUuid(selector.select());
-        }
-
-        VmInstanceInventory vm = new VmInstanceInventory();
-        vm.setUuid(Platform.FAKE_UUID);
-        vm.setImageUuid(image.getUuid());
-        if (insvo == null) {
-            vm.setCpuNum(msg.getCpuNum());
-            vm.setMemorySize(msg.getMemorySize());
-        } else {
-            vm.setInstanceOfferingUuid(insvo.getUuid());
-            vm.setCpuNum(insvo.getCpuNum());
-            vm.setMemorySize(insvo.getMemorySize());
-        }
-        vm.setDefaultL3NetworkUuid(msg.getDefaultL3NetworkUuid() == null ? msg.getL3NetworkUuids().get(0) : msg.getDefaultL3NetworkUuid());
-        vm.setName("for-getting-candidates-zones-clusters-hosts");
-        amsg.setVmInstance(vm);
-        if (msg.getSystemTags() != null && !msg.getSystemTags().isEmpty()) {
-            amsg.setSystemTags(new ArrayList<String>(msg.getSystemTags()));
-        }
-
-        APIGetCandidateZonesClustersHostsForCreatingVmReply areply = new APIGetCandidateZonesClustersHostsForCreatingVmReply();
-        bus.makeLocalServiceId(amsg, HostAllocatorConstant.SERVICE_ID);
-        bus.send(amsg, new CloudBusCallBack(msg) {
-            @Override
-            public void run(MessageReply reply) {
-                if (!reply.isSuccess()) {
-                    areply.setError(reply.getError());
-                } else {
-                    AllocateHostDryRunReply re = reply.castReply();
-
-                    if (!re.getHosts().isEmpty()) {
-                        areply.setHosts(re.getHosts());
-
-                        Set<String> clusterUuids = re.getHosts().stream().
-                                map(HostInventory::getClusterUuid).collect(Collectors.toSet());
-                        List<ClusterInventory> clusters = ClusterInventory.valueOf(dbf.listByPrimaryKeys(clusterUuids, ClusterVO.class));
-                        areply.setClusters(clusters);
-
-                        Set<String> zoneUuids = clusters.stream().
-                                map(ClusterInventory::getZoneUuid).collect(Collectors.toSet());
-                        areply.setZones(ZoneInventory.valueOf(dbf.listByPrimaryKeys(zoneUuids, ZoneVO.class)));
-                    } else {
-                        areply.setHosts(new ArrayList<>());
-                        areply.setClusters(new ArrayList<>());
-                        areply.setZones(new ArrayList<>());
-                    }
-                }
-
-                bus.reply(msg, areply);
-            }
-        });
-    }
-
-    private void handle(APIGetCandidatePrimaryStoragesForCreatingVmMsg msg) {
-        APIGetCandidatePrimaryStoragesForCreatingVmReply reply = new APIGetCandidatePrimaryStoragesForCreatingVmReply();
-        List<AllocatePrimaryStorageMsg> msgs = new ArrayList<>();
-
-        Set<String> psTypes = new HashSet<>();
-        List<String> clusterUuids = new ArrayList<>();
-        List<DiskOfferingInventory> dataOfferings = new ArrayList<>();
-        ImageInventory imageInv = new SQLBatchWithReturn<ImageInventory>(){
-
-            @Override
-            protected ImageInventory scripts() {
-                List<String> dataOfferingUuids = msg.getDataDiskOfferingUuids() == null ? new ArrayList<>() :
-                        msg.getDataDiskOfferingUuids();
-
-                sql("select bs.type from BackupStorageVO bs, ImageBackupStorageRefVO ref" +
-                        " where ref.imageUuid =:imageUuid" +
-                        " and bs.uuid = ref.backupStorageUuid", String.class)
-                        .param("imageUuid", msg.getImageUuid())
-                        .list().forEach(it ->
-                        psTypes.addAll(hostAllocatorMgr.getPrimaryStorageTypesByBackupStorageTypeFromMetrics((String)it)
-                        ));
-
-                clusterUuids.addAll(sql("select distinct ref.clusterUuid" +
-                        " from L2NetworkClusterRefVO ref, L3NetworkVO l3" +
-                        " where l3.uuid in (:l3Uuids)" +
-                        " and ref.l2NetworkUuid = l3.l2NetworkUuid", String.class)
-                        .param("l3Uuids", msg.getL3NetworkUuids())
-                        .list());
-
-                for (String diskUuid : dataOfferingUuids){
-                    dataOfferings.add(DiskOfferingInventory.valueOf(
-                            (DiskOfferingVO) q(DiskOfferingVO.class)
-                                    .eq(DiskOfferingVO_.uuid, diskUuid)
-                                    .find()
-                    ));
-                }
-
-                ImageVO imageVO = q(ImageVO.class).eq(ImageVO_.uuid, msg.getImageUuid()).find();
-                return ImageInventory.valueOf(imageVO);
-            }
-        }.execute();
-
-
-        // allocate ps for root volume
-        AllocatePrimaryStorageMsg rmsg = new AllocatePrimaryStorageMsg();
-        rmsg.setDryRun(true);
-        rmsg.setImageUuid(msg.getImageUuid());
-        rmsg.setRequiredClusterUuids(clusterUuids);
-        if (ImageMediaType.ISO.toString().equals(imageInv.getMediaType())) {
-            if (msg.getRootDiskOfferingUuid() == null) {
-                rmsg.setSize(msg.getRootDiskSize());
-            } else {
-                Tuple t = Q.New(DiskOfferingVO.class).eq(DiskOfferingVO_.uuid, msg.getRootDiskOfferingUuid())
-                        .select(DiskOfferingVO_.diskSize, DiskOfferingVO_.allocatorStrategy).findTuple();
-
-                rmsg.setSize((long) t.get(0));
-                rmsg.setAllocationStrategy((String) t.get(1));
-                rmsg.setDiskOfferingUuid(msg.getRootDiskOfferingUuid());
-            }
-        } else {
-            rmsg.setSize(imageInv.getSize());
-        }
-
-        if (msg.getRootDiskOfferingUuid() != null && DiskOfferingSystemTags.DISK_OFFERING_USER_CONFIG.hasTag(msg.getRootDiskOfferingUuid())) {
-            DiskOfferingUserConfig config = OfferingUserConfigUtils.getDiskOfferingConfig(msg.getRootDiskOfferingUuid(), DiskOfferingUserConfig.class);
-            if (config.getAllocate() != null && config.getAllocate().getPrimaryStorage() != null) {
-                String psUuid = config.getAllocate().getPrimaryStorage().getUuid();
-                rmsg.setRequiredPrimaryStorageUuid(psUuid);
-            }
-        }
-
-        if (msg.getInstanceOfferingUuid() != null && InstanceOfferingSystemTags.INSTANCE_OFFERING_USER_CONFIG.hasTag(msg.getInstanceOfferingUuid())) {
-            InstanceOfferingUserConfig config = OfferingUserConfigUtils.getInstanceOfferingConfig(msg.getInstanceOfferingUuid(), InstanceOfferingUserConfig.class);
-            if (config.getAllocate() != null && config.getAllocate().getPrimaryStorage() != null) {
-                String psUuid = config.getAllocate().getPrimaryStorage().getUuid();
-                rmsg.setRequiredPrimaryStorageUuid(psUuid);
-            }
-        }
-
-        rmsg.setPurpose(PrimaryStorageAllocationPurpose.CreateNewVm.toString());
-        rmsg.setPossiblePrimaryStorageTypes(new ArrayList<>(psTypes));
-        bus.makeLocalServiceId(rmsg, PrimaryStorageConstant.SERVICE_ID);
-        msgs.add(rmsg);
-
-        // allocate ps for data volumes
-        for (DiskOfferingInventory dinv : dataOfferings) {
-            AllocatePrimaryStorageMsg amsg = new AllocatePrimaryStorageMsg();
-            amsg.setDryRun(true);
-            amsg.setSize(dinv.getDiskSize());
-            amsg.setRequiredClusterUuids(clusterUuids);
-            amsg.setAllocationStrategy(dinv.getAllocatorStrategy());
-            amsg.setDiskOfferingUuid(dinv.getUuid());
-            if (DiskOfferingSystemTags.DISK_OFFERING_USER_CONFIG.hasTag(dinv.getUuid())) {
-                DiskOfferingUserConfig config = OfferingUserConfigUtils.getDiskOfferingConfig(dinv.getUuid(), DiskOfferingUserConfig.class);
-                if (config.getAllocate() != null && config.getAllocate().getPrimaryStorage() != null) {
-                    String psUuid = config.getAllocate().getPrimaryStorage().getUuid();
-                    amsg.setRequiredPrimaryStorageUuid(psUuid);
-                }
-            }
-
-            bus.makeLocalServiceId(amsg, PrimaryStorageConstant.SERVICE_ID);
-            msgs.add(amsg);
-        }
-
-        if (msg.getDataDiskSizes() != null) {
-            for (Long size : msg.getDataDiskSizes()) {
-                AllocatePrimaryStorageMsg amsg = new AllocatePrimaryStorageMsg();
-                amsg.setDryRun(true);
-                amsg.setSize(size);
-                amsg.setRequiredClusterUuids(clusterUuids);
-                bus.makeLocalServiceId(amsg, PrimaryStorageConstant.SERVICE_ID);
-                msgs.add(amsg);
-            }
-        }
-
-        new While<>(msgs).all((amsg, completion) ->{
-            bus.send(amsg, new CloudBusCallBack(completion) {
-                @Override
-                public void run(MessageReply r) {
-                    if (r.isSuccess()){
-                        AllocatePrimaryStorageDryRunReply re = r.castReply();
-                        if (amsg.getImageUuid() != null){
-                            reply.setRootVolumePrimaryStorages(re.getPrimaryStorageInventories());
-                        } else if (amsg.getDiskOfferingUuid() != null) {
-                            reply.getDataVolumePrimaryStorages().put(amsg.getDiskOfferingUuid(), re.getPrimaryStorageInventories());
-                        } else {
-                            reply.getDataVolumePrimaryStorages().put(String.valueOf(amsg.getSize()), re.getPrimaryStorageInventories());
-                        }
-                    }
-                    completion.done();
-                }
-            });
-
-        }).run(new WhileDoneCompletion(msg) {
-            @Override
-            public void done(ErrorCodeList errorCodeList) {
-                bus.reply(msg, reply);
-            }
-        });
-    }
-
-    private void handle(APICreateVmNicMsg msg) {
-        final APICreateVmNicEvent evt = new APICreateVmNicEvent(msg.getId());
-        VmNicInventory nic = new VmNicInventory();
-        VmNicVO nicVO = new VmNicVO();
-        List<UsedIpInventory> ips = new ArrayList<>();
-
-        FlowChain flowChain = FlowChainBuilder.newSimpleFlowChain();
-        flowChain.setName(String.format("create-nic-on-l3-network-%s", msg.getL3NetworkUuid()));
-        flowChain.then(new NoRollbackFlow() {
-            String __name__ = "create-nic-and-presist-to-db";
-
-            @Override
-            public void run(FlowTrigger trigger, Map data) {
-                int deviceId = 1;
-                String mac = MacOperator.generateMacWithDeviceId((short) deviceId);
-                nic.setUuid(Platform.getUuid());
-                nic.setMac(mac);
-                nic.setDeviceId(deviceId);
-                nic.setType(VmInstanceConstant.VIRTUAL_NIC_TYPE);
-                for (NicManageExtensionPoint ext : pluginRgty.getExtensionList(NicManageExtensionPoint.class)) {
-                    ext.beforeCreateNic(nic, msg);
-                }
-
-                nicVO.setUuid(nic.getUuid());
-                nicVO.setDeviceId(deviceId);
-                nicVO.setMac(nic.getMac());
-                nicVO.setAccountUuid(msg.getSession().getAccountUuid());
-                nicVO.setType(nic.getType());
-
-                int tries = 5;
-                while (tries-- > 0) {
-                    try {
-                        new SQLBatch() {
-                            @Override
-                            protected void scripts() {
-                                persist(nicVO);
-                            }
-                        }.execute();
-                        break;
-                    } catch (PersistenceException e) {
-                        if (ExceptionDSL.isCausedBy(e, SQLIntegrityConstraintViolationException.class, "Duplicate entry")) {
-                            logger.debug(String.format("Concurrent mac allocation. Mac[%s] has been allocated, try allocating another one. " +
-                                    "The error[Duplicate entry] printed by jdbc.spi.SqlExceptionHelper is no harm, " +
-                                    "we will try finding another mac", nicVO.getMac()));
-                            logger.trace("", e);
-                            nicVO.setMac(MacOperator.generateMacWithDeviceId((short) nicVO.getDeviceId()));
-                        } else {
-                            throw e;
-                        }
-                    }
-                }
-
-                trigger.next();
-            }
-        }).then(new Flow() {
-            String __name__ = "allocate-nic-ip-and-mac";
-
-            @Override
-            public void run(FlowTrigger trigger, Map data) {
-                List<ErrorCode> errors = new ArrayList<>();
-                L3NetworkVO l3NetworkVO = dbf.findByUuid(msg.getL3NetworkUuid(), L3NetworkVO.class);
-                new While<>(l3NetworkVO.getIpVersions()).each((version, wcomp) -> {
-                    AllocateIpMsg allocateIpMsg = new AllocateIpMsg();
-                    allocateIpMsg.setL3NetworkUuid(msg.getL3NetworkUuid());
-                    allocateIpMsg.setRequiredIp(msg.getIp());
-                    if (msg.getIp() == null) {
-                        allocateIpMsg.setRequiredIp(nic.getIp());
-                    }
-                    allocateIpMsg.setIpVersion(version);
-                    l3nm.updateIpAllocationMsg(allocateIpMsg, nic.getMac());
-                    bus.makeTargetServiceIdByResourceUuid(allocateIpMsg, L3NetworkConstant.SERVICE_ID, msg.getL3NetworkUuid());
-
-                    bus.send(allocateIpMsg, new CloudBusCallBack(wcomp) {
-                        @Override
-                        public void run(MessageReply reply) {
-                            if (!reply.isSuccess()) {
-                                errors.add(reply.getError());
-                                wcomp.allDone();
-                                return;
-                            }
-
-                            AllocateIpReply aReply = reply.castReply();
-                            UsedIpInventory ipInventory = aReply.getIpInventory();
-                            ips.add(ipInventory);
-                            for (VmNicExtensionPoint ext : pluginRgty.getExtensionList(VmNicExtensionPoint.class)) {
-                                ext.afterAddIpAddress(nic.getUuid(), ipInventory.getUuid());
-                            }
-
-                            if (nic.getL3NetworkUuid() == null) {
-                                nic.setL3NetworkUuid(aReply.getIpInventory().getL3NetworkUuid());
-                            }
-                            if (nic.getUsedIpUuid() == null) {
-                                nic.setUsedIpUuid(aReply.getIpInventory().getUuid());
-                            }
-                            /* TODO, to support nic driver type*/
-                            wcomp.done();
-                        }
-                    });
-                }).run(new WhileDoneCompletion(trigger) {
-                    @Override
-                    public void done(ErrorCodeList errorCodeList) {
-                        if (errors.size() > 0) {
-                            trigger.fail(errors.get(0));
-                        } else {
-                            trigger.next();
-                        }
-                    }
-                });
-
-            }
-
-            @Override
-            public void rollback(FlowRollback trigger, Map data) {
-                if (!ips.isEmpty()) {
-                    List<ReturnIpMsg> rmsgs = new ArrayList<>();
-                    for (UsedIpInventory ip : ips) {
-                        ReturnIpMsg rmsg = new ReturnIpMsg();
-                        rmsg.setL3NetworkUuid(ip.getL3NetworkUuid());
-                        rmsg.setUsedIpUuid(ip.getUuid());
-                        bus.makeTargetServiceIdByResourceUuid(rmsg, L3NetworkConstant.SERVICE_ID, ip.getL3NetworkUuid());
-                        rmsgs.add(rmsg);
-                    }
-
-                    new While<>(rmsgs).step((rmsg, wcomp) -> {
-                        bus.send(rmsg, new CloudBusCallBack(wcomp) {
-                            @Override
-                            public void run(MessageReply reply) {
-                                wcomp.done();
-
-                            }
-                        });
-                    }, 2).run(new WhileDoneCompletion(trigger) {
-                        @Override
-                        public void done(ErrorCodeList errorCodeList) {
-                            dbf.removeByPrimaryKey(nic.getUuid(), VmNicVO.class);
-                            trigger.rollback();
-                        }
-                    });
-                } else {
-                    dbf.removeByPrimaryKey(nic.getUuid(), VmNicVO.class);
-                    trigger.rollback();
-                }
-            }
-        });
-
-        flowChain.done(new FlowDoneHandler(msg) {
-            @Override
-            public void handle(Map data) {
-                tagMgr.createTagsFromAPICreateMessage(msg, nic.getUuid(), VmNicVO.class.getSimpleName());
-                evt.setInventory(VmNicInventory.valueOf(dbf.reload(nicVO)));
-                bus.publish(evt);
-            }
-        }).error(new FlowErrorHandler(msg) {
-            @Override
-            public void handle(ErrorCode errCode, Map data) {
-                evt.setError(errCode);
-                bus.publish(evt);
-            }
-        }).start();
-    }
-
-    private void handle(APIGetVmNicAttachedNetworkServiceMsg msg) {
-        APIGetVmNicAttachedNetworkServiceReply reply = new APIGetVmNicAttachedNetworkServiceReply();
-        List<String> networkServices = new ArrayList<>();
-        VmNicVO nicVO = Q.New(VmNicVO.class).eq(VmNicVO_.uuid, msg.getVmNicUuid()).find();
-        for (VmNicChangeNetworkExtensionPoint extension : pluginRgty.getExtensionList(VmNicChangeNetworkExtensionPoint.class)) {
-            Map<String, String> ret = extension.getVmNicAttachedNetworkService(VmNicInventory.valueOf(nicVO));
-            if (ret == null) {
-                continue;
-            }
-            networkServices.addAll(ret.keySet());
-        }
-        reply.setNetworkServices(networkServices);
-        bus.reply(msg, reply);
-    }
-
-    private void instantiateTagsForCreateMessage(final CreateVmInstanceMsg msg, final APICreateMessage cmsg, VmInstanceVO finalVo) {
-        if (cmsg != null) {
-            tagMgr.createTagsFromAPICreateMessage(cmsg, finalVo.getUuid(), VmInstanceVO.class.getSimpleName());
-        } else {
-            tagMgr.createTags(msg.getSystemTags(), msg.getUserTags(), finalVo.getUuid(), VmInstanceVO.class.getSimpleName());
-        }
-
-        boolean isVirtio = false;
-        if (!CollectionUtils.isEmpty(msg.getDiskAOs())) {
-            isVirtio = msg.getVirtio();
-        } else {
-            if (Q.New(ImageVO.class).eq(ImageVO_.uuid, msg.getImageUuid()).eq(ImageVO_.virtio, true).isExists()) {
-                isVirtio = true;
-            }
-        }
-        if (isVirtio) {
-            SystemTagCreator creator = VmSystemTags.VIRTIO.newSystemTagCreator(finalVo.getUuid());
-            creator.recreate = true;
-            creator.inherent = false;
-            creator.tag = VmSystemTags.VIRTIO.getTagFormat();
-            creator.create();
-        }
-
-        if (finalVo.getInstanceOfferingUuid() != null) {
-            tagMgr.copySystemTag(
-                    finalVo.getInstanceOfferingUuid(),
-                    InstanceOfferingVO.class.getSimpleName(),
-                    finalVo.getUuid(),
-                    VmInstanceVO.class.getSimpleName(), false);
-        }
-
-        if (msg.getImageUuid() != null) {
-            tagMgr.copySystemTag(
-                    msg.getImageUuid(),
-                    ImageVO.class.getSimpleName(),
-                    finalVo.getUuid(),
-                    VmInstanceVO.class.getSimpleName(), false);
-        }
-
-        if (ImageArchitecture.aarch64.toString().equals(finalVo.getArchitecture())) {
-            SystemTagCreator creator = VmSystemTags.MACHINE_TYPE.newSystemTagCreator(finalVo.getUuid());
-            creator.setTagByTokens(map(e(VmSystemTags.MACHINE_TYPE_TOKEN, VmMachineType.virt.toString())));
-            creator.recreate = true;
-            creator.create();
-        }
-
-        SystemTagCreator creator = VmSystemTags.SYNC_PORTS.newSystemTagCreator(finalVo.getUuid());
-        creator.recreate = true;
-        creator.setTagByTokens(map(e(VmSystemTags.SYNC_PORTS_TOKEN, finalVo.getUuid())));
-        creator.create();
-    }
-
-    private List<ErrorCode> extEmitterHandleSystemTag(final CreateVmInstanceMsg msg, final APICreateMessage cmsg, VmInstanceVO finalVo) {
-        List<ErrorCode> result = Collections.emptyList();
-        if (msg == null) {
-            result.add(operr(ORG_ZSTACK_COMPUTE_VM_10238, "CreateVmInstanceMsg cannot be null"));
-            return result;
-        } else if (cmsg != null && cmsg.getSystemTags() != null && !cmsg.getSystemTags().isEmpty()) {
-            return extEmitter.handleSystemTag(finalVo.getUuid(), cmsg.getSystemTags());
-        } else if (cmsg == null && msg.getSystemTags() != null && !msg.getSystemTags().isEmpty()) {
-            return extEmitter.handleSystemTag(finalVo.getUuid(), msg.getSystemTags());
-        }
-        return result;
-    }
-
-    private List<ErrorCode> extEmitterHandleSshKeyPair(final CreateVmInstanceMsg msg, final APICreateMessage cmsg, VmInstanceVO finalVo) {
-        List<ErrorCode> result = Collections.emptyList();
-        if (msg == null) {
-            result.add(operr(ORG_ZSTACK_COMPUTE_VM_10239, "CreateVmInstanceMsg cannot be null"));
-            return result;
-        } else if (msg.getSshKeyPairUuids() != null && !msg.getSshKeyPairUuids().isEmpty()) {
-            return extEmitter.associateSshKeyPair(finalVo.getUuid(), msg.getSshKeyPairUuids());
-        }
-        return result;
-    }
-
-    protected void doCreateVmInstance(final CreateVmInstanceMsg msg, final APICreateMessage cmsg, ReturnValueCompletion<VmInstanceInventory> completion) {
-        pluginRgty.getExtensionList(VmInstanceCreateExtensionPoint.class).forEach(extensionPoint -> {
-            extensionPoint.preCreateVmInstance(msg);
-        });
-
-        final ImageVO image = Q.New(ImageVO.class).eq(ImageVO_.uuid, msg.getImageUuid()).find();
-        VmInstanceVO vo = new VmInstanceVO();
-        if (msg.getResourceUuid() != null) {
-            vo.setUuid(msg.getResourceUuid());
-        } else {
-            vo.setUuid(Platform.getUuid());
-        }
-        vo.setName(msg.getName());
-        vo.setClusterUuid(msg.getClusterUuid());
-        vo.setDescription(msg.getDescription());
-        vo.setImageUuid(msg.getImageUuid());
-        vo.setInstanceOfferingUuid(msg.getInstanceOfferingUuid());
-        vo.setState(VmInstanceState.Created);
-        vo.setZoneUuid(msg.getZoneUuid());
-        vo.setInternalId(dbf.generateSequenceNumber(VmInstanceSequenceNumberVO.class));
-        vo.setDefaultL3NetworkUuid(msg.getDefaultL3NetworkUuid());
-        vo.setCpuNum(msg.getCpuNum());
-        vo.setCpuSpeed(msg.getCpuSpeed());
-        vo.setMemorySize(msg.getMemorySize());
-        vo.setReservedMemorySize(msg.getReservedMemorySize());
-        vo.setAllocatorStrategy(msg.getAllocatorStrategy());
-        vo.setPlatform(msg.getPlatform() != null ? msg.getPlatform() : image.getPlatform().toString());
-        vo.setGuestOsType(msg.getGuestOsType() != null ? msg.getGuestOsType() : image.getGuestOsType());
-        vo.setArchitecture(msg.getArchitecture() != null ? msg.getArchitecture() : image.getArchitecture());
-        String vmType = msg.getType() == null ? VmInstanceConstant.USER_VM_TYPE : msg.getType();
-        VmInstanceType type = VmInstanceType.valueOf(vmType);
-        VmInstanceFactory factory = getVmInstanceFactory(type);
-
-        VmInstanceVO finalVo = vo;
-        vo = new SQLBatchWithReturn<VmInstanceVO>() {
-            @Override
-            protected VmInstanceVO scripts() {
-                finalVo.setAccountUuid(msg.getAccountUuid());
-                factory.createVmInstance(finalVo, msg);
-
-                return reload(finalVo);
-            }
-        }.execute();
-
-        FlowChain chain = FlowChainBuilder.newShareFlowChain();
-        chain.setName(String.format("do-create-vmInstance-%s", vo.getUuid()));
-        chain.then(new ShareFlow() {
-            VmInstanceInventory instantiateVm;
-            List<APICreateVmInstanceMsg.DiskAO> otherDisks = new ArrayList<>();
-            boolean attachOtherDisk = false;
-
-            @Override
-            public void setup() {
-                if (!CollectionUtils.isEmpty(msg.getDiskAOs())) {
-                    otherDisks = msg.getDiskAOs().stream().filter(diskAO -> !diskAO.isBoot()).collect(Collectors.toList());
-                    setDiskAOsName(otherDisks);
-                    attachOtherDisk = !otherDisks.isEmpty();
-                }
-
-                flow(new Flow() {
-                    List<ErrorCode> errorCodes = new ArrayList<>();
-                    String __name__ = String.format("instantiate-systemTag-for-vm-%s", finalVo.getUuid());
-
-                    @Override
-                    public void run(FlowTrigger trigger, Map data) {
-                        try {
-                            instantiateTagsForCreateMessage(msg, cmsg, finalVo);
-                        } catch (Exception e) {
-                            errorCodes.add(operr(ORG_ZSTACK_COMPUTE_VM_10240, "instantiate system tag for vm failed because %s", e.getMessage()));
-                        }
-                        if (!errorCodes.isEmpty()) {
-                            trigger.fail(errorCodes.get(0));
-                            return;
-                        }
-
-                        errorCodes = extEmitterHandleSystemTag(msg, cmsg, finalVo);
-                        if (!errorCodes.isEmpty()) {
-                            trigger.fail(operr(ORG_ZSTACK_COMPUTE_VM_10241, "handle system tag fail when creating vm because [%s]",
-                                    StringUtils.join(errorCodes.stream().map(ErrorCode::getDescription).collect(Collectors.toList()),
-                                            ", ")));
-                            return;
-                        }
-                        trigger.next();
-                    }
-
-                    @Override
-                    public void rollback(FlowRollback trigger, Map data) {
-                        if (Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, finalVo.getUuid()).isExists()) {
-                            dbf.removeByPrimaryKey(finalVo.getUuid(), VmInstanceVO.class);
-                        }
-                        trigger.rollback();
-                    }
-                });
-
-                flow(new Flow() {
-                    List<ErrorCode> errorCodes = Collections.emptyList();
-                    String __name__ = String.format("instantiate-ssh-key-pair-for-vm-%s", finalVo.getUuid());
-
-                    @Override
-                    public void run(FlowTrigger trigger, Map data) {
-                        errorCodes = extEmitterHandleSshKeyPair(msg, cmsg, finalVo);
-                        if (!errorCodes.isEmpty()) {
-                            trigger.fail(operr(ORG_ZSTACK_COMPUTE_VM_10242, "handle sshkeypair fail when creating vm because [%s]",
-                                    StringUtils.join(errorCodes.stream().map(ErrorCode::getDetails).collect(Collectors.toList()),
-                                            ", ")));
-                            return;
-                        }
-                        trigger.next();
-                    }
-
-                    @Override
-                    public void rollback(FlowRollback trigger, Map data) {
-                        if (Q.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, finalVo.getUuid()).isExists()) {
-                            dbf.removeByPrimaryKey(finalVo.getUuid(), VmInstanceVO.class);
-                        }
-                        trigger.rollback();
-                    }
-                });
-
-                flow(new Flow() {
-                    String __name__ = "instantiate-new-created-vmInstance";
-
-                    @Override
-                    public void run(FlowTrigger trigger, Map data) {
-                        InstantiateNewCreatedVmInstanceMsg smsg = new InstantiateNewCreatedVmInstanceMsg();
-                        smsg.setDisableL3Networks(msg.getDisableL3Networks());
-                        smsg.setHostUuid(msg.getHostUuid());
-                        List<String> temporaryDiskOfferingUuids = createDiskOfferingUuidsFromDataDiskSizes(msg, finalVo.getUuid());
-                        smsg.setDataDiskOfferingUuids(merge(msg.getDataDiskOfferingUuids(), temporaryDiskOfferingUuids));
-                        smsg.setDataVolumeTemplateUuids(msg.getDataVolumeTemplateUuids());
-                        smsg.setDataVolumeFromTemplateSystemTags(msg.getDataVolumeFromTemplateSystemTags());
-                        smsg.setL3NetworkUuids(msg.getL3NetworkSpecs());
-
-                        if (msg.getRootDiskOfferingUuid() != null) {
-                            smsg.setRootDiskOfferingUuid(msg.getRootDiskOfferingUuid());
-                        } else if (msg.getRootDiskSize() > 0) {
-                            DiskOfferingVO dvo = getDiskOfferingVO();
-                            dbf.persist(dvo);
-                            smsg.setRootDiskOfferingUuid(dvo.getUuid());
-                            temporaryDiskOfferingUuids.add(dvo.getUuid());
-                        }
-
-                        smsg.setVmInstanceInventory(VmInstanceInventory.valueOf(finalVo));
-                        smsg.setCandidatePrimaryStorageUuidsForDataVolume(msg.getCandidatePrimaryStorageUuidsForDataVolume());
-                        smsg.setCandidatePrimaryStorageUuidsForRootVolume(msg.getCandidatePrimaryStorageUuidsForRootVolume());
-                        if (Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString()) && attachOtherDisk) {
-                            smsg.setStrategy(VmCreationStrategy.CreateStopped.toString());
-                        } else {
-                            smsg.setStrategy(msg.getStrategy());
-                        }
-
-                        smsg.setTimeout(msg.getTimeout());
-                        smsg.setRootVolumeSystemTags(msg.getRootVolumeSystemTags());
-                        smsg.setDataVolumeSystemTags(msg.getDataVolumeSystemTags());
-                        smsg.setDataVolumeSystemTagsOnIndex(msg.getDataVolumeSystemTagsOnIndex());
-                        smsg.setDiskAOs(msg.getDiskAOs());
-                        bus.makeTargetServiceIdByResourceUuid(smsg, VmInstanceConstant.SERVICE_ID, finalVo.getUuid());
-                        bus.send(smsg, new CloudBusCallBack(smsg) {
-                            @Override
-                            public void run(MessageReply reply) {
-                                if (!temporaryDiskOfferingUuids.isEmpty()) {
-                                    dbf.removeByPrimaryKeys(temporaryDiskOfferingUuids, DiskOfferingVO.class);
-                                }
-
-                                if (reply.isSuccess()) {
-                                    InstantiateNewCreatedVmInstanceReply r = (InstantiateNewCreatedVmInstanceReply) reply;
-                                    instantiateVm = r.getVmInventory();
-                                    data.put(VmInstanceInventory.class.getSimpleName(), instantiateVm);
-                                    trigger.next();
-                                    return;
-                                }
-                                trigger.fail(reply.getError());
-                            }
-                        });
-                    }
-
-                    @NotNull
-                    private DiskOfferingVO getDiskOfferingVO() {
-                        DiskOfferingVO dvo = new DiskOfferingVO();
-                        dvo.setUuid(Platform.getUuid());
-                        dvo.setAccountUuid(msg.getAccountUuid());
-                        dvo.setDiskSize(msg.getRootDiskSize());
-                        dvo.setName("for-create-vm-" + finalVo.getUuid());
-                        dvo.setType("TemporaryDiskOfferingType");
-                        dvo.setState(DiskOfferingState.Enabled);
-                        dvo.setAllocatorStrategy(PrimaryStorageConstant.DEFAULT_PRIMARY_STORAGE_ALLOCATION_STRATEGY_TYPE);
-                        return dvo;
-                    }
-
-                    @Override
-                    public void rollback(FlowRollback chain, Map data) {
-                        if (instantiateVm == null) {
-                            chain.rollback();
-                            return;
-                        }
-                        DestroyVmInstanceMsg dmsg = new DestroyVmInstanceMsg();
-                        dmsg.setVmInstanceUuid(finalVo.getUuid());
-                        dmsg.setDeletionPolicy(VmInstanceDeletionPolicyManager.VmInstanceDeletionPolicy.Direct);
-                        bus.makeTargetServiceIdByResourceUuid(dmsg, VmInstanceConstant.SERVICE_ID, finalVo.getUuid());
-                        bus.send(dmsg, new CloudBusCallBack(null) {
-                            @Override
-                            public void run(MessageReply reply) {
-                                if (!reply.isSuccess()) {
-                                    logger.warn(String.format("failed to delete vm [%s]", instantiateVm.getUuid()));
-                                }
-                                chain.rollback();
-                            }
-                        });
-                    }
-                });
-
-
-                if (!CollectionUtils.isEmpty(otherDisks)) {
-                    otherDisks.forEach(diskAO -> flow(new VmInstantiateOtherDiskFlow(diskAO)));
-                }
-
-                if (Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString()) && attachOtherDisk) {
-                    flow(new NoRollbackFlow() {
-                        String __name__ = "start-vm";
-
-                        @Override
-                        public void run(FlowTrigger trigger, Map data) {
-                            StartVmInstanceMsg smsg = new StartVmInstanceMsg();
-                            smsg.setVmInstanceUuid(instantiateVm.getUuid());
-                            smsg.setHostUuid(instantiateVm.getLastHostUuid());
-                            bus.makeTargetServiceIdByResourceUuid(smsg, VmInstanceConstant.SERVICE_ID, finalVo.getUuid());
-                            bus.send(smsg, new CloudBusCallBack(trigger) {
-                                @Override
-                                public void run(MessageReply reply) {
-                                    if (!reply.isSuccess()) {
-                                        trigger.fail(reply.getError());
-                                        return;
-                                    }
-                                    trigger.next();
-                                }
-                            });
-                        }
-                    });
-                }
-
-                done(new FlowDoneHandler(completion) {
-                    @Override
-                    public void handle(Map data) {
-                        completion.success(instantiateVm);
-                    }
-                });
-
-                error(new FlowErrorHandler(completion) {
-                    @Override
-                    public void handle(ErrorCode errCode, Map data) {
-                        completion.fail(errCode);
-                    }
-                });
-            }
-
-            private void setDiskAOsName(List<APICreateVmInstanceMsg.DiskAO> diskAOs) {
-                AtomicInteger count = new AtomicInteger(1);
-                diskAOs.stream().filter(diskAO -> diskAO.getSourceUuid() == null).filter(diskAO -> diskAO.getName() == null)
-                        .forEach(diskAO -> {
-                            diskAO.setName(String.format("DATA-for-%s-%d", finalVo.getName(), count.get()));
-                            count.getAndIncrement();
-                        });
-            }
-        }).start();
-    }
-
-    private List<String> createDiskOfferingUuidsFromDataDiskSizes(final CreateVmInstanceMsg msg, String vmUuid) {
-        if (CollectionUtils.isEmpty(msg.getDataDiskSizes())){
-            return new ArrayList<String>();
-        }
-        List<String> diskOfferingUuids = new ArrayList<>();
-        List<DiskOfferingVO> diskOfferingVos = new ArrayList<>();
-        List<Long> volumeSizes = msg.getDataDiskSizes().stream().distinct().collect(Collectors.toList());
-        Map<Long, String> sizeDiskOfferingMap = new HashMap<>();
-        for (Long size : volumeSizes) {
-            DiskOfferingVO dvo = new DiskOfferingVO();
-            dvo.setUuid(Platform.getUuid());
-            dvo.setAccountUuid(msg.getAccountUuid());
-            dvo.setDiskSize(size);
-            dvo.setName(String.format("create-data-volume-for-vm-%s", vmUuid));
-            dvo.setType("TemporaryDiskOfferingType");
-            dvo.setState(DiskOfferingState.Enabled);
-            dvo.setAllocatorStrategy(PrimaryStorageConstant.DEFAULT_PRIMARY_STORAGE_ALLOCATION_STRATEGY_TYPE);
-            diskOfferingVos.add(dvo);
-            sizeDiskOfferingMap.put(size, dvo.getUuid());
-        }
-        msg.getDataDiskSizes().forEach(size -> diskOfferingUuids.add(sizeDiskOfferingMap.get(size)));
-        dbf.persistCollection(diskOfferingVos);
-        return diskOfferingUuids;
-    }
-
-    private void handle(final CreateVmInstanceMsg msg) {
-        if(msg.getZoneUuid() == null && !CollectionUtils.isEmpty(msg.getL3NetworkSpecs())){
-            String l3Uuid = VmNicSpec.getL3UuidsOfSpec(msg.getL3NetworkSpecs()).get(0);
-            String zoneUuid = Q.New(L3NetworkVO.class)
-                    .select(L3NetworkVO_.zoneUuid)
-                    .eq(L3NetworkVO_.uuid, l3Uuid)
-                    .findValue();
-            msg.setZoneUuid(zoneUuid);
-        }
-
-        doCreateVmInstance(msg, null, new ReturnValueCompletion<VmInstanceInventory>(msg) {
-            @Override
-            public void success(VmInstanceInventory inv) {
-                CreateVmInstanceReply reply = new CreateVmInstanceReply();
-                reply.setInventory(inv);
-                bus.reply(msg, reply);
-            }
-
-            @Override
-            public void fail(ErrorCode errorCode) {
-                CreateVmInstanceReply r = new CreateVmInstanceReply();
-                r.setError(errorCode);
-                bus.reply(msg, r);
-            }
-        });
-    }
-
-    private void handle(final APICreateVmInstanceMsg msg) {
-        doCreateVmInstance(VmInstanceUtils.fromAPICreateVmInstanceMsg(msg), msg, new ReturnValueCompletion<VmInstanceInventory>(msg) {
-            APICreateVmInstanceEvent evt = new APICreateVmInstanceEvent(msg.getId());
-
-            @Override
-            public void success(VmInstanceInventory inv) {
-                evt.setInventory(inv);
-                bus.publish(evt);
-            }
-
-            @Override
-            public void fail(ErrorCode errorCode) {
-                evt.setError(errorCode);
-                bus.publish(evt);
-            }
-        });
-    }
-
-    private void doDeleteVmNic(VmNicInventory nic, Completion completion) {
-        thdf.chainSubmit(new ChainTask(completion) {
-            @Override
-            public String getSyncSignature() {
-                return getVmNicSyncSignature(nic.getUuid());
-            }
-
-            @Override
-            public void run(SyncTaskChain chain) {
-                if (nic.getVmInstanceUuid() == null) {
-                    FlowChain fchain = FlowChainBuilder.newSimpleFlowChain();
-                    fchain.setName(String.format("detach-network-service-from-vmnic-%s", nic.getUuid()));
-                    for (ReleaseNetworkServiceOnDeletingNicExtensionPoint ext : pluginRgty.getExtensionList(ReleaseNetworkServiceOnDeletingNicExtensionPoint.class)) {
-                        fchain.then(new NoRollbackFlow() {
-                            @Override
-                            public void run(FlowTrigger trigger, Map data) {
-                                ext.releaseNetworkServiceOnDeletingNic(nic, new NoErrorCompletion(trigger) {
-                                    @Override
-                                    public void done() {
-                                        trigger.next();
-                                    }
-                                });
-                            }
-                        });
-                    }
-                    fchain.then(new NoRollbackFlow() {
-                        @Override
-                        public void run(FlowTrigger trigger, Map data) {
-                            List<ReturnIpMsg> msgs = new ArrayList<>();
-                            for (UsedIpInventory ip : nic.getUsedIps()) {
-                                ReturnIpMsg returnIpMsg = new ReturnIpMsg();
-                                returnIpMsg.setUsedIpUuid(ip.getUuid());
-                                returnIpMsg.setL3NetworkUuid(ip.getL3NetworkUuid());
-                                bus.makeTargetServiceIdByResourceUuid(returnIpMsg, L3NetworkConstant.SERVICE_ID, ip.getL3NetworkUuid());
-                                msgs.add(returnIpMsg);
-                            }
-                            new While<>(msgs).all((msg, com) -> bus.send(msg, new CloudBusCallBack(com) {
-                                @Override
-                                public void run(MessageReply reply) {
-                                    if (!reply.isSuccess()) {
-                                        logger.warn(String.format("failed to return ip address[uuid: %s]", msg.getUsedIpUuid()));
-                                    }
-                                    com.done();
-                                }
-                            })).run(new WhileDoneCompletion(trigger) {
-                                @Override
-                                public void done(ErrorCodeList errorCodeList) {
-                                    for (NicManageExtensionPoint ext : pluginRgty.getExtensionList(NicManageExtensionPoint.class)) {
-                                        ext.beforeDeleteNic(nic);
-                                    }
-                                    dbf.removeByPrimaryKey(nic.getUuid(), VmNicVO.class);
-                                    trigger.next();
-                                }
-                            });
-                        }
-                    });
-                    fchain.done(new FlowDoneHandler(completion) {
-                        @Override
-                        public void handle(Map data) {
-                            completion.success();
-                        }
-                    }).error(new FlowErrorHandler(completion) {
-                        @Override
-                        public void handle(ErrorCode errCode, Map data) {
-                            completion.fail(errCode);
-                        }
-                    }).start();
-
-                    return;
-                }
-                DetachNicFromVmMsg detachNicFromVmMsg = new DetachNicFromVmMsg();
-                detachNicFromVmMsg.setVmInstanceUuid(nic.getVmInstanceUuid());
-                detachNicFromVmMsg.setVmNicUuid(nic.getUuid());
-                bus.makeTargetServiceIdByResourceUuid(detachNicFromVmMsg, VmInstanceConstant.SERVICE_ID, nic.getVmInstanceUuid());
-                bus.send(detachNicFromVmMsg, new CloudBusCallBack(completion) {
-                    @Override
-                    public void run(MessageReply reply) {
-                        if (!reply.isSuccess()) {
-                            completion.fail(reply.getError());
-                        } else {
-                            completion.success();
-                        }
-                    }
-                });
-            }
-            @Override
-            public String getName() {
-                return String.format("delete-vmNic-%s", nic.getUuid());
-            }
-        });
-    }
-
-    private void handle(final APIDeleteVmNicMsg msg) {
-        APIDeleteVmNicEvent evt = new APIDeleteVmNicEvent(msg.getId());
-
-        VmNicVO nicVO = Q.New(VmNicVO.class).eq(VmNicVO_.uuid, msg.getUuid()).find();
-        doDeleteVmNic(VmNicInventory.valueOf(nicVO), new Completion(msg) {
-            @Override
-            public void success() {
-                bus.publish(evt);
-            }
-
-            @Override
-            public void fail(ErrorCode errorCode) {
-                evt.setError(errorCode);
-                bus.publish(evt);
-            }
-        });
-    }
-
-    private String getVmNicSyncSignature(String nicUuid) {
-        return String.format("vmNic-%s", nicUuid);
-    }
+    // ==================== Service Lifecycle ====================
 
     @Override
     public String getId() {
         return bus.makeLocalServiceId(VmInstanceConstant.SERVICE_ID);
     }
 
-    private void createVmFlowChainBuilder() throws InstantiationException, IllegalAccessException, ClassNotFoundException {
-        createVmFlowBuilder = FlowChainBuilder.newBuilder().setFlowClassNames(createVmWorkFlowElements).construct();
-        stopVmFlowBuilder = FlowChainBuilder.newBuilder().setFlowClassNames(stopVmWorkFlowElements).construct();
-        rebootVmFlowBuilder = FlowChainBuilder.newBuilder().setFlowClassNames(rebootVmWorkFlowElements).construct();
-        startVmFlowBuilder = FlowChainBuilder.newBuilder().setFlowClassNames(startVmWorkFlowElements).construct();
-        destroyVmFlowBuilder = FlowChainBuilder.newBuilder().setFlowClassNames(destroyVmWorkFlowElements).construct();
-        migrateVmFlowBuilder = FlowChainBuilder.newBuilder().setFlowClassNames(migrateVmWorkFlowElements).construct();
-        attachVolumeFlowBuilder = FlowChainBuilder.newBuilder().setFlowClassNames(attachVolumeWorkFlowElements).construct();
-        attachIsoFlowBuilder = FlowChainBuilder.newBuilder().setFlowClassNames(attachIsoWorkFlowElements).construct();
-        detachIsoFlowBuilder = FlowChainBuilder.newBuilder().setFlowClassNames(detachIsoWorkFlowElements).construct();
-        expungeVmFlowBuilder = FlowChainBuilder.newBuilder().setFlowClassNames(expungeVmWorkFlowElements).construct();
-        pauseVmFlowBuilder = FlowChainBuilder.newBuilder().setFlowClassNames(pauseVmWorkFlowElements).construct();
-        resumeVmFlowBuilder = FlowChainBuilder.newBuilder().setFlowClassNames(resumeVmWorkFlowElements).construct();
-    }
-
     @Override
     public boolean start() {
         try {
-            createVmFlowChainBuilder();
+            flowChainRegistry.buildFlowChains();
             installSystemTagValidator();
             installGlobalConfigUpdater();
             vmExtensionManagers.addAll(pluginRgty.getExtensionList(VmInstanceExtensionManager.class));
@@ -1681,25 +222,149 @@ public class VmInstanceManagerImpl extends AbstractService implements
         }
     }
 
+    @Override
+    public boolean stop() {
+        return true;
+    }
+
+    @Override
+    @AsyncThread
+    public void managementNodeReady() {
+        // Expunge task now handled by VmExpungeSubManager
+    }
+
+    // ==================== GlobalApiMessageInterceptor ====================
+
+    @Override
+    public List<Class> getMessageClassToIntercept() {
+        return asList(APIChangeResourceOwnerMsg.class);
+    }
+
+    @Override
+    public InterceptorPosition getPosition() {
+        return InterceptorPosition.END;
+    }
+
+    @Override
+    public APIMessage intercept(APIMessage msg) throws ApiMessageInterceptionException {
+        if (msg instanceof APIChangeResourceOwnerMsg) {
+            validateAPIChangeResourceOwnerMsg((APIChangeResourceOwnerMsg) msg);
+        }
+
+        return msg;
+    }
+
+    private void validateAPIChangeResourceOwnerMsg(APIChangeResourceOwnerMsg msg) {
+        SimpleQuery<AccountResourceRefVO> q = dbf.createQuery(AccountResourceRefVO.class);
+        q.add(AccountResourceRefVO_.resourceUuid, Op.EQ, msg.getResourceUuid());
+        AccountResourceRefVO ref = q.find();
+
+        if (ref == null || !VolumeVO.class.getSimpleName().equals(ref.getResourceType())) {
+            return;
+        }
+
+        SimpleQuery<VolumeVO> vq = dbf.createQuery(VolumeVO.class);
+        vq.add(VolumeVO_.uuid, Op.EQ, ref.getResourceUuid());
+        vq.add(VolumeVO_.type, Op.EQ, VolumeType.Root);
+        if (vq.isExists()) {
+            throw new OperationFailureException(operr(ORG_ZSTACK_COMPUTE_VM_10263, "the resource[uuid:%s] is a ROOT volume, you cannot change its owner, instead," +
+                            "change the owner of the VM the root volume belongs to", ref.getResourceUuid()));
+        }
+    }
+
+    // ==================== VmInstanceManager Interface (delegates to registries/factories) ====================
+
+    @Override
+    public VmInstanceFactory getVmInstanceFactory(VmInstanceType type) {
+        VmInstanceFactory factory = vmFactoryManager.getVmInstanceFactory(type.toString());
+        if (factory == null) {
+            throw new CloudRuntimeException(String.format("No VmInstanceFactory of type[%s] found", type));
+        }
+        return factory;
+    }
+
+    @Override
+    public VmInstanceBaseExtensionFactory getVmInstanceBaseExtensionFactory(Message msg) {
+        return vmFactoryManager.getVmInstanceBaseExtensionFactory(msg.getClass());
+    }
+
+    @Override
+    public VmInstanceNicFactory getVmInstanceNicFactory(VmNicType type) {
+        VmInstanceNicFactory factory = vmFactoryManager.getVmInstanceNicFactory(type.toString());
+        if (factory == null) {
+            throw new CloudRuntimeException(String.format("No VmInstanceNicFactory of type[%s] found", type));
+        }
+        return factory;
+    }
+
+    @Override
+    public VmNicQosConfigBackend getVmNicQosConfigBackend(String type) {
+        return vmFactoryManager.getVmNicQosConfigBackend(type);
+    }
+
+    // --- FlowChain getters delegate to VmFlowChainRegistry ---
+
+    @Override
+    public FlowChain getCreateVmWorkFlowChain(VmInstanceInventory inv) {
+        return flowChainRegistry.getCreateVmWorkFlowChain(inv);
+    }
+
+    @Override
+    public FlowChain getStopVmWorkFlowChain(VmInstanceInventory inv) {
+        return flowChainRegistry.getStopVmWorkFlowChain(inv);
+    }
+
+    @Override
+    public FlowChain getRebootVmWorkFlowChain(VmInstanceInventory inv) {
+        return flowChainRegistry.getRebootVmWorkFlowChain(inv);
+    }
+
+    @Override
+    public FlowChain getStartVmWorkFlowChain(VmInstanceInventory inv) {
+        return flowChainRegistry.getStartVmWorkFlowChain(inv);
+    }
+
+    @Override
+    public FlowChain getDestroyVmWorkFlowChain(VmInstanceInventory inv) {
+        return flowChainRegistry.getDestroyVmWorkFlowChain(inv);
+    }
+
+    @Override
+    public FlowChain getMigrateVmWorkFlowChain(VmInstanceInventory inv) {
+        return flowChainRegistry.getMigrateVmWorkFlowChain(inv);
+    }
+
+    @Override
+    public FlowChain getAttachUninstantiatedVolumeWorkFlowChain(VmInstanceInventory inv) {
+        return flowChainRegistry.getAttachUninstantiatedVolumeWorkFlowChain(inv);
+    }
+
+    @Override
+    public FlowChain getAttachIsoWorkFlowChain(VmInstanceInventory inv) {
+        return flowChainRegistry.getAttachIsoWorkFlowChain(inv);
+    }
+
+    @Override
+    public FlowChain getDetachIsoWorkFlowChain(VmInstanceInventory inv) {
+        return flowChainRegistry.getDetachIsoWorkFlowChain(inv);
+    }
+
+    @Override
+    public FlowChain getExpungeVmWorkFlowChain(VmInstanceInventory inv) {
+        return flowChainRegistry.getExpungeVmWorkFlowChain(inv);
+    }
+
+    public FlowChain getPauseWorkFlowChain(VmInstanceInventory inv) {
+        return flowChainRegistry.getPauseWorkFlowChain(inv);
+    }
+
+    public FlowChain getResumeVmWorkFlowChain(VmInstanceInventory inv) {
+        return flowChainRegistry.getResumeVmWorkFlowChain(inv);
+    }
+
+    // ==================== GlobalConfig Updaters ====================
+
     private void installGlobalConfigUpdater() {
-        VmGlobalConfig.VM_EXPUNGE_INTERVAL.installUpdateExtension(new GlobalConfigUpdateExtensionPoint() {
-            @Override
-            public void updateGlobalConfig(GlobalConfig oldConfig, GlobalConfig newConfig) {
-                startVmExpungeTask();
-            }
-        });
-        VmGlobalConfig.VM_EXPUNGE_PERIOD.installUpdateExtension(new GlobalConfigUpdateExtensionPoint() {
-            @Override
-            public void updateGlobalConfig(GlobalConfig oldConfig, GlobalConfig newConfig) {
-                startVmExpungeTask();
-            }
-        });
-        VmGlobalConfig.VM_DELETION_POLICY.installUpdateExtension(new GlobalConfigUpdateExtensionPoint() {
-            @Override
-            public void updateGlobalConfig(GlobalConfig oldConfig, GlobalConfig newConfig) {
-                startVmExpungeTask();
-            }
-        });
         VmGlobalConfig.MULTI_VNIC_SUPPORT.installBeforeUpdateExtension(new GlobalConfigBeforeUpdateExtensionPoint() {
             @Override
             public void beforeUpdateExtensionPoint(GlobalConfig oldConfig, String newValue) {
@@ -1725,6 +390,21 @@ public class VmInstanceManagerImpl extends AbstractService implements
 
         // Note: VM_RESOURCE_BINGDING tag is silently deprecated (ZSTAC-75428)
         // The tag data is preserved but no longer read or written by the new ResourceBindingAllocatorFlow
+    }
+
+    // ==================== System Tag Validators ====================
+
+    private void installSystemTagValidator() {
+        installHostnameValidator();
+        installUserdataValidator();
+        installBootModeValidator();
+        installCleanTrafficValidator();
+        installMachineTypeValidator();
+        installUsbRedirectValidator();
+        installL3NetworkSecurityGroupValidator();
+        installSeDeviceValidator();
+        installHygonSeDeviceValidator();
+        new StaticIpOperator().installStaticIpValidator();
     }
 
     private void installHostnameValidator() {
@@ -2093,18 +773,6 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 "hygonSecurityElementEnable");
     }
 
-    private void installSystemTagValidator() {
-        installHostnameValidator();
-        installUserdataValidator();
-        installBootModeValidator();
-        installCleanTrafficValidator();
-        installMachineTypeValidator();
-        installUsbRedirectValidator();
-        installL3NetworkSecurityGroupValidator();
-        installSeDeviceValidator();
-        installHygonSeDeviceValidator();
-        new StaticIpOperator().installStaticIpValidator();
-    }
     private void installUsbRedirectValidator() {
         VmSystemTags.USB_REDIRECT.installValidator(new SystemTagValidator() {
             @Override
@@ -2125,675 +793,8 @@ public class VmInstanceManagerImpl extends AbstractService implements
         });
     }
 
-    @Override
-    public boolean stop() {
-        return true;
-    }
+    // ==================== Event Listeners ====================
 
-    @Override
-    public VmInstanceFactory getVmInstanceFactory(VmInstanceType type) {
-        VmInstanceFactory factory = vmFactoryManager.getVmInstanceFactory(type.toString());
-        if (factory == null) {
-            throw new CloudRuntimeException(String.format("No VmInstanceFactory of type[%s] found", type));
-        }
-        return factory;
-    }
-
-    @Override
-    public VmInstanceBaseExtensionFactory getVmInstanceBaseExtensionFactory(Message msg) {
-        return vmFactoryManager.getVmInstanceBaseExtensionFactory(msg.getClass());
-    }
-
-    @Override
-    public VmInstanceNicFactory getVmInstanceNicFactory(VmNicType type) {
-        VmInstanceNicFactory factory = vmFactoryManager.getVmInstanceNicFactory(type.toString());
-        if (factory == null) {
-            throw new CloudRuntimeException(String.format("No VmInstanceNicFactory of type[%s] found", type));
-        }
-        return factory;
-    }
-
-    @Override
-    public FlowChain getCreateVmWorkFlowChain(VmInstanceInventory inv) {
-        return createVmFlowBuilder.build();
-    }
-
-    @Override
-    public FlowChain getStopVmWorkFlowChain(VmInstanceInventory inv) {
-        return stopVmFlowBuilder.build();
-    }
-
-    @Override
-    public FlowChain getRebootVmWorkFlowChain(VmInstanceInventory inv) {
-        return rebootVmFlowBuilder.build();
-    }
-
-    @Override
-    public FlowChain getStartVmWorkFlowChain(VmInstanceInventory inv) {
-        return startVmFlowBuilder.build();
-    }
-
-    @Override
-    public FlowChain getDestroyVmWorkFlowChain(VmInstanceInventory inv) {
-        return destroyVmFlowBuilder.build();
-    }
-
-    @Override
-    public FlowChain getMigrateVmWorkFlowChain(VmInstanceInventory inv) {
-        return migrateVmFlowBuilder.build();
-    }
-
-    @Override
-    public FlowChain getAttachUninstantiatedVolumeWorkFlowChain(VmInstanceInventory inv) {
-        return attachVolumeFlowBuilder.build();
-    }
-
-
-    @Override
-    public FlowChain getAttachIsoWorkFlowChain(VmInstanceInventory inv) {
-        return attachIsoFlowBuilder.build();
-    }
-
-    @Override
-    public FlowChain getDetachIsoWorkFlowChain(VmInstanceInventory inv) {
-        return detachIsoFlowBuilder.build();
-    }
-
-    @Override
-    public FlowChain getExpungeVmWorkFlowChain(VmInstanceInventory inv) {
-        return expungeVmFlowBuilder.build();
-    }
-
-    public FlowChain getPauseWorkFlowChain(VmInstanceInventory inv) {
-        return pauseVmFlowBuilder.build();
-    }
-
-    public FlowChain getResumeVmWorkFlowChain(VmInstanceInventory inv) {
-        return resumeVmFlowBuilder.build();
-    }
-
-    public void setCreateVmWorkFlowElements(List<String> createVmWorkFlowElements) {
-        this.createVmWorkFlowElements = createVmWorkFlowElements;
-    }
-
-    public void setStopVmWorkFlowElements(List<String> stopVmWorkFlowElements) {
-        this.stopVmWorkFlowElements = stopVmWorkFlowElements;
-    }
-
-    public void setRebootVmWorkFlowElements(List<String> rebootVmWorkFlowElements) {
-        this.rebootVmWorkFlowElements = rebootVmWorkFlowElements;
-    }
-
-    public void setStartVmWorkFlowElements(List<String> startVmWorkFlowElements) {
-        this.startVmWorkFlowElements = startVmWorkFlowElements;
-    }
-
-    public void setDestroyVmWorkFlowElements(List<String> destroyVmWorkFlowElements) {
-        this.destroyVmWorkFlowElements = destroyVmWorkFlowElements;
-    }
-
-    public void setMigrateVmWorkFlowElements(List<String> migrateVmWorkFlowElements) {
-        this.migrateVmWorkFlowElements = migrateVmWorkFlowElements;
-    }
-
-    public void setAttachVolumeWorkFlowElements(List<String> attachVolumeWorkFlowElements) {
-        this.attachVolumeWorkFlowElements = attachVolumeWorkFlowElements;
-    }
-
-    public void setAttachIsoWorkFlowElements(List<String> attachIsoWorkFlowElements) {
-        this.attachIsoWorkFlowElements = attachIsoWorkFlowElements;
-    }
-
-    public void setDetachIsoWorkFlowElements(List<String> detachIsoWorkFlowElements) {
-        this.detachIsoWorkFlowElements = detachIsoWorkFlowElements;
-    }
-
-    public void setExpungeVmWorkFlowElements(List<String> expungeVmWorkFlowElements) {
-        this.expungeVmWorkFlowElements = expungeVmWorkFlowElements;
-    }
-
-    public void setPauseVmWorkFlowElements(List<String> pauseVmWorkFlowElements) {
-        this.pauseVmWorkFlowElements = pauseVmWorkFlowElements;
-    }
-
-    public void setResumeVmWorkFlowElements(List<String> resumeVmWorkFlowElements) {
-        this.resumeVmWorkFlowElements = resumeVmWorkFlowElements;
-    }
-
-    @Override
-    public List<Quota> reportQuota() {
-        Quota quota = new Quota();
-        quota.defineQuota(new VmTotalNumQuotaDefinition());
-        quota.defineQuota(new VmRunningNumQuotaDefinition());
-        quota.defineQuota(new VmRunningCpuNumQuotaDefinition());
-        quota.defineQuota(new VmRunningMemoryNumQuotaDefinition());
-        quota.defineQuota(new DataVolumeNumQuotaDefinition());
-        quota.defineQuota(new VolumeSizeQuotaDefinition());
-        quota.addQuotaMessageChecker(new QuotaMessageHandler<>(APICreateVmInstanceMsg.class)
-                .addCounterQuota(VmQuotaConstant.VM_TOTAL_NUM)
-                .addCounterQuota(VmQuotaConstant.VM_RUNNING_NUM)
-                .addMessageRequiredQuotaHandler(VmQuotaConstant.VM_RUNNING_CPU_NUM, (msg) -> {
-                    if (msg.getCpuNum() != null) {
-                        return Integer.toUnsignedLong(msg.getCpuNum());
-                    }
-
-                    Integer cpuNum = Q.New(InstanceOfferingVO.class)
-                            .select(InstanceOfferingVO_.cpuNum)
-                            .eq(InstanceOfferingVO_.uuid, msg.getInstanceOfferingUuid())
-                            .findValue();
-                    return Integer.toUnsignedLong(cpuNum);
-                }).addMessageRequiredQuotaHandler(VmQuotaConstant.VM_RUNNING_MEMORY_SIZE, (msg) -> {
-                    if (msg.getMemorySize() != null) {
-                        return msg.getMemorySize();
-                    }
-
-                    return Q.New(InstanceOfferingVO.class)
-                            .select(InstanceOfferingVO_.memorySize)
-                            .eq(InstanceOfferingVO_.uuid, msg.getInstanceOfferingUuid())
-                            .findValue();
-                }).addMessageRequiredQuotaHandler(VmQuotaConstant.DATA_VOLUME_NUM, (msg) -> {
-                    if (msg.getDataDiskOfferingUuids() == null || msg.getDataDiskOfferingUuids().isEmpty()) {
-                        return 0L;
-                    }
-
-                    return (long) (msg.getDataDiskOfferingUuids().size());
-                }).addMessageRequiredQuotaHandler(VmQuotaConstant.VOLUME_SIZE, (msg) ->  {
-                    long allVolumeSizeAsked = 0;
-
-                    String sql;
-                    Long imgSize;
-                    ImageConstant.ImageMediaType imgType = null;
-                    if (msg.getImageUuid() != null) {
-                        sql = "select img.size, img.mediaType" +
-                                " from ImageVO img" +
-                                " where img.uuid = :iuuid";
-                        TypedQuery<Tuple> iq = dbf.getEntityManager().createQuery(sql, Tuple.class);
-                        iq.setParameter("iuuid", msg.getImageUuid());
-                        Tuple it = iq.getSingleResult();
-                        imgSize = it.get(0, Long.class);
-                        imgType = it.get(1, ImageConstant.ImageMediaType.class);
-                    } else {
-                        imgSize = 0L;
-                    }
-
-                    List<String> diskOfferingUuids = new ArrayList<>();
-                    if (msg.getDataDiskOfferingUuids() != null && !msg.getDataDiskOfferingUuids().isEmpty()) {
-                        diskOfferingUuids.addAll(msg.getDataDiskOfferingUuids());
-                    }
-                    if (imgType == ImageConstant.ImageMediaType.RootVolumeTemplate) {
-                        if (msg.getRootDiskOfferingUuid() != null) {
-                            diskOfferingUuids.add(msg.getRootDiskOfferingUuid());
-                        } else {
-                            allVolumeSizeAsked += imgSize;
-                        }
-                    } else if (imgType == ImageConstant.ImageMediaType.ISO) {
-                        if (msg.getRootDiskOfferingUuid() != null) {
-                            diskOfferingUuids.add(msg.getRootDiskOfferingUuid());
-                        } else if (msg.getRootDiskSize() != null) {
-                            allVolumeSizeAsked += msg.getRootDiskSize();
-                        } else {
-                            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10261, "rootDiskOfferingUuid cannot be null when image mediaType is ISO"));
-                        }
-                    } else {
-                        if (msg.getRootDiskOfferingUuid() != null) {
-                            diskOfferingUuids.add(msg.getRootDiskOfferingUuid());
-                        } else if (msg.getRootDiskSize() != null) {
-                            allVolumeSizeAsked += msg.getRootDiskSize();
-                        } else {
-                            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_VM_10262, "rootDiskOfferingUuid cannot be null when create vm without image"));
-                        }
-                    }
-
-                    HashMap<String, Long> diskOfferingCountMap = new HashMap<>();
-                    if (!diskOfferingUuids.isEmpty()) {
-                        for (String diskOfferingUuid : diskOfferingUuids) {
-                            if (diskOfferingCountMap.containsKey(diskOfferingUuid)) {
-                                diskOfferingCountMap.put(diskOfferingUuid, diskOfferingCountMap.get(diskOfferingUuid) + 1);
-                            } else {
-                                diskOfferingCountMap.put(diskOfferingUuid, 1L);
-                            }
-                        }
-                        for (String diskOfferingUuid : diskOfferingCountMap.keySet()) {
-                            sql = "select diskSize from DiskOfferingVO where uuid = :uuid";
-                            TypedQuery<Long> dq = dbf.getEntityManager().createQuery(sql, Long.class);
-                            dq.setParameter("uuid", diskOfferingUuid);
-                            Long dsize = dq.getSingleResult();
-                            dsize = dsize == null ? 0 : dsize;
-                            allVolumeSizeAsked += dsize * diskOfferingCountMap.get(diskOfferingUuid);
-                        }
-                    }
-
-                    return allVolumeSizeAsked;
-                }).addCheckCondition((msg) -> !msg.getStrategy().equals(VmCreationStrategy.JustCreate.toString())));
-
-        quota.addQuotaMessageChecker(new QuotaMessageHandler<>(APIRecoverVmInstanceMsg.class)
-                .addCounterQuota(VmQuotaConstant.VM_TOTAL_NUM));
-        quota.addQuotaMessageChecker(new QuotaMessageHandler<>(APIStartVmInstanceMsg.class)
-                .addCounterQuota(VmQuotaConstant.VM_RUNNING_NUM)
-                .addMessageRequiredQuotaHandler(VmQuotaConstant.VM_RUNNING_CPU_NUM, (msg) -> new VmQuotaUtil().getRequiredCpu(msg.getVmInstanceUuid()))
-                .addMessageRequiredQuotaHandler(VmQuotaConstant.VM_RUNNING_MEMORY_SIZE, (msg) -> new VmQuotaUtil().getRequiredMemory(msg.getVmInstanceUuid())));
-        quota.addQuotaMessageChecker(new QuotaMessageHandler<>(StartVmInstanceMsg.class)
-                .addCounterQuota(VmQuotaConstant.VM_RUNNING_NUM)
-                .addMessageRequiredQuotaHandler(VmQuotaConstant.VM_RUNNING_CPU_NUM, (msg) -> new VmQuotaUtil().getRequiredCpu(msg.getVmInstanceUuid()))
-                .addMessageRequiredQuotaHandler(VmQuotaConstant.VM_RUNNING_MEMORY_SIZE, (msg) -> new VmQuotaUtil().getRequiredMemory(msg.getVmInstanceUuid())));
-        quota.addQuotaMessageChecker(new QuotaMessageHandler<>(APICreateDataVolumeMsg.class)
-                .addMessageRequiredQuotaHandler(VmQuotaConstant.VOLUME_SIZE, (msg) -> {
-                    if (msg.getDiskOfferingUuid() == null) {
-                        return msg.getDiskSize();
-                    }
-
-                    String sql = "select diskSize from DiskOfferingVO where uuid = :uuid ";
-                    TypedQuery<Long> dq = dbf.getEntityManager().createQuery(sql, Long.class);
-                    dq.setParameter("uuid", msg.getDiskOfferingUuid());
-                    Long dsize = dq.getSingleResult();
-                    dsize = dsize == null ? 0 : dsize;
-                    return dsize;
-                })
-                .addCounterQuota(VmQuotaConstant.DATA_VOLUME_NUM));
-        quota.addQuotaMessageChecker(new QuotaMessageHandler<>(APIRecoverDataVolumeMsg.class)
-                .addCounterQuota(VmQuotaConstant.DATA_VOLUME_NUM));
-
-        quota.addQuotaMessageChecker(new QuotaMessageHandler<>(APIChangeResourceOwnerMsg.class)
-                .addCheckCondition((msg) -> Q.New(VmInstanceVO.class)
-                        .eq(VmInstanceVO_.uuid, msg.getResourceUuid())
-                        .notEq(VmInstanceVO_.type, "baremetal2")
-                        .isExists())
-                .addCounterQuota(VmQuotaConstant.VM_TOTAL_NUM)
-                .addMessageRequiredQuotaHandler(VmQuotaConstant.VM_RUNNING_CPU_NUM, (msg) -> {
-                    VmInstanceState state = Q.New(VmInstanceVO.class)
-                            .select(VmInstanceVO_.state)
-                            .eq(VmInstanceVO_.uuid, msg.getResourceUuid())
-                            .findValue();
-
-                    // vm is running
-                    if (list(VmInstanceState.Stopped, VmInstanceState.Destroying,
-                            VmInstanceState.Destroyed, VmInstanceState.Created).contains(state)) {
-                        return 0L;
-                    }
-
-                    return new VmQuotaUtil().getRequiredCpu(msg.getResourceUuid());
-                }).addMessageRequiredQuotaHandler(VmQuotaConstant.VM_RUNNING_MEMORY_SIZE, (msg) -> {
-                    VmInstanceState state = Q.New(VmInstanceVO.class)
-                            .select(VmInstanceVO_.state)
-                            .eq(VmInstanceVO_.uuid, msg.getResourceUuid())
-                            .findValue();
-
-                    // vm is running
-                    if (list(VmInstanceState.Stopped, VmInstanceState.Destroying,
-                            VmInstanceState.Destroyed, VmInstanceState.Created).contains(state)) {
-                        return 0L;
-                    }
-
-                    return new VmQuotaUtil().getRequiredMemory(msg.getResourceUuid());
-                }).addMessageRequiredQuotaHandler(VmQuotaConstant.VM_RUNNING_NUM, (msg) -> {
-                    VmInstanceState state = Q.New(VmInstanceVO.class)
-                            .select(VmInstanceVO_.state)
-                            .eq(VmInstanceVO_.uuid, msg.getResourceUuid())
-                            .findValue();
-
-                    // vm is running
-                    if (list(VmInstanceState.Stopped, VmInstanceState.Destroying,
-                            VmInstanceState.Destroyed, VmInstanceState.Created).contains(state)) {
-                        return 0L;
-                    }
-
-                    return 1L;
-                }));
-        return list(quota);
-    }
-
-    @Override
-    @AsyncThread
-    public void managementNodeReady() {
-        //checkUnknownVm();
-        startVmExpungeTask();
-    }
-
-    private synchronized void startVmExpungeTask() {
-        if (expungeVmTask != null) {
-            expungeVmTask.cancel(true);
-        }
-
-        expungeVmTask = thdf.submitCancelablePeriodicTask(new CancelablePeriodicTask() {
-
-            private List<Tuple> getVmDeletedStateManagedByUs() {
-                int qun = 10000;
-                SimpleQuery q = dbf.createQuery(VmInstanceVO.class);
-                q.add(VmInstanceVO_.state, Op.EQ, VmInstanceState.Destroyed);
-                long amount = q.count();
-                int times = (int) (amount / qun) + (amount % qun != 0 ? 1 : 0);
-                int start = 0;
-                List<Tuple> ret = new ArrayList<>();
-                for (int i = 0; i < times; i++) {
-                    q = dbf.createQuery(VmInstanceVO.class);
-                    q.select(VmInstanceVO_.uuid, VmInstanceVO_.lastOpDate);
-                    q.add(VmInstanceVO_.state, Op.EQ, VmInstanceState.Destroyed);
-                    q.setLimit(qun);
-                    q.setStart(start);
-                    List<Tuple> ts = q.listTuple();
-                    start += qun;
-
-                    for (Tuple t : ts) {
-                        String vmUuid = t.get(0, String.class);
-                        if (!destMaker.isManagedByUs(vmUuid)) {
-                            continue;
-                        }
-                        ret.add(t);
-                    }
-                }
-
-                return ret;
-            }
-
-            @Override
-            public synchronized boolean run() {
-                final List<Tuple> vms = getVmDeletedStateManagedByUs();
-                if (vms.isEmpty()) {
-                    logger.debug("[VM Expunging Task]: no vm to expunge");
-                    return false;
-                }
-
-                final Timestamp current = dbf.getCurrentSqlTime();
-
-                final List<ExpungeVmMsg> msgs = transformToList(vms, new Function<ExpungeVmMsg, Tuple>() {
-                    @Override
-                    public ExpungeVmMsg call(Tuple t) {
-                        String uuid = t.get(0, String.class);
-                        Timestamp date = t.get(1, Timestamp.class);
-                        long end = date.getTime() + TimeUnit.SECONDS.toMillis(VmGlobalConfig.VM_EXPUNGE_PERIOD.value(Long.class));
-                        if (current.getTime() >= end) {
-                            VmInstanceDeletionPolicy deletionPolicy = deletionPolicyMgr.getDeletionPolicy(uuid);
-
-                            if (deletionPolicy == VmInstanceDeletionPolicy.Never) {
-                                logger.debug(String.format("[VM Expunging Task]: the deletion policy of the vm[uuid:%s] is Never, don't expunge it",
-                                        uuid));
-                                return null;
-                            } else {
-                                ExpungeVmMsg msg = new ExpungeVmMsg();
-                                msg.setVmInstanceUuid(uuid);
-                                bus.makeTargetServiceIdByResourceUuid(msg, VmInstanceConstant.SERVICE_ID, uuid);
-                                return msg;
-                            }
-                        } else {
-                            return null;
-                        }
-                    }
-                });
-
-                if (msgs.isEmpty()) {
-                    logger.debug("[VM Expunging Task]: no vm to expunge");
-                    return false;
-                }
-
-                bus.send(msgs, 100, new CloudBusListCallBack(null) {
-                    @Override
-                    public void run(List<MessageReply> replies) {
-                        for (MessageReply r : replies) {
-                            ExpungeVmMsg msg = msgs.get(replies.indexOf(r));
-                            if (!r.isSuccess()) {
-                                logger.warn(String.format("failed to expunge the vm[uuid:%s], %s",
-                                        msg.getVmInstanceUuid(), r.getError()));
-                            } else {
-                                logger.debug(String.format("successfully expunged the vm[uuid:%s]",
-                                        msg.getVmInstanceUuid()));
-                            }
-                        }
-                    }
-                });
-
-                return false;
-            }
-
-            @Override
-            public TimeUnit getTimeUnit() {
-                return TimeUnit.SECONDS;
-            }
-
-            @Override
-            public long getInterval() {
-                return VmGlobalConfig.VM_EXPUNGE_INTERVAL.value(Long.class);
-            }
-
-            @Override
-            public String getName() {
-                return "expunge-vm-task";
-            }
-        });
-
-        logger.debug(String.format("vm expunging task starts running, [period: %s seconds, interval: %s seconds]",
-                VmGlobalConfig.VM_EXPUNGE_PERIOD.value(Long.class), VmGlobalConfig.VM_EXPUNGE_INTERVAL.value(Long.class)));
-    }
-
-    @Override
-    public String preDeleteL3Network(L3NetworkInventory inventory) throws L3NetworkException {
-        return null;
-    }
-
-    @Override
-    public void beforeDeleteL3Network(L3NetworkInventory inventory) {
-    }
-
-    @Override
-    public void afterDeleteL3Network(L3NetworkInventory inventory) {
-        new StaticIpOperator().deleteStaticIpByL3NetworkUuid(inventory.getUuid());
-    }
-
-    @Override
-    public void resourceOwnerAfterChange(AccountResourceRefInventory ref, String newOwnerUuid) {
-        if (!VmInstanceVO.class.getSimpleName().equals(ref.getResourceType())) {
-            return;
-        }
-
-        // change root volume
-        SimpleQuery<VmInstanceVO> q = dbf.createQuery(VmInstanceVO.class);
-        q.select(VmInstanceVO_.rootVolumeUuid);
-        q.add(VmInstanceVO_.uuid, Op.EQ, ref.getResourceUuid());
-        String rootVolumeUuid = q.findValue();
-        if (rootVolumeUuid == null) {
-            return;
-        }
-
-        acntMgr.changeResourceOwner(rootVolumeUuid, newOwnerUuid);
-
-        // change vmnic(s)
-        SimpleQuery<VmNicVO> sq = dbf.createQuery(VmNicVO.class);
-        sq.select(VmNicVO_.uuid);
-        sq.add(VmNicVO_.vmInstanceUuid, Op.EQ, ref.getResourceUuid());
-        List<String> vmnics = sq.listValue();
-        if (vmnics.isEmpty()) {
-            return;
-        }
-        for (String vmnicUuid : vmnics) {
-            acntMgr.changeResourceOwner(vmnicUuid, newOwnerUuid);
-        }
-
-        changeVmCdRomsOwner(ref.getResourceUuid(), newOwnerUuid);
-    }
-
-    private void changeVmCdRomsOwner(String vmInstanceUuid, String newOwnerUuid) {
-        List<String> vmCdRomUuids = Q.New(VmCdRomVO.class)
-                .select(VmCdRomVO_.uuid)
-                .eq(VmCdRomVO_.vmInstanceUuid, vmInstanceUuid)
-                .listValues();
-        if (vmCdRomUuids.isEmpty()) {
-            return;
-        }
-
-        for (String uuid :vmCdRomUuids) {
-            acntMgr.changeResourceOwner(uuid, newOwnerUuid);
-        }
-    }
-
-    @Override
-    public List<Class> getMessageClassToIntercept() {
-        return asList(APIChangeResourceOwnerMsg.class);
-    }
-
-    @Override
-    public InterceptorPosition getPosition() {
-        return InterceptorPosition.END;
-    }
-
-    @Override
-    public APIMessage intercept(APIMessage msg) throws ApiMessageInterceptionException {
-        if (msg instanceof APIChangeResourceOwnerMsg) {
-            validateAPIChangeResourceOwnerMsg((APIChangeResourceOwnerMsg) msg);
-        }
-
-        return msg;
-    }
-
-    private void validateAPIChangeResourceOwnerMsg(APIChangeResourceOwnerMsg msg) {
-        SimpleQuery<AccountResourceRefVO> q = dbf.createQuery(AccountResourceRefVO.class);
-        q.add(AccountResourceRefVO_.resourceUuid, Op.EQ, msg.getResourceUuid());
-        AccountResourceRefVO ref = q.find();
-
-        if (ref == null || !VolumeVO.class.getSimpleName().equals(ref.getResourceType())) {
-            return;
-        }
-
-        SimpleQuery<VolumeVO> vq = dbf.createQuery(VolumeVO.class);
-        vq.add(VolumeVO_.uuid, Op.EQ, ref.getResourceUuid());
-        vq.add(VolumeVO_.type, Op.EQ, VolumeType.Root);
-        if (vq.isExists()) {
-            throw new OperationFailureException(operr(ORG_ZSTACK_COMPUTE_VM_10263, "the resource[uuid:%s] is a ROOT volume, you cannot change its owner, instead," +
-                            "change the owner of the VM the root volume belongs to", ref.getResourceUuid()));
-        }
-    }
-
-    @Override
-    public void afterChangeHostStatus(String hostUuid, HostStatus before, HostStatus next) {
-        if(next == HostStatus.Disconnected) {
-            List<Tuple> vms = Q.New(VmInstanceVO.class).select(VmInstanceVO_.uuid, VmInstanceVO_.state)
-                    .eq(VmInstanceVO_.hostUuid, hostUuid)
-                    .listTuple();
-            if(vms.isEmpty()){
-                return;
-            }
-
-            new While<>(vms).step((vm, completion) -> {
-                String vmUuid = vm.get(0, String.class);
-                String vmState = vm.get(1, VmInstanceState.class).toString();
-                VmStateChangedOnHostMsg msg = new VmStateChangedOnHostMsg();
-                msg.setVmInstanceUuid(vmUuid);
-                msg.setHostUuid(hostUuid);
-                msg.setStateOnHost(VmInstanceState.Unknown);
-                bus.makeTargetServiceIdByResourceUuid(msg, VmInstanceConstant.SERVICE_ID, vmUuid);
-                bus.send(msg, new CloudBusCallBack(completion) {
-                    @Override
-                    public void run(MessageReply reply) {
-                        if(!reply.isSuccess()){
-                            logger.warn(String.format("the host[uuid:%s] disconnected, but the vm[uuid:%s] fails to " +
-                                            "change it's state to Unknown, %s", hostUuid, vmUuid, reply.getError()));
-                            logger.warn(String.format("create an unknowngc job for vm[uuid:%s]", vmUuid));
-
-                            UnknownVmGC gc = new UnknownVmGC();
-                            gc.NAME = UnknownVmGC.getGCName(vmUuid);
-                            gc.vmUuid = vmUuid;
-                            gc.vmState = vmState;
-                            gc.hostUuid = hostUuid;
-                            if (gc.existedAndNotCompleted()) {
-                                logger.debug(String.format("There is already a UnknownVmGC of vm[uuid:%s] " +
-                                        "on host[uuid:%s], skip.", vmUuid, hostUuid));
-                            } else {
-                                gc.submit(VmGlobalConfig.UNKNOWN_GC_INTERVAL.value(Long.class), TimeUnit.SECONDS);
-                            }
-                        } else {
-                            logger.debug(String.format("the host[uuid:%s] disconnected, change the VM[uuid:%s]' state to Unknown", hostUuid, vmUuid));
-                        }
-                        completion.done();
-                    }
-                });
-            }, 20).run(new NopeWhileDoneCompletion());
-        }
-    }
-
-    @Override
-    public void beforeMigrateVm(VmInstanceInventory inv, String destHostUuid) {
-    }
-
-    @Override
-    public void afterMigrateVm(VmInstanceInventory inv, String srcHostUuid) {
-        if (!inv.getHypervisorType().equals(VmInstanceConstant.KVM_HYPERVISOR_TYPE)) {
-            return;
-        }
-
-        VmPriorityLevel level = new VmPriorityOperator().getVmPriority(inv.getUuid());
-        VmPriorityConfigVO priorityVO = Q.New(VmPriorityConfigVO.class).eq(VmPriorityConfigVO_.level, level).find();
-
-        UpdateVmPriorityMsg msg = new UpdateVmPriorityMsg();
-        msg.setPriorityConfigStructs(asList(new PriorityConfigStruct(priorityVO, inv.getUuid())));
-        msg.setHostUuid(inv.getHostUuid());
-        bus.makeTargetServiceIdByResourceUuid(msg, HostConstant.SERVICE_ID, inv.getHostUuid());
-        bus.send(msg, new CloudBusCallBack(msg) {
-            @Override
-            public void run(MessageReply reply) {
-                UpdateVmPriorityReply r = new UpdateVmPriorityReply();
-                if (!reply.isSuccess()) {
-                    logger.warn(String.format("update vm[%s] priority to [%s] failed,because %s",
-                            inv.getUuid(), level.toString(), reply.getError()));
-                }
-            }
-        });
-    }
-
-    @Override
-    public void failedToMigrateVm(VmInstanceInventory inv, String destHostUuid, ErrorCode reason) {
-
-    }
-
-    @Override
-    public VmNicQosConfigBackend getVmNicQosConfigBackend(String type) {
-        return vmFactoryManager.getVmNicQosConfigBackend(type);
-    }
-
-    @Override
-    public ErrorCode handleSystemTag(String vmUuid, List<String> tags) {
-        ErrorCode errorCode = handleResourceDirectorySystemTag(vmUuid, tags);
-        if (errorCode != null) {
-            return errorCode;
-        }
-
-        errorCode = handleNumaSystemTag(vmUuid, tags);
-
-        if (errorCode != null) {
-            return errorCode;
-        }
-
-        return null;
-    }
-
-    private ErrorCode handleNumaSystemTag(String vmUuid, List<String> tags) {
-        if (!VmSystemTags.NUMA.hasTag(vmUuid)) {
-            return null;
-        }
-        ResourceConfig rc = rcf.getResourceConfig(VmGlobalConfig.NUMA.getIdentity());
-        rc.updateValue(vmUuid, Boolean.TRUE.toString());
-        VmSystemTags.NUMA.delete(vmUuid);
-        
-        return null;
-
-    }
-
-    //todo move to directory
-    private ErrorCode handleResourceDirectorySystemTag(String vmUuid, List<String> tags) {
-        PatternedSystemTag tag = VmSystemTags.DIRECTORY_UUID;
-        String token = VmSystemTags.DIRECTORY_UUID_TOKEN;
-
-        String directoryUuid = SystemTagUtils.findTagValue(tags, tag, token);
-        if (StringUtils.isEmpty(directoryUuid)) {
-            return null;
-        }
-        ResourceDirectoryRefVO refVO = new ResourceDirectoryRefVO();
-        refVO.setResourceUuid(vmUuid);
-        refVO.setDirectoryUuid(directoryUuid);
-        refVO.setResourceType(VmInstanceVO.class.getSimpleName());
-        refVO.setLastOpDate(new Timestamp(new Date().getTime()));
-        refVO.setCreateDate(new Timestamp(new Date().getTime()));
-        dbf.persist(refVO);
-        return null;
-    }
-    
     public void deleteMigrateSystemTagWhenVmStateChangedToRunning() {
         evtf.onLocal(VmCanonicalEvents.VM_FULL_STATE_CHANGED_PATH, new EventCallback() {
             @Override
