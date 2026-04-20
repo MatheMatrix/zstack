@@ -51,6 +51,7 @@ class CephXskyPoolCapacityCase extends SubCase {
         env.create {
             testReconnectPrimaryStorage()
             testSkipCalculateCapacityWhichInstallPathIsNull()
+            testSkipCalculateCapacityWhichInstallPathIsEmpty()
         }
     }
 
@@ -196,6 +197,35 @@ class CephXskyPoolCapacityCase extends SubCase {
         SQL.New(VolumeVO.class).eq(VolumeVO_.uuid, vm.rootVolumeUuid).set(VolumeVO_.installPath, null).update()
         SQL.New(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, rootSnapshot.uuid)
                 .set(VolumeSnapshotVO_.primaryStorageInstallPath, null).update()
+
+        reconnectPrimaryStorage {
+            uuid = ps.uuid
+        }
+
+        SQL.New(VolumeVO.class).eq(VolumeVO_.uuid, vm.rootVolumeUuid).set(VolumeVO_.installPath, volumeInstallPath).update()
+        SQL.New(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, rootSnapshot.uuid)
+                .set(VolumeSnapshotVO_.primaryStorageInstallPath, volumeSnapshotInstallPath).update()
+    }
+
+    void testSkipCalculateCapacityWhichInstallPathIsEmpty() {
+        PrimaryStorageInventory ps = env.inventoryByName("ceph-pri") as PrimaryStorageInventory
+        VmInstanceInventory vm = env.inventoryByName("test-vm") as VmInstanceInventory
+
+        VolumeSnapshotInventory rootSnapshot = createVolumeSnapshot {
+            name = "root-volume-snapshot-empty-path"
+            volumeUuid = vm.rootVolumeUuid
+        } as VolumeSnapshotInventory
+
+        String volumeInstallPath = Q.New(VolumeVO.class).eq(VolumeVO_.uuid, vm.rootVolumeUuid).select(VolumeVO_.installPath)
+                .findValue()
+        String volumeSnapshotInstallPath = Q.New(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, rootSnapshot.uuid)
+                .select(VolumeSnapshotVO_.primaryStorageInstallPath)
+                .findValue()
+
+        // mock install path is empty string
+        SQL.New(VolumeVO.class).eq(VolumeVO_.uuid, vm.rootVolumeUuid).set(VolumeVO_.installPath, "").update()
+        SQL.New(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, rootSnapshot.uuid)
+                .set(VolumeSnapshotVO_.primaryStorageInstallPath, "").update()
 
         reconnectPrimaryStorage {
             uuid = ps.uuid
