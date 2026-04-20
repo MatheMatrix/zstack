@@ -28,6 +28,7 @@ import org.zstack.utils.logging.CLogger;
 import javax.persistence.Tuple;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -56,6 +57,9 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
 
     private Map<String, AtomicInteger> hostDisconnectCount = new ConcurrentHashMap<>();
 
+    private static final Random reconnectJitterRandom = new Random();
+    private volatile Semaphore reconnectSemaphore = new Semaphore(HostGlobalConfig.RECONNECT_MAX_CONCURRENCY.defaultValue(Integer.class), true);
+
     @Override
     public void managementNodeReady() {
         reScanHost();
@@ -69,6 +73,12 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
     }
 
     private void reconnectNow(String uuid, Completion completion) {
+        if (!reconnectSemaphore.tryAcquire()) {
+            logger.debug(String.format("[Host Tracker]: reconnect concurrency limit reached, deferring reconnect for host[uuid:%s]", uuid));
+            completion.success();
+            return;
+        }
+
         ReconnectHostMsg msg = new ReconnectHostMsg();
         msg.setHostUuid(uuid);
         msg.setSkipIfHostConnected(true);
@@ -76,6 +86,7 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
         bus.send(msg, new CloudBusCallBack(completion) {
             @Override
             public void run(MessageReply reply) {
+                reconnectSemaphore.release();
                 if (reply.isSuccess()) {
                     completion.success();
                 } else {
@@ -267,7 +278,14 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
         if (CoreGlobalProperty.UNIT_TEST_ON && !alwaysStartRightNow) {
             t.start();
         } else {
-            t.startRightNow();
+            int jitterMaxSeconds = HostGlobalConfig.RECONNECT_JITTER_MAX_SECONDS.value(Integer.class);
+            if (jitterMaxSeconds > 0) {
+                int jitterSeconds = reconnectJitterRandom.nextInt(jitterMaxSeconds + 1);
+                logger.debug(String.format("starting tracking host[uuid:%s] with jitter delay %d seconds", hostUuid, jitterSeconds));
+                thdf.submitTimeoutTask(t, TimeUnit.SECONDS, jitterSeconds);
+            } else {
+                t.startRightNow();
+            }
         }
 
         logger.debug(String.format("starting tracking hosts[uuid:%s]", hostUuid));
@@ -356,6 +374,15 @@ public class HostTrackImpl implements HostTracker, ManagementNodeChangeListener,
         populateExtensions();
         onHostStatusChange();
         onHostPingSkip();
+
+        // Initialize semaphore from live config (may differ from default at startup)
+        reconnectSemaphore = new Semaphore(HostGlobalConfig.RECONNECT_MAX_CONCURRENCY.value(Integer.class), true);
+
+        HostGlobalConfig.RECONNECT_MAX_CONCURRENCY.installUpdateExtension((oldConfig, newConfig) -> {
+            logger.debug(String.format("%s change from %s to %s, updating reconnect semaphore",
+                    oldConfig.getCanonicalName(), oldConfig.value(), newConfig.value()));
+            reconnectSemaphore = new Semaphore(newConfig.value(Integer.class), true);
+        });
 
         HostGlobalConfig.PING_HOST_INTERVAL.installUpdateExtension((oldConfig, newConfig) -> {
             logger.debug(String.format("%s change from %s to %s, restart host trackers",
