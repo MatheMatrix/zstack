@@ -12,6 +12,7 @@ import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
 import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
 import org.apache.http.impl.nio.reactor.IOReactorConfig;
 import org.apache.http.nio.reactor.IOReactorException;
+import org.apache.http.pool.PoolStats;
 import org.apache.logging.log4j.ThreadContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -30,6 +31,7 @@ import org.zstack.core.telemetry.TelemetryFacade;
 import org.zstack.core.telemetry.TelemetryGlobalProperty;
 import org.zstack.core.thread.AsyncThread;
 import org.zstack.core.thread.CancelablePeriodicTask;
+import org.zstack.core.thread.PeriodicTask;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.thread.ThreadFacadeImpl.TimeoutTaskReceipt;
 import org.zstack.core.timeout.ApiTimeoutManager;
@@ -79,6 +81,15 @@ public class RESTFacadeImpl implements RESTFacade {
     private String callbackUrl;
     private TimeoutRestTemplate template;
     private AsyncRestTemplate asyncRestTemplate;
+    // P0: dedicated ping pool — isolated from business traffic (R2)
+    private AsyncRestTemplate pingAsyncRestTemplate;
+    // R5: store connection managers for DumpConnectionPoolStatus observability
+    private PoolingNHttpClientConnectionManager asyncConnManager;
+    private PoolingNHttpClientConnectionManager pingConnManager;
+    // ThreadLocal allows asyncJsonPostForPing() to inject the ping template without changing asyncJson() signature
+    private static final ThreadLocal<AsyncRestTemplate> ASYNC_TEMPLATE_OVERRIDE = new ThreadLocal<>();
+    // R2: P0 ping pool capacity — covers largest expected cluster (3000 nodes)
+    private static final int PING_POOL_MAX_TOTAL = 3000;
     private String baseUrl;
     private String sendCommandUrl;
     private String callbackHostName;
@@ -182,6 +193,28 @@ public class RESTFacadeImpl implements RESTFacade {
             logger.debug(sb.toString());
         });
 
+        // R5: pool observability — trigger via: kill -USR2 <pid>  or  zstack-ctl dump_connection_pool
+        DebugManager.registerDebugSignalHandler("DumpConnectionPoolStatus", () -> {
+            StringBuilder sb = new StringBuilder();
+            sb.append("\n============= BEGIN: Connection Pool Status (R5) =================\n");
+            if (asyncConnManager != null) {
+                PoolStats s = asyncConnManager.getTotalStats();
+                sb.append(String.format("async-pool   : maxTotal=%-5d leased=%-5d available=%-5d pending=%d%n",
+                        CoreGlobalProperty.REST_FACADE_MAX_TOTAL, s.getLeased(), s.getAvailable(), s.getPending()));
+            } else {
+                sb.append("async-pool   : not initialized\n");
+            }
+            if (pingConnManager != null) {
+                PoolStats s = pingConnManager.getTotalStats();
+                sb.append(String.format("ping-pool(P0): maxTotal=%-5d leased=%-5d available=%-5d pending=%d%n",
+                        pingConnManager.getMaxTotal(), s.getLeased(), s.getAvailable(), s.getPending()));
+            } else {
+                sb.append("ping-pool(P0): not initialized\n");
+            }
+            sb.append("============= END: Connection Pool Status ========================\n");
+            logger.debug(sb.toString());
+        });
+
         port = Platform.getManagementNodeServicePort();
 
         IptablesUtils.insertRuleToFilterTable(String.format("-A INPUT -p tcp -m state --state NEW -m tcp --dport %s -j ACCEPT", port));
@@ -211,15 +244,60 @@ public class RESTFacadeImpl implements RESTFacade {
 
         logger.debug(String.format("RESTFacade built callback url: %s", callbackUrl));
         template = RESTFacade.createRestTemplate(CoreGlobalProperty.REST_FACADE_READ_TIMEOUT, CoreGlobalProperty.REST_FACADE_CONNECT_TIMEOUT);
+        // R5: capture connection managers for DumpConnectionPoolStatus observability
+        PoolingNHttpClientConnectionManager[] cmRef = new PoolingNHttpClientConnectionManager[1];
         asyncRestTemplate = createAsyncRestTemplate(
                 CoreGlobalProperty.REST_FACADE_READ_TIMEOUT,
                 CoreGlobalProperty.REST_FACADE_CONNECT_TIMEOUT,
+                CoreGlobalProperty.REST_FACADE_MAX_TOTAL,
                 CoreGlobalProperty.REST_FACADE_MAX_PER_ROUTE,
-                CoreGlobalProperty.REST_FACADE_MAX_TOTAL);
+                cmRef);
+        asyncConnManager = cmRef[0];
+        // P0 ping pool: maxPerRoute=2 (1 in-flight + 1 queued per host), maxTotal covers full cluster
+        pingAsyncRestTemplate = createAsyncRestTemplate(
+                10000,              // readTimeout = ping timeout (10s)
+                3000,               // connectTimeout = fast fail (3s)
+                PING_POOL_MAX_TOTAL, // maxTotal: full cluster capacity
+                2,                  // maxPerRoute: 2 allows 1 in-flight + 1 queued, avoids head-of-line block
+                cmRef);
+        pingConnManager = cmRef[0];
+
+        // L1 built-in immune: proactive pool utilization alarm every 60s (R5)
+        thdf.submitPeriodicTask(new PeriodicTask() {
+            @Override public TimeUnit getTimeUnit() { return TimeUnit.SECONDS; }
+            @Override public long getInterval() { return 60; }
+            @Override public String getName() { return "http-pool-health-check"; }
+
+            @Override
+            public void run() {
+                if (asyncConnManager != null) {
+                    PoolStats s = asyncConnManager.getTotalStats();
+                    long maxTotal = CoreGlobalProperty.REST_FACADE_MAX_TOTAL;
+                    if (s.getPending() > 0 || s.getLeased() * 5 > maxTotal * 4) {
+                        logger.warn(String.format("[POOL-ALARM] async-pool HIGH: leased=%d available=%d pending=%d maxTotal=%d",
+                                s.getLeased(), s.getAvailable(), s.getPending(), maxTotal));
+                    }
+                }
+                if (pingConnManager != null) {
+                    PoolStats s = pingConnManager.getTotalStats();
+                    if (s.getPending() > 0) {
+                        logger.warn(String.format("[POOL-ALARM] ping-pool(P0) CONGESTED: leased=%d available=%d pending=%d — P0 ping may be delayed",
+                                s.getLeased(), s.getAvailable(), s.getPending()));
+                    }
+                }
+            }
+        });
     }
 
-    // timeout are in milliseconds
-    private static AsyncRestTemplate createAsyncRestTemplate(int readTimeout, int connectTimeout, int maxPerRoute, int maxTotal) {
+    // timeout are in milliseconds; delegates to 5-param overload (backward compat)
+    // Parameter order matches createRestTemplate: (readTimeout, connectTimeout, maxTotal, maxPerRoute)
+    private static AsyncRestTemplate createAsyncRestTemplate(int readTimeout, int connectTimeout, int maxTotal, int maxPerRoute) {
+        return createAsyncRestTemplate(readTimeout, connectTimeout, maxTotal, maxPerRoute, null);
+    }
+
+    // R5: outCm captures the connection manager for observability (DumpConnectionPoolStatus)
+    private static AsyncRestTemplate createAsyncRestTemplate(int readTimeout, int connectTimeout, int maxTotal, int maxPerRoute,
+                                                             PoolingNHttpClientConnectionManager[] outCm) {
         PoolingNHttpClientConnectionManager connectionManager;
         try {
             connectionManager = new PoolingNHttpClientConnectionManager(new DefaultConnectingIOReactor(IOReactorConfig.DEFAULT));
@@ -229,6 +307,7 @@ public class RESTFacadeImpl implements RESTFacade {
 
         connectionManager.setDefaultMaxPerRoute(maxPerRoute);
         connectionManager.setMaxTotal(maxTotal);
+        if (outCm != null) outCm[0] = connectionManager;
 
         CloseableHttpAsyncClient httpAsyncClient = HttpAsyncClients.custom()
                 .setConnectionManager(connectionManager)
@@ -237,7 +316,8 @@ public class RESTFacadeImpl implements RESTFacade {
         HttpComponentsAsyncClientHttpRequestFactory cf = new HttpComponentsAsyncClientHttpRequestFactory(httpAsyncClient);
         cf.setConnectTimeout(connectTimeout);
         cf.setReadTimeout(readTimeout);
-        cf.setConnectionRequestTimeout(connectTimeout * 2);
+        // R4: connectionRequestTimeout must be < operation timeout (e.g. ping timeout=10s)
+        cf.setConnectionRequestTimeout(Math.min(connectTimeout * 2, CoreGlobalProperty.REST_FACADE_CONNECTION_REQUEST_TIMEOUT));
 
         AsyncRestTemplate asyncRestTemplate = new AsyncRestTemplate(cf);
         RESTFacade.setMessageConverter(asyncRestTemplate.getMessageConverters());
@@ -574,7 +654,9 @@ public class RESTFacadeImpl implements RESTFacade {
                 logger.trace(String.format("json %s [%s], %s", method.toString(), url, req));
             }
 
-            ListenableFuture<ResponseEntity<String>> f = asyncRestTemplate.exchange(url, method, req, String.class);
+            AsyncRestTemplate override = ASYNC_TEMPLATE_OVERRIDE.get();
+            AsyncRestTemplate tmpl = override != null ? override : asyncRestTemplate;
+            ListenableFuture<ResponseEntity<String>> f = tmpl.exchange(url, method, req, String.class);
             f.addCallback(rsp -> {}, e -> wrapper.fail(err(ORG_ZSTACK_CORE_REST_10003, SysErrors.HTTP_ERROR, e.getLocalizedMessage())));
         } catch (RestClientException e) {
             logger.warn(String.format("Unable to %s to %s: %s", method.toString(), url, e.getMessage()));
@@ -598,6 +680,28 @@ public class RESTFacadeImpl implements RESTFacade {
     public void asyncJsonPost(String url, String body, AsyncRESTCallback callback) {
         Long timeout = timeoutMgr.getTimeout();
         asyncJsonPost(url, body, callback, TimeUnit.MILLISECONDS, timeout);
+    }
+
+    @Override
+    public void asyncJsonPostForPing(String url, Object body, AsyncRESTCallback callback) {
+        // R2: inject dedicated ping pool via ThreadLocal; cleared in finally to prevent leaks
+        ASYNC_TEMPLATE_OVERRIDE.set(pingAsyncRestTemplate);
+        try {
+            asyncJsonPost(url, body, callback);
+        } finally {
+            ASYNC_TEMPLATE_OVERRIDE.remove();
+        }
+    }
+
+    @Override
+    public void asyncJsonPostForPing(String url, Object body, AsyncRESTCallback callback, TimeUnit unit, long timeout) {
+        // R2: inject dedicated ping pool via ThreadLocal; cleared in finally to prevent leaks
+        ASYNC_TEMPLATE_OVERRIDE.set(pingAsyncRestTemplate);
+        try {
+            asyncJsonPost(url, body, callback, unit, timeout);
+        } finally {
+            ASYNC_TEMPLATE_OVERRIDE.remove();
+        }
     }
 
     @Override

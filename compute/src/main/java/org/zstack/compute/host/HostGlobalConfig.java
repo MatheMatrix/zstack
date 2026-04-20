@@ -27,6 +27,9 @@ public class HostGlobalConfig {
     public static GlobalConfig PING_HOST_INTERVAL = new GlobalConfig(CATEGORY, "ping.interval");
     @GlobalConfigValidation(numberGreaterThan = 1)
     public static GlobalConfig PING_HOST_TIMEOUT = new GlobalConfig(CATEGORY, "ping.timeout");
+    @GlobalConfigValidation
+    @GlobalConfigDef(defaultValue = "false", type = Boolean.class, description = "enable adaptive EMA-based ping timeout per host")
+    public static GlobalConfig PING_ADAPTIVE_TIMEOUT_ENABLED = new GlobalConfig(CATEGORY, "ping.adaptiveTimeout.enable");
     @GlobalConfigValidation(numberGreaterThan = 0)
     public static GlobalConfig MAXIMUM_PING_FAILURE = new GlobalConfig(CATEGORY, "ping.maxFailure");
     @GlobalConfigValidation(numberGreaterThan = -1)

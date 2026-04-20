@@ -137,7 +137,12 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
     private final Map<String, EndPoint> endPoints = new HashMap<>();
     private final Map<String, Envelope> envelopes = new ConcurrentHashMap<>();
     private final Map<String, java.util.function.Consumer> messageConsumers = new ConcurrentHashMap<>();
-    private final static TimeoutRestTemplate http = RESTFacade.createRestTemplate(CoreGlobalProperty.REST_FACADE_READ_TIMEOUT, CoreGlobalProperty.REST_FACADE_CONNECT_TIMEOUT);
+    // R1+R3: explicit pool params matching chain queue capacity (CloudBusGlobalProperty.HTTP_MAX_CONN)
+    private final static TimeoutRestTemplate http = RESTFacade.createRestTemplate(
+            CoreGlobalProperty.REST_FACADE_READ_TIMEOUT,
+            CoreGlobalProperty.REST_FACADE_CONNECT_TIMEOUT,
+            CloudBusGlobalProperty.HTTP_MAX_CONN,
+            10);
 
     public static final String HTTP_BASE_URL = "/cloudbus";
     public static final FutureCompletion SEND_CONFIRMED = new FutureCompletion(null);
