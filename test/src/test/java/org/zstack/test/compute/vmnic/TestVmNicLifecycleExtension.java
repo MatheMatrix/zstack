@@ -39,7 +39,9 @@ public class TestVmNicLifecycleExtension implements VmNicLifecycleExtensionPoint
 
     private final List<Call> calls = new CopyOnWriteArrayList<>();
 
-    private volatile boolean applicable = true;
+    // Default false so this stub is inert in tests that don't explicitly enable it.
+    // Tests call reset() which restores applicable=true before each scenario.
+    private volatile boolean applicable = false;
     private volatile ErrorCode setupError;
     private volatile ErrorCode preMigrateError;
 
