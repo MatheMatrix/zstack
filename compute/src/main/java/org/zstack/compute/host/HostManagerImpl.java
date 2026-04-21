@@ -539,8 +539,12 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
         Ssh ssh = new Ssh();
         ssh.setUsername(msg.getUsername()).setPassword(msg.getPassword()).setPort(msg.getSshPort())
                 .setHostname(msg.getHostName()).setTimeout(20);
+        logger.info(String.format(
+                "[MountBlockDevice] start: host=%s:%d user=%s path=%s mountPoint=%s fsType=%s",
+                msg.getHostName(), msg.getSshPort(), msg.getUsername(),
+                msg.getPath(), msg.getMountPoint(), msg.getFilesystemType()));
         try {
-            // 1 Check if mount point is already mounted
+            // 1 mountPoint not already mounted
             SshResult mountPointCheck = ssh.command(String.format("findmnt -n -o SOURCE '%s'", msg.getMountPoint())).run();
             ssh.reset();
             if (mountPointCheck.getReturnCode() == 0 && !mountPointCheck.getStdout().trim().isEmpty()) {
@@ -548,7 +552,7 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
                         msg.getMountPoint(), mountPointCheck.getStdout().trim()));
             }
 
-            // 2 Check if device is already mounted
+            // 2 device not already mounted
             SshResult devicePathCheck = ssh.command(String.format("findmnt -n -o TARGET '%s'", msg.getPath())).run();
             ssh.reset();
             if (devicePathCheck.getReturnCode() == 0 && !devicePathCheck.getStdout().trim().isEmpty()) {
@@ -556,40 +560,129 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
                         msg.getPath(), devicePathCheck.getStdout().trim()));
             }
 
-            // 3 Create mount point directory
+            // 2.5 classify multipath via shared lsblk tree (holder chain invisible to `lsblk TYPE`)
+            SshResult listRet = ssh.command(getBlockDevicesCommand()).run();
+            ssh.reset();
+            if (listRet.getReturnCode() != 0) {
+                throw new OperationFailureException(operr(
+                        "failed to list block devices on host %s, stderr:%s",
+                        msg.getHostName(), listRet.getStderr()));
+            }
+            BlockDevices allDevices = BlockDevices.valueOf(BlockDevicesParser.parse(listRet.getStdout()));
+            BlockDevices.BlockDevice target = BlockDevices.findByName(allDevices.getAllBlockDevices(), msg.getPath());
+            if (target == null) {
+                List<String> availableNames = allDevices.getAllBlockDevices().stream()
+                        .map(BlockDevices.BlockDevice::getName)
+                        .collect(Collectors.toList());
+                throw new OperationFailureException(operr(
+                        "device %s not found on host %s, available devices: %s",
+                        msg.getPath(), msg.getHostName(), availableNames));
+            }
+
+            boolean isMultipath = target.isMultipath();
+            // mpath member (disk under mpath) must be redirected to the aggregator;
+            // the aggregator itself (type=mpath) is used as-is.
+            boolean isUnderlyingMultipathMember = isMultipath && "disk".equalsIgnoreCase(target.getType());
+            String devicePath = msg.getPath();
+            if (isUnderlyingMultipathMember) {
+                BlockDevices.BlockDevice mpathChild = BlockDevices.findMultipathChild(target);
+                if (mpathChild == null || mpathChild.getName() == null || mpathChild.getName().isEmpty()) {
+                    throw new OperationFailureException(operr(
+                            "device %s is an underlying path of a multipath device but the " +
+                                    "aggregator (/dev/mapper/mpathX) could not be located", msg.getPath()));
+                }
+                logger.info(String.format("[MountBlockDevice] redirect: %s -> %s",
+                        msg.getPath(), mpathChild.getName()));
+                devicePath = mpathChild.getName();
+
+                // re-assert step 2 invariant against the aggregator
+                SshResult redirectedCheck = ssh.command(String.format("findmnt -n -o TARGET '%s'", devicePath)).run();
+                ssh.reset();
+                if (redirectedCheck.getReturnCode() == 0 && !redirectedCheck.getStdout().trim().isEmpty()) {
+                    throw new OperationFailureException(operr("device %s is already mount on mountPoint %s",
+                            devicePath, redirectedCheck.getStdout().trim()));
+                }
+            }
+
+            // 3 mkdir mount point
             executeSshCommand(ssh, String.format("mkdir -p '%s'", msg.getMountPoint()));
 
-            // 4 Format and execute mkfs command
-            executeSshCommand(ssh, buildMkfsCommd(msg.getFilesystemType(), msg.getPath()));
-
-            // 5 Retrieve device UUID
-            SshResult ret = executeSshCommand(ssh, String.format("blkid -s UUID -o value '%s'", msg.getPath()));
-            String uuid = ret.getStdout().trim();
-            if (uuid.isEmpty()) {
-                throw new OperationFailureException(operr("failed to get UUID for device %s", msg.getPath()));
-            }
-
-            // 6 Mount device using UUID
-            executeSshCommand(ssh, String.format("mount -U '%s' '%s'", uuid, msg.getMountPoint()));
-
-            String fstabEntry = String.format("UUID=%s %s %s defaults 0 0", uuid, msg.getMountPoint(), msg.getFilesystemType());
-
-            // 7 Check if fstabEntry already exists in /etc/fstab
-            String checkCommand = String.format("grep -F '%s' /etc/fstab", fstabEntry);
-            SshResult fstabCheck = ssh.command(checkCommand).run();
+            // 3.5 reject stale fstab entry (devicePath or mountPoint) before destructive mkfs;
+            //      skip comment lines so commented history does not block re-mount.
+            SshResult staleCheck = ssh.command(String.format(
+                    "awk -v d='%s' -v m='%s' '$1!~/^#/ && ($1==d || $2==m) {print NR\": \"$0}' /etc/fstab",
+                    devicePath, msg.getMountPoint())).run();
             ssh.reset();
-            if (fstabCheck.getReturnCode() == 0 && fstabCheck.getStdout().trim().equals(fstabEntry)) {
-                logger.info(String.format("fstabEntry[%s] already exists in fstab", fstabEntry));
-                bus.publish(event);
-                return;
+            if (staleCheck.getReturnCode() != 0) {
+                throw new OperationFailureException(operr(
+                        "failed to scan /etc/fstab on host %s, stderr:%s",
+                        msg.getHostName(), staleCheck.getStderr()));
+            }
+            String stale = staleCheck.getStdout() == null ? "" : staleCheck.getStdout().trim();
+            if (!stale.isEmpty()) {
+                throw new OperationFailureException(operr(
+                        "fstab on host %s already contains entry referencing device %s or mountPoint %s. " +
+                                "matched lines: [%s]. mkfs/mount aborted to protect existing data. " +
+                                "Please clean up /etc/fstab on the host and retry.",
+                        msg.getHostName(), devicePath, msg.getMountPoint(), stale));
             }
 
-            // 8 Add fstabEntry to fstab
-            executeSshCommand(ssh, String.format("echo '%s' >> /etc/fstab", fstabEntry));
+            // 4 mkfs — destructive, not reversible
+            executeSshCommand(ssh, buildMkfsCommd(msg.getFilesystemType(), devicePath));
 
-            bus.publish(event);
+            boolean mounted = false;
+            try {
+                // 5 blkid UUID
+                SshResult ret = executeSshCommand(ssh, String.format("blkid -s UUID -o value '%s'", devicePath));
+                String uuid = ret.getStdout().trim();
+                if (uuid.isEmpty()) {
+                    throw new OperationFailureException(operr("failed to get UUID for device %s", devicePath));
+                }
+
+                // 6 mount
+                executeSshCommand(ssh, String.format("mount -U '%s' '%s'", uuid, msg.getMountPoint()));
+                mounted = true;
+
+                // 7 fstab — multipath needs _netdev + device-timeout so boot waits for multipathd
+                String fstabOptions = isMultipath ? "defaults,_netdev,x-systemd.device-timeout=10" : "defaults";
+                String fstabEntry = String.format("UUID=%s %s %s %s 0 0",
+                        uuid, msg.getMountPoint(), msg.getFilesystemType(), fstabOptions);
+
+                // 8 append (step 3.5 already guaranteed no conflict)
+                executeSshCommand(ssh, String.format("echo '%s' >> /etc/fstab", fstabEntry));
+
+                logger.info(String.format(
+                        "[MountBlockDevice] done: host=%s path=%s -> devicePath=%s mountPoint=%s uuid=%s isMultipath=%s",
+                        msg.getHostName(), msg.getPath(), devicePath, msg.getMountPoint(), uuid, isMultipath));
+                bus.publish(event);
+            } catch (RuntimeException e) {
+                compensateAfterMkfs(ssh, msg.getHostName(), msg.getMountPoint(), devicePath, mounted);
+                throw e;
+            }
         } finally {
             ssh.close();
+        }
+    }
+
+    private void compensateAfterMkfs(Ssh ssh, String host, String mountPoint, String devicePath, boolean mounted) {
+        logger.warn(String.format(
+                "[MountBlockDevice] failed after mkfs: host=%s devicePath=%s mountPoint=%s (fs overwritten, not reversible)",
+                host, devicePath, mountPoint));
+        if (!mounted) {
+            return;
+        }
+        try {
+            SshResult ret = ssh.command(String.format("umount '%s'", mountPoint)).run();
+            ssh.reset();
+            if (ret.getReturnCode() != 0) {
+                logger.warn(String.format(
+                        "[MountBlockDevice] compensation umount failed: host=%s mountPoint=%s stderr=%s",
+                        host, mountPoint, ret.getStderr()));
+            }
+        } catch (Throwable t) {
+            logger.warn(String.format(
+                    "[MountBlockDevice] compensation umount threw: host=%s mountPoint=%s err=%s",
+                    host, mountPoint, t.getMessage()));
         }
     }
 
