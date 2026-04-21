@@ -44,6 +44,44 @@ public class BlockDevices {
         return allBlockDevices;
     }
 
+    /**
+     * Recursively find a block device by its absolute name (e.g. "/dev/sda",
+     * "/dev/mapper/mpatha") in the given device forest (typically the result of
+     * {@link #getAllBlockDevices()} or a sub-tree). Returns null when not present.
+     */
+    public static BlockDevice findByName(List<BlockDevice> roots, String name) {
+        if (roots == null || name == null) {
+            return null;
+        }
+        for (BlockDevice dev : roots) {
+            if (name.equals(dev.getName())) {
+                return dev;
+            }
+            BlockDevice hit = findByName(dev.getChildren(), name);
+            if (hit != null) {
+                return hit;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Return the first direct child of the given device whose type == "mpath"
+     * (i.e. the multipath aggregator such as /dev/mapper/mpathX sitting on top
+     * of a physical disk like /dev/sda). Returns null if none.
+     */
+    public static BlockDevice findMultipathChild(BlockDevice device) {
+        if (device == null || device.getChildren() == null) {
+            return null;
+        }
+        for (BlockDevice child : device.getChildren()) {
+            if ("mpath".equalsIgnoreCase(child.getType())) {
+                return child;
+            }
+        }
+        return null;
+    }
+
     public static class BlockDevice {
         private String name;
         private String type;
@@ -62,6 +100,7 @@ public class BlockDevices {
         private long usedRatio;
         private Boolean smartPassed;
         private String smartMessage;
+        private boolean multipath;
 
         BlockDevice() {
 
@@ -85,7 +124,29 @@ public class BlockDevices {
             device.fsType = blockDevice.getFstype();
             device.serialNumber = blockDevice.getSerial();
             device.model = blockDevice.getModel();
+            device.multipath = isMultipathDevice(device);
             return device;
+        }
+
+        /**
+         * Identify multipath block device by lsblk type hierarchy.
+         *  1) self type == "mpath"            -> true  (e.g. /dev/mapper/mpathX)
+         *  2) self type == "disk" and any child's type == "mpath"
+         *                                     -> true  (this is a multipath slave disk)
+         *  3) otherwise                       -> false
+         */
+        private static boolean isMultipathDevice(BlockDevice device) {
+            if ("mpath".equalsIgnoreCase(device.type)) {
+                return true;
+            }
+            if ("disk".equalsIgnoreCase(device.type) && !CollectionUtils.isEmpty(device.children)) {
+                for (BlockDevice child : device.children) {
+                    if ("mpath".equalsIgnoreCase(child.type)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         private boolean isUsed(BlockDevice device) {
@@ -237,6 +298,14 @@ public class BlockDevices {
 
         public void setSmartMessage(String smartMessage) {
             this.smartMessage = smartMessage;
+        }
+
+        public boolean isMultipath() {
+            return multipath;
+        }
+
+        public void setMultipath(boolean multipath) {
+            this.multipath = multipath;
         }
     }
 }
