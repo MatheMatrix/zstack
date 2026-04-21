@@ -539,10 +539,18 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
         Ssh ssh = new Ssh();
         ssh.setUsername(msg.getUsername()).setPassword(msg.getPassword()).setPort(msg.getSshPort())
                 .setHostname(msg.getHostName()).setTimeout(20);
+        logger.info(String.format(
+                "[MountBlockDevice] start: host=%s:%d user=%s path=%s mountPoint=%s fsType=%s",
+                msg.getHostName(), msg.getSshPort(), msg.getUsername(),
+                msg.getPath(), msg.getMountPoint(), msg.getFilesystemType()));
         try {
             // 1 Check if mount point is already mounted
             SshResult mountPointCheck = ssh.command(String.format("findmnt -n -o SOURCE '%s'", msg.getMountPoint())).run();
             ssh.reset();
+            logger.debug(String.format(
+                    "[MountBlockDevice] step1 findmnt SOURCE mountPoint=%s rc=%d stdout=%s",
+                    msg.getMountPoint(), mountPointCheck.getReturnCode(),
+                    mountPointCheck.getStdout() == null ? "" : mountPointCheck.getStdout().trim()));
             if (mountPointCheck.getReturnCode() == 0 && !mountPointCheck.getStdout().trim().isEmpty()) {
                 throw new OperationFailureException(operr("mountPoint %s is already mount on device %s",
                         msg.getMountPoint(), mountPointCheck.getStdout().trim()));
@@ -551,42 +559,135 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
             // 2 Check if device is already mounted
             SshResult devicePathCheck = ssh.command(String.format("findmnt -n -o TARGET '%s'", msg.getPath())).run();
             ssh.reset();
+            logger.debug(String.format(
+                    "[MountBlockDevice] step2 findmnt TARGET path=%s rc=%d stdout=%s",
+                    msg.getPath(), devicePathCheck.getReturnCode(),
+                    devicePathCheck.getStdout() == null ? "" : devicePathCheck.getStdout().trim()));
             if (devicePathCheck.getReturnCode() == 0 && !devicePathCheck.getStdout().trim().isEmpty()) {
                 throw new OperationFailureException(operr("device %s is already mount on mountPoint %s",
                         msg.getPath(), devicePathCheck.getStdout().trim()));
             }
 
+            // 2.5 Detect whether the target device is a multipath device.
+            //     Reuse the same lsblk tree as GetPhysicalMachineBlockDevices and the shared
+            //     classification logic in BlockDevices.isMultipathDevice, so that single-source
+            //     semantics are kept:
+            //       - self type == "mpath"                 -> multipath device, operate on it directly
+            //       - self type == "disk" and any child    -> the user passed an underlying path of a
+            //         has type == "mpath"                     multipath (e.g. /dev/sda under mpathX).
+            //                                                  Transparently redirect subsequent
+            //                                                  mkfs/blkid/mount/fstab to the mpath
+            //                                                  aggregator so we do not break multipath.
+            //       - otherwise                            -> treat as plain device
+            //     A plain `lsblk -n -o TYPE <path>` does NOT include the holder chain (the mpath
+            //     dm target sits *above* the disk, not in the default downward lsblk output),
+            //     which is why the tree-based classifier must be used instead.
+            SshResult listRet = ssh.command(getBlockDevicesCommand()).run();
+            ssh.reset();
+            logger.debug(String.format(
+                    "[MountBlockDevice] step2.5 lsblk rc=%d stdout.len=%d",
+                    listRet.getReturnCode(),
+                    listRet.getStdout() == null ? 0 : listRet.getStdout().length()));
+            if (listRet.getReturnCode() != 0) {
+                throw new OperationFailureException(operr(
+                        "failed to list block devices on host %s, stderr:%s",
+                        msg.getHostName(), listRet.getStderr()));
+            }
+            BlockDevices allDevices = BlockDevices.valueOf(BlockDevicesParser.parse(listRet.getStdout()));
+            BlockDevices.BlockDevice target = BlockDevices.findByName(allDevices.getAllBlockDevices(), msg.getPath());
+            if (target == null) {
+                throw new OperationFailureException(operr(
+                        "device %s not found on host %s", msg.getPath(), msg.getHostName()));
+            }
+            logger.info(String.format(
+                    "[MountBlockDevice] resolved target: name=%s type=%s multipath=%s size=%d children=%d",
+                    target.getName(), target.getType(), target.isMultipath(), target.getSize(),
+                    target.getChildren() == null ? 0 : target.getChildren().size()));
+
+            boolean isMultipath = target.isMultipath();
+            String devicePath = msg.getPath();
+            if (isMultipath && "disk".equalsIgnoreCase(target.getType())) {
+                BlockDevices.BlockDevice mpathChild = BlockDevices.findMultipathChild(target);
+                if (mpathChild == null || mpathChild.getName() == null || mpathChild.getName().isEmpty()) {
+                    logger.warn(String.format(
+                            "[MountBlockDevice] device %s is flagged multipath but no mpath child was found in tree",
+                            msg.getPath()));
+                    throw new OperationFailureException(operr(
+                            "device %s is an underlying path of a multipath device but the " +
+                                    "aggregator (/dev/mapper/mpathX) could not be located", msg.getPath()));
+                }
+                logger.info(String.format(
+                        "[MountBlockDevice] redirect: %s is an underlying path of multipath device %s, " +
+                                "operating on the multipath aggregator instead",
+                        msg.getPath(), mpathChild.getName()));
+                devicePath = mpathChild.getName();
+
+                // After redirection we also need to make sure the multipath aggregator itself
+                // is not already mounted, to keep the invariant established by steps 1 & 2.
+                SshResult redirectedCheck = ssh.command(String.format("findmnt -n -o TARGET '%s'", devicePath)).run();
+                ssh.reset();
+                logger.debug(String.format(
+                        "[MountBlockDevice] step2.5 findmnt TARGET redirected=%s rc=%d stdout=%s",
+                        devicePath, redirectedCheck.getReturnCode(),
+                        redirectedCheck.getStdout() == null ? "" : redirectedCheck.getStdout().trim()));
+                if (redirectedCheck.getReturnCode() == 0 && !redirectedCheck.getStdout().trim().isEmpty()) {
+                    throw new OperationFailureException(operr("device %s is already mount on mountPoint %s",
+                            devicePath, redirectedCheck.getStdout().trim()));
+                }
+            }
+            logger.info(String.format(
+                    "[MountBlockDevice] effective devicePath=%s isMultipath=%s (user input path=%s)",
+                    devicePath, isMultipath, msg.getPath()));
+
             // 3 Create mount point directory
+            logger.debug(String.format("[MountBlockDevice] step3 mkdir -p %s", msg.getMountPoint()));
             executeSshCommand(ssh, String.format("mkdir -p '%s'", msg.getMountPoint()));
 
             // 4 Format and execute mkfs command
-            executeSshCommand(ssh, buildMkfsCommd(msg.getFilesystemType(), msg.getPath()));
+            logger.info(String.format("[MountBlockDevice] step4 mkfs fsType=%s devicePath=%s",
+                    msg.getFilesystemType(), devicePath));
+            executeSshCommand(ssh, buildMkfsCommd(msg.getFilesystemType(), devicePath));
 
             // 5 Retrieve device UUID
-            SshResult ret = executeSshCommand(ssh, String.format("blkid -s UUID -o value '%s'", msg.getPath()));
+            SshResult ret = executeSshCommand(ssh, String.format("blkid -s UUID -o value '%s'", devicePath));
             String uuid = ret.getStdout().trim();
+            logger.info(String.format("[MountBlockDevice] step5 blkid devicePath=%s uuid=%s", devicePath, uuid));
             if (uuid.isEmpty()) {
-                throw new OperationFailureException(operr("failed to get UUID for device %s", msg.getPath()));
+                throw new OperationFailureException(operr("failed to get UUID for device %s", devicePath));
             }
 
             // 6 Mount device using UUID
+            logger.info(String.format("[MountBlockDevice] step6 mount -U %s %s (devicePath=%s)",
+                    uuid, msg.getMountPoint(), devicePath));
             executeSshCommand(ssh, String.format("mount -U '%s' '%s'", uuid, msg.getMountPoint()));
 
-            String fstabEntry = String.format("UUID=%s %s %s defaults 0 0", uuid, msg.getMountPoint(), msg.getFilesystemType());
+            // 7 Build fstab entry. Multipath devices need additional options so that systemd waits
+            //    for multipathd to bring up /dev/mapper/mpathX before attempting to mount on boot,
+            //    otherwise the machine may drop into emergency shell.
+            String fstabOptions = isMultipath ? "defaults,_netdev,x-systemd.device-timeout=10" : "defaults";
+            String fstabEntry = String.format("UUID=%s %s %s %s 0 0",
+                    uuid, msg.getMountPoint(), msg.getFilesystemType(), fstabOptions);
+            logger.info(String.format("[MountBlockDevice] step7 fstabEntry=%s (isMultipath=%s)",
+                    fstabEntry, isMultipath));
 
-            // 7 Check if fstabEntry already exists in /etc/fstab
+            // 8 Check if fstabEntry already exists in /etc/fstab
             String checkCommand = String.format("grep -F '%s' /etc/fstab", fstabEntry);
             SshResult fstabCheck = ssh.command(checkCommand).run();
             ssh.reset();
             if (fstabCheck.getReturnCode() == 0 && fstabCheck.getStdout().trim().equals(fstabEntry)) {
-                logger.info(String.format("fstabEntry[%s] already exists in fstab", fstabEntry));
+                logger.info(String.format("[MountBlockDevice] step8 fstabEntry[%s] already exists in fstab, skip append",
+                        fstabEntry));
                 bus.publish(event);
                 return;
             }
 
-            // 8 Add fstabEntry to fstab
+            // 9 Add fstabEntry to fstab
+            logger.info(String.format("[MountBlockDevice] step9 append fstab: %s", fstabEntry));
             executeSshCommand(ssh, String.format("echo '%s' >> /etc/fstab", fstabEntry));
 
+            logger.info(String.format(
+                    "[MountBlockDevice] done: host=%s path=%s -> devicePath=%s mountPoint=%s uuid=%s isMultipath=%s",
+                    msg.getHostName(), msg.getPath(), devicePath, msg.getMountPoint(), uuid, isMultipath));
             bus.publish(event);
         } finally {
             ssh.close();
