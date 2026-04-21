@@ -22,8 +22,11 @@ import org.zstack.utils.logging.CLogger;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
 
@@ -341,6 +344,59 @@ public class VmInstanceResourceMetadataManagerImpl implements VmInstanceResource
             return;
         }
         createOrUpdateVmResourceMetadata(resourceUuid, DeviceAddress.fromString(deviceAddress), vmInstanceUuid, null, null);
+    }
+
+    @Override
+    public int pruneStaleDeviceMetadata(String vmInstanceUuid, Set<String> survivingResourceUuids) {
+        if (deviceAddressRecordingDisabled()) {
+            return 0;
+        }
+        if (vmInstanceUuid == null) {
+            return 0;
+        }
+
+        List<VmInstanceResourceMetadataVO> candidates = Q.New(VmInstanceResourceMetadataVO.class)
+                .eq(VmInstanceResourceMetadataVO_.vmInstanceUuid, vmInstanceUuid)
+                .isNull(VmInstanceResourceMetadataVO_.metadataClass)
+                .list();
+        if (candidates.isEmpty()) {
+            return 0;
+        }
+
+        Set<String> alwaysKeep = new HashSet<>();
+        // double-guard: the vmXml archive row uses vmInstanceUuid as resourceUuid,
+        // normally it has non-null metadataClass so it never reaches here.
+        alwaysKeep.add(vmInstanceUuid);
+        alwaysKeep.add(MEM_BALLOON_UUID);
+        alwaysKeep.add(RESOURCE_CONFIG_UUID);
+        alwaysKeep.add(GUEST_TOOLS_RESOURCE_CONFIG_UUID);
+
+        Set<String> surviving = survivingResourceUuids == null
+                ? Collections.emptySet() : survivingResourceUuids;
+
+        List<String> toDelete = candidates.stream()
+                .map(VmInstanceResourceMetadataVO::getResourceUuid)
+                .filter(ru -> !alwaysKeep.contains(ru))
+                .filter(ru -> !surviving.contains(ru))
+                .collect(Collectors.toList());
+
+        if (toDelete.isEmpty()) {
+            return 0;
+        }
+
+        logger.debug(String.format(
+                "prune stale VmInstanceResourceMetadataVO for vm[%s], resourceUuids=%s",
+                vmInstanceUuid, toDelete));
+
+        SQL.New("delete from VmInstanceResourceMetadataVO v" +
+                " where v.vmInstanceUuid = :vmUuid" +
+                " and v.metadataClass is null" +
+                " and v.resourceUuid in (:uuids)")
+                .param("vmUuid", vmInstanceUuid)
+                .param("uuids", toDelete)
+                .execute();
+
+        return toDelete.size();
     }
 
     @Override

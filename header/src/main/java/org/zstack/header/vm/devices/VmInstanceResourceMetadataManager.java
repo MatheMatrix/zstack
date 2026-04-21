@@ -4,6 +4,7 @@ import org.zstack.header.errorcode.ErrorCode;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface VmInstanceResourceMetadataManager {
     String MEM_BALLOON_UUID = "4780bf6d2fa65700f22e36c27e8ff05c";
@@ -151,4 +152,20 @@ public interface VmInstanceResourceMetadataManager {
     List<VmInstanceResourceMetadataArchiveVO> getArchivedResourceMetadataInfoFromArchiveForResourceUuid(String vmInstanceUuid, String archiveForResourceUuid, String metadataClass);
 
     void updateVmResourceMetadataDeviceAddress(String vmInstanceUuid, String resourceUuid, String deviceAddress);
+
+    /**
+     * Drop "address-only" rows (metadataClass IS NULL) of this VM whose
+     * resourceUuid is NOT in survivingResourceUuids. Used by start-vm / sync-vm-device-info
+     * extension point to reconcile DB state with the libvirt domain actually running.
+     *
+     * Always preserved:
+     *   - rows with non-null metadataClass (memorySnapshot / guesttools / ArchiveVmBundle ...)
+     *   - row whose resourceUuid == vmInstanceUuid (vmXml archive, as a double-guard)
+     *   - MEM_BALLOON_UUID / RESOURCE_CONFIG_UUID / GUEST_TOOLS_RESOURCE_CONFIG_UUID
+     *
+     * @param vmInstanceUuid         VM uuid
+     * @param survivingResourceUuids resourceUuids that still exist in the libvirt domain
+     * @return number of rows deleted
+     */
+    int pruneStaleDeviceMetadata(String vmInstanceUuid, Set<String> survivingResourceUuids);
 }

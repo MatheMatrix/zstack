@@ -13,6 +13,9 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class VirtualPciDeviceKvmExtensionPoint implements KVMStartVmExtensionPoint, KVMSyncVmDeviceInfoExtensionPoint {
     private static final CLogger logger = Utils.getLogger(VirtualPciDeviceKvmExtensionPoint.class);
 
@@ -77,7 +80,11 @@ public class VirtualPciDeviceKvmExtensionPoint implements KVMStartVmExtensionPoi
     public void afterReceiveVmDeviceInfoResponse(VmInstanceInventory vm, KVMAgentCommands.VmDevicesInfoResponse rsp, VmInstanceSpec spec) {
         String vmUuid = spec != null ? spec.getVmInventory().getUuid() : vm.getUuid();
 
+        Set<String> surviving = new HashSet<>();
+
         vidManager.saveVmXmlMetadata(rsp.getVmXml(), vmUuid);
+        // the vmXml row uses vmUuid as resourceUuid; keep it
+        surviving.add(vmUuid);
 
         // only update pci address, metadata is not mandatory in normal usage
         // check its usage when create snapshot or backup
@@ -85,30 +92,67 @@ public class VirtualPciDeviceKvmExtensionPoint implements KVMStartVmExtensionPoi
             rsp.getVirtualDeviceInfoList().forEach(info -> {
                 if (info.isValid()) {
                     vidManager.createOrUpdateVmResourceMetadata(info, vmUuid);
+                    surviving.add(info.getResourceUuid());
                 }
             });
         }
 
-        if (rsp.getNicInfos() == null) {
-            return;
+        if (rsp.getNicInfos() != null) {
+            rsp.getNicInfos().forEach(info -> {
+                VmNicInventory nic = (spec != null ? spec.getDestNics() : vm.getVmNics())
+                        .stream()
+                        .filter(vmNicInventory -> vmNicInventory.getMac().equals(info.getMacAddress()))
+                        .findFirst()
+                        .orElse(null);
+                if (nic == null) {
+                    return;
+                }
+
+                vidManager.createOrUpdateVmResourceMetadata(new VirtualDeviceInfo(nic.getUuid(), info.getDeviceAddress()), vmUuid);
+                surviving.add(nic.getUuid());
+            });
         }
 
-        rsp.getNicInfos().forEach(info -> {
-            VmNicInventory nic = (spec != null ? spec.getDestNics() : vm.getVmNics())
-                    .stream()
-                    .filter(vmNicInventory -> vmNicInventory.getMac().equals(info.getMacAddress()))
-                    .findFirst()
-                    .orElse(null);
-            if (nic == null) {
-                return;
-            }
-
-            vidManager.createOrUpdateVmResourceMetadata(new VirtualDeviceInfo(nic.getUuid(), info.getDeviceAddress()), vmUuid);
-        });
-
-        if (!StringUtils.isEmpty(rsp.getMemBalloonInfo().getDeviceAddress().toString())) {
+        if (rsp.getMemBalloonInfo() != null
+                && rsp.getMemBalloonInfo().getDeviceAddress() != null
+                && !StringUtils.isEmpty(rsp.getMemBalloonInfo().getDeviceAddress().toString())) {
             vidManager.createOrUpdateVmResourceMetadata(new VirtualDeviceInfo(vidManager.MEM_BALLOON_UUID,
                     DeviceAddress.fromString(rsp.getMemBalloonInfo().getDeviceAddress().toString())), vmUuid);
+            surviving.add(vidManager.MEM_BALLOON_UUID);
+        }
+
+        // differential prune: drop stale address-only rows (metadataClass IS NULL)
+        // whose resourceUuid is no longer present in the libvirt domain. This keeps
+        // DB state consistent after devices like cdrom get detached/deleted while
+        // the VM was stopped. Rows written by other extension points (with non-null
+        // metadataClass) are preserved.
+        //
+        // Guard: only prune when the agent response actually carries an
+        // authoritative device snapshot. A response with all three device
+        // fields empty/null is not authoritative (e.g. certain mocked or
+        // partial agent replies) and must not be used as the basis for prune,
+        // otherwise legitimate metadata rows get wiped.
+        boolean hasAuthoritativeDeviceInfo =
+                (rsp.getVirtualDeviceInfoList() != null && !rsp.getVirtualDeviceInfoList().isEmpty())
+                        || (rsp.getNicInfos() != null && !rsp.getNicInfos().isEmpty())
+                        || (rsp.getMemBalloonInfo() != null
+                                && rsp.getMemBalloonInfo().getDeviceAddress() != null
+                                && !StringUtils.isEmpty(rsp.getMemBalloonInfo().getDeviceAddress().toString()));
+        if (!hasAuthoritativeDeviceInfo) {
+            logger.debug(String.format(
+                    "skip pruneStaleDeviceMetadata for vm[%s]: response has no authoritative device info",
+                    vmUuid));
+            return;
+        }
+        try {
+            int pruned = vidManager.pruneStaleDeviceMetadata(vmUuid, surviving);
+            if (pruned > 0) {
+                logger.debug(String.format(
+                        "pruned %d stale VmInstanceResourceMetadataVO row(s) for vm[%s]",
+                        pruned, vmUuid));
+            }
+        } catch (Exception e) {
+            logger.warn(String.format("failed to prune stale device metadata for vm[%s]", vmUuid), e);
         }
     }
 
