@@ -99,7 +99,7 @@
 
         <property name="producerNames">
             <list>
-                <value>org.zstack.compute.allocator.AttachedL2NetworkAllocatorFlow</value>
+                <value>org.zstack.compute.allocator.AttachedL2NetworkAllocatorProducer</value>
                 <value>org.zstack.compute.allocator.DesignatedHostAllocatorProducer</value>
                 <value>org.zstack.compute.allocator.HostStateAndHypervisorAllocatorProducer</value>
             </list>
@@ -140,7 +140,7 @@
 
         <property name="producerNames">
             <list>
-                <value>org.zstack.compute.allocator.AttachedL2NetworkAllocatorFlow</value>
+                <value>org.zstack.compute.allocator.AttachedL2NetworkAllocatorProducer</value>
                 <value>org.zstack.compute.allocator.DesignatedHostAllocatorProducer</value>
                 <value>org.zstack.compute.allocator.HostStateAndHypervisorAllocatorProducer</value>
             </list>
@@ -180,7 +180,7 @@
 
         <property name="producerNames">
             <list>
-                <value>org.zstack.compute.allocator.AttachedL2NetworkAllocatorFlow</value>
+                <value>org.zstack.compute.allocator.AttachedL2NetworkAllocatorProducer</value>
                 <value>org.zstack.compute.allocator.DesignatedHostAllocatorProducer</value>
                 <value>org.zstack.compute.allocator.HostStateAndHypervisorAllocatorProducer</value>
             </list>
@@ -218,7 +218,7 @@
 
         <property name="producerNames">
             <list>
-                <value>org.zstack.compute.allocator.AttachedL2NetworkAllocatorFlow</value>
+                <value>org.zstack.compute.allocator.AttachedL2NetworkAllocatorProducer</value>
                 <value>org.zstack.compute.allocator.DesignatedHostAllocatorProducer</value>
                 <value>org.zstack.compute.allocator.HostStateAndHypervisorAllocatorProducer</value>
             </list>
@@ -251,7 +251,7 @@
 
         <property name="producerNames">
             <list>
-                <value>org.zstack.compute.allocator.AttachedL2NetworkAllocatorFlow</value>
+                <value>org.zstack.compute.allocator.AttachedL2NetworkAllocatorProducer</value>
                 <value>org.zstack.compute.allocator.DesignatedHostAllocatorProducer</value>
                 <value>org.zstack.compute.allocator.HostStateAndHypervisorAllocatorProducer</value>
             </list>
@@ -284,7 +284,7 @@
 
         <property name="producerNames">
             <list>
-                <value>org.zstack.compute.allocator.AttachedL2NetworkAllocatorFlow</value>
+                <value>org.zstack.compute.allocator.AttachedL2NetworkAllocatorProducer</value>
                 <value>org.zstack.compute.allocator.DesignatedHostAllocatorProducer</value>
                 <value>org.zstack.compute.allocator.HostStateAndHypervisorAllocatorProducer</value>
             </list>

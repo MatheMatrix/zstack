@@ -24,8 +24,8 @@ import org.zstack.utils.Utils;
 
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
-public class AttachedL2NetworkAllocatorFlow implements HostCandidateProducer {
-    private static final CLogger logger = Utils.getLogger(AttachedL2NetworkAllocatorFlow.class);
+public class AttachedL2NetworkAllocatorProducer implements HostCandidateProducer {
+    private static final CLogger logger = Utils.getLogger(AttachedL2NetworkAllocatorProducer.class);
 
     @Autowired
     private DatabaseFacade dbf;
