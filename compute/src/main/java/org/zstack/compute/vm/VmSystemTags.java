@@ -324,4 +324,8 @@ public class VmSystemTags {
     public static String IFACE_ID_TOKEN = "ifaceId";
     public static PatternedSystemTag IFACE_ID = new PatternedSystemTag(
             String.format("ifaceId::{%s}", IFACE_ID_TOKEN), VmNicVO.class);
+
+    public static String ENABLE_DPDK_VHOSTUSER_L3_UUID_TOKEN = "l3NetworkUuid";
+    public static PatternedSystemTag ENABLE_DPDK_VHOSTUSER = new PatternedSystemTag(
+            String.format("enableDpdkVhostuser::{%s}", ENABLE_DPDK_VHOSTUSER_L3_UUID_TOKEN), VmInstanceVO.class);
 }

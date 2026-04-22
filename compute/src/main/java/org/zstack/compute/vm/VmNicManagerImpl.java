@@ -299,7 +299,8 @@ public class VmNicManagerImpl implements VmNicManager, VmNicExtensionPoint, Prep
         boolean enableDpdkVhostuser = Q.New(SystemTagVO.class)
                 .eq(SystemTagVO_.resourceType, VmInstanceVO.class.getSimpleName())
                 .eq(SystemTagVO_.resourceUuid, vmUuid)
-                .eq(SystemTagVO_.tag, String.format("enableDpdkVhostuser::%s", l3nw.getUuid()))
+                .eq(SystemTagVO_.tag, VmSystemTags.ENABLE_DPDK_VHOSTUSER.instantiateTag(
+                        Collections.singletonMap(VmSystemTags.ENABLE_DPDK_VHOSTUSER_L3_UUID_TOKEN, l3nw.getUuid())))
                 .isExists();
 
         VmNicType.VmNicSubType subType = VmNicType.VmNicSubType.NONE;
