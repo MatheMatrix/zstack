@@ -154,14 +154,18 @@ public interface VmInstanceResourceMetadataManager {
     void updateVmResourceMetadataDeviceAddress(String vmInstanceUuid, String resourceUuid, String deviceAddress);
 
     /**
-     * Drop "address-only" rows (metadataClass IS NULL) of this VM whose
-     * resourceUuid is NOT in survivingResourceUuids. Used by start-vm / sync-vm-device-info
-     * extension point to reconcile DB state with the libvirt domain actually running.
+     * Drop rows of this VM whose resourceUuid is NOT in survivingResourceUuids.
+     * Used by start-vm / sync-vm-device-info extension point to reconcile DB
+     * state with the libvirt domain actually running: any extra resourceUuid
+     * that the agent response does not report is considered stale and removed,
+     * regardless of metadataClass.
      *
-     * Always preserved:
-     *   - rows with non-null metadataClass (memorySnapshot / guesttools / ArchiveVmBundle ...)
-     *   - row whose resourceUuid == vmInstanceUuid (vmXml archive, as a double-guard)
+     * Always preserved (whitelist, independent of survivingResourceUuids):
+     *   - row whose resourceUuid == vmInstanceUuid (vmXml archive)
      *   - MEM_BALLOON_UUID / RESOURCE_CONFIG_UUID / GUEST_TOOLS_RESOURCE_CONFIG_UUID
+     *
+     * Caller is responsible for adding any resourceUuid that must survive
+     * (e.g. every VM nic uuid when rsp.nicInfos is null) to survivingResourceUuids.
      *
      * @param vmInstanceUuid         VM uuid
      * @param survivingResourceUuids resourceUuids that still exist in the libvirt domain
