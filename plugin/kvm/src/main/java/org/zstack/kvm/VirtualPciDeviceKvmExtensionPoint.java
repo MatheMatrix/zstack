@@ -81,6 +81,13 @@ public class VirtualPciDeviceKvmExtensionPoint implements KVMStartVmExtensionPoi
         String vmUuid = spec != null ? spec.getVmInventory().getUuid() : vm.getUuid();
 
         Set<String> surviving = new HashSet<>();
+        // Tracks whether the agent reply actually contains valid device info.
+        // Only flipped to true when we observe at least one valid virtual
+        // device / matched nic / balloon address from the response itself.
+        // This is the ONLY signal used to decide whether prune may run;
+        // resourceUuids added as defensive fallbacks (e.g. nic uuids copied
+        // from spec when nicInfos is null) must NOT influence this flag.
+        boolean hasAuthoritativeDeviceInfo = false;
 
         vidManager.saveVmXmlMetadata(rsp.getVmXml(), vmUuid);
         // the vmXml row uses vmUuid as resourceUuid; keep it
@@ -89,28 +96,37 @@ public class VirtualPciDeviceKvmExtensionPoint implements KVMStartVmExtensionPoi
         // only update pci address, metadata is not mandatory in normal usage
         // check its usage when create snapshot or backup
         if (rsp.getVirtualDeviceInfoList() != null) {
-            rsp.getVirtualDeviceInfoList().forEach(info -> {
+            for (VirtualDeviceInfo info : rsp.getVirtualDeviceInfoList()) {
                 if (info.isValid()) {
                     vidManager.createOrUpdateVmResourceMetadata(info, vmUuid);
                     surviving.add(info.getResourceUuid());
+                    hasAuthoritativeDeviceInfo = true;
                 }
-            });
+            }
         }
 
         if (rsp.getNicInfos() != null) {
-            rsp.getNicInfos().forEach(info -> {
+            for (KVMAgentCommands.VmNicInfo info : rsp.getNicInfos()) {
                 VmNicInventory nic = (spec != null ? spec.getDestNics() : vm.getVmNics())
                         .stream()
                         .filter(vmNicInventory -> vmNicInventory.getMac().equals(info.getMacAddress()))
                         .findFirst()
                         .orElse(null);
                 if (nic == null) {
-                    return;
+                    continue;
                 }
 
                 vidManager.createOrUpdateVmResourceMetadata(new VirtualDeviceInfo(nic.getUuid(), info.getDeviceAddress()), vmUuid);
                 surviving.add(nic.getUuid());
-            });
+                hasAuthoritativeDeviceInfo = true;
+            }
+        } else {
+            // nicInfos is null => partial agent response; we do NOT have an
+            // authoritative nic snapshot. Preserve every known nic uuid of
+            // this VM so a prune step (triggered by other authoritative fields)
+            // cannot drop their address rows as collateral damage.
+            (spec != null ? spec.getDestNics() : vm.getVmNics())
+                    .forEach(n -> surviving.add(n.getUuid()));
         }
 
         if (rsp.getMemBalloonInfo() != null
@@ -119,28 +135,21 @@ public class VirtualPciDeviceKvmExtensionPoint implements KVMStartVmExtensionPoi
             vidManager.createOrUpdateVmResourceMetadata(new VirtualDeviceInfo(vidManager.MEM_BALLOON_UUID,
                     DeviceAddress.fromString(rsp.getMemBalloonInfo().getDeviceAddress().toString())), vmUuid);
             surviving.add(vidManager.MEM_BALLOON_UUID);
+            hasAuthoritativeDeviceInfo = true;
         }
 
-        // differential prune: drop stale address-only rows (metadataClass IS NULL)
-        // whose resourceUuid is no longer present in the libvirt domain. This keeps
-        // DB state consistent after devices like cdrom get detached/deleted while
-        // the VM was stopped. Rows written by other extension points (with non-null
-        // metadataClass) are preserved.
+        // Differential prune of stale address-only rows (metadataClass IS NULL)
+        // whose resourceUuid is no longer present in the libvirt domain, so DB
+        // state stays consistent after devices (e.g. cdrom) are detached while
+        // the VM is stopped. Rows owned by other extension points (non-null
+        // metadataClass) are untouched.
         //
-        // Guard: only prune when the agent response actually carries an
-        // authoritative device snapshot. A response with all three device
-        // fields empty/null is not authoritative (e.g. certain mocked or
-        // partial agent replies) and must not be used as the basis for prune,
-        // otherwise legitimate metadata rows get wiped.
-        boolean hasAuthoritativeDeviceInfo =
-                (rsp.getVirtualDeviceInfoList() != null && !rsp.getVirtualDeviceInfoList().isEmpty())
-                        || (rsp.getNicInfos() != null && !rsp.getNicInfos().isEmpty())
-                        || (rsp.getMemBalloonInfo() != null
-                                && rsp.getMemBalloonInfo().getDeviceAddress() != null
-                                && !StringUtils.isEmpty(rsp.getMemBalloonInfo().getDeviceAddress().toString()));
+        // Guard: only prune when the response actually delivered authoritative
+        // device info. An empty / all-invalid reply gives no ground truth; we
+        // must not treat absence-of-data as proof-of-deletion.
         if (!hasAuthoritativeDeviceInfo) {
             logger.debug(String.format(
-                    "skip pruneStaleDeviceMetadata for vm[%s]: response has no authoritative device info",
+                    "skip pruneStaleDeviceMetadata for vm[%s]: empty device snapshot",
                     vmUuid));
             return;
         }
