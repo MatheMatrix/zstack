@@ -131,8 +131,9 @@ def check_commit_msg(file_path):
     full_lines = 0
     FAIL = False
 
-    jira_patterns = [r"\bZSTAC-\d+\b", r"\bZSTACK-\d+\b", r"\bMINI-\d+\b", 
-                     r"\bZOPS-\d+\b", r"\bZHCI-\d+\b", r"\bZSV-\d+\b"]
+    jira_patterns = [r"\bZSTAC-\d+\b", r"\bZSTACK-\d+\b", r"\bMINI-\d+\b",
+                     r"\bZOPS-\d+\b", r"\bZHCI-\d+\b", r"\bZSV-\d+\b",
+                     r"\bZCF-\d+\b", r"\bAIOS-\d+\b"]
     with open(file_path, 'r', encoding='utf8') as f:
         lines = f.readlines()
         full_lines = len(lines)
