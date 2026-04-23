@@ -141,7 +141,7 @@ public class VolumeCascadeExtension extends AbstractAsyncCascadeExtension {
             }
 
             volumeUuids = ResourceHelper.findOwnResourceUuidList(VolumeEO.class, auuids,
-                    q -> q.eq(VolumeVO_.type, VolumeType.Data));
+                    q -> q.in(VolumeVO_.type, Arrays.asList(VolumeType.Data, VolumeType.Memory)));
             return volumeUuids;
         }
 
@@ -168,7 +168,7 @@ public class VolumeCascadeExtension extends AbstractAsyncCascadeExtension {
                 List<String> psUuids = CollectionUtils.transform(pinvs, PrimaryStorageInventory::getUuid);
 
                 SimpleQuery<VolumeVO> q = dbf.createQuery(VolumeVO.class);
-                q.add(VolumeVO_.type, Op.EQ, VolumeType.Data);
+                q.add(VolumeVO_.type, Op.IN, Arrays.asList(VolumeType.Data, VolumeType.Memory));
                 q.add(VolumeVO_.primaryStorageUuid, Op.IN, psUuids);
                 List<VolumeVO> vos = q.list();
                 return toVolumeDeletionStruct(action, vos);
@@ -176,7 +176,8 @@ public class VolumeCascadeExtension extends AbstractAsyncCascadeExtension {
                 final List<String> auuids = CollectionUtils.transform(action.getParentIssuerContext(), AccountInventory::getUuid);
 
                 List<VolumeVO> vos = ResourceHelper.findOwnResources(VolumeVO.class, auuids);
-                vos.removeIf(volume -> volume.getType() != VolumeType.Data);
+                vos.removeIf(volume -> volume.getType() != VolumeType.Data
+                        && volume.getType() != VolumeType.Memory);
 
                 if (!vos.isEmpty()) {
                     return toVolumeDeletionStruct(action, vos);
