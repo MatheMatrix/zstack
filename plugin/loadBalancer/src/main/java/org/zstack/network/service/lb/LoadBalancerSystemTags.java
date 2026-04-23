@@ -87,4 +87,7 @@ public class LoadBalancerSystemTags {
 
     public static final String HTTP_COMPRESS_ALGOS_TOKEN = "httpCompressAlgos";
     public static PatternedSystemTag HTTP_COMPRESS_ALGOS= new PatternedSystemTag(String.format("httpCompressAlgos::{%s}", HTTP_COMPRESS_ALGOS_TOKEN), LoadBalancerListenerVO.class);
+
+    public static final String IPVS_MODE_TOKEN = "ipvsMode";
+    public static PatternedSystemTag IPVS_MODE = new PatternedSystemTag(String.format("ipvsMode::{%s}", IPVS_MODE_TOKEN), LoadBalancerListenerVO.class);
 }

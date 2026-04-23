@@ -779,12 +779,35 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
             validateAcl(msg.getAclUuids(),new ArrayList<>(), msg.getLoadBalancerUuid());
         }
 
-        insertTagIfNotExisting(
-                msg, LoadBalancerSystemTags.CONNECTION_IDLE_TIMEOUT,
-                LoadBalancerSystemTags.CONNECTION_IDLE_TIMEOUT.instantiateTag(
-                        map(e(LoadBalancerSystemTags.CONNECTION_IDLE_TIMEOUT_TOKEN, LoadBalancerGlobalConfig.CONNECTION_IDLE_TIMEOUT.value(Long.class)))
-                )
-        );
+        // Extract ipvsMode early to gate insertion of tags that are incompatible with IPVS listeners.
+        // Also apply IPVS_DEFAULT_MODE global config if operator has configured one and no explicit tag is given.
+        String earlyIpvsMode = null;
+        if (msg.getSystemTags() != null) {
+            for (String tag : msg.getSystemTags()) {
+                if (LoadBalancerSystemTags.IPVS_MODE.isMatch(tag)) {
+                    earlyIpvsMode = LoadBalancerSystemTags.IPVS_MODE.getTokenByTag(tag, LoadBalancerSystemTags.IPVS_MODE_TOKEN);
+                    break;
+                }
+            }
+        }
+        if (earlyIpvsMode == null || earlyIpvsMode.isEmpty()) {
+            String defaultMode = LoadBalancerGlobalConfig.IPVS_DEFAULT_MODE.value();
+            if (defaultMode != null && !defaultMode.isEmpty()) {
+                earlyIpvsMode = defaultMode;
+                insertTagIfNotExisting(msg, LoadBalancerSystemTags.IPVS_MODE,
+                        LoadBalancerSystemTags.IPVS_MODE.instantiateTag(
+                                map(e(LoadBalancerSystemTags.IPVS_MODE_TOKEN, defaultMode))));
+            }
+        }
+
+        if (earlyIpvsMode == null || earlyIpvsMode.isEmpty()) {
+            insertTagIfNotExisting(
+                    msg, LoadBalancerSystemTags.CONNECTION_IDLE_TIMEOUT,
+                    LoadBalancerSystemTags.CONNECTION_IDLE_TIMEOUT.instantiateTag(
+                            map(e(LoadBalancerSystemTags.CONNECTION_IDLE_TIMEOUT_TOKEN, LoadBalancerGlobalConfig.CONNECTION_IDLE_TIMEOUT.value(Long.class)))
+                    )
+            );
+        }
 
         insertTagIfNotExisting(
                 msg, LoadBalancerSystemTags.HEALTHY_THRESHOLD,
@@ -821,12 +844,14 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
                 )
         );
 
-        insertTagIfNotExisting(
-                msg, LoadBalancerSystemTags.MAX_CONNECTION,
-                LoadBalancerSystemTags.MAX_CONNECTION.instantiateTag(
-                        map(e(LoadBalancerSystemTags.MAX_CONNECTION_TOKEN, LoadBalancerGlobalConfig.MAX_CONNECTION.value(Long.class)))
-                )
-        );
+        if (earlyIpvsMode == null || earlyIpvsMode.isEmpty()) {
+            insertTagIfNotExisting(
+                    msg, LoadBalancerSystemTags.MAX_CONNECTION,
+                    LoadBalancerSystemTags.MAX_CONNECTION.instantiateTag(
+                            map(e(LoadBalancerSystemTags.MAX_CONNECTION_TOKEN, LoadBalancerGlobalConfig.MAX_CONNECTION.value(Long.class)))
+                    )
+            );
+        }
 
         insertTagIfNotExisting(
                 msg, LoadBalancerSystemTags.BALANCER_ALGORITHM,
@@ -868,7 +893,7 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
             }
         }
 
-        String algorithm = null, seessionPersistence = null, httpRedirectHttps = null, redirectPort = null, statusCode = null;
+        String algorithm = null, seessionPersistence = null, httpRedirectHttps = null, redirectPort = null, statusCode = null, ipvsMode = null;
         for (String tag : msg.getSystemTags()) {
             if (LoadBalancerSystemTags.BALANCER_ALGORITHM.isMatch(tag)) {
                 algorithm = LoadBalancerSystemTags.BALANCER_ALGORITHM.getTokenByTag(tag,
@@ -897,6 +922,10 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
                     throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_LB_10172,
                             "could not create the loadbalancer listener with systemTag httpCompressAlgos::disable, please remove this tag"));
                 }
+            }
+            if (LoadBalancerSystemTags.IPVS_MODE.isMatch(tag)) {
+                ipvsMode = LoadBalancerSystemTags.IPVS_MODE.getTokenByTag(tag,
+                        LoadBalancerSystemTags.IPVS_MODE_TOKEN);
             }
         }
 
@@ -1179,6 +1208,8 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
                 );
             }
         }
+
+        validateIpvsMode(msg.getLoadBalancerUuid(), ipvsMode, msg.getProtocol(), msg.getSystemTags(), algorithm, null);
     }
 
     private void validate(APIDeleteLoadBalancerListenerMsg msg) {
@@ -1192,6 +1223,85 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
 
         msg.setLoadBalancerUuid(lbUuid);
     }
+
+    private void validateIpvsMode(String lbUuid, String ipvsMode, String protocol, List<String> systemTags, String algorithm, String excludeListenerUuid) {
+        boolean isIpvs = ipvsMode != null && !ipvsMode.isEmpty();
+
+        // Always enforce consistency: all listeners on the same LB must use the same forwarding path
+        List<String> listenerUuids = Q.New(LoadBalancerListenerVO.class)
+                .select(LoadBalancerListenerVO_.uuid)
+                .eq(LoadBalancerListenerVO_.loadBalancerUuid, lbUuid)
+                .listValues();
+        for (String listenerUuid : listenerUuids) {
+            if (listenerUuid.equals(excludeListenerUuid)) {
+                continue;
+            }
+            String existingMode = LoadBalancerSystemTags.IPVS_MODE.getTokenByResourceUuid(listenerUuid, LoadBalancerSystemTags.IPVS_MODE_TOKEN);
+            boolean existingIsIpvs = existingMode != null && !existingMode.isEmpty();
+            if (isIpvs != existingIsIpvs) {
+                throw new ApiMessageInterceptionException(argerr(
+                        "cannot mix ipvs and non-ipvs (haproxy/gobetween) listeners on the same load balancer; " +
+                        "existing listener[uuid:%s] uses [%s]",
+                        listenerUuid, existingIsIpvs ? existingMode : "haproxy/gobetween"));
+            }
+            if (isIpvs && !ipvsMode.equals(existingMode)) {
+                throw new ApiMessageInterceptionException(argerr(
+                        "all listeners on the same load balancer must have the same ipvsMode; " +
+                        "listener[uuid:%s] has ipvsMode[%s] but the new listener specifies [%s]",
+                        listenerUuid, existingMode, ipvsMode));
+            }
+        }
+
+        if (!isIpvs) {
+            return;
+        }
+
+        // ipvsMode value must be recognized
+        if (!LoadBalancerConstants.IPVS_MODES.contains(ipvsMode)) {
+            throw new ApiMessageInterceptionException(argerr("invalid ipvsMode [%s], supported values: %s", ipvsMode, LoadBalancerConstants.IPVS_MODES));
+        }
+
+        // Only TCP/UDP listeners may use ipvs
+        if (!LB_PROTOCOL_TCP.equals(protocol) && !LB_PROTOCOL_UDP.equals(protocol)) {
+            throw new ApiMessageInterceptionException(argerr("ipvsMode is only supported for tcp/udp listeners, but protocol is [%s]", protocol));
+        }
+
+        // ipvs listeners forbid L7 features
+        for (String tag : systemTags) {
+            if (LoadBalancerSystemTags.HTTP_MODE.isMatch(tag)) {
+                throw new ApiMessageInterceptionException(argerr("ipvs listener does not support httpMode"));
+            }
+            if (LoadBalancerSystemTags.HTTP_REDIRECT_HTTPS.isMatch(tag)) {
+                throw new ApiMessageInterceptionException(argerr("ipvs listener does not support http redirect https"));
+            }
+            if (LoadBalancerSystemTags.SESSION_PERSISTENCE.isMatch(tag)) {
+                String sp = LoadBalancerSystemTags.SESSION_PERSISTENCE.getTokenByTag(tag, LoadBalancerSystemTags.SESSION_PERSISTENCE_TOKEN);
+                if (!LoadBalancerSessionPersistence.disable.toString().equals(sp)) {
+                    throw new ApiMessageInterceptionException(argerr("ipvs listener does not support session persistence"));
+                }
+            }
+            if (LoadBalancerSystemTags.COOKIE_NAME.isMatch(tag)) {
+                throw new ApiMessageInterceptionException(argerr("ipvs listener does not support cookie-based session persistence"));
+            }
+            if (LoadBalancerSystemTags.TCP_PROXYPROTOCOL.isMatch(tag)) {
+                throw new ApiMessageInterceptionException(argerr("ipvs listener does not support tcp proxy protocol"));
+            }
+            if (LoadBalancerSystemTags.MAX_CONNECTION.isMatch(tag)) {
+                throw new ApiMessageInterceptionException(argerr("ipvs listener does not support maxConnection"));
+            }
+            if (LoadBalancerSystemTags.CONNECTION_IDLE_TIMEOUT.isMatch(tag)) {
+                throw new ApiMessageInterceptionException(argerr("ipvs listener does not support connectionIdleTimeout"));
+            }
+        }
+
+        // balancerAlgorithm must be in IPVS whitelist when specified
+        if (algorithm != null && !LoadBalancerConstants.IPVS_ALLOWED_BALANCE_ALGORITHMS.contains(algorithm)) {
+            throw new ApiMessageInterceptionException(argerr(
+                    "balancerAlgorithm [%s] is not supported in ipvs mode; allowed values: %s",
+                    algorithm, LoadBalancerConstants.IPVS_ALLOWED_BALANCE_ALGORITHMS));
+        }
+    }
+
     private void validate(APIUpdateLoadBalancerListenerMsg msg) {
         String loadBalancerUuid = Q.New(LoadBalancerListenerVO.class).
                 select(LoadBalancerListenerVO_.loadBalancerUuid).
@@ -1199,6 +1309,20 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
                         getLoadBalancerListenerUuid()).findValue();
         msg.setLoadBalancerUuid(loadBalancerUuid);
         bus.makeTargetServiceIdByResourceUuid(msg, LoadBalancerConstants.SERVICE_ID, loadBalancerUuid);
+        // Validate ipvsMode consistency if the update carries a new ipvsMode tag
+        String newIpvsMode = null;
+        for (String tag : msg.getSystemTags()) {
+            if (LoadBalancerSystemTags.IPVS_MODE.isMatch(tag)) {
+                newIpvsMode = LoadBalancerSystemTags.IPVS_MODE.getTokenByTag(tag, LoadBalancerSystemTags.IPVS_MODE_TOKEN);
+            }
+        }
+        if (newIpvsMode != null) {
+            String protocol = Q.New(LoadBalancerListenerVO.class)
+                    .select(LoadBalancerListenerVO_.protocol)
+                    .eq(LoadBalancerListenerVO_.uuid, msg.getLoadBalancerListenerUuid())
+                    .findValue();
+            validateIpvsMode(loadBalancerUuid, newIpvsMode, protocol, msg.getSystemTags(), null, msg.getLoadBalancerListenerUuid());
+        }
     }
 
     private void validate(APIAddCertificateToLoadBalancerListenerMsg msg) {

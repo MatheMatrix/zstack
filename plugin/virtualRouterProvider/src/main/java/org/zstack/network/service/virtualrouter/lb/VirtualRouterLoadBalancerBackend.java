@@ -278,6 +278,11 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
 
         boolean enableStatsLog;
 
+        // IPVS fields: populated from ipvsMode systemTag; empty string = haproxy/gobetween path
+        String ipvsMode;       // "dr" | "fullnat" | ""
+        String scheduler;      // "rr" | "wrr" | "lc" | "sh" | ""
+        String connectionType; // "-g" (DR) | "-m" (fullnat) | ""
+
         public static class ServerGroup {
             private String name;
             private String serverGroupUuid;
@@ -525,6 +530,30 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
         public void setVipL3Uuid(String vipL3Uuid) {
             this.vipL3Uuid = vipL3Uuid;
         }
+
+        public String getIpvsMode() {
+            return ipvsMode;
+        }
+
+        public void setIpvsMode(String ipvsMode) {
+            this.ipvsMode = ipvsMode;
+        }
+
+        public String getScheduler() {
+            return scheduler;
+        }
+
+        public void setScheduler(String scheduler) {
+            this.scheduler = scheduler;
+        }
+
+        public String getConnectionType() {
+            return connectionType;
+        }
+
+        public void setConnectionType(String connectionType) {
+            this.connectionType = connectionType;
+        }
     }
 
     public static class RefreshLbCmd extends AgentCommand {
@@ -657,6 +686,23 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
             return rc.getResourceConfigValue(to.getLbUuid(), boolean.class);
         } else {
             return false;
+        }
+    }
+
+    // Maps ZStack balancerAlgorithm names to IPVS scheduler names (1:1 mapping)
+    private static String mapBalancerAlgorithmToIpvsScheduler(String algorithm) {
+        String configDefault = LoadBalancerGlobalConfig.IPVS_DEFAULT_SCHEDULER.value();
+        String fallback = (configDefault != null && !configDefault.isEmpty())
+                ? configDefault : LoadBalancerConstants.IPVS_SCHEDULER_RR;
+        if (algorithm == null) {
+            return fallback;
+        }
+        switch (algorithm) {
+            case LoadBalancerConstants.BALANCE_ALGORITHM_ROUND_ROBIN:        return LoadBalancerConstants.IPVS_SCHEDULER_RR;
+            case LoadBalancerConstants.BALANCE_ALGORITHM_WEIGHT_ROUND_ROBIN: return LoadBalancerConstants.IPVS_SCHEDULER_WRR;
+            case LoadBalancerConstants.BALANCE_ALGORITHM_LEAST_CONN:         return LoadBalancerConstants.IPVS_SCHEDULER_LC;
+            case LoadBalancerConstants.BALANCE_ALGORITHM_LEAST_SOURCE:       return LoadBalancerConstants.IPVS_SCHEDULER_SH;
+            default: return fallback;
         }
     }
 
@@ -903,6 +949,21 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
                 }
                 if (vip6 != null) {
                     to.setVip6(vip6.getIp());
+                }
+
+                // Populate IPVS fields from ipvsMode systemTag
+                String ipvsMode = LoadBalancerSystemTags.IPVS_MODE.getTokenByResourceUuid(l.getUuid(), LoadBalancerSystemTags.IPVS_MODE_TOKEN);
+                if (ipvsMode != null && !ipvsMode.isEmpty()) {
+                    to.setIpvsMode(ipvsMode);
+                    // Map balancerAlgorithm tag to IPVS scheduler name
+                    String balancerAlgorithm = LoadBalancerSystemTags.BALANCER_ALGORITHM.getTokenByResourceUuid(l.getUuid(), LoadBalancerSystemTags.BALANCER_ALGORITHM_TOKEN);
+                    to.setScheduler(mapBalancerAlgorithmToIpvsScheduler(balancerAlgorithm));
+                    // Set connection type flag
+                    if (LoadBalancerConstants.IPVS_MODE_DR.equals(ipvsMode)) {
+                        to.setConnectionType(LoadBalancerConstants.IPVS_CONNECTION_TYPE_DR);
+                    } else if (LoadBalancerConstants.IPVS_MODE_FULLNAT.equals(ipvsMode)) {
+                        to.setConnectionType(LoadBalancerConstants.IPVS_CONNECTION_TYPE_FULLNAT);
+                    }
                 }
                 to.setSecurityPolicyType(l.getSecurityPolicyType());
                 if (l.getCertificateRefs() != null && !l.getCertificateRefs().isEmpty()) {

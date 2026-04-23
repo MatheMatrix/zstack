@@ -109,4 +109,20 @@
         <defaultValue>40</defaultValue>
         <type>java.lang.Long</type>
     </config>
+
+    <config>
+        <category>loadBalancer</category>
+        <name>ipvs.defaultMode</name>
+        <description>Default IPVS forwarding mode for IPVS listeners. Options: dr (Direct Routing), fullnat. Empty means haproxy/gobetween path.</description>
+        <defaultValue></defaultValue>
+        <type>java.lang.String</type>
+    </config>
+
+    <config>
+        <category>loadBalancer</category>
+        <name>ipvs.defaultScheduler</name>
+        <description>Default IPVS scheduling algorithm. Options: rr (round-robin), wrr (weighted round-robin), lc (least-connections), sh (source-hash).</description>
+        <defaultValue>rr</defaultValue>
+        <type>java.lang.String</type>
+    </config>
 </globalConfig>

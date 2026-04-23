@@ -171,6 +171,28 @@ public class LoadBalancerConstants {
 
     public static final String HEALTH_CHECK_TARGET_DEFAULT = "default";
 
+    // IPVS forwarding modes for LoadBalancerListenerVO systemTag "ipvsMode::{mode}"
+    public static final String IPVS_MODE_DR = "dr";
+    public static final String IPVS_MODE_FULLNAT = "fullnat";
+    public static final List<String> IPVS_MODES = asList(IPVS_MODE_DR, IPVS_MODE_FULLNAT);
+
+    // IPVS scheduler names that map 1:1 from BALANCE_ALGORITHM_* values
+    public static final String IPVS_SCHEDULER_RR = "rr";
+    public static final String IPVS_SCHEDULER_WRR = "wrr";
+    public static final String IPVS_SCHEDULER_LC = "lc";
+    public static final String IPVS_SCHEDULER_SH = "sh";
+    // Algorithms allowed when ipvsMode is set (enforced by interceptor)
+    public static final List<String> IPVS_ALLOWED_BALANCE_ALGORITHMS = asList(
+            BALANCE_ALGORITHM_ROUND_ROBIN,
+            BALANCE_ALGORITHM_WEIGHT_ROUND_ROBIN,
+            BALANCE_ALGORITHM_LEAST_CONN,
+            BALANCE_ALGORITHM_LEAST_SOURCE
+    );
+
+    // IPVS connection type flags passed to ipvsadm (-g = DR gate, -m = masquerade/fullnat)
+    public static final String IPVS_CONNECTION_TYPE_DR = "-g";
+    public static final String IPVS_CONNECTION_TYPE_FULLNAT = "-m";
+
     public static final List<VmInstanceConstant.VmOperation> vmOperationForDetachListener = asList(
             VmInstanceConstant.VmOperation.Destroy,
             VmInstanceConstant.VmOperation.DetachNic,

@@ -36,5 +36,9 @@ public class LoadBalancerGlobalConfig {
     @GlobalConfigValidation
     public static GlobalConfig HTTP_MODE = new GlobalConfig(CATEGORY, "httpMode");
 
+    @GlobalConfigValidation
+    public static GlobalConfig IPVS_DEFAULT_MODE = new GlobalConfig(CATEGORY, "ipvs.defaultMode");
 
+    @GlobalConfigValidation
+    public static GlobalConfig IPVS_DEFAULT_SCHEDULER = new GlobalConfig(CATEGORY, "ipvs.defaultScheduler");
 }

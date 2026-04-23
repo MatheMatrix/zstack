@@ -21,6 +21,8 @@ public class VyosKeepalivedCommands {
         public String category;
         @GrayVersion(value = "5.1.0")
         public Integer prefixLen;
+        @GrayVersion(value = "5.5.16")
+        public boolean bindToLo;
     }
 
     public static class VyosHaEnableCmd extends VirtualRouterCommands.AgentCommand {
