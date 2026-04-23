@@ -293,7 +293,34 @@ public class VmCascadeExtension extends AbstractAsyncCascadeExtension {
 
     private void handleDeletionCleanup(CascadeAction action, Completion completion) {
         dbf.eoCleanup(VmInstanceVO.class);
+        cleanupOrphanTemplatedVmInstance();
         completion.success();
+    }
+
+    private void cleanupOrphanTemplatedVmInstance() {
+        new SQLBatch() {
+            @Override
+            protected void scripts() {
+                sql("delete from TemplatedVmInstanceRefVO ref" +
+                        " where ref.vmInstanceUuid not in (select vm.uuid from VmInstanceEO vm)").execute();
+
+                List<String> orphanUuids = sql("select t.uuid from TemplatedVmInstanceVO t" +
+                        " where t.uuid not in (select vm.uuid from VmInstanceEO vm)", String.class).list();
+                if (orphanUuids.isEmpty()) {
+                    return;
+                }
+
+                sql(TemplatedVmInstanceRefVO.class)
+                        .in(TemplatedVmInstanceRefVO_.templatedVmInstanceUuid, orphanUuids)
+                        .hardDelete();
+                sql(TemplatedVmInstanceCacheVO.class)
+                        .in(TemplatedVmInstanceCacheVO_.templatedVmInstanceUuid, orphanUuids)
+                        .hardDelete();
+                sql(TemplatedVmInstanceVO.class)
+                        .in(TemplatedVmInstanceVO_.uuid, orphanUuids)
+                        .hardDelete();
+            }
+        }.execute();
     }
 
     protected List<DetachNicFromVmMsg> handleDeletionForIpRange(List<VmDeletionStruct> vminvs, List<IpRangeInventory> iprs) {
