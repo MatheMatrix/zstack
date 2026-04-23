@@ -279,60 +279,287 @@ public class KvmSecureBootManager extends AbstractService implements VmHostFileM
         List<SyncVmHostFilesFromHostMsg> syncContexts = new ArrayList<>();
     }
 
-    private void handle(SyncVmHostFilesFromHostMsg msg) {
-        KvmCommandSender sender = new KvmCommandSender(msg.getHostUuid())
-                .disableHostStatusCheck();
+    private static class SyncVmHostFilesContext {
+        KVMAgentCommands.ReadVmHostFileContentCmd cmd;
+        KVMAgentCommands.ReadVmHostFileContentResponse readRsp;
+        KVMAgentCommands.ReadVmHostFileContentResponse fallbackRsp;
+        long timeBeforeSync;
+        boolean needTpmFallback;
+        boolean tpmFallbackUsed;
+    }
 
-        KVMAgentCommands.ReadVmHostFileContentCmd cmd = new KVMAgentCommands.ReadVmHostFileContentCmd();
-        cmd.setHostFiles(new ArrayList<>());
+    private void handle(SyncVmHostFilesFromHostMsg msg) {
+        SyncVmHostFilesContext ctx = new SyncVmHostFilesContext();
+        ctx.cmd = new KVMAgentCommands.ReadVmHostFileContentCmd();
+        ctx.cmd.setHostFiles(new ArrayList<>());
         if (msg.getTpmStateFolder() != null) {
             KVMAgentCommands.VmHostFileTO to = new KVMAgentCommands.VmHostFileTO();
             to.setPath(msg.getTpmStateFolder());
             to.setType(VmHostFileType.TpmState.toString());
-            cmd.getHostFiles().add(to);
+            ctx.cmd.getHostFiles().add(to);
         }
         if (msg.getNvRamPath() != null) {
             KVMAgentCommands.VmHostFileTO to = new KVMAgentCommands.VmHostFileTO();
             to.setPath(msg.getNvRamPath());
             to.setType(VmHostFileType.NvRam.toString());
-            cmd.getHostFiles().add(to);
+            ctx.cmd.getHostFiles().add(to);
         }
-        long now = timeHelper.getCurrentTimeMillis();
+        ctx.timeBeforeSync = timeHelper.getCurrentTimeMillis();
 
         SyncVmHostFilesFromHostReply reply = new SyncVmHostFilesFromHostReply();
-        sender.send(cmd, READ_VM_HOST_FILE_PATH, wrapper -> {
-            KVMAgentCommands.ReadVmHostFileContentResponse readRsp = wrapper.getResponse(KVMAgentCommands.ReadVmHostFileContentResponse.class);
-            return readRsp.isSuccess() ? null :
-                    operr("failed to read file content response").withException(readRsp.getError());
-        }, new ReturnValueCompletion<KvmResponseWrapper>(msg) {
-            @Override
-            public void success(KvmResponseWrapper wrapper) {
-                KVMAgentCommands.ReadVmHostFileContentResponse readRsp = wrapper.getResponse(KVMAgentCommands.ReadVmHostFileContentResponse.class);
-                if (!readRsp.isSuccess()) {
-                    reply.setError(operr("failed to read file content response").withException(readRsp.getError()));
+
+        SimpleFlowChain.of("sync-vm-host-files-" + msg.getVmUuid())
+                .then("read-from-primary-path", trigger -> {
+                    KvmCommandSender sender = new KvmCommandSender(msg.getHostUuid())
+                            .disableHostStatusCheck();
+                    sender.send(ctx.cmd, READ_VM_HOST_FILE_PATH, wrapper -> {
+                        KVMAgentCommands.ReadVmHostFileContentResponse rsp =
+                                wrapper.getResponse(KVMAgentCommands.ReadVmHostFileContentResponse.class);
+                        return rsp.isSuccess() ? null :
+                                operr("failed to read file content response").withException(rsp.getError());
+                    }, new ReturnValueCompletion<KvmResponseWrapper>(trigger) {
+                        @Override
+                        public void success(KvmResponseWrapper wrapper) {
+                            ctx.readRsp = wrapper.getResponse(
+                                    KVMAgentCommands.ReadVmHostFileContentResponse.class);
+                            trigger.next();
+                        }
+
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            boolean hasTpmFallback = msg.getTpmStateFallbackFolder() != null
+                                    && msg.getTpmStateFolder() != null;
+                            if (hasTpmFallback) {
+                                logger.info(String.format(
+                                        "read from host failed entirely for VM[uuid=%s], " +
+                                                "will try TPM fallback path [%s]",
+                                        msg.getVmUuid(), msg.getTpmStateFallbackFolder()));
+                                ctx.readRsp = null;
+                                trigger.next();
+                            } else {
+                                trigger.fail(errorCode);
+                            }
+                        }
+                    });
+                })
+                .then("fallback-read-tpm-from-backup", trigger -> {
+                    if (msg.getTpmStateFallbackFolder() == null || msg.getTpmStateFolder() == null) {
+                        trigger.next();
+                        return;
+                    }
+
+                    // check whether TPM part specifically failed
+                    boolean tpmReadFailed;
+                    if (ctx.readRsp == null || !ctx.readRsp.isSuccess()) {
+                        tpmReadFailed = true;
+                    } else {
+                        KVMAgentCommands.VmHostFileTO tpmResult = findOneOrNull(
+                                ctx.readRsp.getHostFiles(),
+                                item -> msg.getTpmStateFolder().equals(item.getPath()));
+                        tpmReadFailed = tpmResult == null
+                                || tpmResult.getError() != null
+                                || tpmResult.getContentBase64() == null;
+                    }
+
+                    if (!tpmReadFailed) {
+                        trigger.next();
+                        return;
+                    }
+
+                    ctx.needTpmFallback = true;
+                    logger.info(String.format(
+                            "TPM state read failed from primary path [%s] for VM[uuid=%s], " +
+                                    "trying fallback path [%s]",
+                            msg.getTpmStateFolder(), msg.getVmUuid(),
+                            msg.getTpmStateFallbackFolder()));
+
+                    KvmCommandSender sender = new KvmCommandSender(msg.getHostUuid())
+                            .disableHostStatusCheck();
+                    KVMAgentCommands.ReadVmHostFileContentCmd fallbackCmd =
+                            new KVMAgentCommands.ReadVmHostFileContentCmd();
+                    KVMAgentCommands.VmHostFileTO fallbackTo = new KVMAgentCommands.VmHostFileTO();
+                    fallbackTo.setPath(msg.getTpmStateFallbackFolder());
+                    fallbackTo.setType(VmHostFileType.TpmState.toString());
+                    fallbackCmd.setHostFiles(Collections.singletonList(fallbackTo));
+
+                    sender.send(fallbackCmd, READ_VM_HOST_FILE_PATH, wrapper -> {
+                        KVMAgentCommands.ReadVmHostFileContentResponse rsp =
+                                wrapper.getResponse(KVMAgentCommands.ReadVmHostFileContentResponse.class);
+                        return rsp.isSuccess() ? null :
+                                operr("failed to read TPM from fallback path")
+                                        .withException(rsp.getError());
+                    }, new ReturnValueCompletion<KvmResponseWrapper>(trigger) {
+                        @Override
+                        public void success(KvmResponseWrapper wrapper) {
+                            ctx.fallbackRsp = wrapper.getResponse(
+                                    KVMAgentCommands.ReadVmHostFileContentResponse.class);
+                            trigger.next();
+                        }
+
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            logger.warn(String.format(
+                                    "TPM fallback read also failed for VM[uuid=%s] " +
+                                            "from [%s]: %s",
+                                    msg.getVmUuid(), msg.getTpmStateFallbackFolder(),
+                                    errorCode.getReadableDetails()));
+                            trigger.fail(errorCode);
+                        }
+                    });
+                })
+                .then("merge-tpm-fallback-result", trigger -> {
+                    if (!ctx.needTpmFallback) {
+                        trigger.next();
+                        return;
+                    }
+
+                    if (ctx.fallbackRsp == null || !ctx.fallbackRsp.isSuccess()) {
+                        trigger.fail(operr("failed to read TPM from fallback path [%s]",
+                                msg.getTpmStateFallbackFolder())
+                                .withException(ctx.fallbackRsp == null ? null
+                                        : ctx.fallbackRsp.getError()));
+                        return;
+                    }
+
+                    // validate fallback result
+                    KVMAgentCommands.VmHostFileTO fallbackResult = findOneOrNull(
+                            ctx.fallbackRsp.getHostFiles(),
+                            item -> VmHostFileType.TpmState.toString().equals(item.getType()));
+                    if (fallbackResult == null
+                            || fallbackResult.getError() != null
+                            || fallbackResult.getContentBase64() == null) {
+                        String detail = fallbackResult == null ? "no result" :
+                                (fallbackResult.getError() != null
+                                        ? fallbackResult.getError() : "empty content");
+                        trigger.fail(operr(
+                                "TPM fallback read from [%s] returned no valid content: %s",
+                                msg.getTpmStateFallbackFolder(), detail));
+                        return;
+                    }
+
+                    logger.info(String.format(
+                            "successfully read TPM state from fallback [%s] for VM[uuid=%s]",
+                            msg.getTpmStateFallbackFolder(), msg.getVmUuid()));
+
+                    // rewrite path to canonical so DB stores the correct path
+                    fallbackResult.setPath(msg.getTpmStateFolder());
+
+                    // merge: NvRam from original response + TPM from fallback
+                    KVMAgentCommands.ReadVmHostFileContentResponse mergedRsp =
+                            new KVMAgentCommands.ReadVmHostFileContentResponse();
+                    mergedRsp.setSuccess(true);
+                    List<KVMAgentCommands.VmHostFileTO> mergedFiles = new ArrayList<>();
+                    if (ctx.readRsp != null && ctx.readRsp.getHostFiles() != null) {
+                        for (KVMAgentCommands.VmHostFileTO f : ctx.readRsp.getHostFiles()) {
+                            if (!VmHostFileType.TpmState.toString().equals(f.getType())) {
+                                mergedFiles.add(f);
+                            }
+                        }
+                    }
+                    mergedFiles.add(fallbackResult);
+                    mergedRsp.setHostFiles(mergedFiles);
+                    ctx.readRsp = mergedRsp;
+
+                    // rebuild cmd to match merged response
+                    KVMAgentCommands.ReadVmHostFileContentCmd mergedCmd =
+                            new KVMAgentCommands.ReadVmHostFileContentCmd();
+                    List<KVMAgentCommands.VmHostFileTO> cmdFiles = new ArrayList<>();
+                    if (msg.getNvRamPath() != null) {
+                        KVMAgentCommands.VmHostFileTO nvTo = new KVMAgentCommands.VmHostFileTO();
+                        nvTo.setPath(msg.getNvRamPath());
+                        nvTo.setType(VmHostFileType.NvRam.toString());
+                        cmdFiles.add(nvTo);
+                    }
+                    KVMAgentCommands.VmHostFileTO tpmTo = new KVMAgentCommands.VmHostFileTO();
+                    tpmTo.setPath(msg.getTpmStateFolder());
+                    tpmTo.setType(VmHostFileType.TpmState.toString());
+                    cmdFiles.add(tpmTo);
+                    mergedCmd.setHostFiles(cmdFiles);
+                    ctx.cmd = mergedCmd;
+
+                    ctx.tpmFallbackUsed = true;
+                    trigger.next();
+                })
+                .then("persist-to-db", trigger -> {
+                    if (ctx.readRsp == null || !ctx.readRsp.isSuccess()) {
+                        reply.setError(operr(
+                                "no valid read response to persist for VM[uuid=%s]",
+                                msg.getVmUuid()));
+                        trigger.next();
+                        return;
+                    }
+
+                    ErrorCode error;
+                    if (msg.isSyncToBackup()) {
+                        error = syncToBackupFiles(msg, ctx.readRsp);
+                    } else {
+                        error = syncToHostFiles(msg, ctx.cmd, ctx.readRsp,
+                                ctx.timeBeforeSync);
+                    }
+
+                    if (error != null) {
+                        reply.setError(error);
+                    }
+                    trigger.next();
+                })
+                .then("cleanup-tpm-backup", trigger -> {
+                    if (!ctx.tpmFallbackUsed) {
+                        trigger.next();
+                        return;
+                    }
+
+                    cleanupTpmBackupOnHost(msg.getHostUuid(), msg.getVmUuid(),
+                            msg.getTpmStateFallbackFolder());
+                    trigger.next();
+                })
+                .propagateExceptionTo(msg)
+                .done(() -> bus.reply(msg, reply))
+                .error(errorCode -> {
+                    reply.setError(errorCode);
                     bus.reply(msg, reply);
-                    return;
+                })
+                .start();
+    }
+
+    private void cleanupTpmBackupOnHost(String hostUuid, String vmUuid, String backupPath) {
+        try {
+            KvmCommandSender sender = new KvmCommandSender(hostUuid)
+                    .disableHostStatusCheck();
+
+            KVMAgentCommands.VmHostFileTO deleteTo = new KVMAgentCommands.VmHostFileTO();
+            deleteTo.setPath(backupPath);
+            deleteTo.setType(VmHostFileType.TpmState.toString());
+            deleteTo.setOperation(VmHostFileOperation.Delete.toString());
+
+            KVMAgentCommands.WriteVmHostFileContentCmd deleteCmd =
+                    new KVMAgentCommands.WriteVmHostFileContentCmd();
+            deleteCmd.setHostFiles(Collections.singletonList(deleteTo));
+
+            sender.send(deleteCmd, WRITE_VM_HOST_FILE_PATH, wrapper -> {
+                KVMAgentCommands.WriteVmHostFileContentResponse rsp =
+                        wrapper.getResponse(KVMAgentCommands.WriteVmHostFileContentResponse.class);
+                return rsp.isSuccess() ? null :
+                        operr("failed to delete TPM backup").withException(rsp.getError());
+            }, new ReturnValueCompletion<KvmResponseWrapper>(null) {
+                @Override
+                public void success(KvmResponseWrapper wrapper) {
+                    logger.debug(String.format(
+                            "cleaned up TPM backup at [%s] on host[uuid=%s] for VM[uuid=%s]",
+                            backupPath, hostUuid, vmUuid));
                 }
 
-                ErrorCode error;
-                if (msg.isSyncToBackup()) {
-                    error = syncToBackupFiles(msg, readRsp);
-                } else {
-                    error = syncToHostFiles(msg, cmd, readRsp, now);
+                @Override
+                public void fail(ErrorCode errorCode) {
+                    logger.warn(String.format(
+                            "failed to clean up TPM backup at [%s] on host[uuid=%s] " +
+                                    "for VM[uuid=%s]: %s. Will be overwritten on next stop.",
+                            backupPath, hostUuid, vmUuid, errorCode.getReadableDetails()));
                 }
-
-                if (error != null) {
-                    reply.setError(error);
-                }
-                bus.reply(msg, reply);
-            }
-
-            @Override
-            public void fail(ErrorCode errorCode) {
-                reply.setError(errorCode);
-                bus.reply(msg, reply);
-            }
-        });
+            });
+        } catch (Exception e) {
+            logger.warn(String.format("unexpected error cleaning up TPM backup for VM[uuid=%s]: %s",
+                    vmUuid, e.getMessage()), e);
+        }
     }
 
     private ErrorCode syncToHostFiles(SyncVmHostFilesFromHostMsg msg,

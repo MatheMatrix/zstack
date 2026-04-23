@@ -3421,6 +3421,7 @@ public class KVMAgentCommands {
         private long timeout;
         private boolean forceStopIfNoOperatingSystemDetected;
         private List<VmNicInventory> vmNics;
+        private List<VmHostFileBackupJob> tpmBackupJobs;
 
         public String getUuid() {
             return uuid;
@@ -3460,6 +3461,14 @@ public class KVMAgentCommands {
 
         public void setVmNics(List<VmNicInventory> vmNics) {
             this.vmNics = vmNics;
+        }
+
+        public List<VmHostFileBackupJob> getTpmBackupJobs() {
+            return tpmBackupJobs;
+        }
+
+        public void setTpmBackupJobs(List<VmHostFileBackupJob> tpmBackupJobs) {
+            this.tpmBackupJobs = tpmBackupJobs;
         }
     }
 

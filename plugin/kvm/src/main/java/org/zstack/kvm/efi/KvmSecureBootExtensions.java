@@ -43,6 +43,7 @@ import org.zstack.header.vm.additions.VmHostBackupFileVO;
 import org.zstack.header.vm.additions.VmHostBackupFileVO_;
 import org.zstack.header.vm.additions.VmHostFileContentVO;
 import org.zstack.header.vm.additions.VmHostFileContentVO_;
+import org.zstack.header.vm.additions.VmHostFileBackupJob;
 import org.zstack.header.vm.additions.VmHostFileOperation;
 import org.zstack.header.vm.additions.VmHostFileType;
 import org.zstack.header.vm.additions.VmHostFileVO;
@@ -57,9 +58,11 @@ import org.zstack.header.vm.devices.NvRamSpec;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.kvm.KVMAgentCommands;
 import org.zstack.kvm.KVMAgentCommands.*;
+import org.zstack.kvm.KVMException;
 import org.zstack.kvm.KVMGlobalConfig;
 import org.zstack.kvm.KVMHostInventory;
 import org.zstack.kvm.KVMStartVmExtensionPoint;
+import org.zstack.kvm.KVMStopVmExtensionPoint;
 import org.zstack.kvm.KvmCommandSender;
 import org.zstack.kvm.KvmResponseWrapper;
 import org.zstack.kvm.VolumeTO;
@@ -93,7 +96,8 @@ public class KvmSecureBootExtensions implements KVMStartVmExtensionPoint,
         VmInstanceMigrateExtensionPoint,
         VolumeSnapshotCreationExtensionPoint,
         BeforeHaStartVmInstanceExtensionPoint,
-        ConvertVmInstanceToTemplatedVmExtensionPoint {
+        ConvertVmInstanceToTemplatedVmExtensionPoint,
+        KVMStopVmExtensionPoint {
     private static final CLogger logger = Utils.getLogger(KvmSecureBootExtensions.class);
 
     @Autowired
@@ -612,6 +616,39 @@ public class KvmSecureBootExtensions implements KVMStartVmExtensionPoint,
     }
 
     @Override
+    public void beforeStopVmOnKvm(KVMHostInventory host, VmInstanceInventory vm,
+                                  KVMAgentCommands.StopVmCmd cmd) throws KVMException {
+        String vmUuid = vm.getUuid();
+        String hostUuid = host.getUuid();
+
+        VmHostFileVO tpmFile = Q.New(VmHostFileVO.class)
+                .eq(VmHostFileVO_.vmInstanceUuid, vmUuid)
+                .eq(VmHostFileVO_.hostUuid, hostUuid)
+                .eq(VmHostFileVO_.type, VmHostFileType.TpmState)
+                .find();
+        if (tpmFile == null) {
+            return;
+        }
+
+        VmHostFileBackupJob job = new VmHostFileBackupJob();
+        job.setSrcPath(tpmFile.getPath());
+        job.setDestPath(buildTpmStateSnapshotBackupFilePath(vmUuid));
+        job.setType(VmHostFileType.TpmState.toString());
+        cmd.setTpmBackupJobs(Collections.singletonList(job));
+
+        logger.debug(String.format("set TPM backup jobs on StopVmCmd for VM[uuid:%s]: %s -> %s",
+                vmUuid, job.getSrcPath(), job.getDestPath()));
+    }
+
+    @Override
+    public void stopVmOnKvmSuccess(KVMHostInventory host, VmInstanceInventory vm) {
+    }
+
+    @Override
+    public void stopVmOnKvmFailed(KVMHostInventory host, VmInstanceInventory vm, ErrorCode err) {
+    }
+
+    @Override
     public void releaseVmResource(VmInstanceSpec spec, Completion completion) {
         if (spec.getDestHost() == null) {
             completion.success();
@@ -640,6 +677,7 @@ public class KvmSecureBootExtensions implements KVMStartVmExtensionPoint,
                 syncMsg.setNvRamPath(file.getPath());
             } else if (file.getType() == VmHostFileType.TpmState) {
                 syncMsg.setTpmStateFolder(file.getPath());
+                syncMsg.setTpmStateFallbackFolder(buildTpmStateSnapshotBackupFilePath(vmUuid));
             } else {
                 logger.warn(String.format("unsupported vm host file type: %s, skip syncing for VM[uuid:%s] from host[uuid:%s]",
                         file.getType(), vmUuid, hostUuid));
@@ -699,6 +737,7 @@ public class KvmSecureBootExtensions implements KVMStartVmExtensionPoint,
                 syncMsg.setNvRamPath(file.getPath());
             } else if (file.getType() == VmHostFileType.TpmState) {
                 syncMsg.setTpmStateFolder(file.getPath());
+                syncMsg.setTpmStateFallbackFolder(buildTpmStateSnapshotBackupFilePath(vmUuid));
             } else {
                 logger.warn(String.format(
                         "unsupported vm host file type: %s, skip syncing for VM[uuid:%s] from host[uuid:%s]",
