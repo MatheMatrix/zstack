@@ -91,6 +91,24 @@ public class IPv6Utils {
     }
 
     /**
+     * 格式化 ip:port，用于 Ceph monAddr 等场景。
+     * <pre>
+     * buildAddr("192.168.1.1", 6789)  → "192.168.1.1:6789"
+     * buildAddr("2001:db8::1", 6789)  → "[2001:db8::1]:6789"
+     * </pre>
+     */
+    public static String buildAddr(String ip, int port) {
+        return bracketIpv6(ip) + ":" + port;
+    }
+
+    /**
+     * 格式化 ip:port（String port 重载），用于 Ceph monAddr 等场景。
+     */
+    public static String buildAddr(String ip, String port) {
+        return bracketIpv6(ip) + ":" + port;
+    }
+
+    /**
      * 校验 IP 是否可用作管理 IP（IPv4 或 IPv6，拒绝链路本地和 loopback）。
      * <pre>
      * 合法 IPv4               → true

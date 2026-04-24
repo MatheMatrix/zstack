@@ -19,6 +19,7 @@ import org.zstack.header.storage.primary.PrimaryStorageVO_;
 import org.zstack.header.vm.VmInstanceState;
 import org.zstack.storage.primary.PrimaryStorageSystemTags;
 import org.zstack.utils.DebugUtils;
+import org.zstack.utils.network.IPv6NetworkUtils;
 import org.zstack.utils.network.NetworkUtils;
 
 import javax.persistence.Tuple;
@@ -79,7 +80,7 @@ public class NfsApiParamChecker {
             throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10009, "invalid CIDR: %s", cidr));
         }
 
-        if (!NetworkUtils.isIpv4InCidr(ipAddr, cidr)) {
+        if (!NetworkUtils.isIpInCidr(ipAddr, cidr)) {
             throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_STORAGE_PRIMARY_NFS_10010, "IP address[%s] is not in CIDR[%s]", ipAddr, cidr));
         }
     }

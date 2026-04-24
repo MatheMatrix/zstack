@@ -2207,7 +2207,7 @@ public class KVMHost extends HostBase implements Host {
 
         final String[] ips = extraIps.split(",");
         for (String ip: ips) {
-            if (NetworkUtils.isIpv4InCidr(ip, cidr)) {
+            if (NetworkUtils.isIpInCidr(ip, cidr)) {
                 return ip;
             }
         }
@@ -6764,24 +6764,25 @@ public class KVMHost extends HostBase implements Host {
     }
 
     private boolean checkMigrateNetworkCidrOfHost(String cidr) {
-        if (NetworkUtils.isIpv4InCidr(self.getManagementIp(), cidr)) {
+        if (NetworkUtils.isIpInCidr(self.getManagementIp(), cidr)) {
             return true;
         }
 
         final String extraIps = HostSystemTags.EXTRA_IPS.getTokenByResourceUuid(
                 self.getUuid(), HostSystemTags.EXTRA_IPS_TOKEN);
         if (extraIps == null) {
-            logger.error(String.format("Host[uuid:%s] has no IPs in migrate network", self.getUuid()));
+            logger.warn(String.format("no IP matched CIDR[%s], fallback to managementIp[%s]", cidr, self.getManagementIp()));
             return false;
         }
 
         final String[] ips = extraIps.split(",");
         for (String ip: ips) {
-            if (NetworkUtils.isIpv4InCidr(ip, cidr)) {
+            if (NetworkUtils.isIpInCidr(ip, cidr)) {
                 return true;
             }
         }
 
+        logger.warn(String.format("no IP matched CIDR[%s], fallback to managementIp[%s]", cidr, self.getManagementIp()));
         return false;
     }
 

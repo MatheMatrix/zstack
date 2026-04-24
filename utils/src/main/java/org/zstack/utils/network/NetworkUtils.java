@@ -558,6 +558,16 @@ public class NetworkUtils {
         return isIpv4InRange(ipv4, info.getLowAddress(), info.getHighAddress());
     }
 
+    /**
+     * 判断 IP（IPv4 或 IPv6）是否属于指定 CIDR。
+     */
+    public static boolean isIpInCidr(String ip, String cidr) {
+        if (ip == null || cidr == null) return false;
+        if (isIpv4Address(ip)) return isIpv4InCidr(ip, cidr);
+        if (IPv6NetworkUtils.isIpv6Address(ip)) return IPv6NetworkUtils.isIpv6InCidrRange(ip, cidr);
+        return false;
+    }
+
     public static List<String> filterIpv4sInCidr(List<String> ipv4s, String cidr){
         DebugUtils.Assert(isCidr(cidr), String.format("%s is not a cidr", cidr));
         SubnetUtils.SubnetInfo info = getSubnetInfo(new SubnetUtils(cidr));
