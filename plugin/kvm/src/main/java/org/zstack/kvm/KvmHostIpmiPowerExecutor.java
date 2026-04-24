@@ -35,9 +35,6 @@ public class KvmHostIpmiPowerExecutor extends HostIpmiPowerExecutor implements C
                 String hostUuid = d.getInventory().getUuid();
                 String currentIpmiAddress = HostSystemTags.IPMI_ADDRESS.getTokenByResourceUuid(hostUuid, HostSystemTags.IPMI_ADDRESS_TOKEN);
                 HostPowerStatus status = HostPowerStatus.POWER_ON;
-                if (!NetworkUtils.isIpv4Address(currentIpmiAddress)) {
-                    currentIpmiAddress = null;
-                }
 
                 HostVO host = dbf.findByUuid(hostUuid, HostVO.class);
                 HostIpmiVO ipmi = host.getIpmi();
