@@ -98,6 +98,7 @@ import org.zstack.utils.data.SizeUnit;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 import org.zstack.utils.message.OperationChecker;
+import org.zstack.utils.network.IPv6NetworkUtils;
 import org.zstack.utils.network.NetworkUtils;
 import org.zstack.utils.path.PathUtil;
 import org.zstack.utils.ssh.Ssh;
@@ -4585,6 +4586,8 @@ public class KVMHost extends HostBase implements Host {
         cmd.setVmPortOff(rcf.getResourceConfigValue(VmGlobalConfig.VM_PORT_OFF, spec.getVmInventory().getUuid(), Boolean.class));
         cmd.setConsoleMode("vnc");
         cmd.setTimeout(TimeUnit.MINUTES.toSeconds(5));
+        String vncListenAddr = IPv6NetworkUtils.isIpv6Address(self.getManagementIp()) ? "::" : "0.0.0.0";
+        cmd.setVncListenAddress(vncListenAddr);
         cmd.setConsoleLogToFile(rcf.getResourceConfigValue(KVMGlobalConfig.REDIRECT_CONSOLE_LOG_TO_FILE, spec.getVmInventory().getUuid(), Boolean.class));
         if (spec.isCreatePaused()) {
             cmd.setCreatePaused(true);

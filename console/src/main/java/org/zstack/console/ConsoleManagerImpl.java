@@ -30,6 +30,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.vm.*;
 import org.zstack.utils.Utils;
+import org.zstack.utils.network.IPv6Utils;
 import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.Query;
@@ -125,12 +126,14 @@ public class ConsoleManagerImpl extends AbstractService implements ConsoleManage
             }
 
             private void overriddenConsoleProxyIP(ConsoleInventory consoleInventory) {
+                String ip;
                 if (!"0.0.0.0".equals(CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IP) &&
                         !"".equals(CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IP)) {
-                    consoleInventory.setHostname(CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IP);
+                    ip = CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IP;
                 } else {
-                    consoleInventory.setHostname(CoreGlobalProperty.UNIT_TEST_ON ? "127.0.0.1" : Platform.getManagementServerIp());
+                    ip = CoreGlobalProperty.UNIT_TEST_ON ? "127.0.0.1" : Platform.getManagementServerIp();
                 }
+                consoleInventory.setHostname(IPv6Utils.bracketIpv6(ip));
             }
 
             @Override

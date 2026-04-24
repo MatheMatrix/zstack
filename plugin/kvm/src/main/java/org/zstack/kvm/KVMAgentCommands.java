@@ -1872,6 +1872,8 @@ public class KVMAgentCommands {
         private Map<String, String> qxlMemory;
         @GrayVersion(value = "5.0.0")
         private List<String> spiceChannels;
+        @GrayVersion(value = "5.5.18")
+        private String vncListenAddress;
 
         public String getConsoleMode() {
             return consoleMode;
@@ -1935,6 +1937,14 @@ public class KVMAgentCommands {
 
         public void setSpiceChannels(List<String> spiceChannels) {
             this.spiceChannels = spiceChannels;
+        }
+
+        public String getVncListenAddress() {
+            return vncListenAddress;
+        }
+
+        public void setVncListenAddress(String vncListenAddress) {
+            this.vncListenAddress = vncListenAddress;
         }
     }
 
