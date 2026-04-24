@@ -47,6 +47,8 @@ import org.zstack.utils.IptablesUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.utils.network.IPv6NetworkUtils;
+import org.zstack.utils.network.IPv6Utils;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -63,6 +65,8 @@ import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class RESTFacadeImpl implements RESTFacade {
     private static final CLogger logger = Utils.getSafeLogger(RESTFacadeImpl.class);
+    private static final java.util.regex.Pattern BARE_IPV6_URL_PATTERN = java.util.regex.Pattern.compile(
+            "^(https?)://([0-9a-fA-F][0-9a-fA-F:]{2,37}[0-9a-fA-F]):(\\d+)(/.*)?");
     
     @Autowired
     private ThreadFacade thdf;
@@ -194,13 +198,13 @@ public class RESTFacadeImpl implements RESTFacade {
 
         String url;
         if ("".equals(path) || path == null) {
-            url = String.format("http://%s:%s", callbackHostName, port);
+            url = IPv6Utils.buildUrl(callbackHostName, port);
         } else {
-            url = String.format("http://%s:%s/%s", callbackHostName, port, path);
+            url = IPv6Utils.buildUrl(callbackHostName, port) + "/" + path;
         }
         UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(url);
         ub.path(RESTConstant.CALLBACK_PATH);
-        callbackUrl = ub.build().toUriString();
+        callbackUrl = sanitizeCallbackUrl(ub.build().toUriString());
 
         ub = UriComponentsBuilder.fromHttpUrl(url);
         baseUrl = ub.build().toUriString();
@@ -975,6 +979,27 @@ public class RESTFacadeImpl implements RESTFacade {
     @Override
     public String getCallbackUrl() {
         return callbackUrl;
+    }
+
+    /**
+     * 检测并修复裸 IPv6（无方括号）的 callbackUrl。
+     * 正常路径下 URL 应由 {@link IPv6Utils#buildUrl} 生成，此方法作为兜底防御层。
+     * <p>
+     * 示例：http://2001:db8::1:8080/path → http://[2001:db8::1]:8080/path
+     */
+    private static String sanitizeCallbackUrl(String url) {
+        if (url == null) {
+            return null;
+        }
+        // 检测裸 IPv6 URL 模式：scheme://hex:chars:port/path（IP 未被方括号包裹）
+        java.util.regex.Matcher m = BARE_IPV6_URL_PATTERN.matcher(url);
+        if (m.matches() && IPv6NetworkUtils.isIpv6Address(m.group(2))) {
+            String corrected = m.group(1) + "://[" + m.group(2) + "]:" + m.group(3) +
+                    (m.group(4) != null ? m.group(4) : "");
+            logger.warn(String.format("bare IPv6 in callbackUrl, auto-corrected: %s -> %s", url, corrected));
+            return corrected;
+        }
+        return url;
     }
 
     @Override

@@ -15,6 +15,7 @@ import org.zstack.header.host.*;
 import org.zstack.header.message.APIMessage;
 import org.zstack.utils.ShellResult;
 import org.zstack.utils.ShellUtils;
+import org.zstack.utils.network.IPv6Utils;
 import org.zstack.utils.network.NetworkUtils;
 
 import static org.zstack.core.Platform.argerr;
@@ -121,9 +122,13 @@ public class HostApiInterceptor implements ApiMessageInterceptor {
     }
 
     private void validate(APIAddHostMsg msg) {
-        if (!NetworkUtils.isIpv4Address(msg.getManagementIp()) && !NetworkUtils.isHostname(msg.getManagementIp())) {
-            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_HOST_10113, "managementIp[%s] is neither an IPv4 address nor a valid hostname", msg.getManagementIp()));
+        String ip = msg.getManagementIp();
+        if (!NetworkUtils.isHostname(ip) && !IPv6Utils.isValidManagementIp(ip)) {
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_COMPUTE_HOST_10113,
+                    "managementIp[%s] is not a valid IPv4/IPv6 address or hostname", ip));
         }
+        // Normalize IPv6 to RFC 5952 compressed form; IPv4/hostname returned as-is
+        msg.setManagementIp(IPv6Utils.normalizeIpv6(ip));
     }
 
     private void validate(APIChangeHostStateMsg msg){

@@ -46,8 +46,17 @@ import org.zstack.utils.DebugUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.utils.network.IPv6NetworkUtils;
+import org.zstack.utils.network.NetworkUtils;
+
+import com.googlecode.ipv6.IPv6Address;
+import com.googlecode.ipv6.IPv6Network;
+import com.googlecode.ipv6.IPv6NetworkMask;
 
 import javax.persistence.Query;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -353,6 +362,62 @@ public class ApplianceVmFacadeImpl extends AbstractService implements ApplianceV
         return ret;
     }
 
+    /**
+     * F-009: 从本机网卡中选取与 VR 管理网 CIDR 同子网的 MN IP。
+     * 支持 IPv4/IPv6 双栈；若无匹配则回退到 Platform.getManagementServerIp()。
+     *
+     * @param vrManagementCidr VR 管理网的网络 CIDR，例如 "192.168.1.0/24" 或 "2001:db8::/64"
+     * @return 选定的 MN IP（裸地址，无括号）
+     */
+    private String getMnIpForVr(String vrManagementCidr) {
+        if (vrManagementCidr == null || vrManagementCidr.isEmpty()) {
+            logger.warn("VR management CIDR is null/empty, fallback to getManagementServerIp()");
+            return Platform.getManagementServerIp();
+        }
+        try {
+            Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
+            if (ifaces != null) {
+                while (ifaces.hasMoreElements()) {
+                    NetworkInterface iface = ifaces.nextElement();
+                    if (iface.isLoopback() || !iface.isUp()) {
+                        continue;
+                    }
+                    Enumeration<InetAddress> addrs = iface.getInetAddresses();
+                    while (addrs.hasMoreElements()) {
+                        InetAddress addr = addrs.nextElement();
+                        if (addr.isLoopbackAddress() || addr.isLinkLocalAddress()) {
+                            continue;
+                        }
+                        String ipStr = addr.getHostAddress();
+                        try {
+                            boolean inCidr;
+                            if (IPv6NetworkUtils.isIpv6Address(ipStr)) {
+                                inCidr = IPv6NetworkUtils.isIpv6InCidrRange(ipStr, vrManagementCidr);
+                            } else {
+                                inCidr = NetworkUtils.isIpv4InCidr(ipStr, vrManagementCidr);
+                            }
+                            if (inCidr) {
+                                logger.debug(String.format(
+                                        "selected MN IP [%s] matching VR management CIDR [%s]",
+                                        ipStr, vrManagementCidr));
+                                return ipStr;
+                            }
+                        } catch (Exception ignore) {
+                            // CIDR 类型与 IP 类型不匹配时忽略
+                        }
+                    }
+                }
+            }
+        } catch (SocketException e) {
+            logger.warn(String.format("failed to enumerate network interfaces: %s", e.getMessage()));
+        }
+        String fallback = Platform.getManagementServerIp();
+        logger.warn(String.format(
+                "no MN IP matched VR management CIDR [%s], fallback to [%s]",
+                vrManagementCidr, fallback));
+        return fallback;
+    }
+
     private void fillVfNicBootstrapInfo(VmNicInventory nic, ApplianceVmNicTO to) {
         to.setBondMode("none");
         for (ApplianceVmNicBootstrapExtensionPoint ext : nicBootstrapExtensions) {
@@ -461,7 +526,35 @@ public class ApplianceVmFacadeImpl extends AbstractService implements ApplianceV
         String publicKey = asf.getPublicKey();
         ret.put(ApplianceVmConstant.BootstrapParams.publicKey.toString(), publicKey);
         ret.put(BootstrapParams.uuid.toString(), spec.getVmInventory().getUuid());
-        ret.put(BootstrapParams.managementNodeIp.toString(), Platform.getManagementServerIp());
+
+        // F-009: 根据 VR 管理网 CIDR 选取与其同子网的 MN IP，支持多 IP/双栈主机
+        String vrMgmtCidr;
+        if (IPv6NetworkUtils.isIpv6Address(mgmtNic.getIp())) {
+            int prefixLen = 64;
+            try {
+                String netmask = mgmtNic.getNetmask();
+                if (netmask != null) {
+                    try {
+                        prefixLen = Integer.parseInt(netmask.trim());
+                    } catch (NumberFormatException ignore) {
+                        if (IPv6NetworkUtils.isIpv6Address(netmask)) {
+                            prefixLen = IPv6NetworkMask.fromAddress(IPv6Address.fromString(netmask)).asPrefixLength();
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+                logger.warn(String.format("failed to parse IPv6 netmask [%s] for VR nic IP [%s], using default prefix /64",
+                        mgmtNic.getNetmask(), mgmtNic.getIp()));
+            }
+            String networkAddr = IPv6Network.fromAddressAndMask(
+                    IPv6Address.fromString(mgmtNic.getIp()),
+                    IPv6NetworkMask.fromPrefixLength(prefixLen)).getFirst().toString();
+            vrMgmtCidr = networkAddr + "/" + prefixLen;
+        } else {
+            vrMgmtCidr = NetworkUtils.getCidrFromIpMask(mgmtNic.getIp(), mgmtNic.getNetmask());
+        }
+        String mnIp = getMnIpForVr(vrMgmtCidr);
+        ret.put(BootstrapParams.managementNodeIp.toString(), mnIp);
         ret.put(BootstrapParams.managementNodeCidr.toString(), Platform.getManagementServerCidr());
         /* this is only used by ApplianceVmPrepareBootstrapInfoExtensionPoint extension point, will be deleted after extension point */
         ret.put(BootstrapParams.additionalL3Uuids.toString(), additionalNics.stream().map(VmNicInventory::getL3NetworkUuid).collect(Collectors.toList()));
