@@ -53,11 +53,14 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import com.googlecode.ipv6.IPv6Network;
 import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import org.zstack.core.config.NetworkGlobalConfig;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -74,8 +77,8 @@ public class Platform {
 
     private static ComponentLoader loader;
     private static String msId;
-    private static String managementServerIp;
-    private static String managementServerCidr;
+    private static volatile String managementServerIp;
+    private static volatile String managementServerCidr;
     private static MessageSource messageSource;
     private static String encryptionKey = EncryptRSA.generateKeyString("ZStack open source");
     private static EncryptRSA rsa = new EncryptRSA();
@@ -395,6 +398,17 @@ public class Platform {
         }
     }
 
+    /**
+     * F-010: JGroups initial_hosts IPv6 括号修复。
+     * IPv6 地址在 JGroups 中须使用 [addr][port] 格式，IPv4 使用 addr[port] 格式。
+     */
+    private static String jgroupsAddr(String ip, String port) {
+        if (IPv6NetworkUtils.isIpv6Address(ip)) {
+            return "[" + ip + "][" + port + "]";
+        }
+        return ip + "[" + port + "]";
+    }
+
     private static void prepareHibernateSearchProperties() {
         if (!SearchGlobalProperty.SearchAutoRegister) {
             System.setProperty("Search.autoRegister", "false");
@@ -442,12 +456,12 @@ public class Platform {
             if (info.getPeerip() == null) {
                 throw new RuntimeException("the ip of peer node was null, please check the config of zsha2");
             }
-            SearchGlobalProperty.JGroupInfinispanInitialHosts = String.format("%s[%s],%s[%s]",
-                    info.getNodeip(), SearchGlobalProperty.JGroupInfinispanPort,
-                    info.getPeerip(), SearchGlobalProperty.JGroupInfinispanPort);
-            SearchGlobalProperty.JGroupBackendInitialHosts = String.format("%s[%s],%s[%s]",
-                    info.getNodeip(), SearchGlobalProperty.JGroupBackendPort,
-                    info.getPeerip(), SearchGlobalProperty.JGroupBackendPort);
+            SearchGlobalProperty.JGroupInfinispanInitialHosts =
+                    jgroupsAddr(info.getNodeip(), SearchGlobalProperty.JGroupInfinispanPort) + "," +
+                    jgroupsAddr(info.getPeerip(), SearchGlobalProperty.JGroupInfinispanPort);
+            SearchGlobalProperty.JGroupBackendInitialHosts =
+                    jgroupsAddr(info.getNodeip(), SearchGlobalProperty.JGroupBackendPort) + "," +
+                    jgroupsAddr(info.getPeerip(), SearchGlobalProperty.JGroupBackendPort);
             if (getGlobalProperty("JGroup.TcppingInitialHosts") == null) {
                 System.setProperty("JGroup.InfinispanInitialHosts", SearchGlobalProperty.JGroupInfinispanInitialHosts);
                 logger.debug(String.format("default JGroup.InfinispanInitialHosts to JGroup.InfinispanInitialHosts [%s]", SearchGlobalProperty.JGroupInfinispanInitialHosts));
@@ -788,6 +802,11 @@ public class Platform {
     private static String getManagementServerCidrInternal() {
         String mgtIp = getManagementServerIp();
 
+        // F-003: IPv6 管理 IP 走独立分支
+        if (IPv6NetworkUtils.isIpv6Address(mgtIp)) {
+            return getManagementServerCidrIpv6(mgtIp);
+        }
+
         /*# ip add | grep 10.86.4.132
             inet 10.86.4.132/23 brd 10.86.5.255 scope global br_eth0*/
         /* because Linux.shell can not run command with '|', pares the output of ip address in java  */
@@ -804,6 +823,53 @@ public class Platform {
         }
 
         return null;
+    }
+
+    /**
+     * F-003: 当管理 IP 为 IPv6 时，通过 'ip -6 addr show' 解析对应的网络 CIDR。
+     */
+    private static String getManagementServerCidrIpv6(String mnIp) {
+        try {
+            Linux.ShellResult result = Linux.shell("ip -6 addr show");
+            if (result.getExitCode() != 0) {
+                logger.warn(String.format("failed to run 'ip -6 addr show', exit code: %d", result.getExitCode()));
+                return null;
+            }
+            // 示例行: "    inet6 2001:db8::1/64 scope global"
+            for (String line : result.getStdout().split("\n")) {
+                String trimmed = line.trim();
+                if (!trimmed.startsWith("inet6 ")) {
+                    continue;
+                }
+                String[] parts = trimmed.split("\\s+");
+                if (parts.length < 2) {
+                    continue;
+                }
+                String cidr = parts[1]; // "2001:db8::1/64"
+                String[] ipPrefix = cidr.split("/");
+                if (ipPrefix.length != 2) {
+                    continue;
+                }
+                try {
+                    String addr  = InetAddress.getByName(ipPrefix[0]).getHostAddress();
+                    String mnNorm = InetAddress.getByName(mnIp).getHostAddress();
+                    if (addr.equals(mnNorm)) {
+                        int prefixLen = Integer.parseInt(ipPrefix[1]);
+                        // 计算网络地址前缀，例如 2001:db8::/64
+                        String networkAddr = IPv6Network.fromString(ipPrefix[0] + "/" + prefixLen)
+                                .getFirst().toString();
+                        return networkAddr + "/" + prefixLen;
+                    }
+                } catch (Exception ignore) {
+                    // 当前行解析失败，继续下一行
+                }
+            }
+            logger.warn(String.format("no inet6 entry found for MN IP: %s", mnIp));
+            return null;
+        } catch (Exception e) {
+            logger.warn(String.format("failed to get IPv6 CIDR for MN IP %s: %s", mnIp, e.getMessage()));
+            return null;
+        }
     }
 
     public static String getManagementServerCidr() {
@@ -827,32 +893,37 @@ public class Platform {
             return ip;
         }
 
-        Linux.ShellResult ret = Linux.shell("/sbin/ip route");
-        String defaultLine = null;
-        for (String s : ret.getStdout().split("\n")) {
-            if (s.contains("default via")) {
-                defaultLine = s;
-                break;
-            }
+        // F-002: 支持 IPv6 — 枚举所有网卡，按 PREFER_IPV6 配置决定优先级
+        boolean preferIpv6 = false;
+        try {
+            preferIpv6 = NetworkGlobalConfig.PREFER_IPV6.value(Boolean.class);
+        } catch (Exception ignored) {
+            // GlobalConfig 可能在静态初始化阶段还未就绪，安全降级为 false
         }
 
-        String err = "cannot get management server ip of this machine. there are three ways to get the ip.\n1) search for 'management.server.ip' java property\n2) search for 'ZSTACK_MANAGEMENT_SERVER_IP' environment variable\n3) search for default route printed out by '/sbin/ip route'\nhowever, all above methods failed";
-        if (defaultLine == null) {
-            throw new CloudRuntimeException(err);
-        }
+        List<InetAddress> ipv4List = new ArrayList<>();
+        List<InetAddress> ipv6List = new ArrayList<>();
 
         try {
-            Enumeration<NetworkInterface> nets = NetworkInterface.getNetworkInterfaces();
-            for (NetworkInterface iface : Collections.list(nets)) {
-                String name = iface.getName();
-                if (defaultLine.contains(name)) {
-                    for (InetAddress ia : Collections.list(iface.getInetAddresses())) {
-                        ip = ia.getHostAddress();
-                        if (ia instanceof Inet4Address) {
-                            // we prefer IPv4 address
-                            ip = ia.getHostAddress();
-                            break;
-                        }
+            Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
+            if (ifaces == null) {
+                throw new IllegalStateException("no available network interfaces");
+            }
+            while (ifaces.hasMoreElements()) {
+                NetworkInterface iface = ifaces.nextElement();
+                if (iface.isLoopback() || !iface.isUp()) {
+                    continue;
+                }
+                Enumeration<InetAddress> addrs = iface.getInetAddresses();
+                while (addrs.hasMoreElements()) {
+                    InetAddress addr = addrs.nextElement();
+                    if (addr.isLoopbackAddress() || addr.isLinkLocalAddress()) {
+                        continue;
+                    }
+                    if (addr instanceof Inet4Address) {
+                        ipv4List.add(addr);
+                    } else if (addr instanceof Inet6Address) {
+                        ipv6List.add(addr);
                     }
                 }
             }
@@ -860,12 +931,23 @@ public class Platform {
             throw new CloudRuntimeException(e);
         }
 
-        if (ip == null) {
-            throw new CloudRuntimeException(err);
+        List<InetAddress> preferred = preferIpv6 ? ipv6List : ipv4List;
+        List<InetAddress> fallback  = preferIpv6 ? ipv4List : ipv6List;
+
+        if (!preferred.isEmpty()) {
+            ip = preferred.get(0).getHostAddress();
+            logger.info(String.format("get management IP[%s] from network interface enumeration (prefer IPv%s)",
+                    ip, preferIpv6 ? "6" : "4"));
+            return ip;
+        }
+        if (!fallback.isEmpty()) {
+            ip = fallback.get(0).getHostAddress();
+            logger.info(String.format("get management IP[%s] from network interface enumeration (fallback IPv%s)",
+                    ip, preferIpv6 ? "4" : "6"));
+            return ip;
         }
 
-        logger.info(String.format("get management IP[%s] from default route[/sbin/ip route]", ip));
-        return ip;
+        throw new IllegalStateException("no available management IP found on any network interface");
     }
 
     public static String toI18nString(String code, Object... args) {
