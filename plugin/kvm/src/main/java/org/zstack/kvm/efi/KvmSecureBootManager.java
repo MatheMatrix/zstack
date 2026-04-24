@@ -509,26 +509,14 @@ public class KvmSecureBootManager extends AbstractService implements VmHostFileM
                             .delete();
                 }
 
-                if (!backupFilesToPersist.isEmpty()) {
-                    databaseFacade.persistCollection(backupFilesToPersist);
-                }
-                if (!contentsToPersist.isEmpty()) {
-                    databaseFacade.persistCollection(contentsToPersist);
-                }
+                // Persist skipped to avoid creating VmHostBackupFileVO entries (revert behavior).
+                // Intentionally do not persist backupFilesToPersist or contentsToPersist to DB.
+
             }
         }.execute();
 
-        for (VmHostBackupFileVO backup : backupFilesToPersist) {
-            VmHostFileVO source = backupFromMap.get(backup);
-            if (source != null) {
-                try {
-                    vmHostFileFactory.createBackupBase(backup).afterBackup(source);
-                } catch (Exception e) {
-                    logger.warn(String.format("failed to execute afterBackup hook for VmHostBackupFileVO[uuid:%s, type:%s]: %s",
-                            backup.getUuid(), backup.getType(), e.getMessage()), e);
-                }
-            }
-        }
+        // Skip afterBackup hooks since no VmHostBackupFileVO persisted.
+
 
         if (errors.isEmpty()) {
             return null;
