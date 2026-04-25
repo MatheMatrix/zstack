@@ -26,19 +26,19 @@ class IPv6UtilsCase extends SubCase {
 
     @Override
     void test() {
-        testBuildUrlIpv4()          // TP-008
-        testBuildUrlIpv6()          // TP-009
-        testBracketIpv6Idempotent() // TP-010
-        testNormalizeIpv6()         // TP-011
-        testIsValidMnIpLinkLocal()  // TP-012
-        testIsValidMnIpInvalid()    // TP-013
-        testIsValidMnIpValid()      // TP-014
+        testTP008_buildUrlIpv4()          // TP-008
+        testTP009_buildUrlIpv6()          // TP-009
+        testTP010_bracketIpv6Idempotent() // TP-010
+        testTP011_normalizeIpv6()         // TP-011
+        testTP012_isValidMnIpLinkLocal()  // TP-012
+        testTP013_isValidMnIpInvalid()    // TP-013
+        testTP014_isValidMnIpValid()      // TP-014
     }
 
     /**
      * TP-008: buildUrl IPv4 → "http://192.168.1.1:8080"（无括号）
      */
-    void testBuildUrlIpv4() {
+    void testTP008_buildUrlIpv4() {
         String url = IPv6Utils.buildUrl("192.168.1.1", 8080)
         assert url == "http://192.168.1.1:8080" : "TP-008: IPv4 URL should have no brackets, got: $url"
     }
@@ -46,7 +46,7 @@ class IPv6UtilsCase extends SubCase {
     /**
      * TP-009: buildUrl IPv6 → "http://[2001:db8::1]:8080"（含括号）
      */
-    void testBuildUrlIpv6() {
+    void testTP009_buildUrlIpv6() {
         String url = IPv6Utils.buildUrl("2001:db8::1", 8080)
         assert url == "http://[2001:db8::1]:8080" : "TP-009: IPv6 URL should be bracket-wrapped, got: $url"
     }
@@ -54,7 +54,7 @@ class IPv6UtilsCase extends SubCase {
     /**
      * TP-010: bracketIpv6 幂等——已有括号不重复加，结果仍为 "[2001:db8::1]"
      */
-    void testBracketIpv6Idempotent() {
+    void testTP010_bracketIpv6Idempotent() {
         // 已有括号时，结果不变（幂等）
         String result = IPv6Utils.bracketIpv6("[2001:db8::1]")
         assert result == "[2001:db8::1]" : "TP-010: bracketIpv6 should be idempotent for already-bracketed address, got: $result"
@@ -66,7 +66,7 @@ class IPv6UtilsCase extends SubCase {
     /**
      * TP-011: normalizeIpv6 全展开 "2001:0db8:0000:0000:0000:0000:0000:0001" → "2001:db8::1"
      */
-    void testNormalizeIpv6() {
+    void testTP011_normalizeIpv6() {
         String normalized = IPv6Utils.normalizeIpv6("2001:0db8:0000:0000:0000:0000:0000:0001")
         assert normalized == "2001:db8::1" : "TP-011: full-expanded IPv6 should normalize to compressed form, got: $normalized"
     }
@@ -74,7 +74,7 @@ class IPv6UtilsCase extends SubCase {
     /**
      * TP-012: isValidManagementIp("fe80::1") → false（链路本地地址）
      */
-    void testIsValidMnIpLinkLocal() {
+    void testTP012_isValidMnIpLinkLocal() {
         boolean result = IPv6Utils.isValidManagementIp("fe80::1")
         assert !result : "TP-012: fe80::1 (link-local) should not be a valid management IP"
     }
@@ -82,7 +82,7 @@ class IPv6UtilsCase extends SubCase {
     /**
      * TP-013: isValidManagementIp("not-an-ip!!") → false（非法格式）
      */
-    void testIsValidMnIpInvalid() {
+    void testTP013_isValidMnIpInvalid() {
         boolean result = IPv6Utils.isValidManagementIp("not-an-ip!!")
         assert !result : "TP-013: invalid IP string should not be a valid management IP"
     }
@@ -90,7 +90,7 @@ class IPv6UtilsCase extends SubCase {
     /**
      * TP-014: isValidManagementIp("2001:db8::1") → true（合法全球单播 IPv6）
      */
-    void testIsValidMnIpValid() {
+    void testTP014_isValidMnIpValid() {
         boolean result = IPv6Utils.isValidManagementIp("2001:db8::1")
         assert result : "TP-014: 2001:db8::1 should be a valid management IP"
     }

@@ -40,14 +40,14 @@ class MnIpv6M3Case extends SubCase {
 
     @Override
     void test() {
-        testIpmiIpv6AcceptedInInterceptor()       // TP-062
-        testIpmiAddressFullLengthIpv6()           // TP-064
-        testIpmiInvalidAddressRejected()          // TP-065
-        testConsoleBracketIpv6()                  // TP-066
-        testConsoleVncTokenUrl()                  // TP-067
-        testConsoleDualStackVip()                 // TP-069
-        testBmDpuCallbackIpBracket()              // TP-076
-        testColoQemuUrlIpv6Bracket()              // TP-077
+        testTP062_ipmiIpv6AcceptedInInterceptor()       // TP-062
+        testTP065_ipmiAddressFullLengthIpv6()           // TP-064
+        testTP066_ipmiInvalidAddressRejected()          // TP-065
+        testTP067_consoleBracketIpv6()                  // TP-066
+        testTP069_consoleVncTokenUrl()                  // TP-067
+        testTP064_consoleDualStackVip()                 // TP-069
+        testTP076_bmDpuCallbackIpBracket()              // TP-076
+        testTP077_coloQemuUrlIpv6Bracket()              // TP-077
     }
 
     // ===== TP-062: AddBaremetalChassisAction 接受 IPv6 IPMI 地址 =====
@@ -56,7 +56,7 @@ class MnIpv6M3Case extends SubCase {
      * TP-062: BaremetalChassisApiInterceptor.check() 逻辑：
      * IPv6 地址应满足 !isIpv4Address && isIpv6Address，即会被拦截器放行。
      */
-    void testIpmiIpv6AcceptedInInterceptor() {
+    void testTP062_ipmiIpv6AcceptedInInterceptor() {
         String ipv6 = "2001:db8:50::1"
 
         boolean isV4 = NetworkUtils.isIpv4Address(ipv6)
@@ -74,7 +74,7 @@ class MnIpv6M3Case extends SubCase {
     /**
      * TP-064: 完整展开的 IPv6 地址长度为 39 字符，NetworkUtils 应能正确识别。
      */
-    void testIpmiAddressFullLengthIpv6() {
+    void testTP065_ipmiAddressFullLengthIpv6() {
         String fullIpv6 = "2001:0db8:0000:0000:0000:0000:0000:0001"
 
         assert fullIpv6.length() == 39 : "TP-064: full IPv6 address should be 39 chars, got: ${fullIpv6.length()}"
@@ -89,7 +89,7 @@ class MnIpv6M3Case extends SubCase {
     /**
      * TP-065: "not-an-ip" 既不是 IPv4 也不是 IPv6，拦截器应拒绝（抛出异常）。
      */
-    void testIpmiInvalidAddressRejected() {
+    void testTP066_ipmiInvalidAddressRejected() {
         String invalid = "not-an-ip"
 
         boolean isV4 = NetworkUtils.isIpv4Address(invalid)
@@ -110,7 +110,7 @@ class MnIpv6M3Case extends SubCase {
      *   - IPv4     → 原样返回
      *   - 已括号   → 幂等（不重复加）
      */
-    void testConsoleBracketIpv6() {
+    void testTP067_consoleBracketIpv6() {
         // 裸 IPv6 → "[2001:db8::100]"
         String bareIpv6   = "2001:db8::100"
         String bracketed  = IPv6Utils.bracketIpv6(bareIpv6)
@@ -139,7 +139,7 @@ class MnIpv6M3Case extends SubCase {
      * TP-067: VNC Token URL 拼接时 hostname 使用 bracketIpv6 处理 IPv6，
      * 使 "[2001:db8::1]:5900" 格式合法。
      */
-    void testConsoleVncTokenUrl() {
+    void testTP069_consoleVncTokenUrl() {
         String ipv6Host = "2001:db8::1"
         int    vncPort  = 5900
 
@@ -160,7 +160,7 @@ class MnIpv6M3Case extends SubCase {
      * TP-069: CONSOLE_PROXY_OVERRIDDEN_IP 设置为 IPv6 时，
      * bracketIpv6 正确包裹，使 Console URL 格式合法。
      */
-    void testConsoleDualStackVip() {
+    void testTP064_consoleDualStackVip() {
         String overriddenIp = "2001:db8::100"  // 模拟 CONSOLE_PROXY_OVERRIDDEN_IP
 
         String bracketed = IPv6Utils.bracketIpv6(overriddenIp)
@@ -180,7 +180,7 @@ class MnIpv6M3Case extends SubCase {
      * TP-076: BM V2 DPU 使用 callbackIp 时，通过 bracketIpv6 保证 IPv6 带括号，
      * 使回调 URL 格式正确。
      */
-    void testBmDpuCallbackIpBracket() {
+    void testTP076_bmDpuCallbackIpBracket() {
         String callbackIp = "2001:db8::1"
 
         String bracketed = IPv6Utils.bracketIpv6(callbackIp)
@@ -200,7 +200,7 @@ class MnIpv6M3Case extends SubCase {
      * TP-077: COLO QEMU 下载 URL 拼接时，使用 bracketIpv6 处理 IPv6 地址，
      * 确保 URL 格式为 "http://[ip]:port/path"。
      */
-    void testColoQemuUrlIpv6Bracket() {
+    void testTP077_coloQemuUrlIpv6Bracket() {
         String ipv6   = "2001:db8::1"
         String port   = "8080"
         String path   = "/zstack/static/qemu.tar.gz"

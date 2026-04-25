@@ -36,12 +36,12 @@ class MnIpv6StorageMigrationCase extends SubCase {
 
     @Override
     void test() {
-        testNfsCidrIpv6NotRejected()             // TP-032
-        testIsIpInCidrIpv6Match()                // TP-033
-        testIsIpInCidrNoMatchFallback()          // TP-034
-        testBuildAddrIpv6BracketFormat()         // TP-035
-        testCephMonAddrIpv6Format()              // TP-036
-        testCheckMigrateNetworkCidrFallback()    // TP-038
+        testTP032_nfsCidrIpv6NotRejected()             // TP-032
+        testTP033_isIpInCidrIpv6Match()                // TP-033
+        testTP034_isIpInCidrNoMatchFallback()          // TP-034
+        testTP035_buildAddrIpv6BracketFormat()         // TP-035
+        testTP036_cephMonAddrIpv6Format()              // TP-036
+        testTP038_checkMigrateNetworkCidrFallback()    // TP-038
     }
 
     /**
@@ -49,7 +49,7 @@ class MnIpv6StorageMigrationCase extends SubCase {
      * 不会因 INVALID_ARGUMENT_ERROR 逻辑被拒绝。
      * 直接验证 CIDR 内的 IP 可通过 isIpInCidr 匹配。
      */
-    void testNfsCidrIpv6NotRejected() {
+    void testTP032_nfsCidrIpv6NotRejected() {
         String ipv6Cidr = "2001:db8::/64"
         String ipv6InCidr = "2001:db8::1"
 
@@ -62,7 +62,7 @@ class MnIpv6StorageMigrationCase extends SubCase {
     /**
      * TP-033: NetworkUtils.isIpInCidr() 通过 IPv6NetworkUtils 正确匹配 IPv6 地址。
      */
-    void testIsIpInCidrIpv6Match() {
+    void testTP033_isIpInCidrIpv6Match() {
         // TP-033: IPv6 IP 在 IPv6 CIDR 内 → true
         assert NetworkUtils.isIpInCidr("2001:db8::10", "2001:db8::/64") :
                 "TP-033: 2001:db8::10 should be in 2001:db8::/64"
@@ -78,7 +78,7 @@ class MnIpv6StorageMigrationCase extends SubCase {
     /**
      * TP-034: isIpInCidr() 无匹配时返回 false（fallback 逻辑）。
      */
-    void testIsIpInCidrNoMatchFallback() {
+    void testTP034_isIpInCidrNoMatchFallback() {
         // TP-034: IPv6 IP 对 IPv4 CIDR 不匹配
         assert !NetworkUtils.isIpInCidr("2001:db8::1", "192.168.0.0/24") :
                 "TP-034: IPv6 IP should not match IPv4 CIDR (fallback returns false)"
@@ -92,7 +92,7 @@ class MnIpv6StorageMigrationCase extends SubCase {
      * TP-035: Ceph MonUri 解析 [IPv6] 括号输入。
      * buildAddr：IPv6 → "[ip]:port"，IPv4 → "ip:port"
      */
-    void testBuildAddrIpv6BracketFormat() {
+    void testTP035_buildAddrIpv6BracketFormat() {
         // TP-035: IPv6 地址应加方括号
         String ipv6Addr = IPv6Utils.buildAddr("2001:db8::1", 6789)
         assert ipv6Addr == "[2001:db8::1]:6789" :
@@ -108,7 +108,7 @@ class MnIpv6StorageMigrationCase extends SubCase {
      * TP-036: Ceph monAddr 输出格式 [ipv6]:port。
      * 验证 IPv6Utils.buildAddr() 对 IPv6 加括号。
      */
-    void testCephMonAddrIpv6Format() {
+    void testTP036_cephMonAddrIpv6Format() {
         // TP-036: Ceph mon IPv6 地址格式 [ipv6]:port
         String monAddr = IPv6Utils.buildAddr("2001:db8:20::1", 6789)
         assert monAddr == "[2001:db8:20::1]:6789" :
@@ -124,7 +124,7 @@ class MnIpv6StorageMigrationCase extends SubCase {
      * TP-038: checkMigrateNetworkCidrOfHost fallback 逻辑。
      * IPv6 IP 在 IPv6 CIDR 内返回 true；不在范围内返回 false。
      */
-    void testCheckMigrateNetworkCidrFallback() {
+    void testTP038_checkMigrateNetworkCidrFallback() {
         // TP-038: IPv6 IP 在 IPv6 CIDR 内
         assert NetworkUtils.isIpInCidr("2001:db8::100", "2001:db8::/64") :
                 "TP-038: 2001:db8::100 should be in 2001:db8::/64"
