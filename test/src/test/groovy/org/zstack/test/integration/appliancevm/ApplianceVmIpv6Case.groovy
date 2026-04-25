@@ -46,11 +46,11 @@ class ApplianceVmIpv6Case extends SubCase {
     void test() {
         initReflection()
 
-        testMnCidrMatchReturnsMnIp()   // TP-025
-        testNullCidrFallback()         // TP-026
-        testUnmatchedCidrFallback()    // TP-027
-        testReturnedIpNoBrackets()     // TP-028
-        testInvalidCidrFallback()      // TP-029
+        testTP025_mnCidrMatchReturnsMnIp()   // TP-025
+        testTP026_nullCidrFallback()         // TP-026
+        testTP027_unmatchedCidrFallback()    // TP-027
+        testTP028_returnedIpNoBrackets()     // TP-028
+        testTP029_invalidCidrFallback()      // TP-029
     }
 
     /**
@@ -75,7 +75,7 @@ class ApplianceVmIpv6Case extends SubCase {
     /**
      * TP-025: 使用当前管理节点 CIDR 调用 getMnIpForVr，返回值不为 null，为合法 IP 地址。
      */
-    void testMnCidrMatchReturnsMnIp() {
+    void testTP025_mnCidrMatchReturnsMnIp() {
         String mnIp = Platform.getManagementServerIp()
         String mnCidr = Platform.getManagementServerCidr()
 
@@ -95,7 +95,7 @@ class ApplianceVmIpv6Case extends SubCase {
     /**
      * TP-026: null CIDR → fallback 到 Platform.getManagementServerIp()
      */
-    void testNullCidrFallback() {
+    void testTP026_nullCidrFallback() {
         String mnIp = Platform.getManagementServerIp()
         String fallback = callGetMnIpForVr(null)
         assert fallback != null : "TP-026: getMnIpForVr(null) should return non-null IP (fallback)"
@@ -107,7 +107,7 @@ class ApplianceVmIpv6Case extends SubCase {
     /**
      * TP-027: 不匹配的 CIDR → fallback 到 Platform.getManagementServerIp()
      */
-    void testUnmatchedCidrFallback() {
+    void testTP027_unmatchedCidrFallback() {
         String mnIp = Platform.getManagementServerIp()
         // 使用一个极不可能匹配当前主机任何网卡的 CIDR
         String unmatchedCidr = "10.99.88.0/24"
@@ -121,7 +121,7 @@ class ApplianceVmIpv6Case extends SubCase {
     /**
      * TP-028: getMnIpForVr 返回的 IP 地址不含方括号（裸地址，无 URL 包装）
      */
-    void testReturnedIpNoBrackets() {
+    void testTP028_returnedIpNoBrackets() {
         String fallbackIp = callGetMnIpForVr(null)
         assert fallbackIp != null : "TP-028: getMnIpForVr(null) should not return null"
         assert !fallbackIp.contains("[") && !fallbackIp.contains("]") :
@@ -132,7 +132,7 @@ class ApplianceVmIpv6Case extends SubCase {
     /**
      * TP-029: 无效 CIDR → fallback，不抛异常
      */
-    void testInvalidCidrFallback() {
+    void testTP029_invalidCidrFallback() {
         String mnIp = Platform.getManagementServerIp()
         String invalidCidr = "not-a-cidr"
 

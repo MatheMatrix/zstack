@@ -38,9 +38,9 @@ class VxlanIpv6Case extends SubCase {
 
     @Override
     void test() {
-        testVxlanAcceptsIpv6VtepIp()     // TP-039
-        testVtepVoColumnLength()         // TP-040
-        testInvalidVtepIpRejected()      // TP-041
+        testTP039_vxlanAcceptsIpv6VtepIp()     // TP-039
+        testTP040_vtepVoColumnLength()         // TP-040
+        testTP041_invalidVtepIpRejected()      // TP-041
     }
 
     /**
@@ -48,7 +48,7 @@ class VxlanIpv6Case extends SubCase {
      * 拦截器内部使用 NetworkUtils.isIpv4Address || IPv6NetworkUtils.isIpv6Address 判断合法性。
      * 直接验证 isIpv6Address("2001:db8::1") 返回 true。
      */
-    void testVxlanAcceptsIpv6VtepIp() {
+    void testTP039_vxlanAcceptsIpv6VtepIp() {
         // TP-039: IPv6 地址被 isIpv6Address 认可，拦截器不拒绝
         String ipv6VtepIp = "2001:db8::1"
         assert IPv6NetworkUtils.isIpv6Address(ipv6VtepIp) :
@@ -66,7 +66,7 @@ class VxlanIpv6Case extends SubCase {
      * TP-040: VtepVO.vtepIp 和 RemoteVtepVO.vtepIp @Column 无显式 length，
      * 使用 JPA 默认 255（>= 39），足以存储全展开 IPv6。
      */
-    void testVtepVoColumnLength() {
+    void testTP040_vtepVoColumnLength() {
         checkVtepIpColumnLength(VtepVO.class, "VtepVO")
         checkVtepIpColumnLength(RemoteVtepVO.class, "RemoteVtepVO")
     }
@@ -89,7 +89,7 @@ class VxlanIpv6Case extends SubCase {
      * TP-041: 非法格式 "not-an-ip" 既不是 IPv4 也不是 IPv6，
      * VxlanPoolApiInterceptor 校验逻辑（IPv4 || IPv6）应返回 false。
      */
-    void testInvalidVtepIpRejected() {
+    void testTP041_invalidVtepIpRejected() {
         String invalidIp = "not-an-ip"
         // TP-041: 非法 IP 不通过 IPv4 检查
         assert !NetworkUtils.isIpv4Address(invalidIp) :

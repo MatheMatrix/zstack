@@ -34,18 +34,18 @@ class ZSha2Ipv6Case extends SubCase {
 
     @Override
     void test() {
-        testIsMasterGrepPatternMatchesIpv6()      // TP-042
-        testIsMasterGrepLogicWithVip()            // TP-043
-        testBracketIpv6ForSshScp()               // TP-044
-        testNginxUpstreamIpv6Format()            // TP-045
-        testIamUrlIpv6Brackets()                 // TP-046
+        testTP043_isMasterGrepPatternMatchesIpv6()      // TP-042
+        testTP042_isMasterGrepLogicWithVip()            // TP-043
+        testTP044_bracketIpv6ForSshScp()               // TP-044
+        testTP045_nginxUpstreamIpv6Format()            // TP-045
+        testTP046_iamUrlIpv6Brackets()                 // TP-046
     }
 
     /**
      * TP-042: ZSha2Helper.isMaster() 使用 " %s/" 模式（新 pattern）匹配 IPv6 VIP。
      * 模拟 `ip addr show` 输出，验证 " VIP/" 字符串匹配正确。
      */
-    void testIsMasterGrepPatternMatchesIpv6() {
+    void testTP043_isMasterGrepPatternMatchesIpv6() {
         String output = "    inet6 2001:db8::100/64 scope global dynamic"
         String vip = "2001:db8::100"
 
@@ -68,7 +68,7 @@ class ZSha2Ipv6Case extends SubCase {
      * TP-043: ZSha2Helper.isMaster() grep 逻辑正确——ip addr 输出包含 VIP 时判定为 master。
      * 复用 TP-042 的模拟逻辑，验证存在 VIP 时 contains 返回 true，不存在时返回 false。
      */
-    void testIsMasterGrepLogicWithVip() {
+    void testTP042_isMasterGrepLogicWithVip() {
         String vip = "2001:db8::100"
         String outputWithVip = "    inet6 2001:db8::100/64 scope global dynamic"
         String outputWithoutVip = "    inet6 fd00::1/64 scope global dynamic"
@@ -85,7 +85,7 @@ class ZSha2Ipv6Case extends SubCase {
     /**
      * TP-044: Zsha2 SSH/SCP 命令中 IPv6 地址需加方括号，bracketIpv6() 正确处理。
      */
-    void testBracketIpv6ForSshScp() {
+    void testTP044_bracketIpv6ForSshScp() {
         // TP-044: IPv6 → "[ipv6]"（加括号）
         assert IPv6Utils.bracketIpv6("2001:db8::1") == "[2001:db8::1]" :
                 "TP-044: bracketIpv6 should wrap IPv6 in square brackets for SSH/SCP"
@@ -101,7 +101,7 @@ class ZSha2Ipv6Case extends SubCase {
     /**
      * TP-045: nginx upstream 渲染时，MN IP = IPv6 → "server [ipv6]:port;"
      */
-    void testNginxUpstreamIpv6Format() {
+    void testTP045_nginxUpstreamIpv6Format() {
         String mnIp = "2001:db8::1"
         // TP-045: nginx upstream server 指令需要 [ipv6]:port 格式
         String nginxServer = "server ${IPv6Utils.bracketIpv6(mnIp)}:8080;"
@@ -117,7 +117,7 @@ class ZSha2Ipv6Case extends SubCase {
     /**
      * TP-046: IAM URL 包含 IPv6 时需加方括号，buildUrl() 正确生成。
      */
-    void testIamUrlIpv6Brackets() {
+    void testTP046_iamUrlIpv6Brackets() {
         String iamIp = "2001:db8::2"
         // TP-046: IAM URL 应含 [ipv6]:port 格式
         String url = IPv6Utils.buildUrl(iamIp, 8080) + "/api/v1/"

@@ -47,12 +47,12 @@ class KvmHostIpv6Case extends SubCase {
         env.create {
             cluster = env.inventoryByName("cluster") as ClusterInventory
 
-            testManagementIpColumnLength()       // TP-015
-            testAddHostWithIpv6Passes()          // TP-016
-            testFullIpv6NormalizedBeforeConnect() // TP-017
-            testLinkLocalIpv6Rejected()          // TP-018
-            testInvalidIpRejected()              // TP-019
-            testFullIpv6FitsInColumn()            // TP-020
+            testTP015_managementIpColumnLength()       // TP-015
+            testTP016_addHostWithIpv6Passes()          // TP-016
+            testTP017_fullIpv6NormalizedBeforeConnect() // TP-017
+            testTP018_linkLocalIpv6Rejected()          // TP-018
+            testTP019_invalidIpRejected()              // TP-019
+            testTP020_fullIpv6FitsInColumn()            // TP-020
         }
     }
 
@@ -60,7 +60,7 @@ class KvmHostIpv6Case extends SubCase {
      * TP-015: HostVO.managementIp 列（继承自 HostAO）接受 39 字符全展开 IPv6 不截断。
      * 验证 @Column(length = ...) >= 39。
      */
-    void testManagementIpColumnLength() {
+    void testTP015_managementIpColumnLength() {
         Field field = HostAO.class.getDeclaredField("managementIp")
         field.setAccessible(true)
         Column col = field.getAnnotation(Column.class)
@@ -73,7 +73,7 @@ class KvmHostIpv6Case extends SubCase {
      * TP-016: 以合法 IPv6 地址 "2001:db8::10" 调用 AddKVMHostAction。
      * API 拦截器不因 INVALID_ARGUMENT_ERROR 拒绝 IPv6（连接失败是预期行为）。
      */
-    void testAddHostWithIpv6Passes() {
+    void testTP016_addHostWithIpv6Passes() {
         def action = new AddKVMHostAction()
         action.sessionId = adminSession()
         action.clusterUuid = cluster.uuid
@@ -95,7 +95,7 @@ class KvmHostIpv6Case extends SubCase {
      * TP-017: 全展开 IPv6 地址输入，经 HostApiInterceptor.normalizeIpv6 规范化，不触发 INVALID_ARGUMENT_ERROR。
      * 规范化：2001:0db8:0000:0000:0000:0000:0000:0001 → 2001:db8::1
      */
-    void testFullIpv6NormalizedBeforeConnect() {
+    void testTP017_fullIpv6NormalizedBeforeConnect() {
         String fullIpv6 = "2001:0db8:0000:0000:0000:0000:0000:0001"
         def action = new AddKVMHostAction()
         action.sessionId = adminSession()
@@ -118,7 +118,7 @@ class KvmHostIpv6Case extends SubCase {
      * TP-018: 链路本地地址 "fe80::1%eth0" 应被 HostApiInterceptor 拒绝。
      * 期望错误码：SysErrors.INVALID_ARGUMENT_ERROR
      */
-    void testLinkLocalIpv6Rejected() {
+    void testTP018_linkLocalIpv6Rejected() {
         def action = new AddKVMHostAction()
         action.sessionId = adminSession()
         action.clusterUuid = cluster.uuid
@@ -138,7 +138,7 @@ class KvmHostIpv6Case extends SubCase {
      * TP-019: 非法格式 "not-an-ip!!" 应被 HostApiInterceptor 拒绝。
      * 期望错误码：SysErrors.INVALID_ARGUMENT_ERROR
      */
-    void testInvalidIpRejected() {
+    void testTP019_invalidIpRejected() {
         def action = new AddKVMHostAction()
         action.sessionId = adminSession()
         action.clusterUuid = cluster.uuid
@@ -159,7 +159,7 @@ class KvmHostIpv6Case extends SubCase {
      * 与 TP-015 合并验证 @Column length >= 39。
      * 全展开 IPv6 最长为 "2001:0db8:0000:0000:0000:0000:0000:0001" = 39 字符。
      */
-    void testFullIpv6FitsInColumn() {
+    void testTP020_fullIpv6FitsInColumn() {
         String fullIpv6 = "2001:0db8:0000:0000:0000:0000:0000:0001"
         assert fullIpv6.length() == 39 : "Precondition: full-expanded IPv6 should be 39 chars"
 

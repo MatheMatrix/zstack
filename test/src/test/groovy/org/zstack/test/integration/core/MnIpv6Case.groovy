@@ -51,19 +51,19 @@ class MnIpv6Case extends SubCase {
 
     @Override
     void test() {
-        testPreferIpv6DefaultValue()          // TP-001
-        testPreferIpv6CategoryAndName()       // TP-002
-        testGetManagementServerIpNonNull()    // TP-003
-        testGetManagementServerIpIpv4()       // TP-004
-        testGetManagementServerIpFallback()   // TP-005
-        testGetManagementServerCidrFormat()   // TP-006
-        testGetManagementServerCidrValid()    // TP-007
-        testSanitizeCallbackUrlIpv4()         // TP-021
-        testSanitizeCallbackUrlBareIpv6()     // TP-022
-        testGetManagementServerIdNonNull()    // TP-023
-        testGetManagementServerIdStable()     // TP-024
-        testJgroupsAddrIpv6()                 // TP-030
-        testJgroupsAddrIpv4()                 // TP-031
+        testTP001_preferIpv6DefaultValue()          // TP-001
+        testTP002_preferIpv6CategoryAndName()       // TP-002
+        testTP003_getManagementServerIpNonNull()    // TP-003
+        testTP004_getManagementServerIpIpv4()       // TP-004
+        testTP005_getManagementServerIpFallback()   // TP-005
+        testTP006_getManagementServerCidrFormat()   // TP-006
+        testTP007_getManagementServerCidrValid()    // TP-007
+        testTP021_sanitizeCallbackUrlIpv4()         // TP-021
+        testTP022_sanitizeCallbackUrlBareIpv6()     // TP-022
+        testTP023_getManagementServerIdNonNull()    // TP-023
+        testTP024_getManagementServerIdStable()     // TP-024
+        testTP030_jgroupsAddrIpv6()                 // TP-030
+        testTP031_jgroupsAddrIpv4()                 // TP-031
     }
 
     // ===== F-001: GlobalConfig PREFER_IPV6 =====
@@ -71,7 +71,7 @@ class MnIpv6Case extends SubCase {
     /**
      * TP-001: NetworkGlobalConfig.PREFER_IPV6 默认值注解为 "false"
      */
-    void testPreferIpv6DefaultValue() {
+    void testTP001_preferIpv6DefaultValue() {
         Field field = NetworkGlobalConfig.class.getDeclaredField("PREFER_IPV6")
         GlobalConfigDef annotation = field.getAnnotation(GlobalConfigDef.class)
         assert annotation != null : "TP-001: PREFER_IPV6 should have @GlobalConfigDef annotation"
@@ -82,7 +82,7 @@ class MnIpv6Case extends SubCase {
     /**
      * TP-002: NetworkGlobalConfig.PREFER_IPV6 的 category 和 name 正确
      */
-    void testPreferIpv6CategoryAndName() {
+    void testTP002_preferIpv6CategoryAndName() {
         String category = NetworkGlobalConfig.PREFER_IPV6.getCategory()
         String name = NetworkGlobalConfig.PREFER_IPV6.getName()
         assert category == "network" : "TP-002: PREFER_IPV6 category should be 'network', got: $category"
@@ -96,7 +96,7 @@ class MnIpv6Case extends SubCase {
     /**
      * TP-003: Platform.getManagementServerIp() 在 IPv4-only 环境返回非 null 地址
      */
-    void testGetManagementServerIpNonNull() {
+    void testTP003_getManagementServerIpNonNull() {
         String ip = Platform.getManagementServerIp()
         assert ip != null : "TP-003: getManagementServerIp() should return non-null"
         boolean isIp = NetworkUtils.isIpv4Address(ip) || IPv6NetworkUtils.isIpv6Address(ip)
@@ -107,7 +107,7 @@ class MnIpv6Case extends SubCase {
     /**
      * TP-004: PREFER_IPV6=false（默认值）时，CI IPv4 环境返回 IPv4 格式
      */
-    void testGetManagementServerIpIpv4() {
+    void testTP004_getManagementServerIpIpv4() {
         String ip = Platform.getManagementServerIp()
         assert ip != null : "TP-004: getManagementServerIp() should not be null"
         // CI 环境为 IPv4-only，PREFER_IPV6 默认 false，返回 IPv4 地址
@@ -120,7 +120,7 @@ class MnIpv6Case extends SubCase {
     /**
      * TP-005: PREFER_IPV6=true 时（无 IPv6 接口）能回退到 IPv4，不抛异常
      */
-    void testGetManagementServerIpFallback() {
+    void testTP005_getManagementServerIpFallback() {
         // Platform.getManagementServerIp() 内部异常安全降级；此处验证方法不抛出异常
         String ip = null
         try {
@@ -137,7 +137,7 @@ class MnIpv6Case extends SubCase {
     /**
      * TP-006: getManagementServerCidr() 不抛异常（IPv4 环境应返回 CIDR 格式字符串）
      */
-    void testGetManagementServerCidrFormat() {
+    void testTP006_getManagementServerCidrFormat() {
         String cidr = null
         try {
             cidr = Platform.getManagementServerCidr()
@@ -154,7 +154,7 @@ class MnIpv6Case extends SubCase {
     /**
      * TP-007: CIDR 格式合法（包含 "/"，prefix <= 32 for IPv4 / <= 128 for IPv6）
      */
-    void testGetManagementServerCidrValid() {
+    void testTP007_getManagementServerCidrValid() {
         String cidr = Platform.getManagementServerCidr()
         if (cidr == null) {
             logger.warn("TP-007: getManagementServerCidr() returned null in this environment, skipping prefix validation")
@@ -178,7 +178,7 @@ class MnIpv6Case extends SubCase {
     /**
      * TP-021: sanitizeCallbackUrl(IPv4 URL) → 原样返回（IPv4 无括号变化）
      */
-    void testSanitizeCallbackUrlIpv4() {
+    void testTP021_sanitizeCallbackUrlIpv4() {
         Method method = RESTFacadeImpl.class.getDeclaredMethod("sanitizeCallbackUrl", String.class)
         method.setAccessible(true)
 
@@ -191,7 +191,7 @@ class MnIpv6Case extends SubCase {
     /**
      * TP-022: sanitizeCallbackUrl(裸 IPv6 URL) → 检测裸 IPv6 并修正（或原样保留 + WARN）
      */
-    void testSanitizeCallbackUrlBareIpv6() {
+    void testTP022_sanitizeCallbackUrlBareIpv6() {
         Method method = RESTFacadeImpl.class.getDeclaredMethod("sanitizeCallbackUrl", String.class)
         method.setAccessible(true)
 
@@ -206,7 +206,7 @@ class MnIpv6Case extends SubCase {
     /**
      * TP-023: Platform.getManagementServerId() 返回非 null 的 UUID 格式字符串
      */
-    void testGetManagementServerIdNonNull() {
+    void testTP023_getManagementServerIdNonNull() {
         String msId = Platform.getManagementServerId()
         // msId 由 UUID.nameUUIDFromBytes(getManagementServerIp().getBytes()) 生成，去掉 "-" 后为 32 位十六进制字符串
         if (msId != null) {
@@ -222,7 +222,7 @@ class MnIpv6Case extends SubCase {
     /**
      * TP-024: 连续两次调用 getManagementServerId() 返回相同 UUID（已持久化）
      */
-    void testGetManagementServerIdStable() {
+    void testTP024_getManagementServerIdStable() {
         String id1 = Platform.getManagementServerId()
         String id2 = Platform.getManagementServerId()
         if (id1 != null) {
@@ -238,7 +238,7 @@ class MnIpv6Case extends SubCase {
     /**
      * TP-030: jgroupsAddr(IPv6, port) → "[2001:db8::1][7805]"
      */
-    void testJgroupsAddrIpv6() {
+    void testTP030_jgroupsAddrIpv6() {
         Method method = Platform.class.getDeclaredMethod("jgroupsAddr", String.class, String.class)
         method.setAccessible(true)
 
@@ -251,7 +251,7 @@ class MnIpv6Case extends SubCase {
     /**
      * TP-031: jgroupsAddr(IPv4, port) → "192.168.1.1[7805]"（IPv4 不加括号）
      */
-    void testJgroupsAddrIpv4() {
+    void testTP031_jgroupsAddrIpv4() {
         Method method = Platform.class.getDeclaredMethod("jgroupsAddr", String.class, String.class)
         method.setAccessible(true)
 

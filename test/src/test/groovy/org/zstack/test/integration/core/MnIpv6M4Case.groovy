@@ -34,12 +34,12 @@ class MnIpv6M4Case extends SubCase {
 
     @Override
     void test() {
-        testInfluxDbUrlIpv6Bracket()        // TP-083
-        testPrometheusWriteUrlIpv6()        // TP-084
-        testGrafanaDataSourceUrlIpv6()      // TP-085
-        testLicenseHttpUrlIpv6()            // TP-087
-        testKeycloakContainerNameSanitize() // TP-088
-        testSsoCasLoginUrlIpv6()            // TP-089
+        testTP083_influxDbUrlIpv6Bracket()        // TP-083
+        testTP084_prometheusWriteUrlIpv6()        // TP-084
+        testTP085_grafanaDataSourceUrlIpv6()      // TP-085
+        testTP086_licenseHttpUrlIpv6()            // TP-087
+        testTP087_keycloakContainerNameSanitize() // TP-088
+        testTP088_ssoCasLoginUrlIpv6()            // TP-089
     }
 
     // ===== TP-083: ZWatch InfluxDB URL =====
@@ -51,7 +51,7 @@ class MnIpv6M4Case extends SubCase {
      * 若使用 String.format("http://%s:%s", ip, port) 构造 IPv6 URL，冒号会破坏 URI 解析；
      * 必须用 IPv6Utils.buildUrl() 确保 IPv6 地址被方括号包裹。
      */
-    void testInfluxDbUrlIpv6Bracket() {
+    void testTP083_influxDbUrlIpv6Bracket() {
         String ipv6 = "2001:db8::1"
         int port = 8086
         String expected = "http://[2001:db8::1]:8086"
@@ -80,7 +80,7 @@ class MnIpv6M4Case extends SubCase {
      * 背景：Prometheus remote_write 目标地址形如 http://[ip]:port/api/v1/write。
      * 使用 IPv6Utils.buildUrl() 构造 base URL 后追加路径。
      */
-    void testPrometheusWriteUrlIpv6() {
+    void testTP084_prometheusWriteUrlIpv6() {
         String ipv6 = "2001:db8::1"
         int port = 9090
         String path = "/api/v1/write"
@@ -108,7 +108,7 @@ class MnIpv6M4Case extends SubCase {
      * 背景：ZWatch 向 Grafana 注册数据源时，datasource URL 需要符合 HTTP URI 规范。
      * String.format("http://%s:%s", ip, port) 生成裸 IPv6 URL 会导致 Grafana API 拒绝。
      */
-    void testGrafanaDataSourceUrlIpv6() {
+    void testTP085_grafanaDataSourceUrlIpv6() {
         String ipv6 = "2001:db8::1"
         int port = 3000
         String expected = "http://[2001:db8::1]:3000"
@@ -137,7 +137,7 @@ class MnIpv6M4Case extends SubCase {
      * 背景：License 服务向管理节点发起 HTTP 回调时，需要构造形如
      * https://[ipv6]:443/license 的 URL；bracketIpv6() 保证 IPv4 不受影响。
      */
-    void testLicenseHttpUrlIpv6() {
+    void testTP086_licenseHttpUrlIpv6() {
         String ipv6 = "2001:db8::1"
         int port = 443
         String licensePath = "/license"
@@ -176,7 +176,7 @@ class MnIpv6M4Case extends SubCase {
      * 背景：Keycloak 容器名基于管理节点 IP 生成，Docker 容器名只允许 [a-zA-Z0-9_.-]。
      * IPv6 地址含冒号，需要替换为短横线后才能作为容器名的一部分。
      */
-    void testKeycloakContainerNameSanitize() {
+    void testTP087_keycloakContainerNameSanitize() {
         String ipv6 = "2001:db8::1"
 
         // 验证冒号替换为短横线
@@ -217,7 +217,7 @@ class MnIpv6M4Case extends SubCase {
      * 背景：Keycloak/CAS 协议要求 service 参数和 CAS server URL 均需符合 RFC URI 规范。
      * 使用 bracketIpv6() 确保 IPv6 地址在 HTTPS URL 中被方括号包裹。
      */
-    void testSsoCasLoginUrlIpv6() {
+    void testTP088_ssoCasLoginUrlIpv6() {
         String ipv6 = "2001:db8::100"
         int port = 8443
         String casPath = "/cas/login"
