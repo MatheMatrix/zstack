@@ -42,6 +42,7 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
@@ -682,14 +683,29 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             return;
         }
 
+        // Batch-load all L3 and L2 network VOs to avoid N+1 queries per NIC.
+        Set<String> l3Uuids = spec.getDestNics().stream()
+                .map(VmNicInventory::getL3NetworkUuid)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<String, L3NetworkVO> l3VoMap = dbf.listByPrimaryKeys(new ArrayList<>(l3Uuids), L3NetworkVO.class)
+                .stream().collect(Collectors.toMap(L3NetworkVO::getUuid, v -> v));
+
+        Set<String> l2Uuids = l3VoMap.values().stream()
+                .map(L3NetworkVO::getL2NetworkUuid)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<String, L2NetworkVO> l2VoMap = dbf.listByPrimaryKeys(new ArrayList<>(l2Uuids), L2NetworkVO.class)
+                .stream().collect(Collectors.toMap(L2NetworkVO::getUuid, v -> v));
+
         Map<String, List<VmNicInventory>> nicMaps = new HashMap<>();
         for (VmNicInventory nic : spec.getDestNics()) {
-            L3NetworkVO l3Vo = dbf.findByUuid(nic.getL3NetworkUuid(), L3NetworkVO.class);
+            L3NetworkVO l3Vo = l3VoMap.get(nic.getL3NetworkUuid());
             if (l3Vo == null) {
                 continue;
             }
 
-            L2NetworkVO l2VO = dbf.findByUuid(l3Vo.getL2NetworkUuid(), L2NetworkVO.class);
+            L2NetworkVO l2VO = l2VoMap.get(l3Vo.getL2NetworkUuid());
             if (l2VO == null) {
                 continue;
             }

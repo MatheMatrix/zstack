@@ -399,8 +399,8 @@ public class Platform {
     }
 
     /**
-     * F-010: JGroups initial_hosts IPv6 括号修复。
-     * IPv6 地址在 JGroups 中须使用 [addr][port] 格式，IPv4 使用 addr[port] 格式。
+     * F-010: JGroups initial_hosts IPv6 bracket fix.
+     * IPv6 addresses in JGroups must use [addr][port] format; IPv4 uses addr[port] format.
      */
     private static String jgroupsAddr(String ip, String port) {
         if (IPv6NetworkUtils.isIpv6Address(ip)) {
@@ -802,7 +802,7 @@ public class Platform {
     private static String getManagementServerCidrInternal() {
         String mgtIp = getManagementServerIp();
 
-        // F-003: IPv6 管理 IP 走独立分支
+        // F-003: IPv6 management IP uses a dedicated code path
         if (IPv6NetworkUtils.isIpv6Address(mgtIp)) {
             return getManagementServerCidrIpv6(mgtIp);
         }
@@ -855,18 +855,18 @@ public class Platform {
                     String mnNorm = InetAddress.getByName(mnIp).getHostAddress();
                     if (addr.equals(mnNorm)) {
                         int prefixLen = Integer.parseInt(ipPrefix[1]);
-                        // 计算网络地址前缀，例如 2001:db8::/64
+                        // compute network address prefix, e.g. 2001:db8::/64
                         String networkAddr = IPv6Network.fromString(ipPrefix[0] + "/" + prefixLen)
                                 .getFirst().toString();
                         return networkAddr + "/" + prefixLen;
                     }
-                } catch (Exception ignore) {
-                    // 当前行解析失败，继续下一行
+                } catch (UnknownHostException | NumberFormatException ignore) {
+                    // skip lines that cannot be parsed
                 }
             }
             logger.warn(String.format("no inet6 entry found for MN IP: %s", mnIp));
             return null;
-        } catch (Exception e) {
+        } catch (IOException e) {
             logger.warn(String.format("failed to get IPv6 CIDR for MN IP %s: %s", mnIp, e.getMessage()));
             return null;
         }
@@ -893,7 +893,7 @@ public class Platform {
             return ip;
         }
 
-        // F-002: 支持 IPv6 — 枚举所有网卡，按 PREFER_IPV6 配置决定优先级
+        // F-002: IPv6 support — enumerate all NICs, prioritise based on PREFER_IPV6 config
         boolean preferIpv6 = false;
         try {
             preferIpv6 = NetworkGlobalConfig.PREFER_IPV6.value(Boolean.class);
