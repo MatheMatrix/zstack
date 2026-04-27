@@ -271,8 +271,12 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             @Override
             public void run(MessageReply reply) {
                 if (reply.isSuccess()) {
-                    tagMgr.createTagsFromAPICreateMessage(msg, vo.getUuid(), SdnControllerVO.class.getSimpleName());
-                    event.setInventory(SdnControllerInventory.valueOf(dbf.findByUuid(vo.getUuid(), SdnControllerVO.class)));
+                    try {
+                        tagMgr.createTagsFromAPICreateMessage(msg, vo.getUuid(), SdnControllerVO.class.getSimpleName());
+                        event.setInventory(SdnControllerInventory.valueOf(dbf.findByUuid(vo.getUuid(), SdnControllerVO.class)));
+                    } catch (Exception e) {
+                        event.setError(operr("failed to finalise SdnController after creation: %s", e.getMessage()));
+                    }
                 } else {
                     event.setError(reply.getError());
                 }
@@ -688,14 +692,16 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                 .map(VmNicInventory::getL3NetworkUuid)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<String, L3NetworkVO> l3VoMap = dbf.listByPrimaryKeys(new ArrayList<>(l3Uuids), L3NetworkVO.class)
+        Map<String, L3NetworkVO> l3VoMap = l3Uuids.isEmpty() ? Collections.emptyMap() :
+                dbf.listByPrimaryKeys(new ArrayList<>(l3Uuids), L3NetworkVO.class)
                 .stream().collect(Collectors.toMap(L3NetworkVO::getUuid, v -> v));
 
         Set<String> l2Uuids = l3VoMap.values().stream()
                 .map(L3NetworkVO::getL2NetworkUuid)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<String, L2NetworkVO> l2VoMap = dbf.listByPrimaryKeys(new ArrayList<>(l2Uuids), L2NetworkVO.class)
+        Map<String, L2NetworkVO> l2VoMap = l2Uuids.isEmpty() ? Collections.emptyMap() :
+                dbf.listByPrimaryKeys(new ArrayList<>(l2Uuids), L2NetworkVO.class)
                 .stream().collect(Collectors.toMap(L2NetworkVO::getUuid, v -> v));
 
         Map<String, List<VmNicInventory>> nicMaps = new HashMap<>();

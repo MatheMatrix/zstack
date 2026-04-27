@@ -12,41 +12,41 @@ import java.lang.reflect.Field
 import java.lang.reflect.Method
 
 /**
- * TP-001~007, TP-021~024, TP-030~031: 管理节点 IPv6 支持核心测试
+ * TP-001~007, TP-021~024, TP-030~031: Management node IPv6 support core tests
  *
- * 全部为纯单元 / 反射测试，无需 Spring 上下文。
- * 由 CoreLibraryTest.runSubCases() 自动发现并运行。
+ * All tests are pure unit / reflection tests requiring no Spring context.
+ * Discovered and run automatically by CoreLibraryTest.runSubCases().
  *
- * 覆盖：
- *   TP-001 - NetworkGlobalConfig.PREFER_IPV6 默认值为 false
- *   TP-002 - NetworkGlobalConfig.PREFER_IPV6 category 和 name 正确
- *   TP-003 - Platform.getManagementServerIp() 在 IPv4-only 环境返回非 null IP
- *   TP-004 - PREFER_IPV6=false（默认）时返回 IPv4（CI 环境验证格式）
- *   TP-005 - PREFER_IPV6=true 时能回退到 IPv4（无 IPv6 接口不抛异常）
- *   TP-006 - getManagementServerCidr() 非 null 或不抛异常（IPv4 环境返回 CIDR 格式）
- *   TP-007 - CIDR 格式合法（包含 "/"，prefix <= 32/128）
- *   TP-021 - sanitizeCallbackUrl(IPv4 URL) → 原样返回
- *   TP-022 - sanitizeCallbackUrl(裸 IPv6 URL) → 修正为带括号格式或原样保留
- *   TP-023 - Platform.getManagementServerId() 返回非 null UUID 格式字符串
- *   TP-024 - 连续两次调用返回相同 UUID（已持久化）
- *   TP-030 - jgroupsAddr(IPv6, port) → "[ip][port]" 格式
- *   TP-031 - jgroupsAddr(IPv4, port) → "ip[port]" 格式
+ * Coverage:
+ *   TP-001 - NetworkGlobalConfig.PREFER_IPV6 default value is false
+ *   TP-002 - NetworkGlobalConfig.PREFER_IPV6 category and name are correct
+ *   TP-003 - Platform.getManagementServerIp() returns non-null IP in IPv4-only environment
+ *   TP-004 - PREFER_IPV6=false (default) returns IPv4 (CI environment validation)
+ *   TP-005 - PREFER_IPV6=true falls back to IPv4 gracefully (no exception when no IPv6 interface)
+ *   TP-006 - getManagementServerCidr() does not throw (returns CIDR format string in IPv4 environment)
+ *   TP-007 - CIDR format is valid (contains "/", prefix <= 32/128)
+ *   TP-021 - sanitizeCallbackUrl(IPv4 URL) returns unchanged
+ *   TP-022 - sanitizeCallbackUrl(bare IPv6 URL) corrected to bracketed format or preserved as-is
+ *   TP-023 - Platform.getManagementServerId() returns non-null UUID format string
+ *   TP-024 - two successive calls return the same UUID (persisted)
+ *   TP-030 - jgroupsAddr(IPv6, port) → "[ip][port]" format
+ *   TP-031 - jgroupsAddr(IPv4, port) → "ip[port]" format
  */
 class MnIpv6Case extends SubCase {
 
     @Override
     void setup() {
-        // 纯单元 / 静态方法测试，无需 Spring
+        // pure unit / static method tests, no Spring required
     }
 
     @Override
     void environment() {
-        // 无环境依赖
+        // no environment dependencies
     }
 
     @Override
     void clean() {
-        // 无需清理
+        // no cleanup needed
     }
 
     @Override
@@ -69,7 +69,7 @@ class MnIpv6Case extends SubCase {
     // ===== F-001: GlobalConfig PREFER_IPV6 =====
 
     /**
-     * TP-001: NetworkGlobalConfig.PREFER_IPV6 默认值注解为 "false"
+     * TP-001: NetworkGlobalConfig.PREFER_IPV6 default value annotation is "false"
      */
     void testTP001_preferIpv6DefaultValue() {
         Field field = NetworkGlobalConfig.class.getDeclaredField("PREFER_IPV6")
@@ -80,7 +80,7 @@ class MnIpv6Case extends SubCase {
     }
 
     /**
-     * TP-002: NetworkGlobalConfig.PREFER_IPV6 的 category 和 name 正确
+     * TP-002: NetworkGlobalConfig.PREFER_IPV6 category and name are correct
      */
     void testTP002_preferIpv6CategoryAndName() {
         String category = NetworkGlobalConfig.PREFER_IPV6.getCategory()
@@ -94,7 +94,7 @@ class MnIpv6Case extends SubCase {
     // ===== F-002: Platform.getManagementServerIp =====
 
     /**
-     * TP-003: Platform.getManagementServerIp() 在 IPv4-only 环境返回非 null 地址
+     * TP-003: Platform.getManagementServerIp() returns non-null address in IPv4-only environment
      */
     void testTP003_getManagementServerIpNonNull() {
         String ip = Platform.getManagementServerIp()
@@ -116,11 +116,17 @@ class MnIpv6Case extends SubCase {
     }
 
     /**
-     * TP-005: PREFER_IPV6=true with no IPv6 interface — gracefully falls back to IPv4, no exception
+     * TP-005: PREFER_IPV6=true with no IPv6 interface — gracefully falls back to IPv4, no exception.
+     * Clears the static managementServerIp cache first to ensure the code path is re-executed.
      */
     void testTP005_getManagementServerIpFallback() {
         def original = NetworkGlobalConfig.PREFER_IPV6.value(Boolean.class)
         try {
+            // Clear the static cache so getManagementServerIp() re-evaluates with the new config.
+            Field cacheField = Platform.class.getDeclaredField("managementServerIp")
+            cacheField.setAccessible(true)
+            cacheField.set(null, null)
+
             NetworkGlobalConfig.PREFER_IPV6.updateValue(true)
             String ip = null
             try {
@@ -132,13 +138,17 @@ class MnIpv6Case extends SubCase {
             logger.info("TP-005: PREFER_IPV6 fallback returns $ip")
         } finally {
             NetworkGlobalConfig.PREFER_IPV6.updateValue(original)
+            // Restore cache to avoid affecting subsequent tests.
+            Field cacheField = Platform.class.getDeclaredField("managementServerIp")
+            cacheField.setAccessible(true)
+            cacheField.set(null, null)
         }
     }
 
     // ===== F-003: getManagementServerCidr =====
 
     /**
-     * TP-006: getManagementServerCidr() 不抛异常（IPv4 环境应返回 CIDR 格式字符串）
+     * TP-006: getManagementServerCidr() does not throw (should return CIDR format string in IPv4 environment)
      */
     void testTP006_getManagementServerCidrFormat() {
         String cidr = null
@@ -147,7 +157,7 @@ class MnIpv6Case extends SubCase {
         } catch (Exception e) {
             assert false : "TP-006: getManagementServerCidr() should not throw, got: ${e.message}"
         }
-        // cidr 在 CI 环境可能为 null（当 management IP 不在 ip add 输出中时），跳过 null 断言
+        // cidr may be null in CI environment (when management IP is not listed in ip addr output)
         if (cidr != null) {
             assert cidr.contains("/") : "TP-006: CIDR should contain '/', got: $cidr"
         }
@@ -155,7 +165,7 @@ class MnIpv6Case extends SubCase {
     }
 
     /**
-     * TP-007: CIDR 格式合法（包含 "/"，prefix <= 32 for IPv4 / <= 128 for IPv6）
+     * TP-007: CIDR format is valid (contains "/", prefix <= 32 for IPv4 / <= 128 for IPv6)
      */
     void testTP007_getManagementServerCidrValid() {
         String cidr = Platform.getManagementServerCidr()
@@ -168,7 +178,7 @@ class MnIpv6Case extends SubCase {
         assert parts.length == 2 : "TP-007: CIDR should have exactly 2 parts, got: $cidr"
         int prefix = Integer.parseInt(parts[1].trim())
         String network = parts[0]
-        if (NetworkUtils.isIpv4Address(network) || network.contains(".")) {
+        if (NetworkUtils.isIpv4Address(network)) {
             assert prefix >= 0 && prefix <= 32 : "TP-007: IPv4 prefix should be 0-32, got: $prefix"
         } else {
             assert prefix >= 0 && prefix <= 128 : "TP-007: IPv6 prefix should be 0-128, got: $prefix"
@@ -179,7 +189,7 @@ class MnIpv6Case extends SubCase {
     // ===== F-007: RESTFacadeImpl.sanitizeCallbackUrl =====
 
     /**
-     * TP-021: sanitizeCallbackUrl(IPv4 URL) → 原样返回（IPv4 无括号变化）
+     * TP-021: sanitizeCallbackUrl(IPv4 URL) returns unchanged (no bracket changes for IPv4)
      */
     void testTP021_sanitizeCallbackUrlIpv4() {
         Method method = RESTFacadeImpl.class.getDeclaredMethod("sanitizeCallbackUrl", String.class)
@@ -192,7 +202,7 @@ class MnIpv6Case extends SubCase {
     }
 
     /**
-     * TP-022: sanitizeCallbackUrl(裸 IPv6 URL) → 检测裸 IPv6 并修正（或原样保留 + WARN）
+     * TP-022: sanitizeCallbackUrl(bare IPv6 URL) detects and brackets the IPv6 address (or preserves + WARN)
      */
     void testTP022_sanitizeCallbackUrlBareIpv6() {
         Method method = RESTFacadeImpl.class.getDeclaredMethod("sanitizeCallbackUrl", String.class)
@@ -205,7 +215,7 @@ class MnIpv6Case extends SubCase {
         logger.info("TP-022: sanitizeCallbackUrl('$bareIpv6Url') = '$result'")
     }
 
-    // ===== F-008: UUID 持久化 =====
+    // ===== F-008: UUID persistence =====
 
     /**
      * TP-023: Platform.getManagementServerId() returns non-null 32-char hex UUID string
@@ -229,7 +239,7 @@ class MnIpv6Case extends SubCase {
         logger.info("TP-024: getManagementServerId() is stable: $id1")
     }
 
-    // ===== F-010: JGroups IPv6 括号修复 =====
+    // ===== F-010: JGroups IPv6 bracket fix =====
 
     /**
      * TP-030: jgroupsAddr(IPv6, port) → "[2001:db8::1][7805]"
@@ -245,7 +255,7 @@ class MnIpv6Case extends SubCase {
     }
 
     /**
-     * TP-031: jgroupsAddr(IPv4, port) → "192.168.1.1[7805]"（IPv4 不加括号）
+     * TP-031: jgroupsAddr(IPv4, port) → "192.168.1.1[7805]" (IPv4 without brackets)
      */
     void testTP031_jgroupsAddrIpv4() {
         Method method = Platform.class.getDeclaredMethod("jgroupsAddr", String.class, String.class)
