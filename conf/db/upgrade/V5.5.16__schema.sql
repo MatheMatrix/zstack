@@ -365,3 +365,10 @@ CREATE TABLE IF NOT EXISTS `zstack`.`VmModelMountVO` (
         FOREIGN KEY (`modelUuid`) REFERENCES `zstack`.`ModelVO`(`uuid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+-- ZSTAC-84784: turn on recovery notification for the 3 AI system alarms seeded by AISystemAlarmManagerImpl
+UPDATE `zstack`.`AlarmVO` SET `enableRecovery` = 1 WHERE `uuid` IN (
+    'a617248f3f5f42ea985f41fc7b79d7c9', -- ModelCenter cache directory available capacity
+    'bec5013b64c04fc99dc456da2f571c00', -- ZDFS metadata server clients available
+    '230aa324cf0b430a841465bb05c9145a'  -- ZDFS metadata server memory available
+);
+
