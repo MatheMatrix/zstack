@@ -273,4 +273,12 @@
         <defaultValue>10737418240</defaultValue>
         <type>java.lang.Long</type>
     </config>
+
+    <config>
+        <category>kvm</category>
+        <name>kvmagent.autorestart.window</name>
+        <description>Daily time window during which the automatic restart of zstack-kvmagent (triggered by physical memory hard limit alarm) is allowed. Format: HH:MM-HH:MM in 24-hour server local time, e.g. 02:00-04:00. Cross-midnight windows are supported, e.g. 22:00-02:00. Empty value means always allowed (no time restriction).</description>
+        <defaultValue>02:00-04:00</defaultValue>
+        <type>java.lang.String</type>
+    </config>
 </globalConfig>

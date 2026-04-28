@@ -99,6 +99,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -459,12 +460,33 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             return;
         }
 
+        String window = KVMGlobalConfig.KVMAGENT_AUTO_RESTART_WINDOW.value();
+        if (!isNowInAutoRestartWindow(window, LocalTime.now())) {
+            logger.info(String.format("zstack-kvmagent on host %s exceeded physical memory hard limit, " +
+                    "but current time is outside auto-restart window [%s]; skip auto-restart, will retry on next alarm",
+                    cmd.getHostUuid(), window));
+            return;
+        }
+
         logger.debug("The zstack-kvmagent service has exceeded the hard limit for physical memory usage, " +
                 "and we will try restart it later");
         RestartKvmAgentMsg restartKvmAgentMsg = new RestartKvmAgentMsg();
         restartKvmAgentMsg.setHostUuid(cmd.getHostUuid());
         bus.makeTargetServiceIdByResourceUuid(restartKvmAgentMsg, HostConstant.SERVICE_ID, restartKvmAgentMsg.getHostUuid());
         bus.send(restartKvmAgentMsg);
+    }
+
+    public static boolean isNowInAutoRestartWindow(String configValue, LocalTime now) {
+        if (configValue == null || configValue.trim().isEmpty()) {
+            return true;
+        }
+        String[] parts = configValue.trim().split("-");
+        LocalTime start = LocalTime.parse(parts[0]);
+        LocalTime end = LocalTime.parse(parts[1]);
+        if (start.isBefore(end)) {
+            return !now.isBefore(start) && now.isBefore(end);
+        }
+        return !now.isBefore(start) || now.isBefore(end);
     }
 
     private void initLibvirtTlsCA() {
@@ -555,6 +577,31 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
                 if (valueLong > _1t || valueLong < 0) {
                     throw new GlobalConfigException(String.format("Value %s  cannot be greater than the 1TB" + " but got %s",
                             KVMGlobalConfig.RESERVED_MEMORY_CAPACITY.getCanonicalName(), value));
+                }
+            }
+        });
+        KVMGlobalConfig.KVMAGENT_AUTO_RESTART_WINDOW.installValidateExtension(new GlobalConfigValidatorExtensionPoint() {
+            @Override
+            public void validateGlobalConfig(String category, String name, String oldValue, String value) throws GlobalConfigException {
+                if (value == null || value.trim().isEmpty()) {
+                    return;
+                }
+                String[] parts = value.trim().split("-");
+                if (parts.length != 2 || !parts[0].matches("\\d{2}:\\d{2}") || !parts[1].matches("\\d{2}:\\d{2}")) {
+                    throw new GlobalConfigException(String.format("%s must be in format HH:MM-HH:MM, but got %s",
+                            KVMGlobalConfig.KVMAGENT_AUTO_RESTART_WINDOW.getCanonicalName(), value));
+                }
+                int sh = Integer.parseInt(parts[0].substring(0, 2));
+                int sm = Integer.parseInt(parts[0].substring(3, 5));
+                int eh = Integer.parseInt(parts[1].substring(0, 2));
+                int em = Integer.parseInt(parts[1].substring(3, 5));
+                if (sh > 23 || eh > 23 || sm > 59 || em > 59) {
+                    throw new GlobalConfigException(String.format("%s has out-of-range hour/minute, but got %s",
+                            KVMGlobalConfig.KVMAGENT_AUTO_RESTART_WINDOW.getCanonicalName(), value));
+                }
+                if (sh == eh && sm == em) {
+                    throw new GlobalConfigException(String.format("%s start equals end, but got %s",
+                            KVMGlobalConfig.KVMAGENT_AUTO_RESTART_WINDOW.getCanonicalName(), value));
                 }
             }
         });
