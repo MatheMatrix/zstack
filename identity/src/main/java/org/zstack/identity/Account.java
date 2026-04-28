@@ -5,6 +5,7 @@ import org.zstack.core.config.GlobalConfigVO;
 import org.zstack.core.config.GlobalConfigVO_;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQLBatchWithReturn;
+import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.identity.*;
 import org.zstack.header.message.Message;
 import org.zstack.utils.DebugUtils;
@@ -70,6 +71,26 @@ public interface Account {
                 .eq(AccountResourceRefVO_.resourceUuid, resUuid).findValue();
     }
 
+    /**
+     * Parse a quota global-config raw value into a long, or surface a
+     * diagnostic CloudRuntimeException when the row is corrupt.
+     *
+     * Shared by {@link #create(AccountBuilder)} (IAM2 / test helper path)
+     * and {@code AccountManagerImpl.createAccount(CreateAccountMsg)}
+     * (the APICreateAccountMsg path users actually hit), so that any
+     * future quota persistence path inherits the same diagnostic tokens
+     * (category / name / raw value / account name) automatically.
+     */
+    static long parseQuotaValueOrThrow(String quotaName, String rawValue, String accountName) {
+        try {
+            return Long.parseLong(rawValue);
+        } catch (NumberFormatException e) {
+            throw new CloudRuntimeException(String.format(
+                    "global config quota[category=%s, name=%s] has invalid value[%s]; cannot create account[name=%s]",
+                    AccountConstant.QUOTA_GLOBAL_CONFIG_CATETORY, quotaName, rawValue, accountName), e);
+        }
+    }
+
     static AccountInventory create(AccountBuilder builder) {
         DebugUtils.Assert(builder.name != null, "name cannot be null");
         DebugUtils.Assert(builder.type != null, "type cannot be null");
@@ -90,7 +111,7 @@ public interface Account {
 
                 for (Tuple t : ts) {
                     String rtype = t.get(0, String.class);
-                    long quota = Long.parseLong(t.get(1, String.class));
+                    long quota = parseQuotaValueOrThrow(rtype, t.get(1, String.class), builder.name);
 
                     if (builder.quota != null && builder.quota.containsKey(rtype)) {
                         quota = builder.quota.get(rtype);

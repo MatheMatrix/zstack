@@ -596,7 +596,7 @@ public class AccountManagerImpl extends AbstractService implements AccountManage
 
                 for (Tuple t : ts) {
                     String rtype = t.get(0, String.class);
-                    long quota = Long.parseLong(t.get(1, String.class));
+                    long quota = Account.parseQuotaValueOrThrow(rtype, t.get(1, String.class), msg.getName());
 
                     QuotaVO qvo = new QuotaVO();
                     qvo.setUuid(Platform.getUuid());
