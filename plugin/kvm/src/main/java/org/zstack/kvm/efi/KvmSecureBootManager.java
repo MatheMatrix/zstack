@@ -17,6 +17,7 @@ import org.zstack.core.timeout.TimeHelper;
 import org.zstack.core.workflow.SimpleFlowChain;
 import org.zstack.header.AbstractService;
 import org.zstack.header.core.ReturnValueCompletion;
+import org.zstack.header.core.Completion;
 import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.core.workflow.Flow;
 import org.zstack.header.core.workflow.FlowDoneHandler;
@@ -314,17 +315,27 @@ public class KvmSecureBootManager extends AbstractService implements VmHostFileM
                     return;
                 }
 
-                ErrorCode error;
                 if (msg.isSyncToBackup()) {
-                    error = syncToBackupFiles(msg, readRsp);
-                } else {
-                    error = syncToHostFiles(msg, cmd, readRsp, now);
-                }
+                    // async path: perform backup sync and reply in completion
+                    syncToBackupFiles(msg, readRsp, new Completion(msg) {
+                        @Override
+                        public void success() {
+                            bus.reply(msg, reply);
+                        }
 
-                if (error != null) {
-                    reply.setError(error);
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            reply.setError(errorCode);
+                            bus.reply(msg, reply);
+                        }
+                    });
+                } else {
+                    ErrorCode error = syncToHostFiles(msg, cmd, readRsp, now);
+                    if (error != null) {
+                        reply.setError(error);
+                    }
+                    bus.reply(msg, reply);
                 }
-                bus.reply(msg, reply);
             }
 
             @Override
@@ -440,10 +451,12 @@ public class KvmSecureBootManager extends AbstractService implements VmHostFileM
                 .withCause(errors);
     }
 
-    private ErrorCode syncToBackupFiles(SyncVmHostFilesFromHostMsg msg,
-                                        KVMAgentCommands.ReadVmHostFileContentResponse readRsp) {
+    private void syncToBackupFiles(SyncVmHostFilesFromHostMsg msg,
+                                     KVMAgentCommands.ReadVmHostFileContentResponse readRsp,
+                                     Completion completion) {
         if (msg.getBackupResourceUuid() == null || msg.getBackupResourceUuid().isEmpty()) {
-            return operr("backupResourceUuid is required when syncToBackup is true");
+            completion.fail(operr("backupResourceUuid is required when syncToBackup is true"));
+            return;
         }
 
         // Query the source VmHostFileVO records for afterBackup callback
@@ -499,14 +512,69 @@ public class KvmSecureBootManager extends AbstractService implements VmHostFileM
             }
         }
 
-        new SQLBatch() {
+        // Prepare existing backup uuids to delete prior to persisting new backups
+        List<String> existUuidsToDelete = new ArrayList<>();
+        for (VmHostBackupFileVO bf : backupFilesToPersist) {
+            List<VmHostBackupFileVO> exists = Q.New(VmHostBackupFileVO.class)
+                    .eq(VmHostBackupFileVO_.resourceUuid, bf.getResourceUuid())
+                    .eq(VmHostBackupFileVO_.type, bf.getType())
+                    .list();
+            for (VmHostBackupFileVO e : exists) {
+                existUuidsToDelete.add(e.getUuid());
+            }
+        }
+
+        // If there are no existing backups to delete, persist directly
+        if (existUuidsToDelete.isEmpty()) {
+            if (!backupFilesToPersist.isEmpty()) {
+                databaseFacade.persistCollection(backupFilesToPersist);
+            }
+            if (!contentsToPersist.isEmpty()) {
+                databaseFacade.persistCollection(contentsToPersist);
+            }
+
+            for (VmHostBackupFileVO backup : backupFilesToPersist) {
+                VmHostFileVO source = backupFromMap.get(backup);
+                if (source != null) {
+                    try {
+                        vmHostFileFactory.createBackupBase(backup).afterBackup(source);
+                    } catch (Exception e) {
+                        logger.warn(String.format("failed to execute afterBackup hook for VmHostBackupFileVO[uuid:%s, type:%s]: %s",
+                                backup.getUuid(), backup.getType(), e.getMessage()), e);
+                    }
+                }
+            }
+
+            if (errors.isEmpty()) {
+                completion.success();
+            } else {
+                completion.fail(operr("failed to read backup file content from host[uuid=%s]", msg.getHostUuid())
+                        .withCause(errors));
+            }
+            return;
+        }
+
+        // delete existing backups by sending deletion messages
+        new While<>(existUuidsToDelete).each((uuid, whileContext) -> {
+            VmHostBackupFileDeletionMsg del = new VmHostBackupFileDeletionMsg();
+            del.setUuid(uuid);
+            bus.makeLocalServiceId(del, VmInstanceConstant.SECURE_BOOT_SERVICE_ID);
+            bus.send(del, new CloudBusCallBack(whileContext) {
+                @Override
+                public void run(MessageReply reply) {
+                    if (!reply.isSuccess()) {
+                        whileContext.addError(reply.getError());
+                    }
+                    whileContext.done();
+                }
+            });
+        }).run(new WhileDoneCompletion(completion) {
             @Override
-            protected void scripts() {
-                for (VmHostBackupFileVO bf : backupFilesToPersist) {
-                    sql(VmHostBackupFileVO.class)
-                            .eq(VmHostBackupFileVO_.resourceUuid, bf.getResourceUuid())
-                            .eq(VmHostBackupFileVO_.type, bf.getType())
-                            .delete();
+            public void done(ErrorCodeList errorCodeList) {
+                if (errorCodeList != null && !errorCodeList.isEmpty()) {
+                    completion.fail(operr("failed to delete existing backup files for resource[uuid=%s]", msg.getBackupResourceUuid())
+                            .withCause(errorCodeList));
+                    return;
                 }
 
                 if (!backupFilesToPersist.isEmpty()) {
@@ -515,27 +583,27 @@ public class KvmSecureBootManager extends AbstractService implements VmHostFileM
                 if (!contentsToPersist.isEmpty()) {
                     databaseFacade.persistCollection(contentsToPersist);
                 }
-            }
-        }.execute();
 
-        for (VmHostBackupFileVO backup : backupFilesToPersist) {
-            VmHostFileVO source = backupFromMap.get(backup);
-            if (source != null) {
-                try {
-                    vmHostFileFactory.createBackupBase(backup).afterBackup(source);
-                } catch (Exception e) {
-                    logger.warn(String.format("failed to execute afterBackup hook for VmHostBackupFileVO[uuid:%s, type:%s]: %s",
-                            backup.getUuid(), backup.getType(), e.getMessage()), e);
+                for (VmHostBackupFileVO backup : backupFilesToPersist) {
+                    VmHostFileVO source = backupFromMap.get(backup);
+                    if (source != null) {
+                        try {
+                            vmHostFileFactory.createBackupBase(backup).afterBackup(source);
+                        } catch (Exception e) {
+                            logger.warn(String.format("failed to execute afterBackup hook for VmHostBackupFileVO[uuid:%s, type:%s]: %s",
+                                    backup.getUuid(), backup.getType(), e.getMessage()), e);
+                        }
+                    }
+                }
+
+                if (errors.isEmpty()) {
+                    completion.success();
+                } else {
+                    completion.fail(operr("failed to read backup file content from host[uuid=%s]", msg.getHostUuid())
+                            .withCause(errors));
                 }
             }
-        }
-
-        if (errors.isEmpty()) {
-            return null;
-        }
-
-        return operr("failed to read backup file content from host[uuid=%s]", msg.getHostUuid())
-                .withCause(errors);
+        });
     }
 
     @SuppressWarnings("rawtypes")
