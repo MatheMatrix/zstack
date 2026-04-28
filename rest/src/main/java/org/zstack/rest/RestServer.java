@@ -31,6 +31,8 @@ import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusEventListener;
 import org.zstack.core.cloudbus.CloudBusGson;
 import org.zstack.core.componentloader.PluginRegistry;
+import org.zstack.core.errorcode.GlobalErrorCodeI18nService;
+import org.zstack.core.errorcode.LocaleUtils;
 import org.zstack.core.db.Q;
 import org.zstack.core.log.LogSafeGson;
 import org.zstack.core.log.LogUtils;
@@ -148,6 +150,8 @@ public class RestServer implements Component, CloudBusEventListener {
     private RESTFacade restf;
     @Autowired
     private PluginRegistry pluginRgty;
+    @Autowired
+    private GlobalErrorCodeI18nService i18nService;
 
     RateLimiter rateLimiter = new RateLimiter(RestGlobalProperty.REST_RATE_LIMITS);
 
@@ -404,6 +408,11 @@ public class RestServer implements Component, CloudBusEventListener {
 
             writeResponse(response, w, ret.getResult());
         } else {
+            // localize with webhook caller's locale (message already populated by Platform.err)
+            String locale = resolveLocale();
+            if (!LocaleUtils.DEFAULT_LOCALE.equals(locale)) {
+                i18nService.localizeErrorCode(evt.getError(), locale);
+            }
             response.setError(evt.getError());
         }
 
@@ -917,6 +926,12 @@ public class RestServer implements Component, CloudBusEventListener {
     }
 
     private void sendResponse(int statusCode, ApiResponse response, HttpServletResponse rsp) throws IOException {
+        // centralized localization: override message with client's preferred locale
+        if (response.getError() != null) {
+            String locale = resolveLocale();
+            i18nService.localizeErrorCode(response.getError(), locale);
+        }
+
         RequestInfo info = requestInfo.get();
         if (requestLogger.isTraceEnabled() && needLog(info)) {
             String body = CloudBusGson.toJson(response);
@@ -1411,11 +1426,25 @@ public class RestServer implements Component, CloudBusEventListener {
         }
     }
 
+    private String resolveLocale() {
+        RequestInfo info = requestInfo.get();
+        if (info == null) {
+            return LocaleUtils.DEFAULT_LOCALE;
+        }
+        String acceptLanguage = info.headers.getFirst("Accept-Language");
+        return LocaleUtils.resolveLocale(acceptLanguage, i18nService.getAvailableLocales());
+    }
+
     private void sendReplyResponse(MessageReply reply, Api api, HttpServletResponse rsp) throws IOException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
         ApiResponse response = new ApiResponse();
 
         if (!reply.isSuccess()) {
+            String locale = resolveLocale();
+            i18nService.localizeErrorCode(reply.getError(), locale);
             response.setError(reply.getError());
+            // use JSONObjectUtil (which disables HTML escaping) to keep the same
+            // serialization behavior as before; CloudBusGson.httpGson escapes '\'' to
+            // '\u0027' which breaks SDK-side string assertions (ZSTAC-71075 etc.)
             sendResponse(HttpStatus.SERVICE_UNAVAILABLE.value(), JSONObjectUtil.toJsonString(response), rsp);
             return;
         }

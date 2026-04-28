@@ -81,6 +81,7 @@ public interface KVMConstant {
     String KVM_DELETE_CONSOLE_FIREWALL_PATH = "/vm/console/deletefirewall";
     String KVM_UPDATE_HOST_OS_PATH = "/host/updateos";
     String KVM_HOST_UPDATE_DEPENDENCY_PATH = "/host/updatedependency";
+
     String HOST_SHUTDOWN = "/host/shutdown";
     String HOST_REBOOT = "/host/reboot";
     String HOST_UPDATE_SPICE_CHANNEL_CONFIG_PATH = "/host/updateSpiceChannelConfig";
@@ -95,6 +96,11 @@ public interface KVMConstant {
     String KVM_REGISTER_PRIMARY_VM_HEARTBEAT = "/register/primary/vm/heartbeat";
     String CLEAN_FIRMWARE_FLASH = "/clean/firmware/flash";
     String FSTRIM_VM_PATH = "/vm/fstrim";
+
+    // ZSTAC-83157: virtiofs model mount paths
+    String KVM_VIRTIOFS_ATTACH_PATH = "/virtiofs/attach";
+    String KVM_VIRTIOFS_DETACH_PATH = "/virtiofs/detach";
+    String KVM_MODEL_CENTER_MOUNT_PATH = "/modelcenter/mount";
 
     String ISO_TO = "kvm.isoto";
     String ANSIBLE_PLAYBOOK_NAME = "kvm.py";

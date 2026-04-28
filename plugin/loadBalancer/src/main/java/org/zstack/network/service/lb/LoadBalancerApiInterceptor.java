@@ -33,12 +33,14 @@ import org.zstack.header.tag.SystemTagVO;
 import org.zstack.header.tag.SystemTagVO_;
 import org.zstack.header.vm.VmNicVO;
 import org.zstack.header.vm.VmNicVO_;
+import org.zstack.network.l3.IpRangeHelper;
 import org.zstack.network.service.vip.VipNetworkServicesRefVO;
 import org.zstack.network.service.vip.VipNetworkServicesRefVO_;
 import org.zstack.network.service.vip.VipVO;
 import org.zstack.network.service.vip.VipVO_;
 import org.zstack.tag.PatternedSystemTag;
 import org.zstack.tag.TagManager;
+import org.zstack.core.upgrade.UpgradeGlobalConfig;
 import org.zstack.utils.*;
 import org.zstack.utils.function.ForEachFunction;
 import org.zstack.utils.logging.CLogger;
@@ -152,8 +154,20 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
             validate((APIGetCandidateVmNicsForLoadBalancerServerGroupMsg)msg);
         } else if (msg instanceof APIChangeLoadBalancerBackendServerMsg) {
             validate((APIChangeLoadBalancerBackendServerMsg)msg);
+        } else if (msg instanceof APIDeleteLoadBalancerMsg) {
+            validate((APIDeleteLoadBalancerMsg) msg);
         }
         return msg;
+    }
+
+    private void validate(APIDeleteLoadBalancerMsg msg) {
+        if (UpgradeGlobalConfig.GRAYSCALE_UPGRADE.value(Boolean.class)) {
+            LoadBalancerVO lb = dbf.findByUuid(msg.getUuid(), LoadBalancerVO.class);
+            if (lb != null && lb.getType() == LoadBalancerType.SLB) {
+                throw new ApiMessageInterceptionException(argerr(
+                        "cannot delete the standalone load balancer[uuid:%s] during grayscale upgrade", msg.getUuid()));
+            }
+        }
     }
 
     private void validate(APIDeleteAccessControlListMsg msg) {
@@ -642,6 +656,30 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
         q = dbf.getEntityManager().createQuery(sql, String.class);
         q.setParameter("uuid", msg.getListenerUuid());
         msg.setLoadBalancerUuid(q.getSingleResult());
+
+        // When the load balancer has a VIP configured, the NIC's corresponding IP must be within L3 CIDR
+        LoadBalancerVO lbVO = dbf.findByUuid(msg.getLoadBalancerUuid(), LoadBalancerVO.class);
+        for (String nicUuid : msg.getVmNicUuids()) {
+            VmNicVO nicVO = dbf.findByUuid(nicUuid, VmNicVO.class);
+            if (nicVO == null) {
+                continue;
+            }
+            for (UsedIpVO usedIpVO : nicVO.getUsedIps()) {
+                if (!IpRangeHelper.isIpOutsideL3NetworkCidr(usedIpVO.getIp(), usedIpVO.getL3NetworkUuid())) {
+                    continue;
+                }
+                if (lbVO.getVipUuid() != null && usedIpVO.getIpVersion() == IPv6Constants.IPv4) {
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_LB_10176,
+                            "cannot add VM NIC[uuid:%s] with IPv4 address[%s] which is outside L3 network CIDR range to load balancer",
+                            nicUuid, usedIpVO.getIp()));
+                }
+                if (lbVO.getIpv6VipUuid() != null && usedIpVO.getIpVersion() == IPv6Constants.IPv6) {
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_LB_10173,
+                            "cannot add VM NIC[uuid:%s] with IPv6 address[%s] which is outside L3 network CIDR range to load balancer",
+                            nicUuid, usedIpVO.getIp()));
+                }
+            }
+        }
     }
 
     private boolean hasTag(APIMessage msg, PatternedSystemTag tag) {
@@ -851,6 +889,14 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
             if (LoadBalancerSystemTags.STATUS_CODE.isMatch(tag)) {
                 statusCode = LoadBalancerSystemTags.STATUS_CODE.getTokenByTag(tag,
                         LoadBalancerSystemTags.STATUS_CODE_TOKEN);
+            }
+            if (LoadBalancerSystemTags.HTTP_COMPRESS_ALGOS.isMatch(tag)) {
+                String compressAlgos = LoadBalancerSystemTags.HTTP_COMPRESS_ALGOS.getTokenByTag(tag,
+                        LoadBalancerSystemTags.HTTP_COMPRESS_ALGOS_TOKEN);
+                if (DisableLbSupportHttpCompressAlgos.equals(compressAlgos)) {
+                    throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_LB_10172,
+                            "could not create the loadbalancer listener with systemTag httpCompressAlgos::disable, please remove this tag"));
+                }
             }
         }
 
@@ -1561,6 +1607,31 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
                         throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_NETWORK_SERVICE_LB_10138, "could not add vm nic [uuid:%s] to server group" +
                                         " [uuid:%s] because listener [uuid:%s] attached this server group already the nic to be added",
                                 vmNicUuids, msg.getServerGroupUuid(), listenerVO.getUuid()));
+                    }
+                }
+            }
+
+            // When server group has an IP version, the vmnic's corresponding IP must be within L3 CIDR
+            if (groupVO.getIpVersion() != null) {
+                for (String nicUuid : vmNicUuids) {
+                    VmNicVO nicVO = dbf.findByUuid(nicUuid, VmNicVO.class);
+                    if (nicVO == null) {
+                        continue;
+                    }
+                    for (UsedIpVO usedIpVO : nicVO.getUsedIps()) {
+                        if (!IpRangeHelper.isIpOutsideL3NetworkCidr(usedIpVO.getIp(), usedIpVO.getL3NetworkUuid())) {
+                            continue;
+                        }
+                        if (groupVO.getIpVersion() == IPv6Constants.IPv4 && usedIpVO.getIpVersion() == IPv6Constants.IPv4) {
+                            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_LB_10174,
+                                    "cannot add VM NIC[uuid:%s] with IPv4 address[%s] which is outside L3 network CIDR range to server group[uuid:%s]",
+                                    nicUuid, usedIpVO.getIp(), msg.getServerGroupUuid()));
+                        }
+                        if (groupVO.getIpVersion() == IPv6Constants.IPv6 && usedIpVO.getIpVersion() == IPv6Constants.IPv6) {
+                            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_LB_10175,
+                                    "cannot add VM NIC[uuid:%s] with IPv6 address[%s] which is outside L3 network CIDR range to server group[uuid:%s]",
+                                    nicUuid, usedIpVO.getIp(), msg.getServerGroupUuid()));
+                        }
                     }
                 }
             }

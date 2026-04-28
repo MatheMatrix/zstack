@@ -32,6 +32,9 @@ public class StringSimilarity {
 
     private static final int mapLength = 1500;
     public static int maxElaborationRegex = 8192;
+    // slow elaboration warn threshold in ms; 0 = disabled (default)
+    // enable via GlobalProperty or test setup: StringSimilarity.slowElaborationThresholdMs = 200;
+    public static long slowElaborationThresholdMs = 0;
 
     // matched errors
     private static final Map<String, ErrorCodeElaboration> errors = new LinkedHashMap<String, ErrorCodeElaboration>(mapLength, 0.9f, true) {
@@ -280,12 +283,28 @@ public class StringSimilarity {
     }
 
     private static void logSearchSpend(String sub, long start, boolean found) {
-        logger.debug(String.format("[%s] spend %s ms to search elaboration \"%s\"", found, System.currentTimeMillis() - start,
-                sub.length() > 50 ? sub.substring(0 , 50) + "..." : sub));
+        long cost = System.currentTimeMillis() - start;
+        if (slowElaborationThresholdMs > 0 && cost > slowElaborationThresholdMs) {
+            logger.warn(String.format("[SLOW-ELABORATION] cost %d ms, found=%s, input_len=%d, input=%s",
+                    cost, found, sub.length(),
+                    sub.length() > 100 ? sub.substring(0, 100) + "..." : sub));
+        } else {
+            logger.debug(String.format("[%s] spend %s ms to search elaboration \"%s\"", found, cost,
+                    sub.length() > 50 ? sub.substring(0, 50) + "..." : sub));
+        }
     }
 
     /**
      * find the most similar error code elaboration for the given error message.
+     *
+     * The method uses a two-phase strategy to avoid performance degradation
+     * when format args produce very long strings (e.g., serialized error chains
+     * or HTML response bodies):
+     *
+     * Phase 1: Try regex matching with the formatted string (length-guarded).
+     * Phase 2: If Phase 1 misses (or formatted string too long), fallback
+     *          to the raw fmt template for regex matching.
+     * Phase 3: Distance matching always uses the raw fmt template.
      *
      * @param sub error message or error message fmt
      * @param args arguments
@@ -297,7 +316,10 @@ public class StringSimilarity {
         }
 
         long start = System.currentTimeMillis();
-        ErrorCodeElaboration err = errors.get(sub);
+        ErrorCodeElaboration err;
+        synchronized (errors) {
+            err = errors.get(sub);
+        }
         if (err != null && verifyElaboration(err, sub, args)) {
             logSearchSpend(sub, start, true);
             return err;
@@ -308,26 +330,50 @@ public class StringSimilarity {
         // same cause will happen
         // invalid cache, generate elaboration again
         if (err != null) {
-            errors.remove(sub);
+            synchronized (errors) {
+                errors.remove(sub);
+            }
         }
 
-        if (args != null && missed.get(String.format(sub, args)) != null) {
-            logSearchSpend(sub, start, false);
-            return null;
-        } else if (missed.get(sub) != null) {
-            logSearchSpend(sub, start, false);
-            return null;
+        // check missed cache for both fmt template and formatted string
+        synchronized (missed) {
+            if (missed.get(sub) != null) {
+                logSearchSpend(sub, start, false);
+                return null;
+            }
+        }
+        if (args != null) {
+            try {
+                String formatted = String.format(sub, args);
+                synchronized (missed) {
+                    if (missed.get(formatted) != null) {
+                        logSearchSpend(sub, start, false);
+                        return null;
+                    }
+                }
+            } catch (Exception e) {
+                logger.trace(String.format("failed to format elaboration key: %s", e.getMessage()));
+            }
         }
 
-        try {
-            logger.trace(String.format("start to search elaboration for: %s", String.format(sub, args)));
-            err = findMostSimilarRegex(String.format(sub, args));
-        } catch (Exception e) {
-            logger.trace(String.format("start search elaboration for: %s", sub));
+        // Phase 1: try regex matching with formatted string (guarded by length limit)
+        if (args != null && args.length > 0) {
+            try {
+                String formatted = String.format(sub, args);
+                if (formatted.length() <= maxElaborationRegex) {
+                    err = findMostSimilarRegex(formatted);
+                }
+            } catch (Exception e) {
+                logger.trace(String.format("failed to format for regex matching: %s", e.getMessage()));
+            }
+        }
+
+        // Phase 2: if formatted string missed or was too long, fallback to raw fmt template
+        if (err == null) {
             err = findMostSimilarRegex(sub);
         }
 
-        // find by distance is not reliable disable it for now
+        // Phase 3: distance matching uses the raw fmt template (always short)
         if (err == null) {
             err = findSimilarDistance(sub);
         }
@@ -355,6 +401,10 @@ public class StringSimilarity {
 
     // better precision, worse performance
     private static ErrorCodeElaboration findMostSimilarRegex(String sub) {
+        if (sub.length() > maxElaborationRegex) {
+            return null;
+        }
+
         if (!isRegexMatchedByRetrees(sub)) {
             return null;
         }

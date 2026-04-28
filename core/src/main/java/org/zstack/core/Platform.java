@@ -17,6 +17,7 @@ import org.zstack.core.config.GlobalConfigFacade;
 import org.zstack.core.db.DatabaseGlobalProperty;
 import org.zstack.core.encrypt.EncryptRSA;
 import org.zstack.core.errorcode.ErrorFacade;
+import org.zstack.core.errorcode.GlobalErrorCodeI18nService;
 import org.zstack.core.propertyvalidator.ValidatorTool;
 import org.zstack.core.search.SearchGlobalProperty;
 import org.zstack.core.statemachine.StateMachine;
@@ -936,12 +937,15 @@ public class Platform {
         }
     }
 
-    private static ErrorCodeElaboration elaborate(String fmt, Object...args) {
-        try {
-            if (String.format(fmt, args).length() > StringSimilarity.maxElaborationRegex) {
-                return null;
-            }
+    private static volatile boolean slowElaborationWired = false;
 
+    private static ErrorCodeElaboration elaborate(String fmt, Object...args) {
+        if (!slowElaborationWired) {
+            StringSimilarity.slowElaborationThresholdMs = CoreGlobalProperty.ELABORATION_SLOW_THRESHOLD_MS;
+            slowElaborationWired = true;
+        }
+
+        try {
             ErrorCodeElaboration elaboration = StringSimilarity.findSimilar(fmt, args);
             if (elaboration == null) {
                 return null;
@@ -979,6 +983,28 @@ public class Platform {
         handleErrorElaboration(errCode, fmt, result, cause, args);
         addErrorCounter(result);
         result.setGlobalErrorCode(globalErrorCode);
+        if (args != null && args.length > 0) {
+            result.setFormatArgs(java.util.Arrays.stream(args)
+                    .map(a -> a == null ? "null" : a.toString())
+                    .toArray(String[]::new));
+        }
+
+        // populate message at creation time with default locale;
+        // RestServer will override with client's Accept-Language if different
+        try {
+            ComponentLoader currentLoader = loader;
+            if (currentLoader != null) {
+                GlobalErrorCodeI18nService i18nService = currentLoader.getComponent(GlobalErrorCodeI18nService.class);
+                if (i18nService != null) {
+                    i18nService.localizeErrorCode(result, org.zstack.core.errorcode.LocaleUtils.DEFAULT_LOCALE);
+                }
+            }
+        } catch (Exception e) {
+            // i18n service not initialized during early startup
+        }
+        if (result.getMessage() == null) {
+            result.setMessage(details != null ? details : result.getDescription());
+        }
 
         return result;
     }

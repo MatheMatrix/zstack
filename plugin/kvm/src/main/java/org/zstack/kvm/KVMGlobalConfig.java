@@ -120,6 +120,10 @@ public class KVMGlobalConfig {
     @GlobalConfigDef(defaultValue = "false", type = Boolean.class, description = "enable install host shutdown hook")
     public static GlobalConfig INSTALL_HOST_SHUTDOWN_HOOK = new GlobalConfig(CATEGORY, "install.host.shutdown.hook");
 
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    @GlobalConfigDef(defaultValue = "600", type = Long.class, description = "timeout in seconds for orphaned VM skip entries from departed management nodes")
+    public static GlobalConfig ORPHANED_VM_SKIP_TIMEOUT = new GlobalConfig(CATEGORY, "vm.orphanedSkipTimeout");
+
     @GlobalConfigValidation(validValues = {"true", "false"})
     @GlobalConfigDef(defaultValue = "false", type = Boolean.class, description = "enable memory auto balloon")
     @BindResourceConfig({VmInstanceVO.class, HostVO.class, ClusterVO.class})
@@ -134,6 +138,10 @@ public class KVMGlobalConfig {
     @GlobalConfigDef(defaultValue = "false", description = "restart kvm host libvirtd service or not")
     @BindResourceConfig({HostVO.class, ClusterVO.class})
     public static GlobalConfig RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE = new GlobalConfig(CATEGORY, "reconnect.host.restart.libvirtd.service");
+
+    @GlobalConfigValidation(validValues = {"true", "false"})
+    @GlobalConfigDef(defaultValue = "true", type = Boolean.class, description = "enable TLS encryption for libvirt remote connections (migration)")
+    public static GlobalConfig LIBVIRT_TLS_ENABLED = new GlobalConfig(CATEGORY, "libvirt.tls.enabled");
 
     @GlobalConfigValidation
     public static GlobalConfig KVMAGENT_PHYSICAL_MEMORY_USAGE_ALARM_THRESHOLD = new GlobalConfig(CATEGORY, "kvmagent.physicalmemory.usage.alarm.threshold");

@@ -31,7 +31,7 @@ public class AddLogServerAction extends AbstractAction {
     @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String description;
 
-    @Param(required = true, validValues = {"ManagementNodeLog","PlatformOperationLog"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    @Param(required = true, validValues = {"ManagementNodeLog","PlatformOperationLog","SnatLog"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String category;
 
     @Param(required = true, validValues = {"Log4j2","FluentBit"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)

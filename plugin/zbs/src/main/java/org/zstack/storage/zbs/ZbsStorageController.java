@@ -179,7 +179,10 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         if (VolumeProtocol.CBD.toString().equals(protocol)) {
             GetVolumeClientsCmd cmd = new GetVolumeClientsCmd();
             cmd.setPath(installPath);
-            GetVolumeClientsRsp rsp = syncHttpCall(GET_VOLUME_CLIENTS_PATH, cmd, GetVolumeClientsRsp.class);
+            GetVolumeClientsRsp rsp = new HttpCaller<>(GET_VOLUME_CLIENTS_PATH, cmd, GetVolumeClientsRsp.class,
+                    null, TimeUnit.SECONDS, 30, true)
+                    .setTryNext(true)
+                    .syncCall();
             List<ActiveVolumeClient> clients = new ArrayList<>();
 
             if (!rsp.isSuccess()) {
@@ -536,6 +539,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 error(new FlowErrorHandler(completion) {
                     @Override
                     public void handle(ErrorCode errCode, Map data) {
+                        syncMdsStatuses(newAddonInfo);
                         completion.fail(errCode);
                     }
                 });
@@ -1358,6 +1362,24 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         this.config = StringUtils.isEmpty(config) ? new Config() : JSONObjectUtil.toObject(config, Config.class);
     }
 
+    private void syncMdsStatuses(AddonInfo newAddonInfo) {
+        if (addonInfo == null || newAddonInfo == null) {
+            return;
+        }
+
+        for (MdsInfo newMds : newAddonInfo.getMdsInfos()) {
+            for (MdsInfo existMds : addonInfo.getMdsInfos()) {
+                if (existMds.getAddr().equals(newMds.getAddr())) {
+                    existMds.setStatus(newMds.getStatus());
+                }
+            }
+        }
+
+        SQL.New(ExternalPrimaryStorageVO.class).eq(ExternalPrimaryStorageVO_.uuid, self.getUuid())
+                .set(ExternalPrimaryStorageVO_.addonInfo, JSONObjectUtil.toJsonString(addonInfo))
+                .update();
+    }
+
     @Deprecated
     private void reloadDbInfo() {
         self = dbf.reload(self);
@@ -1410,6 +1432,11 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         private final boolean sync;
 
         private boolean tryNext = false;
+
+        HttpCaller<T> setTryNext(boolean tryNext) {
+            this.tryNext = tryNext;
+            return this;
+        }
 
         public HttpCaller(String path, AgentCommand cmd, Class<T> retClass, ReturnValueCompletion<T> callback) {
             this(path, cmd, retClass, callback, null, 0, false);

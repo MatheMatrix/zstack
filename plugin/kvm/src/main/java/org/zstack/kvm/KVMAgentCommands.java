@@ -2283,6 +2283,8 @@ public class KVMAgentCommands {
         private boolean isApplianceVm;
         @GrayVersion(value = "5.0.0")
         private String systemSerialNumber;
+        @GrayVersion(value = "5.5.12")
+        private String guestOsType;
         @GrayVersion(value = "5.0.0")
         private String bootMode;
         // used when bootMode == 'UEFI'
@@ -2312,6 +2314,8 @@ public class KVMAgentCommands {
         private boolean consoleLogToFile;
         @GrayVersion(value = "5.0.0")
         private boolean acpi;
+        @GrayVersion(value = "5.5.12")
+        private boolean pmu = true;
         @GrayVersion(value = "5.0.0")
         private boolean x2apic = true;
         // cpuid hypervisor feature
@@ -2472,6 +2476,14 @@ public class KVMAgentCommands {
 
         public void setSystemSerialNumber(String systemSerialNumber) {
             this.systemSerialNumber = systemSerialNumber;
+        }
+
+        public String getGuestOsType() {
+            return guestOsType;
+        }
+
+        public void setGuestOsType(String guestOsType) {
+            this.guestOsType = guestOsType;
         }
 
         public String getVmCpuModel() {
@@ -2833,6 +2845,14 @@ public class KVMAgentCommands {
 
         public void setAcpi(boolean acpi) {
             this.acpi = acpi;
+        }
+
+        public boolean isPmu() {
+            return pmu;
+        }
+
+        public void setPmu(boolean pmu) {
+            this.pmu = pmu;
         }
 
         public boolean getX2apic() {
@@ -3805,6 +3825,26 @@ public class KVMAgentCommands {
         private boolean reload;
         @GrayVersion(value = "5.0.0")
         private long bandwidth;
+        @GrayVersion(value = "5.5.12")
+        private boolean useTls;
+        @GrayVersion(value = "5.5.12")
+        private String srcHostManagementIp;
+
+        public String getSrcHostManagementIp() {
+            return srcHostManagementIp;
+        }
+
+        public void setSrcHostManagementIp(String srcHostManagementIp) {
+            this.srcHostManagementIp = srcHostManagementIp;
+        }
+
+        public boolean isUseTls() {
+            return useTls;
+        }
+
+        public void setUseTls(boolean useTls) {
+            this.useTls = useTls;
+        }
 
         public Integer getDownTime() {
             return downTime;

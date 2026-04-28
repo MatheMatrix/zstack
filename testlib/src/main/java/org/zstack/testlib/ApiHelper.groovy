@@ -962,6 +962,33 @@ abstract class ApiHelper {
     }
 
 
+    def addBareMetal2DpuChassis(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.AddBareMetal2DpuChassisAction.class) Closure c) {
+        def a = new org.zstack.sdk.AddBareMetal2DpuChassisAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def addBareMetal2Gateway(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.AddBareMetal2GatewayAction.class) Closure c) {
         def a = new org.zstack.sdk.AddBareMetal2GatewayAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -1396,6 +1423,33 @@ abstract class ApiHelper {
 
     def addExternalPrimaryStorage(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.AddExternalPrimaryStorageAction.class) Closure c) {
         def a = new org.zstack.sdk.AddExternalPrimaryStorageAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def addExternalServiceConfiguration(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.AddExternalServiceConfigurationAction.class) Closure c) {
+        def a = new org.zstack.sdk.AddExternalServiceConfigurationAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -14489,6 +14543,33 @@ abstract class ApiHelper {
     }
 
 
+    def deleteExternalServiceConfiguration(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.DeleteExternalServiceConfigurationAction.class) Closure c) {
+        def a = new org.zstack.sdk.DeleteExternalServiceConfigurationAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def deleteFirewall(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.DeleteFirewallAction.class) Closure c) {
         def a = new org.zstack.sdk.DeleteFirewallAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -18485,6 +18566,33 @@ abstract class ApiHelper {
     }
 
 
+    def detachDGpuFromVm(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.DetachDGpuFromVmAction.class) Closure c) {
+        def a = new org.zstack.sdk.DetachDGpuFromVmAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def detachDataVolumeFromHost(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.DetachDataVolumeFromHostAction.class) Closure c) {
         def a = new org.zstack.sdk.DetachDataVolumeFromHostAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -19592,6 +19700,33 @@ abstract class ApiHelper {
     }
 
 
+    def disableDGpuMode(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.DisableDGpuModeAction.class) Closure c) {
+        def a = new org.zstack.sdk.DisableDGpuModeAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def discoverExternalPrimaryStorage(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.DiscoverExternalPrimaryStorageAction.class) Closure c) {
         def a = new org.zstack.sdk.DiscoverExternalPrimaryStorageAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -19702,6 +19837,33 @@ abstract class ApiHelper {
 
     def enableCdpTask(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.EnableCdpTaskAction.class) Closure c) {
         def a = new org.zstack.sdk.EnableCdpTaskAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def enableDGpuMode(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.EnableDGpuModeAction.class) Closure c) {
+        def a = new org.zstack.sdk.EnableDGpuModeAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -21941,6 +22103,33 @@ abstract class ApiHelper {
     }
 
 
+    def getDGpuSpecStats(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetDGpuSpecStatsAction.class) Closure c) {
+        def a = new org.zstack.sdk.GetDGpuSpecStatsAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def getDataCenterFromRemote(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetDataCenterFromRemoteAction.class) Closure c) {
         def a = new org.zstack.sdk.GetDataCenterFromRemoteAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -22375,6 +22564,33 @@ abstract class ApiHelper {
 
     def getGlobalConfigOptions(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetGlobalConfigOptionsAction.class) Closure c) {
         def a = new org.zstack.sdk.GetGlobalConfigOptionsAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def getGpuDeviceCandidates(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetGpuDeviceCandidatesAction.class) Closure c) {
+        def a = new org.zstack.sdk.GetGpuDeviceCandidatesAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -26747,6 +26963,33 @@ abstract class ApiHelper {
     }
 
 
+    def getVpcVRouterSnatLogState(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetVpcVRouterSnatLogStateAction.class) Closure c) {
+        def a = new org.zstack.sdk.GetVpcVRouterSnatLogStateAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def getVpcVpnConfigurationFromRemote(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.GetVpcVpnConfigurationFromRemoteAction.class) Closure c) {
         def a = new org.zstack.sdk.GetVpcVpnConfigurationFromRemoteAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -27478,6 +27721,33 @@ abstract class ApiHelper {
 
     def migrateVm(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.MigrateVmAction.class) Closure c) {
         def a = new org.zstack.sdk.MigrateVmAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def mountModelToVmInstance(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.MountModelToVmInstanceAction.class) Closure c) {
+        def a = new org.zstack.sdk.MountModelToVmInstanceAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -30198,6 +30468,64 @@ abstract class ApiHelper {
     }
 
 
+    def queryDGpuDevice(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryDGpuDeviceAction.class) Closure c) {
+        def a = new org.zstack.sdk.QueryDGpuDeviceAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+        a.conditions = a.conditions.collect { it.toString() }
+
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def queryDGpuProfile(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryDGpuProfileAction.class) Closure c) {
+        def a = new org.zstack.sdk.QueryDGpuProfileAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+        a.conditions = a.conditions.collect { it.toString() }
+
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def queryDRSAdvice(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryDRSAdviceAction.class) Closure c) {
         def a = new org.zstack.sdk.QueryDRSAdviceAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -30751,6 +31079,35 @@ abstract class ApiHelper {
 
     def queryExternalBackup(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryExternalBackupAction.class) Closure c) {
         def a = new org.zstack.sdk.QueryExternalBackupAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+        a.conditions = a.conditions.collect { it.toString() }
+
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def queryExternalServiceConfiguration(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryExternalServiceConfigurationAction.class) Closure c) {
+        def a = new org.zstack.sdk.QueryExternalServiceConfigurationAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -35882,6 +36239,35 @@ abstract class ApiHelper {
     }
 
 
+    def queryVmModelMount(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryVmModelMountAction.class) Closure c) {
+        def a = new org.zstack.sdk.QueryVmModelMountAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+        a.conditions = a.conditions.collect { it.toString() }
+
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def queryVmNic(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.QueryVmNicAction.class) Closure c) {
         def a = new org.zstack.sdk.QueryVmNicAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -38565,6 +38951,33 @@ abstract class ApiHelper {
     }
 
 
+    def removeVmDGpuStrategy(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.RemoveVmDGpuStrategyAction.class) Closure c) {
+        def a = new org.zstack.sdk.RemoveVmDGpuStrategyAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def removeVmFromAffinityGroup(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.RemoveVmFromAffinityGroupAction.class) Closure c) {
         def a = new org.zstack.sdk.RemoveVmFromAffinityGroupAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -39321,6 +39734,33 @@ abstract class ApiHelper {
     }
 
 
+    def setDGpuProfile(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.SetDGpuProfileAction.class) Closure c) {
+        def a = new org.zstack.sdk.SetDGpuProfileAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def setFlowMeterRouterId(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.SetFlowMeterRouterIdAction.class) Closure c) {
         def a = new org.zstack.sdk.SetFlowMeterRouterIdAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -39915,6 +40355,33 @@ abstract class ApiHelper {
     }
 
 
+    def setVmDGpuStrategy(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.SetVmDGpuStrategyAction.class) Closure c) {
+        def a = new org.zstack.sdk.SetVmDGpuStrategyAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
     def setVmEmulatorPinning(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.SetVmEmulatorPinningAction.class) Closure c) {
         def a = new org.zstack.sdk.SetVmEmulatorPinningAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
@@ -40484,6 +40951,33 @@ abstract class ApiHelper {
 
     def setVpcVRouterNetworkServiceState(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.SetVpcVRouterNetworkServiceStateAction.class) Closure c) {
         def a = new org.zstack.sdk.SetVpcVRouterNetworkServiceStateAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def setVpcVRouterSnatLogState(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.SetVpcVRouterSnatLogStateAction.class) Closure c) {
+        def a = new org.zstack.sdk.SetVpcVRouterSnatLogStateAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -42212,6 +42706,33 @@ abstract class ApiHelper {
 
     def unlockIdentity(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UnlockIdentityAction.class) Closure c) {
         def a = new org.zstack.sdk.UnlockIdentityAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def unmountModelFromVmInstance(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UnmountModelFromVmInstanceAction.class) Closure c) {
+        def a = new org.zstack.sdk.UnmountModelFromVmInstanceAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -44129,6 +44650,33 @@ abstract class ApiHelper {
 
     def updateExternalPrimaryStorage(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateExternalPrimaryStorageAction.class) Closure c) {
         def a = new org.zstack.sdk.UpdateExternalPrimaryStorageAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def updateExternalServiceConfiguration(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateExternalServiceConfigurationAction.class) Closure c) {
+        def a = new org.zstack.sdk.UpdateExternalServiceConfigurationAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -47180,6 +47728,33 @@ abstract class ApiHelper {
 
     def updateVmInstance(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateVmInstanceAction.class) Closure c) {
         def a = new org.zstack.sdk.UpdateVmInstanceAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def updateVmInstancePciDeviceSpecRef(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.UpdateVmInstancePciDeviceSpecRefAction.class) Closure c) {
+        def a = new org.zstack.sdk.UpdateVmInstancePciDeviceSpecRefAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -56625,6 +57200,116 @@ abstract class ApiHelper {
 
     def updateMonitorTemplate(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zwatch.monitorgroup.api.UpdateMonitorTemplateAction.class) Closure c) {
         def a = new org.zstack.sdk.zwatch.monitorgroup.api.UpdateMonitorTemplateAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def deleteResNotifySubscription(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zwatch.resnotify.DeleteResNotifySubscriptionAction.class) Closure c) {
+        def a = new org.zstack.sdk.zwatch.resnotify.DeleteResNotifySubscriptionAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def queryResNotifySubscription(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zwatch.resnotify.QueryResNotifySubscriptionAction.class) Closure c) {
+        def a = new org.zstack.sdk.zwatch.resnotify.QueryResNotifySubscriptionAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+        a.conditions = a.conditions.collect { it.toString() }
+
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def subscribeResNotify(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zwatch.resnotify.SubscribeResNotifyAction.class) Closure c) {
+        def a = new org.zstack.sdk.zwatch.resnotify.SubscribeResNotifyAction()
+        a.sessionId = Test.currentEnvSpec?.session?.uuid
+        c.resolveStrategy = Closure.OWNER_FIRST
+        c.delegate = a
+        c()
+        
+
+        if (System.getProperty("apipath") != null) {
+            if (a.apiId == null) {
+                a.apiId = Platform.uuid
+            }
+    
+            def tracker = new ApiPathTracker(a.apiId)
+            def out = errorOut(a.call())
+            def path = tracker.getApiPath()
+            if (!path.isEmpty()) {
+                Test.apiPaths[a.class.name] = path.join(" --->\n")
+            }
+        
+            return out
+        } else {
+            return errorOut(a.call())
+        }
+    }
+
+
+    def updateResNotifySubscription(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.zwatch.resnotify.UpdateResNotifySubscriptionAction.class) Closure c) {
+        def a = new org.zstack.sdk.zwatch.resnotify.UpdateResNotifySubscriptionAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
