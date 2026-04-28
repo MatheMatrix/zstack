@@ -138,6 +138,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
     public static final String GET_VM_INSTANCE_METADATA_PATH = "/nfsprimarystorage/vm/metadata/get";
     public static final String SCAN_VM_METADATA_PATH = "/nfsprimarystorage/vm/metadata/scan";
     public static final String CLEANUP_VM_METADATA_PATH = "/nfsprimarystorage/vm/metadata/cleanup";
+    public static final String CLEANUP_ALL_VM_METADATA_PATH = "/nfsprimarystorage/vm/metadata/cleanup-all";
     public static final String NFS_PREFIX_REBASE_BACKING_FILES_PATH = "/nfsprimarystorage/snapshot/prefixrebasebackingfiles";
 
     //////////////// For unit test //////////////////////////
@@ -2191,6 +2192,39 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
                 }
 
                 CleanupVmInstanceMetadataOnPrimaryStorageReply r = new CleanupVmInstanceMetadataOnPrimaryStorageReply();
+                completion.success(r);
+            }
+        });
+    }
+
+    @Override
+    public void handle(CleanupAllVmMetadataOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<CleanupAllVmMetadataOnPrimaryStorageReply> completion) {
+        CleanupAllVmMetadataCmd cmd = new CleanupAllVmMetadataCmd();
+        cmd.setUuid(msg.getPrimaryStorageUuid());
+        cmd.metadataDir = msg.getMetadataDir();
+
+        KVMHostAsyncHttpCallMsg hmsg = new KVMHostAsyncHttpCallMsg();
+        hmsg.setCommand(cmd);
+        hmsg.setPath(CLEANUP_ALL_VM_METADATA_PATH);
+        hmsg.setHostUuid(hostUuid);
+        bus.makeTargetServiceIdByResourceUuid(hmsg, HostConstant.SERVICE_ID, hostUuid);
+        bus.send(hmsg, new CloudBusCallBack(completion) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    completion.fail(reply.getError());
+                    return;
+                }
+
+                CleanupAllVmMetadataRsp rsp = ((KVMHostAsyncHttpCallReply) reply).toResponse(CleanupAllVmMetadataRsp.class);
+                if (!rsp.isSuccess()) {
+                    completion.fail(operr("failed to cleanup all vm metadata on nfs via host[uuid:%s]: %s", hostUuid, rsp.getError()));
+                    return;
+                }
+
+                CleanupAllVmMetadataOnPrimaryStorageReply r = new CleanupAllVmMetadataOnPrimaryStorageReply();
+                r.setCleanedCount(rsp.cleanedCount);
+                r.setFailedCount(rsp.failedCount);
                 completion.success(r);
             }
         });

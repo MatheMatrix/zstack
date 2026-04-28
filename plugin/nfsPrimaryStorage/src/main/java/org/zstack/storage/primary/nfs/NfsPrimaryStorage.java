@@ -136,6 +136,8 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
             handle((PullVolumeSnapshotOnPrimaryStorageMsg) msg);
         } else if (msg instanceof RebaseVolumeBackingFileOnPrimaryStorageMsg) {
             handle((RebaseVolumeBackingFileOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof CleanupAllVmMetadataOnPrimaryStorageMsg) {
+            handle((CleanupAllVmMetadataOnPrimaryStorageMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
@@ -2079,6 +2081,31 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
         backend.handle(msg, hostUuid, new ReturnValueCompletion<RebaseVolumeBackingFileOnPrimaryStorageReply>(msg) {
             @Override
             public void success(RebaseVolumeBackingFileOnPrimaryStorageReply r) {
+                bus.reply(msg, r);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    @Override
+    protected void handle(CleanupAllVmMetadataOnPrimaryStorageMsg msg) {
+        CleanupAllVmMetadataOnPrimaryStorageReply reply = new CleanupAllVmMetadataOnPrimaryStorageReply();
+        List<HostInventory> connectedHosts = factory.getConnectedHostForOperation(getSelfInventory());
+        if (connectedHosts.isEmpty()) {
+            reply.setError(operr("no connected host found for NFS primary storage[uuid:%s]", self.getUuid()));
+            bus.reply(msg, reply);
+            return;
+        }
+        String hostUuid = connectedHosts.get(0).getUuid();
+        final NfsPrimaryStorageBackend backend = getBackendByHostUuid(hostUuid);
+        backend.handle(msg, hostUuid, new ReturnValueCompletion<CleanupAllVmMetadataOnPrimaryStorageReply>(msg) {
+            @Override
+            public void success(CleanupAllVmMetadataOnPrimaryStorageReply r) {
                 bus.reply(msg, r);
             }
 

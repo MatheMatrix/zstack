@@ -950,6 +950,15 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
     public static class CleanupVmMetadataRsp extends AgentResponse {
     }
 
+    public static class CleanupAllVmMetadataCmd extends AgentCommand {
+        public String metadataDir;
+    }
+
+    public static class CleanupAllVmMetadataRsp extends AgentResponse {
+        public int cleanedCount;
+        public int failedCount;
+    }
+
     public static class PrefixRebaseBackingFilesCmd extends LocalStorageKvmBackend.AgentCommand {
         public List<String> filePaths;
         public String oldPrefix;
@@ -996,6 +1005,7 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
     public static final String GET_VM_INSTANCE_METADATA_PATH = "/localstorage/vm/metadata/get";
     public static final String SCAN_VM_METADATA_PATH = "/localstorage/vm/metadata/scan";
     public static final String CLEANUP_VM_METADATA_PATH = "/localstorage/vm/metadata/cleanup";
+    public static final String CLEANUP_ALL_VM_METADATA_PATH = "/localstorage/vm/metadata/cleanup-all";
     public static final String PREFIX_REBASE_BACKING_FILES_PATH = "/localstorage/snapshot/prefixrebasebackingfiles";
 
     public LocalStorageKvmBackend() {
@@ -3945,6 +3955,27 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
             @Override
             public void success(CleanupVmMetadataRsp rsp) {
                 CleanupVmInstanceMetadataOnPrimaryStorageReply reply = new CleanupVmInstanceMetadataOnPrimaryStorageReply();
+                completion.success(reply);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                completion.fail(errorCode);
+            }
+        });
+    }
+
+    @Override
+    void handle(CleanupAllVmMetadataOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<CleanupAllVmMetadataOnPrimaryStorageReply> completion) {
+        CleanupAllVmMetadataCmd cmd = new CleanupAllVmMetadataCmd();
+        cmd.metadataDir = msg.getMetadataDir();
+
+        httpCall(CLEANUP_ALL_VM_METADATA_PATH, hostUuid, cmd, CleanupAllVmMetadataRsp.class, new ReturnValueCompletion<CleanupAllVmMetadataRsp>(completion) {
+            @Override
+            public void success(CleanupAllVmMetadataRsp rsp) {
+                CleanupAllVmMetadataOnPrimaryStorageReply reply = new CleanupAllVmMetadataOnPrimaryStorageReply();
+                reply.setCleanedCount(rsp.cleanedCount);
+                reply.setFailedCount(rsp.failedCount);
                 completion.success(reply);
             }
 
