@@ -995,6 +995,13 @@ public class NfsPrimaryStorageKVMBackendCommands {
     public static class CleanupVmMetadataRsp extends NfsPrimaryStorageAgentResponse {
     }
 
+    public static class CleanupAllVmMetadataCmd extends NfsPrimaryStorageAgentCommand {
+        public String metadataDir;
+    }
+
+    public static class CleanupAllVmMetadataRsp extends NfsPrimaryStorageAgentResponse {
+    }
+
     public static class PrefixRebaseBackingFilesCmd extends NfsPrimaryStorageAgentCommand {
         public List<String> filePaths;
         public String oldPrefix;
