@@ -29,3 +29,35 @@ CREATE TABLE IF NOT EXISTS `ZnsTransportZoneVO` (
     CONSTRAINT `fkZnsTransportZoneVOSdnControllerVO` FOREIGN KEY (`znsSdnControllerUuid`) REFERENCES `SdnControllerVO` (`uuid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+
+-- ZNS Wave 2: Tenant / TenantRouter 资源建模 (ZCF-2133)
+
+CREATE TABLE IF NOT EXISTS `ZnsTenantVO` (
+  `uuid` VARCHAR(32) NOT NULL,
+  `sdnControllerUuid` VARCHAR(32) NOT NULL,
+  `znsResourceUuid` VARCHAR(64) NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `description` VARCHAR(2048) DEFAULT NULL,
+  `lastOpDate` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `createDate` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_zns_tenant_resource` (`sdnControllerUuid`, `znsResourceUuid`),
+  CONSTRAINT `fk_zns_tenant_sdn` FOREIGN KEY (`sdnControllerUuid`) REFERENCES `SdnControllerVO` (`uuid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE IF NOT EXISTS `ZnsTenantRouterVO` (
+  `uuid` VARCHAR(32) NOT NULL,
+  `sdnControllerUuid` VARCHAR(32) NOT NULL,
+  `tenantUuid` VARCHAR(32) NOT NULL,
+  `znsResourceUuid` VARCHAR(64) NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `description` VARCHAR(2048) DEFAULT NULL,
+  `state` VARCHAR(32) NOT NULL COMMENT 'Active / Inactive',
+  `lastOpDate` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `createDate` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`uuid`),
+  UNIQUE KEY `uk_zns_tr_resource` (`sdnControllerUuid`, `znsResourceUuid`),
+  KEY `idx_zns_tr_tenant` (`tenantUuid`),
+  CONSTRAINT `fk_zns_tr_sdn` FOREIGN KEY (`sdnControllerUuid`) REFERENCES `SdnControllerVO` (`uuid`) ON DELETE CASCADE,
+  CONSTRAINT `fk_zns_tr_tenant` FOREIGN KEY (`tenantUuid`) REFERENCES `ZnsTenantVO` (`uuid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
