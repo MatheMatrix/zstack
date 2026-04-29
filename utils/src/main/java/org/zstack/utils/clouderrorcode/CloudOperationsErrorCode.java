@@ -12062,6 +12062,8 @@ public class CloudOperationsErrorCode {
     public static final String ORG_ZSTACK_NETWORK_ZNS_10031 = "ORG_ZSTACK_NETWORK_ZNS_10031";
     public static final String ORG_ZSTACK_NETWORK_ZNS_10032 = "ORG_ZSTACK_NETWORK_ZNS_10032";
     public static final String ORG_ZSTACK_NETWORK_ZNS_10033 = "ORG_ZSTACK_NETWORK_ZNS_10033";
+    // 10034 ZNS API returned HTTP 409 Conflict (sub-resources still exist)
+    public static final String ORG_ZSTACK_NETWORK_ZNS_10034 = "ORG_ZSTACK_NETWORK_ZNS_10034";
 
     public static final String ORG_ZSTACK_PREMIUM_EXTERNALSERVICE_MARKETPLACE_10000 = "ORG_ZSTACK_PREMIUM_EXTERNALSERVICE_MARKETPLACE_10000";
 
