@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS `ZnsTransportZoneVO` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
--- ZNS Wave 2: Tenant / TenantRouter 资源建模 (ZCF-2133)
+-- ZNS Wave 2: Tenant/TenantRouter resource modeling (ZCF-2133)
 
 CREATE TABLE IF NOT EXISTS `ZnsTenantVO` (
   `uuid` VARCHAR(32) NOT NULL,

@@ -53,6 +53,10 @@ public class SdnControllerPingTracker extends PingTracker implements
     @Override
     public NeedReplyMessage getPingMessage(String resUuid) {
         SdnControllerVO vo = dbf.findByUuid(resUuid, SdnControllerVO.class);
+        if (vo == null) {
+            logger.warn(String.format("SDN controller[uuid:%s] has been deleted, skip ping sending", resUuid));
+            return null;
+        }
         if (vo.getStatus() == SdnControllerStatus.Connecting) {
             return null;
         }
