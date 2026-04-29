@@ -57,6 +57,13 @@ public class SdnControllerPingTracker extends PingTracker implements
             return null;
         }
 
+        // ZNS controllers are externally-managed (state machine driven by ZNS push notifications).
+        // Syncing and Ready are ZNS-specific states; Cloud must NOT ping them autonomously.
+        if (vo.getStatus() == SdnControllerStatus.Syncing
+                || vo.getStatus() == SdnControllerStatus.Ready) {
+            return null;
+        }
+
         SdnControllerPingMsg msg = new SdnControllerPingMsg();
         msg.setSdnControllerUuid(resUuid);
         bus.makeTargetServiceIdByResourceUuid(msg, SdnControllerConstant.SERVICE_ID, resUuid);
@@ -81,6 +88,11 @@ public class SdnControllerPingTracker extends PingTracker implements
             return;
         }
 
+        // ZNS controllers (Syncing/Ready) are externally-managed; skip autonomous status changes.
+        if (vo.getStatus() == SdnControllerStatus.Syncing
+                || vo.getStatus() == SdnControllerStatus.Ready) {
+            return;
+        }
 
         if (!reply.isSuccess()) {
             logger.warn(String.format("[SDN Ping Tracker]: unable to ping the sdn controller[uuid: %s], %s", resourceUuid, reply.getError()));
