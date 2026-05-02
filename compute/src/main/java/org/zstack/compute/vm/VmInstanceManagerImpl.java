@@ -804,11 +804,12 @@ public class VmInstanceManagerImpl extends AbstractService implements
                         .list());
 
                 for (String diskUuid : dataOfferingUuids){
-                    dataOfferings.add(DiskOfferingInventory.valueOf(
-                            (DiskOfferingVO) q(DiskOfferingVO.class)
-                                    .eq(DiskOfferingVO_.uuid, diskUuid)
-                                    .find()
-                    ));
+                    DiskOfferingVO dvo = q(DiskOfferingVO.class)
+                            .eq(DiskOfferingVO_.uuid, diskUuid)
+                            .find();
+                    if (dvo != null) {
+                        dataOfferings.add(DiskOfferingInventory.valueOf(dvo));
+                    }
                 }
 
                 ImageVO imageVO = q(ImageVO.class).eq(ImageVO_.uuid, msg.getImageUuid()).find();
