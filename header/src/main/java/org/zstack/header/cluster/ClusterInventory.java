@@ -104,6 +104,8 @@ public class ClusterInventory implements Serializable {
 
     private String architecture;
 
+    private String serverPoolUuid;
+
     public static ClusterInventory valueOf(ClusterVO vo) {
         ClusterInventory inv = new ClusterInventory();
         inv.setName(vo.getName());
@@ -116,6 +118,7 @@ public class ClusterInventory implements Serializable {
         inv.setType(vo.getType());
         inv.setLastOpDate(vo.getLastOpDate());
         inv.setArchitecture(vo.getArchitecture());
+        inv.setServerPoolUuid(vo.getServerPoolUuid());
         return inv;
     }
 
@@ -189,6 +192,14 @@ public class ClusterInventory implements Serializable {
 
     public void setArchitecture(String architecture) {
         this.architecture = architecture;
+    }
+
+    public String getServerPoolUuid() {
+        return serverPoolUuid;
+    }
+
+    public void setServerPoolUuid(String serverPoolUuid) {
+        this.serverPoolUuid = serverPoolUuid;
     }
 
     public Timestamp getCreateDate() {
