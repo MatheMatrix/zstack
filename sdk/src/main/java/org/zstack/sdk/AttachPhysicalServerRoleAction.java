@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class QueryVmModelMountAction extends QueryAction {
+public class AttachPhysicalServerRoleAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class QueryVmModelMountAction extends QueryAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.QueryVmModelMountResult value;
+        public org.zstack.sdk.AttachPhysicalServerRoleResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,6 +25,41 @@ public class QueryVmModelMountAction extends QueryAction {
         }
     }
 
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String serverUuid;
+
+    @Param(required = true, validValues = {"KVM_HOST","BAREMETAL_V2","CONTAINER_HOST"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String roleType;
+
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String clusterUuid;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.util.Map roleConfig;
+
+    @Param(required = false)
+    public java.util.List systemTags;
+
+    @Param(required = false)
+    public java.util.List userTags;
+
+    @Param(required = false)
+    public String sessionId;
+
+    @Param(required = false)
+    public String accessKeyId;
+
+    @Param(required = false)
+    public String accessKeySecret;
+
+    @Param(required = false)
+    public String requestIp;
+
+    @NonAPIParam
+    public long timeout = -1;
+
+    @NonAPIParam
+    public long pollingInterval = -1;
 
 
     private Result makeResult(ApiResult res) {
@@ -34,8 +69,8 @@ public class QueryVmModelMountAction extends QueryAction {
             return ret;
         }
         
-        org.zstack.sdk.QueryVmModelMountResult value = res.getResult(org.zstack.sdk.QueryVmModelMountResult.class);
-        ret.value = value == null ? new org.zstack.sdk.QueryVmModelMountResult() : value; 
+        org.zstack.sdk.AttachPhysicalServerRoleResult value = res.getResult(org.zstack.sdk.AttachPhysicalServerRoleResult.class);
+        ret.value = value == null ? new org.zstack.sdk.AttachPhysicalServerRoleResult() : value; 
 
         return ret;
     }
@@ -64,11 +99,11 @@ public class QueryVmModelMountAction extends QueryAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "GET";
-        info.path = "/vm-model-mounts";
+        info.httpMethod = "POST";
+        info.path = "/physical-servers/{serverUuid}/roles";
         info.needSession = true;
-        info.needPoll = false;
-        info.parameterName = "";
+        info.needPoll = true;
+        info.parameterName = "params";
         return info;
     }
 

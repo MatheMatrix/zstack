@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class UnmountModelFromVmInstanceAction extends AbstractAction {
+public class AttachProvisionNetworkToPoolAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class UnmountModelFromVmInstanceAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.UnmountModelFromVmInstanceResult value;
+        public org.zstack.sdk.AttachProvisionNetworkToPoolResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -26,7 +26,10 @@ public class UnmountModelFromVmInstanceAction extends AbstractAction {
     }
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String uuid;
+    public java.lang.String networkUuid;
+
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String poolUuid;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -60,8 +63,8 @@ public class UnmountModelFromVmInstanceAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.UnmountModelFromVmInstanceResult value = res.getResult(org.zstack.sdk.UnmountModelFromVmInstanceResult.class);
-        ret.value = value == null ? new org.zstack.sdk.UnmountModelFromVmInstanceResult() : value; 
+        org.zstack.sdk.AttachProvisionNetworkToPoolResult value = res.getResult(org.zstack.sdk.AttachProvisionNetworkToPoolResult.class);
+        ret.value = value == null ? new org.zstack.sdk.AttachProvisionNetworkToPoolResult() : value; 
 
         return ret;
     }
@@ -90,8 +93,8 @@ public class UnmountModelFromVmInstanceAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "DELETE";
-        info.path = "/vm-model-mounts/{uuid}";
+        info.httpMethod = "POST";
+        info.path = "/provision-networks/{networkUuid}/pools/{poolUuid}";
         info.needSession = true;
         info.needPoll = true;
         info.parameterName = "";

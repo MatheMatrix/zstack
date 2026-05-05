@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class AddKVMHostAction extends AbstractAction {
+public class UpdatePhysicalServerAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class AddKVMHostAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.AddHostResult value;
+        public org.zstack.sdk.UpdatePhysicalServerResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,35 +25,47 @@ public class AddKVMHostAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String username;
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String uuid;
 
-    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String password;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, numberRange = {1L,65535L}, noTrim = false)
-    public int sshPort = 22;
+    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String name;
 
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String serverUuid;
-
-    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String name;
+    public java.lang.String poolUuid;
 
     @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String description;
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String managementIp;
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String clusterUuid;
-
-    @Param(required = false)
-    public java.lang.String resourceUuid;
+    @Param(required = false, validValues = {"x86_64","aarch64"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String architecture;
 
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List tagUuids;
+    public java.lang.String serialNumber;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String manufacturer;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String model;
+
+    @Param(required = false, validValues = {"IPMI"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String oobManagementType;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String oobAddress;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, numberRange = {1L,65535L}, noTrim = false)
+    public java.lang.Integer oobPort;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String oobUsername;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String oobPassword;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -87,8 +99,8 @@ public class AddKVMHostAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.AddHostResult value = res.getResult(org.zstack.sdk.AddHostResult.class);
-        ret.value = value == null ? new org.zstack.sdk.AddHostResult() : value; 
+        org.zstack.sdk.UpdatePhysicalServerResult value = res.getResult(org.zstack.sdk.UpdatePhysicalServerResult.class);
+        ret.value = value == null ? new org.zstack.sdk.UpdatePhysicalServerResult() : value; 
 
         return ret;
     }
@@ -117,11 +129,11 @@ public class AddKVMHostAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "POST";
-        info.path = "/hosts/kvm";
+        info.httpMethod = "PUT";
+        info.path = "/physical-servers/{uuid}/actions";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "params";
+        info.parameterName = "updatePhysicalServer";
         return info;
     }
 

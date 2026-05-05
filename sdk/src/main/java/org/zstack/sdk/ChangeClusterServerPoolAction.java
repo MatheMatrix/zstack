@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class AddKVMHostAction extends AbstractAction {
+public class ChangeClusterServerPoolAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class AddKVMHostAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.AddHostResult value;
+        public org.zstack.sdk.ChangeClusterServerPoolResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,35 +25,11 @@ public class AddKVMHostAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String username;
-
-    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String password;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, numberRange = {1L,65535L}, noTrim = false)
-    public int sshPort = 22;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String serverUuid;
-
-    @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String name;
-
-    @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String description;
-
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = false, noTrim = false)
-    public java.lang.String managementIp;
-
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String clusterUuid;
 
-    @Param(required = false)
-    public java.lang.String resourceUuid;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List tagUuids;
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String serverPoolUuid;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -87,8 +63,8 @@ public class AddKVMHostAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.AddHostResult value = res.getResult(org.zstack.sdk.AddHostResult.class);
-        ret.value = value == null ? new org.zstack.sdk.AddHostResult() : value; 
+        org.zstack.sdk.ChangeClusterServerPoolResult value = res.getResult(org.zstack.sdk.ChangeClusterServerPoolResult.class);
+        ret.value = value == null ? new org.zstack.sdk.ChangeClusterServerPoolResult() : value; 
 
         return ret;
     }
@@ -117,11 +93,11 @@ public class AddKVMHostAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "POST";
-        info.path = "/hosts/kvm";
+        info.httpMethod = "PUT";
+        info.path = "/clusters/{clusterUuid}/server-pool/actions";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "params";
+        info.parameterName = "changeClusterServerPool";
         return info;
     }
 

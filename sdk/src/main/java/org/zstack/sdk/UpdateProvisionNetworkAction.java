@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class MountModelToVmInstanceAction extends AbstractAction {
+public class UpdateProvisionNetworkAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class MountModelToVmInstanceAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.MountModelToVmInstanceResult value;
+        public org.zstack.sdk.UpdateProvisionNetworkResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -26,13 +26,28 @@ public class MountModelToVmInstanceAction extends AbstractAction {
     }
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String vmInstanceUuid;
+    public java.lang.String uuid;
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String modelUuid;
+    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String name;
 
-    @Param(required = false, maxLength = 512, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String mountPath;
+    @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String description;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String dhcpInterface;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String dhcpRangeStartIp;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String dhcpRangeEndIp;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String dhcpRangeNetmask;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String dhcpRangeGateway;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -66,8 +81,8 @@ public class MountModelToVmInstanceAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.MountModelToVmInstanceResult value = res.getResult(org.zstack.sdk.MountModelToVmInstanceResult.class);
-        ret.value = value == null ? new org.zstack.sdk.MountModelToVmInstanceResult() : value; 
+        org.zstack.sdk.UpdateProvisionNetworkResult value = res.getResult(org.zstack.sdk.UpdateProvisionNetworkResult.class);
+        ret.value = value == null ? new org.zstack.sdk.UpdateProvisionNetworkResult() : value; 
 
         return ret;
     }
@@ -96,11 +111,11 @@ public class MountModelToVmInstanceAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "POST";
-        info.path = "/vm-model-mounts";
+        info.httpMethod = "PUT";
+        info.path = "/provision-networks/{uuid}/actions";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "params";
+        info.parameterName = "updateProvisionNetwork";
         return info;
     }
 
