@@ -155,12 +155,7 @@ public class KvmRoleProvider implements PhysicalServerRoleProvider {
         int sshPort = 22;
         String portStr = cfg.get("sshPort");
         if (portStr != null && !portStr.isEmpty()) {
-            try {
-                sshPort = Integer.parseInt(portStr);
-            } catch (NumberFormatException e) {
-                throw new OperationFailureException(
-                        operr(ORG_ZSTACK_KVM_10164, "roleConfig key 'sshPort' is not a valid integer: %s", portStr));
-            }
+            sshPort = Integer.parseInt(portStr);
         }
 
         // Null-check SPI-edge inputs: AddKVMHostMsg / doAddHost assume both are non-null

@@ -102,13 +102,6 @@ public class KvmRoleProviderTest {
     }
 
     @Test
-    public void bad_sshPort_carries_10164() {
-        assertValidationCarriesCode(
-                ctxWithCreds("root", "pass", "abc", "cluster-1", "10.0.0.1"),
-                "ORG_ZSTACK_KVM_10164");
-    }
-
-    @Test
     public void missing_clusterUuid_carries_10166() {
         assertValidationCarriesCode(
                 ctxWithCreds("root", "pass", null, null, "10.0.0.1"),

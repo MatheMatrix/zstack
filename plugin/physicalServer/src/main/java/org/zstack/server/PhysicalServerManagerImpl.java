@@ -10,8 +10,6 @@ import org.zstack.core.cloudbus.MessageSafe;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
-import org.zstack.core.thread.Task;
-import org.zstack.core.thread.ThreadFacade;
 import org.zstack.header.AbstractService;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.NopeCompletion;
@@ -68,8 +66,6 @@ public class PhysicalServerManagerImpl extends AbstractService implements Physic
     private List<PhysicalServerRoleProvider> roleProviderList = java.util.Collections.emptyList();
     @Autowired
     private PhysicalServerEnqueueDiscoveryHook enqueueDiscoveryHook;
-    @Autowired
-    private ThreadFacade thdf;
 
     private Map<String, PhysicalServerRoleProvider> roleProviders = new HashMap<>();
 
@@ -464,40 +460,23 @@ public class PhysicalServerManagerImpl extends AbstractService implements Physic
         bus.publish(evt);
     }
 
-    private void handle(final APIScanPhysicalServersMsg msg) {
-        thdf.submit(new Task<Void>() {
-            @Override
-            public String getName() {
-                return String.format("scan-physical-servers-%s", msg.getId());
-            }
-
-            @Override
-            public Void call() {
-                APIScanPhysicalServersEvent evt = new APIScanPhysicalServersEvent(msg.getId());
-                try {
-                    PhysicalServerScanner.ScanResult result = physicalServerScanner.scan(
-                            new PhysicalServerScanner.ScanSpec()
-                                    .setZoneUuid(msg.getZoneUuid())
-                                    .setPoolUuid(msg.getPoolUuid())
-                                    .setIpRange(msg.getIpRange())
-                                    .setOobPort(msg.getOobPort())
-                                    .setCredentials(msg.getCredentials())
-                                    .setTimeoutPerHost(msg.getTimeoutPerHost()));
-                    evt.setDiscoveredCount(result.getDiscoveredCount());
-                    evt.setExistingCount(result.getExistingCount());
-                    evt.setUnreachableCount(result.getUnreachableCount());
-                    evt.setAuthFailedCount(result.getAuthFailedCount());
-                    evt.setDiscoveredServers(result.getDiscoveredServers());
-                    evt.setAuthFailedIps(result.getAuthFailedIps());
-                } catch (OperationFailureException e) {
-                    // thread boundary: @MessageSafe doesn't extend across thdf.submit, so
-                    // surface scan/validation failures to the API caller via the event.
-                    evt.setError(e.getErrorCode());
-                }
-                bus.publish(evt);
-                return null;
-            }
-        });
+    private void handle(APIScanPhysicalServersMsg msg) {
+        PhysicalServerScanner.ScanResult result = physicalServerScanner.scan(
+                new PhysicalServerScanner.ScanSpec()
+                        .setZoneUuid(msg.getZoneUuid())
+                        .setPoolUuid(msg.getPoolUuid())
+                        .setIpRange(msg.getIpRange())
+                        .setOobPort(msg.getOobPort())
+                        .setCredentials(msg.getCredentials())
+                        .setTimeoutPerHost(msg.getTimeoutPerHost()));
+        APIScanPhysicalServersEvent evt = new APIScanPhysicalServersEvent(msg.getId());
+        evt.setDiscoveredCount(result.getDiscoveredCount());
+        evt.setExistingCount(result.getExistingCount());
+        evt.setUnreachableCount(result.getUnreachableCount());
+        evt.setAuthFailedCount(result.getAuthFailedCount());
+        evt.setDiscoveredServers(result.getDiscoveredServers());
+        evt.setAuthFailedIps(result.getAuthFailedIps());
+        bus.publish(evt);
     }
 
     // --- Role handlers ---

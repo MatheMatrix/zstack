@@ -1,11 +1,8 @@
 package org.zstack.server;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.CoreGlobalProperty;
-import org.zstack.core.thread.Task;
-import org.zstack.core.thread.ThreadFacade;
 import org.zstack.header.core.Completion;
-import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.server.PhysicalServerVO;
 import org.zstack.utils.DebugUtils;
 import org.zstack.utils.ShellUtils;
@@ -16,98 +13,37 @@ import static org.zstack.core.Platform.operr;
 
 public class PhysicalServerIpmiPowerExecutor {
 
-    @Autowired
-    private ThreadFacade thdf;
-
     public void powerOn(PhysicalServerVO server, Completion completion) {
-        runAsync(server, "power-on", IPMIToolCaller::powerOn, completion);
+        runIpmi(server, "power-on", IPMIToolCaller::powerOn, completion);
     }
 
     public void powerOff(PhysicalServerVO server, Completion completion) {
-        runAsync(server, "power-off", IPMIToolCaller::powerOff, completion);
+        runIpmi(server, "power-off", IPMIToolCaller::powerOff, completion);
     }
 
     public void powerReset(PhysicalServerVO server, Completion completion) {
-        runAsync(server, "power-reset", IPMIToolCaller::powerReset, completion);
+        runIpmi(server, "power-reset", IPMIToolCaller::powerReset, completion);
     }
 
     public void powerOnPxe(PhysicalServerVO server, Completion completion) {
-        ErrorCode err = validate(server);
-        if (err != null) {
-            completion.fail(err);
-            return;
-        }
-
+        validate(server);
         if (CoreGlobalProperty.UNIT_TEST_ON) {
             completion.success();
             return;
         }
 
-        // ipmitool blocks on remote BMC; submit to ThreadFacade so the dispatcher thread
-        // (or an upstream callback thread) is never held during the IPMI round-trip.
-        final String uuid = server.getUuid();
-        final String oobAddress = server.getOobAddress();
-        final IPMIToolCaller caller = IPMIToolCaller.fromPhysicalServer(server);
-        thdf.submit(new Task<Void>() {
-            @Override
-            public String getName() {
-                return String.format("ipmi-power-on-pxe-%s", uuid);
-            }
-
-            @Override
-            public Void call() {
-                int ret = caller.setBootPxe();
-                if (ret != 0) {
-                    completion.fail(operr("failed to set PXE bootdev for PhysicalServer[uuid:%s, oobAddress:%s]",
-                            uuid, oobAddress));
-                    return null;
-                }
-                ret = caller.powerReset();
-                if (ret != 0) {
-                    completion.fail(operr("failed to power-reset for PXE boot for PhysicalServer[uuid:%s, oobAddress:%s]",
-                            uuid, oobAddress));
-                    return null;
-                }
-                completion.success();
-                return null;
-            }
-        });
-    }
-
-    private void runAsync(PhysicalServerVO server, String op, IpmiAction action, Completion completion) {
-        ErrorCode validationErr = validate(server);
-        if (validationErr != null) {
-            completion.fail(validationErr);
+        IPMIToolCaller caller = IPMIToolCaller.fromPhysicalServer(server);
+        if (caller.setBootPxe() != 0) {
+            completion.fail(operr("failed to set PXE bootdev for PhysicalServer[uuid:%s, oobAddress:%s]",
+                    server.getUuid(), server.getOobAddress()));
             return;
         }
-
-        if (CoreGlobalProperty.UNIT_TEST_ON) {
-            completion.success();
+        if (caller.powerReset() != 0) {
+            completion.fail(operr("failed to power-reset for PXE boot for PhysicalServer[uuid:%s, oobAddress:%s]",
+                    server.getUuid(), server.getOobAddress()));
             return;
         }
-
-        // Move blocking ipmitool exec off the calling thread.
-        final String uuid = server.getUuid();
-        final String oobAddress = server.getOobAddress();
-        final IPMIToolCaller caller = IPMIToolCaller.fromPhysicalServer(server);
-        thdf.submit(new Task<Void>() {
-            @Override
-            public String getName() {
-                return String.format("ipmi-%s-%s", op, uuid);
-            }
-
-            @Override
-            public Void call() {
-                int ret = action.run(caller);
-                if (ret == 0) {
-                    completion.success();
-                    return null;
-                }
-                completion.fail(operr("IPMI %s failed for PhysicalServer[uuid:%s, oobAddress:%s]",
-                        op, uuid, oobAddress));
-                return null;
-            }
-        });
+        completion.success();
     }
 
     public boolean hasOobCredentials(PhysicalServerVO server) {
@@ -117,15 +53,31 @@ public class PhysicalServerIpmiPowerExecutor {
                 && notEmpty(server.getOobPassword());
     }
 
-    private ErrorCode validate(PhysicalServerVO server) {
+    private void runIpmi(PhysicalServerVO server, String op, IpmiAction action, Completion completion) {
+        validate(server);
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            completion.success();
+            return;
+        }
+        if (action.run(IPMIToolCaller.fromPhysicalServer(server)) == 0) {
+            completion.success();
+            return;
+        }
+        completion.fail(operr("IPMI %s failed for PhysicalServer[uuid:%s, oobAddress:%s]",
+                op, server.getUuid(), server.getOobAddress()));
+    }
+
+    private void validate(PhysicalServerVO server) {
         if (!hasOobCredentials(server)) {
-            return operr("OOB credentials not configured for PhysicalServer[uuid:%s]", server == null ? null : server.getUuid());
+            throw new OperationFailureException(operr(
+                    "OOB credentials not configured for PhysicalServer[uuid:%s]",
+                    server == null ? null : server.getUuid()));
         }
         if (server.getOobManagementType() != null && !"IPMI".equals(server.getOobManagementType())) {
-            return operr("unsupported OOB management type[%s] for PhysicalServer[uuid:%s]",
-                    server.getOobManagementType(), server.getUuid());
+            throw new OperationFailureException(operr(
+                    "unsupported OOB management type[%s] for PhysicalServer[uuid:%s]",
+                    server.getOobManagementType(), server.getUuid()));
         }
-        return null;
     }
 
     private boolean notEmpty(String value) {
