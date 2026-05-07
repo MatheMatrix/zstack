@@ -92,14 +92,6 @@ public class PhysicalServerInventory  {
         return this.state;
     }
 
-    public java.lang.String status;
-    public void setStatus(java.lang.String status) {
-        this.status = status;
-    }
-    public java.lang.String getStatus() {
-        return this.status;
-    }
-
     public java.lang.String powerStatus;
     public void setPowerStatus(java.lang.String powerStatus) {
         this.powerStatus = powerStatus;

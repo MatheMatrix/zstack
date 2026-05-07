@@ -40,7 +40,6 @@ public class DefaultServerPoolFactory {
         vo.setZoneUuid(zoneUuid);
         vo.setState(ServerPoolState.Enabled);
         vo.setDefault(true);
-        vo.setAccountUuid(AccountConstant.INITIAL_SYSTEM_ADMIN_UUID);
         return dbf.persistAndRefresh(vo);
     }
 }

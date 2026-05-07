@@ -172,11 +172,15 @@ class PhysicalServerCascadeCase extends SubCase {
     }
 
     void testDeleteZoneCascadesPhysicalServerRoleRows() {
-        def dbf = bean(DatabaseFacade.class)
-
         def zone = createZone {
             name = "zone-ps-cascade"
         } as ZoneInventory
+
+        def cluster = createCluster {
+            name = "cluster-ps-cascade"
+            zoneUuid = zone.uuid
+            hypervisorType = "KVM"
+        } as ClusterInventory
 
         def pool = createServerPool {
             name = "pool-ps-cascade"
@@ -187,17 +191,18 @@ class PhysicalServerCascadeCase extends SubCase {
             name = "server-ps-cascade"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.250.10"
+            managementIp = "127.0.250.10"
         } as PhysicalServerInventory
 
-        PhysicalServerRoleVO roleVO = new PhysicalServerRoleVO()
-        roleVO.uuid = Platform.uuid
-        roleVO.serverUuid = server.uuid
-        roleVO.roleUuid = Platform.uuid
-        roleVO.roleType = ServerRoleType.KVM_HOST.toString()
-        roleVO.schedulingMode = SchedulingMode.INTERNAL_SHARED
-        dbf.persistAndRefresh(roleVO)
-        persistPhysicalServerChildRows(dbf, server.uuid)
+        // Real path-2: attachPhysicalServerRole(KVM_HOST) atomically creates
+        // PhysicalServerRoleVO + KVMHostVO + PhysicalServerCapacityVO via the path-2
+        // orchestrator. 12a red line: no inline dbf.persist of business state.
+        attachPhysicalServerRole {
+            serverUuid = server.uuid
+            roleType = "KVM_HOST"
+            clusterUuid = cluster.uuid
+            roleConfig = [username: "root", password: "password", sshPort: "22"]
+        }
 
         long roleCountBefore = Q.New(PhysicalServerRoleVO.class)
                 .eq(PhysicalServerRoleVO_.serverUuid, server.uuid)
@@ -213,7 +218,10 @@ class PhysicalServerCascadeCase extends SubCase {
                 .count()
         assert roleCountAfter == 0L :
                 "PhysicalServerRoleCascadeExtension must delete PhysicalServerRoleVO rows when PhysicalServer is deleted by zone cascade"
-        assertPhysicalServerChildRowsDeleted(server.uuid)
+        // PhysicalServerCapacityVO (auto-created by attach) must also be cascade-cleaned
+        assert Q.New(PhysicalServerCapacityVO.class)
+                .eq(PhysicalServerCapacityVO_.uuid, server.uuid).count() == 0L :
+                "PhysicalServerCapacityVO must cascade-delete when PhysicalServer is deleted"
     }
 
     void testDeleteServerPoolCascadeDeletesPhysicalServerHierarchy() {
@@ -224,6 +232,12 @@ class PhysicalServerCascadeCase extends SubCase {
             name = "zone-pool-cascade"
         } as ZoneInventory
 
+        def cluster = createCluster {
+            name = "cluster-pool-cascade"
+            zoneUuid = zone.uuid
+            hypervisorType = "KVM"
+        } as ClusterInventory
+
         def pool = createServerPool {
             name = "pool-cascade"
             zoneUuid = zone.uuid
@@ -233,17 +247,16 @@ class PhysicalServerCascadeCase extends SubCase {
             name = "server-pool-cascade"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.250.11"
+            managementIp = "127.0.250.11"
         } as PhysicalServerInventory
 
-        PhysicalServerRoleVO roleVO = new PhysicalServerRoleVO()
-        roleVO.uuid = Platform.uuid
-        roleVO.serverUuid = server.uuid
-        roleVO.roleUuid = Platform.uuid
-        roleVO.roleType = ServerRoleType.KVM_HOST.toString()
-        roleVO.schedulingMode = SchedulingMode.INTERNAL_SHARED
-        dbf.persistAndRefresh(roleVO)
-        persistPhysicalServerChildRows(dbf, server.uuid)
+        // Real path-2 attach (12a red line: no inline dbf.persist).
+        attachPhysicalServerRole {
+            serverUuid = server.uuid
+            roleType = "KVM_HOST"
+            clusterUuid = cluster.uuid
+            roleConfig = [username: "root", password: "password", sshPort: "22"]
+        }
 
         def poolVO = dbf.findByUuid(pool.uuid, ServerPoolVO.class)
         boolean success = false
@@ -269,7 +282,10 @@ class PhysicalServerCascadeCase extends SubCase {
                 .eq(org.zstack.header.server.PhysicalServerAO_.uuid, server.uuid)
                 .count() == 0L
         assert Q.New(PhysicalServerRoleVO.class).eq(PhysicalServerRoleVO_.serverUuid, server.uuid).count() == 0L
-        assertPhysicalServerChildRowsDeleted(server.uuid)
+        // PhysicalServerCapacityVO (auto-created by attach) cascades on PhysicalServer delete
+        assert Q.New(PhysicalServerCapacityVO.class)
+                .eq(PhysicalServerCapacityVO_.uuid, server.uuid).count() == 0L :
+                "PhysicalServerCapacityVO must cascade-delete with PhysicalServer"
     }
 
     void testDeleteServerPoolClearsClusterAssociation() {
@@ -321,17 +337,16 @@ class PhysicalServerCascadeCase extends SubCase {
             name = "server-zone-cascade"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.250.12"
+            managementIp = "127.0.250.12"
         } as PhysicalServerInventory
 
-        PhysicalServerRoleVO roleVO = new PhysicalServerRoleVO()
-        roleVO.uuid = Platform.uuid
-        roleVO.serverUuid = server.uuid
-        roleVO.roleUuid = Platform.uuid
-        roleVO.roleType = ServerRoleType.KVM_HOST.toString()
-        roleVO.schedulingMode = SchedulingMode.INTERNAL_SHARED
-        dbf.persistAndRefresh(roleVO)
-        persistPhysicalServerChildRows(dbf, server.uuid)
+        // Real path-2 attach (12a red line: no inline dbf.persist).
+        attachPhysicalServerRole {
+            serverUuid = server.uuid
+            roleType = "KVM_HOST"
+            clusterUuid = cluster.uuid
+            roleConfig = [username: "root", password: "password", sshPort: "22"]
+        }
 
         assert Q.New(ClusterVO.class).eq(ClusterAO_.uuid, cluster.uuid).count() == 1L
         assert Q.New(ServerPoolVO.class).eq(ServerPoolVO_.uuid, pool.uuid).count() == 1L
@@ -345,29 +360,10 @@ class PhysicalServerCascadeCase extends SubCase {
         assert Q.New(ServerPoolVO.class).eq(ServerPoolVO_.uuid, pool.uuid).count() == 0L
         assert Q.New(org.zstack.header.server.PhysicalServerVO.class).eq(PhysicalServerAO_.uuid, server.uuid).count() == 0L
         assert Q.New(PhysicalServerRoleVO.class).eq(PhysicalServerRoleVO_.serverUuid, server.uuid).count() == 0L
-        assertPhysicalServerChildRowsDeleted(server.uuid)
+        // PhysicalServerCapacityVO (auto-created by attach) cascades on PhysicalServer delete
+        assert Q.New(PhysicalServerCapacityVO.class)
+                .eq(PhysicalServerCapacityVO_.uuid, server.uuid).count() == 0L :
+                "PhysicalServerCapacityVO must cascade-delete with PhysicalServer"
     }
 
-    private void persistPhysicalServerChildRows(DatabaseFacade dbf, String serverUuid) {
-        PhysicalServerCapacityVO capacityVO = new PhysicalServerCapacityVO()
-        capacityVO.uuid = serverUuid
-        dbf.persistAndRefresh(capacityVO)
-
-        PhysicalServerHardwareInfoVO infoVO = new PhysicalServerHardwareInfoVO()
-        infoVO.serverUuid = serverUuid
-        infoVO.manufacturer = "Dell"
-        dbf.persistAndRefresh(infoVO)
-
-        PhysicalServerHardwareDetailVO detailVO = new PhysicalServerHardwareDetailVO()
-        detailVO.serverUuid = serverUuid
-        detailVO.type = "CPU"
-        detailVO.itemModel = "Intel"
-        dbf.persistAndRefresh(detailVO)
-    }
-
-    private void assertPhysicalServerChildRowsDeleted(String serverUuid) {
-        assert Q.New(PhysicalServerCapacityVO.class).eq(PhysicalServerCapacityVO_.uuid, serverUuid).count() == 0L
-        assert Q.New(PhysicalServerHardwareInfoVO.class).eq(PhysicalServerHardwareInfoVO_.serverUuid, serverUuid).count() == 0L
-        assert Q.New(PhysicalServerHardwareDetailVO.class).eq(PhysicalServerHardwareDetailVO_.serverUuid, serverUuid).count() == 0L
-    }
 }

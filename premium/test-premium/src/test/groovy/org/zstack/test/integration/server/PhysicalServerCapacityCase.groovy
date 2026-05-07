@@ -1,24 +1,52 @@
 package org.zstack.test.integration.server
 
+import org.zstack.baremetal2.cluster.BareMetal2ClusterConstant
+import org.zstack.baremetal2.instance.BareMetal2InstanceConstant
+import org.zstack.container.entity.ContainerManagementEndpointVO
+import org.zstack.container.entity.NativeClusterVO
+import org.zstack.container.entity.NativeClusterVO_
+import org.zstack.container.entity.NativeHostVO
+import org.zstack.container.entity.NativeHostVO_
+import org.zstack.core.Platform
+import org.zstack.core.db.DatabaseFacade
+import org.zstack.core.db.Q
+import org.zstack.core.db.SQL
+import org.zstack.header.cluster.ClusterState
+import org.zstack.header.core.Completion
+import org.zstack.header.errorcode.ErrorCode
+import org.zstack.header.host.HostState
+import org.zstack.header.host.HostStatus
+import org.zstack.header.server.PhysicalServerRoleVO
+import org.zstack.header.server.PhysicalServerRoleVO_
+import org.zstack.header.server.RoleMatchContext
 import org.zstack.sdk.ClusterInventory
+import org.zstack.sdk.ContainerManagementEndpointInventory
 import org.zstack.sdk.PhysicalServerInventory
 import org.zstack.sdk.PhysicalServerProvisionNetworkInventory
 import org.zstack.sdk.ServerPoolInventory
 import org.zstack.sdk.ZoneInventory
-import org.zstack.test.integration.kvm.KvmTest
+import org.zstack.server.PhysicalServerPathTwoOrchestrator
+import org.zstack.test.integration.baremetal2.BareMetal2Test
+import org.zstack.test.integration.container.K8sApiMocks
 import org.zstack.testlib.EnvSpec
-import org.zstack.testlib.SubCase
+import org.zstack.testlib.premium.PremiumSubCase
+
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Integration tests for Capacity Management (FR-013 to FR-017) and supplementary cases.
  * These tests follow TDD — some will fail until handlers are implemented.
  */
-class PhysicalServerCapacityCase extends SubCase {
+class PhysicalServerCapacityCase extends PremiumSubCase {
     EnvSpec env
+
+    /** BM2-IPMI cluster created programmatically — required by BAREMETAL_V2 attach. */
+    ClusterInventory bm2Cluster
 
     @Override
     void setup() {
-        useSpring(KvmTest.springSpec)
+        useSpring(BareMetal2Test.springSpec)
     }
 
     @Override
@@ -26,6 +54,16 @@ class PhysicalServerCapacityCase extends SubCase {
         env = makeEnv {
             zone {
                 name = "zone"
+
+                bareMetal2ProvisionNetwork {
+                    name = "provision_net_1"
+                    dhcpInterface = "eth0"
+                    dhcpRangeStartIp = "127.0.0.10"
+                    dhcpRangeEndIp = "127.0.0.100"
+                    dhcpRangeNetmask = "255.255.255.0"
+                    dhcpRangeGateway = "127.0.0.1"
+                }
+
                 cluster {
                     name = "cluster"
                 }
@@ -36,6 +74,24 @@ class PhysicalServerCapacityCase extends SubCase {
     @Override
     void test() {
         env.create {
+            ZoneInventory zoneInv = env.inventoryByName("zone") as ZoneInventory
+            def provisionNet = env.inventoryByName("provision_net_1")
+
+            bm2Cluster = createCluster {
+                sessionId = adminSession()
+                name = "bm2_ipmi_cluster"
+                zoneUuid = zoneInv.uuid
+                architecture = "x86_64"
+                type = BareMetal2ClusterConstant.BM2_CLUSTER_TYPE
+                hypervisorType = BareMetal2InstanceConstant.BM2_HYPERVISOR_TYPE
+            } as ClusterInventory
+
+            attachBareMetal2ProvisionNetworkToCluster {
+                sessionId = adminSession()
+                clusterUuid = bm2Cluster.uuid
+                networkUuid = provisionNet.uuid
+            }
+
             // FR-013: Capacity VO existence after server creation
             testPhysicalServerHasCapacityAfterCreate()
 
@@ -60,7 +116,9 @@ class PhysicalServerCapacityCase extends SubCase {
             // AC-CM-07: Exclusive mode clears available capacity
             testExclusiveModeClearsAvailable()
 
-            // AC-CM-08: Readonly mode counts in available capacity
+            // AC-CM-08: Readonly mode counts in available capacity.
+            // P1 fix landed: K8s sync now writes CONTAINER_HOST RoleVO via orchestrator.
+            // Rewritten to drive the real sync path instead of dbf.persist bypass.
             testReadonlyModeCountsInAvailable()
 
             // AC-CM-05, AC-CM-10: Overprovisioning ratio affects total CPU
@@ -96,7 +154,7 @@ class PhysicalServerCapacityCase extends SubCase {
             name = "server-capacity"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.52.1"
+            managementIp = "127.0.52.1"
         } as PhysicalServerInventory
 
         assert server.uuid != null
@@ -181,7 +239,7 @@ class PhysicalServerCapacityCase extends SubCase {
         deleteServerPool { uuid = pool.uuid }
     }
 
-    // Missing: Full OOB field update (IPMI -> REDFISH with address/port/username change)
+    // Update OOB fields (post NB-12: oobManagementType locked to IPMI only)
     void testUpdatePhysicalServerOobFields() {
         def zone = env.inventoryByName("zone") as ZoneInventory
 
@@ -194,28 +252,25 @@ class PhysicalServerCapacityCase extends SubCase {
             name = "server-oob"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.60.1"
+            managementIp = "127.0.60.1"
             oobManagementType = "IPMI"
-            oobAddress = "192.168.60.100"
+            oobAddress = "127.0.60.100"
             oobPort = 623
             oobUsername = "admin"
         } as PhysicalServerInventory
 
-        assert server.oobManagementType == "IPMI"
-        assert server.oobAddress == "192.168.60.100"
+        assert server.oobAddress == "127.0.60.100"
         assert server.oobPort == 623
         assert server.oobUsername == "admin"
 
         def updated = updatePhysicalServer {
             uuid = server.uuid
-            oobManagementType = "REDFISH"
-            oobAddress = "192.168.60.200"
+            oobAddress = "127.0.60.200"
             oobPort = 443
             oobUsername = "root"
         } as PhysicalServerInventory
 
-        assert updated.oobManagementType == "REDFISH"
-        assert updated.oobAddress == "192.168.60.200"
+        assert updated.oobAddress == "127.0.60.200"
         assert updated.oobPort == 443
         assert updated.oobUsername == "root"
 
@@ -235,7 +290,7 @@ class PhysicalServerCapacityCase extends SubCase {
             name = "server-cap-auto"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.60.1"
+            managementIp = "127.0.60.1"
         } as PhysicalServerInventory
 
         // After creating a PhysicalServer, a PhysicalServerCapacityVO should exist
@@ -264,15 +319,22 @@ class PhysicalServerCapacityCase extends SubCase {
             name = "server-exclusive"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.61.1"
+            managementIp = "127.0.61.1"
         } as PhysicalServerInventory
 
-        // Attach BAREMETAL_V2 role (INTERNAL_EXCLUSIVE)
-        // After attachment, available CPU/Memory should be 0
+        // Attach BAREMETAL_V2 role (INTERNAL_EXCLUSIVE) — must use the BM2-typed
+        // cluster + ipmi roleConfig, otherwise Bm2RoleProvider rejects the attach
+        // (mirrors Bm2RoleProviderIntegrationCase fixture).
         attachPhysicalServerRole {
             serverUuid = server.uuid
             roleType = "BAREMETAL_V2"
-            clusterUuid = cluster.uuid
+            clusterUuid = bm2Cluster.uuid
+            roleConfig = [
+                chassisType  : "ipmi",
+                ipmiAddress  : "127.0.100.10",
+                ipmiUsername : "admin",
+                ipmiPassword : "calvin"
+            ]
         }
 
         // TDD: When capacity is implemented, query should show available=0
@@ -299,23 +361,28 @@ class PhysicalServerCapacityCase extends SubCase {
         deleteServerPool { uuid = pool.uuid }
     }
 
-    // AC-CM-08: Readonly mode (CONTAINER_HOST) should still count in available capacity
+    // AC-CM-08: CONTAINER_HOST (EXTERNAL_READONLY) must coexist with KVM_HOST
+    // (INTERNAL_SHARED) on the same PSV and must NOT clear available capacity.
+    // Previously SKIPPED because CONTAINER_HOST was produced via dbf.persist (IT-rule
+    // violation). Now rewritten to drive the real path-2 orchestrator — the same
+    // code that ContainerEndpointBase.syncNodesFromCluster calls after the Phase 4 fix.
     void testReadonlyModeCountsInAvailable() {
         def zone = env.inventoryByName("zone") as ZoneInventory
         def cluster = env.inventoryByName("cluster") as ClusterInventory
+
         def pool = createServerPool {
-            name = "pool-readonly"
+            name = "pool-readonly-cap"
             zoneUuid = zone.uuid
         } as ServerPoolInventory
 
         def server = createPhysicalServer {
-            name = "server-readonly"
+            name = "server-readonly-cap"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.62.1"
+            managementIp = "127.0.86.1"
         } as PhysicalServerInventory
 
-        // Attach KVM_HOST first (INTERNAL_SHARED)
+        // Attach KVM_HOST (INTERNAL_SHARED) via API — represents normal KVM workload host
         attachPhysicalServerRole {
             serverUuid = server.uuid
             roleType = "KVM_HOST"
@@ -323,31 +390,67 @@ class PhysicalServerCapacityCase extends SubCase {
             roleConfig = [username: "root", password: "password", sshPort: "22"]
         }
 
-        // Attach CONTAINER_HOST (EXTERNAL_READONLY) — should be compatible
-        attachPhysicalServerRole {
-            serverUuid = server.uuid
-            roleType = "CONTAINER_HOST"
-            clusterUuid = cluster.uuid
-            roleConfig = [endpointUuid: "fake-endpoint-uuid"]
+        // Stage K8s + Zaku mocks: 1 cluster + 1 V1Node with InternalIP matching the PSV
+        // for tier-3 auto-association in AutoAssociateFlow.
+        String k8sHostUuid = Platform.uuid
+        K8sApiMocks.mockSingleZakuCluster(env, "cap-readonly-cluster")
+        K8sApiMocks.mockK8sNodesWithIps(env, [k8sHostUuid], ["127.0.86.1"])
+
+        // Drive the real production sync API — addContainerManagementEndpoint creates the
+        // ContainerManagementEndpointVO; syncContainerManagementEndpoint walks Zaku clusters,
+        // calls K8s SDK listNode (mocked), persists NativeClusterVO + NativeHostVO via
+        // ContainerEndpointBase.processNodeTransactional, then invokes
+        // PhysicalServerPathTwoOrchestrator.runStandalone → CreatePhysicalServerRoleFlow
+        // persists CONTAINER_HOST RoleVO bound to the tier-3-matched PSV. 12a: no inline
+        // dbf.persist of endpoint/cluster/host/role.
+        ContainerManagementEndpointInventory cvm = addContainerManagementEndpoint {
+            name = "endpoint-cap-readonly"
+            managementIp = "127.0.0.1"
+            managementPort = 8989
+            vendor = "zaku"
+            containerAccessKeyId = "ak-cap-readonly"
+            containerAccessKeySecret = "sk-cap-readonly"
+        } as ContainerManagementEndpointInventory
+
+        syncContainerManagementEndpoint {
+            uuid = cvm.uuid
+            zoneUuid = zone.uuid
         }
 
-        // TDD: Both roles coexist, READONLY consumption counted in available
-        def roles = queryPhysicalServerRole {
-            conditions = ["serverUuid=${server.uuid}".toString()]
+        // AC-CM-08: CONTAINER_HOST role must exist with EXTERNAL_READONLY mode
+        retryInSecs {
+            def cr = queryPhysicalServerRole {
+                conditions = ["serverUuid=${server.uuid}".toString(), "roleType=CONTAINER_HOST"]
+            }
+            assert cr.size() == 1 :
+                    "AC-CM-08: CONTAINER_HOST RoleVO must be auto-created by real K8s sync; got ${cr.size()}"
+            assert cr[0].schedulingMode.toString() == "EXTERNAL_READONLY" :
+                    "AC-CM-08: CONTAINER_HOST must be EXTERNAL_READONLY; got ${cr[0].schedulingMode}"
         }
-        assert roles.size() == 2
 
-        // FR-014-AC2: EXTERNAL_READONLY consumption counted in available
-        // TDD: When capacity is implemented, verify:
-        // - Both roles coexist
-        // - Container consumption is reflected in available (not ignored)
-        def kvmRole = roles.find { it.roleType == "KVM_HOST" }
-        def containerRole = roles.find { it.roleType == "CONTAINER_HOST" }
-        assert kvmRole != null
-        assert containerRole != null
+        // KVM_HOST role must still coexist (EXTERNAL_READONLY does not evict INTERNAL_SHARED)
+        def kvmRoles = queryPhysicalServerRole {
+            conditions = ["serverUuid=${server.uuid}".toString(), "roleType=KVM_HOST"]
+        }
+        assert kvmRoles.size() == 1 :
+                "AC-CM-08: KVM_HOST role must coexist with CONTAINER_HOST (EXTERNAL_READONLY is compatible)"
 
-        detachPhysicalServerRole { serverUuid = server.uuid; roleType = "CONTAINER_HOST"; force = true }
+        // AC-CM-08: EXTERNAL_READONLY does not clear available capacity —
+        // server must remain Enabled (not blocked / maintenance)
+        def servers = queryPhysicalServer {
+            conditions = ["uuid=${server.uuid}".toString()]
+        }
+        assert servers[0].state == "Enabled" :
+                "AC-CM-08: server must remain Enabled after EXTERNAL_READONLY role; READONLY must NOT zero available capacity"
+
+        // TDD stub: when CapacityVO is fully implemented, add:
+        //   assert capacity.availableCpu > 0    (READONLY preserves CPU budget)
+        //   assert capacity.availableMemory > 0 (READONLY preserves memory budget)
+
+        // Cleanup — deleteContainerManagementEndpoint cascades to NativeCluster + NativeHost
+        // + CONTAINER_HOST RoleVO; then detach KVM_HOST + delete server + pool.
         detachPhysicalServerRole { serverUuid = server.uuid; roleType = "KVM_HOST"; force = true }
+        deleteContainerManagementEndpoint { uuid = cvm.uuid }
         deletePhysicalServer { uuid = server.uuid }
         deleteServerPool { uuid = pool.uuid }
     }
@@ -364,7 +467,7 @@ class PhysicalServerCapacityCase extends SubCase {
             name = "server-overprov"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.63.1"
+            managementIp = "127.0.63.1"
         } as PhysicalServerInventory
 
         // TDD: When overprovisioning is implemented:
@@ -398,7 +501,7 @@ class PhysicalServerCapacityCase extends SubCase {
             name = "server-recalc"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.64.1"
+            managementIp = "127.0.64.1"
         } as PhysicalServerInventory
 
         // TDD: When GlobalConfig for overprovisioning ratio changes,
@@ -432,7 +535,7 @@ class PhysicalServerCapacityCase extends SubCase {
             name = "server-maintenance"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.83.1"
+            managementIp = "127.0.83.1"
         } as PhysicalServerInventory
 
         // Put in maintenance
@@ -472,7 +575,7 @@ class PhysicalServerCapacityCase extends SubCase {
             name = "server-concurrent"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.84.1"
+            managementIp = "127.0.84.1"
         } as PhysicalServerInventory
 
         // TDD: When CapacityUpdater is implemented, test concurrent access:
@@ -502,7 +605,7 @@ class PhysicalServerCapacityCase extends SubCase {
             name = "server-state-cycle"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.70.1"
+            managementIp = "127.0.70.1"
         } as PhysicalServerInventory
 
         assert server.state == "Enabled"

@@ -13,7 +13,7 @@ package org.zstack.header.server;
  * Implementations populate the carrier via the simple setters on
  * {@link HardwareInfoCarrier}; the service downcasts for actual storage.</p>
  *
- * <h3>Single-PSR-query contract (P1-2, ZSTAC-84191)</h3>
+ * <h3>Single-PSR-query contract</h3>
  *
  * <p>The whole discover path runs inside a {@code PhysicalServerCapacityVO}
  * PESSIMISTIC_WRITE lock during fleet recalculate. Every extra DB round-trip

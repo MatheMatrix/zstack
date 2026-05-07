@@ -92,7 +92,6 @@ public class PhysicalServerAutoAssociator {
         vo.setSerialNumber(ctx.getSerialNumber());
         vo.setOobAddress(ctx.getOobAddress());
         vo.setState(PhysicalServerState.Enabled);
-        vo.setStatus(PhysicalServerStatus.Connecting);
         vo.setPowerStatus(PhysicalServerPowerStatus.Unknown);
         dbf.persistAndRefresh(vo);
         return vo.getUuid();

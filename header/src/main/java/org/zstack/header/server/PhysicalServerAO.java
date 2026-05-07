@@ -54,10 +54,6 @@ public class PhysicalServerAO extends ResourceVO {
 
     @Column
     @Enumerated(EnumType.STRING)
-    private PhysicalServerStatus status;
-
-    @Column
-    @Enumerated(EnumType.STRING)
     private PhysicalServerPowerStatus powerStatus;
 
     @Column
@@ -166,14 +162,6 @@ public class PhysicalServerAO extends ResourceVO {
 
     public void setState(PhysicalServerState state) {
         this.state = state;
-    }
-
-    public PhysicalServerStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(PhysicalServerStatus status) {
-        this.status = status;
     }
 
     public PhysicalServerPowerStatus getPowerStatus() {

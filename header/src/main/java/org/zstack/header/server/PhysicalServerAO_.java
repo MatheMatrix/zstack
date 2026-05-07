@@ -18,7 +18,6 @@ public class PhysicalServerAO_ extends ResourceVO_ {
     public static volatile SingularAttribute<PhysicalServerAO, String> manufacturer;
     public static volatile SingularAttribute<PhysicalServerAO, String> model;
     public static volatile SingularAttribute<PhysicalServerAO, PhysicalServerState> state;
-    public static volatile SingularAttribute<PhysicalServerAO, PhysicalServerStatus> status;
     public static volatile SingularAttribute<PhysicalServerAO, PhysicalServerPowerStatus> powerStatus;
     public static volatile SingularAttribute<PhysicalServerAO, String> oobManagementType;
     public static volatile SingularAttribute<PhysicalServerAO, String> oobAddress;

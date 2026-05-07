@@ -37,7 +37,6 @@ public class APIDiscoverPhysicalServerHardwareEvent extends APIEvent {
         inv.setManufacturer("Dell");
         inv.setModel("PowerEdge R750");
         inv.setState("Enabled");
-        inv.setStatus("Connected");
         inv.setPowerStatus("PowerOn");
         inv.setCreateDate(new Timestamp(org.zstack.header.message.DocUtils.date));
         inv.setLastOpDate(new Timestamp(org.zstack.header.message.DocUtils.date));

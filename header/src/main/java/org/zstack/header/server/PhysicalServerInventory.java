@@ -21,7 +21,6 @@ public class PhysicalServerInventory implements Serializable {
     private String manufacturer;
     private String model;
     private String state;
-    private String status;
     private String powerStatus;
     private String oobManagementType;
     private String oobAddress;
@@ -44,7 +43,6 @@ public class PhysicalServerInventory implements Serializable {
         inv.setManufacturer(vo.getManufacturer());
         inv.setModel(vo.getModel());
         inv.setState(vo.getState() != null ? vo.getState().toString() : null);
-        inv.setStatus(vo.getStatus() != null ? vo.getStatus().toString() : null);
         inv.setPowerStatus(vo.getPowerStatus() != null ? vo.getPowerStatus().toString() : null);
         inv.setOobManagementType(vo.getOobManagementType());
         inv.setOobAddress(vo.getOobAddress());
@@ -157,14 +155,6 @@ public class PhysicalServerInventory implements Serializable {
 
     public void setState(String state) {
         this.state = state;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
     }
 
     public String getPowerStatus() {

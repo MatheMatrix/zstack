@@ -1,7 +1,6 @@
 package org.zstack.server.flow;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.SQL;
 import org.zstack.header.core.workflow.Flow;
@@ -29,7 +28,6 @@ import static org.zstack.core.Platform.operr;
  *
  * <p>Closes AC-RS-04 / AC-RS-07 / AC-CM-04.</p>
  */
-@Component
 public class InitPhysicalServerCapacityFlow implements Flow {
     @Autowired
     private DatabaseFacade dbf;

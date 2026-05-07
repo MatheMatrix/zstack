@@ -1,7 +1,6 @@
 package org.zstack.server.flow;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.zstack.core.Platform;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
@@ -34,7 +33,6 @@ import static org.zstack.core.Platform.operr;
  *
  * <p>Closes AC-RS-04 / AC-RS-07.</p>
  */
-@Component
 public class CreatePhysicalServerRoleFlow implements Flow {
     @Autowired
     private DatabaseFacade dbf;

@@ -4,16 +4,16 @@ import org.zstack.sdk.ClusterInventory
 import org.zstack.sdk.PhysicalServerInventory
 import org.zstack.sdk.ServerPoolInventory
 import org.zstack.sdk.ZoneInventory
-import org.zstack.test.integration.kvm.KvmTest
+import org.zstack.test.integration.baremetal2.BareMetal2Test
 import org.zstack.testlib.EnvSpec
-import org.zstack.testlib.SubCase
+import org.zstack.testlib.premium.PremiumSubCase
 
-class PhysicalServerCompatCase extends SubCase {
+class PhysicalServerCompatCase extends PremiumSubCase {
     EnvSpec env
 
     @Override
     void setup() {
-        useSpring(KvmTest.springSpec)
+        useSpring(BareMetal2Test.springSpec)
     }
 
     @Override
@@ -163,8 +163,10 @@ class PhysicalServerCompatCase extends SubCase {
         }
         assert page3.size() == 1
 
-        // Cleanup
-        serverUuids.each { deletePhysicalServer { uuid = it } }
+        // Cleanup — bind the each iterator var explicitly. `it` inside the
+        // inner deletePhysicalServer closure resolves to that closure's
+        // delegate, not the outer each parameter.
+        serverUuids.each { String svrUuid -> deletePhysicalServer { uuid = svrUuid } }
         deleteServerPool { uuid = pool.uuid }
     }
 
@@ -181,7 +183,8 @@ class PhysicalServerCompatCase extends SubCase {
             name = "server-role-query"
             zoneUuid = zone.uuid
             poolUuid = pool.uuid
-            managementIp = "192.168.73.1"
+            // Loopback so KVM_HOST connect-host POST routes to local simulator.
+            managementIp = "127.0.0.73"
         } as PhysicalServerInventory
 
         // Attach a role
@@ -257,7 +260,6 @@ class PhysicalServerCompatCase extends SubCase {
 
         // Baseline: server exists and is enabled
         assert server.state == "Enabled"
-        assert server.status == "Connecting"
 
         deletePhysicalServer { uuid = server.uuid }
         deleteServerPool { uuid = pool.uuid }

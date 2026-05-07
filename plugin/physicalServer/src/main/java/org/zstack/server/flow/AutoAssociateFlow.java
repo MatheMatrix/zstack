@@ -1,7 +1,6 @@
 package org.zstack.server.flow;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.workflow.NoRollbackFlow;
 import org.zstack.header.errorcode.OperationFailureException;
@@ -30,7 +29,6 @@ import static org.zstack.core.Platform.operr;
  *
  * <p>Closes AC-RS-04 (KVM path 2) / AC-RS-07 (BM2 path 2) common root cause.</p>
  */
-@Component
 public class AutoAssociateFlow extends NoRollbackFlow {
     @Autowired
     private PhysicalServerAutoAssociator autoAssociator;

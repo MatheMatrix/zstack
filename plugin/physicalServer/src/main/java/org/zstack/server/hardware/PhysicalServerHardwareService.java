@@ -1,7 +1,6 @@
 package org.zstack.server.hardware;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
@@ -30,7 +29,6 @@ import java.util.List;
  * registered via that module's spring XML; until they land, discoverHardware() returns
  * an empty UnifiedHardwareInfo with no NPE.</p>
  */
-@Component
 public class PhysicalServerHardwareService {
     private static final CLogger logger = Utils.getLogger(PhysicalServerHardwareService.class);
 
@@ -44,7 +42,7 @@ public class PhysicalServerHardwareService {
     @Autowired
     private PluginRegistry pluginRgty;
 
-    // CLAUDE.md 铁律 15: lazy getter — never @Autowired field-initialize an extension list
+    // rule: lazy getter — never @Autowired field-initialize an extension list
     private volatile List<PhysicalServerHardwareDiscoveryExtensionPoint> exts;
 
     private List<PhysicalServerHardwareDiscoveryExtensionPoint> getExts() {

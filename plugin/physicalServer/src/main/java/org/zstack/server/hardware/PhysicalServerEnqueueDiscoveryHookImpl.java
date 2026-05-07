@@ -1,7 +1,6 @@
 package org.zstack.server.hardware;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.zstack.header.server.PhysicalServerEnqueueDiscoveryHook;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
@@ -16,7 +15,6 @@ import org.zstack.utils.logging.CLogger;
  * <p>Best-effort: scheduler enqueue exceptions are logged but never propagate (post-commit
  * hooks must not break the caller's transaction outcome).</p>
  */
-@Component
 public class PhysicalServerEnqueueDiscoveryHookImpl implements PhysicalServerEnqueueDiscoveryHook {
     private static final CLogger logger = Utils.getLogger(PhysicalServerEnqueueDiscoveryHookImpl.class);
 

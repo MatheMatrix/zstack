@@ -38,7 +38,6 @@ public class APICreatePhysicalServerEvent extends APIEvent {
         inv.setManufacturer("Dell");
         inv.setModel("PowerEdge R750");
         inv.setState("Enabled");
-        inv.setStatus("Connected");
         inv.setPowerStatus("PowerOn");
         inv.setOobManagementType("IPMI");
         inv.setOobAddress("192.168.1.200");
