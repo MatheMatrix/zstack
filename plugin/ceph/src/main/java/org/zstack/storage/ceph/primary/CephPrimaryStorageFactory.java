@@ -37,8 +37,11 @@ import org.zstack.header.core.Completion;
 import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.core.progress.TaskProgressRange;
 import org.zstack.header.core.workflow.*;
+import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
+import org.zstack.header.storage.ceph.CephSiblingFenceExtensionPoint;
+import org.zstack.header.storage.ceph.SiblingFenceVmOnHostReply;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.HostCanonicalEvents;
@@ -1229,7 +1232,44 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
                 GetVolumeWatchersReply rly = (GetVolumeWatchersReply)reply;
                 List watchers = rly.getWatchers();
                 if (watchers == null || watchers.isEmpty()) {
-                    completion.success();
+                    List<CephSiblingFenceExtensionPoint> exts =
+                            pluginRgty.getExtensionList(CephSiblingFenceExtensionPoint.class);
+                    if (exts.isEmpty()) {
+                        // Open-source / no premium installed -> preserve original behaviour
+                        completion.success();
+                        return;
+                    }
+
+                    final String vmUuid          = spec.getVmInventory().getUuid();
+                    final String haTargetHost    = spec.getDestHost().getUuid();
+                    final String clusterUuid     = spec.getDestHost().getClusterUuid();
+                    final String failedHostUuid  = spec.getVmInventory().getLastHostUuid() != null
+                                                   ? spec.getVmInventory().getLastHostUuid()
+                                                   : spec.getVmInventory().getHostUuid();
+                    if (failedHostUuid == null) {
+                        // No previous host -> fresh instantiation, no fence needed
+                        completion.success();
+                        return;
+                    }
+
+                    CephSiblingFenceExtensionPoint ext = exts.get(0);
+                    ext.fenceVmOnFailedHost(failedHostUuid, vmUuid, clusterUuid, haTargetHost,
+                            new ReturnValueCompletion<SiblingFenceVmOnHostReply>(completion) {
+                        @Override
+                        public void success(SiblingFenceVmOnHostReply r) {
+                            if (!r.isAlive()) {            // host really dead or qemu already gone -> proceed
+                                completion.success();
+                            } else if (r.isKilled()) {     // sibling killed old qemu -> proceed
+                                completion.success();
+                            } else {
+                                completion.fail(operr("sibling fence failed: %s", r.getReason()));
+                            }
+                        }
+                        @Override
+                        public void fail(ErrorCode err) {
+                            completion.fail(err);
+                        }
+                    });
                     return;
                 }
 
