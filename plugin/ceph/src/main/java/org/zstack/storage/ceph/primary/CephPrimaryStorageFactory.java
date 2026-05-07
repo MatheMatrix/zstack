@@ -34,14 +34,12 @@ import org.zstack.header.configuration.userconfig.DiskOfferingUserConfigValidato
 import org.zstack.header.configuration.userconfig.InstanceOfferingUserConfig;
 import org.zstack.header.configuration.userconfig.InstanceOfferingUserConfigValidator;
 import org.zstack.header.core.Completion;
+import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.core.progress.TaskProgressRange;
 import org.zstack.header.core.workflow.*;
-import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
-import org.zstack.header.storage.ceph.CephSiblingFenceExtensionPoint;
-import org.zstack.header.storage.ceph.SiblingFenceVmOnHostReply;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.HostCanonicalEvents;
@@ -50,6 +48,8 @@ import org.zstack.header.host.HostVO;
 import org.zstack.header.host.HostVO_;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.storage.backup.*;
+import org.zstack.header.storage.ceph.CephSiblingFenceExtensionPoint;
+import org.zstack.header.storage.ceph.SiblingFenceVmOnHostReply;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.vm.*;
@@ -1241,7 +1241,7 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
                     }
 
                     final String vmUuid          = spec.getVmInventory().getUuid();
-                    final String haTargetHost    = spec.getDestHost().getUuid();
+                    final String haTargetHostUuid = spec.getDestHost().getUuid();
                     final String clusterUuid     = spec.getDestHost().getClusterUuid();
                     final String failedHostUuid  = spec.getVmInventory().getLastHostUuid() != null
                                                    ? spec.getVmInventory().getLastHostUuid()
@@ -1253,7 +1253,9 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
                     }
 
                     CephSiblingFenceExtensionPoint ext = exts.get(0);
-                    ext.fenceVmOnFailedHost(failedHostUuid, vmUuid, clusterUuid, haTargetHost,
+                    logger.debug(String.format("dispatching ceph sibling-fence for vm[%s] on failedHost[%s], target[%s]",
+                            vmUuid, failedHostUuid, haTargetHostUuid));
+                    ext.fenceVmOnFailedHost(failedHostUuid, vmUuid, clusterUuid, haTargetHostUuid,
                             new ReturnValueCompletion<SiblingFenceVmOnHostReply>(completion) {
                         @Override
                         public void success(SiblingFenceVmOnHostReply r) {
@@ -1262,6 +1264,8 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
                             } else if (r.isKilled()) {     // sibling killed old qemu -> proceed
                                 completion.success();
                             } else {
+                                logger.warn(String.format("ceph sibling-fence failed for vm[%s]: %s — blocking VM start to prevent split-brain",
+                                        vmUuid, r.getReason()));
                                 completion.fail(operr("sibling fence failed: %s", r.getReason()));
                             }
                         }
