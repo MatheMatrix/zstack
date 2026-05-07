@@ -592,8 +592,8 @@ public class PhysicalServerCapacityUpdaterTest {
             return u;
         }
 
-        @Override public String createRoleEntity(CreateRoleEntityContext context) { throw new UnsupportedOperationException(); }
-        @Override public void   deleteRoleEntity(String roleUuid)                 { throw new UnsupportedOperationException(); }
+        @Override public void createRoleEntity(CreateRoleEntityContext context, org.zstack.header.core.ReturnValueCompletion<String> completion) { throw new UnsupportedOperationException(); }
+        @Override public void deleteRoleEntity(String roleUuid, org.zstack.header.core.Completion completion) { throw new UnsupportedOperationException(); }
         @Override public RoleWorkloadStatus getWorkloadStatus(String serverUuid, String roleUuid) { throw new UnsupportedOperationException(); }
     }
 

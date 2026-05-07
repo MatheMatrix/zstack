@@ -1,6 +1,7 @@
 package org.zstack.header.server;
 
 import org.zstack.header.core.Completion;
+import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.host.HostVO;
@@ -68,19 +69,21 @@ public interface PhysicalServerRoleProvider {
     /**
      * Create the underlying role entity (HostVO / BareMetal2ChassisVO / NativeHostVO) and wire it
      * to the given PhysicalServerVO. Implementations forward to the legacy {@code Add*Msg} with
-     * {@code ctx.serverUuid} so the legacy flow and the PS-first flow share one code path.
+     * {@code ctx.serverUuid} via {@code bus.send + CloudBusCallBack} so the dispatcher thread is
+     * never blocked waiting on AddHost / AddChassis SSH/IPMI rounds.
      *
-     * @return the created role entity UUID (= HostVO.uuid / BareMetal2ChassisVO.uuid /
-     *         NativeHostVO.uuid), which is persisted as {@code PhysicalServerRoleVO.roleUuid}.
+     * <p>Successful completion delivers the created role entity UUID (= HostVO.uuid /
+     * BareMetal2ChassisVO.uuid / NativeHostVO.uuid), which is persisted as
+     * {@code PhysicalServerRoleVO.roleUuid}.
      */
-    String createRoleEntity(CreateRoleEntityContext context);
+    void createRoleEntity(CreateRoleEntityContext context, ReturnValueCompletion<String> completion);
 
     /**
-     * Delete the underlying role entity. Implementations forward to the legacy {@code Delete*Msg}.
-     * {@code PhysicalServerRoleVO} deletion is handled in the same cascade chain (not by this
-     * method) so there is no partial-state window.
+     * Delete the underlying role entity. Implementations forward to the legacy {@code Delete*Msg}
+     * via {@code bus.send}. {@code PhysicalServerRoleVO} deletion is handled in the same cascade
+     * chain (not by this method) so there is no partial-state window.
      */
-    void deleteRoleEntity(String roleUuid);
+    void deleteRoleEntity(String roleUuid, Completion completion);
 
     // -------- workload query --------
 

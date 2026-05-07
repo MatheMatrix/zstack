@@ -17,7 +17,9 @@ import org.zstack.header.allocator.HostCapacityVO;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudConfigureFailException;
+import org.zstack.header.core.Completion;
 import org.zstack.header.core.FutureCompletion;
+import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.host.AddHostReply;
 import org.zstack.header.host.HostDeletionMsg;
 import org.zstack.header.host.HostConstant;
@@ -69,77 +71,72 @@ public class KvmRoleProviderTest {
     }
 
     // -------------------------------------------------------------------------
-    // createRoleEntity — validation edges (no bus needed)
+    // createRoleEntity — validation edges (sync throw, no bus needed)
     // -------------------------------------------------------------------------
 
+    // Validation throw routing: in production AspectJ-woven runtime, AsyncSafeAspect
+    // (core/.../AsyncSafeAspect.aj) intercepts the sync throw and routes the ErrorCode
+    // to completion.fail(). In the focused unit-test runtime the aspect may not be
+    // wired, in which case the throw propagates raw. Either path is correct as long
+    // as the same ErrorCode surfaces; we assert both shapes.
+
     @Test
-    public void missing_username_throws_10165() {
-        CreateRoleEntityContext ctx = ctxWithCreds(null, "pass", null, "cluster-1", "10.0.0.1");
-        try {
-            provider.createRoleEntity(ctx);
-            fail("expected OperationFailureException");
-        } catch (OperationFailureException e) {
-            assertEquals("ORG_ZSTACK_KVM_10165", e.getErrorCode().getCode());
-        }
+    public void missing_username_carries_10165() {
+        assertValidationCarriesCode(
+                ctxWithCreds(null, "pass", null, "cluster-1", "10.0.0.1"),
+                "ORG_ZSTACK_KVM_10165");
     }
 
     @Test
-    public void empty_username_throws_10165() {
-        CreateRoleEntityContext ctx = ctxWithCreds("", "pass", null, "cluster-1", "10.0.0.1");
-        try {
-            provider.createRoleEntity(ctx);
-            fail("expected OperationFailureException");
-        } catch (OperationFailureException e) {
-            assertEquals("ORG_ZSTACK_KVM_10165", e.getErrorCode().getCode());
-        }
+    public void empty_username_carries_10165() {
+        assertValidationCarriesCode(
+                ctxWithCreds("", "pass", null, "cluster-1", "10.0.0.1"),
+                "ORG_ZSTACK_KVM_10165");
     }
 
     @Test
-    public void missing_password_throws_10163() {
-        CreateRoleEntityContext ctx = ctxWithCreds("root", null, null, "cluster-1", "10.0.0.1");
-        try {
-            provider.createRoleEntity(ctx);
-            fail("expected OperationFailureException");
-        } catch (OperationFailureException e) {
-            assertEquals("ORG_ZSTACK_KVM_10163", e.getErrorCode().getCode());
-        }
+    public void missing_password_carries_10163() {
+        assertValidationCarriesCode(
+                ctxWithCreds("root", null, null, "cluster-1", "10.0.0.1"),
+                "ORG_ZSTACK_KVM_10163");
     }
 
     @Test
-    public void bad_sshPort_throws_10164() {
-        CreateRoleEntityContext ctx = ctxWithCreds("root", "pass", "abc", "cluster-1", "10.0.0.1");
-        try {
-            provider.createRoleEntity(ctx);
-            fail("expected OperationFailureException");
-        } catch (OperationFailureException e) {
-            assertEquals("ORG_ZSTACK_KVM_10164", e.getErrorCode().getCode());
-        }
+    public void bad_sshPort_carries_10164() {
+        assertValidationCarriesCode(
+                ctxWithCreds("root", "pass", "abc", "cluster-1", "10.0.0.1"),
+                "ORG_ZSTACK_KVM_10164");
     }
 
     @Test
-    public void missing_clusterUuid_throws_10166() {
-        CreateRoleEntityContext ctx = ctxWithCreds("root", "pass", null, null, "10.0.0.1");
-        try {
-            provider.createRoleEntity(ctx);
-            fail("expected OperationFailureException");
-        } catch (OperationFailureException e) {
-            assertEquals("ORG_ZSTACK_KVM_10166", e.getErrorCode().getCode());
-        }
+    public void missing_clusterUuid_carries_10166() {
+        assertValidationCarriesCode(
+                ctxWithCreds("root", "pass", null, null, "10.0.0.1"),
+                "ORG_ZSTACK_KVM_10166");
     }
 
     @Test
-    public void missing_managementIp_throws_10166() {
-        CreateRoleEntityContext ctx = ctxWithCreds("root", "pass", null, "cluster-1", null);
+    public void missing_managementIp_carries_10166() {
+        assertValidationCarriesCode(
+                ctxWithCreds("root", "pass", null, "cluster-1", null),
+                "ORG_ZSTACK_KVM_10166");
+    }
+
+    private void assertValidationCarriesCode(CreateRoleEntityContext ctx, String expectedCode) {
+        CapturingRvComp comp = new CapturingRvComp();
         try {
-            provider.createRoleEntity(ctx);
-            fail("expected OperationFailureException");
+            provider.createRoleEntity(ctx, comp);
+            // Aspect-routed path
+            assertTrue("expected fail() invoked or throw", comp.failCalled);
+            assertEquals(expectedCode, comp.errorCode.getCode());
         } catch (OperationFailureException e) {
-            assertEquals("ORG_ZSTACK_KVM_10166", e.getErrorCode().getCode());
+            // Raw-throw path
+            assertEquals(expectedCode, e.getErrorCode().getCode());
         }
     }
 
     // -------------------------------------------------------------------------
-    // createRoleEntity — happy path
+    // createRoleEntity — async happy / failure paths
     // -------------------------------------------------------------------------
 
     @Test
@@ -159,12 +156,14 @@ public class KvmRoleProviderTest {
                 .setAccountUuid("account-uuid-1")
                 .setRoleConfig(roleConfig("root", "secret", "2222"));
 
-        String result = provider.createRoleEntity(ctx);
+        CapturingRvComp comp = new CapturingRvComp();
+        provider.createRoleEntity(ctx, comp);
 
-        assertEquals("h1", result);
-        assertNotNull(bus.lastCalledMsg);
-        assertTrue("Expected AddKVMHostMsg", bus.lastCalledMsg instanceof AddKVMHostMsg);
-        AddKVMHostMsg sent = (AddKVMHostMsg) bus.lastCalledMsg;
+        assertTrue("expected success() invoked", comp.successCalled);
+        assertEquals("h1", comp.successValue);
+        assertNotNull(bus.lastSentMsg);
+        assertTrue("Expected AddKVMHostMsg", bus.lastSentMsg instanceof AddKVMHostMsg);
+        AddKVMHostMsg sent = (AddKVMHostMsg) bus.lastSentMsg;
         assertEquals("root", sent.getUsername());
         assertEquals("secret", sent.getPassword());
         assertEquals(2222, sent.getSshPort());
@@ -178,7 +177,7 @@ public class KvmRoleProviderTest {
     }
 
     @Test
-    public void bus_call_failure_propagates_same_errorCode() throws Exception {
+    public void bus_send_failure_propagates_same_errorCode() throws Exception {
         ErrorCode errCode = new ErrorCode();
         errCode.setCode("ORG_ZSTACK_KVM_10161");
         errCode.setDescription("ssh connect failed");
@@ -195,28 +194,29 @@ public class KvmRoleProviderTest {
                 .setManagementIp("10.0.0.1")
                 .setRoleConfig(roleConfig("root", "pass", null));
 
-        try {
-            provider.createRoleEntity(ctx);
-            fail("expected OperationFailureException");
-        } catch (OperationFailureException e) {
-            assertSame(errCode, e.getErrorCode());
-        }
+        CapturingRvComp comp = new CapturingRvComp();
+        provider.createRoleEntity(ctx, comp);
+
+        assertTrue("expected fail() invoked", comp.failCalled);
+        assertSame(errCode, comp.errorCode);
     }
 
     // -------------------------------------------------------------------------
-    // deleteRoleEntity
+    // deleteRoleEntity — async
     // -------------------------------------------------------------------------
 
     @Test
-    public void bus_call_with_HostDeletionMsg_correct_uuid_and_routing() throws Exception {
+    public void bus_send_with_HostDeletionMsg_correct_uuid_and_routing() throws Exception {
         FakeCloudBus bus = new FakeCloudBus(new MessageReply());
         injectField(provider, "bus", bus);
 
-        provider.deleteRoleEntity("role-uuid-7");
+        CapturingComp comp = new CapturingComp();
+        provider.deleteRoleEntity("role-uuid-7", comp);
 
-        assertNotNull(bus.lastCalledMsg);
-        assertTrue("Expected HostDeletionMsg", bus.lastCalledMsg instanceof HostDeletionMsg);
-        HostDeletionMsg sent = (HostDeletionMsg) bus.lastCalledMsg;
+        assertTrue("expected success() invoked", comp.successCalled);
+        assertNotNull(bus.lastSentMsg);
+        assertTrue("Expected HostDeletionMsg", bus.lastSentMsg instanceof HostDeletionMsg);
+        HostDeletionMsg sent = (HostDeletionMsg) bus.lastSentMsg;
         assertEquals("role-uuid-7", sent.getHostUuid());
         // routing: makeTargetServiceIdByResourceUuid(msg, HostConstant.SERVICE_ID, roleUuid)
         assertEquals(bus.lastTargetServiceIdMsg, sent);
@@ -225,7 +225,7 @@ public class KvmRoleProviderTest {
     }
 
     @Test
-    public void deleteRoleEntity_bus_call_failure_throws() throws Exception {
+    public void deleteRoleEntity_bus_send_failure_propagates_same_errorCode() throws Exception {
         ErrorCode errCode = new ErrorCode();
         errCode.setCode("ORG_ZSTACK_KVM_10160");
         errCode.setDescription("host not found");
@@ -236,12 +236,11 @@ public class KvmRoleProviderTest {
         FakeCloudBus bus = new FakeCloudBus(failReply);
         injectField(provider, "bus", bus);
 
-        try {
-            provider.deleteRoleEntity("role-uuid-x");
-            fail("expected OperationFailureException");
-        } catch (OperationFailureException e) {
-            assertSame(errCode, e.getErrorCode());
-        }
+        CapturingComp comp = new CapturingComp();
+        provider.deleteRoleEntity("role-uuid-x", comp);
+
+        assertTrue("expected fail() invoked", comp.failCalled);
+        assertSame(errCode, comp.errorCode);
     }
 
     // -------------------------------------------------------------------------
@@ -463,12 +462,58 @@ public class KvmRoleProviderTest {
         }
     }
 
+    // No-op completion for validation-edge tests where the throw happens before bus.send.
+    private static ReturnValueCompletion<String> noopRvComp() {
+        return new ReturnValueCompletion<String>((Message) null) {
+            @Override public void success(String value) {}
+            @Override public void fail(ErrorCode errorCode) {}
+        };
+    }
+
+    // Capturing completion for createRoleEntity (carries a String success value).
+    private static class CapturingRvComp extends ReturnValueCompletion<String> {
+        boolean successCalled;
+        boolean failCalled;
+        String successValue;
+        ErrorCode errorCode;
+
+        CapturingRvComp() { super((Message) null); }
+
+        @Override public void success(String value) {
+            this.successCalled = true;
+            this.successValue = value;
+        }
+
+        @Override public void fail(ErrorCode errorCode) {
+            this.failCalled = true;
+            this.errorCode = errorCode;
+        }
+    }
+
+    // Capturing completion for deleteRoleEntity (no value).
+    private static class CapturingComp extends Completion {
+        boolean successCalled;
+        boolean failCalled;
+        ErrorCode errorCode;
+
+        CapturingComp() { super((Message) null); }
+
+        @Override public void success() {
+            this.successCalled = true;
+        }
+
+        @Override public void fail(ErrorCode errorCode) {
+            this.failCalled = true;
+            this.errorCode = errorCode;
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Hand-written CloudBus stub
     //
     // mockito-inline on Java 8 cannot inline-mock interfaces whose hierarchy
     // causes javax.servlet to be loaded (CloudBus → handleHttpRequest param).
-    // This stub implements only the three methods KvmRoleProvider actually calls
+    // This stub implements only the methods KvmRoleProvider actually calls
     // and records the arguments so tests can assert on them.
     // -------------------------------------------------------------------------
 
@@ -485,8 +530,8 @@ public class KvmRoleProviderTest {
         String  lastTargetServiceId;
         String  lastTargetServiceIdResourceUuid;
 
-        // Captured state ---- call
-        NeedReplyMessage lastCalledMsg;
+        // Captured state ---- send(NeedReplyMessage, CloudBusCallBack)
+        NeedReplyMessage lastSentMsg;
 
         FakeCloudBus(MessageReply replyToReturn) {
             this.replyToReturn = replyToReturn;
@@ -506,9 +551,11 @@ public class KvmRoleProviderTest {
         }
 
         @Override
-        public MessageReply call(NeedReplyMessage msg) {
-            this.lastCalledMsg = msg;
-            return replyToReturn;
+        public FutureCompletion send(NeedReplyMessage msg, CloudBusCallBack callback) {
+            this.lastSentMsg = msg;
+            // Invoke callback synchronously so tests can assert on completion state immediately.
+            callback.run(replyToReturn);
+            return null;
         }
 
         // ---- unused CloudBus methods ----
@@ -518,7 +565,6 @@ public class KvmRoleProviderTest {
         @Override public FutureCompletion send(Message msg) { throw new UnsupportedOperationException(); }
         @Override public <T extends Message> void send(List<T> msgs) { throw new UnsupportedOperationException(); }
         @Override public void send(APIMessage msg, java.util.function.Consumer<APIEvent> consumer) { throw new UnsupportedOperationException(); }
-        @Override public FutureCompletion send(NeedReplyMessage msg, CloudBusCallBack callback) { throw new UnsupportedOperationException(); }
         @Override public void send(List<? extends NeedReplyMessage> msgs, CloudBusListCallBack callBack) { throw new UnsupportedOperationException(); }
         @Override public void send(List<? extends NeedReplyMessage> msgs, int parallelLevel, CloudBusListCallBack callBack) { throw new UnsupportedOperationException(); }
         @Override public void send(List<? extends NeedReplyMessage> msgs, int parallelLevel, CloudBusSteppingCallback callback) { throw new UnsupportedOperationException(); }
@@ -528,6 +574,7 @@ public class KvmRoleProviderTest {
         @Override public void cancel(String correlationId, String error) { throw new UnsupportedOperationException(); }
         @Override public void publish(List<Event> events) { throw new UnsupportedOperationException(); }
         @Override public void publish(Event event) { throw new UnsupportedOperationException(); }
+        @Override public MessageReply call(NeedReplyMessage msg) { throw new UnsupportedOperationException(); }
         @Override public <T extends NeedReplyMessage> List<MessageReply> call(List<T> msg) { throw new UnsupportedOperationException(); }
         @Override public void registerService(org.zstack.header.Service serv) throws CloudConfigureFailException { throw new UnsupportedOperationException(); }
         @Override public void unregisterService(org.zstack.header.Service serv) { throw new UnsupportedOperationException(); }

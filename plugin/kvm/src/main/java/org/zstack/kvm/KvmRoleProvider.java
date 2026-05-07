@@ -4,11 +4,14 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.cloudbus.CloudBus;
+import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
 import org.zstack.header.allocator.HostCapacityVO;
 import org.zstack.header.allocator.HostCapacityVO_;
+import org.zstack.header.core.Completion;
+import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.host.AddHostReply;
@@ -135,7 +138,7 @@ public class KvmRoleProvider implements PhysicalServerRoleProvider {
      * @throws OperationFailureException if username or password is missing from roleConfig.
      */
     @Override
-    public String createRoleEntity(CreateRoleEntityContext ctx) {
+    public void createRoleEntity(CreateRoleEntityContext ctx, ReturnValueCompletion<String> completion) {
         Map<String, String> cfg = ctx.getRoleConfig();
 
         String username = cfg.get("username");
@@ -191,32 +194,40 @@ public class KvmRoleProvider implements PhysicalServerRoleProvider {
         }
         bus.makeLocalServiceId(msg, HostConstant.SERVICE_ID);
 
-        MessageReply reply = bus.call(msg);
-        if (!reply.isSuccess()) {
-            throw new OperationFailureException(reply.getError());
-        }
-
-        AddHostReply addReply = reply.castReply();
-        return addReply.getInventory().getUuid();
+        bus.send(msg, new CloudBusCallBack(completion) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    completion.fail(reply.getError());
+                    return;
+                }
+                AddHostReply addReply = reply.castReply();
+                completion.success(addReply.getInventory().getUuid());
+            }
+        });
     }
 
     /**
      * Deletes the KVM HostVO identified by {@code roleUuid} by forwarding to
      * {@code HostDeletionMsg} (the cascade-framework deletion message handled by
      * {@code HostBase}). PhysicalServerRoleVO deletion is handled by the caller's cascade.
-     *
-     * @throws OperationFailureException if the HostDeletionMsg returns an error.
      */
     @Override
-    public void deleteRoleEntity(String roleUuid) {
+    public void deleteRoleEntity(String roleUuid, Completion completion) {
         HostDeletionMsg msg = new HostDeletionMsg();
         msg.setHostUuid(roleUuid);
         bus.makeTargetServiceIdByResourceUuid(msg, HostConstant.SERVICE_ID, roleUuid);
 
-        MessageReply reply = bus.call(msg);
-        if (!reply.isSuccess()) {
-            throw new OperationFailureException(reply.getError());
-        }
+        bus.send(msg, new CloudBusCallBack(completion) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    completion.fail(reply.getError());
+                    return;
+                }
+                completion.success();
+            }
+        });
     }
 
     /**

@@ -10,9 +10,12 @@ import org.zstack.core.cloudbus.MessageSafe;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQL;
+import org.zstack.core.thread.Task;
+import org.zstack.core.thread.ThreadFacade;
 import org.zstack.header.AbstractService;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.NopeCompletion;
+import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudRuntimeException;
@@ -65,6 +68,8 @@ public class PhysicalServerManagerImpl extends AbstractService implements Physic
     private List<PhysicalServerRoleProvider> roleProviderList = java.util.Collections.emptyList();
     @Autowired
     private PhysicalServerEnqueueDiscoveryHook enqueueDiscoveryHook;
+    @Autowired
+    private ThreadFacade thdf;
 
     private Map<String, PhysicalServerRoleProvider> roleProviders = new HashMap<>();
 
@@ -459,23 +464,40 @@ public class PhysicalServerManagerImpl extends AbstractService implements Physic
         bus.publish(evt);
     }
 
-    private void handle(APIScanPhysicalServersMsg msg) {
-        PhysicalServerScanner.ScanResult result = physicalServerScanner.scan(new PhysicalServerScanner.ScanSpec()
-                .setZoneUuid(msg.getZoneUuid())
-                .setPoolUuid(msg.getPoolUuid())
-                .setIpRange(msg.getIpRange())
-                .setOobPort(msg.getOobPort())
-                .setCredentials(msg.getCredentials())
-                .setTimeoutPerHost(msg.getTimeoutPerHost()));
+    private void handle(final APIScanPhysicalServersMsg msg) {
+        thdf.submit(new Task<Void>() {
+            @Override
+            public String getName() {
+                return String.format("scan-physical-servers-%s", msg.getId());
+            }
 
-        APIScanPhysicalServersEvent evt = new APIScanPhysicalServersEvent(msg.getId());
-        evt.setDiscoveredCount(result.getDiscoveredCount());
-        evt.setExistingCount(result.getExistingCount());
-        evt.setUnreachableCount(result.getUnreachableCount());
-        evt.setAuthFailedCount(result.getAuthFailedCount());
-        evt.setDiscoveredServers(result.getDiscoveredServers());
-        evt.setAuthFailedIps(result.getAuthFailedIps());
-        bus.publish(evt);
+            @Override
+            public Void call() {
+                APIScanPhysicalServersEvent evt = new APIScanPhysicalServersEvent(msg.getId());
+                try {
+                    PhysicalServerScanner.ScanResult result = physicalServerScanner.scan(
+                            new PhysicalServerScanner.ScanSpec()
+                                    .setZoneUuid(msg.getZoneUuid())
+                                    .setPoolUuid(msg.getPoolUuid())
+                                    .setIpRange(msg.getIpRange())
+                                    .setOobPort(msg.getOobPort())
+                                    .setCredentials(msg.getCredentials())
+                                    .setTimeoutPerHost(msg.getTimeoutPerHost()));
+                    evt.setDiscoveredCount(result.getDiscoveredCount());
+                    evt.setExistingCount(result.getExistingCount());
+                    evt.setUnreachableCount(result.getUnreachableCount());
+                    evt.setAuthFailedCount(result.getAuthFailedCount());
+                    evt.setDiscoveredServers(result.getDiscoveredServers());
+                    evt.setAuthFailedIps(result.getAuthFailedIps());
+                } catch (OperationFailureException e) {
+                    // thread boundary: @MessageSafe doesn't extend across thdf.submit, so
+                    // surface scan/validation failures to the API caller via the event.
+                    evt.setError(e.getErrorCode());
+                }
+                bus.publish(evt);
+                return null;
+            }
+        });
     }
 
     // --- Role handlers ---
@@ -527,61 +549,58 @@ public class PhysicalServerManagerImpl extends AbstractService implements Physic
             .setPreGeneratedRoleUuid(preGenRoleUuid)
             .setRoleConfig(msg.getRoleConfig());
 
-        PhysicalServerRoleVO role = attachRoleVO(
+        final PhysicalServerRoleVO initialRole = attachRoleVO(
             msg.getServerUuid(),
             ServerRoleType.valueOf(msg.getRoleType()),
             preGenRoleUuid,
             provider.getSchedulingMode());
+        final ServerRoleType roleType = ServerRoleType.valueOf(msg.getRoleType());
+        final SchedulingMode mode = provider.getSchedulingMode();
+        final APIAttachPhysicalServerRoleEvent evt = new APIAttachPhysicalServerRoleEvent(msg.getId());
 
-        String returnedUuid;
-        try {
-            returnedUuid = provider.createRoleEntity(ctx);
-        } catch (Throwable t) {
-            dbf.remove(role);
-            throw t;
-        }
+        provider.createRoleEntity(ctx, new ReturnValueCompletion<String>(msg) {
+            @Override
+            public void success(String returnedUuid) {
+                // Phase 1 placeholder providers return null — keep the pre-generated UUID.
+                // Providers that ignore preGeneratedRoleUuid and produce a different entity UUID
+                // would have already failed inside the connect flow (RoleVO points at preGenRoleUuid,
+                // entity at returnedUuid → resolveServerUuidOrThrow miss). Defensive: if returned
+                // UUID differs, rollback and rewrite RoleVO with the real entity UUID; the connect
+                // flow has already completed, so capacity sync will catch up on next tick.
+                PhysicalServerRoleVO role = initialRole;
+                if (returnedUuid != null && !returnedUuid.equals(preGenRoleUuid)) {
+                    dbf.remove(role);
+                    role = attachRoleVO(msg.getServerUuid(), roleType, returnedUuid, mode);
+                }
 
-        // Phase 1 placeholder providers return null — keep the pre-generated UUID.
-        // Providers that ignore preGeneratedRoleUuid and produce a different entity UUID
-        // would have already failed inside the connect flow (RoleVO points at preGenRoleUuid,
-        // entity at returnedUuid → resolveServerUuidOrThrow miss). Defensive: if returned
-        // UUID differs, rollback and rewrite RoleVO with the real entity UUID; the connect
-        // flow has already completed, so capacity sync will catch up on next tick.
-        if (returnedUuid != null && !returnedUuid.equals(preGenRoleUuid)) {
-            dbf.remove(role);
-            role = attachRoleVO(
-                msg.getServerUuid(),
-                ServerRoleType.valueOf(msg.getRoleType()),
-                returnedUuid,
-                provider.getSchedulingMode());
-        }
+                // v5.5.18 U13 (AC-RS-20) / P1-4 fix: post-commit hook — RoleVO is durably written
+                // above, so fire discovery best-effort. The hook impl swallows scheduler enqueue
+                // failures internally per its contract; path-two contributors
+                // (PhysicalServerPathTwoContributor / BareMetal2ChassisManagerImpl) call the same
+                // single autowired bean.
+                enqueueDiscoveryHook.enqueueDiscovery(msg.getServerUuid());
 
-        // v5.5.18 U13 (AC-RS-20) / P1-4 fix: post-commit hook — RoleVO is durably written above,
-        // so fire discovery best-effort. The hook impl is itself best-effort (logs and swallows
-        // scheduler enqueue failures); we still wrap here so a hook bean swap that re-throws
-        // cannot roll back the attach (the role is already live). Path-two contributors
-        // (PhysicalServerPathTwoContributor / BareMetal2ChassisManagerImpl) call the same
-        // single autowired bean — keeping fan-out shape identical across all three callers.
-        try {
-            enqueueDiscoveryHook.enqueueDiscovery(msg.getServerUuid());
-        } catch (Exception e) {
-            logger.warn(String.format(
-                "PhysicalServerEnqueueDiscoveryHook failed for server[uuid:%s]: %s",
-                msg.getServerUuid(), e.getMessage()));
-        }
+                evt.setInventory(PhysicalServerRoleInventory.valueOf(role));
+                bus.publish(evt);
+            }
 
-        APIAttachPhysicalServerRoleEvent evt = new APIAttachPhysicalServerRoleEvent(msg.getId());
-        evt.setInventory(PhysicalServerRoleInventory.valueOf(role));
-        bus.publish(evt);
+            @Override
+            public void fail(ErrorCode error) {
+                dbf.remove(initialRole);
+                evt.setError(error);
+                bus.publish(evt);
+            }
+        });
     }
 
     private void handle(APIDetachPhysicalServerRoleMsg msg) {
-        PhysicalServerRoleVO role = Q.New(PhysicalServerRoleVO.class)
+        final PhysicalServerRoleVO role = Q.New(PhysicalServerRoleVO.class)
                 .eq(PhysicalServerRoleVO_.serverUuid, msg.getServerUuid())
                 .eq(PhysicalServerRoleVO_.roleType, msg.getRoleType())
                 .find();
+        final APIDetachPhysicalServerRoleEvent evt = new APIDetachPhysicalServerRoleEvent(msg.getId());
         if (role == null) {
-            bus.publish(new APIDetachPhysicalServerRoleEvent(msg.getId()));
+            bus.publish(evt);
             return;
         }
 
@@ -596,12 +615,25 @@ public class PhysicalServerManagerImpl extends AbstractService implements Physic
             }
         }
 
-        if (provider != null) {
-            provider.deleteRoleEntity(role.getRoleUuid());
+        if (provider == null) {
+            dbf.remove(role);
+            bus.publish(evt);
+            return;
         }
 
-        dbf.remove(role);
-        bus.publish(new APIDetachPhysicalServerRoleEvent(msg.getId()));
+        provider.deleteRoleEntity(role.getRoleUuid(), new Completion(msg) {
+            @Override
+            public void success() {
+                dbf.remove(role);
+                bus.publish(evt);
+            }
+
+            @Override
+            public void fail(ErrorCode error) {
+                evt.setError(error);
+                bus.publish(evt);
+            }
+        });
     }
 
     // --- ProvisionNetwork handlers ---
@@ -917,45 +949,21 @@ public class PhysicalServerManagerImpl extends AbstractService implements Physic
     // path uses the sync flavour.
 
     private void handle(APIDiscoverPhysicalServerHardwareMsg msg) {
-        APIDiscoverPhysicalServerHardwareEvent evt = new APIDiscoverPhysicalServerHardwareEvent(msg.getId());
-        try {
-            PhysicalServerVO server = dbf.findByUuid(msg.getUuid(), PhysicalServerVO.class);
-            if (server == null) {
-                evt.setError(operr("PhysicalServer[uuid:%s] not found", msg.getUuid()));
-                bus.publish(evt);
-                return;
-            }
-
-            // Sync discovery — service merges IPMI FRU / KVM agent / K8s node info as appropriate
-            // and persists the merged result. (Phase 2 stubs return empty UnifiedHardwareInfo;
-            // U16 will fill the 3 private discoverers. Until then this still publishes a valid
-            // event with the current PS inventory snapshot — clients see a successful Op with no
-            // populated hardware fields rather than the pre-fix unknownMessage runtime error.)
-            UnifiedHardwareInfo info = hardwareService.discoverHardware(msg.getUuid());
-            if (info == null) {
-                logger.warn(String.format(
-                        "discoverHardware returned null for server[uuid:%s]; treating as no-op",
-                        msg.getUuid()));
-            }
-
-            // Reload to pick up any fields the service wrote during discovery.
-            PhysicalServerVO reloaded = dbf.findByUuid(msg.getUuid(), PhysicalServerVO.class);
-            evt.setInventory(PhysicalServerInventory.valueOf(reloaded != null ? reloaded : server));
-            bus.publish(evt);
-        } catch (OperationFailureException e) {
-            evt.setError(e.getErrorCode());
-            bus.publish(evt);
-        } catch (Exception e) {
-            // Hardware discovery service throws are propagated to the API caller. We do NOT
-            // partially mutate the PS row — the service is responsible for its own atomicity.
-            // P1-5b: narrowed from Throwable to Exception so JVM-fatal Errors (OOM,
-            // StackOverflow, LinkageError, ThreadDeath) propagate instead of being masked
-            // as a publishable error event.
-            logger.warn(String.format(
-                    "hardware discovery for PhysicalServer[uuid:%s] failed: %s",
-                    msg.getUuid(), e.getMessage()));
-            evt.setError(operr("hardware discovery failed: %s", e.getMessage()));
-            bus.publish(evt);
+        PhysicalServerVO server = dbf.findByUuid(msg.getUuid(), PhysicalServerVO.class);
+        if (server == null) {
+            throw new OperationFailureException(operr("PhysicalServer[uuid:%s] not found", msg.getUuid()));
         }
+
+        UnifiedHardwareInfo info = hardwareService.discoverHardware(msg.getUuid());
+        if (info == null) {
+            logger.warn(String.format(
+                    "discoverHardware returned null for server[uuid:%s]; treating as no-op",
+                    msg.getUuid()));
+        }
+
+        PhysicalServerVO reloaded = dbf.findByUuid(msg.getUuid(), PhysicalServerVO.class);
+        APIDiscoverPhysicalServerHardwareEvent evt = new APIDiscoverPhysicalServerHardwareEvent(msg.getId());
+        evt.setInventory(PhysicalServerInventory.valueOf(reloaded != null ? reloaded : server));
+        bus.publish(evt);
     }
 }

@@ -57,13 +57,9 @@ public class ProvisionPhysicalServerLongJob implements LongJob {
         if (jobData == null || jobData.isEmpty()) {
             return ProvisionPhase.NotStarted;
         }
-        try {
-            JsonObject obj = new JsonParser().parse(jobData).getAsJsonObject();
-            if (obj.has("phase") && !obj.get("phase").isJsonNull()) {
-                String phaseStr = obj.get("phase").getAsString();
-                return ProvisionPhase.valueOf(phaseStr);
-            }
-        } catch (Exception ignored) {
+        JsonObject obj = new JsonParser().parse(jobData).getAsJsonObject();
+        if (obj.has("phase") && !obj.get("phase").isJsonNull()) {
+            return ProvisionPhase.valueOf(obj.get("phase").getAsString());
         }
         return ProvisionPhase.NotStarted;
     }
