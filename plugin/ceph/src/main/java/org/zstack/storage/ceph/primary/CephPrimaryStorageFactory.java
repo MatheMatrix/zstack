@@ -98,6 +98,8 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
 
     public static final PrimaryStorageType type = new PrimaryStorageType(CephConstants.CEPH_PRIMARY_STORAGE_TYPE);
 
+    public static final String CEPH_HA_SIBLING_FENCE_EVENT = "ceph.ha.sibling-fence";
+
     {
         type.setSupportSharedVolume(true);
         type.setSupportCheckHostStatus(true);
@@ -1259,6 +1261,19 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
                             new ReturnValueCompletion<SiblingFenceVmOnHostReply>(completion) {
                         @Override
                         public void success(SiblingFenceVmOnHostReply r) {
+                            String outcome;
+                            if (r.isKilled()) {
+                                outcome = "success-killed";
+                            } else if (!r.isSshReachable()) {
+                                outcome = "success-ssh-unreachable";
+                            } else if (!r.isAlive()) {
+                                outcome = "success-already-dead";
+                            } else {
+                                outcome = "success-other";
+                            }
+                            fireSiblingFenceAuditEvent(vmUuid, failedHostUuid, clusterUuid,
+                                    haTargetHostUuid, outcome, r.getReason());
+                            // TODO(T8): assert audit event fired in E2E
                             if (!r.isAlive()) {            // host really dead or qemu already gone -> proceed
                                 completion.success();
                             } else if (r.isKilled()) {     // sibling killed old qemu -> proceed
@@ -1271,6 +1286,9 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
                         }
                         @Override
                         public void fail(ErrorCode err) {
+                            fireSiblingFenceAuditEvent(vmUuid, failedHostUuid, clusterUuid,
+                                    haTargetHostUuid, "failed", err == null ? null : err.toString());
+                            // TODO(T8): assert audit event fired in E2E
                             completion.fail(err);
                         }
                     });
@@ -1290,6 +1308,29 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
     @Override
     public void preReleaseVmResource(VmInstanceSpec spec, Completion completion) {
         completion.success();
+    }
+
+    private void fireSiblingFenceAuditEvent(String vmUuid, String failedHostUuid, String clusterUuid,
+                                            String haTargetHostUuid, String outcome, String reason) {
+        try {
+            Map<String, String> data = new LinkedHashMap<>();
+            data.put("vmUuid", vmUuid == null ? "" : vmUuid);
+            data.put("failedHostUuid", failedHostUuid == null ? "" : failedHostUuid);
+            data.put("clusterUuid", clusterUuid == null ? "" : clusterUuid);
+            data.put("haTargetHostUuid", haTargetHostUuid == null ? "" : haTargetHostUuid);
+            data.put("outcome", outcome == null ? "" : outcome);
+            data.put("reason", reason == null ? "" : reason);
+            logger.info(String.format(
+                    "[AUDIT][%s] vmUuid=%s failedHostUuid=%s clusterUuid=%s haTargetHostUuid=%s outcome=%s reason=%s",
+                    CEPH_HA_SIBLING_FENCE_EVENT, data.get("vmUuid"), data.get("failedHostUuid"),
+                    data.get("clusterUuid"), data.get("haTargetHostUuid"), data.get("outcome"), data.get("reason")));
+            if (evtf != null) {
+                evtf.fire(CEPH_HA_SIBLING_FENCE_EVENT, data);
+            }
+        } catch (Throwable t) {
+            logger.warn(String.format("failed to publish %s audit event: %s",
+                    CEPH_HA_SIBLING_FENCE_EVENT, t.getMessage()));
+        }
     }
 
     @Override
