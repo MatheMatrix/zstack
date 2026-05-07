@@ -39,11 +39,16 @@ public class PrimaryStorageTagAllocatorFlow extends NoRollbackFlow {
     @Autowired
     private PluginRegistry pluginRgty;
 
-    protected final List<PrimaryStorageTagAllocatorExtensionPoint> tagExtensions = pluginRgty.getExtensionList(PrimaryStorageTagAllocatorExtensionPoint.class);;
+    // Lazy: @Configurable preConstruction weave is unreliable in test envs, so we cannot
+    // call pluginRgty in a field initializer. Filled on first use by run().
+    protected List<PrimaryStorageTagAllocatorExtensionPoint> tagExtensions;
 
 
     @Override
     public void run(FlowTrigger trigger, Map data) {
+        if (tagExtensions == null) {
+            tagExtensions = pluginRgty.getExtensionList(PrimaryStorageTagAllocatorExtensionPoint.class);
+        }
         PrimaryStorageAllocationSpec spec = (PrimaryStorageAllocationSpec) data.get(AllocatorParams.SPEC);
         List<PrimaryStorageVO> candidates = (List<PrimaryStorageVO>) data.get(AllocatorParams.CANDIDATES);
         DebugUtils.Assert(candidates != null && !candidates.isEmpty(), "PrimaryStorageTagAllocatorFlow cannot be the first element in allocator chain");

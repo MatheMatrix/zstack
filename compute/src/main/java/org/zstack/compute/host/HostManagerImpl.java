@@ -34,6 +34,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.message.NeedReplyMessage;
+import org.zstack.header.server.PhysicalServerPathTwoExtensionPoint;
 import org.zstack.header.storage.primary.PrimaryStorageCanonicalEvent;
 import org.zstack.header.storage.primary.PrimaryStorageHostRefVO;
 import org.zstack.header.storage.primary.PrimaryStorageHostRefVO_;
@@ -421,6 +422,17 @@ public class HostManagerImpl extends AbstractService implements HostManager, Man
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
         HostInventory inv = HostInventory.valueOf(vo);
         chain.setName(String.format("add-host-%s", vo.getUuid()));
+
+        // U1a path 2: let physicalServer plugin append AutoAssociate / CreatePhysicalServerRole
+        // / InitPhysicalServerCapacity flows ahead of the existing add-host chain, so any
+        // hypervisor that opted into unified PhysicalServer management persists its RoleVO and
+        // PSC row before the connect flow runs (NB-24 fail-loud, ADR-012). No-op when no
+        // PhysicalServerPathTwoExtensionPoint is registered, or when the impl returns without
+        // mutating the chain (current implementation skips non-KVM hypervisors).
+        for (PhysicalServerPathTwoExtensionPoint ext : pluginRgty.getExtensionList(PhysicalServerPathTwoExtensionPoint.class)) {
+            ext.contributeAddHostFlows(chain, msg, vo, cluster);
+        }
+
         chain.then(new NoRollbackFlow() {
             String __name__ = "call-before-add-host-extension";
 

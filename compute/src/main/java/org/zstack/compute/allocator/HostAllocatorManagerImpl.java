@@ -31,6 +31,7 @@ import org.zstack.header.image.APIGetCandidateBackupStorageForCreatingImageReply
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
+import org.zstack.header.server.PhysicalServerCapacityVO;
 import org.zstack.header.storage.backup.*;
 import org.zstack.header.storage.primary.PrimaryStorageType;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
@@ -170,12 +171,6 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
             return;
         }
 
-        class HostUsedCpuMem {
-            String hostUuid;
-            Long usedMemory;
-            Long usedCpu;
-        }
-
         List<HostUsedCpuMem> hostUsedCpuMemList = new Callable<List<HostUsedCpuMem>>() {
             @Override
             @Transactional(readOnly = true)
@@ -284,10 +279,14 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
         long availCpu = totalCpu - msg.getUsedCpu();
         availCpu = availCpu > 0 ? availCpu : 0;
 
-        HostCapacityVO vo = dbf.findByUuid(msg.getHostUuid(), HostCapacityVO.class);
+        // W1/W2 (capacity PRD §2.1, 2026-04-22 U4): write path redirected to PhysicalServerCapacityVO
+        // truth table. serverUuid resolved via HostCapacityUpdater.resolveServerUuidOrThrow (NB-24,
+        // NB-30 single lock key invariant).
+        String serverUuid = HostCapacityUpdater.resolveServerUuidOrThrow(msg.getHostUuid());
+        PhysicalServerCapacityVO vo = dbf.findByUuid(serverUuid, PhysicalServerCapacityVO.class);
         if (vo == null) {
-            vo = new HostCapacityVO();
-            vo.setUuid(msg.getHostUuid());
+            vo = new PhysicalServerCapacityVO();
+            vo.setUuid(serverUuid);
             vo.setTotalCpu(totalCpu);
             vo.setAvailableCpu(availCpu);
             vo.setTotalMemory(msg.getTotalMemory());
@@ -297,19 +296,6 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
             vo.setCpuNum(msg.getCpuNum());
             vo.setCpuSockets(msg.getCpuSockets());
             vo.setCpuCoreNum(msg.getCpuCoreNum());
-
-            HostCapacityStruct s = new HostCapacityStruct();
-            s.setCpuSockets(vo.getCpuSockets());
-            s.setCapacityVO(vo);
-            s.setCpuNum(msg.getCpuNum());
-            s.setTotalCpu(totalCpu);
-            s.setTotalMemory(msg.getTotalMemory());
-            s.setUsedCpu(msg.getUsedCpu());
-            s.setUsedMemory(msg.getUsedMemory());
-            s.setInit(true);
-            for (ReportHostCapacityExtensionPoint ext : pluginRgty.getExtensionList(ReportHostCapacityExtensionPoint.class)) {
-                vo = ext.reportHostCapacity(s);
-            }
             dbf.persist(vo);
         } else if (needUpdateCapacity(vo, msg, totalCpu, availCpu, availMem)) {
             vo.setCpuNum(msg.getCpuNum());
@@ -320,25 +306,13 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
             vo.setTotalMemory(msg.getTotalMemory());
             vo.setCpuSockets(msg.getCpuSockets());
             vo.setCpuCoreNum(msg.getCpuCoreNum());
-
-            HostCapacityStruct s = new HostCapacityStruct();
-            s.setCapacityVO(vo);
-            s.setCpuSockets(msg.getCpuSockets());
-            s.setTotalCpu(totalCpu);
-            s.setTotalMemory(msg.getTotalMemory());
-            s.setUsedCpu(msg.getUsedCpu());
-            s.setUsedMemory(msg.getUsedMemory());
-            s.setInit(false);
-            for (ReportHostCapacityExtensionPoint ext : pluginRgty.getExtensionList(ReportHostCapacityExtensionPoint.class)) {
-                vo = ext.reportHostCapacity(s);
-            }
             dbf.update(vo);
         }
 
         bus.reply(msg, new MessageReply());
     }
 
-    private boolean needUpdateCapacity(HostCapacityVO vo, ReportHostCapacityMessage msg, long totalCpu, long avaliCpu, long availMem) {
+    private boolean needUpdateCapacity(PhysicalServerCapacityVO vo, ReportHostCapacityMessage msg, long totalCpu, long avaliCpu, long availMem) {
         return vo.getCpuNum() != msg.getCpuNum() || vo.getTotalCpu() != totalCpu
                 || vo.getAvailableCpu() != avaliCpu || vo.getTotalPhysicalMemory() != msg.getTotalMemory()
                 || vo.getAvailablePhysicalMemory() != availMem || vo.getTotalMemory() != msg.getTotalMemory()
@@ -596,15 +570,6 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
 
     private void handle(final APIGetCpuMemoryCapacityMsg msg) {
         APIGetCpuMemoryCapacityReply reply = new APIGetCpuMemoryCapacityReply();
-
-        class CpuMemCapacity {
-            Map<String, CpuMemCapacity> elements;
-            long totalCpu;
-            long availCpu;
-            long totalMem;
-            long availMem;
-            long managedCpu;
-        }
 
         CpuMemCapacity res = new Callable<CpuMemCapacity>() {
             private void calcElementCap(List<Tuple> tuples, CpuMemCapacity res) {
@@ -1019,5 +984,20 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
         }
 
         return bsTypes;
+    }
+
+    private static class HostUsedCpuMem {
+        String hostUuid;
+        Long usedMemory;
+        Long usedCpu;
+    }
+
+    private static class CpuMemCapacity {
+        Map<String, CpuMemCapacity> elements;
+        long totalCpu;
+        long availCpu;
+        long totalMem;
+        long availMem;
+        long managedCpu;
     }
 }

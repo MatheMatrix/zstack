@@ -26,10 +26,18 @@ public class VmStartOnHypervisorFlow implements Flow {
     @Autowired
     private PluginRegistry pluginRgty;
 
-    private final List<VmBeforeStartOnHypervisorExtensionPoint> exts = pluginRgty.getExtensionList(VmBeforeStartOnHypervisorExtensionPoint.class);;
+    // Lazy: @Configurable preConstruction weave is unreliable in test envs.
+    private List<VmBeforeStartOnHypervisorExtensionPoint> exts;
+
+    private List<VmBeforeStartOnHypervisorExtensionPoint> getExts() {
+        if (exts == null) {
+            exts = pluginRgty.getExtensionList(VmBeforeStartOnHypervisorExtensionPoint.class);
+        }
+        return exts;
+    }
 
     private void fireExtensions(VmInstanceSpec spec) {
-        for (VmBeforeStartOnHypervisorExtensionPoint ext : exts) {
+        for (VmBeforeStartOnHypervisorExtensionPoint ext : getExts()) {
             ext.beforeStartVmOnHypervisor(spec);
         }
     }

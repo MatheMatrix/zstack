@@ -33,10 +33,18 @@ public class VmCreateOnHypervisorFlow implements Flow {
     @Autowired
     private EventFacade evtf;
 
-    private final List<VmBeforeCreateOnHypervisorExtensionPoint> exts = pluginRgty.getExtensionList(VmBeforeCreateOnHypervisorExtensionPoint.class);
+    // Lazy: @Configurable preConstruction weave is unreliable in test envs.
+    private List<VmBeforeCreateOnHypervisorExtensionPoint> exts;
+
+    private List<VmBeforeCreateOnHypervisorExtensionPoint> getExts() {
+        if (exts == null) {
+            exts = pluginRgty.getExtensionList(VmBeforeCreateOnHypervisorExtensionPoint.class);
+        }
+        return exts;
+    }
 
     private void fireExtensions(VmInstanceSpec spec) {
-        for (VmBeforeCreateOnHypervisorExtensionPoint ext : exts) {
+        for (VmBeforeCreateOnHypervisorExtensionPoint ext : getExts()) {
             ext.beforeCreateVmOnHypervisor(spec);
         }
     }
