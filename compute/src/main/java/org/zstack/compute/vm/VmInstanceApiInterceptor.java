@@ -56,7 +56,6 @@ import org.zstack.utils.network.NicIpAddressInfo;
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.operr;
@@ -1205,20 +1204,24 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             if (diskAO.isBoot()) {
                 continue;
             }
-            checkMutualExclusion(diskAO);
+            checkMutualExclusion(diskAO, msg);
         }
     }
 
-    public void checkMutualExclusion(DiskAO diskAO) {
-        Map<String, Boolean> map = new HashMap<>();
-        map.put("size", diskAO.getSize() > 0);
-        map.put("templateUuid", diskAO.getTemplateUuid() != null);
-        map.put("diskOfferingUuid", diskAO.getDiskOfferingUuid() != null);
-        map.put("sourceUuid", diskAO.getSourceUuid() != null);
-        List<String> invalidProperties = map.entrySet().stream()
-                .filter(entry -> entry.getValue() == Boolean.TRUE)
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toList());
+    public void checkMutualExclusion(DiskAO diskAO, APICreateVmInstanceMsg msg) {
+        List<String> invalidProperties = new ArrayList<>();
+        if (diskAO.getSize() <= 0) {
+            invalidProperties.add("size");
+        }
+        if (diskAO.getTemplateUuid() == null && msg.getImageUuid() == null) {
+            invalidProperties.add("templateUuid");
+        }
+        if (diskAO.getDiskOfferingUuid() == null) {
+            invalidProperties.add("diskOfferingUuid");
+        }
+        if (diskAO.getSourceUuid() == null) {
+            invalidProperties.add("sourceUuid");
+        }
 
         if (invalidProperties.size() == 1) {
             return;
@@ -1227,11 +1230,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             throw new ApiMessageInterceptionException(operr("cannot set the following properties at the same time: %s", invalidPropertiesText));
         }
 
-        StringJoiner properties = new StringJoiner(", ");
-        for (String key : map.keySet()) {
-            properties.add(key);
-        }
-        throw new ApiMessageInterceptionException(operr("Need to set one of the following properties, and can only be one of them: %s", properties));
+        throw new ApiMessageInterceptionException(operr("Need to set one of the following properties, and can only be one of them: %s",
+                String.join(",", invalidProperties)));
     }
 
     private void validate(APICreateVmInstanceFromVolumeMsg msg) {

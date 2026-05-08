@@ -15,6 +15,7 @@ public class DiskAO {
     private long size;
     /**
      * allow: ImageVO.uuid
+     * if templateUuid(in root disk) is not set, use {@link APICreateVmInstanceMsg#getImageUuid()}
      */
     private String templateUuid;
     private String diskOfferingUuid;
