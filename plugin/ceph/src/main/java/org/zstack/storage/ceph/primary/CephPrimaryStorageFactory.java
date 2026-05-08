@@ -34,6 +34,7 @@ import org.zstack.header.configuration.userconfig.DiskOfferingUserConfigValidato
 import org.zstack.header.configuration.userconfig.InstanceOfferingUserConfig;
 import org.zstack.header.configuration.userconfig.InstanceOfferingUserConfigValidator;
 import org.zstack.header.core.Completion;
+import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.core.progress.TaskProgressRange;
 import org.zstack.header.core.workflow.*;
@@ -47,6 +48,8 @@ import org.zstack.header.host.HostVO;
 import org.zstack.header.host.HostVO_;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.storage.backup.*;
+import org.zstack.header.storage.ceph.CephSiblingFenceExtensionPoint;
+import org.zstack.header.storage.ceph.SiblingFenceVmOnHostReply;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.vm.*;
@@ -1229,7 +1232,50 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
                 GetVolumeWatchersReply rly = (GetVolumeWatchersReply)reply;
                 List watchers = rly.getWatchers();
                 if (watchers == null || watchers.isEmpty()) {
-                    completion.success();
+                    List<CephSiblingFenceExtensionPoint> exts =
+                            pluginRgty.getExtensionList(CephSiblingFenceExtensionPoint.class);
+                    if (exts.isEmpty()) {
+                        // Open-source / no premium installed -> preserve original behaviour
+                        completion.success();
+                        return;
+                    }
+
+                    final String vmUuid          = spec.getVmInventory().getUuid();
+                    final String haTargetHostUuid = spec.getDestHost().getUuid();
+                    final String clusterUuid     = spec.getDestHost().getClusterUuid();
+                    final String failedHostUuid  = spec.getVmInventory().getLastHostUuid() != null
+                                                   ? spec.getVmInventory().getLastHostUuid()
+                                                   : spec.getVmInventory().getHostUuid();
+                    if (failedHostUuid == null) {
+                        // No previous host -> fresh instantiation, no fence needed
+                        completion.success();
+                        return;
+                    }
+
+                    CephSiblingFenceExtensionPoint ext = exts.get(0);
+                    logger.debug(String.format("dispatching ceph sibling-fence for vm[%s] on failedHost[%s], target[%s]",
+                            vmUuid, failedHostUuid, haTargetHostUuid));
+                    ext.fenceVmOnFailedHost(failedHostUuid, vmUuid, clusterUuid, haTargetHostUuid,
+                            new ReturnValueCompletion<SiblingFenceVmOnHostReply>(completion) {
+                        @Override
+                        public void success(SiblingFenceVmOnHostReply r) {
+                            if (!r.isAlive() || r.isKilled()) {
+                                logger.debug(String.format("ceph sibling-fence succeeded for vm[%s] on failedHost[%s]: killed=%s sshReachable=%s",
+                                        vmUuid, failedHostUuid, r.isKilled(), r.isSshReachable()));
+                                completion.success();
+                            } else {
+                                logger.warn(String.format("ceph sibling-fence failed for vm[%s] on failedHost[%s]: %s — blocking VM start to prevent split-brain",
+                                        vmUuid, failedHostUuid, r.getReason()));
+                                completion.fail(operr("sibling fence failed: %s", r.getReason()));
+                            }
+                        }
+                        @Override
+                        public void fail(ErrorCode err) {
+                            logger.warn(String.format("ceph sibling-fence error for vm[%s] on failedHost[%s]: %s",
+                                    vmUuid, failedHostUuid, err));
+                            completion.fail(err);
+                        }
+                    });
                     return;
                 }
 
