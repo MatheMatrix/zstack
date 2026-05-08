@@ -45,7 +45,12 @@ import javax.persistence.LockModeType;
  *       intentionally dropped — ratio-driven {@code totalCpu} is authoritative via
  *       {@code HostCpuOverProvisioningManager} (U5) JPQL updates against the same truth table.</li>
  * </ul>
+ *
+ * @deprecated Retained for {@code HostCapacityAllocatorFlow} / {@code ReturnHostCapacityMsg} VM
+ *             allocator incremental write paths only. New call sites must use
+ *             {@link PhysicalServerCapacityUpdater#recalculate(String)} instead (U-B, 2026-05-08).
  */
+@Deprecated
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class HostCapacityUpdater {
     private static final CLogger logger = Utils.getLogger(HostCapacityUpdater.class);
