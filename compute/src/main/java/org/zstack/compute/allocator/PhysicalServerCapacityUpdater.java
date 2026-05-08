@@ -73,11 +73,6 @@ import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.ORG_ZSTAC
 public class PhysicalServerCapacityUpdater {
     private static final CLogger logger = Utils.getLogger(PhysicalServerCapacityUpdater.class);
 
-    // AC-CM-13: floor 4 cores / 4 GiB ensures fragmentation buffer even on tiny servers
-    // (percent-based math collapses to 0 for sub-100-core / sub-40-GiB hosts otherwise).
-    static final long CPU_BUFFER_FLOOR = 4L;
-    static final long MEMORY_BUFFER_FLOOR = 4L * 1024L * 1024L * 1024L;
-
     @Autowired
     private DatabaseFacade dbf;
 
@@ -214,10 +209,8 @@ public class PhysicalServerCapacityUpdater {
             availableCpu = 0L;
             availableMemory = 0L;
         } else {
-            int cpuPct = HostAllocatorGlobalConfig.PHYSICAL_SERVER_CPU_SAFETY_BUFFER_PERCENT.value(Integer.class);
-            int memPct = HostAllocatorGlobalConfig.PHYSICAL_SERVER_MEMORY_SAFETY_BUFFER_PERCENT.value(Integer.class);
-            long cpuBuffer = Math.max(CPU_BUFFER_FLOOR, totalCpu * cpuPct / 100);
-            long memBuffer = Math.max(MEMORY_BUFFER_FLOOR, totalMemory * memPct / 100);
+            long cpuBuffer = PhysicalServerCapacityBuffers.calcCpuBuffer(totalCpu);
+            long memBuffer = PhysicalServerCapacityBuffers.calcMemBuffer(totalMemory);
 
             long extReservedCpu = 0L;
             long extReservedMemory = 0L;

@@ -4,7 +4,7 @@
 >
 > 跟 `docs/brainstorms/next-session.md` 的区别：next-session 是"上一轮 diff"，本文件是"全局静态视野"。session 切换时只更新 next-session；阶段里程碑撞线时同步更新本文件。
 
-**Last updated**: 2026-05-05 (production deploy on 172.26.201.160 + 真机 add-host end-to-end GREEN; code-vs-doc reconciliation + gateway-agent ping wiring earlier same day)
+**Last updated**: 2026-05-09 (PSC writer collapse Layer 1+2 hot-deployed on 172.26.201.160；7 NativeHost PSC.totalCpu sync 后从 0 → K8s 真值 8/8/8/16/120/192/192 cores，KVM host PSC.availableCpu=72=80-cpuBuffer，Layer 2 recalculate 唯一虚拟量入口 production-validated)
 **Current phase**: Phase 3 validation/polish（业务逻辑代码基本写完；test infra rot 阻 IT 端到端；commit/push 待）
 **Branch**: `feature/unifi-host-dev` (latest pushed; use `git rev-parse --short HEAD` for the exact local commit)
 **PRD pin**: cloud_prd commit `f9928ec` (NB-1..34 final consolidation)
@@ -98,8 +98,8 @@ R-unit 来自 `2026-04-22-001-...-phase2-plan.md` §Requirement-level groups。�
 |---|---|---|---|
 | R1 | AC-V2-CAP-01..12 + AC-CM-PERF-01 — Unified capacity ledger (PSC 真表 + HCV VIEW MERGE + W1-W9 + @Immutable) | ✅ DONE | U1+U4+U5+U6+U7+U27 全 ✅。AC-CM-PERF-01 EXPLAIN 验证留 Phase 3 性能测试 |
 | R2 | AC-V2-ALLOC-01..07 — ServerAllocatorChain (7 Flows + 2 ExtensionPoint) | 🔁 DEFERRED | Group C 推 v5.5.18.x（plan §Scope Boundaries 明示）|
-| R3 | AC-CM-13..19 — Mixed-deployment Cordon + Pod 聚合 | ⚠️ PARTIAL | U21 Cordon service AC-CM-14/15/16 GREEN；Pod 聚合 / broader mixed-deployment still separate |
-| R4 | AC-V2-ROLE-01..09 — RoleProvider wire-up (KVM/BM2/Container) | ⚠️ PARTIAL | U8/U9 path 1 ✅, path 2 缺；U10 Container createRoleEntity stub + getCapacityConsumption 返 0 |
+| R3 | AC-CM-13..19 — Mixed-deployment Cordon + Pod 聚合 | ✅ DONE | Pod 聚合 ✅（`ContainerRoleProvider.getCapacityConsumption` SUM PodVO state=Running）；AC-CM-13 reservation extension ✅（`ContainerCordonReservedCapacityExtension` 把 `isHostCordoned` host 的 free 转 reserved）；2026-05-09 production triggers 落地（plan: [docs/plans/2026-05-09-001-cordon-production-trigger-plan.md](plans/2026-05-09-001-cordon-production-trigger-plan.md)）：(1) K8s 反向 mirror `cordonService.mirrorFromK8s` 在 `ContainerEndpointBase.processNodeTransactional` 里调，把 `KubernetesNodeInventory.unschedulable` 写进 in-memory `cordonedHostUuids`，operator 手动 cordon 实时可见；(2) capacity-driven hysteresis `cordonService.evaluate` 在 `ContainerEndpointBase.success()` recalculate 之后调，free<buffer 触发 ZStack 主动 cordon、free>2×buffer 触发 uncordon（仅 zstack 标签存在时）；(3) buffer 计算抽到 `PhysicalServerCapacityBuffers.calc{Cpu,Mem}Buffer` 静态 helper，跨 recalculate + evaluate 统一口径 |
+| R4 | AC-V2-ROLE-01..09 — RoleProvider wire-up (KVM/BM2/Container) | ✅ DONE | U8/U9 path 1+2 ✅；U10 Container Layer 1 `syncNodesFromCluster` 写 `PSC.total{Cpu,Memory}`、Layer 2 调 `PhysicalServerCapacityUpdater.recalculate` 派生 `available*`；2026-05-09 真机 7 NativeHost PSC.totalCpu 0 → 8/8/8/16/120/192/192，KVM host availableCpu 80→72（减 cpuBuffer 8） |
 | R5 | Server PRD §2.5.1 — AddHost/AddChassis FlowChain tail extension (3 Flow + post-commit hook) | ❌ NOT STARTED | U11/U12/U13 全缺。这是 Phase 3 Wave 1 U1 的核心 |
 | R6 | FR-033 + NB-19 — PhysicalServerHardwareService (3 private discover + Scheduler) | ⚠️ PARTIAL | U2 ✅ skeleton + GlobalConfig；U16 ✅ Scheduler；U15 ❌ 3 discover 全 stub；U17 ❌ handler 未接 |
 | R7 | FR-010..012 + NB-4 — PoolRef + BM2 ProvisionNetwork VIEW | ⚠️ MIXED | U3 ✅ PoolRef + Attach/Detach API；U23/U24 在 ADR-013 撤回 VIEW 化后变成 N/A，pool-only 重写推 v1.1+ |
@@ -109,7 +109,7 @@ R-unit 来自 `2026-04-22-001-...-phase2-plan.md` §Requirement-level groups。�
 | R11 | NB-15 admin-only — `@Action(adminOnly=true)` on 24 PS API Msgs | ✅ DONE | U30 ✅。audit AC-CB-NB15-AdminAction 全过 |
 | R12 | NB-23 + NB-20 — `roleConfig: @NoLogging` + `credentials: @NoLogging` | ✅ DONE | Phase 1 已落，Phase 2 verify 即过 |
 
-**Roll-up**: R1/R8/R9/R10/R11/R12 ✅ · R3/R4/R6/R7 ⚠️ · R5 ❌ · R2 🔁
+**Roll-up**: R1/R3/R4/R8/R9/R10/R11/R12 ✅ · R6/R7 ⚠️ · R5 ❌ · R2 🔁
 
 ### 4.2 Phase 2 U-unit status
 
@@ -118,7 +118,7 @@ U-unit 来自 phase2 plan §Implementation Units。本 audit 反推：
 | 区段 | 范围 | 状态 |
 |---|---|---|
 | **U1-U7** capacity ledger + W1-W9 + @Immutable | U1 PSC entity / U2 Hardware skeleton + Scheduler + GlobalConfig / U3 PoolRef + Attach/Detach API / U4 W1-W3 / U5 W4-W6 / U6 W9 vcenter / U7 @Immutable | 全 ✅ |
-| **U8-U10** RoleProvider wire-up | U8 KVM / U9 BM2 / U10 Container | ⚠️ path 1 ✅, path 2 / Container 容量管道 ❌ |
+| **U8-U10** RoleProvider wire-up | U8 KVM / U9 BM2 / U10 Container | ✅ path 1+2 全通；U10 Container 容量管道 Layer 1 (`syncNodesFromCluster` 写 PSC.total*) + Layer 2 (`PhysicalServerCapacityUpdater.recalculate` 派生 available*) production-validated 2026-05-09 |
 | **U11-U13** FlowChain tail | U11 KVM / U12 BM2 / U13 Container per-node @Transactional | ❌ 全部未起步 — Phase 3 Wave 1 U1 |
 | **U14-U17** Hardware discovery | U14 K8s NodeInventory 字段 / U15 3 private discover / U16 Scheduler retry / U17 handler | U16 ✅；U14/U15/U17 ❌ |
 | **U18-U20** ProvisionProvider SPI | U18 SPI / U19 PhysicalServer-first PXE provider / U20 LongJob | ✅ DONE | stage-based + ping monitoring GREEN，phase tracked in LongJobVO.jobData (no schema change)；2026-05-05 production-validated on 172.26.201.160 (CreatePhysicalServer + AttachPhysicalServerRole(KVM_HOST) → RoleVO + HostVO/KVMHostVO + HostCapacityVO + PhysicalServerCapacityVO 全建) |
@@ -138,7 +138,7 @@ U-unit 来自 phase2 plan §Implementation Units。本 audit 反推：
 |---|---|---|---|---|
 | NB-4 | HardwareDiscoveryQueue 限流（concurrency=8 / timeout=60s / retry=3）+ MN 启动补漏 + Step 0 ServerPool 初始化 BM2 粒度对齐 | role-SPI §2.5b · cleanup §2.3 · provision | ✅ | `HardwareDiscoveryScheduler` + 3 GlobalConfig 全实装；schema Step 0 实装 |
 | NB-5 | Container Cordon 熔断（Taint→Cordon 简化）+ Pod 聚合 `max(Σinit, Σmain) + overhead` | capacity §2.9-§2.10 | ⚠️ | Cordon service + RBAC + hysteresis GREEN；Pod 聚合仍按独立 scope 跟踪 |
-| NB-7 | Container per-node `@Transactional` 事务边界澄清 | role-SPI §2.4 | ❌ | `processNodeTransactional` 不存在；`@Transactional` 在 `ContainerEndpointBase` 0 hits |
+| NB-7 | Container per-node `@Transactional` 事务边界澄清 | role-SPI §2.4 | ✅ | PSC writer collapse 把 per-node 事务边界落到 `PhysicalServerCapacityUpdater.recalculate(serverUuid)` 单 PESSIMISTIC_WRITE（NB-30），ContainerEndpointBase 在 fan-out 内逐 NativeHost 调；不再用 `@Transactional` 注解（原始诉求是"事务边界清晰可追"，单锁单 server 已达成） |
 | NB-8 | 补偿机制诚实限定（FlowChain Saga 反向 rollback，硬件明细 eventual consistency） | server PRD §2.5.1 | N/A | 设计原则陈述，无可验证 AC |
 | NB-9 | 统一 power 砍 SPI 只做 OOB（不做 plugin SPI 框架） | cleanup §2.5 | ✅ | Power handler 已接入 OOB-first direct IPMI；BM2 role fallback 仅兼容 roleConfig 老数据 |
 | NB-10 | 统一 power 砍 agent 兜底（无 OOB 直接 operr 转 KVM legacy API） | cleanup §2.5 | ✅ | 无 OOB 且无兼容 role fallback 时明确 operr；PS Manager 不引入 KVM 类型 |
@@ -154,7 +154,7 @@ U-unit 来自 phase2 plan §Implementation Units。本 audit 反推：
 | NB-28 | 标识变更场景（BMC/主板更换 serialNumber/oobAddress 变）需运维手动清理 | server PRD §2.6 | N/A | operator-side 责任，不是代码 task |
 | NB-30 | 所有 PESSIMISTIC_WRITE 以 `serverUuid` 为唯一锁 key（不混用 hostUuid） | capacity §2.1 W3 | ✅ | `HostCapacityUpdater` + 后续 `PhysicalServerCapacityUpdater.recalculate` 必守 |
 
-**Roll-up**: NB ✅ 11 条 · ⚠️ 2 条 (NB-5/NB-19) · ❌ 1 条 (NB-7) · N/A 3 条 (NB-8/16/28)
+**Roll-up**: NB ✅ 12 条 · ⚠️ 2 条 (NB-5/NB-19) · ❌ 0 条 · N/A 3 条 (NB-8/16/28)
 
 > **NB 不是 R/U 编号体系的并行轨道**。NB-XX 是 PRD 内的"决策痕迹"，落码点散在 R-unit / U-unit 内。R/U 关心"什么 task 做了"，NB 关心"为什么这样设计"。两者交叉：4 条 ❌ NB 全部对应 §4.1 R-unit 的 ❌/⚠️ 项（NB-5 → R3 / NB-7 → R5 / NB-9-10 → R10）。Phase 3 fix-plan 实装这些 R-unit 时同步消除对应 NB 的 ❌。
 >
@@ -187,9 +187,10 @@ U-unit 来自 phase2 plan §Implementation Units。本 audit 反推：
 - Bm2GatewayDataPlane 4-stage orchestration (NotStarted→NetworkPrepared→PxeTriggered→Pinging→Done)
 - Gateway-agent ping production wiring：`Bm2GatewayPingHelper.pingOnce` 走 `bus.send(PingTargetInGatewayMsg)` → `BareMetal2Gateway.handle(...)` → `restf.asyncJsonPost(PING_TARGET_PATH)`，不再 from-MN 跑 ICMP（AC-PN-14 production-path 闭环）
 - 路径 2（传统 AddHost/AddChassis/AddNode）FlowChain 接入 — `HostManagerImpl.java:37,426` PhysicalServerPathTwoExtensionPoint hook · `BareMetal2ChassisManagerImpl.java` 委托 `PhysicalServerPathTwoOrchestrator.runStandalone(chassisVO,...)`（chassis-as-HostVO override）· `ContainerEndpointBase.syncNodesFromCluster` per-NativeHost fan-out `orchestrator.runStandalone(nativeHost, RoleMatchContext, cluster.uuid, completion)` → `AutoAssociateFlow` (tier1/2/3 by serialNumber/oobAddress/managementIp) → `CreatePhysicalServerRoleFlow` → `InitPhysicalServerCapacityFlow` → `enqueueDiscoveryHook`；`ContainerEndpointBase.saveAsNativeClusters` 在 `cluster.serverPoolUuid==null` 时 auto-create `<cluster-name>-pool`，避免 manual pool 前置（AC-RS-04/07/10 + 真机 201.160 sync→7 RoleVO 闭环）
-- Container Pod 容量聚合 — `ContainerRoleProvider.java:96-117` `getCapacityConsumption` SUM(cpu) + SUM(memory) FROM PodVO WHERE state=Running
+- Container Pod 容量聚合 — `ContainerRoleProvider.java:96-117` `getCapacityConsumption` SUM(cpu) + SUM(memory) FROM PodVO WHERE state=Running；recalculate 路径 `available = total - consumed - buffer` 把 Pod 占用导出到 PSC（Layer 2 sole writer，不再回写 HostCapacityVO POJO）
 - Hardware discover end-to-end (AC-CB-18) — `PhysicalServerManagerImpl.java:573,916` + `PhysicalServerEnqueueDiscoveryHookImpl` chain，路径 2 add-host / Discover API / orphan boot-scan 三条触发线全通
 - **2026-05-05 production deploy** on 172.26.201.160 — bin install all 16 steps PASS · V5.5.18 Flyway migration row written (success=1) · `HostCapacityVO.cpuCoreNum INT UNSIGNED NOT NULL DEFAULT 0` 列在生产 DB · PhysicalServer 全家族 8 表全建出 · PhysicalServer-first add-host 端到端流程 GREEN（CreatePhysicalServer → PhysicalServerVO → AttachPhysicalServerRole(KVM_HOST) via REST `/v1/physical-servers/{uuid}/roles` → 异步 job 完成 → RoleVO + HostVO/KVMHostVO + HostCapacityVO + PhysicalServerCapacityVO 全建）· invariants 持：`RoleVO.roleUuid == HostCapacityVO.uuid == HostVO.uuid` (NB-22/24/ADR-012) + `PSC.uuid == PhysicalServerVO.uuid` (NB-22/30) · capacity 真值 `totalCpu=80, totalMem=16.5G, cpuCoreNum=8, cpuSockets=2`
+- **PSC writer collapse — Layer 1 (KVM/Container sync) + Layer 2 (recalculate sole writer)** — Two-Layer Capacity Model 落地（plan: [docs/plans/2026-05-08-001-psc-writer-collapse-plan.md](plans/2026-05-08-001-psc-writer-collapse-plan.md)）。Layer 1 各模块 sync 入口写 PSC.total{Cpu,Memory}（KVM `HostAllocatorManagerImpl` host 周期 `/host/capacity` callback、Container `ContainerEndpointBase.syncNodesFromCluster` per-NativeHost）；Layer 2 唯一虚拟量入口 `PhysicalServerCapacityUpdater.recalculate(serverUuid)` 单 PESSIMISTIC_WRITE 锁 serverUuid（NB-30），`available = total - consumed - buffer - reserved`，`reserved` 由 `ServerReservedCapacityExtensionPoint` 收集（含 `ContainerCordonReservedCapacityExtension` 把 cordoned NativeHost free 全转 reserved，AC-CM-13）。`HostCapacityUpdater` POJO 路径标 `@Deprecated`（VM allocator 仍用，下个 phase 砍）。IT case 3/3 PASS（`KvmReportHostCapacityRecalcCase` / `ContainerSyncRecalcCase` / `ContainerCordonReservedCase`）。**2026-05-09 真机 172.26.201.160 hot-deploy** 7 zstack + 4 premium commit + premium `HostAllocatorManager.xml`（mirror `physicalServerCapacityUpdater` bean）+ MN restart：endpoint `ef554bb8255d4ce0b891a1367841b88b` sync 后 7 NativeHost PSC.totalCpu 0 → 8/8/8/16/120/192/192 cores（Layer 1 ✅），KVM host `d066db930a0041138640fcae28c1514d` PSC.availableCpu 80 → 72（减 cpuBuffer=8，Layer 2 recalculate ✅）。Cordon AC-CM-13 reservation extension 已实装并 IT 3/3 PASS（`ContainerCordonReservedCase`），但 **production 触发点缺失**：`cordonService.cordon()` / `evaluate()` / K8s 反向 mirror `isUnschedulable(V1Node)` 全 0 caller，`cordonedHostUuids` 生产侧永远空 → 下个 phase 必补 trigger（在 `recalculate` 后调 `evaluate`，在 `syncNodesFromCluster` 里 mirror K8s `spec.unschedulable`）。本轮真机只验证了 (a) Layer 1 + (b) Layer 2，(c) 因 production trigger 缺位无法验。
 
 ### 实装但偏离规约 ⚠️ (13 项)
 见 [audit report](audits/2026-04-27-phase2-prd-audit.md) — 多数是 cosmetic drift（pool naming / UUID 算法）或部分实现（Hardware service 3 private discover 仍 stub / 超分比 read path 没绑定 PSC 列）。
