@@ -40,7 +40,6 @@ public class SdnControllerInventory implements Serializable {
         this.setName(vo.getName());
         this.setIp(vo.getIp());
         this.setUsername(vo.getUsername());
-        this.setPassword(vo.getPassword());
         this.setStatus(vo.getStatus());
         this.setHostRefs(SdnControllerHostRefInventory.valueOf(vo.getHostRefVOS()));
         this.setCreateDate(vo.getCreateDate());
