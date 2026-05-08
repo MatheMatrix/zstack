@@ -18,6 +18,7 @@ import org.zstack.header.message.NeedReplyMessage;
 import org.zstack.header.network.l2.SdnControllerDeleteExtensionPoint;
 import org.zstack.header.network.sdncontroller.SdnControllerConstant;
 import org.zstack.header.network.sdncontroller.SdnControllerStatus;
+import org.zstack.header.network.sdncontroller.SdnControllerStatusEvent;
 import org.zstack.header.network.sdncontroller.SdnControllerVO;
 import org.zstack.header.network.sdncontroller.SdnControllerVO_;
 import org.zstack.sdnController.header.*;
@@ -53,7 +54,19 @@ public class SdnControllerPingTracker extends PingTracker implements
     @Override
     public NeedReplyMessage getPingMessage(String resUuid) {
         SdnControllerVO vo = dbf.findByUuid(resUuid, SdnControllerVO.class);
+        if (vo == null) {
+            logger.warn(String.format("SDN controller[uuid:%s] has been deleted, skip ping sending", resUuid));
+            untrack(resUuid);
+            return null;
+        }
         if (vo.getStatus() == SdnControllerStatus.Connecting) {
+            return null;
+        }
+
+        // ZNS controllers are externally-managed (state machine driven by ZNS push notifications).
+        // Syncing and Ready are ZNS-specific states; Cloud must NOT ping them autonomously.
+        if (vo.getStatus() == SdnControllerStatus.Syncing
+                || vo.getStatus() == SdnControllerStatus.Ready) {
             return null;
         }
 
@@ -81,10 +94,15 @@ public class SdnControllerPingTracker extends PingTracker implements
             return;
         }
 
+        // ZNS controllers (Syncing/Ready) are externally-managed; skip autonomous status changes.
+        if (vo.getStatus() == SdnControllerStatus.Syncing
+                || vo.getStatus() == SdnControllerStatus.Ready) {
+            return;
+        }
 
         if (!reply.isSuccess()) {
             logger.warn(String.format("[SDN Ping Tracker]: unable to ping the sdn controller[uuid: %s], %s", resourceUuid, reply.getError()));
-            new SdnControllerBase(vo).changeSdnControllerStatus(SdnControllerStatus.Disconnected);
+            sdnMgr.getSdnControllerFactory(vo.getVendorType()).changeSdnControllerStatus(vo, SdnControllerStatusEvent.PING_FAILED);
             return;
         }
 
