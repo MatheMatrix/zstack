@@ -72,6 +72,23 @@ class PhysicalServerCascadeCase extends SubCase {
         env.delete()
     }
 
+    /**
+     * Fixture helper (12a-rule exempt): seeds 1 PhysicalServerHardwareDetailVO
+     * for cascade coverage. PhysicalServerHardwareInfoVO is NOT seeded here
+     * because attachPhysicalServerRole(KVM_HOST) already enqueues hardware
+     * discovery in UT mode which writes the (PK=serverUuid) row; a second
+     * persist would collide on PRIMARY key. HardwareDetailVO has an
+     * AUTO_INCREMENT id so multiple seed rows are safe.
+     */
+    private void seedHardwareDetail(String serverUuid) {
+        def dbf = bean(DatabaseFacade.class)
+        def detail = new PhysicalServerHardwareDetailVO()
+        detail.serverUuid = serverUuid
+        detail.type = "CPU"
+        detail.itemModel = "fixture-cpu"
+        dbf.persistAndRefresh(detail)
+    }
+
     void testOnClusterCreatePolicyCreatesDefaultServerPoolWhenClusterIsCreated() {
         PhysicalServerGlobalConfig.DEFAULT_SERVER_POOL_CREATION_POLICY.updateValue("OnClusterCreate")
 
@@ -209,6 +226,15 @@ class PhysicalServerCascadeCase extends SubCase {
                 .count()
         assert roleCountBefore == 1L : "prep failed: PhysicalServerRoleVO was not persisted"
 
+        seedHardwareDetail(server.uuid)
+        // HardwareInfoVO is auto-created by attach's hardware-discovery hook;
+        // HardwareDetailVO comes from the seed above. Assert both present so the
+        // post-cascade ==0 check is non-trivial.
+        assert Q.New(PhysicalServerHardwareInfoVO.class)
+                .eq(PhysicalServerHardwareInfoVO_.serverUuid, server.uuid).count() >= 1L
+        assert Q.New(PhysicalServerHardwareDetailVO.class)
+                .eq(PhysicalServerHardwareDetailVO_.serverUuid, server.uuid).count() >= 1L
+
         deleteZone {
             uuid = zone.uuid
         }
@@ -222,6 +248,12 @@ class PhysicalServerCascadeCase extends SubCase {
         assert Q.New(PhysicalServerCapacityVO.class)
                 .eq(PhysicalServerCapacityVO_.uuid, server.uuid).count() == 0L :
                 "PhysicalServerCapacityVO must cascade-delete when PhysicalServer is deleted"
+        assert Q.New(PhysicalServerHardwareInfoVO.class)
+                .eq(PhysicalServerHardwareInfoVO_.serverUuid, server.uuid).count() == 0L :
+                "PhysicalServerHardwareInfoVO must cascade-delete when PhysicalServer is deleted"
+        assert Q.New(PhysicalServerHardwareDetailVO.class)
+                .eq(PhysicalServerHardwareDetailVO_.serverUuid, server.uuid).count() == 0L :
+                "PhysicalServerHardwareDetailVO must cascade-delete when PhysicalServer is deleted"
     }
 
     void testDeleteServerPoolCascadeDeletesPhysicalServerHierarchy() {
@@ -258,6 +290,8 @@ class PhysicalServerCascadeCase extends SubCase {
             roleConfig = [username: "root", password: "password", sshPort: "22"]
         }
 
+        seedHardwareDetail(server.uuid)
+
         def poolVO = dbf.findByUuid(pool.uuid, ServerPoolVO.class)
         boolean success = false
         ErrorCode failure = null
@@ -286,6 +320,12 @@ class PhysicalServerCascadeCase extends SubCase {
         assert Q.New(PhysicalServerCapacityVO.class)
                 .eq(PhysicalServerCapacityVO_.uuid, server.uuid).count() == 0L :
                 "PhysicalServerCapacityVO must cascade-delete with PhysicalServer"
+        assert Q.New(PhysicalServerHardwareInfoVO.class)
+                .eq(PhysicalServerHardwareInfoVO_.serverUuid, server.uuid).count() == 0L :
+                "PhysicalServerHardwareInfoVO must cascade-delete with PhysicalServer"
+        assert Q.New(PhysicalServerHardwareDetailVO.class)
+                .eq(PhysicalServerHardwareDetailVO_.serverUuid, server.uuid).count() == 0L :
+                "PhysicalServerHardwareDetailVO must cascade-delete with PhysicalServer"
     }
 
     void testDeleteServerPoolClearsClusterAssociation() {
@@ -348,6 +388,8 @@ class PhysicalServerCascadeCase extends SubCase {
             roleConfig = [username: "root", password: "password", sshPort: "22"]
         }
 
+        seedHardwareDetail(server.uuid)
+
         assert Q.New(ClusterVO.class).eq(ClusterAO_.uuid, cluster.uuid).count() == 1L
         assert Q.New(ServerPoolVO.class).eq(ServerPoolVO_.uuid, pool.uuid).count() == 1L
         assert Q.New(org.zstack.header.server.PhysicalServerVO.class).eq(PhysicalServerAO_.uuid, server.uuid).count() == 1L
@@ -364,6 +406,12 @@ class PhysicalServerCascadeCase extends SubCase {
         assert Q.New(PhysicalServerCapacityVO.class)
                 .eq(PhysicalServerCapacityVO_.uuid, server.uuid).count() == 0L :
                 "PhysicalServerCapacityVO must cascade-delete with PhysicalServer"
+        assert Q.New(PhysicalServerHardwareInfoVO.class)
+                .eq(PhysicalServerHardwareInfoVO_.serverUuid, server.uuid).count() == 0L :
+                "PhysicalServerHardwareInfoVO must cascade-delete with PhysicalServer"
+        assert Q.New(PhysicalServerHardwareDetailVO.class)
+                .eq(PhysicalServerHardwareDetailVO_.serverUuid, server.uuid).count() == 0L :
+                "PhysicalServerHardwareDetailVO must cascade-delete with PhysicalServer"
     }
 
 }
