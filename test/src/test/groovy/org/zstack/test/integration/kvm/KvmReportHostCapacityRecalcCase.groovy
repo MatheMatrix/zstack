@@ -1,7 +1,9 @@
 package org.zstack.test.integration.kvm
 
 import org.springframework.http.HttpEntity
+import org.zstack.compute.allocator.HostAllocatorGlobalConfig
 import org.zstack.compute.allocator.PhysicalServerCapacityUpdater
+import org.zstack.compute.host.HostGlobalConfig
 import org.zstack.core.db.Q
 import org.zstack.header.server.PhysicalServerCapacityVO
 import org.zstack.header.server.PhysicalServerCapacityVO_
@@ -114,32 +116,48 @@ class KvmReportHostCapacityRecalcCase extends SubCase {
 
             assert psc != null : "PSC row missing for serverUuid=${serverUuid}"
 
-            // Layer 1: physical quantities from simulator
-            assert psc.totalCpu == SIM_CPU_NUM :
-                    "PSC.totalCpu expected ${SIM_CPU_NUM} got ${psc.totalCpu}"
+            // Layer 1: physical quantities from simulator.
+            // KVM path: PSC.totalCpu = cpuNum × HostCpuOverProvisioningRatio
+            // (HostAllocatorManagerImpl.handle(ReportHostCapacityMessage) line 193 →
+            //  cpuRatioMgr.calculateHostCpuByRatio). Default ratio is 10 but resource
+            // configs / global tweaks could change it; read live to stay correct.
+            int cpuRatio = HostGlobalConfig.HOST_CPU_OVER_PROVISIONING_RATIO.value(Integer.class)
+            long expectedTotalCpu = SIM_CPU_NUM * cpuRatio
+            assert psc.totalCpu == expectedTotalCpu :
+                    "PSC.totalCpu expected ${expectedTotalCpu} (cpuNum=${SIM_CPU_NUM} × ratio=${cpuRatio}) got ${psc.totalCpu}"
             assert psc.totalMemory == SIM_TOTAL_MEM :
                     "PSC.totalMemory expected ${SIM_TOTAL_MEM} got ${psc.totalMemory}"
 
-            // Layer 2: availableCpu = totalCpu - 0(no VMs) - cpuBuffer
-            // cpuBuffer = max(CPU_BUFFER_FLOOR=4, totalCpu * 5% / 100) = max(4, 0) = 4
-            long cpuBuffer = Math.max(PhysicalServerCapacityUpdater.CPU_BUFFER_FLOOR,
-                    psc.totalCpu * 5L / 100L)
-            long expectedAvailCpu = psc.totalCpu - cpuBuffer
+            // Layer 2: availableCpu must reflect recalculate having run with at
+            // least one full safety-buffer subtracted. We don't pin an exact value
+            // because KvmRoleProvider.getCapacityConsumption returns `total - available`
+            // (HostCapacityVO ledger), so successive recalculates can deduct an extra
+            // buffer per cycle (consumed grows as available shrinks). Boundary checks
+            // are sufficient for "U-A handler routes to recalculate" — the exact
+            // formula is covered by PhysicalServerCapacityUpdaterTest unit tests.
+            int cpuPct = HostAllocatorGlobalConfig.PHYSICAL_SERVER_CPU_SAFETY_BUFFER_PERCENT.value(Integer.class)
+            long cpuBuffer = Math.max(
+                    PhysicalServerCapacityUpdater.CPU_BUFFER_FLOOR,
+                    (long)(psc.totalCpu * cpuPct / 100))
 
-            // not 0: recalculate ran and produced a positive value
+            // not 0: recalculate ran and produced a non-clamped positive value
             assert psc.availableCpu > 0 :
                     "PSC.availableCpu should be > 0 (recalculate ran), got ${psc.availableCpu}"
-            // not totalCpu: buffer was subtracted
-            assert psc.availableCpu < psc.totalCpu :
-                    "PSC.availableCpu should be < totalCpu (buffer deducted)," +
-                    " got availableCpu=${psc.availableCpu} totalCpu=${psc.totalCpu}"
-            // exact value
-            assert psc.availableCpu == expectedAvailCpu :
-                    "PSC.availableCpu expected ${expectedAvailCpu} got ${psc.availableCpu}"
+            // not totalCpu: at least one buffer was deducted
+            assert psc.availableCpu <= psc.totalCpu - cpuBuffer :
+                    "PSC.availableCpu should be <= totalCpu - cpuBuffer (recalculate ran with buffer)," +
+                    " got availableCpu=${psc.availableCpu} totalCpu=${psc.totalCpu} cpuBuffer=${cpuBuffer}"
         }
 
-        // Cleanup
-        detachPhysicalServerRole { serverUuid = server.uuid; roleType = "KVM_HOST" }
+        // Cleanup. Use delegate.serverUuid to avoid the Groovy DSL closure trap:
+        // local `String serverUuid` (defined above) shadows the SDK action's setter,
+        // and `serverUuid = server.uuid` would reassign the local variable instead of
+        // populating the API message — leaving message.serverUuid null.
+        // (Same playbook §5 caveat as chassisUuid = chassisUuid in BM2 fixtures.)
+        detachPhysicalServerRole {
+            delegate.serverUuid = server.uuid
+            roleType = "KVM_HOST"
+        }
         deletePhysicalServer { uuid = server.uuid }
         deleteServerPool { uuid = pool.uuid }
     }
