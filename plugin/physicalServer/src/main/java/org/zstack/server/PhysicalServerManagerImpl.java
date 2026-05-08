@@ -366,7 +366,7 @@ public class PhysicalServerManagerImpl extends AbstractService implements Physic
         vo.setManufacturer(msg.getManufacturer());
         vo.setModel(msg.getModel());
         vo.setState(PhysicalServerState.Enabled);
-        vo.setPowerStatus(PhysicalServerPowerStatus.Unknown);
+        vo.setPowerStatus(PhysicalServerPowerStatus.POWER_UNKNOWN);
         vo.setOobManagementType(msg.getOobManagementType());
         vo.setOobAddress(msg.getOobAddress());
         vo.setOobPort(msg.getOobPort());
@@ -758,19 +758,19 @@ public class PhysicalServerManagerImpl extends AbstractService implements Physic
 
     private void handle(APIPowerOnPhysicalServerMsg msg) {
         APIPowerOnPhysicalServerEvent evt = new APIPowerOnPhysicalServerEvent(msg.getId());
-        dispatchPower(msg.getUuid(), evt, PhysicalServerPowerStatus.PowerOn,
+        dispatchPower(msg.getUuid(), evt, PhysicalServerPowerStatus.POWER_ON,
                 "power-on", PowerAction.ON);
     }
 
     private void handle(APIPowerOffPhysicalServerMsg msg) {
         APIPowerOffPhysicalServerEvent evt = new APIPowerOffPhysicalServerEvent(msg.getId());
-        dispatchPower(msg.getUuid(), evt, PhysicalServerPowerStatus.PowerOff,
+        dispatchPower(msg.getUuid(), evt, PhysicalServerPowerStatus.POWER_OFF,
                 "power-off", PowerAction.OFF);
     }
 
     private void handle(APIPowerResetPhysicalServerMsg msg) {
         APIPowerResetPhysicalServerEvent evt = new APIPowerResetPhysicalServerEvent(msg.getId());
-        dispatchPower(msg.getUuid(), evt, PhysicalServerPowerStatus.PowerOn,
+        dispatchPower(msg.getUuid(), evt, PhysicalServerPowerStatus.POWER_ON,
                 "power-reset", PowerAction.RESET);
     }
 

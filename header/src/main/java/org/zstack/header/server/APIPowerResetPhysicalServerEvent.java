@@ -35,7 +35,7 @@ public class APIPowerResetPhysicalServerEvent extends APIEvent {
         inv.setManagementIp("192.168.1.100");
         inv.setArchitecture("x86_64");
         inv.setState("Enabled");
-        inv.setPowerStatus("PowerOn");
+        inv.setPowerStatus("POWER_ON");
         inv.setCreateDate(new Timestamp(org.zstack.header.message.DocUtils.date));
         inv.setLastOpDate(new Timestamp(org.zstack.header.message.DocUtils.date));
         event.setInventory(inv);

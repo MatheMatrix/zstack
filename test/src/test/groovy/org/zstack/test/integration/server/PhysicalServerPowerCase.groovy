@@ -81,7 +81,7 @@ class PhysicalServerPowerCase extends SubCase {
         } as PhysicalServerInventory
 
         assert result.uuid == server.uuid
-        assert result.powerStatus == "PowerOn"
+        assert result.powerStatus == "POWER_ON"
 
         deletePhysicalServer { uuid = server.uuid }
         deleteServerPool { uuid = pool.uuid }
@@ -96,7 +96,7 @@ class PhysicalServerPowerCase extends SubCase {
         } as PhysicalServerInventory
 
         assert result.uuid == server.uuid
-        assert result.powerStatus == "PowerOff"
+        assert result.powerStatus == "POWER_OFF"
 
         deletePhysicalServer { uuid = server.uuid }
         deleteServerPool { uuid = pool.uuid }
@@ -111,7 +111,7 @@ class PhysicalServerPowerCase extends SubCase {
         } as PhysicalServerInventory
 
         assert result.uuid == server.uuid
-        assert result.powerStatus == "PowerOn"
+        assert result.powerStatus == "POWER_ON"
 
         deletePhysicalServer { uuid = server.uuid }
         deleteServerPool { uuid = pool.uuid }

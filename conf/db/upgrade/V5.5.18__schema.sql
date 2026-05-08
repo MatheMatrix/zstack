@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS `PhysicalServerVO` (
     `manufacturer` VARCHAR(255) DEFAULT NULL,
     `model` VARCHAR(255) DEFAULT NULL,
     `state` VARCHAR(32) NOT NULL DEFAULT 'Enabled',
-    `powerStatus` VARCHAR(32) NOT NULL DEFAULT 'Unknown',
+    `powerStatus` VARCHAR(32) NOT NULL DEFAULT 'POWER_UNKNOWN',
     `oobManagementType` VARCHAR(32) DEFAULT NULL,
     `oobAddress` VARCHAR(255) DEFAULT NULL,
     `oobPort` INT DEFAULT NULL,
@@ -441,7 +441,7 @@ SELECT
     h.`managementIp`,
     h.`architecture`,
     h.`state`,
-    'Unknown',
+    'POWER_UNKNOWN',
     h.`createDate`,
     h.`lastOpDate`
 FROM `HostEO` h
@@ -455,9 +455,17 @@ ON DUPLICATE KEY UPDATE
 -- Block 1b: PhysicalServerVO from BM2 chassis.
 -- BareMetal2ChassisVO has no `deleted` column (cascade-release model);
 -- physical row absence is the liveness signal.
+-- LEFT JOIN BareMetal2IpmiChassisVO to backfill OOB credentials. BM2's IPMI
+-- subtype rows live on the same uuid (JOINED inheritance via @PrimaryKeyJoinColumn);
+-- non-IPMI chassis types yield NULL OOB columns. oobManagementType is hard-coded
+-- 'IPMI' for matched rows because BareMetal2ChassisVO.chassisType='ipmi' (lowercase)
+-- maps to PhysicalServerVO.oobManagementType='IPMI' (uppercase, validated by
+-- @APIParam validValues in PhysicalServer Update API).
 INSERT INTO `PhysicalServerVO`
     (`uuid`, `name`, `description`, `zoneUuid`, `poolUuid`, `managementIp`,
-     `architecture`, `state`, `powerStatus`, `createDate`, `lastOpDate`)
+     `architecture`, `state`, `powerStatus`,
+     `oobAddress`, `oobPort`, `oobUsername`, `oobPassword`, `oobManagementType`,
+     `createDate`, `lastOpDate`)
 SELECT
     MD5(CONCAT(b.`uuid`, '-ps')),
     b.`name`,
@@ -468,10 +476,16 @@ SELECT
     NULL,
     b.`state`,
     b.`powerStatus`,
+    i.`ipmiAddress`,
+    i.`ipmiPort`,
+    i.`ipmiUsername`,
+    i.`ipmiPassword`,
+    IF(i.`uuid` IS NOT NULL, 'IPMI', NULL),
     b.`createDate`,
     b.`lastOpDate`
 FROM `BareMetal2ChassisVO` b
 JOIN `ClusterEO` c ON c.`uuid` = b.`clusterUuid` AND c.`deleted` IS NULL
+LEFT JOIN `BareMetal2IpmiChassisVO` i ON i.`uuid` = b.`uuid`
 WHERE c.`serverPoolUuid` IS NOT NULL
 ON DUPLICATE KEY UPDATE
     `PhysicalServerVO`.`lastOpDate` = `PhysicalServerVO`.`lastOpDate`;
@@ -488,7 +502,7 @@ SET @has_native := (
     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'NativeHostVO'
 );
 SET @sql := IF(@has_native = 1,
-    'INSERT INTO `PhysicalServerVO` (`uuid`, `name`, `description`, `zoneUuid`, `poolUuid`, `managementIp`, `architecture`, `state`, `powerStatus`, `createDate`, `lastOpDate`) SELECT MD5(CONCAT(h.`uuid`, ''-ps'')), h.`name`, CONCAT(''migrated from NativeHost '', h.`uuid`), h.`zoneUuid`, c.`serverPoolUuid`, h.`managementIp`, h.`architecture`, h.`state`, ''Unknown'', h.`createDate`, h.`lastOpDate` FROM `HostEO` h JOIN `NativeHostVO` n ON n.`uuid` = h.`uuid` JOIN `ClusterEO` c ON c.`uuid` = h.`clusterUuid` AND c.`deleted` IS NULL WHERE h.`deleted` IS NULL AND c.`serverPoolUuid` IS NOT NULL ON DUPLICATE KEY UPDATE `PhysicalServerVO`.`lastOpDate` = `PhysicalServerVO`.`lastOpDate`',
+    'INSERT INTO `PhysicalServerVO` (`uuid`, `name`, `description`, `zoneUuid`, `poolUuid`, `managementIp`, `architecture`, `state`, `powerStatus`, `createDate`, `lastOpDate`) SELECT MD5(CONCAT(h.`uuid`, ''-ps'')), h.`name`, CONCAT(''migrated from NativeHost '', h.`uuid`), h.`zoneUuid`, c.`serverPoolUuid`, h.`managementIp`, h.`architecture`, h.`state`, ''POWER_UNKNOWN'', h.`createDate`, h.`lastOpDate` FROM `HostEO` h JOIN `NativeHostVO` n ON n.`uuid` = h.`uuid` JOIN `ClusterEO` c ON c.`uuid` = h.`clusterUuid` AND c.`deleted` IS NULL WHERE h.`deleted` IS NULL AND c.`serverPoolUuid` IS NOT NULL ON DUPLICATE KEY UPDATE `PhysicalServerVO`.`lastOpDate` = `PhysicalServerVO`.`lastOpDate`',
     'DO 0'
 );
 PREPARE stmt FROM @sql;
@@ -549,8 +563,19 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- Block 1.6: ResourceVO + AccountResourceRefVO registration (admin owner, NB-15).
--- PhysicalServerVO extends ResourceVO via JOINED inheritance; ResourceVO is the parent.
+-- Block 1.6: ResourceVO parent registration for JOINED inheritance children.
+-- PhysicalServerVO / ServerPoolVO / PhysicalServerRoleVO all extend ResourceVO;
+-- production code reaches them via dbf.persist (Hibernate writes parent then
+-- child atomically), but manual INSERT into the child table here bypasses
+-- that, so we must seed the parent ResourceVO row ourselves. Without this,
+-- @Entity JPQL queries (e.g. /v1/server-pools, /v1/physical-server-roles)
+-- return empty inventories even though child rows are present.
+--
+-- AccountResourceRefVO insert intentionally omitted: all four APIs are
+-- @Action(adminOnly=true), and admin queries do not filter through
+-- AccountResourceRefVO. Verified empirically on .83 (2026-05-07): deleting
+-- pre-existing ARR rows for these resourceTypes left admin queries fully
+-- functional.
 INSERT INTO `ResourceVO`
     (`uuid`, `resourceName`, `resourceType`, `concreteResourceType`)
 SELECT
@@ -562,26 +587,29 @@ FROM `PhysicalServerVO` p
 ON DUPLICATE KEY UPDATE
     `ResourceVO`.`resourceName` = VALUES(`resourceName`);
 
--- NB-15: if ANY ARR row exists for this PS (admin or tenant), skip — do not
--- double-register. Guards against rerun AND against hand-seeded pre-migration
--- tenant assignments that should not be overridden. permission=2 = WRITE.
-INSERT IGNORE INTO `AccountResourceRefVO`
-    (`accountUuid`, `ownerAccountUuid`, `resourceUuid`, `resourceType`,
-     `concreteResourceType`, `permission`, `isShared`, `createDate`, `lastOpDate`)
+INSERT INTO `ResourceVO`
+    (`uuid`, `resourceName`, `resourceType`, `concreteResourceType`)
 SELECT
-    '36c27e8ff05c4780bf6d2fa65700f22e',
-    '36c27e8ff05c4780bf6d2fa65700f22e',
     p.`uuid`,
-    'PhysicalServerVO',
-    'org.zstack.header.server.PhysicalServerVO',
-    2,
-    0,
-    NOW(),
-    NOW()
-FROM `PhysicalServerVO` p
-WHERE NOT EXISTS (
-    SELECT 1 FROM `AccountResourceRefVO` a WHERE a.`resourceUuid` = p.`uuid`
-);
+    p.`name`,
+    'ServerPoolVO',
+    'org.zstack.header.server.ServerPoolVO'
+FROM `ServerPoolVO` p
+ON DUPLICATE KEY UPDATE
+    `ResourceVO`.`resourceName` = VALUES(`resourceName`);
+
+-- PhysicalServerRoleVO has no name column; synthesize a stable resourceName
+-- from a uuid prefix so admin UI list views still render something readable.
+INSERT INTO `ResourceVO`
+    (`uuid`, `resourceName`, `resourceType`, `concreteResourceType`)
+SELECT
+    r.`uuid`,
+    CONCAT('role-', SUBSTRING(r.`uuid`, 1, 8)),
+    'PhysicalServerRoleVO',
+    'org.zstack.header.server.PhysicalServerRoleVO'
+FROM `PhysicalServerRoleVO` r
+ON DUPLICATE KEY UPDATE
+    `ResourceVO`.`resourceName` = VALUES(`resourceName`);
 
 -- Block 8: PhysicalServerCapacityVO from HostCapacityVO (still a table at this
 -- point — VIEW-ization happens at Stage 7). Two branches:

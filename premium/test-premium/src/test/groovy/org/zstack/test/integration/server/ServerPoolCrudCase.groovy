@@ -466,7 +466,7 @@ class ServerPoolCrudCase extends PremiumSubCase {
         assert server.oobPort == 623
         assert server.oobUsername == "admin"
         assert server.state == "Enabled"
-        assert server.powerStatus == "Unknown"
+        assert server.powerStatus == "POWER_UNKNOWN"
         assert server.createDate != null
         assert server.lastOpDate != null
 

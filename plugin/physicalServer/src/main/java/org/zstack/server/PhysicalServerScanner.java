@@ -225,7 +225,7 @@ public class PhysicalServerScanner {
         vo.setManagementIp(ip);
         vo.setArchitecture("x86_64");
         vo.setState(PhysicalServerState.Enabled);
-        vo.setPowerStatus(PhysicalServerPowerStatus.Unknown);
+        vo.setPowerStatus(PhysicalServerPowerStatus.POWER_UNKNOWN);
         vo.setOobManagementType("IPMI");
         vo.setOobAddress(ip);
         vo.setOobPort(spec.getOobPort() == null ? DEFAULT_OOB_PORT : spec.getOobPort());
