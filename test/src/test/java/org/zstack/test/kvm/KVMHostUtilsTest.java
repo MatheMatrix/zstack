@@ -187,6 +187,34 @@ public class KVMHostUtilsTest {
     }
 
     @Test
+    public void shouldRestartLibvirtdOnReconnect_skipsWhenRunningVmExceedsThreshold() {
+        Assert.assertFalse(KVMHostUtils.shouldRestartLibvirtdOnReconnect(true, false, 101, 100));
+        Assert.assertFalse(KVMHostUtils.shouldRestartLibvirtdOnReconnect(true, false, 1, 0));
+    }
+
+    @Test
+    public void shouldRestartLibvirtdOnReconnect_allowsNewHostAndBelowThreshold() {
+        Assert.assertTrue(KVMHostUtils.shouldRestartLibvirtdOnReconnect(true, true, 101, 100));
+        Assert.assertTrue(KVMHostUtils.shouldRestartLibvirtdOnReconnect(true, false, 100, 100));
+        Assert.assertTrue(KVMHostUtils.shouldRestartLibvirtdOnReconnect(true, false, 0, 0));
+    }
+
+    @Test
+    public void shouldForceTlsRedeploy_afterReconnectRestartGuardSkips() {
+        boolean allowRestart = KVMHostUtils.shouldRestartLibvirtdOnReconnect(true, false, 101, 100);
+        Assert.assertFalse(KVMHostUtils.shouldForceTlsRedeploy(true, allowRestart, false));
+    }
+
+    @Test
+    public void shouldUseTlsForMigration_followsTlsRedeployState() {
+        Assert.assertFalse(KVMHostUtils.shouldUseTlsForMigration(false, true, true, false));
+        Assert.assertFalse(KVMHostUtils.shouldUseTlsForMigration(true, false, true, false));
+        Assert.assertFalse(KVMHostUtils.shouldUseTlsForMigration(true, true, false, false));
+        Assert.assertFalse(KVMHostUtils.shouldUseTlsForMigration(true, true, true, true));
+        Assert.assertTrue(KVMHostUtils.shouldUseTlsForMigration(true, true, true, false));
+    }
+
+    @Test
     public void shouldForceTlsRedeploy_reconnectWithoutRestartSkips() {
         Assert.assertFalse(KVMHostUtils.shouldForceTlsRedeploy(true, false, false));
     }

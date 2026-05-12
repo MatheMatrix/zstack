@@ -3,14 +3,18 @@ package org.zstack.test.integration.kvm.host
 import org.springframework.http.HttpEntity
 import org.springframework.web.util.UriComponentsBuilder
 import org.zstack.core.Platform
+import org.zstack.core.ansible.RunAnsibleMsg
 import org.zstack.core.cloudbus.CloudBus
 import org.zstack.core.db.Q
 import org.zstack.core.db.SQL
 import org.zstack.header.host.*
+import org.zstack.header.message.AbstractBeforeDeliveryMessageInterceptor
+import org.zstack.header.message.Message
 import org.zstack.header.rest.RESTConstant
 import org.zstack.header.rest.RESTFacade
-import org.zstack.header.vm.VmInstanceState
+import org.zstack.header.vm.*
 import org.zstack.kvm.*
+import org.zstack.sdk.GetResourceConfigResult
 import org.zstack.sdk.HostInventory
 import org.zstack.sdk.VmInstanceInventory
 import org.zstack.test.integration.kvm.Env
@@ -46,6 +50,7 @@ class ReconnectHostCase extends SubCase {
         env.create {
             host = env.inventoryByName("kvm")
             restf = bean(RESTFacade.class)
+            testRestartLibvirtdOnReconnectWithRunningVmThreshold()
             testReconnectHostVmState()
             testReconnectFailureHostVmState()
             testUpdateHostDuringConnecting()
@@ -118,6 +123,85 @@ class ReconnectHostCase extends SubCase {
         }
 
         env.cleanMessageHandlers()
+    }
+
+    void testRestartLibvirtdOnReconnectWithRunningVmThreshold() {
+        List<String> restartLibvirtdValues = []
+        CloudBus bus = bean(CloudBus.class)
+        bus.installBeforeDeliveryMessageInterceptor(new AbstractBeforeDeliveryMessageInterceptor() {
+            @Override
+            void beforeDeliveryMessage(Message msg) {
+                RunAnsibleMsg runMsg = msg as RunAnsibleMsg
+                if (runMsg.deployArguments instanceof KVMHostDeployArguments) {
+                    restartLibvirtdValues.add((runMsg.deployArguments as KVMHostDeployArguments).restartLibvirtd)
+                }
+            }
+        }, RunAnsibleMsg.class)
+
+        long activeVmCount = Q.New(VmInstanceVO.class)
+                .eq(VmInstanceVO_.hostUuid, host.uuid)
+                .in(VmInstanceVO_.state, [VmInstanceState.Running, VmInstanceState.Unknown])
+                .count()
+        assert activeVmCount > 0
+
+        String restartConfigName = KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.name
+        String thresholdConfigName = KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_RUNNING_VM_THRESHOLD.name
+        String originalRestartLibvirtd = (getResourceConfig {
+            category = KVMGlobalConfig.CATEGORY
+            name = restartConfigName
+            resourceUuid = host.uuid
+        } as GetResourceConfigResult).value
+        String originalThreshold = (getResourceConfig {
+            category = KVMGlobalConfig.CATEGORY
+            name = thresholdConfigName
+            resourceUuid = host.uuid
+        } as GetResourceConfigResult).value
+
+        updateResourceConfig {
+            category = KVMGlobalConfig.CATEGORY
+            name = restartConfigName
+            value = "true"
+            resourceUuid = host.uuid
+        }
+
+        try {
+            updateResourceConfig {
+                category = KVMGlobalConfig.CATEGORY
+                name = thresholdConfigName
+                value = activeVmCount.toString()
+                resourceUuid = host.uuid
+            }
+            reconnectHost {
+                uuid = host.uuid
+            }
+            assert restartLibvirtdValues[-1] == "true"
+
+            int recorded = restartLibvirtdValues.size()
+            updateResourceConfig {
+                category = KVMGlobalConfig.CATEGORY
+                name = thresholdConfigName
+                value = (activeVmCount - 1).toString()
+                resourceUuid = host.uuid
+            }
+            reconnectHost {
+                uuid = host.uuid
+            }
+            assert restartLibvirtdValues.size() > recorded
+            assert restartLibvirtdValues[-1] == "false"
+        } finally {
+            updateResourceConfig {
+                category = KVMGlobalConfig.CATEGORY
+                name = thresholdConfigName
+                value = originalThreshold
+                resourceUuid = host.uuid
+            }
+            updateResourceConfig {
+                category = KVMGlobalConfig.CATEGORY
+                name = restartConfigName
+                value = originalRestartLibvirtd
+                resourceUuid = host.uuid
+            }
+        }
     }
 
     void testUpdateHostDuringConnecting() {

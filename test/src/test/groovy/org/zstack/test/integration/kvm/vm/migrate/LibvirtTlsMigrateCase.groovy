@@ -1,6 +1,7 @@
 package org.zstack.test.integration.kvm.vm.migrate
 
 import org.springframework.http.HttpEntity
+import org.zstack.core.jsonlabel.JsonLabel
 import org.zstack.kvm.KVMAgentCommands
 import org.zstack.kvm.KVMConstant
 import org.zstack.kvm.KVMGlobalConfig
@@ -24,7 +25,7 @@ import org.zstack.utils.gson.JSONObjectUtil
  * migration TLS flag propagation is tested here.
  *
  * Key logic under test (KVMHost.java):
- *   cmd.setUseTls(LIBVIRT_TLS_ENABLED && RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE)
+ *   cmd.setUseTls(LIBVIRT_TLS_ENABLED && restart-libvirtd enabled && no pending TLS redeploy)
  *   cmd.setSrcHostManagementIp(srcHostMnIp)
  */
 class LibvirtTlsMigrateCase extends SubCase {
@@ -135,6 +136,8 @@ class LibvirtTlsMigrateCase extends SubCase {
             testMigrateWithTlsEnabled()
             testMigrateWithTlsDisabled()
             testMigrateWithRestartLibvirtdDisabled()
+            testMigrateTlsFollowsPendingRedeployState()
+            testMigrateTlsRequiresBothHostsRestartEnabled()
             testGlobalConfigValidation()
         }
     }
@@ -235,8 +238,80 @@ class LibvirtTlsMigrateCase extends SubCase {
         KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.updateValue("true")
     }
 
+    void testMigrateTlsFollowsPendingRedeployState() {
+        def vm = env.inventoryByName("vm") as VmInstanceInventory
+        def host1 = env.inventoryByName("kvm1") as HostInventory
+        def host2 = env.inventoryByName("kvm2") as HostInventory
+        String host2LabelKey = KVMHost.libvirtTlsRedeployPendingLabel(host2.uuid)
+
+        KVMGlobalConfig.LIBVIRT_TLS_ENABLED.updateValue("true")
+        KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.updateValue("true")
+        new JsonLabel().createIfAbsent(host2LabelKey, true, host2.uuid)
+
+        try {
+            KVMAgentCommands.MigrateVmCmd cmd = null
+            env.afterSimulator(KVMConstant.KVM_MIGRATE_VM_PATH) { rsp, HttpEntity<String> e ->
+                cmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.MigrateVmCmd.class)
+                return rsp
+            }
+
+            migrateVm {
+                vmInstanceUuid = vm.uuid
+                hostUuid = host1.uuid
+            }
+            assert cmd != null : "MigrateVmCmd should have been captured"
+            assert !cmd.useTls : "useTls should be false when TLS redeploy is pending on source host"
+
+            cmd = null
+            migrateVm {
+                vmInstanceUuid = vm.uuid
+                hostUuid = host2.uuid
+            }
+            assert cmd != null : "MigrateVmCmd should have been captured"
+            assert !cmd.useTls : "useTls should be false when TLS redeploy is pending on destination host"
+        } finally {
+            new JsonLabel().delete(host2LabelKey)
+        }
+    }
+
+    void testMigrateTlsRequiresBothHostsRestartEnabled() {
+        def vm = env.inventoryByName("vm") as VmInstanceInventory
+        def host1 = env.inventoryByName("kvm1") as HostInventory
+
+        KVMGlobalConfig.LIBVIRT_TLS_ENABLED.updateValue("true")
+        KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.updateValue("true")
+        updateResourceConfig {
+            category = KVMGlobalConfig.CATEGORY
+            name = KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.name
+            value = "false"
+            resourceUuid = host1.uuid
+        }
+
+        try {
+            KVMAgentCommands.MigrateVmCmd cmd = null
+            env.afterSimulator(KVMConstant.KVM_MIGRATE_VM_PATH) { rsp, HttpEntity<String> e ->
+                cmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.MigrateVmCmd.class)
+                return rsp
+            }
+
+            migrateVm {
+                vmInstanceUuid = vm.uuid
+                hostUuid = host1.uuid
+            }
+            assert cmd != null : "MigrateVmCmd should have been captured"
+            assert !cmd.useTls : "useTls should be false when restartLibvirtd is disabled on destination host"
+        } finally {
+            updateResourceConfig {
+                category = KVMGlobalConfig.CATEGORY
+                name = KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE.name
+                value = "true"
+                resourceUuid = host1.uuid
+            }
+        }
+    }
+
     /**
-     * Case 4: Validate that libvirt.tls.enabled GlobalConfig only accepts true/false
+     * Case 6: Validate that libvirt.tls.enabled GlobalConfig only accepts true/false
      */
     void testGlobalConfigValidation() {
         // Valid values via SDK action

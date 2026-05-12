@@ -127,8 +127,13 @@ import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 public class KVMHost extends HostBase implements Host {
     private static final CLogger logger = Utils.getLogger(KVMHost.class);
     private static final ZTester tester = Utils.getTester();
+    private static final String LIBVIRT_TLS_REDEPLOY_PENDING_LABEL = "kvm::libvirtTlsRedeployPending::%s";
     protected static OperationChecker allowedOperations = new OperationChecker(true);
     protected static OperationChecker skipOperations = new OperationChecker(true);
+
+    public static String libvirtTlsRedeployPendingLabel(String hostUuid) {
+        return String.format(LIBVIRT_TLS_REDEPLOY_PENDING_LABEL, hostUuid);
+    }
 
     public static Set<String> parseSanIps(String sanOutput) {
         Set<String> sanIps = new HashSet<>();
@@ -142,6 +147,28 @@ public class KVMHost extends HostBase implements Host {
             }
         }
         return sanIps;
+    }
+
+    // Pending-label lifecycle (self-healing, no leak):
+    //   SET   — check-tls-certs-if-needed detects needDeploy (line ~5803)
+    //   CLEAR — check-tls-certs-if-needed detects certs already valid (line ~5805),
+    //            OR ansible success callback after redeploy actually ran (line ~6003)
+    //   SELF-HEAL — every reconnect re-runs check-tls-certs-if-needed, which re-evaluates
+    //            and either re-marks or clears. If ansible fails or MN crashes mid-deploy,
+    //            the label stays (correct: certs not deployed) and the next reconnect fixes it.
+    //   Migration gate — isLibvirtTlsRedeployPending(src|dst) prevents useTls=true
+    //            when either host may have stale TLS certs.
+    private void markLibvirtTlsRedeployPending() {
+        String key = libvirtTlsRedeployPendingLabel(self.getUuid());
+        new JsonLabel().createIfAbsent(key, true, self.getUuid());
+    }
+
+    private void clearLibvirtTlsRedeployPending() {
+        new JsonLabel().delete(libvirtTlsRedeployPendingLabel(self.getUuid()));
+    }
+
+    private boolean isLibvirtTlsRedeployPending(String hostUuid) {
+        return new JsonLabel().exists(libvirtTlsRedeployPendingLabel(hostUuid));
     }
 
     @Autowired
@@ -487,6 +514,8 @@ public class KVMHost extends HostBase implements Host {
         Class<T> responseClass;
         String commandStr;
         String commandName;
+        TimeUnit timeoutUnit;
+        Long timeout;
 
         public Http(String path, String cmd, String commandName, Class<T> rspClz) {
             this.path = path;
@@ -500,6 +529,12 @@ public class KVMHost extends HostBase implements Host {
             this.cmd = cmd;
             this.responseClass = rspClz;
             this.commandName = cmd.getClass().getName();
+        }
+
+        Http<T> setTimeout(TimeUnit unit, long timeout) {
+            this.timeoutUnit = unit;
+            this.timeout = timeout;
+            return this;
         }
 
         void call(ReturnValueCompletion<T> completion) {
@@ -536,9 +571,9 @@ public class KVMHost extends HostBase implements Host {
                     public Class<T> getReturnClass() {
                         return responseClass;
                     }
-                }, TimeUnit.MILLISECONDS, timeoutManager.getTimeout());
+                }, timeout == null ? TimeUnit.MILLISECONDS : timeoutUnit, timeout == null ? timeoutManager.getTimeout() : timeout);
             } else {
-                restf.asyncJsonPost(path, cmd, header, new JsonAsyncRESTCallback<T>(completion) {
+                JsonAsyncRESTCallback<T> callback = new JsonAsyncRESTCallback<T>(completion) {
                     @Override
                     public void fail(ErrorCode err) {
                         completion.fail(err);
@@ -557,7 +592,12 @@ public class KVMHost extends HostBase implements Host {
                     public Class<T> getReturnClass() {
                         return responseClass;
                     }
-                }); // DO NOT pass unit, timeout here, they are null
+                };
+                if (timeout == null) {
+                    restf.asyncJsonPost(path, cmd, header, callback);
+                } else {
+                    restf.asyncJsonPost(path, cmd, header, callback, timeoutUnit, timeout);
+                }
             }
         }
 
@@ -3214,8 +3254,11 @@ public class KVMHost extends HostBase implements Host {
                         cmd.setDownTime(s.downTime);
                         cmd.setBandwidth(s.bandwidth);
                         cmd.setNics(nicTos);
-                        cmd.setUseTls(KVMGlobalConfig.LIBVIRT_TLS_ENABLED.value(Boolean.class)
-                                && rcf.getResourceConfigValue(KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE, self.getUuid(), Boolean.class));
+                        boolean srcAllowRestartLibvirtd = rcf.getResourceConfigValue(KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE, srcHostUuid, Boolean.class);
+                        boolean dstAllowRestartLibvirtd = rcf.getResourceConfigValue(KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE, dstHostUuid, Boolean.class);
+                        boolean tlsRedeployPending = isLibvirtTlsRedeployPending(srcHostUuid) || isLibvirtTlsRedeployPending(dstHostUuid);
+                        cmd.setUseTls(KVMHostUtils.shouldUseTlsForMigration(KVMGlobalConfig.LIBVIRT_TLS_ENABLED.value(Boolean.class),
+                                srcAllowRestartLibvirtd, dstAllowRestartLibvirtd, tlsRedeployPending));
 
                         if (s.diskMigrationMap != null) {
                             Map<String, VolumeTO> diskMigrationMap = new HashMap<>();
@@ -5821,6 +5864,9 @@ public class KVMHost extends HostBase implements Host {
 
                             if (needDeploy) {
                                 data.put("NEED_DEPLOY_TLS_CERT", true);
+                                markLibvirtTlsRedeployPending();
+                            } else {
+                                clearLibvirtTlsRedeployPending();
                             }
                         } catch (Exception e) {
                             logger.warn(String.format(
@@ -5961,7 +6007,19 @@ public class KVMHost extends HostBase implements Host {
                             deployArguments.setBridgeDisableIptables("true");
                         }
 
-                        deployArguments.setRestartLibvirtd(rcf.getResourceConfigValue(KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE, self.getUuid(), String.class));
+                        boolean allowRestartLibvirtd = rcf.getResourceConfigValue(KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE, self.getUuid(), Boolean.class);
+                        if (allowRestartLibvirtd && !info.isNewAdded()) {
+                            long activeVmCount = Q.New(VmInstanceVO.class)
+                                    .eq(VmInstanceVO_.hostUuid, self.getUuid())
+                                    .in(VmInstanceVO_.state, Arrays.asList(VmInstanceState.Running, VmInstanceState.Unknown))
+                                    .count();
+                            int threshold = rcf.getResourceConfigValue(KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_RUNNING_VM_THRESHOLD, self.getUuid(), Integer.class);
+                            if (!KVMHostUtils.shouldRestartLibvirtdOnReconnect(allowRestartLibvirtd, false, activeVmCount, threshold)) {
+                                logger.warn(String.format("skip restarting libvirtd on host[uuid:%s] reconnect because active VM count[%s] exceeds threshold[%s]", self.getUuid(), activeVmCount, threshold));
+                                allowRestartLibvirtd = false;
+                            }
+                        }
+                        deployArguments.setRestartLibvirtd(String.valueOf(allowRestartLibvirtd));
                         deployArguments.setHostname(String.format("%s.zstack.org", self.getManagementIp().replaceAll("\\.", "-")));
                         deployArguments.setSkipPackages(info.getSkipPackages());
                         deployArguments.setUpdatePackages(String.valueOf(CoreGlobalProperty.UPDATE_PKG_WHEN_CONNECT));
@@ -5975,11 +6033,9 @@ public class KVMHost extends HostBase implements Host {
                         // ZSTAC-84446: force ansible re-run only when policy allows;
                         // see KVMHostUtils#shouldForceTlsRedeploy.
                         Boolean needDeployTlsCert = (Boolean) data.get("NEED_DEPLOY_TLS_CERT");
-                        boolean allowRestart = rcf.getResourceConfigValue(
-                                KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE,
-                                self.getUuid(), Boolean.class);
                         if (KVMHostUtils.shouldForceTlsRedeploy(
-                                Boolean.TRUE.equals(needDeployTlsCert), allowRestart, info.isNewAdded())) {
+                                Boolean.TRUE.equals(needDeployTlsCert), allowRestartLibvirtd, info.isNewAdded())) {
+                            data.put("LIBVIRT_TLS_REDEPLOY_WILL_RUN", true);
                             runner.setForceRun(true);
                             deployArguments.setRestartLibvirtd("true");
                         } else if (Boolean.TRUE.equals(needDeployTlsCert)) {
@@ -6008,6 +6064,9 @@ public class KVMHost extends HostBase implements Host {
                                             deployArguments.getInit(), deployArguments.getRestartLibvirtd());
                                     // update host agent version when open grayScaleUpgrade
                                     upgradeChecker.updateAgentVersion(self.getUuid(), AnsibleConstant.KVM_AGENT_NAME, dbf.getDbVersion(), dbf.getDbVersion());
+                                }
+                                if (Boolean.TRUE.equals(data.get("LIBVIRT_TLS_REDEPLOY_WILL_RUN"))) {
+                                    clearLibvirtTlsRedeployPending();
                                 }
                                 trigger.next();
                             }
@@ -6163,8 +6222,11 @@ public class KVMHost extends HostBase implements Host {
                             cmd.excludePackages = rcf.getResourceConfigValue(
                                     ClusterGlobalConfig.ZSTACK_EXPERIMENTAL_EXCLUDE_DEPENDENCY, self.getClusterUuid(), String.class);
                         }
-                        new Http<>(updateDependencyPath, cmd, UpdateDependencyRsp.class)
-                                .call(new ReturnValueCompletion<UpdateDependencyRsp>(trigger) {
+                        Http<UpdateDependencyRsp> http = new Http<>(updateDependencyPath, cmd, UpdateDependencyRsp.class);
+                        if (!info.isNewAdded()) {
+                            http.setTimeout(TimeUnit.MINUTES, 5);
+                        }
+                        http.call(new ReturnValueCompletion<UpdateDependencyRsp>(trigger) {
                                     @Override
                                     public void success(UpdateDependencyRsp ret) {
                                         if (ret.isSuccess()) {

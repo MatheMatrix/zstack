@@ -139,6 +139,11 @@ public class KVMGlobalConfig {
     @BindResourceConfig({HostVO.class, ClusterVO.class})
     public static GlobalConfig RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE = new GlobalConfig(CATEGORY, "reconnect.host.restart.libvirtd.service");
 
+    @GlobalConfigValidation(numberGreaterThan = -1)
+    @GlobalConfigDef(defaultValue = "100", type = Integer.class, description = "restart libvirtd on reconnect only when running vm count is at or below this threshold; 0 means only hosts with no running VMs")
+    @BindResourceConfig({HostVO.class, ClusterVO.class})
+    public static GlobalConfig RECONNECT_HOST_RESTART_LIBVIRTD_RUNNING_VM_THRESHOLD = new GlobalConfig(CATEGORY, "reconnect.host.restart.libvirtd.running.vm.threshold");
+
     @GlobalConfigValidation(validValues = {"true", "false"})
     @GlobalConfigDef(defaultValue = "true", type = Boolean.class, description = "enable TLS encryption for libvirt remote connections (migration)")
     public static GlobalConfig LIBVIRT_TLS_ENABLED = new GlobalConfig(CATEGORY, "libvirt.tls.enabled");
@@ -152,5 +157,4 @@ public class KVMGlobalConfig {
     @GlobalConfigDef(defaultValue = "0G", description = "minimum free memory size to start vm, size in GB")
     @BindResourceConfig({HostVO.class, ClusterVO.class})
     public static GlobalConfig MINIMUM_MEMORY_SIZE_BEFORE_START_VM = new GlobalConfig(CATEGORY, "min.free.memory.size");
-
 }

@@ -209,6 +209,23 @@ public class KVMHostUtils {
         }
     }
 
+    public static boolean shouldRestartLibvirtdOnReconnect(boolean allowRestartLibvirtd,
+                                                           boolean isNewAdded,
+                                                           long activeVmCount,
+                                                           int threshold) {
+        if (!allowRestartLibvirtd) {
+            return false;
+        }
+        return isNewAdded || activeVmCount <= threshold;
+    }
+
+    public static boolean shouldUseTlsForMigration(boolean libvirtTlsEnabled,
+                                                   boolean srcAllowRestartLibvirtd,
+                                                   boolean dstAllowRestartLibvirtd,
+                                                   boolean tlsRedeployPending) {
+        return libvirtTlsEnabled && srcAllowRestartLibvirtd && dstAllowRestartLibvirtd && !tlsRedeployPending;
+    }
+
     private static SshShell newSsh(String host, String user, String pwd, int port) {
         SshShell s = new SshShell();
         s.setHostname(host);
