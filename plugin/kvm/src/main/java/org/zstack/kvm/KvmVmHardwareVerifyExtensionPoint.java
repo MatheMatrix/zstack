@@ -1,6 +1,7 @@
 package org.zstack.kvm;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.zstack.header.core.Completion;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.vm.VmBeforeStartOnHypervisorExtensionPoint;
 import org.zstack.header.vm.VmInstanceSpec;
@@ -16,14 +17,16 @@ public class KvmVmHardwareVerifyExtensionPoint implements VmBeforeStartOnHypervi
     private ResourceConfigFacade rcf;
 
     @Override
-    public void beforeStartVmOnHypervisor(VmInstanceSpec spec) {
+    public void beforeStartVmOnHypervisor(VmInstanceSpec spec, Completion completion) {
         if (!spec.getVmInventory().getHypervisorType().equals(KVMConstant.KVM_HYPERVISOR_TYPE)) {
+            completion.success();
             return;
         }
 
         ResourceConfig resourceConfig = rcf.getResourceConfig(KVMGlobalConfig.VM_CPU_HYPERVISOR_FEATURE.getIdentity());
         Boolean enableHypervisor = resourceConfig.getResourceConfigValue(spec.getVmInventory().getUuid(), Boolean.class);
         if (enableHypervisor) {
+            completion.success();
             return;
         }
 
@@ -32,5 +35,6 @@ public class KvmVmHardwareVerifyExtensionPoint implements VmBeforeStartOnHypervi
             throw new OperationFailureException(operr(ORG_ZSTACK_KVM_10144, "Failed to start vm," +
                     " because can not disable vm.cpu.hypervisor.feature with vm.cpuMode none"));
         }
+        completion.success();
     }
 }

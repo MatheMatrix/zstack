@@ -36,6 +36,10 @@ public class JmxFacadeImpl implements JmxFacade {
 
         try {
             ObjectName mxbeanName = new ObjectName(String.format("org.zstack:name=%s", name));
+            if (mBeanServer.isRegistered(mxbeanName)) {
+                logger.warn(String.format("mBean %s is already registered, unregister it before registering a new one", name));
+                mBeanServer.unregisterMBean(mxbeanName);
+            }
             mBeanServer.registerMBean(bean, mxbeanName);
         } catch (Exception e) {
             throw new CloudRuntimeException(e);

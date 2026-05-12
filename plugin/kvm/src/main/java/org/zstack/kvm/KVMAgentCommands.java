@@ -5225,4 +5225,31 @@ public class KVMAgentCommands {
         }
     }
 
+    public static class FenceVmOnSuspectHostCmd extends AgentCommand implements java.io.Serializable {
+        @GrayVersion(value = "5.4.8")
+        public String vmUuid;
+
+        @GrayVersion(value = "5.4.8")
+        public String targetHostUuid;
+
+        @GrayVersion(value = "5.4.8")
+        public String targetHostIp;
+
+        @GrayVersion(value = "5.4.8")
+        public String targetHostUsername;
+
+        @GrayVersion(value = "5.4.8")
+        @NoLogging
+        public String targetHostPassword;
+
+        @GrayVersion(value = "5.4.8")
+        public Integer targetHostSshPort;
+
+        @GrayVersion(value = "5.4.8")
+        public Integer sshTimeoutSec;
+    }
+
+    public static class FenceVmOnSuspectHostRsp extends AgentResponse {
+    }
+
 }
