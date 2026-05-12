@@ -36,13 +36,14 @@ public class SshYumRepoChecker implements AnsibleChecker {
                 .setPassword(password).setPort(sshPort)
                 .setHostname(targetIp);
         try {
-            ssh.sudoCommand(String.format("sed -i '/baseurl/s/\\([0-9]\\{1,3\\}\\.\\)\\{3\\}[0-9]\\{1,3\\}:\\([0-9]\\+\\)/%s/g' /etc/yum.repos.d/{zstack,qemu-kvm-ev}-mn.repo",
-                    restf.getHostName() + ":" + restf.getPort()
-            ));
+            String mnHostPort = restf.getHostName() + ":" + restf.getPort();
+            ssh.sudoCommand(String.format(
+                    "sed -i '/baseurl/s/\\([0-9]\\{1,3\\}\\.\\)\\{3\\}[0-9]\\{1,3\\}:\\([0-9]\\+\\)/%s/g' /etc/yum.repos.d/{zstack,qemu-kvm-ev}-mn.repo && grep -l 'baseurl' /etc/yum.repos.d/zstack-mn.repo /etc/yum.repos.d/qemu-kvm-ev-mn.repo",
+                    mnHostPort));
             SshResult ret = ssh.setTimeout(60).runAndClose();
             if (ret.getReturnCode() != 0) {
-                logger.warn(String.format("exec ssh command failed, return code: %d, stdout: %s, stderr: %s",
-                        ret.getReturnCode(), ret.getStdout(), ret.getStderr()));
+                logger.warn(String.format("repo check/update failed on host[%s], return code: %d, stdout: %s, stderr: %s",
+                        targetIp, ret.getReturnCode(), ret.getStdout(), ret.getStderr()));
                 return true;
             }
 

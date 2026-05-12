@@ -10,8 +10,14 @@ import org.zstack.utils.logging.CLogger;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
@@ -38,19 +44,69 @@ public class PrepareAnsible {
                 throw new OperationFailureException(operr(ORG_ZSTACK_CORE_ANSIBLE_10001, "fail to create new File[%s]", hostsFile));
             }
 
-            if (AnsibleGlobalProperty.KEEP_HOSTS_FILE_IN_MEMORY) {
-                String ipStr = FileUtils.readFileToString(hostsFile);
-                for (String ip : ipStr.split("\n")) {
-                    ip = ip.trim();
-                    ip = StringUtils.strip(ip, "\n\t\r");
-                    if (ip.equals("")) {
-                        continue;
-                    }
+            String ipStr = FileUtils.readFileToString(hostsFile);
+            List<String> cleanedHostIPs = new ArrayList<String>();
+            boolean inventoryChanged = false;
+            for (String ip : ipStr.split("\n")) {
+                ip = ip.trim();
+                ip = StringUtils.strip(ip, "\n\t\r");
+                if (ip.equals("")) {
+                    continue;
+                }
+
+                if (isInvalidInventoryLine(ip)) {
+                    inventoryChanged = true;
+                    continue;
+                }
+
+                cleanedHostIPs.add(ip);
+                if (AnsibleGlobalProperty.KEEP_HOSTS_FILE_IN_MEMORY) {
                     hostIPs.add(ip);
+                }
+            }
+
+            if (inventoryChanged) {
+                String content = cleanedHostIPs.isEmpty() ? "" : StringUtils.join(cleanedHostIPs, "\n") + "\n";
+                try {
+                    writeStringToFileAtomically(hostsFile, content);
+                } catch (Exception e) {
+                    logger.warn(String.format("atomic inventory write failed, falling back to direct write: %s", e.getMessage()));
+                    FileUtils.writeStringToFile(hostsFile, content, false);
                 }
             }
         } catch (Exception e) {
             throw new CloudRuntimeException(e);
+        }
+    }
+
+    private static final String[] SSH_KEY_PATTERNS = {
+        "ssh-rsa", "ssh-ed25519", "ssh-dss",
+        "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521"
+    };
+
+    private static boolean isInvalidInventoryLine(String line) {
+        for (String pattern : SSH_KEY_PATTERNS) {
+            if (line.contains(pattern)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void writeStringToFileAtomically(File targetFile, String content) throws IOException {
+        Path target = targetFile.toPath();
+        Path temp = Files.createTempFile(target.getParent(), targetFile.getName(), ".tmp");
+        try {
+            try (FileOutputStream outputStream = new FileOutputStream(temp.toFile());
+                 OutputStreamWriter writer = new OutputStreamWriter(outputStream, Charset.defaultCharset())) {
+                writer.write(content);
+                writer.flush();
+                outputStream.getFD().sync();
+            }
+            Files.setPosixFilePermissions(temp, Files.getPosixFilePermissions(target));
+            Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            Files.deleteIfExists(temp);
         }
     }
 
