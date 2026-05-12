@@ -27,11 +27,17 @@ import org.zstack.kvm.KVMHostFactory;
 import org.zstack.storage.ceph.CephConstants;
 import org.zstack.storage.primary.CheckHostStorageConnectionMsg;
 import org.zstack.utils.CollectionUtils;
+import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
+import org.zstack.utils.logging.CLogger;
+
+import org.zstack.header.cluster.ClusterState;
+import org.zstack.header.cluster.ClusterVO;
 
 import javax.persistence.TypedQuery;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.zstack.utils.CollectionDSL.list;
 
@@ -39,6 +45,8 @@ import static org.zstack.utils.CollectionDSL.list;
  * Created by frank on 8/17/2015.
  */
 public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConnectionReestablishExtensionPoint {
+    private static final CLogger logger = Utils.getLogger(CephKvmExtension.class);
+
     @Autowired
     private CloudBus bus;
     @Autowired
@@ -47,6 +55,14 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
     @Override
     public void connectionReestablished(HostInventory inv) throws HostException {
         if (!KVMConstant.KVM_HYPERVISOR_TYPE.equals(inv.getHypervisorType())) {
+            return;
+        }
+
+        // skip Ceph storage operations if cluster is not Enabled (ZSTAC-80275)
+        ClusterVO cluster = dbf.findByUuid(inv.getClusterUuid(), ClusterVO.class);
+        if (cluster != null && cluster.getState() != ClusterState.Enabled) {
+            logger.info(String.format("skip Ceph secret creation on host[uuid:%s] because cluster[uuid:%s] is %s",
+                    inv.getUuid(), inv.getClusterUuid(), cluster.getState()));
             return;
         }
 
@@ -63,7 +79,7 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
             }
         });
 
-        completion.await();
+        completion.await(TimeUnit.MINUTES.toMillis(5));
 
         if (!completion.isSuccess()) {
             throw new OperationFailureException(completion.getErrorCode());
