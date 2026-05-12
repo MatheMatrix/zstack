@@ -325,6 +325,7 @@ public class VmInstanceSpec implements Serializable {
     private String requiredClusterUuid;
     private List<String> requiredClusterUuids;
     private String requiredHostUuid;
+    private String preFenceSiblingHostUuid;
     private List<String> softAvoidHostUuids;
     private List<String> avoidHostUuids;
     private String memorySnapshotUuid;
@@ -500,6 +501,14 @@ public class VmInstanceSpec implements Serializable {
 
     public void setRequiredHostUuid(String requiredHostUuid) {
         this.requiredHostUuid = requiredHostUuid;
+    }
+
+    public String getPreFenceSiblingHostUuid() {
+        return preFenceSiblingHostUuid;
+    }
+
+    public void setPreFenceSiblingHostUuid(String preFenceSiblingHostUuid) {
+        this.preFenceSiblingHostUuid = preFenceSiblingHostUuid;
     }
 
     public List<String> getSoftAvoidHostUuids() {

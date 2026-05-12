@@ -786,6 +786,15 @@ public class KVMSimulatorController {
     }
 
 
+    @RequestMapping(value = KVMConstant.KVM_HA_FENCE_VM_ON_SUSPECT_HOST_PATH, method = RequestMethod.POST)
+    public @ResponseBody String fenceVmOnSuspectHost(HttpServletRequest req) {
+        HttpEntity<String> entity = restf.httpServletRequestToHttpEntity(req);
+        FenceVmOnSuspectHostRsp rsp = new FenceVmOnSuspectHostRsp();
+        rsp.setSuccess(true);
+        replyer.reply(entity, rsp);
+        return null;
+    }
+
     @ExceptionHandler(Exception.class)
     public ModelAndView handleAllException(Exception ex) {
         logger.warn(ex.getMessage(), ex);

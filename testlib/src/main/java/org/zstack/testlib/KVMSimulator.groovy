@@ -298,6 +298,12 @@ class KVMSimulator implements Simulator {
             return rsp
         }
 
+        spec.simulator(KVMConstant.KVM_HA_FENCE_VM_ON_SUSPECT_HOST_PATH) { HttpEntity<String> e ->
+            def rsp = new KVMAgentCommands.FenceVmOnSuspectHostRsp()
+            rsp.success = true
+            return rsp
+        }
+
         spec.simulator(KVMConstant.KVM_CONNECT_PATH) { HttpEntity<String> e ->
             Spec.checkHttpCallType(e, true)
             KVMAgentCommands.ConnectCmd cmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.ConnectCmd.class)

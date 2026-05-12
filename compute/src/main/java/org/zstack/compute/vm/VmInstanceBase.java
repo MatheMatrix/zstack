@@ -1022,6 +1022,15 @@ public class VmInstanceBase extends AbstractVmInstance {
 
                         sql.update();
 
+                        if (!VmSystemTags.HA_PRE_FENCE_PENDING.hasTag(self.getUuid())) {
+                            SystemTagCreator creator = VmSystemTags.HA_PRE_FENCE_PENDING.newSystemTagCreator(self.getUuid());
+                            creator.inherent = true;
+                            creator.recreate = false;
+                            creator.ignoreIfExisting = true;
+                            creator.tag = VmSystemTags.HA_PRE_FENCE_PENDING.getTagFormat();
+                            creator.create();
+                        }
+
                         startVm(msg, new Completion(msg, chain) {
                             @Override
                             public void success() {
@@ -7309,7 +7318,9 @@ public class VmInstanceBase extends AbstractVmInstance {
         }
 
         if (msg instanceof HaStartVmInstanceMsg) {
-            spec.setSoftAvoidHostUuids(((HaStartVmInstanceMsg) msg).getSoftAvoidHostUuids());
+            HaStartVmInstanceMsg hmsg = (HaStartVmInstanceMsg) msg;
+            spec.setSoftAvoidHostUuids(hmsg.getSoftAvoidHostUuids());
+            spec.setPreFenceSiblingHostUuid(hmsg.getPreFenceSiblingHostUuid());
             spec.setAllocationScene(AllocationScene.Auto);
         } else if (msg instanceof StartVmInstanceMsg) {
             spec.setRequiredHostUuid(((StartVmInstanceMsg) msg).getHostUuid());

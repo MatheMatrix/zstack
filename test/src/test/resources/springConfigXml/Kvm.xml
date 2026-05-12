@@ -171,6 +171,12 @@
         </zstack:plugin>
     </bean>
 
+    <bean id="KvmHaPreFenceVmExtension" class="org.zstack.kvm.KvmHaPreFenceVmExtension">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.vm.VmBeforeStartOnHypervisorExtensionPoint" />
+        </zstack:plugin>
+    </bean>
+
     <bean id="KVMDeleteHostExtensionPoint" class="org.zstack.testlib.KVMDeleteHostExtensionPoint">
         <zstack:plugin>
             <zstack:extension interface="org.zstack.header.host.HostDeleteExtensionPoint"/>

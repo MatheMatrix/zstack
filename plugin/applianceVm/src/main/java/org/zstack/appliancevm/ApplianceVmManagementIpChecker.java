@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.errorcode.ErrorFacade;
+import org.zstack.header.core.Completion;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.vm.VmBeforeCreateOnHypervisorExtensionPoint;
 import org.zstack.header.vm.VmBeforeStartOnHypervisorExtensionPoint;
@@ -66,7 +67,8 @@ public class ApplianceVmManagementIpChecker implements VmBeforeCreateOnHyperviso
     }
 
     @Override
-    public void beforeStartVmOnHypervisor(VmInstanceSpec spec) {
+    public void beforeStartVmOnHypervisor(VmInstanceSpec spec, Completion completion) {
         checkManagementIp(spec, false);
+        completion.success();
     }
 }

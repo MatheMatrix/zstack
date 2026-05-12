@@ -612,6 +612,8 @@ public class KVMHost extends HostBase implements Host {
             handle((RebootVmOnHypervisorMsg) msg);
         } else if (msg instanceof DestroyVmOnHypervisorMsg) {
             handle((DestroyVmOnHypervisorMsg) msg);
+        } else if (msg instanceof FenceVmOnHostMsg) {
+            handle((FenceVmOnHostMsg) msg);
         } else if (msg instanceof AttachVolumeToVmOnHypervisorMsg) {
             handle((AttachVolumeToVmOnHypervisorMsg) msg);
         } else if (msg instanceof DetachVolumeFromVmOnHypervisorMsg) {
@@ -992,6 +994,66 @@ public class KVMHost extends HostBase implements Host {
                 } else {
                     completion.success(r.toResponse(TakeVmConsoleScreenshotRsp.class));
                 }
+            }
+        });
+    }
+
+    private void handle(final FenceVmOnHostMsg msg) {
+        final FenceVmOnHostReply reply = new FenceVmOnHostReply();
+        final String peerHostUuid = self.getUuid();
+        final String suspectHostUuid = msg.getSuspectHostUuid();
+        if (suspectHostUuid == null || suspectHostUuid.equals(peerHostUuid)) {
+            reply.setError(operr("HA-start vm[%s]: invalid pre-fence routing -- suspectHostUuid=[%s], peer=[%s].",
+                    msg.getVmUuid(), suspectHostUuid, peerHostUuid));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        KVMHostVO suspectVO = dbf.findByUuid(suspectHostUuid, KVMHostVO.class);
+        if (suspectVO == null) {
+            reply.setError(operr("HA-start vm[%s]: suspect KVM host[%s] no longer exists; refuse to start to prevent split-brain.",
+                    msg.getVmUuid(), suspectHostUuid));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        FenceVmOnSuspectHostCmd cmd = new FenceVmOnSuspectHostCmd();
+        cmd.vmUuid = msg.getVmUuid();
+        cmd.targetHostUuid = suspectHostUuid;
+        cmd.targetHostIp = suspectVO.getManagementIp();
+        cmd.targetHostUsername = suspectVO.getUsername();
+        cmd.targetHostPassword = suspectVO.getPassword();
+        cmd.targetHostSshPort = suspectVO.getPort() != null ? suspectVO.getPort() : 22;
+        cmd.sshTimeoutSec = 20;
+
+        KVMHostAsyncHttpCallMsg fmsg = new KVMHostAsyncHttpCallMsg();
+        fmsg.setHostUuid(peerHostUuid);
+        fmsg.setPath(KVMConstant.KVM_HA_FENCE_VM_ON_SUSPECT_HOST_PATH);
+        fmsg.setCommand(cmd);
+        bus.makeTargetServiceIdByResourceUuid(fmsg, HostConstant.SERVICE_ID, peerHostUuid);
+
+        logger.info(String.format("[HA pre-fence] vm[%s] peer[%s] killing on suspect host[%s ip=%s]",
+                msg.getVmUuid(), peerHostUuid, suspectHostUuid, suspectVO.getManagementIp()));
+
+        bus.send(fmsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply r) {
+                if (!r.isSuccess()) {
+                    reply.setError(operr("HA-start vm[%s]: transport error asking sibling[%s] to kill vm on suspect host[%s]. " +
+                                    "Refuse to start to prevent split-brain.",
+                            msg.getVmUuid(), peerHostUuid, suspectHostUuid));
+                    bus.reply(msg, reply);
+                    return;
+                }
+                FenceVmOnSuspectHostRsp rsp = ((KVMHostAsyncHttpCallReply) r).toResponse(FenceVmOnSuspectHostRsp.class);
+                if (!rsp.isSuccess()) {
+                    reply.setError(operr("HA-start vm[%s]: sibling[%s] failed to pre-fence suspect host[%s]. " +
+                                    "Refuse to start to prevent split-brain.",
+                            msg.getVmUuid(), peerHostUuid, suspectHostUuid));
+                    bus.reply(msg, reply);
+                    return;
+                }
+                bus.reply(msg, reply);
             }
         });
     }
