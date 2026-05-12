@@ -28,6 +28,7 @@ import org.zstack.header.agent.CancelCommand;
 import org.zstack.header.agent.ReloadableCommand;
 import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.cluster.ClusterVO_;
+import org.zstack.header.cluster.ClusterState;
 import org.zstack.header.core.*;
 import org.zstack.header.core.progress.TaskProgressRange;
 import org.zstack.header.core.trash.InstallPathRecycleInventory;
@@ -4115,6 +4116,15 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
     protected void handle(APIReconnectPrimaryStorageMsg msg) {
         final APIReconnectPrimaryStorageEvent evt = new APIReconnectPrimaryStorageEvent(msg.getId());
 
+        if (!hasEnabledCluster()) {
+            logger.debug(String.format("skip reconnecting ceph primary storage[uuid:%s], " +
+                    "all attached clusters are disabled", self.getUuid()));
+            self = dbf.reload(self);
+            evt.setInventory(getSelfInventory());
+            bus.publish(evt);
+            return;
+        }
+
         ReconnectPrimaryStorageMsg rmsg = new ReconnectPrimaryStorageMsg();
         rmsg.setPrimaryStorageUuid(msg.getPrimaryStorageUuid());
         bus.makeTargetServiceIdByResourceUuid(rmsg, PrimaryStorageConstant.SERVICE_ID, rmsg.getPrimaryStorageUuid());
@@ -4131,6 +4141,21 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                 bus.publish(evt);
             }
         });
+    }
+
+    private boolean hasEnabledCluster() {
+        if (self.getAttachedClusterRefs() == null || self.getAttachedClusterRefs().isEmpty()) {
+            return true;
+        }
+        for (PrimaryStorageClusterRefVO ref : self.getAttachedClusterRefs()) {
+            ClusterVO cluster = Q.New(ClusterVO.class)
+                    .eq(ClusterVO_.uuid, ref.getClusterUuid())
+                    .find();
+            if (cluster != null && cluster.getState() == ClusterState.Enabled) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
