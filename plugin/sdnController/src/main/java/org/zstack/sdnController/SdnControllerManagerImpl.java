@@ -799,6 +799,12 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
     private void releaseNicIpsFromPort(Map<String, List<VmNicInventory>> nicMaps, Completion completion) {
         new While<>(nicMaps.entrySet()).each((e, wcomp) -> {
             SdnControllerVO vo = dbf.findByUuid(e.getKey(), SdnControllerVO.class);
+            if (vo == null) {
+                wcomp.addError(operr(ORG_ZSTACK_SDNCONTROLLER_10002,
+                        "cannot find sdn controller[uuid:%s] when releasing nic ips", e.getKey()));
+                wcomp.allDone();
+                return;
+            }
             SdnControllerFactory factory = getSdnControllerFactory(vo.getVendorType());
             if (factory == null) {
                 wcomp.done();
