@@ -1617,6 +1617,7 @@ public class KVMAgentCommands {
         private String vmInstanceUuid;
         @GrayVersion(value = "5.0.0")
         private Map<String, Object> addons;
+        private Integer vhostReconnectInterval;
 
         public Map<String, Object> getAddons() {
             if (addons == null) {
@@ -1643,6 +1644,14 @@ public class KVMAgentCommands {
 
         public void setVmUuid(String vmInstanceUuid) {
             this.vmInstanceUuid = vmInstanceUuid;
+        }
+
+        public Integer getVhostReconnectInterval() {
+            return vhostReconnectInterval;
+        }
+
+        public void setVhostReconnectInterval(Integer vhostReconnectInterval) {
+            this.vhostReconnectInterval = vhostReconnectInterval;
         }
     }
 
@@ -3017,6 +3026,16 @@ public class KVMAgentCommands {
 
         public void setHostMinimumFreeMemorySize(Long hostMinimumFreeMemorySize) {
             HostMinimumFreeMemorySize = hostMinimumFreeMemorySize;
+        }
+
+        private Integer vhostReconnectInterval;
+
+        public Integer getVhostReconnectInterval() {
+            return vhostReconnectInterval;
+        }
+
+        public void setVhostReconnectInterval(Integer vhostReconnectInterval) {
+            this.vhostReconnectInterval = vhostReconnectInterval;
         }
     }
 

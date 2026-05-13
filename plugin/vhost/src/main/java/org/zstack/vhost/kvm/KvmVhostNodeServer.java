@@ -85,6 +85,7 @@ public class KvmVhostNodeServer implements Component, KVMStartVmExtensionPoint,
         }
 
         cmd.setDataVolumes(dtos);
+        cmd.setVhostReconnectInterval(VmGlobalConfig.VHOST_RECONNECT_INTERVAL.value(Integer.class));
 
         // vhostuser disk not support readonly mode, so no iso.
     }
@@ -163,6 +164,7 @@ public class KvmVhostNodeServer implements Component, KVMStartVmExtensionPoint,
     @Override
     public void beforeAttachVolume(KVMHostInventory host, VmInstanceInventory vm, VolumeInventory volume, KVMAgentCommands.AttachDataVolumeCmd cmd, Map data) {
         cmd.setVolume(convertVolumeIfNeeded(volume, host, cmd.getVolume()));
+        cmd.setVhostReconnectInterval(VmGlobalConfig.VHOST_RECONNECT_INTERVAL.value(Integer.class));
     }
 
     @Override

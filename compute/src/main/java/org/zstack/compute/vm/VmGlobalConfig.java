@@ -141,4 +141,8 @@ public class VmGlobalConfig {
     @GlobalConfigValidation(validValues = {"true", "false", "auto"})
     @GlobalConfigDef(defaultValue = "false", type = String.class, description = "generate config required for vhost primary storage")
     public static GlobalConfig GENERATE_CONFIG_VHOST_REQUIRED = new GlobalConfig(CATEGORY, "generate.config.vhost.required");
+
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    @GlobalConfigDef(defaultValue = "3", type = Integer.class, description = "vhost-user socket reconnect interval in seconds, applies to newly started VMs and hot-attached volumes")
+    public static GlobalConfig VHOST_RECONNECT_INTERVAL = new GlobalConfig(CATEGORY, "vhost.reconnect.interval");
 }
