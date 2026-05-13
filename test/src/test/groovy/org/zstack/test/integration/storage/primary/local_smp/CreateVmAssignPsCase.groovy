@@ -137,7 +137,14 @@ class CreateVmAssignPsCase extends SubCase{
             GetCandidatePrimaryStoragesForCreatingVmAction getAction = new GetCandidatePrimaryStoragesForCreatingVmAction(
                     l3NetworkUuids: [l3.uuid],
                     imageUuid: image.uuid,
-                    dataDiskOfferingUuids: [diskOffering.uuid],
+                    diskAOs: [
+                        [
+                            "boot" : true,
+                        ],
+                        [
+                            "diskOfferingUuid" : diskOffering.uuid,
+                        ],
+                    ],
                     sessionId: adminSession()
             )
             GetCandidatePrimaryStoragesForCreatingVmResult getResult = getAction.call().value
@@ -344,7 +351,14 @@ class CreateVmAssignPsCase extends SubCase{
             GetCandidatePrimaryStoragesForCreatingVmAction getAction = new GetCandidatePrimaryStoragesForCreatingVmAction(
                     l3NetworkUuids: [l3.uuid],
                     imageUuid: image.uuid,
-                    dataDiskOfferingUuids: [diskOffering.uuid],
+                    diskAOs: [
+                        [
+                            "boot" : true,
+                        ],
+                        [
+                            "diskOfferingUuid" : diskOffering.uuid,
+                        ],
+                    ],
                     sessionId: adminSession()
             )
             GetCandidatePrimaryStoragesForCreatingVmResult getResult = getAction.call().value

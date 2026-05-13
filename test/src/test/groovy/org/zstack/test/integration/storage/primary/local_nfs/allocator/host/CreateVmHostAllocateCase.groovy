@@ -143,8 +143,15 @@ class CreateVmHostAllocateCase extends SubCase {
             instanceOfferingUuid = instanceOffering.uuid
             imageUuid = image.uuid
             l3NetworkUuids = [l3.uuid]
-            rootDiskOfferingUuid = diskOffering.uuid
-            dataDiskOfferingUuids = [diskOffering.uuid]
+            diskAOs = [
+                [
+                    "boot" : true,
+                    "diskOfferingUuid" : diskOffering.uuid,
+                ],
+                [
+                    "diskOfferingUuid" : diskOffering.uuid,
+                ],
+            ]
         }.getHosts()
 
         assert 2 == hosts.size()

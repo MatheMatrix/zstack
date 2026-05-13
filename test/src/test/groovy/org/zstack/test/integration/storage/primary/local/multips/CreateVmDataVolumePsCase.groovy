@@ -158,11 +158,18 @@ class CreateVmDataVolumePsCase extends SubCase {
         VmInstanceInventory newVm = createVmInstance {
             name = "new_vm"
             instanceOfferingUuid = vm.instanceOfferingUuid
-            rootDiskOfferingUuid = diskOffering.uuid
-            dataDiskOfferingUuids = [diskOffering.uuid]
+            diskAOs = [
+                [
+                    "boot" : true,
+                    "diskOfferingUuid" : diskOffering.uuid,
+                    "primaryStorageUuid" : local_ps1.uuid,
+                ],
+                [
+                    "diskOfferingUuid" : diskOffering.uuid,
+                ],
+            ]
             imageUuid = image.uuid
             l3NetworkUuids = [vm.defaultL3NetworkUuid]
-            primaryStorageUuidForRootVolume = local_ps1.uuid
         } as VmInstanceInventory
 
         assert newVm.allVolumes.size() == 2
@@ -188,11 +195,18 @@ class CreateVmDataVolumePsCase extends SubCase {
         VmInstanceInventory newVm = createVmInstance {
             name = "new_vm"
             instanceOfferingUuid = vm.instanceOfferingUuid
-            rootDiskOfferingUuid = diskOffering.uuid
-            dataDiskOfferingUuids = [diskOffering.uuid]
             imageUuid = image.uuid
             l3NetworkUuids = [vm.defaultL3NetworkUuid]
-            systemTags = ["primaryStorageUuidForDataVolume::${local_ps1.uuid}".toString()]
+            diskAOs = [
+                [
+                    "boot" : true,
+                    "diskOfferingUuid" : diskOffering.uuid,
+                ],
+                [
+                    "diskOfferingUuid" : diskOffering.uuid,
+                    "primaryStorageUuid" : local_ps1.uuid,
+                ],
+            ]
         } as VmInstanceInventory
 
         assert newVm.allVolumes.size() == 2
