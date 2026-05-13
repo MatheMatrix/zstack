@@ -13,6 +13,7 @@ import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.core.thread.SyncThread;
 import org.zstack.core.timeout.ApiTimeoutManager;
 import org.zstack.header.core.Completion;
+import java.util.concurrent.TimeUnit;
 import org.zstack.header.core.NoErrorCompletion;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.errorcode.ErrorCode;
@@ -338,7 +339,7 @@ public class SftpBackupStorage extends BackupStorageBase {
                 cmd.setUuid(self.getUuid());
                 cmd.setStoragePath(getSelf().getUrl());
                 cmd.setSendCommandUrl(restf.getSendCommandUrl());
-                ConnectResponse rsp = restf.syncJsonPost(url, cmd, ConnectResponse.class);
+                ConnectResponse rsp = restf.syncJsonPost(url, cmd, ConnectResponse.class, TimeUnit.SECONDS, 60);
                 if (!rsp.isSuccess()) {
                     ErrorCode err = operr(ORG_ZSTACK_STORAGE_BACKUP_SFTP_10006, "unable to connect to SimpleHttpBackupStorage[url:%s], because %s", url, rsp.getError());
                     complete.fail(err);
