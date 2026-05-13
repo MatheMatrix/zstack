@@ -18,7 +18,7 @@
         <category>host</category>
         <name>load.parallelismDegree</name>
         <description>The max hosts management server connects in parallel, when management server boots up or takes over another dead management server's hosts. It only effects when 'load.simultaneous' set to false.</description>
-        <defaultValue>100</defaultValue>
+        <defaultValue>10</defaultValue>
         <type>java.lang.Integer</type>
     </config>
     <config>
