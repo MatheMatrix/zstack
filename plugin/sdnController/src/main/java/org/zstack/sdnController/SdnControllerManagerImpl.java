@@ -759,4 +759,73 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
 
         removeLogicalPort(nicMaps, completion);
     }
+
+    @Override
+    public void releaseNicIps(List<VmNicInventory> nics, Completion completion) {
+        if (nics == null || nics.isEmpty()) {
+            completion.success();
+            return;
+        }
+
+        Map<String, List<VmNicInventory>> nicMaps = new HashMap<>();
+        for (VmNicInventory nic : nics) {
+            L3NetworkVO l3Vo = dbf.findByUuid(nic.getL3NetworkUuid(), L3NetworkVO.class);
+            if (l3Vo == null) {
+                continue;
+            }
+
+            L2NetworkVO l2VO = dbf.findByUuid(l3Vo.getL2NetworkUuid(), L2NetworkVO.class);
+            if (l2VO == null || shouldSkipSdnForNic(l2VO)) {
+                continue;
+            }
+
+            String controllerUuid = L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID.getTokenByResourceUuid(
+                    l2VO.getUuid(), L2NetworkSystemTags.L2_NETWORK_SDN_CONTROLLER_UUID_TOKEN);
+            if (controllerUuid == null) {
+                continue;
+            }
+
+            nicMaps.computeIfAbsent(controllerUuid, k -> new ArrayList<>()).add(nic);
+        }
+
+        if (nicMaps.isEmpty()) {
+            completion.success();
+            return;
+        }
+
+        releaseNicIpsFromPort(nicMaps, completion);
+    }
+
+    private void releaseNicIpsFromPort(Map<String, List<VmNicInventory>> nicMaps, Completion completion) {
+        new While<>(nicMaps.entrySet()).each((e, wcomp) -> {
+            SdnControllerVO vo = dbf.findByUuid(e.getKey(), SdnControllerVO.class);
+            SdnControllerFactory factory = getSdnControllerFactory(vo.getVendorType());
+            if (factory == null) {
+                wcomp.done();
+                return;
+            }
+            SdnControllerL2 controller = factory.getSdnControllerL2(vo);
+            controller.releaseNicIps(e.getValue(), new Completion(wcomp) {
+                @Override
+                public void success() {
+                    wcomp.done();
+                }
+
+                @Override
+                public void fail(ErrorCode errorCode) {
+                    wcomp.addError(errorCode);
+                    wcomp.allDone();
+                }
+            });
+        }).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                if (errorCodeList.getCauses().isEmpty()) {
+                    completion.success();
+                } else {
+                    completion.fail(errorCodeList.getCauses().get(0));
+                }
+            }
+        });
+    }
 }
