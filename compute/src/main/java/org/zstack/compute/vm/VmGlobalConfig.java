@@ -99,6 +99,14 @@ public class VmGlobalConfig {
     @GlobalConfigValidation(numberGreaterThan = 1)
     public static GlobalConfig UNKNOWN_GC_INTERVAL = new GlobalConfig(CATEGORY, "set.unknown.gc.interval");
 
+    @GlobalConfigDef(defaultValue = "10", type = Long.class, description = "interval in seconds to recheck source and destination host VM states after VM migration API failed but both hosts still report the VM alive")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig MIGRATION_FAILURE_RECHECK_INTERVAL = new GlobalConfig(CATEGORY, "migration.failure.recheck.interval");
+
+    @GlobalConfigDef(defaultValue = "300", type = Long.class, description = "timeout in seconds to recheck source and destination host VM states after VM migration API failed but both hosts still report the VM alive")
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    public static GlobalConfig MIGRATION_FAILURE_RECHECK_TIMEOUT = new GlobalConfig(CATEGORY, "migration.failure.recheck.timeout");
+
     @GlobalConfigDef(defaultValue = "Microsoft Hv", type = String.class, description = "set vendor_id")
     @BindResourceConfig(value = {VmInstanceVO.class, ClusterVO.class})
     public static GlobalConfig VENDOR_ID = new GlobalConfig(CATEGORY, "vendorId");

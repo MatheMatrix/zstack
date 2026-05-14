@@ -88,6 +88,7 @@ import javax.persistence.TypedQuery;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -181,6 +182,30 @@ public class VmInstanceBase extends AbstractVmInstance {
                 completion.done();
             }
         });
+    }
+
+    private void getVmStateOnHost(final String hostUuid, final ReturnValueCompletion<String> completion) {
+        CheckVmStateOnHypervisorMsg msg = new CheckVmStateOnHypervisorMsg();
+        msg.setVmInstanceUuids(list(self.getUuid()));
+        msg.setHostUuid(hostUuid);
+        bus.makeTargetServiceIdByResourceUuid(msg, HostConstant.SERVICE_ID, hostUuid);
+        bus.send(msg, new CloudBusCallBack(completion) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    completion.fail(reply.getError());
+                    return;
+                }
+
+                CheckVmStateOnHypervisorReply r = reply.castReply();
+                completion.success(r.getStates().get(self.getUuid()));
+            }
+        });
+    }
+
+    private boolean isVmAliveOnHost(String state) {
+        return VmInstanceState.Running.toString().equals(state)
+                || VmInstanceState.Paused.toString().equals(state);
     }
 
     protected void destroy(final VmInstanceDeletionPolicy deletionPolicy, Message msg, final Completion completion) {
@@ -7178,26 +7203,200 @@ public class VmInstanceBase extends AbstractVmInstance {
         }).error(new FlowErrorHandler(completion) {
             @Override
             public void handle(final ErrorCode errCode, Map data) {
-                String destHostUuid = spec.getDestHost().getUuid().equals(lastHostUuid) ? null : spec.getDestHost().getUuid();
-                extEmitter.failedToMigrateVm(VmInstanceInventory.valueOf(self), destHostUuid, errCode, new NoErrorCompletion(completion) {
+                handleFailedMigrateVm(spec, originState, lastHostUuid, errCode, completion);
+            }
+        }).start();
+    }
+
+    private void handleFailedMigrateVm(final VmInstanceSpec spec, final VmInstanceState originState,
+                                       final String lastHostUuid, final ErrorCode errCode,
+                                       final Completion completion) {
+        String destHostUuid = spec.getDestHost().getUuid().equals(lastHostUuid) ? null : spec.getDestHost().getUuid();
+        if (destHostUuid == null) {
+            rollbackFailedMigrateVm(originState, null, errCode, completion);
+            return;
+        }
+
+        getVmStateOnHost(destHostUuid, new ReturnValueCompletion<String>(completion) {
+            @Override
+            public void success(String state) {
+                if (!isVmAliveOnHost(state)) {
+                    rollbackFailedMigrateVm(originState, destHostUuid, errCode, completion);
+                    return;
+                }
+
+                logger.warn(String.format("migrating vm[uuid:%s] failed with error[%s], but the vm is %s on destination host[uuid:%s]; check source host before deciding migration result",
+                        self.getUuid(), errCode.getDetails(), state, destHostUuid));
+                completeMigrateVmIfNotAliveOnSource(spec, originState, lastHostUuid, destHostUuid, errCode, completion);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                logger.warn(String.format("unable to check vm[uuid:%s] state on destination host[uuid:%s] after migration failure, %s",
+                        self.getUuid(), destHostUuid, errorCode));
+                rollbackFailedMigrateVm(originState, destHostUuid, errCode, completion);
+            }
+        });
+    }
+
+    private void completeMigrateVmIfNotAliveOnSource(final VmInstanceSpec spec, final VmInstanceState originState,
+                                                     final String lastHostUuid, final String destHostUuid,
+                                                     final ErrorCode errCode, final Completion completion) {
+        getVmStateOnHost(lastHostUuid, new ReturnValueCompletion<String>(completion) {
+            @Override
+            public void success(String state) {
+                if (isVmAliveOnHost(state)) {
+                    logger.warn(String.format("migrating vm[uuid:%s] failed and the vm is still %s on source host[uuid:%s]; recheck migration result before rollback cleanup on destination host[uuid:%s]",
+                            self.getUuid(), state, lastHostUuid, destHostUuid));
+                    scheduleMigrateFailureRecheck(spec, originState, lastHostUuid, destHostUuid, errCode, completion, getMigrateFailureRecheckTimes());
+                    return;
+                }
+
+                logger.warn(String.format("migrating vm[uuid:%s] failed, but the vm is alive on destination host[uuid:%s] and not alive on source host[uuid:%s]; complete migration cleanup on destination host",
+                        self.getUuid(), destHostUuid, lastHostUuid));
+                completeMigrateVmOnDestination(spec, lastHostUuid, completion);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                logger.warn(String.format("unable to check vm[uuid:%s] state on source host[uuid:%s] after migration failure, %s",
+                        self.getUuid(), lastHostUuid, errorCode));
+                rollbackFailedMigrateVm(originState, destHostUuid, errCode, completion);
+            }
+        });
+    }
+
+    private int getMigrateFailureRecheckTimes() {
+        long interval = VmGlobalConfig.MIGRATION_FAILURE_RECHECK_INTERVAL.value(Long.class);
+        long timeout = VmGlobalConfig.MIGRATION_FAILURE_RECHECK_TIMEOUT.value(Long.class);
+        return Math.max(1, (int) Math.ceil((double) timeout / interval));
+    }
+
+    private void scheduleMigrateFailureRecheck(final VmInstanceSpec spec, final VmInstanceState originState,
+                                               final String lastHostUuid, final String destHostUuid,
+                                               final ErrorCode errCode, final Completion completion,
+                                               final int remainingTimes) {
+        thdf.submitTimeoutTask(() -> recheckMigrateFailureResult(spec, originState, lastHostUuid, destHostUuid,
+                errCode, completion, remainingTimes), TimeUnit.SECONDS,
+                VmGlobalConfig.MIGRATION_FAILURE_RECHECK_INTERVAL.value(Long.class));
+    }
+
+    private void recheckMigrateFailureResult(final VmInstanceSpec spec, final VmInstanceState originState,
+                                             final String lastHostUuid, final String destHostUuid,
+                                             final ErrorCode errCode, final Completion completion,
+                                             final int remainingTimes) {
+        getVmStateOnHost(destHostUuid, new ReturnValueCompletion<String>(completion) {
+            @Override
+            public void success(String destState) {
+                if (!isVmAliveOnHost(destState)) {
+                    rollbackFailedMigrateVm(originState, destHostUuid, errCode, completion);
+                    return;
+                }
+
+                recheckMigrateFailureSourceResult(spec, originState, lastHostUuid, destHostUuid, errCode,
+                        completion, remainingTimes, destState);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                logger.warn(String.format("unable to recheck vm[uuid:%s] state on destination host[uuid:%s] after migration failure, %s",
+                        self.getUuid(), destHostUuid, errorCode));
+                rollbackFailedMigrateVm(originState, destHostUuid, errCode, completion);
+            }
+        });
+    }
+
+    private void recheckMigrateFailureSourceResult(final VmInstanceSpec spec, final VmInstanceState originState,
+                                                   final String lastHostUuid, final String destHostUuid,
+                                                   final ErrorCode errCode, final Completion completion,
+                                                   final int remainingTimes, final String destState) {
+        getVmStateOnHost(lastHostUuid, new ReturnValueCompletion<String>(completion) {
+            @Override
+            public void success(String sourceState) {
+                if (!isVmAliveOnHost(sourceState)) {
+                    logger.warn(String.format("migrating vm[uuid:%s] failed, but the vm is %s on destination host[uuid:%s] and not alive on source host[uuid:%s] during recheck; complete migration cleanup on destination host",
+                            self.getUuid(), destState, destHostUuid, lastHostUuid));
+                    completeMigrateVmOnDestination(spec, lastHostUuid, completion);
+                    return;
+                }
+
+                if (remainingTimes <= 1) {
+                    logger.warn(String.format("migrating vm[uuid:%s] failed and the vm remains alive on source host[uuid:%s] and destination host[uuid:%s] after rechecking for %s seconds; rollback migration cleanup",
+                            self.getUuid(), lastHostUuid, destHostUuid,
+                            VmGlobalConfig.MIGRATION_FAILURE_RECHECK_TIMEOUT.value(Long.class)));
+                    rollbackFailedMigrateVm(originState, destHostUuid,
+                            migrationMayStillBeInProgressError(errCode, lastHostUuid, destHostUuid), completion);
+                    return;
+                }
+
+                logger.warn(String.format("migrating vm[uuid:%s] failed but the vm is still alive on source host[uuid:%s] and destination host[uuid:%s]; recheck again after %s seconds",
+                        self.getUuid(), lastHostUuid, destHostUuid,
+                        VmGlobalConfig.MIGRATION_FAILURE_RECHECK_INTERVAL.value(Long.class)));
+                scheduleMigrateFailureRecheck(spec, originState, lastHostUuid, destHostUuid, errCode,
+                        completion, remainingTimes - 1);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                logger.warn(String.format("unable to recheck vm[uuid:%s] state on source host[uuid:%s] after migration failure, %s",
+                        self.getUuid(), lastHostUuid, errorCode));
+                rollbackFailedMigrateVm(originState, destHostUuid, errCode, completion);
+            }
+        });
+    }
+
+    private ErrorCode migrationMayStillBeInProgressError(ErrorCode errCode, String lastHostUuid, String destHostUuid) {
+        ErrorCode ret = errCode.copy();
+        ret.setDetails(String.format("%s; API failed, but the VM may still be migrating because it remained alive on both source host[uuid:%s] and destination host[uuid:%s] during the %s seconds migration result recheck window",
+                errCode.getDetails(), lastHostUuid, destHostUuid,
+                VmGlobalConfig.MIGRATION_FAILURE_RECHECK_TIMEOUT.value(Long.class)));
+        return ret;
+    }
+
+    private void completeMigrateVmOnDestination(final VmInstanceSpec spec, final String lastHostUuid,
+                                                final Completion completion) {
+        HostInventory host = spec.getDestHost();
+        checkState(host.getUuid(), new NoErrorCompletion(completion) {
+            @Override
+            public void done() {
+                SQL.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, self.getUuid())
+                        .set(VmInstanceVO_.zoneUuid, host.getZoneUuid())
+                        .set(VmInstanceVO_.clusterUuid, host.getClusterUuid())
+                        .set(VmInstanceVO_.lastHostUuid, lastHostUuid)
+                        .set(VmInstanceVO_.hostUuid, host.getUuid())
+                        .update();
+                self = dbf.reload(self);
+
+                VmInstanceInventory vm = VmInstanceInventory.valueOf(self);
+                extEmitter.afterMigrateVm(vm, vm.getLastHostUuid(), new NoErrorCompletion(completion) {
                     @Override
                     public void done() {
-                        if (!HostErrors.FAILED_TO_MIGRATE_VM_ON_HYPERVISOR.isEqual(errCode.getCode())) {
-                            changeVmStateInDb(originState.getDrivenEvent());
-                            completion.fail(errCode);
-                            return;
-                        }
-
-                        checkState(originalCopy.getHostUuid(), new NoErrorCompletion(completion) {
-                            @Override
-                            public void done() {
-                                completion.fail(errCode);
-                            }
-                        });
+                        completion.success();
                     }
                 });
             }
-        }).start();
+        });
+    }
+
+    private void rollbackFailedMigrateVm(final VmInstanceState originState, final String destHostUuid,
+                                         final ErrorCode errCode, final Completion completion) {
+        extEmitter.failedToMigrateVm(VmInstanceInventory.valueOf(self), destHostUuid, errCode, new NoErrorCompletion(completion) {
+            @Override
+            public void done() {
+                if (!HostErrors.FAILED_TO_MIGRATE_VM_ON_HYPERVISOR.isEqual(errCode.getCode())) {
+                    changeVmStateInDb(originState.getDrivenEvent());
+                    completion.fail(errCode);
+                    return;
+                }
+
+                checkState(originalCopy.getHostUuid(), new NoErrorCompletion(completion) {
+                    @Override
+                    public void done() {
+                        completion.fail(errCode);
+                    }
+                });
+            }
+        });
     }
 
     protected void handle(CancelMigrateVmMsg msg) {
@@ -9272,4 +9471,3 @@ public class VmInstanceBase extends AbstractVmInstance {
         });
     }
 }
-
