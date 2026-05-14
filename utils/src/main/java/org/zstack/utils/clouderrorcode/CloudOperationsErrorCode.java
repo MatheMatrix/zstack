@@ -510,6 +510,18 @@ public class CloudOperationsErrorCode {
 
     public static final String ORG_ZSTACK_VPC_10049 = "ORG_ZSTACK_VPC_10049";
 
+    public static final String ORG_ZSTACK_VPC_10050 = "ORG_ZSTACK_VPC_10050";
+
+    public static final String ORG_ZSTACK_VPC_10051 = "ORG_ZSTACK_VPC_10051";
+
+    public static final String ORG_ZSTACK_VPC_10052 = "ORG_ZSTACK_VPC_10052";
+
+    public static final String ORG_ZSTACK_VPC_10053 = "ORG_ZSTACK_VPC_10053";
+
+    public static final String ORG_ZSTACK_VPC_10054 = "ORG_ZSTACK_VPC_10054";
+
+    public static final String ORG_ZSTACK_VPC_10055 = "ORG_ZSTACK_VPC_10055";
+
     public static final String ORG_ZSTACK_TEST_INTEGRATION_CORE_CLOUDBUS_10000 = "ORG_ZSTACK_TEST_INTEGRATION_CORE_CLOUDBUS_10000";
 
     public static final String ORG_ZSTACK_TEST_INTEGRATION_CORE_CLOUDBUS_10001 = "ORG_ZSTACK_TEST_INTEGRATION_CORE_CLOUDBUS_10001";
