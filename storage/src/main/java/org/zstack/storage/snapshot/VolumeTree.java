@@ -361,12 +361,38 @@ public class VolumeTree {
         return aliveChain.stream().map(VolumeSnapshotInventory::getUuid).collect(Collectors.toList());
     }
 
+    /**
+     * Pure alive-chain membership query, VM-state-independent.
+     * A snapshot is "on the alive chain" iff this tree is the current tree of the volume
+     * AND the snapshot is one of the ancestors of the live volume node.
+     * <p>
+     * This is intentionally decoupled from {@link #isHypervisorOperation(VmInstanceState)};
+     * the two were previously conflated in {@link #isOnline(boolean, String, String, VmInstanceState)},
+     * causing the multi-children "avoid alive child" protection in
+     * {@code VolumeSnapshotTreeBase.stepDelete} to silently fail when the VM is Stopped.
+     */
+    public boolean isOnAliveChain(String snapshotUuid) {
+        return current && getAliveChainSnapshotUuids().contains(snapshotUuid);
+    }
+
+    /**
+     * Whether physical snapshot operations should be routed through the hypervisor (libvirt blockCommit/blockPull)
+     * instead of the primary storage agent (qemu-img). Purely a function of VM run-state.
+     */
+    public static boolean isHypervisorOperation(VmInstanceState vmState) {
+        return vmState == VmInstanceState.Running || vmState == VmInstanceState.Paused;
+    }
+
     public DeleteVolumeSnapshotDirection resolveDirection(String targetSnapshotUuid, String childSnapshotUuid, String initialDirection,
                                                           boolean targetSnapshotIsLatest, VmInstanceState vmState) {
-        boolean online = (vmState == VmInstanceState.Running || vmState == VmInstanceState.Paused)
-                && getAliveChainSnapshotUuids().contains(targetSnapshotUuid) && getAliveChainSnapshotUuids().contains(childSnapshotUuid);
-
-        boolean shouldUseCommitStrategy = current && !targetSnapshotIsLatest && online;
+        // shouldUseCommitStrategy reflects "would the commit path move data along the live chain", which is purely
+        // a property of the tree structure (vol's ancestor chain) and should not depend on whether the VM is currently
+        // running. Previously this was conjoined with vmState ∈ {Running, Paused}, which caused Stopped + Auto to
+        // silently degrade to Pull (writing N copies of (target - parent) delta to each child file) even when the
+        // commit path would have produced a single merged file.
+        boolean targetOnAliveChain = isOnAliveChain(targetSnapshotUuid);
+        boolean childOnAliveChain = isOnAliveChain(childSnapshotUuid);
+        boolean shouldUseCommitStrategy = current && !targetSnapshotIsLatest && targetOnAliveChain && childOnAliveChain;
 
         if (Objects.equals(initialDirection, DeleteVolumeSnapshotDirection.Pull.toString()) && shouldUseCommitStrategy) {
             throw new IllegalArgumentException("the snapshot will be deleted by block 'commit', but the direction is 'pull', " +
@@ -386,9 +412,19 @@ public class VolumeTree {
         return DeleteVolumeSnapshotDirection.fromString(initialDirection);
     }
 
+    /**
+     * Compound predicate: target and child are both on the alive chain AND the VM is currently running.
+     * Used to decide whether to route through the hypervisor (libvirt) path vs the primary storage agent path.
+     * <p>
+     * Equivalent to {@code treeIsCurrent && isHypervisorOperation(vmState)
+     *                 && isOnAliveChain(target) && isOnAliveChain(child)}, with the {@code current} check
+     * folded into both {@code isOnAliveChain} calls.
+     */
     public boolean isOnline(boolean treeIsCurrent, String targetSnapshotUuid, String childSnapshotUuid, VmInstanceState vmState) {
-        return treeIsCurrent && (vmState == VmInstanceState.Running || vmState == VmInstanceState.Paused)
-                && getAliveChainSnapshotUuids().contains(targetSnapshotUuid) && getAliveChainSnapshotUuids().contains(childSnapshotUuid);
+        return treeIsCurrent
+                && isHypervisorOperation(vmState)
+                && getAliveChainSnapshotUuids().contains(targetSnapshotUuid)
+                && getAliveChainSnapshotUuids().contains(childSnapshotUuid);
     }
 
     // TODO(clone) : When both chain cloning and single-node snapshot deletion are enabled,

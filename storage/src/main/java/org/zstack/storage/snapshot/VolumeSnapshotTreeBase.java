@@ -884,8 +884,8 @@ public class VolumeSnapshotTreeBase {
                     return;
                 }
 
-                VolumeTree.VolumeSnapshotLeaf onlineChild = children.stream()
-                        .filter(child -> volumeTree.isOnline(current, currentRoot.getUuid(), child.getUuid(), vmState))
+                VolumeTree.VolumeSnapshotLeaf aliveChild = children.stream()
+                        .filter(child -> volumeTree.isOnAliveChain(child.getUuid()))
                         .findFirst().orElse(null);
 
                 Completion comp = new Completion(completion) {
@@ -910,7 +910,10 @@ public class VolumeSnapshotTreeBase {
                         pull(child, volumeTree, online, comp);
                     }
                 } else {
-                    if (onlineChild != null && Objects.equals(child.getUuid(), onlineChild.getUuid())) {
+                    // Multi-children: defer the alive-chain child to the final round so that any in-flight failure
+                    // on a non-alive sibling does not corrupt the volume's live backing chain. This guard now
+                    // applies to Stopped VMs as well, because isOnAliveChain is vmState-independent.
+                    if (aliveChild != null && Objects.equals(child.getUuid(), aliveChild.getUuid())) {
                         child = children.get(1);
                     }
                     boolean online = volumeTree.isOnline(current, currentRoot.getUuid(), child.getUuid(), vmState);
