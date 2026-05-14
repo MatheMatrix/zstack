@@ -124,12 +124,39 @@ public class ApplianceVmPriorityUpgradeConfigExtensionPoint implements Component
         if (!spec.getVmInventory().getType().equals(ApplianceVmConstant.APPLIANCE_VM_TYPE)) {
             return;
         }
+        limitAlinuxVrouterNumaMaxVcpuToCurrentCpu(host, spec, cmd);
         if (priorityOperator.getVmPriority(spec.getVmInventory().getUuid()).equals(VmPriorityLevel.ApplianceVmHigh)) {
             return;
         }
         priorityOperator.setVmPriority(spec.getVmInventory().getUuid(), VmPriorityLevel.ApplianceVmHigh);
         VmPriorityConfigVO priorityVO = Q.New(VmPriorityConfigVO.class).eq(VmPriorityConfigVO_.level, VmPriorityLevel.ApplianceVmHigh).find();
         cmd.setPriorityConfigStruct(new PriorityConfigStruct(priorityVO, spec.getVmInventory().getUuid()));
+    }
+
+    private void limitAlinuxVrouterNumaMaxVcpuToCurrentCpu(KVMHostInventory host, VmInstanceSpec spec, KVMAgentCommands.StartVmCmd cmd) {
+        if (!cmd.isUseNuma() || !isAlinux4Host(host) || !isVrouter(spec.getVmInventory().getUuid())) {
+            return;
+        }
+
+        int cpuNum = cmd.getCpuNum();
+        cmd.setMaxVcpuNum(cpuNum);
+        cmd.setSocketNum(cpuNum);
+        cmd.setCpuOnSocket(1);
+        cmd.setThreadsPerCore(1);
+    }
+
+    private boolean isVrouter(String vmUuid) {
+        String applianceVmType = Q.New(ApplianceVmVO.class)
+                .select(ApplianceVmVO_.applianceVmType)
+                .eq(ApplianceVmVO_.uuid, vmUuid)
+                .findValue();
+        return "vrouter".equals(applianceVmType);
+    }
+
+    private boolean isAlinux4Host(KVMHostInventory host) {
+        String osInfo = String.format("%s %s %s",
+                host.getOsDistribution(), host.getOsRelease(), host.getOsVersion()).toLowerCase();
+        return (osInfo.contains("alinux") || osInfo.contains("alibaba")) && osInfo.contains("4");
     }
 
     @Override
