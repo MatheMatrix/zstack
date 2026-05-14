@@ -225,6 +225,7 @@ class VmGCCase extends SubCase {
 
             testStopVmWhenHostDisconnect()
             testStopVmGCJobCancelAfterVmDeleted()
+            testStopVmGCJobCancelAfterVmStarted()
             testStopVmGCJobCancelAfterHostDeleted()
         }
     }
@@ -314,6 +315,46 @@ class VmGCCase extends SubCase {
 
         deleteGCJob {
             uuid = inv.uuid
+        }
+    }
+
+    void testStopVmGCJobCancelAfterVmStarted() {
+        VmInstanceInventory vm = createGCCandidateStoppedVm()
+
+        vm = startVmInstance {
+            uuid = vm.uuid
+        } as VmInstanceInventory
+
+        assert dbFindByUuid(vm.uuid, VmInstanceVO.class).state == VmInstanceState.Running
+
+        KVMAgentCommands.StopVmCmd cmd = null
+        env.afterSimulator(KVMConstant.KVM_STOP_VM_PATH) { rsp, HttpEntity<String> e ->
+            cmd = json(e.body, KVMAgentCommands.StopVmCmd.class)
+            return rsp
+        }
+
+        // reconnect host to trigger the GC
+        reconnectHost {
+            uuid = vm.hostUuid
+        }
+
+        GarbageCollectorInventory inv = null
+        retryInSecs {
+            inv = queryGCJob {
+                conditions=["context~=%${vm.uuid}%"]
+            }[0]
+
+            // the GC job is cancelled because the vm has already been started again
+            assert cmd == null
+            assert inv.status == GCStatus.Done.toString()
+        }
+
+        deleteGCJob {
+            uuid = inv.uuid
+        }
+
+        destroyVmInstance {
+            uuid = vm.uuid
         }
     }
 
