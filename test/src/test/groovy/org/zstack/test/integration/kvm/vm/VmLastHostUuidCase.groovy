@@ -103,7 +103,7 @@ class VmLastHostUuidCase extends SubCase{
         env.message(CheckVmStateOnHypervisorMsg.class) { CheckVmStateOnHypervisorMsg msg, CloudBus bus ->
             def reply = new CheckVmStateOnHypervisorReply()
             def list = new HashMap<String, String>()
-            list.put(vm.uuid, VmInstanceState.Running.toString())
+            list.put(vm.uuid, expect ? VmInstanceState.Running.toString() : VmInstanceState.Stopped.toString())
             reply.setStates(list)
             reply.success = true
             bus.reply(msg, reply)
@@ -125,7 +125,7 @@ class VmLastHostUuidCase extends SubCase{
             assert afterDstHostMem == originDstHostMem - vmMemInGB
             assert afterSrcHostMem == originSrcHostMem + vmMemInGB
         }else {
-            assert a.call().error != null
+            assert ret.error != null
             assert afterDstHostMem == originDstHostMem
             assert afterSrcHostMem == originSrcHostMem
         }

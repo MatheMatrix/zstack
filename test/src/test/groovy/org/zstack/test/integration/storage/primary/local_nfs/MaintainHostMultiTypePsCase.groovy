@@ -122,6 +122,18 @@ class MaintainHostMultiTypePsCase extends SubCase{
             return rsp
         }
 
+        env.simulator(KVMConstant.KVM_VM_CHECK_STATE) { HttpEntity<String> e ->
+            def cmd = JSONObjectUtil.toObject(e.getBody(), KVMAgentCommands.CheckVmStateCmd)
+            def rsp = new KVMAgentCommands.CheckVmStateRsp()
+            rsp.states = [:]
+            cmd.vmUuids.each { String vmUuid ->
+                rsp.states[vmUuid] = vmUuid == vm2OnNfs.uuid ?
+                        KVMConstant.KvmVmState.Shutdown.toString() :
+                        KVMConstant.KvmVmState.Running.toString()
+            }
+            return rsp
+        }
+
         SQL.New(VmInstanceVO.class).eq(VmInstanceVO_.uuid, vm1.uuid).set(VmInstanceVO_.state, VmInstanceState.Unknown).update()
 
         changeHostState {

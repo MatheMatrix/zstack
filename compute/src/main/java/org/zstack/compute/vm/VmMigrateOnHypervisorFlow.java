@@ -10,13 +10,18 @@ import org.zstack.header.core.workflow.Flow;
 import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.host.CheckVmStateOnHypervisorMsg;
+import org.zstack.header.host.CheckVmStateOnHypervisorReply;
 import org.zstack.header.host.HostConstant;
+import org.zstack.header.host.HostErrors;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.host.MigrateVmOnHypervisorMsg;
 import org.zstack.header.vm.*;
 import org.zstack.longjob.LongJobUtils;
 
 import java.util.Map;
+
+import static org.zstack.utils.CollectionDSL.list;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class VmMigrateOnHypervisorFlow implements Flow {
@@ -60,8 +65,52 @@ public class VmMigrateOnHypervisorFlow implements Flow {
                 if (reply.isSuccess()) {
                     chain.next();
                 } else {
-                    chain.fail(reply.getError());
+                    ErrorCode canceledError = LongJobUtils.buildErrIfCanceled();
+                    if (canceledError != null) {
+                        chain.fail(canceledError);
+                        return;
+                    }
+
+                    ErrorCode error = reply.getError();
+                    if (HostErrors.FAILED_TO_MIGRATE_VM_ON_HYPERVISOR.isEqual(error.getCode())) {
+                        checkVmStateOnDestinationHost(spec, error, chain);
+                        return;
+                    }
+
+                    chain.fail(error);
                 }
+            }
+        });
+    }
+
+    private void checkVmStateOnDestinationHost(final VmInstanceSpec spec, final ErrorCode migrateError,
+                                               final FlowTrigger chain) {
+        CheckVmStateOnHypervisorMsg msg = new CheckVmStateOnHypervisorMsg();
+        msg.setVmInstanceUuids(list(spec.getVmInventory().getUuid()));
+        msg.setHostUuid(spec.getDestHost().getUuid());
+        bus.makeTargetServiceIdByResourceUuid(msg, HostConstant.SERVICE_ID, msg.getHostUuid());
+        bus.send(msg, new CloudBusCallBack(chain) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    chain.fail(migrateError);
+                    return;
+                }
+
+                CheckVmStateOnHypervisorReply r = reply.castReply();
+                Map<String, String> states = r.getStates();
+                if (states == null || states.isEmpty()) {
+                    chain.fail(migrateError);
+                    return;
+                }
+
+                String state = states.get(spec.getVmInventory().getUuid());
+                if (VmInstanceState.Running.toString().equals(state)) {
+                    chain.next();
+                    return;
+                }
+
+                chain.fail(migrateError);
             }
         });
     }
