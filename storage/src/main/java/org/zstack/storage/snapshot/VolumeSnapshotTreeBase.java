@@ -2142,26 +2142,37 @@ public class VolumeSnapshotTreeBase {
         return cleanup;
     }
 
-    // The logic for cleaning up snapshot groups when deleting a snapshot chain
+    // The logic for cleaning up snapshot groups when deleting a snapshot chain.
+    // Symmetric with ungroupAfterDeleteSingleSnapshot: regardless of root/data volume type,
+    // a group is only disbanded after ALL its refs have snapshotDeleted=true.
+    // This avoids leaving orphan refs (root chain delete used to immediately drop the group VO,
+    // leaving data-volume refs pointing to a non-existent group).
     private void ungroupAfterDeleted(List<VolumeSnapshotInventory> snapshots) {
         List<String> uuids = snapshots.stream().map(VolumeSnapshotInventory::getUuid).collect(Collectors.toList());
         SQL.New(VolumeSnapshotGroupRefVO.class).in(VolumeSnapshotGroupRefVO_.volumeSnapshotUuid, uuids)
                 .set(VolumeSnapshotGroupRefVO_.snapshotDeleted, true).update();
-        if (currentRoot.getVolumeType().equals(VolumeType.Root.toString())) {
-            List<String> groupUuids = new ArrayList<>();
-            for (VolumeSnapshotInventory snapshot : snapshots) {
-                String groupUuid = snapshot.getGroupUuid();
-                if (groupUuid != null) {
-                    logger.debug(String.format("root volume snapshot[uuid:%s, name:%s] has been deleted, " +
-                            "ungroup snapshot group[uuid:%s]", snapshot.getUuid(), snapshot.getName(), groupUuid));
-                    groupUuids.add(groupUuid);
-                }
 
+        Set<String> touchedGroupUuids = snapshots.stream()
+                .map(VolumeSnapshotInventory::getGroupUuid)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        List<String> groupsToDelete = new ArrayList<>();
+        for (String groupUuid : touchedGroupUuids) {
+            long remaining = Q.New(VolumeSnapshotGroupRefVO.class)
+                    .eq(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, groupUuid)
+                    .eq(VolumeSnapshotGroupRefVO_.snapshotDeleted, false).count();
+            if (remaining == 0) {
+                logger.debug(String.format("snapshot group[uuid:%s] all volume snapshots have been deleted, " +
+                        "disbanding group", groupUuid));
+                groupsToDelete.add(groupUuid);
             }
+        }
 
-            groupUuids.forEach(groupUuid -> vidm.deleteArchiveVmInstanceResourceMetadataGroup(groupUuid));
-            cleanVmHostBackupFilesForGroup(groupUuids);
-            dbf.removeByPrimaryKeys(groupUuids, VolumeSnapshotGroupVO.class);
+        if (!groupsToDelete.isEmpty()) {
+            groupsToDelete.forEach(groupUuid -> vidm.deleteArchiveVmInstanceResourceMetadataGroup(groupUuid));
+            cleanVmHostBackupFilesForGroup(groupsToDelete);
+            dbf.removeByPrimaryKeys(groupsToDelete, VolumeSnapshotGroupVO.class);
         }
     }
 
