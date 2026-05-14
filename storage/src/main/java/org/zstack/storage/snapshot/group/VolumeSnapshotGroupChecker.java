@@ -3,6 +3,7 @@ package org.zstack.storage.snapshot.group;
 import org.zstack.core.db.Q;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupAvailability;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefVO;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefVO_;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO_;
 import org.zstack.header.vo.ResourceVO;
@@ -23,6 +24,49 @@ import static org.zstack.core.Platform.i18n;
 public class VolumeSnapshotGroupChecker {
     public static boolean isAvailable(String uuid) {
         return getAvailability(uuid).isAvailable();
+    }
+
+    /**
+     * Find all incomplete snapshot groups on a VM.
+     * An incomplete group is one where part of its refs have snapshotDeleted=true
+     * but at least one ref is still alive (snapshotDeleted=false).
+     * Such groups represent a "debt" that pollutes subsequent group/VM operations.
+     *
+     * @param vmInstanceUuid    the VM to inspect
+     * @param excludeGroupUuid  group uuid to exclude from the result (e.g. when the caller is
+     *                          itself trying to delete that group, do not flag it as a blocker);
+     *                          pass null to include all groups
+     * @return list of incomplete group uuids (excluding excludeGroupUuid); empty if none
+     */
+    public static List<String> findIncompleteGroupsOnVm(String vmInstanceUuid, String excludeGroupUuid) {
+        if (vmInstanceUuid == null) {
+            return Collections.emptyList();
+        }
+
+        List<String> groupUuids = Q.New(VolumeSnapshotGroupVO.class)
+                .select(VolumeSnapshotGroupVO_.uuid)
+                .eq(VolumeSnapshotGroupVO_.vmInstanceUuid, vmInstanceUuid)
+                .listValues();
+
+        List<String> incomplete = new ArrayList<>();
+        for (Object o : groupUuids) {
+            String guuid = o.toString();
+            if (guuid.equals(excludeGroupUuid)) {
+                continue;
+            }
+            long deletedRefs = Q.New(VolumeSnapshotGroupRefVO.class)
+                    .eq(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, guuid)
+                    .eq(VolumeSnapshotGroupRefVO_.snapshotDeleted, true).count();
+            if (deletedRefs == 0) {
+                continue;
+            }
+            long totalRefs = Q.New(VolumeSnapshotGroupRefVO.class)
+                    .eq(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, guuid).count();
+            if (deletedRefs < totalRefs) {
+                incomplete.add(guuid);
+            }
+        }
+        return incomplete;
     }
 
     public static List<VolumeSnapshotGroupAvailability> getAvailability(List<String> uuids) {

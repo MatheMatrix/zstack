@@ -41,6 +41,12 @@
         </zstack:plugin>
     </bean>
 
+    <bean id="VolumeSnapshotGroupCascadeExtension" class="org.zstack.storage.snapshot.group.VolumeSnapshotGroupCascadeExtension">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.core.cascade.CascadeExtensionPoint"/>
+        </zstack:plugin>
+    </bean>
+
     <bean id="L3NetworkMemorySnapshotGroupReference" class="org.zstack.storage.snapshot.group.L3NetworkMemorySnapshotGroupReference">
         <zstack:plugin>
             <zstack:extension interface="org.zstack.storage.snapshot.group.MemorySnapshotGroupReferenceFactory" />

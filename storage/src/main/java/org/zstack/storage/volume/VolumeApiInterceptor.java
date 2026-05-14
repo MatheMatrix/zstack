@@ -44,6 +44,7 @@ import org.zstack.header.storage.snapshot.VolumeSnapshotTreeVO_;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
 import org.zstack.header.storage.snapshot.group.MemorySnapshotValidatorExtensionPoint;
+import org.zstack.storage.snapshot.group.VolumeSnapshotGroupChecker;
 import org.zstack.header.tag.SystemTagVO;
 import org.zstack.header.vm.APICreateVmInstanceMsg;
 import org.zstack.header.vm.DiskAO;
@@ -213,6 +214,8 @@ public class VolumeApiInterceptor implements ApiMessageInterceptor, Component, G
             throw new ApiMessageInterceptionException(argerr("volume[uuid:%s] is not root volume", msg.getRootVolumeUuid()));
         }
 
+        checkIncompleteSnapshotGroupsOnVm(vmvo.getUuid(), "create new snapshot group");
+
         if (msg.isWithMemory() && !(vmvo.getState().equals(VmInstanceState.Running) || (vmvo.getState().equals(VmInstanceState.Paused)))) {
             throw new ApiMessageInterceptionException(argerr("Can not take memory snapshot, vm current state[%s], but expect state are [%s, %s]",
                     vmvo.getState().toString(), VmInstanceState.Running.toString(), VmInstanceState.Paused.toString()));
@@ -316,9 +319,13 @@ public class VolumeApiInterceptor implements ApiMessageInterceptor, Component, G
             throw new ApiMessageInterceptionException(operr("the volume[uuid:%s, name:%s, type:%s] can't detach it",
                     vol.getUuid(), vol.getName(), vol.getType()));
         }
+
+        String vmUuid = msg.getVmUuid() != null ? msg.getVmUuid() : vol.getVmInstanceUuid();
+        checkIncompleteSnapshotGroupsOnVm(vmUuid, "detach data volume");
     }
 
     private void validate(APIAttachDataVolumeToVmMsg msg) {
+        checkIncompleteSnapshotGroupsOnVm(msg.getVmInstanceUuid(), "attach data volume");
         new SQLBatch() {
             @Override
             protected void scripts() {
@@ -689,6 +696,29 @@ public class VolumeApiInterceptor implements ApiMessageInterceptor, Component, G
     @Override
     public boolean start() {
         return true;
+    }
+
+    /**
+     * Block VM-scoped operations when the VM has any incomplete snapshot group.
+     * An incomplete group is one whose refs are partially deleted (some snapshotDeleted=true,
+     * but at least one alive). Such groups must be cleaned up first to avoid pollution
+     * of subsequent group operations on this VM.
+     *
+     * Exempt operations: deleting an incomplete group itself (handled by
+     * {@code VolumeSnapshotGroupBase#handleDelete} which excludes self), single-snapshot
+     * deletion, and VM destroy (handled by VolumeSnapshotGroupCascadeExtension cleanup).
+     */
+    private void checkIncompleteSnapshotGroupsOnVm(String vmUuid, String operationDesc) {
+        if (vmUuid == null) {
+            return;
+        }
+        List<String> incomplete = VolumeSnapshotGroupChecker.findIncompleteGroupsOnVm(vmUuid, null);
+        if (!incomplete.isEmpty()) {
+            throw new ApiMessageInterceptionException(operr(
+                    "VM[uuid:%s] has incomplete snapshot group(s) %s, " +
+                    "please clean them up first before %s",
+                    vmUuid, incomplete, operationDesc));
+        }
     }
 
     @Override

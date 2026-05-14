@@ -31,6 +31,9 @@ public class APIDeleteVolumeSnapshotGroupMsg extends APIDeleteMessage implements
     @APIParam(required = false, validValues = {"single", "chain", "auto"})
     private String scope = "chain";
 
+    @APIParam(required = false)
+    private boolean force = false;
+
     @APINoSee
     private String vmUuid;
 
@@ -56,6 +59,14 @@ public class APIDeleteVolumeSnapshotGroupMsg extends APIDeleteMessage implements
 
     public void setScope(String scope) {
         this.scope = scope;
+    }
+
+    public boolean isForce() {
+        return force;
+    }
+
+    public void setForce(boolean force) {
+        this.force = force;
     }
 
     public String getVmUuid() {

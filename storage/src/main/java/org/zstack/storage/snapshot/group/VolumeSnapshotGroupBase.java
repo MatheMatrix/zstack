@@ -195,6 +195,20 @@ public class VolumeSnapshotGroupBase implements VolumeSnapshotGroup {
 
     private void handleDelete(APIDeleteVolumeSnapshotGroupMsg msg, NoErrorCompletion completion) {
         APIDeleteVolumeSnapshotGroupEvent event = new APIDeleteVolumeSnapshotGroupEvent(msg.getId());
+
+        if (!msg.isForce()) {
+            List<String> incomplete = VolumeSnapshotGroupChecker
+                    .findIncompleteGroupsOnVm(self.getVmInstanceUuid(), self.getUuid());
+            if (!incomplete.isEmpty()) {
+                event.setError(operr("VM[uuid:%s] has incomplete snapshot group(s) %s, " +
+                        "please clean them up first (or pass force=true) before deleting other snapshot groups",
+                        self.getVmInstanceUuid(), incomplete));
+                bus.publish(event);
+                completion.done();
+                return;
+            }
+        }
+
         DeleteVolumeSnapshotGroupInnerMsg imsg = new DeleteVolumeSnapshotGroupInnerMsg();
         imsg.setUuid(msg.getUuid());
         imsg.setDeletionMode(msg.getDeletionMode());
