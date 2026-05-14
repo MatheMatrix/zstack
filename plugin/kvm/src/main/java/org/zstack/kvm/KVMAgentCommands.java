@@ -5272,19 +5272,19 @@ public class KVMAgentCommands {
     public static class PoolRsp extends AgentResponse {
         public String poolUuid;
         public String mountPoint;
-    }
-
-    public static class PoolHealthRsp extends AgentResponse {
-        public Boolean healthy;
-        public String reason;
-    }
-
-    public static class PoolCapacityRsp extends AgentResponse {
         public Long total;
         public Long used;
         public Long available;
         public Long allocated;
         public Long dirty;
+    }
+
+    public static class PoolHealthRsp extends PoolRsp {
+        public Boolean healthy;
+        public String reason;
+    }
+
+    public static class PoolCapacityRsp extends PoolRsp {
     }
 
     public static class CacheRsp extends AgentResponse {
@@ -5293,7 +5293,7 @@ public class KVMAgentCommands {
         public Long actualSize;
     }
 
-    public static class GCPoolRsp extends AgentResponse {
+    public static class GCPoolRsp extends PoolRsp {
         public List<String> gcFiles;
         public Integer gcCount;
     }
