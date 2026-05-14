@@ -7,6 +7,7 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 import org.zstack.utils.path.PathUtil;
 import org.zstack.utils.ssh.Ssh;
+import org.zstack.utils.ssh.SshCmdHelper;
 import org.zstack.utils.ssh.SshResult;
 
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ public class SshFileMd5Checker implements AnsibleChecker {
     private static final CLogger logger = Utils.getLogger(SshFileMd5Checker.class);
 
     private List<SrcDestPair> srcDestPairs = new ArrayList<SrcDestPair>();
+    private List<SrcDestPair> srcDestMd5ContentPairs = new ArrayList<SrcDestPair>();
     private String username;
     private String password;
     private String privateKey;
@@ -49,7 +51,7 @@ public class SshFileMd5Checker implements AnsibleChecker {
                 String sourceFilePath = b.srcPath;
                 String destFilePath = b.destPath;
 
-                ssh.sudoCommand(String.format("md5sum %s", destFilePath));
+                ssh.sudoCommand(String.format("md5sum %s", SshCmdHelper.shellQuote(destFilePath)));
                 SshResult ret = ssh.run();
                 if (ret.getReturnCode() != 0) {
                     logger.warn(String.format("exec ssh command failed, return code: %d, stdout: %s, stderr: %s",
@@ -59,12 +61,34 @@ public class SshFileMd5Checker implements AnsibleChecker {
                 ssh.reset();
 
                 String destMd5 =  ret.getStdout().split(" ")[0];
-                ShellResult sret = ShellUtils.runAndReturn(String.format("md5sum %s", sourceFilePath));
+                ShellResult sret = ShellUtils.runAndReturn(String.format("md5sum %s", SshCmdHelper.shellQuote(sourceFilePath)));
                 sret.raiseExceptionIfFail();
                 String srcMd5 = sret.getStdout().split(" ")[0];
                 if (!destMd5.equals(srcMd5)) {
                     logger.debug(String.format("file MD5 changed, src[%s, md5:%s] dest[%s, md5: %s]", sourceFilePath,
                             srcMd5, destFilePath, destMd5));
+                    return true;
+                }
+            }
+
+            for (SrcDestPair b : srcDestMd5ContentPairs) {
+                String sourceFilePath = b.srcPath;
+                String destFilePath = b.destPath;
+
+                ssh.sudoCommand(String.format("cat %s", SshCmdHelper.shellQuote(destFilePath)));
+                SshResult ret = ssh.run();
+                if (ret.getReturnCode() != 0) {
+                    logger.warn(String.format("exec ssh command failed, return code: %d, stdout: %s, stderr: %s",
+                            ret.getReturnCode(), ret.getStdout(), ret.getStderr()));
+                    return true;
+                }
+                ssh.reset();
+
+                String destMd5 = ret.getStdout().trim();
+                String srcMd5 = getLocalFileMd5(sourceFilePath);
+                if (!isMd5ContentMatched(destMd5, srcMd5)) {
+                    logger.debug(String.format("installed marker MD5 changed, src[%s, md5:%s] marker[%s, md5:%s]",
+                            sourceFilePath, srcMd5, destFilePath, destMd5));
                     return true;
                 }
             }
@@ -75,9 +99,22 @@ public class SshFileMd5Checker implements AnsibleChecker {
         return false;
     }
 
+    private String getLocalFileMd5(String sourceFilePath) {
+        ShellResult sret = ShellUtils.runAndReturn(String.format("md5sum %s", SshCmdHelper.shellQuote(sourceFilePath)));
+        sret.raiseExceptionIfFail();
+        return sret.getStdout().split(" ")[0];
+    }
+
+    public static boolean isMd5ContentMatched(String actual, String expected) {
+        return actual != null && expected != null && actual.trim().equals(expected.trim());
+    }
+
     @Override
     public void deleteDestFile() {
-        for (SrcDestPair b : srcDestPairs) {
+        List<SrcDestPair> allPairs = new ArrayList<SrcDestPair>();
+        allPairs.addAll(srcDestPairs);
+        allPairs.addAll(srcDestMd5ContentPairs);
+        for (SrcDestPair b : allPairs) {
             String destFilePath = b.destPath;
             if (!destFilePath.contains("zstack")) {
                 logger.debug(String.format("skip delete dest file[%s] which is not zstack file", destFilePath));
@@ -87,13 +124,17 @@ public class SshFileMd5Checker implements AnsibleChecker {
             Ssh ssh = new Ssh();
             ssh.setUsername(username).setPrivateKey(privateKey)
                     .setPassword(password).setPort(sshPort)
-                    .setHostname(targetIp).sudoCommand(String.format("rm -f %s", destFilePath)).runAndClose();
+                    .setHostname(targetIp).sudoCommand(String.format("rm -f %s", SshCmdHelper.shellQuote(destFilePath))).runAndClose();
             logger.debug(String.format("delete dest file[%s]", destFilePath));
         }
     }
 
     public void addSrcDestPair(String srcFilePath, String destFilePath) {
         srcDestPairs.add(new SrcDestPair(srcFilePath, destFilePath));
+    }
+
+    public void addSrcDestMd5ContentPair(String srcFilePath, String destFilePath) {
+        srcDestMd5ContentPairs.add(new SrcDestPair(srcFilePath, destFilePath));
     }
 
     public String getUsername() {

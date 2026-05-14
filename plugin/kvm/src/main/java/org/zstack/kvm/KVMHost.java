@@ -5796,6 +5796,7 @@ public class KVMHost extends HostBase implements Host {
                         checker.setTargetIp(getSelf().getManagementIp());
                         checker.addSrcDestPair(SshFileMd5Checker.ZSTACKLIB_SRC_PATH, String.format("/var/lib/zstack/kvm/package/%s", AnsibleGlobalProperty.ZSTACKLIB_PACKAGE_NAME));
                         checker.addSrcDestPair(srcPath, destPath);
+                        checker.addSrcDestMd5ContentPair(srcPath, "/var/lib/zstack/kvm/package/.kvmagent-installed-md5");
 
                         SshFileExistChecker dhcpChecker = new SshFileExistChecker();
                         dhcpChecker.setUsername(getSelf().getUsername());
