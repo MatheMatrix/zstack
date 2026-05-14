@@ -27,7 +27,7 @@ import java.util.Map;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
-public class VmInstanceDeviceManagerImpl implements VmInstanceDeviceManager {
+public class VmInstanceDeviceManagerImpl implements VmInstanceDeviceManager, VmJustBeforeDeleteFromDbExtensionPoint {
     private static final CLogger logger = Utils.getLogger(VmInstanceDeviceManagerImpl.class);
     @Autowired
     private DatabaseFacade dbf;
@@ -338,6 +338,11 @@ public class VmInstanceDeviceManagerImpl implements VmInstanceDeviceManager {
                 .eq(VmInstanceDeviceAddressArchiveVO_.vmInstanceUuid, vmInstanceUuid)
                 .eq(VmInstanceDeviceAddressArchiveVO_.metadataClass, metadataClass)
                 .list();
+    }
+
+    @Override
+    public void vmJustBeforeDeleteFromDb(VmInstanceInventory inv) {
+        deleteVmDeviceAddress(inv.getUuid());
     }
 
     private boolean vmExists(String vmInstanceUuid) {

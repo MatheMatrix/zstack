@@ -200,7 +200,11 @@
         </zstack:plugin>
     </bean>
 
-    <bean id="VmInstanceDeviceManager" class="org.zstack.compute.vm.devices.VmInstanceDeviceManagerImpl"/>
+    <bean id="VmInstanceDeviceManager" class="org.zstack.compute.vm.devices.VmInstanceDeviceManagerImpl">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.vm.VmJustBeforeDeleteFromDbExtensionPoint"/>
+        </zstack:plugin>
+    </bean>
 
     <util:list id="SupportNicDriverTypes">
         <value>virtio</value>
