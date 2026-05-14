@@ -7179,25 +7179,30 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void handle(final ErrorCode errCode, Map data) {
                 String destHostUuid = spec.getDestHost().getUuid().equals(lastHostUuid) ? null : spec.getDestHost().getUuid();
-                extEmitter.failedToMigrateVm(VmInstanceInventory.valueOf(self), destHostUuid, errCode, new NoErrorCompletion(completion) {
+                rollbackFailedMigrateVm(originState, destHostUuid, errCode, completion);
+            }
+        }).start();
+    }
+
+    private void rollbackFailedMigrateVm(final VmInstanceState originState, final String destHostUuid,
+                                         final ErrorCode errCode, final Completion completion) {
+        extEmitter.failedToMigrateVm(VmInstanceInventory.valueOf(self), destHostUuid, errCode, new NoErrorCompletion(completion) {
+            @Override
+            public void done() {
+                if (!HostErrors.FAILED_TO_MIGRATE_VM_ON_HYPERVISOR.isEqual(errCode.getCode())) {
+                    changeVmStateInDb(originState.getDrivenEvent());
+                    completion.fail(errCode);
+                    return;
+                }
+
+                checkState(originalCopy.getHostUuid(), new NoErrorCompletion(completion) {
                     @Override
                     public void done() {
-                        if (!HostErrors.FAILED_TO_MIGRATE_VM_ON_HYPERVISOR.isEqual(errCode.getCode())) {
-                            changeVmStateInDb(originState.getDrivenEvent());
-                            completion.fail(errCode);
-                            return;
-                        }
-
-                        checkState(originalCopy.getHostUuid(), new NoErrorCompletion(completion) {
-                            @Override
-                            public void done() {
-                                completion.fail(errCode);
-                            }
-                        });
+                        completion.fail(errCode);
                     }
                 });
             }
-        }).start();
+        });
     }
 
     protected void handle(CancelMigrateVmMsg msg) {
@@ -9272,4 +9277,3 @@ public class VmInstanceBase extends AbstractVmInstance {
         });
     }
 }
-
