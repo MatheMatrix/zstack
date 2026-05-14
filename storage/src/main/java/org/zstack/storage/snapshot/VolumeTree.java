@@ -361,12 +361,19 @@ public class VolumeTree {
         return aliveChain.stream().map(VolumeSnapshotInventory::getUuid).collect(Collectors.toList());
     }
 
+    public boolean isOnAliveChain(String snapshotUuid) {
+        return current && getAliveChainSnapshotUuids().contains(snapshotUuid);
+    }
+
+    public static boolean isHypervisorOperation(VmInstanceState vmState) {
+        return vmState == VmInstanceState.Running || vmState == VmInstanceState.Paused;
+    }
+
     public DeleteVolumeSnapshotDirection resolveDirection(String targetSnapshotUuid, String childSnapshotUuid, String initialDirection,
                                                           boolean targetSnapshotIsLatest, VmInstanceState vmState) {
-        boolean online = (vmState == VmInstanceState.Running || vmState == VmInstanceState.Paused)
-                && getAliveChainSnapshotUuids().contains(targetSnapshotUuid) && getAliveChainSnapshotUuids().contains(childSnapshotUuid);
-
-        boolean shouldUseCommitStrategy = current && !targetSnapshotIsLatest && online;
+        boolean targetOnAliveChain = isOnAliveChain(targetSnapshotUuid);
+        boolean childOnAliveChain = isOnAliveChain(childSnapshotUuid);
+        boolean shouldUseCommitStrategy = current && !targetSnapshotIsLatest && targetOnAliveChain && childOnAliveChain;
 
         if (Objects.equals(initialDirection, DeleteVolumeSnapshotDirection.Pull.toString()) && shouldUseCommitStrategy) {
             throw new IllegalArgumentException("the snapshot will be deleted by block 'commit', but the direction is 'pull', " +
@@ -387,8 +394,10 @@ public class VolumeTree {
     }
 
     public boolean isOnline(boolean treeIsCurrent, String targetSnapshotUuid, String childSnapshotUuid, VmInstanceState vmState) {
-        return treeIsCurrent && (vmState == VmInstanceState.Running || vmState == VmInstanceState.Paused)
-                && getAliveChainSnapshotUuids().contains(targetSnapshotUuid) && getAliveChainSnapshotUuids().contains(childSnapshotUuid);
+        return treeIsCurrent
+                && isHypervisorOperation(vmState)
+                && getAliveChainSnapshotUuids().contains(targetSnapshotUuid)
+                && getAliveChainSnapshotUuids().contains(childSnapshotUuid);
     }
 
     // TODO(clone) : When both chain cloning and single-node snapshot deletion are enabled,
