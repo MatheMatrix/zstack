@@ -884,8 +884,8 @@ public class VolumeSnapshotTreeBase {
                     return;
                 }
 
-                VolumeTree.VolumeSnapshotLeaf onlineChild = children.stream()
-                        .filter(child -> volumeTree.isOnline(current, currentRoot.getUuid(), child.getUuid(), vmState))
+                VolumeTree.VolumeSnapshotLeaf aliveChild = children.stream()
+                        .filter(child -> volumeTree.isOnAliveChain(child.getUuid()))
                         .findFirst().orElse(null);
 
                 Completion comp = new Completion(completion) {
@@ -910,7 +910,7 @@ public class VolumeSnapshotTreeBase {
                         pull(child, volumeTree, online, comp);
                     }
                 } else {
-                    if (onlineChild != null && Objects.equals(child.getUuid(), onlineChild.getUuid())) {
+                    if (aliveChild != null && Objects.equals(child.getUuid(), aliveChild.getUuid())) {
                         child = children.get(1);
                     }
                     boolean online = volumeTree.isOnline(current, currentRoot.getUuid(), child.getUuid(), vmState);
