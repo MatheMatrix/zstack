@@ -125,6 +125,7 @@ public class SdnControllerCascadeExtension extends AbstractAsyncCascadeExtension
                     if (!reply.isSuccess()) {
                         logger.debug(String.format("delete sdn controller failed, %s",
                                 reply.getError().getDetails()));
+                        wcomp.addError(reply.getError());
                     }
                     wcomp.done();
                 }
@@ -132,6 +133,11 @@ public class SdnControllerCascadeExtension extends AbstractAsyncCascadeExtension
         }).run(new WhileDoneCompletion(completion) {
             @Override
             public void done(ErrorCodeList errorCodeList) {
+                if (!errorCodeList.getCauses().isEmpty()) {
+                    completion.fail(errorCodeList.getCauses().get(0));
+                    return;
+                }
+
                 dbf.removeByPrimaryKeys(sdnControllers.stream().map(SdnControllerInventory::getUuid).collect(Collectors.toList()), SdnControllerVO.class);
                 completion.success();
             }
