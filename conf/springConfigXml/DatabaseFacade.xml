@@ -21,6 +21,13 @@
     <bean id="DbFacadeDataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
         <property name="driverClass" value="com.mysql.jdbc.Driver"/>
         <property name="jdbcUrl" value="${DbFacadeDataSource.jdbcUrl:jdbc:mysql://localhost:3306/zstack}"/>
+        <property name="properties">
+            <props>
+                <prop key="connectTimeout">${DB.connectTimeout:5000}</prop>
+                <prop key="socketTimeout">${DB.socketTimeout:60000}</prop>
+                <prop key="tcpKeepAlive">${DB.tcpKeepAlive:true}</prop>
+            </props>
+        </property>
         <property name="user" value="${DbFacadeDataSource.user:root}"/>
         <property name="password" value="${DbFacadeDataSource.password:}"/>
         <property name="initialPoolSize" value="10"/>
@@ -43,6 +50,13 @@
     <bean id="ExtraDataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
         <property name="driverClass" value="com.mysql.jdbc.Driver"/>
         <property name="jdbcUrl" value="${DbFacadeDataSource.jdbcUrl:jdbc:mysql://localhost:3306/zstack}"/>
+        <property name="properties">
+            <props>
+                <prop key="connectTimeout">${DB.connectTimeout:5000}</prop>
+                <prop key="socketTimeout">${DB.socketTimeout:60000}</prop>
+                <prop key="tcpKeepAlive">${DB.tcpKeepAlive:true}</prop>
+            </props>
+        </property>
         <property name="user" value="${DbFacadeDataSource.user:root}"/>
         <property name="password" value="${DbFacadeDataSource.password:}"/>
         <property name="maxPoolSize" value="5"/>

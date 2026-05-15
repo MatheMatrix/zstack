@@ -22,6 +22,12 @@ public class DatabaseGlobalProperty {
     public static String DbIdleConnectionTestPeriod;
     @GlobalProperty(name="DB.maxIdleTime", defaultValue = "60")
     public static String DbMaxIdleTime;
+    @GlobalProperty(name="DB.connectTimeout", defaultValue = "5000")
+    public static String DbConnectTimeout;
+    @GlobalProperty(name="DB.socketTimeout", defaultValue = "60000")
+    public static String DbSocketTimeout;
+    @GlobalProperty(name="DB.tcpKeepAlive", defaultValue = "true")
+    public static String DbTcpKeepAlive;
     @GlobalProperty(name="DB.glock.waitTimeout", defaultValue = "28800")
     public static Long GLockWaitTimeout;
     @GlobalProperty(name="RESTFacade.hostname")
