@@ -27,11 +27,14 @@ import org.zstack.kvm.KVMHostFactory;
 import org.zstack.storage.ceph.CephConstants;
 import org.zstack.storage.primary.CheckHostStorageConnectionMsg;
 import org.zstack.utils.CollectionUtils;
+import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
+import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.TypedQuery;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.zstack.utils.CollectionDSL.list;
 
@@ -39,6 +42,7 @@ import static org.zstack.utils.CollectionDSL.list;
  * Created by frank on 8/17/2015.
  */
 public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConnectionReestablishExtensionPoint {
+    private static final CLogger logger = Utils.getLogger(CephKvmExtension.class);
     @Autowired
     private CloudBus bus;
     @Autowired
@@ -99,6 +103,7 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
                 CreateKvmSecretMsg msg = new CreateKvmSecretMsg();
                 msg.setPrimaryStorageUuid(puuid);
                 msg.setHostUuids(list(hostUuid));
+                msg.setTimeout(TimeUnit.SECONDS.toMillis(30));
                 bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, puuid);
                 return msg;
             }
@@ -162,6 +167,7 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
                 CheckHostStorageConnectionMsg msg = new CheckHostStorageConnectionMsg();
                 msg.setPrimaryStorageUuid(puuid);
                 msg.setHostUuids(list(hostUuid));
+                msg.setTimeout(TimeUnit.SECONDS.toMillis(30));
                 bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, puuid);
                 return msg;
             }
@@ -182,10 +188,11 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    completion.fail(errorCodeList.getCauses().get(0));
-                } else {
-                    completion.success();
+                    logger.warn(String.format("ceph storage check failed for host[uuid:%s], " +
+                            "PS-host status already updated to Disconnected, continue connecting: %s",
+                            hostUuid, errorCodeList.getCauses()));
                 }
+                completion.success();
             }
         });
     }
@@ -204,7 +211,9 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
 
                     @Override
                     public void fail(ErrorCode errorCode) {
-                        trigger.fail(errorCode);
+                        logger.warn(String.format("ceph storage check failed for host[uuid:%s], continue connecting: %s",
+                                context.getInventory().getUuid(), errorCode));
+                        trigger.next();
                     }
                 });
             }
@@ -219,13 +228,17 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
 
                     @Override
                     public void fail(ErrorCode errorCode) {
-                        trigger.fail(errorCode);
+                        logger.warn(String.format("ceph secret creation failed for host[uuid:%s], continue connecting: %s",
+                                context.getInventory().getUuid(), errorCode));
+                        trigger.next();
                     }
                 });
             }
         }).error(new FlowErrorHandler(completion) {
             @Override
             public void handle(ErrorCode errCode, Map data) {
+                logger.error(String.format("unexpected error in ceph prep flow for host[uuid:%s], failing connect: %s",
+                        context.getInventory().getUuid(), errCode));
                 completion.fail(errCode);
             }
         }).done(new FlowDoneHandler(completion) {
