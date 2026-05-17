@@ -14,6 +14,8 @@ import org.zstack.header.host.CheckVmStateOnHypervisorMsg;
 import org.zstack.header.host.CheckVmStateOnHypervisorReply;
 import org.zstack.header.host.HostConstant;
 import org.zstack.header.host.HostErrors;
+import org.zstack.header.host.HostStatus;
+import org.zstack.header.host.HostVO;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.vm.DestroyVmOnHypervisorMsg;
 import org.zstack.header.vm.VmInstanceConstant;
@@ -21,6 +23,8 @@ import org.zstack.header.vm.VmInstanceSpec;
 import org.zstack.header.vm.VmInstanceState;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
+
+import static org.zstack.core.Platform.err;
 
 import java.util.Collections;
 import java.util.Map;
@@ -77,6 +81,14 @@ public class VmDestroyOnHypervisorFlow extends NoRollbackFlow {
 
         if (VmInstanceState.Stopped.toString().equals(spec.getVmInventory().getState())) {
             chain.next();
+            return;
+        }
+
+        HostVO host = dbf.findByUuid(hostUuid, HostVO.class);
+        if (host != null && host.getStatus() == HostStatus.Disconnected) {
+            chain.fail(err(HostErrors.HOST_IS_DISCONNECTED,
+                    "host[uuid:%s] is Disconnected, cannot destroy vm[uuid:%s] on it",
+                    hostUuid, spec.getVmInventory().getUuid()));
             return;
         }
 
