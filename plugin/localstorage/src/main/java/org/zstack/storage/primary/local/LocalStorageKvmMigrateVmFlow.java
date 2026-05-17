@@ -54,6 +54,7 @@ import org.zstack.utils.logging.CLogger;
 import javax.persistence.TypedQuery;
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Callable;
 
 import static org.zstack.core.Platform.operr;
@@ -447,9 +448,15 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
                                     @Override
                                     public void run(MessageReply reply) {
                                         if (!reply.isSuccess()) {
-                                            //TODO add GC
-                                            logger.warn(String.format("failed to delete %s on the host[uuid:%s] of local storage[uuid:%s], %s",
+                                            logger.warn(String.format("failed to delete %s on the host[uuid:%s] of local storage[uuid:%s], %s; submitting GC",
                                                     backingImage.path, dstHostUuid, ref.getPrimaryStorageUuid(), reply.getError()));
+                                            LocalStorageDeleteBitsGC gc = new LocalStorageDeleteBitsGC();
+                                            gc.NAME = String.format("gc-delete-bits-%s-on-host-%s", backingImage.path, dstHostUuid);
+                                            gc.primaryStorageUuid = ref.getPrimaryStorageUuid();
+                                            gc.hostUuid = dstHostUuid;
+                                            gc.installPath = backingImage.path;
+                                            gc.isDir = false;
+                                            gc.submit();
                                         }
                                     }
                                 });
@@ -790,9 +797,15 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
                                     for (MessageReply r : replies) {
                                         VolumeSnapshotInventory sp = allSnapshots.get(replies.indexOf(r));
                                         if (!r.isSuccess()) {
-                                            //TODO add GC
-                                            logger.warn(String.format("failed to delete the snapshot[%s] on the local primary storage[uuid:%s], %s",
+                                            logger.warn(String.format("failed to delete the snapshot[%s] on the local primary storage[uuid:%s], %s; submitting GC",
                                                     sp.getPrimaryStorageInstallPath(), ref.getPrimaryStorageUuid(), r.getError()));
+                                            LocalStorageDeleteBitsGC gc = new LocalStorageDeleteBitsGC();
+                                            gc.NAME = String.format("gc-delete-snapshot-%s-on-host-%s", sp.getPrimaryStorageInstallPath(), srcHostUuid);
+                                            gc.primaryStorageUuid = ref.getPrimaryStorageUuid();
+                                            gc.hostUuid = srcHostUuid;
+                                            gc.installPath = sp.getPrimaryStorageInstallPath();
+                                            gc.isDir = false;
+                                            gc.submit();
                                         }
                                     }
                                 }
@@ -825,12 +838,18 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
                             public void run(List<MessageReply> replies) {
                                 for (MessageReply r : replies) {
                                     if (!r.isSuccess()) {
-                                        //TODO: add GC
                                         VolumeInventory vol = volumesOnLocalStorage.get(replies.indexOf(r));
                                         logger.warn(String.format("failed to delete the volume[%s] in the host[uuid:%s] for the local" +
-                                                        " primary storage[uuid:%s] during after the vm[uuid:%s] migrated to the host[uuid:%s, ip:%s], %s",
+                                                        " primary storage[uuid:%s] during after the vm[uuid:%s] migrated to the host[uuid:%s, ip:%s], %s; submitting GC",
                                                 vol.getUuid(), srcHostUuid, ref.getPrimaryStorageUuid(), spec.getVmInventory().getUuid(), dstHostUuid,
                                                 spec.getDestHost().getManagementIp(), r.getError()));
+                                        LocalStorageDeleteBitsGC gc = new LocalStorageDeleteBitsGC();
+                                        gc.NAME = String.format("gc-delete-volume-%s-on-host-%s", vol.getUuid(), srcHostUuid);
+                                        gc.primaryStorageUuid = ref.getPrimaryStorageUuid();
+                                        gc.hostUuid = srcHostUuid;
+                                        gc.installPath = vol.getInstallPath();
+                                        gc.isDir = false;
+                                        gc.submit();
                                     }
                                 }
                             }
@@ -853,10 +872,16 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
                         bus.send(msg, new CloudBusCallBack(null) {
                             @Override
                             public void run(MessageReply reply) {
-                                //TODO
                                 if (!reply.isSuccess()) {
                                     logger.warn(String.format("failed to return capacity[%s] to the host[uuid:%s] of the local" +
-                                            " primary storage[uuid:%s], %s", requiredSize, srcHostUuid, ref.getPrimaryStorageUuid(), reply.getError()));
+                                            " primary storage[uuid:%s], %s; submitting GC", requiredSize, srcHostUuid, ref.getPrimaryStorageUuid(), reply.getError()));
+                                    LocalStorageReturnHostCapacityGC gc = new LocalStorageReturnHostCapacityGC();
+                                    gc.NAME = String.format("gc-return-capacity-%s-on-host-%s", requiredSize, srcHostUuid);
+                                    gc.primaryStorageUuid = ref.getPrimaryStorageUuid();
+                                    gc.hostUuid = srcHostUuid;
+                                    gc.size = requiredSize;
+                                    gc.noOverProvisioning = false;
+                                    gc.deduplicateSubmit(60L, TimeUnit.SECONDS);
                                 }
                             }
                         });
