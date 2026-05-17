@@ -360,6 +360,19 @@ public class SMPPrimaryStorageFactory implements PrimaryStorageFactory, CreateTe
             return;
         }
 
+        new SQLBatch(){
+            @Override
+            protected void scripts() {
+                List<String> huuids = Q.New(HostVO.class).select(HostVO_.uuid)
+                        .eq(HostVO_.clusterUuid, clusterUuid)
+                        .listValues();
+                SQL.New(PrimaryStorageHostRefVO.class)
+                        .eq(PrimaryStorageHostRefVO_.primaryStorageUuid, inventory.getUuid())
+                        .in(PrimaryStorageHostRefVO_.hostUuid, huuids)
+                        .hardDelete();
+            }
+        }.execute();
+
         PrimaryStorageVO vo = dbf.findByUuid(inventory.getUuid(), PrimaryStorageVO.class);
         if(null == vo){
             logger.warn(String.format("run afterRecalculatePrimaryStorageCapacity fail, not find ps[%s] db record", inventory.getUuid()));

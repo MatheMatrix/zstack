@@ -22,6 +22,7 @@ import org.zstack.core.cloudbus.EventFacade;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
+import org.zstack.core.db.SQL;
 import org.zstack.core.db.SQLBatch;
 import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
@@ -1287,6 +1288,26 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
     @Override
     public void beforeRecalculatePrimaryStorageCapacity(RecalculatePrimaryStorageCapacityStruct struct) {
 
+    }
+
+    @Override
+    public void afterDetachPrimaryStorage(PrimaryStorageInventory inventory, String clusterUuid) {
+        if (!inventory.getType().equals(CephConstants.CEPH_PRIMARY_STORAGE_TYPE)) {
+            return;
+        }
+
+        new SQLBatch(){
+            @Override
+            protected void scripts() {
+                List<String> huuids = Q.New(HostVO.class).select(HostVO_.uuid)
+                        .eq(HostVO_.clusterUuid, clusterUuid)
+                        .listValues();
+                SQL.New(PrimaryStorageHostRefVO.class)
+                        .eq(PrimaryStorageHostRefVO_.primaryStorageUuid, inventory.getUuid())
+                        .in(PrimaryStorageHostRefVO_.hostUuid, huuids)
+                        .hardDelete();
+            }
+        }.execute();
     }
 
     private String getPoolName(String customPoolName, String defaultPoolName, long volumeSize, String poolType, String psUuid) {

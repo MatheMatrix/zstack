@@ -1293,6 +1293,16 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
         }
         List<String> hostUuids = Q.New(HostVO.class).select(HostVO_.uuid).eq(HostVO_.clusterUuid, clusterUuid).listValues();
 
+        new SQLBatch(){
+            @Override
+            protected void scripts() {
+                SQL.New(PrimaryStorageHostRefVO.class)
+                        .eq(PrimaryStorageHostRefVO_.primaryStorageUuid, inventory.getUuid())
+                        .in(PrimaryStorageHostRefVO_.hostUuid, hostUuids)
+                        .hardDelete();
+            }
+        }.execute();
+
         for (String hostUuid: hostUuids) {
             LocalStorageSystemTags.LOCALSTORAGE_HOST_INITIALIZED.deleteInherentTag(hostUuid,
                     LocalStorageSystemTags.LOCALSTORAGE_HOST_INITIALIZED.instantiateTag(map(

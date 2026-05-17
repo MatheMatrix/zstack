@@ -11,4 +11,6 @@ public interface PrimaryStorageFactory {
     PrimaryStorageInventory getInventory(String uuid);
 
     void validateStorageProtocol(String protocol);
+
+    default void afterDetachPrimaryStorage(PrimaryStorageInventory inv, String clusterUuid) {}
 }
