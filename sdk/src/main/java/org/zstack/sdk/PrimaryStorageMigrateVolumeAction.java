@@ -25,8 +25,11 @@ public class PrimaryStorageMigrateVolumeAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String volumeUuid;
+
+    @Param(required = false)
+    public java.util.List<String> volumeUuids;
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String dstPrimaryStorageUuid;
