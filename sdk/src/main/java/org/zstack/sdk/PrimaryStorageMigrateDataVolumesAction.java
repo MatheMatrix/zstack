@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class PrimaryStorageMigrateVolumeAction extends AbstractAction {
+public class PrimaryStorageMigrateDataVolumesAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class PrimaryStorageMigrateVolumeAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.PrimaryStorageMigrateVolumeResult value;
+        public org.zstack.sdk.PrimaryStorageMigrateDataVolumesResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -26,13 +26,10 @@ public class PrimaryStorageMigrateVolumeAction extends AbstractAction {
     }
 
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String volumeUuid;
+    public java.lang.String vmInstanceUuid;
 
-    @Param(required = false)
-    public java.util.List<String> volumeUuids;
-
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String dstPrimaryStorageUuid;
+    @Param(required = true, nonempty = true, nullElements = false, emptyString = true, noTrim = false)
+    public java.util.List volumeMigrationSpecs;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -66,8 +63,8 @@ public class PrimaryStorageMigrateVolumeAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.PrimaryStorageMigrateVolumeResult value = res.getResult(org.zstack.sdk.PrimaryStorageMigrateVolumeResult.class);
-        ret.value = value == null ? new org.zstack.sdk.PrimaryStorageMigrateVolumeResult() : value; 
+        org.zstack.sdk.PrimaryStorageMigrateDataVolumesResult value = res.getResult(org.zstack.sdk.PrimaryStorageMigrateDataVolumesResult.class);
+        ret.value = value == null ? new org.zstack.sdk.PrimaryStorageMigrateDataVolumesResult() : value; 
 
         return ret;
     }
@@ -97,10 +94,10 @@ public class PrimaryStorageMigrateVolumeAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "PUT";
-        info.path = "/primary-storage/volumes/{volumeUuid}/actions";
+        info.path = "/primary-storage/data-volumes/actions";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "primaryStorageMigrateVolume";
+        info.parameterName = "primaryStorageMigrateDataVolumes";
         return info;
     }
 
