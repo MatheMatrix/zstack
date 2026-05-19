@@ -4869,7 +4869,7 @@ public class KVMHost extends HostBase implements Host {
         CheckPhysicalNetworkInterfaceCmd cmd = new CheckPhysicalNetworkInterfaceCmd();
         msg.getPhysicalInterfaces().forEach(cmd::addInterfaceName);
         BatchCheckNetworkPhysicalInterfaceReply reply = new BatchCheckNetworkPhysicalInterfaceReply();
-        CheckPhysicalNetworkInterfaceResponse rsp = restf.syncJsonPost(checkPhysicalNetworkInterfacePath, cmd, CheckPhysicalNetworkInterfaceResponse.class);
+        CheckPhysicalNetworkInterfaceResponse rsp = restf.syncJsonPost(checkPhysicalNetworkInterfacePath, cmd, CheckPhysicalNetworkInterfaceResponse.class, TimeUnit.SECONDS, 30);
         if (!rsp.isSuccess()) {
             if (rsp.getFailedInterfaceNames().isEmpty()) {
                 reply.setError(operr(ORG_ZSTACK_KVM_10085, "operation error, because:%s", rsp.getError()));
@@ -4887,7 +4887,7 @@ public class KVMHost extends HostBase implements Host {
         CheckPhysicalNetworkInterfaceCmd cmd = new CheckPhysicalNetworkInterfaceCmd();
         cmd.addInterfaceName(msg.getPhysicalInterface());
         CheckNetworkPhysicalInterfaceReply reply = new CheckNetworkPhysicalInterfaceReply();
-        CheckPhysicalNetworkInterfaceResponse rsp = restf.syncJsonPost(checkPhysicalNetworkInterfacePath, cmd, CheckPhysicalNetworkInterfaceResponse.class);
+        CheckPhysicalNetworkInterfaceResponse rsp = restf.syncJsonPost(checkPhysicalNetworkInterfacePath, cmd, CheckPhysicalNetworkInterfaceResponse.class, TimeUnit.SECONDS, 30);
         if (!rsp.isSuccess()) {
             if (rsp.getFailedInterfaceNames().isEmpty()) {
                 reply.setError(operr(ORG_ZSTACK_KVM_10087, "operation error, because:%s", rsp.getError()));
@@ -5241,7 +5241,7 @@ public class KVMHost extends HostBase implements Host {
             if (HostSystemTags.PAGE_TABLE_EXTENSION_DISABLED.hasTag(self.getUuid(), HostVO.class) || !KVMSystemTags.EPT_CPU_FLAG.hasTag(self.getUuid())) {
                 cmd.setPageTableExtensionDisabled(true);
             }
-            ConnectResponse rsp = restf.syncJsonPost(connectPath, cmd, ConnectResponse.class);
+            ConnectResponse rsp = restf.syncJsonPost(connectPath, cmd, ConnectResponse.class, TimeUnit.SECONDS, 60);
             if (!rsp.isSuccess()) {
                 errCode = operr(ORG_ZSTACK_KVM_10093, "unable to connect to kvm host[uuid:%s, ip:%s, url:%s], because %s",
                         self.getUuid(), self.getManagementIp(), connectPath, rsp.getError());

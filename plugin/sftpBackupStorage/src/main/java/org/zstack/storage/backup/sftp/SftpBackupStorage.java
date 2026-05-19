@@ -38,6 +38,7 @@ import org.zstack.utils.ssh.SshException;
 import javax.persistence.Query;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.concurrent.TimeUnit;
 import java.util.List;
 
 import static org.zstack.core.Platform.err;
@@ -338,7 +339,7 @@ public class SftpBackupStorage extends BackupStorageBase {
                 cmd.setUuid(self.getUuid());
                 cmd.setStoragePath(getSelf().getUrl());
                 cmd.setSendCommandUrl(restf.getSendCommandUrl());
-                ConnectResponse rsp = restf.syncJsonPost(url, cmd, ConnectResponse.class);
+                ConnectResponse rsp = restf.syncJsonPost(url, cmd, ConnectResponse.class, TimeUnit.SECONDS, 60);
                 if (!rsp.isSuccess()) {
                     ErrorCode err = operr(ORG_ZSTACK_STORAGE_BACKUP_SFTP_10006, "unable to connect to SimpleHttpBackupStorage[url:%s], because %s", url, rsp.getError());
                     complete.fail(err);
