@@ -1099,6 +1099,7 @@ public abstract class HostBase extends AbstractHost {
             creator.setTagByTokens(Collections.singletonMap(token, connectedTime));
             creator.inherent = false;
             creator.recreate = false;
+            creator.ignoreIfExisting = true;
             creator.create();
             return;
         }
