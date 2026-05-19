@@ -955,7 +955,7 @@ public abstract class HostBase extends AbstractHost {
         thdf.chainSubmit(new ChainTask(msg) {
             @Override
             public String getSyncSignature() {
-                return "do-ping-host";
+                return String.format("do-ping-host-%s", msg.getHostUuid());
             }
 
             @Override
