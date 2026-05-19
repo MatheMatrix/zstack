@@ -58,9 +58,14 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
             return;
         }
 
-        // skip Ceph storage operations if cluster is not Enabled (ZSTAC-80275)
+        // skip Ceph secret creation when cluster is missing or not Enabled
         ClusterVO cluster = dbf.findByUuid(inv.getClusterUuid(), ClusterVO.class);
-        if (cluster != null && cluster.getState() != ClusterState.Enabled) {
+        if (cluster == null) {
+            logger.warn(String.format("skip Ceph secret creation on host[uuid:%s] because cluster[uuid:%s] not found",
+                    inv.getUuid(), inv.getClusterUuid()));
+            return;
+        }
+        if (cluster.getState() != ClusterState.Enabled) {
             logger.info(String.format("skip Ceph secret creation on host[uuid:%s] because cluster[uuid:%s] is %s",
                     inv.getUuid(), inv.getClusterUuid(), cluster.getState()));
             return;
