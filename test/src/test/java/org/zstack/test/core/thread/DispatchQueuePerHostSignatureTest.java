@@ -17,8 +17,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-public class TestDispatchQueuePerHostSignature {
-    private static final CLogger logger = Utils.getLogger(TestDispatchQueuePerHostSignature.class);
+public class DispatchQueuePerHostSignatureTest {
+    private static final CLogger logger = Utils.getLogger(DispatchQueuePerHostSignatureTest.class);
     ComponentLoader loader;
     ThreadFacade thdf;
 
