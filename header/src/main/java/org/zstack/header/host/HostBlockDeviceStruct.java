@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 public class HostBlockDeviceStruct implements Serializable {
+    /** Device path reported by lsblk -p NAME, for example /dev/sdb. */
     private String name;
     private String wwid;
     private String vendor;
@@ -12,6 +13,7 @@ public class HostBlockDeviceStruct implements Serializable {
     private String serial;
     private String hctl;
     private String type;
+    /** Udev by-path symlink basename, for example pci-0000:00:05.0-scsi-0:0:0:1. */
     private String path;
     private Long size;
     private String source;
