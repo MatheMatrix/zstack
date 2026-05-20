@@ -6336,6 +6336,8 @@ public class KVMHost extends HostBase implements Host {
                 createTagWithoutNonValue(KVMSystemTags.EPT_CPU_FLAG, KVMSystemTags.EPT_CPU_FLAG_TOKEN, ret.getEptFlag(), false);
                 createTagWithoutNonValue(KVMSystemTags.CPU_MODEL_NAME, KVMSystemTags.CPU_MODEL_NAME_TOKEN, ret.getCpuModelName(), false);
 
+                refreshIothreadVqMappingCapability(ret);
+
                 if (ret.getLibvirtVersion().compareTo(KVMConstant.MIN_LIBVIRT_VIRTIO_SCSI_VERSION) >= 0) {
                     recreateNonInherentTag(KVMSystemTags.VIRTIO_SCSI);
                 }
@@ -6347,6 +6349,14 @@ public class KVMHost extends HostBase implements Host {
 
                 deleteCpuHistoryVOIfCpuModeNameChange(ret.getCpuModelName());
                 deleteCpuHistoryVOIfCpuFeatureMd5Change(ret.getCpuFeatureMd5());
+            }
+
+            private void refreshIothreadVqMappingCapability(HostFactResponse ret) {
+                if (KvmHostIothreadVqMappingCapability.supported(ret.getQemuKvmPackageVersion(), ret.getLibvirtPackageVersion())) {
+                    recreateNonInherentTag(KVMSystemTags.IOTHREAD_VQ_MAPPING);
+                } else {
+                    KVMSystemTags.IOTHREAD_VQ_MAPPING.delete(self.getUuid());
+                }
             }
         };
     }
