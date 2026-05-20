@@ -1113,10 +1113,11 @@ public class AccountManagerImpl extends AbstractService implements AccountManage
     @Override
     @Transactional
     public void postSoftDelete(Collection entityIds, Class entityClass) {
+        String resourceType = ResourceTypeMetadata.getBaseResourceTypeFromConcreteType(entityClass).getSimpleName();
         String sql = "delete from AccountResourceRefVO ref where ref.resourceUuid in (:uuids) and ref.resourceType = :resourceType";
         Query q = dbf.getEntityManager().createQuery(sql);
         q.setParameter("uuids", entityIds);
-        q.setParameter("resourceType", entityClass.getSimpleName());
+        q.setParameter("resourceType", resourceType);
         q.executeUpdate();
     }
 
