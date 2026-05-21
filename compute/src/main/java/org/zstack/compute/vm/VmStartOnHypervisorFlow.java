@@ -35,6 +35,12 @@ public class VmStartOnHypervisorFlow implements Flow {
     @Autowired
     private PluginRegistry pluginRgty;
 
+    private void fireExtensions(VmInstanceSpec spec) {
+        for (VmBeforeStartOnHypervisorExtensionPoint ext : pluginRgty.getExtensionList(VmBeforeStartOnHypervisorExtensionPoint.class)) {
+            ext.beforeStartVmOnHypervisor(spec);
+        }
+    }
+
     @Override
     public void run(final FlowTrigger chain, final Map data) {
         final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
