@@ -756,7 +756,7 @@ public class SimpleFlowChain implements FlowTrigger, FlowRollback, FlowChain, Fl
                 doneHandler.handle(this.data);
             } catch (Throwable t) {
                 logger.warn(String.format("unhandled exception when calling %s", doneHandler.getClass()), t);
-                ErrorCode err = inerr(t.getMessage());
+                ErrorCode err = inerr(ORG_ZSTACK_CORE_WORKFLOW_10001, t.getMessage());
                 if (errorHandler != null) {
                     errorHandler.handle(err, this.data);
                 }
