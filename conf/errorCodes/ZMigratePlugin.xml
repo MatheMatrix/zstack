@@ -3,7 +3,7 @@
 
     <code>
         <id>1000</id>
-        <description>ZMigrate generic error</description>
+        <description>Operation failed in ZMigrate plugin</description>
     </code>
 
     <code>
@@ -13,7 +13,7 @@
 
     <code>
         <id>1002</id>
-        <description>Failed to verify platform connection</description>
+        <description>Failed to verify platform connection from ZMigrate</description>
     </code>
 
     <code>
@@ -33,22 +33,22 @@
 
     <code>
         <id>1006</id>
-        <description>Failed to get ZMigrate management server information</description>
+        <description>Failed to get ZMigrate management server info</description>
     </code>
 
     <code>
         <id>1007</id>
-        <description>Failed to get platform information</description>
+        <description>Failed to get platform infos from ZMigrate</description>
     </code>
 
     <code>
         <id>1008</id>
-        <description>Failed to get gateway server information</description>
+        <description>Failed to get gateway server infos from ZMigrate</description>
     </code>
 
     <code>
         <id>1009</id>
-        <description>Failed to get migration jobs</description>
+        <description>Failed to get migration jobs from ZMigrate</description>
     </code>
 
     <code>
@@ -58,12 +58,12 @@
 
     <code>
         <id>1011</id>
-        <description>Failed to get encrypt key</description>
+        <description>Failed to build encrypt key for ZMigrate</description>
     </code>
 
     <code>
         <id>1012</id>
-        <description>Failed to get gateway hostname</description>
+        <description>ZMigrate management gateway is not available</description>
     </code>
 
     <code>
@@ -76,4 +76,3 @@
         <description>Failed to import activation package to ZMigrate</description>
     </code>
 </error>
-
