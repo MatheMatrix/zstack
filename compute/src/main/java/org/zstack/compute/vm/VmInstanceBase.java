@@ -236,7 +236,16 @@ public class VmInstanceBase extends AbstractVmInstance {
                         }
                     });
                 } else {
-                    changeVmStateInDb(VmInstanceStateEvent.unknown);
+                    new SQLBatch() {
+                        @Override
+                        protected void scripts() {
+                            self = findByUuid(self.getUuid(), self.getClass());
+                            self.setState(originalCopy.getState());
+                            self.setHostUuid(originalCopy.getHostUuid());
+                            self.setLastHostUuid(originalCopy.getLastHostUuid());
+                            self = merge(self);
+                        }
+                    }.execute();
                     completion.fail(errCode);
                 }
             }
