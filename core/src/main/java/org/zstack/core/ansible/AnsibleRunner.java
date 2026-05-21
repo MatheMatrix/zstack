@@ -408,9 +408,11 @@ public class AnsibleRunner {
 
             callAnsible(completion);
         } catch (SshException e) {
-            throw new OperationFailureException(operr(ORG_ZSTACK_CORE_ANSIBLE_10000, "User name or password or port number may be problematic"));
+            logger.warn(String.format("SSH connection to host[%s] failed: %s", targetIp, e.getMessage()));
+            completion.fail(operr(ORG_ZSTACK_CORE_ANSIBLE_10000, "SSH command failed on host[ip:%s]: %s", targetIp, e.getMessage()));
         } catch (Exception e) {
-            throw new CloudRuntimeException(e);
+            logger.warn(String.format("AnsibleRunner.run() unexpected exception for host[%s]", targetIp), e);
+            completion.fail(operr(ORG_ZSTACK_CORE_ANSIBLE_10000, "unexpected exception during ansible run on host[ip:%s]: %s", targetIp, e.getMessage()));
         }
 
     }
