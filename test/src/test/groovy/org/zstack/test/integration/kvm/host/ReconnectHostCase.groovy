@@ -201,6 +201,7 @@ class ReconnectHostCase extends SubCase {
                 value = originalRestartLibvirtd
                 resourceUuid = host.uuid
             }
+            env.cleanMessageHandlers()
         }
     }
 
