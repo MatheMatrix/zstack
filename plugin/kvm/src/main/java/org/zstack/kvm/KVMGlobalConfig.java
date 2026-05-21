@@ -143,10 +143,12 @@ public class KVMGlobalConfig {
     @GlobalConfigDef(defaultValue = "true", type = Boolean.class, description = "enable TLS encryption for libvirt remote connections (migration)")
     public static GlobalConfig LIBVIRT_TLS_ENABLED = new GlobalConfig(CATEGORY, "libvirt.tls.enabled");
 
-    @GlobalConfigValidation
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    @GlobalConfigDef(defaultValue = "8589934592", type = Long.class, description = "kvmagent physical memory usage alarm threshold in bytes, default 8GB")
     public static GlobalConfig KVMAGENT_PHYSICAL_MEMORY_USAGE_ALARM_THRESHOLD = new GlobalConfig(CATEGORY, "kvmagent.physicalmemory.usage.alarm.threshold");
 
-    @GlobalConfigValidation
+    @GlobalConfigValidation(numberGreaterThan = 0)
+    @GlobalConfigDef(defaultValue = "17179869184", type = Long.class, description = "kvmagent physical memory usage hard limit in bytes, default 16GB; exceeding this will trigger kvmagent restart")
     public static GlobalConfig KVMAGENT_PHYSICAL_MEMORY_USAGE_HARD_LIMIT = new GlobalConfig(CATEGORY, "kvmagent.physicalmemory.usage.hardlimit");
 
     @GlobalConfigDef(defaultValue = "0G", description = "minimum free memory size to start vm, size in GB")
