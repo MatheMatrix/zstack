@@ -6065,7 +6065,8 @@ public class KVMHost extends HostBase implements Host {
                                     // update host agent version when open grayScaleUpgrade
                                     upgradeChecker.updateAgentVersion(self.getUuid(), AnsibleConstant.KVM_AGENT_NAME, dbf.getDbVersion(), dbf.getDbVersion());
                                 }
-                                if (Boolean.TRUE.equals(data.get("LIBVIRT_TLS_REDEPLOY_WILL_RUN"))) {
+                                if (Boolean.TRUE.equals(data.get("LIBVIRT_TLS_REDEPLOY_WILL_RUN"))
+                                        && Boolean.TRUE.equals(deployed)) {
                                     clearLibvirtTlsRedeployPending();
                                 }
                                 trigger.next();
