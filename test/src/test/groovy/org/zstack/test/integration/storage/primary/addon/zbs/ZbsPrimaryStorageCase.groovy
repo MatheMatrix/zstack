@@ -16,6 +16,9 @@ import org.zstack.header.storage.primary.PrimaryStorageHostRefVO
 import org.zstack.header.storage.primary.PrimaryStorageHostRefVO_
 import org.zstack.header.storage.primary.PrimaryStorageStatus
 import org.zstack.header.storage.primary.PrimaryStorageVO
+import org.zstack.kvm.KVMConstant
+import org.zstack.kvm.KVMAgentCommands
+import org.zstack.kvm.VolumeTO
 import org.zstack.storage.zbs.MdsStatus
 import org.zstack.storage.zbs.MdsUri
 import org.zstack.sdk.*
@@ -24,6 +27,8 @@ import org.zstack.storage.addon.primary.ExternalPrimaryStorageCanonicalEvent
 import org.zstack.storage.primary.PrimaryStorageGlobalConfig
 import org.zstack.header.storage.primary.PrimaryStorageHostStatus
 import org.zstack.storage.volume.VolumeGlobalConfig
+import org.zstack.header.vm.devices.DeviceAddress
+import org.zstack.header.vm.devices.VirtualDeviceInfo
 import org.zstack.storage.zbs.AddonInfo
 import org.zstack.storage.zbs.Config
 import org.zstack.storage.zbs.ZbsConstants
@@ -178,6 +183,7 @@ class ZbsPrimaryStorageCase extends SubCase {
             testMdsConnectFailed()
             testLifecycle()
             testDataVolumeLifecycle()
+            testZbsVolumeToDeviceType()
             testMdsPing()
             testCheckHostStorageConnection()
             testNegativeScenario()
@@ -661,6 +667,71 @@ class ZbsPrimaryStorageCase extends SubCase {
             assert getUsedCapacity("lpool2") == usedCapPoolBefore
             assert getUsedCapacity() == usedCapPsBefore
         }
+    }
+
+    void testZbsVolumeToDeviceType() {
+        KVMAgentCommands.StartVmCmd startCmd = null
+        env.afterSimulator(KVMConstant.KVM_START_VM_PATH) { rsp, HttpEntity<String> e ->
+            startCmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.StartVmCmd.class)
+            return rsp
+        }
+
+        def instanceOffering = env.inventoryByName("instanceOffering") as InstanceOfferingInventory
+        def image = env.inventoryByName("image") as ImageInventory
+        def l3 = env.inventoryByName("l3") as L3NetworkInventory
+        def vm = createVmInstance {
+            name = "test-zbs-volume-to-device-type"
+            instanceOfferingUuid = instanceOffering.uuid
+            imageUuid = image.uuid
+            l3NetworkUuids = [l3.uuid]
+        } as VmInstanceInventory
+
+        assertZbsVolumeToDeviceType(startCmd.rootVolume, vm.rootVolumeUuid)
+
+        KVMAgentCommands.AttachDataVolumeCmd attachCmd = null
+        env.afterSimulator(KVMConstant.KVM_ATTACH_VOLUME) { rsp, HttpEntity<String> e ->
+            attachCmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.AttachDataVolumeCmd.class)
+            VirtualDeviceInfo info = new VirtualDeviceInfo()
+            info.resourceUuid = attachCmd.volume.resourceUuid
+            info.deviceAddress = new DeviceAddress()
+            info.deviceAddress.domain = "0000"
+            info.deviceAddress.bus = "00"
+            info.deviceAddress.slot = "01"
+            info.deviceAddress.function = "0"
+            rsp.virtualDeviceInfoList = [info]
+            return rsp
+        }
+
+        def dataVolume = createDataVolume {
+            name = "test-zbs-volume-to-device-type-data"
+            diskOfferingUuid = diskOffering.uuid
+            primaryStorageUuid = ps.uuid
+        } as VolumeInventory
+        attachDataVolumeToVm {
+            vmInstanceUuid = vm.uuid
+            volumeUuid = dataVolume.uuid
+        }
+
+        assertZbsVolumeToDeviceType(attachCmd.volume, dataVolume.uuid)
+
+        stopVmInstance {
+            uuid = vm.uuid
+        }
+
+        startCmd = null
+        startVmInstance {
+            uuid = vm.uuid
+        }
+
+        VolumeTO dataVolumeTo = startCmd.dataVolumes.find { it.volumeUuid == dataVolume.uuid }
+        assertZbsVolumeToDeviceType(dataVolumeTo, dataVolume.uuid)
+        env.cleanAfterSimulatorHandlers()
+    }
+
+    void assertZbsVolumeToDeviceType(VolumeTO volume, String volumeUuid) {
+        assert volume != null
+        assert volume.volumeUuid == volumeUuid
+        assert volume.deviceType == VolumeTO.CBD
     }
 
     void testNegativeScenario() {
