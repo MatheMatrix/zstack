@@ -76,6 +76,9 @@ public class VolumeSnapshotAO extends ResourceVO implements ShadowEntity {
     @Column
     private Timestamp lastOpDate;
 
+    @Column
+    private Timestamp deletingSince;
+
     @Transient
     private VolumeSnapshotAO shadow;
 
@@ -150,6 +153,14 @@ public class VolumeSnapshotAO extends ResourceVO implements ShadowEntity {
 
     public void setLastOpDate(Timestamp lastOpDate) {
         this.lastOpDate = lastOpDate;
+    }
+
+    public Timestamp getDeletingSince() {
+        return deletingSince;
+    }
+
+    public void setDeletingSince(Timestamp deletingSince) {
+        this.deletingSince = deletingSince;
     }
 
     public String getVolumeUuid() {

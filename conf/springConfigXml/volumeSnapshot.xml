@@ -58,4 +58,10 @@
             <zstack:extension interface="org.zstack.storage.snapshot.group.MemorySnapshotGroupReferenceFactory" />
         </zstack:plugin>
     </bean>
+
+    <bean id="SnapshotReconcileOnStart" class="org.zstack.storage.snapshot.SnapshotReconcileOnStart">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint"/>
+        </zstack:plugin>
+    </bean>
 </beans>

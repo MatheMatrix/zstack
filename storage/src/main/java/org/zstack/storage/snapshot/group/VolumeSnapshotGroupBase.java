@@ -27,6 +27,7 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.message.NeedReplyMessage;
 import org.zstack.header.storage.snapshot.DeleteVolumeSnapshotMsg;
 import org.zstack.header.storage.snapshot.VolumeSnapshotConstant;
+import org.zstack.header.storage.snapshot.VolumeSnapshotStatus;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.storage.snapshot.group.*;
 import org.zstack.header.tpm.entity.TpmVO;
@@ -223,6 +224,17 @@ public class VolumeSnapshotGroupBase implements VolumeSnapshotGroup {
         List<VolumeSnapshotVO> snapshots = getEffectiveSnapshots();
         if (snapshots.size() < self.getSnapshotCount()) {
             logger.debug(String.format("skip snapshots not belong to origin vm[uuid:%s]", self.getVmInstanceUuid()));
+        }
+
+        // ZSV-10538: surface resume hint when one or more members are already in Deleting
+        // (left over from a previous interrupted group-delete). Per-snapshot routing in
+        // VolumeSnapshotTreeBase.handle(APIDeleteVolumeSnapshotMsg) / DeleteVolumeSnapshotMsg
+        // handles the actual resume; here we only log so operators understand what is happening.
+        long deleting = snapshots.stream().filter(s -> s.getStatus() == VolumeSnapshotStatus.Deleting).count();
+        if (deleting > 0) {
+            logger.warn(String.format("snapshot group[uuid:%s, name:%s]: %d/%d members are in Deleting status; " +
+                            "this delete will resume the previously interrupted group deletion",
+                    self.getUuid(), self.getName(), deleting, snapshots.size()));
         }
 
         SimpleFlowChain.of("delete-volume-snapshot-group")

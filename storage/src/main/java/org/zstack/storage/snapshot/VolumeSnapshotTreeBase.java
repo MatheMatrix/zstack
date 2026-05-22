@@ -111,8 +111,15 @@ public class VolumeSnapshotTreeBase {
                 APIShrinkVolumeSnapshotMsg.class.getName()
         );
 
+        // ZSV-10538: Deleting allows the idempotent delete API (resume),
+        // the internal deletion msg, and read-only query APIs.
+        // All other writes (Revert / CreateChild / CreateImage / Backup ...) are rejected
+        // by the whitelist with VolumeSnapshotErrors.OPERATION_REJECTED_DURING_DELETING.
         allowedStatus.addState(VolumeSnapshotStatus.Deleting,
-                VolumeSnapshotDeletionMsg.class.getName());
+                VolumeSnapshotDeletionMsg.class.getName(),
+                APIDeleteVolumeSnapshotMsg.class.getName(),
+                APIQueryVolumeSnapshotMsg.class.getName(),
+                APIGetVolumeSnapshotSizeMsg.class.getName());
 
         allowedStatus.addState(VolumeSnapshotStatus.Creating,
                 VolumeSnapshotDeletionMsg.class.getName());
@@ -149,11 +156,17 @@ public class VolumeSnapshotTreeBase {
     private ErrorCode isOperationAllowed(Message msg) {
         if (allowedStatus.isOperationAllowed(msg.getClass().getName(), currentRoot.getStatus().toString())) {
             return null;
-        } else {
-            return err(VolumeSnapshotErrors.NOT_IN_CORRECT_STATE,
-                    "snapshot[uuid:%s, name:%s]'s status[%s] is not allowed for message[%s], allowed status%s",
-                    currentRoot.getUuid(), currentRoot.getName(), currentRoot.getStatus(), msg.getClass().getName(), allowedStatus.getStatesForOperation(msg.getClass().getName()));
         }
+        // ZSV-10538: surface a dedicated code when the rejection is due to Deleting status
+        if (currentRoot.getStatus() == VolumeSnapshotStatus.Deleting) {
+            return err(VolumeSnapshotErrors.OPERATION_REJECTED_DURING_DELETING,
+                    "snapshot[uuid:%s, name:%s] is in Deleting status, operation[%s] is rejected; allowed messages%s",
+                    currentRoot.getUuid(), currentRoot.getName(), msg.getClass().getName(),
+                    allowedStatus.getStatesForOperation(msg.getClass().getName()));
+        }
+        return err(VolumeSnapshotErrors.NOT_IN_CORRECT_STATE,
+                "snapshot[uuid:%s, name:%s]'s status[%s] is not allowed for message[%s], allowed status%s",
+                currentRoot.getUuid(), currentRoot.getName(), currentRoot.getStatus(), msg.getClass().getName(), allowedStatus.getStatesForOperation(msg.getClass().getName()));
     }
 
     private void refreshVO() {
@@ -826,6 +839,38 @@ public class VolumeSnapshotTreeBase {
     }
 
     private void deleteSingleFlows() {
+        // ZSV-10538: latch status=Deleting BEFORE any physical operation as the persistent idempotency signal.
+        // NoRollbackFlow on purpose: if anything below fails, the row stays in Deleting so the user
+        // can re-issue the same API and the API entry routes through the resume branch (see handle(APIDeleteVolumeSnapshotMsg)).
+        flow(new NoRollbackFlow() {
+            String __name__ = "change-snapshot-status-to-Deleting";
+
+            @Override
+            public void run(FlowTrigger trigger, Map data) {
+                if (currentRoot.getStatus() == VolumeSnapshotStatus.Deleting) {
+                    // idempotent: a previous interrupted attempt already latched the flag
+                    trigger.next();
+                    return;
+                }
+                new SQLBatch() {
+                    @Override
+                    protected void scripts() {
+                        int affected = sql("update VolumeSnapshotVO s set s.status = :st, s.deletingSince = :ts " +
+                                "where s.uuid = :uuid and s.status <> :st")
+                                .param("st", VolumeSnapshotStatus.Deleting)
+                                .param("ts", new java.sql.Timestamp(System.currentTimeMillis()))
+                                .param("uuid", currentRoot.getUuid())
+                                .execute();
+                        if (affected > 0) {
+                            currentRoot.setStatus(VolumeSnapshotStatus.Deleting);
+                            currentRoot.setDeletingSince(new java.sql.Timestamp(System.currentTimeMillis()));
+                        }
+                    }
+                }.execute();
+                trigger.next();
+            }
+        });
+
         flow(new NoRollbackFlow() {
             VmInstanceState vmState;
             String srcSnapshotParentPath;
@@ -873,11 +918,30 @@ public class VolumeSnapshotTreeBase {
             }
 
             private void stepDelete(Completion completion) {
+                // ZSV-10538: re-read vmState every round so a VM that starts mid-flight is observed (R7)
+                if (volume.getVmInstanceUuid() != null) {
+                    VmInstanceState fresh = Q.New(VmInstanceVO.class)
+                            .eq(VmInstanceVO_.uuid, volume.getVmInstanceUuid())
+                            .select(VmInstanceVO_.state).findValue();
+                    if (fresh != null) {
+                        vmState = fresh;
+                    }
+                }
+
                 List<VolumeSnapshotVO> vos = Q.New(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.treeUuid, currentRoot.getTreeUuid()).list();
                 boolean current = Q.New(VolumeSnapshotTreeVO.class).eq(VolumeSnapshotTreeVO_.uuid, currentRoot.getTreeUuid())
                         .select(VolumeSnapshotTreeVO_.current).findValue();
                 VolumeTree volumeTree = VolumeTree.fromVOs(vos, current, VolumeInventory.valueOf(volume));
-                List<VolumeTree.VolumeSnapshotLeaf> children = volumeTree.getSnapshotLeaf(currentRoot.getUuid()).getChildren();
+                // ZSV-10538: currentRoot may have been hardDeleted by a previous (interrupted) run.
+                // When the row is gone, the snapshot is already removed → idempotent no-op.
+                VolumeTree.VolumeSnapshotLeaf rootLeaf = volumeTree.getSnapshotLeaf(currentRoot.getUuid());
+                if (rootLeaf == null) {
+                    logger.debug(String.format("stepDelete: snapshot[uuid:%s] already removed from tree[uuid:%s], idempotent no-op",
+                            currentRoot.getUuid(), currentRoot.getTreeUuid()));
+                    completion.success();
+                    return;
+                }
+                List<VolumeTree.VolumeSnapshotLeaf> children = rootLeaf.getChildren();
 
                 if (children.isEmpty()) {
                     deleteVolumeSnapshotAndSyncVolumeSize(completion);
@@ -2989,6 +3053,35 @@ public class VolumeSnapshotTreeBase {
 
     private void handle(final APIDeleteVolumeSnapshotMsg msg) {
         final APIDeleteVolumeSnapshotEvent evt = new APIDeleteVolumeSnapshotEvent(msg.getId());
+
+        // ZSV-10538: idempotent entry routing based on persistent status.
+        // 1) row gone        -> success (already fully deleted by a prior attempt)
+        // 2) status=Deleted  -> success (terminal state; just publish)
+        // 3) status=Deleting -> log a resume hint and fall through to the regular
+        //                      deletion path; the change-status flow detects Deleting
+        //                      and short-circuits, then stepDelete re-reads DB each
+        //                      round to converge from whatever the interrupted step left.
+        // 4) status=Ready    -> normal first-time deletion path
+        VolumeSnapshotVO latest = dbf.findByUuid(msg.getUuid(), VolumeSnapshotVO.class);
+        if (latest == null) {
+            logger.debug(String.format("APIDeleteVolumeSnapshotMsg: snapshot[uuid:%s] row not found, returning success idempotently",
+                    msg.getUuid()));
+            bus.publish(evt);
+            return;
+        }
+        if (latest.getStatus() == VolumeSnapshotStatus.Deleted) {
+            logger.debug(String.format("APIDeleteVolumeSnapshotMsg: snapshot[uuid:%s] already in Deleted state, returning success idempotently",
+                    msg.getUuid()));
+            bus.publish(evt);
+            return;
+        }
+        if (latest.getStatus() == VolumeSnapshotStatus.Deleting) {
+            logger.warn(String.format("APIDeleteVolumeSnapshotMsg: snapshot[uuid:%s, name:%s] is in Deleting status (since %s); " +
+                            "resuming previously interrupted deletion (errorCode hint: %s)",
+                    latest.getUuid(), latest.getName(), latest.getDeletingSince(),
+                    VolumeSnapshotErrors.DELETING_RETRY_HINT));
+            currentRoot = latest;
+        }
 
         deleteVolumeSnapshot(msg, new Completion(msg) {
             @Override
