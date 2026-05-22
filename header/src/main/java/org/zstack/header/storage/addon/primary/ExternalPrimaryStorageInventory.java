@@ -141,14 +141,16 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
         this.addonInfo = addonInfo;
     }
 
+    @SuppressWarnings("unchecked")
     private void desensitizeAddonInfo(Object obj) {
         if (obj instanceof Map) {
-            Map<?, ?> map = (Map<?, ?>) obj;
-            for (Object key : map.keySet()) {
-                if (key.toString().toLowerCase().contains("password")) {
-                    map.put(key, "******");
+            Map<Object, Object> map = (Map<Object, Object>) obj;
+            for (Map.Entry<Object, Object> entry : map.entrySet()) {
+                Object key = entry.getKey();
+                if (key != null && key.toString().toLowerCase().contains("password")) {
+                    entry.setValue("******");
                 } else {
-                    desensitizeAddonInfo(map.get(key));
+                    desensitizeAddonInfo(entry.getValue());
                 }
             }
         } else if (obj instanceof List) {
