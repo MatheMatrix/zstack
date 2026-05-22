@@ -94,6 +94,13 @@ public class KVMGlobalConfig {
     @BindResourceConfig({VmInstanceVO.class, ClusterVO.class})
     public static GlobalConfig VM_CPU_HYPERVISOR_FEATURE = new GlobalConfig(CATEGORY, "vm.cpu.hypervisor.feature");
 
+    @GlobalConfigValidation(validValues = {
+            KVMConstant.CPU_HARDWARE_VIRTUALIZATION_ENABLED,
+            KVMConstant.CPU_HARDWARE_VIRTUALIZATION_DISABLED
+    })
+    @BindResourceConfig({VmInstanceVO.class})
+    public static GlobalConfig VM_CPU_HARDWARE_VIRTUALIZATION = new GlobalConfig(CATEGORY, "vm.cpu.hardwareVirtualization");
+
     @GlobalConfigValidation(validValues = {"true", "false"})
     @BindResourceConfig({VmInstanceVO.class})
     public static GlobalConfig VM_HYPERV_CLOCK_FEATURE = new GlobalConfig(CATEGORY, "vm.hyperv.clock.feature");
