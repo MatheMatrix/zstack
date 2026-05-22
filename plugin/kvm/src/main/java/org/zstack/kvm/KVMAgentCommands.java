@@ -1617,6 +1617,7 @@ public class KVMAgentCommands {
         private String vmInstanceUuid;
         @GrayVersion(value = "5.0.0")
         private Map<String, Object> addons;
+        @GrayVersion(value = "5.0.0")
         private Integer vhostReconnectInterval;
 
         public Map<String, Object> getAddons() {
@@ -3028,6 +3029,7 @@ public class KVMAgentCommands {
             HostMinimumFreeMemorySize = hostMinimumFreeMemorySize;
         }
 
+        @GrayVersion(value = "5.0.0")
         private Integer vhostReconnectInterval;
 
         public Integer getVhostReconnectInterval() {
