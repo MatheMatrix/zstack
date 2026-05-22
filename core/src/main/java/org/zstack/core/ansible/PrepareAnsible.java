@@ -14,7 +14,7 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -98,7 +98,7 @@ public class PrepareAnsible {
         Path temp = Files.createTempFile(target.getParent(), targetFile.getName(), ".tmp");
         try {
             try (FileOutputStream outputStream = new FileOutputStream(temp.toFile());
-                 OutputStreamWriter writer = new OutputStreamWriter(outputStream, Charset.defaultCharset())) {
+                 OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
                 writer.write(content);
                 writer.flush();
                 outputStream.getFD().sync();
