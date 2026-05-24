@@ -79,4 +79,12 @@
         <defaultValue>60</defaultValue>
         <type>java.lang.Integer</type>
     </config>
+
+    <config>
+        <name>iothread.max</name>
+        <description>max automatic IOThread count for primary storage volumes</description>
+        <defaultValue>8</defaultValue>
+        <category>primaryStorage</category>
+        <type>java.lang.Integer</type>
+    </config>
 </globalConfig>

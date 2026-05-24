@@ -34,6 +34,12 @@
         </zstack:plugin>
     </bean>
 
+    <bean id="PrimaryStorageIothreadMaxResolver" class="org.zstack.storage.primary.PrimaryStorageIothreadMaxResolver">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.Component"/>
+        </zstack:plugin>
+    </bean>
+
     <bean id="DefaultPrimaryStorageAllocatorFactory"
           class="org.zstack.storage.primary.DefaultPrimaryStorageAllocatorFactory">
         <property name="allocatorFlowNames">

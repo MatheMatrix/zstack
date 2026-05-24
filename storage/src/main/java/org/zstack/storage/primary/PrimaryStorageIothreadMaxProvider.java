@@ -1,7 +1,7 @@
 package org.zstack.storage.primary;
 
 public interface PrimaryStorageIothreadMaxProvider {
-    String getPrimaryStorageIdentityForIothreadMax();
+    boolean match(String primaryStorageUuid, String primaryStorageType, String primaryStorageIdentity);
 
     int getIothreadMax(String primaryStorageUuid);
 }

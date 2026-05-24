@@ -52,6 +52,12 @@ public class PrimaryStorageGlobalConfig {
     @BindResourceConfig({PrimaryStorageVO.class})
     @GlobalConfigDef(defaultValue = "false", type = Boolean.class, description = "Whether undo temp snapshot after template uploaded")
     public static GlobalConfig UNDO_TEMP_SNAPSHOT = new GlobalConfig(CATEGORY, "undo.tempSnapshot");
+
+    @GlobalConfigValidation(inNumberRange = {1, 8})
+    @BindResourceConfig({PrimaryStorageVO.class})
+    @GlobalConfigDef(defaultValue = "8", type = Integer.class, description = "max automatic IOThread count for primary storage volumes")
+    public static GlobalConfig IOTHREAD_MAX = new GlobalConfig(CATEGORY, "iothread.max");
+
     @GlobalConfigValidation(numberGreaterThan = 1)
     @GlobalConfigDef(defaultValue = "1", type = Long.class)
     public static GlobalConfig COLLECT_AND_FORECAST_INTERVAL = new GlobalConfig(CATEGORY, "collect.forecast.interval");
