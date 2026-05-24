@@ -1292,6 +1292,9 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
             return;
         }
         List<String> hostUuids = Q.New(HostVO.class).select(HostVO_.uuid).eq(HostVO_.clusterUuid, clusterUuid).listValues();
+        if (hostUuids.isEmpty()) {
+            return;
+        }
 
         new SQLBatch(){
             @Override
