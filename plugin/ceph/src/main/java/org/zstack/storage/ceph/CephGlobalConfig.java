@@ -34,6 +34,10 @@ public class CephGlobalConfig {
     public static GlobalConfig CEPH_BS_ALLOW_PORTS = new GlobalConfig(CATEGORY, "cephbs.allow.ports");
     @GlobalConfigValidation
     public static GlobalConfig CEPH_PS_ALLOW_PORTS = new GlobalConfig(CATEGORY, "cephps.allow.ports");
+    @GlobalConfigDef(type = Integer.class, defaultValue = "1", description = "max automatic IOThread count for ZStone primary storage volumes")
+    @GlobalConfigValidation(inNumberRange = {1, 8})
+    public static GlobalConfig ZSTONE_IOTHREAD_MAX =
+            new GlobalConfig(CATEGORY, "zstone.iothread.max");
 
     @GlobalConfigDef(type = Boolean.class, defaultValue = "true")
     @GlobalConfigValidation

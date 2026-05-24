@@ -18,6 +18,9 @@ public class KVMSystemTags {
     public static final String QEMU_IMG_VERSION_TOKEN = "version";
     public static PatternedSystemTag QEMU_IMG_VERSION = new PatternedSystemTag(String.format("qemu-img::version::{%s}", QEMU_IMG_VERSION_TOKEN), HostVO.class);
 
+    public static final String QEMU_KVM_PACKAGE_VERSION_TOKEN = "version";
+    public static PatternedSystemTag QEMU_KVM_PACKAGE_VERSION = new PatternedSystemTag(String.format("qemu-kvm::package::version::{%s}", QEMU_KVM_PACKAGE_VERSION_TOKEN), HostVO.class);
+
     public static final String LIBVIRT_VERSION_TOKEN = "version";
     public static PatternedSystemTag LIBVIRT_VERSION = new PatternedSystemTag(String.format("libvirt::version::{%s}", LIBVIRT_VERSION_TOKEN), HostVO.class);
 

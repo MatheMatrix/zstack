@@ -6326,8 +6326,16 @@ public class KVMHost extends HostBase implements Host {
             private void saveKvmHostRelatedFacts(HostFactResponse ret) {
                 updateHostOsInformation(ret.getOsDistribution(), ret.getOsRelease(), ret.getOsVersion());
 
-                if (ret.getLibvirtPackageVersion() != null) {
+                if (StringUtils.isNotBlank(ret.getLibvirtPackageVersion())) {
                     createTagWithoutNonValue(KVMSystemTags.LIBVIRT_PACKAGE_VERSION, KVMSystemTags.LIBVIRT_PACKAGE_VERSION_TOKEN, ret.getLibvirtPackageVersion().trim(), false);
+                } else {
+                    KVMSystemTags.LIBVIRT_PACKAGE_VERSION.delete(self.getUuid());
+                }
+
+                if (StringUtils.isNotBlank(ret.getQemuKvmPackageVersion())) {
+                    createTagWithoutNonValue(KVMSystemTags.QEMU_KVM_PACKAGE_VERSION, KVMSystemTags.QEMU_KVM_PACKAGE_VERSION_TOKEN, ret.getQemuKvmPackageVersion().trim(), false);
+                } else {
+                    KVMSystemTags.QEMU_KVM_PACKAGE_VERSION.delete(self.getUuid());
                 }
 
                 createTagWithoutNonValue(KVMSystemTags.QEMU_IMG_VERSION, KVMSystemTags.QEMU_IMG_VERSION_TOKEN, ret.getQemuImgVersion(), false);
