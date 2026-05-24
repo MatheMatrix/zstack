@@ -12,7 +12,11 @@ import org.zstack.xinfini.XInfiniApiHelper
 import org.zstack.xinfini.XInfiniPathHelper
 import org.zstack.xinfini.sdk.vhost.BdcModule
 import org.zstack.xinfini.sdk.vhost.BdcBdevModule
+import org.zstack.header.core.Completion
+import org.zstack.header.errorcode.ErrorCode
 import org.zstack.header.host.HostConstant
+import org.zstack.header.host.HostVO
+import org.zstack.header.host.HostVO_
 import org.zstack.header.host.PingHostMsg
 import org.zstack.header.message.MessageReply
 import org.zstack.header.storage.backup.DownloadImageFromRemoteTargetMsg
@@ -44,6 +48,7 @@ import org.zstack.storage.backup.BackupStorageSystemTags
 import org.zstack.tag.SystemTagCreator
 import org.zstack.test.integration.storage.StorageTest
 import org.zstack.testlib.EnvSpec
+import org.zstack.testlib.ExternalPrimaryStorageSpec
 import org.zstack.testlib.SubCase
 import org.zstack.utils.data.SizeUnit
 import org.zstack.utils.gson.JSONObjectUtil
@@ -181,6 +186,7 @@ class XinfiniPrimaryStorageCase extends SubCase {
             simulatorEnv()
             testCreateXinfiniStorage()
             testCreateVm()
+            testDeactivateSilentSuccessLeavesActiveClient()
             testHandleInactiveVolume()
             testCreateVolumeRollback()
             testAttachIso()
@@ -341,6 +347,62 @@ class XinfiniPrimaryStorageCase extends SubCase {
         } as VmInstanceInventory
 
         deleteVm(vm2.uuid)
+    }
+
+    // ZSTAC-85124: xinfini deactivate may report success even when the underlying
+    // bdev was not actually removed; this silent-success path lets the framework's
+    // beforeStartVmOnKvm skip the blacklist fallback and the VM is started while the
+    // old QEMU still holds the volume (split-brain). The framework-level fix re-queries
+    // getActiveClients after deactivate returns success and falls back to blacklist
+    // when the old client is still attached. This test reproduces the precondition.
+    void testDeactivateSilentSuccessLeavesActiveClient() {
+        def rootVolPath = Q.New(VolumeVO.class)
+                .eq(VolumeVO_.uuid, vm.rootVolumeUuid)
+                .select(VolumeVO_.installPath).findValue() as String
+        int volId = XInfiniPathHelper.getVolIdFromPath(rootVolPath)
+        BdcModule bdc = controller.apiHelper.queryBdcByIp(host1.managementIp)
+        BdcBdevModule bdev = controller.apiHelper.queryBdcBdevByVolumeIdAndBdcId(volId, bdc.spec.id)
+        assert bdev != null
+
+        boolean[] silentSuccess = [false]
+        env.simulator("/afa/v1/bdc-bdevs/\\d+") { HttpServletRequest req, HttpEntity<String> e, EnvSpec spec ->
+            int bdevId = ExternalPrimaryStorageSpec.XinfiniSimulators.extractIdFromUri(req.getRequestURI())
+            def store = ExternalPrimaryStorageSpec.XinfiniSimulators.bdcBdevs
+            if (req.getMethod() == "DELETE") {
+                if (!silentSuccess[0]) {
+                    store.remove(bdevId)
+                }
+                return ExternalPrimaryStorageSpec.XinfiniSimulators.makeDeleteResponse()
+            }
+            def stored = store.get(bdevId)
+            if (stored == null) {
+                return ExternalPrimaryStorageSpec.XinfiniSimulators.makeNotFoundResponse()
+            }
+            return ExternalPrimaryStorageSpec.XinfiniSimulators.makeItemResponse(stored)
+        }
+
+        silentSuccess[0] = true
+        try {
+            def hostVO = Q.New(HostVO.class).eq(HostVO_.uuid, host1.uuid).find() as HostVO
+            def headerHost = org.zstack.header.host.HostInventory.valueOf(hostVO)
+
+            boolean[] result = [false, false]
+            controller.deactivate(rootVolPath, "Vhost", headerHost, new Completion(null) {
+                @Override
+                void success() { result[0] = true }
+
+                @Override
+                void fail(ErrorCode errorCode) { result[1] = true }
+            })
+
+            assert result[0]: "xinfini deactivate must report success (the silent-success contract that ZSTAC-85124 fixes around)"
+            assert !result[1]
+
+            assert !controller.getActiveClients(rootVolPath, "Vhost").isEmpty(): \
+                    "post-check premise: getActiveClients still reports the silently-not-removed client"
+        } finally {
+            silentSuccess[0] = false
+        }
     }
 
     void testHandleInactiveVolume() {

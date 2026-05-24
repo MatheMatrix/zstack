@@ -403,6 +403,19 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
                         nodeSvc.deactivate(vol.getInstallPath(), vol.getProtocol(), client, new Completion(null) {
                             @Override
                             public void success() {
+                                // some node services may report deactivate success even when the
+                                // storage client is still attached; re-query active clients to confirm
+                                // and fall back to blacklist if the old client is still holding the
+                                // volume, otherwise the VM would be started while the old QEMU still
+                                // owns the volume (split-brain).
+                                boolean stillActive = nodeSvc.getActiveClients(vol.getInstallPath(), vol.getProtocol()).stream()
+                                        .anyMatch(c -> client.getManagerIp().equals(c.getManagerIp()));
+                                if (stillActive) {
+                                    logger.warn(String.format("deactivate reported success but volume[uuid:%s, installPath:%s] is still active on host[uuid:%s, ip:%s], add it to blacklist",
+                                            vol.getUuid(), vol.getInstallPath(), clientHost.getUuid(), clientHost.getManagementIp()));
+                                    nodeSvc.blacklist(vol.getInstallPath(), vol.getProtocol(), HostInventory.valueOf(clientHost), new NopeCompletion());
+                                    return;
+                                }
                                 logger.info(String.format("successfully deactivate volume[uuid:%s, installPath:%s] on host[uuid:%s, ip:%s]",
                                         vol.getUuid(), vol.getInstallPath(), clientHost.getUuid(), clientHost.getManagementIp()));
                             }
