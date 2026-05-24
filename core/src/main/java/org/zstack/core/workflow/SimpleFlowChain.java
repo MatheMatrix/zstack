@@ -760,6 +760,8 @@ public class SimpleFlowChain implements FlowTrigger, FlowRollback, FlowChain, Fl
                 if (errorHandler != null) {
                     errorHandler.handle(err, this.data);
                 }
+                callFinallyHandler();
+                return;
             }
         }
 
