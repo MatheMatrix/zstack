@@ -72,19 +72,34 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
         return new ExternalPrimaryStorageInventory(lvo);
     }
 
+    private static final String MASK = "******";
+
     private static void desensitizeConfig(Map config) {
         if (config == null) return;
         desensitizeUrlList(config, "mdsUrls");
-        desensitizeUrlList(config, "mdsInfos");
+        desensitizeMdsInfos(config);
     }
 
     private static void desensitizeAddonInfo(Map addonInfo) {
         if (addonInfo == null) return;
-        Object mdsInfos = addonInfo.get("mdsInfos");
+        desensitizeMdsInfos(addonInfo);
+    }
+
+    private static void desensitizeMdsInfos(Map map) {
+        Object mdsInfos = map.get("mdsInfos");
         if (mdsInfos instanceof List) {
             for (Object item : (List) mdsInfos) {
                 if (item instanceof Map) {
-                    ((Map) item).put("password", "******");
+                    Map m = (Map) item;
+                    if (m.containsKey("sshPassword")) {
+                        m.put("sshPassword", MASK);
+                    }
+                    if (m.containsKey("password")) {
+                        m.put("password", MASK);
+                    }
+                    if (m.containsKey("sshUsername")) {
+                        m.put("sshUsername", MASK);
+                    }
                 }
             }
         }
