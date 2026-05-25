@@ -25,7 +25,11 @@ import org.zstack.header.storage.addon.StorageHealthy;
 import org.zstack.header.storage.addon.primary.BaseVolumeInfo;
 import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageVO;
 import org.zstack.header.storage.addon.primary.PrimaryStorageNodeSvc;
-import org.zstack.header.storage.primary.*;
+import org.zstack.header.storage.primary.PrimaryStorageConstant;
+import org.zstack.header.storage.primary.PrimaryStorageHostStatus;
+import org.zstack.header.storage.primary.PrimaryStorageInventory;
+import org.zstack.header.storage.primary.PrimaryStorageStatus;
+import org.zstack.header.storage.primary.UpdatePrimaryStorageHostStatusMsg;
 import org.zstack.header.vm.VmInstanceSpec;
 import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.volume.VolumeInventory;
@@ -63,19 +67,6 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
                         " and ref.clusterUuid = :cuuid", ExternalPrimaryStorageVO.class)
                 .param("cuuid", clusterUuid)
                 .list();
-    }
-
-    private Map<String, PrimaryStorageHostStatus> getHostStatus(List<ExternalPrimaryStorageVO> extPss) {
-        return Q.New(PrimaryStorageHostRefVO.class)
-                .select(PrimaryStorageHostRefVO_.hostUuid, PrimaryStorageHostRefVO_.status)
-                .in(PrimaryStorageHostRefVO_.primaryStorageUuid,
-                        extPss.stream().map(ExternalPrimaryStorageVO::getUuid).collect(Collectors.toList()))
-                .listTuple().stream()
-                .collect(Collectors.toMap(
-                        t -> t.get(0, String.class),
-                        t -> t.get(1, PrimaryStorageHostStatus.class),
-                        (o, n) -> n
-                ));
     }
 
     @Override
@@ -119,23 +110,18 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
     }
 
     private void checkHostStatus(KVMHostInventory host, List<ExternalPrimaryStorageVO> extPss, WhileDoneCompletion completion) {
-
-        Map<String, PrimaryStorageHostStatus> hostStatus = getHostStatus(extPss);
         new While<>(extPss).each((extPs, compl) -> {
-            logger.debug(String.format("checking host status for external primary storage[uuid:%s, name:%s] on KVM host[uuid:%s, name:%s]",
-                    extPs.getUuid(), extPs.getName(), host.getUuid(), host.getName()));
-
             if (extPs.getStatus() == PrimaryStorageStatus.Disconnected) {
-                PrimaryStorageHostStatus status = PrimaryStorageHostStatus.Disconnected;
-                if (hostStatus.get(extPs.getUuid()) != status) {
-                    updateHostStatus(host.getUuid(), extPs.getUuid(), status,
-                            operr("external primary storage[uuid:%s, name:%s] is Disconnected, skip health check",
-                                    extPs.getUuid(), extPs.getName()), compl);
-                } else {
-                    compl.done();
-                }
+                logger.debug(String.format("external primary storage[uuid:%s, name:%s] is Disconnected, updating host status to Disconnected",
+                        extPs.getUuid(), extPs.getName()));
+                updateHostStatus(host.getUuid(), extPs.getUuid(), PrimaryStorageHostStatus.Disconnected,
+                        operr("external primary storage[uuid:%s, name:%s] is Disconnected, skip health check",
+                                extPs.getUuid(), extPs.getName()), compl);
                 return;
             }
+
+            logger.debug(String.format("checking host status for external primary storage[uuid:%s, name:%s] on KVM host[uuid:%s, name:%s]",
+                    extPs.getUuid(), extPs.getName(), host.getUuid(), host.getName()));
 
             extPsFactory.getControllerSvc(extPs.getUuid()).reportNodeHealthy(host, new ReturnValueCompletion<NodeHealthy>(compl) {
                 @Override
@@ -152,11 +138,7 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
                         compl.addError(err);
                     }
 
-                    if (hostStatus.get(extPs.getUuid()) != status) {
-                        updateHostStatus(host.getUuid(), extPs.getUuid(), status, err, compl);
-                    } else {
-                        compl.done();
-                    }
+                    updateHostStatus(host.getUuid(), extPs.getUuid(), status, err, compl);
                 }
 
                 @Override
