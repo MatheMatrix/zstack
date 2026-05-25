@@ -27,11 +27,14 @@ import org.zstack.kvm.KVMHostFactory;
 import org.zstack.storage.ceph.CephConstants;
 import org.zstack.storage.primary.CheckHostStorageConnectionMsg;
 import org.zstack.utils.CollectionUtils;
+import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
+import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.TypedQuery;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.zstack.utils.CollectionDSL.list;
 
@@ -43,6 +46,8 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
     private CloudBus bus;
     @Autowired
     private DatabaseFacade dbf;
+
+    private static final CLogger logger = Utils.getLogger(CephKvmExtension.class);
 
     @Override
     public void connectionReestablished(HostInventory inv) throws HostException {
@@ -163,6 +168,7 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
                 msg.setPrimaryStorageUuid(puuid);
                 msg.setHostUuids(list(hostUuid));
                 bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, puuid);
+                msg.setTimeout(TimeUnit.SECONDS.toMillis(60));
                 return msg;
             }
         });
@@ -172,7 +178,8 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
                 @Override
                 public void run(MessageReply reply) {
                     if (!reply.isSuccess()) {
-                        whileCompletion.addError(reply.getError());
+                        logger.warn(String.format("failed to check host[uuid:%s] connection to ceph primary storage[uuid:%s], %s",
+                                hostUuid, msg.getPrimaryStorageUuid(), reply.getError()));
                     }
 
                     whileCompletion.done();
@@ -181,11 +188,7 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
         }, 10).run(new WhileDoneCompletion(completion) {
             @Override
             public void done(ErrorCodeList errorCodeList) {
-                if (!errorCodeList.getCauses().isEmpty()) {
-                    completion.fail(errorCodeList.getCauses().get(0));
-                } else {
-                    completion.success();
-                }
+                completion.success();
             }
         });
     }
