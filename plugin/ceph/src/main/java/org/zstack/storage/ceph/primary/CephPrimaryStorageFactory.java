@@ -1305,18 +1305,23 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
             return;
         }
 
-        List<String> huuids = Q.New(HostVO.class).select(HostVO_.uuid)
-                .eq(HostVO_.clusterUuid, clusterUuid)
-                .listValues();
+        new SQLBatch() {
+            @Override
+            protected void scripts() {
+                List<String> huuids = Q.New(HostVO.class).select(HostVO_.uuid)
+                        .eq(HostVO_.clusterUuid, clusterUuid)
+                        .listValues();
+                if (huuids.isEmpty()) {
+                    return;
+                }
 
-        if (huuids == null || huuids.isEmpty()) {
-            return;
-        }
-
-        SQL.New(PrimaryStorageHostRefVO.class)
-                .eq(PrimaryStorageHostRefVO_.primaryStorageUuid, inventory.getUuid())
-                .in(PrimaryStorageHostRefVO_.hostUuid, huuids)
-                .hardDelete();
+                SQL.New(PrimaryStorageHostRefVO.class)
+                        .eq(PrimaryStorageHostRefVO_.primaryStorageUuid, inventory.getUuid())
+                        .in(PrimaryStorageHostRefVO_.hostUuid, huuids)
+                        .hardDelete();
+            }
+        }.execute();
+        logger.debug("succeed delete PrimaryStorageHostRef record");
     }
 
     private String getPoolName(String customPoolName, String defaultPoolName, long volumeSize, String poolType, String psUuid) {
