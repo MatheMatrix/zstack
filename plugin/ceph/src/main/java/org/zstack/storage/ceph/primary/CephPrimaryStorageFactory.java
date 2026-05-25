@@ -22,6 +22,7 @@ import org.zstack.core.cloudbus.EventFacade;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
+import org.zstack.core.db.SQL;
 import org.zstack.core.db.SQLBatch;
 import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
@@ -89,7 +90,8 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
         KvmSetupSelfFencerExtensionPoint, KVMPreAttachIsoExtensionPoint, Component, PostMarkRootVolumeAsSnapshotExtension,
         BeforeTakeLiveSnapshotsOnVolumes, VmInstanceCreateExtensionPoint, CreateDataVolumeExtensionPoint,
         InstanceOfferingUserConfigValidator, DiskOfferingUserConfigValidator, MarkRootVolumeAsSnapshotExtension,
-        VmCapabilitiesExtensionPoint, PreVmInstantiateResourceExtensionPoint, PSCapacityExtensionPoint, RecalculatePrimaryStorageCapacityExtensionPoint {
+        VmCapabilitiesExtensionPoint, PreVmInstantiateResourceExtensionPoint, PSCapacityExtensionPoint, RecalculatePrimaryStorageCapacityExtensionPoint,
+        PrimaryStorageDetachExtensionPoint {
     private static final CLogger logger = Utils.getLogger(CephPrimaryStorageFactory.class);
 
     public static final PrimaryStorageType type = new PrimaryStorageType(CephConstants.CEPH_PRIMARY_STORAGE_TYPE);
@@ -1283,6 +1285,38 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
     @Override
     public void beforeRecalculatePrimaryStorageCapacity(RecalculatePrimaryStorageCapacityStruct struct) {
 
+    }
+
+    @Override
+    public void preDetachPrimaryStorage(PrimaryStorageInventory inventory, String clusterUuid) throws PrimaryStorageException {
+    }
+
+    @Override
+    public void beforeDetachPrimaryStorage(PrimaryStorageInventory inventory, String clusterUuid) {
+    }
+
+    @Override
+    public void failToDetachPrimaryStorage(PrimaryStorageInventory inventory, String clusterUuid) {
+    }
+
+    @Override
+    public void afterDetachPrimaryStorage(PrimaryStorageInventory inventory, String clusterUuid) {
+        if (!inventory.getType().equals(CephConstants.CEPH_PRIMARY_STORAGE_TYPE)) {
+            return;
+        }
+
+        List<String> huuids = Q.New(HostVO.class).select(HostVO_.uuid)
+                .eq(HostVO_.clusterUuid, clusterUuid)
+                .listValues();
+
+        if (huuids == null || huuids.isEmpty()) {
+            return;
+        }
+
+        SQL.New(PrimaryStorageHostRefVO.class)
+                .eq(PrimaryStorageHostRefVO_.primaryStorageUuid, inventory.getUuid())
+                .in(PrimaryStorageHostRefVO_.hostUuid, huuids)
+                .hardDelete();
     }
 
     private String getPoolName(String customPoolName, String defaultPoolName, long volumeSize, String poolType, String psUuid) {
