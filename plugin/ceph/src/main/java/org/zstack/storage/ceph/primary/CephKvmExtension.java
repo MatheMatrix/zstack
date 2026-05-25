@@ -156,6 +156,16 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
         };
     }
 
+    /**
+     * Check host connectivity to each ceph primary storage in the cluster.
+     *
+     * Design: all errors are intentionally degraded via {@code completion.success()} —
+     * host connection must never be blocked by PS health probes. Timeout errors are
+     * WARN-logged (transient, expected); permanent PS failures are ERROR-logged so
+     * operators can detect them. The PS subsystem independently tracks PS-host status
+     * through its own health-check and reconnect machinery. Declining host connection
+     * for a PS failure that the PS layer already handles would create a double-fault.
+     */
     private void checkHostStorageConnection(final String hostUuid, String clusterUuid, Completion completion) {
         List<String> psUuids = findCephPrimaryStorage(clusterUuid);
         if (psUuids.isEmpty()) {
