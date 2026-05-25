@@ -37,6 +37,10 @@ public class CloudBusAopProxy {
         return capturedMessages;
     }
 
+    public void clearCapturedMessages() {
+        capturedMessages.clear();
+    }
+
     @SuppressWarnings("unused")
     private Object singleMessageAdvice(ProceedingJoinPoint pjp, Message msg) throws Throwable {
         Behavior bh = messages.get(msg.getClass());

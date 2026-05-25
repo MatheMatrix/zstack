@@ -18,6 +18,7 @@ import org.zstack.test.aop.CloudBusAopProxy;
 import org.zstack.test.deployer.Deployer;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class CheckHostStorageConnectionMsgTimeoutTest {
     Deployer deployer;
@@ -40,6 +41,7 @@ public class CheckHostStorageConnectionMsgTimeoutTest {
         loader = deployer.getComponentLoader();
         dbf = loader.getComponent(DatabaseFacade.class);
         aop = loader.getComponent(CloudBusAopProxy.class);
+        aop.clearCapturedMessages();
     }
 
     @Test
@@ -55,6 +57,6 @@ public class CheckHostStorageConnectionMsgTimeoutTest {
         List<Message> captured = aop.getCapturedMessages();
         Assert.assertFalse("expected at least one captured CheckHostStorageConnectionMsg", captured.isEmpty());
         CheckHostStorageConnectionMsg capturedMsg = (CheckHostStorageConnectionMsg) captured.get(0);
-        Assert.assertEquals("msg timeout must be 60s to prevent 30min hang", 60, capturedMsg.getTimeout());
+        Assert.assertEquals("msg timeout must be 60s to prevent 30min hang", TimeUnit.SECONDS.toMillis(60), capturedMsg.getTimeout());
     }
 }
