@@ -29,7 +29,7 @@ class DetachVolumeElaborationCase extends SubCase {
     @Override
     void test() {
         testElaborationEntryStructure()
-        testDistanceMatchWithFullFormatString()
+        testDistanceMatchWithRealKvmagentError()
     }
 
     void testElaborationEntryStructure() {
@@ -47,10 +47,28 @@ class DetachVolumeElaborationCase extends SubCase {
         assert psDetach.message_en == "Detaching volume may fail due to limitations of the VM operating system. Please try again after VM shutdown."
     }
 
-    void testDistanceMatchWithFullFormatString() {
+    /**
+     * Verify that the real kvmagent error format (KVMHost.java:3246 prefix +
+     * vm_plugin.py:3757 suffix) matches the PS-1000 distance regex.
+     *
+     * The error is constructed with literal UUIDs/names — NOT by filling the
+     * regex template's %s placeholders — so the test independently validates
+     * that the regex handles [uuid:...] substrings in the "because" clause.
+     */
+    void testDistanceMatchWithRealKvmagentError() {
+        // Simulate the exact error KVMHost.java:3246 produces:
+        //   operr("failed to detach data volume[uuid:%s, installPath:%s] from vm[uuid:%s, name:%s]
+        //          on kvm host[uuid:%s, ip:%s], because %s",
+        //         volUuid, installPath, vmUuid, vmName, hostUuid, hostIp, kvmagentError)
+        // where kvmagentError = vm_plugin.py:3757 exception text with real UUIDs.
+        def kvmagentError = "unable to detach the volume[uuid:vol-abc-123] from the vm[uuid:vm-def-456];" +
+                "it's still attached after 5 seconds"
         def err = Platform.operr(
-                "failed to detach data volume[uuid:%s, installPath:%s] from vm[uuid:%s, name:%s] on kvm host[uuid:%s, ip:%s], because unable to detach the volume[uuid:%s] from the vm[uuid:%s];it's still attached after 5 seconds",
-                "vol-123", "/path/vol", "vm-456", "my-vm", "host-789", "10.0.0.1", "vol-123", "vm-456"
+                "failed to detach data volume[uuid:%s, installPath:%s] from vm[uuid:%s, name:%s] on kvm host[uuid:%s, ip:%s], because %s",
+                "vol-abc-123", "/var/lib/nova/instances/vol-abc-123",
+                "vm-def-456", "test-instance",
+                "host-ghi-789", "192.168.1.100",
+                kvmagentError
         ) as ErrorCode
 
         assert err.messages != null
