@@ -1298,10 +1298,20 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
                     e(LocalStorageSystemTags.LOCALSTORAGE_HOST_INITIALIZED_TOKEN, inventory.getUuid()))));
         }
 
-        SQL.New(PrimaryStorageHostRefVO.class)
-                .eq(PrimaryStorageHostRefVO_.primaryStorageUuid, inventory.getUuid())
-                .in(PrimaryStorageHostRefVO_.hostUuid, hostUuids)
-                .hardDelete();
+        new SQLBatch() {
+            @Override
+            protected void scripts() {
+                if (hostUuids.isEmpty()) {
+                    return;
+                }
+
+                SQL.New(PrimaryStorageHostRefVO.class)
+                        .eq(PrimaryStorageHostRefVO_.primaryStorageUuid, inventory.getUuid())
+                        .in(PrimaryStorageHostRefVO_.hostUuid, hostUuids)
+                        .hardDelete();
+            }
+        }.execute();
+        logger.debug("succeed delete PrimaryStorageHostRef record");
     }
 
     @Override
