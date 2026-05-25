@@ -370,6 +370,14 @@ public class SMPPrimaryStorageFactory implements PrimaryStorageFactory, CreateTe
             //base.resetDefaultCapacityWhenUnmounted();
             releasePrimaryStorageCapacity(inventory.getUuid());
         }
+
+        List<String> huuids = Q.New(HostVO.class).select(HostVO_.uuid)
+                .eq(HostVO_.clusterUuid, clusterUuid)
+                .listValues();
+        SQL.New(PrimaryStorageHostRefVO.class)
+                .eq(PrimaryStorageHostRefVO_.primaryStorageUuid, inventory.getUuid())
+                .in(PrimaryStorageHostRefVO_.hostUuid, huuids)
+                .hardDelete();
     }
 
     @Override
