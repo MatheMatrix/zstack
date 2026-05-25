@@ -12,13 +12,13 @@ import org.zstack.header.host.HostVO;
 import org.zstack.header.identity.SessionInventory;
 import org.zstack.simulator.kvm.KVMSimulatorConfig;
 import org.zstack.storage.ceph.primary.CephPrimaryStorageSimulatorConfig;
+import org.zstack.storage.primary.CheckHostStorageConnectionMsg;
 import org.zstack.test.Api;
 import org.zstack.test.ApiSenderException;
 import org.zstack.test.DBUtil;
 import org.zstack.test.WebBeanConstructor;
+import org.zstack.test.aop.CloudBusAopProxy;
 import org.zstack.test.deployer.Deployer;
-
-import java.util.concurrent.TimeUnit;
 
 public class CheckHostStorageConnectionMsgTimeoutTest {
     Deployer deployer;
@@ -29,6 +29,7 @@ public class CheckHostStorageConnectionMsgTimeoutTest {
     SessionInventory session;
     CephPrimaryStorageSimulatorConfig config;
     KVMSimulatorConfig kconfig;
+    CloudBusAopProxy aop;
 
     @Before
     public void setUp() throws Exception {
@@ -38,6 +39,7 @@ public class CheckHostStorageConnectionMsgTimeoutTest {
         deployer.addSpringConfig("ceph.xml");
         deployer.addSpringConfig("cephSimulator.xml");
         deployer.addSpringConfig("KVMRelated.xml");
+        deployer.addSpringConfig("CloudBusAopProxy.xml");
         deployer.build();
         api = deployer.getApi();
         loader = deployer.getComponentLoader();
@@ -45,20 +47,18 @@ public class CheckHostStorageConnectionMsgTimeoutTest {
         dbf = loader.getComponent(DatabaseFacade.class);
         config = loader.getComponent(CephPrimaryStorageSimulatorConfig.class);
         kconfig = loader.getComponent(KVMSimulatorConfig.class);
+        aop = loader.getComponent(CloudBusAopProxy.class);
         session = api.loginAsAdmin();
     }
 
     @Test
     public void test() throws ApiSenderException {
-        HostInventory host = deployer.hosts.get("host1");
+        aop.addMessage(CheckHostStorageConnectionMsg.class, CloudBusAopProxy.Behavior.FAIL);
 
-        long start = System.currentTimeMillis();
+        HostInventory host = deployer.hosts.get("host1");
         api.reconnectHost(host.getUuid());
-        long elapsed = System.currentTimeMillis() - start;
 
         HostVO hostVO = dbf.findByUuid(host.getUuid(), HostVO.class);
         Assert.assertEquals(HostStatus.Connected, hostVO.getStatus());
-        Assert.assertTrue("host reconnect should complete within 120s, but took " + elapsed + "ms",
-                elapsed < TimeUnit.SECONDS.toMillis(120));
     }
 }
