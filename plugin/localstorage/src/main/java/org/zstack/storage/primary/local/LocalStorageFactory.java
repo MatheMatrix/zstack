@@ -1297,6 +1297,11 @@ public class LocalStorageFactory implements PrimaryStorageFactory, Component,
                     LocalStorageSystemTags.LOCALSTORAGE_HOST_INITIALIZED.instantiateTag(map(
                     e(LocalStorageSystemTags.LOCALSTORAGE_HOST_INITIALIZED_TOKEN, inventory.getUuid()))));
         }
+
+        SQL.New(PrimaryStorageHostRefVO.class)
+                .eq(PrimaryStorageHostRefVO_.primaryStorageUuid, inventory.getUuid())
+                .in(PrimaryStorageHostRefVO_.hostUuid, hostUuids)
+                .hardDelete();
     }
 
     @Override
