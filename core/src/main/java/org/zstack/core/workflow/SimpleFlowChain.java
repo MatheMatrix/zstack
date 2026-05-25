@@ -565,8 +565,6 @@ public class SimpleFlowChain implements FlowTrigger, FlowRollback, FlowChain, Fl
         }
     }
 
-    private boolean doneErrorHandlerInvoked;
-
     private void callDoneHandler() {
         if (CoreGlobalProperty.PROFILER_WORKFLOW || allowWatch) {
             stopWatch.stop();
@@ -577,13 +575,18 @@ public class SimpleFlowChain implements FlowTrigger, FlowRollback, FlowChain, Fl
                 doneHandler.handle(this.data);
             } catch (Throwable t) {
                 logger.warn(String.format("unhandled exception when calling %s", doneHandler.getClass()), t);
-                if (!doneErrorHandlerInvoked) {
-                    doneErrorHandlerInvoked = true;
-                    String msg = t.getMessage() != null ? t.getMessage() : t.getClass().getName();
-                    setErrorCode(inerr(msg));
-                    callErrorHandler(false);
-                }
-                return;
+                // callDoneHandler is only reached when all flows succeeded
+                // (see runFlowOrComplete: getErrorCode()==null → callDoneHandler).
+                // The doneHandler is post-processing (assembling inventory, firing
+                // events, signaling completion). A throw here means post-processing
+                // failed, but the flows themselves succeeded. We log and set an
+                // error code for diagnostics, but do NOT call the error handler —
+                // that would tell the caller the entire operation failed, which
+                // could trigger cleanup of resources the flows already created
+                // successfully.
+                String msg = t.getMessage() != null ? t.getMessage() : t.getClass().getName();
+                setErrorCode(inerr(msg));
+                // continue to afterDone/finally handlers so chain completes
             }
         }
 
