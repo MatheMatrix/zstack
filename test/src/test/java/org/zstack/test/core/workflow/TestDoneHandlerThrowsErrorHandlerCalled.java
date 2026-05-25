@@ -1,6 +1,6 @@
 package org.zstack.test.core.workflow;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 import org.junit.Test;
 import org.zstack.core.workflow.SimpleFlowChain;
 import org.zstack.header.core.workflow.FlowTrigger;
@@ -8,16 +8,12 @@ import org.zstack.header.core.workflow.NoRollbackFlow;
 
 import java.util.Map;
 
-/**
- * ZSTAC-84185: Verify error handler is called when done handler throws.
- * Previously the exception was swallowed, causing queue slot leaks.
- */
 public class TestDoneHandlerThrowsErrorHandlerCalled {
     boolean errorHandlerCalled;
-    boolean doneHandlerThrew;
+    boolean doneHandlerEntered;
 
     @Test
-    public void test() {
+    public void testErrorHandlerCalledWhenDoneHandlerThrows() {
         new SimpleFlowChain()
                 .then(new NoRollbackFlow() {
                     @Override
@@ -26,7 +22,7 @@ public class TestDoneHandlerThrowsErrorHandlerCalled {
                     }
                 })
                 .done(data -> {
-                    doneHandlerThrew = true;
+                    doneHandlerEntered = true;
                     throw new RuntimeException("simulated done handler failure");
                 })
                 .error((errCode, data) -> {
@@ -34,7 +30,29 @@ public class TestDoneHandlerThrowsErrorHandlerCalled {
                 })
                 .start();
 
-        Assert.assertTrue(doneHandlerThrew);
+        Assert.assertTrue(doneHandlerEntered);
         Assert.assertTrue(errorHandlerCalled);
+    }
+
+    @Test
+    public void testDoneHandlerErrorHandlerNotCalledTwice() {
+        final boolean[] errorHandlerCalls = {false};
+        new SimpleFlowChain()
+                .then(new NoRollbackFlow() {
+                    @Override
+                    public void run(FlowTrigger chain, Map data) {
+                        chain.next();
+                    }
+                })
+                .done(data -> {
+                    throw new RuntimeException("simulated done handler failure");
+                })
+                .error((errCode, data) -> {
+                    Assert.assertFalse("error handler must not be called twice", errorHandlerCalls[0]);
+                    errorHandlerCalls[0] = true;
+                })
+                .start();
+
+        Assert.assertTrue(errorHandlerCalls[0]);
     }
 }

@@ -565,6 +565,8 @@ public class SimpleFlowChain implements FlowTrigger, FlowRollback, FlowChain, Fl
         }
     }
 
+    private boolean doneErrorHandlerInvoked;
+
     private void callDoneHandler() {
         if (CoreGlobalProperty.PROFILER_WORKFLOW || allowWatch) {
             stopWatch.stop();
@@ -575,8 +577,12 @@ public class SimpleFlowChain implements FlowTrigger, FlowRollback, FlowChain, Fl
                 doneHandler.handle(this.data);
             } catch (Throwable t) {
                 logger.warn(String.format("unhandled exception when calling %s", doneHandler.getClass()), t);
-                setErrorCode(inerr(t.getMessage()));
-                callErrorHandler(false);
+                if (!doneErrorHandlerInvoked) {
+                    doneErrorHandlerInvoked = true;
+                    String msg = t.getMessage() != null ? t.getMessage() : t.getClass().getName();
+                    setErrorCode(inerr(msg));
+                    callErrorHandler(false);
+                }
                 return;
             }
         }
