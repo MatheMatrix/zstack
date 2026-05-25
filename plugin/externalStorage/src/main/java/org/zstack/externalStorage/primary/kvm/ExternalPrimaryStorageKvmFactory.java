@@ -124,6 +124,19 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
         new While<>(extPss).each((extPs, compl) -> {
             logger.debug(String.format("checking host status for external primary storage[uuid:%s, name:%s] on KVM host[uuid:%s, name:%s]",
                     extPs.getUuid(), extPs.getName(), host.getUuid(), host.getName()));
+
+            if (extPs.getStatus() == PrimaryStorageStatus.Disconnected) {
+                PrimaryStorageHostStatus status = PrimaryStorageHostStatus.Disconnected;
+                if (hostStatus.get(extPs.getUuid()) != status) {
+                    updateHostStatus(host.getUuid(), extPs.getUuid(), status,
+                            operr("external primary storage[uuid:%s, name:%s] is Disconnected, skip health check",
+                                    extPs.getUuid(), extPs.getName()), compl);
+                } else {
+                    compl.done();
+                }
+                return;
+            }
+
             extPsFactory.getControllerSvc(extPs.getUuid()).reportNodeHealthy(host, new ReturnValueCompletion<NodeHealthy>(compl) {
                 @Override
                 public void success(NodeHealthy returnValue) {
@@ -151,23 +164,23 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
                     compl.addError(errorCode);
                     compl.done();
                 }
-
-                private void updateHostStatus(String hostUuid, String psUuid, PrimaryStorageHostStatus status, ErrorCode reason, NoErrorCompletion completion) {
-                    UpdatePrimaryStorageHostStatusMsg msg = new UpdatePrimaryStorageHostStatusMsg();
-                    msg.setPrimaryStorageUuid(psUuid);
-                    msg.setHostUuid(hostUuid);
-                    msg.setStatus(status);
-                    msg.setReason(reason);
-                    bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, psUuid);
-                    bus.send(msg, new CloudBusCallBack(completion) {
-                        @Override
-                        public void run(MessageReply reply) {
-                            completion.done();
-                        }
-                    });
-                }
             });
         }).run(completion);
+    }
+
+    private void updateHostStatus(String hostUuid, String psUuid, PrimaryStorageHostStatus status, ErrorCode reason, NoErrorCompletion completion) {
+        UpdatePrimaryStorageHostStatusMsg msg = new UpdatePrimaryStorageHostStatusMsg();
+        msg.setPrimaryStorageUuid(psUuid);
+        msg.setHostUuid(hostUuid);
+        msg.setStatus(status);
+        msg.setReason(reason);
+        bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, psUuid);
+        bus.send(msg, new CloudBusCallBack(completion) {
+            @Override
+            public void run(MessageReply reply) {
+                completion.done();
+            }
+        });
     }
 
     @Override
