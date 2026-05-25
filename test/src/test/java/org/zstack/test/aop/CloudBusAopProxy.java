@@ -6,6 +6,7 @@ import org.zstack.header.message.Message;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,7 @@ public class CloudBusAopProxy {
     public static final String MESSAGE_BEHAVIOR = "behavior";
 
     private Map<Class<? extends Message>, Behavior> messages = new HashMap<Class<? extends Message>, Behavior>();
+    private List<Message> capturedMessages = new ArrayList<>();
 
     public void addMessage(Class<? extends Message> clazz, Behavior bh) {
         messages.put(clazz, bh);
@@ -29,6 +31,10 @@ public class CloudBusAopProxy {
 
     public void removeMessage(Class<? extends Message> clazz) {
         messages.remove(clazz);
+    }
+
+    public List<Message> getCapturedMessages() {
+        return capturedMessages;
     }
 
     @SuppressWarnings("unused")
@@ -54,6 +60,7 @@ public class CloudBusAopProxy {
         msg.putHeaderEntry(MESSAGE_ORIGINAL_SERVICE_ID, msg.getServiceId());
         msg.putHeaderEntry(MESSAGE_BEHAVIOR, bh.toString());
         msg.setServiceId(ManInTheMiddleService.SERVICE_ID);
+        capturedMessages.add(msg);
         return pjp.proceed(new Object[]{msg, callback});
     }
 
