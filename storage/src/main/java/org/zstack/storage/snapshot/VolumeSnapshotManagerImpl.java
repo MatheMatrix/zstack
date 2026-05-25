@@ -27,6 +27,8 @@ import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.identity.*;
 import org.zstack.header.identity.quota.QuotaMessageHandler;
 import org.zstack.header.message.*;
+import org.zstack.header.query.QueryCondition;
+import org.zstack.header.query.QueryOp;
 import org.zstack.header.storage.backup.CleanUpVmBackupExtensionPoint;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.primary.VolumeSnapshotCapability.VolumeSnapshotArrangementType;
@@ -41,6 +43,7 @@ import org.zstack.identity.QuotaUtil;
 import org.zstack.storage.snapshot.group.MemorySnapshotGroupReferenceFactory;
 import org.zstack.storage.snapshot.group.VolumeSnapshotGroupBase;
 import org.zstack.storage.snapshot.group.VolumeSnapshotGroupChecker;
+import org.zstack.storage.snapshot.group.VolumeSnapshotGroupTreeBuilder;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceTreeBase;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
 import org.zstack.storage.volume.FireSnapShotCanonicalEvent;
@@ -1338,11 +1341,14 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
     @Override
     public void marshalReplyMessageBeforeSending(Message replyOrEvent, NeedReplyMessage msg) {
         if (replyOrEvent instanceof APIQueryVolumeSnapshotTreeReply) {
-            marshal(((APIMessage) msg).getSession(), (APIQueryVolumeSnapshotTreeReply) replyOrEvent);
+            APIQueryVolumeSnapshotTreeReply reply = (APIQueryVolumeSnapshotTreeReply) replyOrEvent;
+            APIQueryVolumeSnapshotTreeMsg apiMsg = (APIQueryVolumeSnapshotTreeMsg) msg;
+            marshalVolumeTrees(apiMsg.getSession(), reply);
+            marshalGroupTrees(apiMsg, reply);
         }
     }
 
-    private void marshal(SessionInventory session, APIQueryVolumeSnapshotTreeReply reply) {
+    private void marshalVolumeTrees(SessionInventory session, APIQueryVolumeSnapshotTreeReply reply) {
         if (reply.getInventories() == null) {
             // this is for count
             return;
@@ -1355,6 +1361,26 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
             VolumeSnapshotTree tree = VolumeSnapshotTree.fromVOs(vos);
             inv.setTree(tree.getRoot().toLeafInventory(querySnapshotUuids(inv.getUuid(), session)));
         }
+    }
+
+    private final VolumeSnapshotGroupTreeBuilder groupTreeBuilder = new VolumeSnapshotGroupTreeBuilder();
+
+    private void marshalGroupTrees(APIQueryVolumeSnapshotTreeMsg msg, APIQueryVolumeSnapshotTreeReply reply) {
+        if (reply.getInventories() == null) {
+            return;
+        }
+
+        String volumeUuid = groupTreeBuilder.extractVolumeUuidCondition(msg);
+        if (volumeUuid == null) {
+            return;
+        }
+
+        String vmInstanceUuid = groupTreeBuilder.findRootVmUuid(volumeUuid);
+        if (vmInstanceUuid == null) {
+            return;
+        }
+
+        reply.setGroupTrees(groupTreeBuilder.buildForVm(vmInstanceUuid));
     }
 
     @SuppressWarnings("unchecked")

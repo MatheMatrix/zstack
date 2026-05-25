@@ -2,6 +2,7 @@ package org.zstack.header.storage.snapshot;
 
 import org.zstack.header.query.APIQueryReply;
 import org.zstack.header.rest.RestResponse;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupTreeInventory;
 import org.zstack.header.volume.VolumeType;
 
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.List;
 @RestResponse(allTo = "inventories")
 public class APIQueryVolumeSnapshotTreeReply extends APIQueryReply {
     private List<VolumeSnapshotTreeInventory> inventories;
+    private List<VolumeSnapshotGroupTreeInventory> groupTrees;
 
     public List<VolumeSnapshotTreeInventory> getInventories() {
         return inventories;
@@ -18,6 +20,14 @@ public class APIQueryVolumeSnapshotTreeReply extends APIQueryReply {
 
     public void setInventories(List<VolumeSnapshotTreeInventory> inventories) {
         this.inventories = inventories;
+    }
+
+    public List<VolumeSnapshotGroupTreeInventory> getGroupTrees() {
+        return groupTrees;
+    }
+
+    public void setGroupTrees(List<VolumeSnapshotGroupTreeInventory> groupTrees) {
+        this.groupTrees = groupTrees;
     }
  
     public static APIQueryVolumeSnapshotTreeReply __example__() {

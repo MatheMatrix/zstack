@@ -1,6 +1,7 @@
 package org.zstack.header.storage.snapshot
 
 import org.zstack.header.errorcode.ErrorCode
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupTreeInventory
 
 doc {
 
@@ -27,5 +28,13 @@ doc {
 		type "List"
 		since "0.6"
 		clz VolumeSnapshotTreeInventory.class
+	}
+	ref {
+		name "groupTrees"
+		path "org.zstack.header.storage.snapshot.APIQueryVolumeSnapshotTreeReply.groupTrees"
+		desc "虚拟机快照组树清单（仅当查询条件包含 volumeUuid eq <根云盘UUID> 时返回）"
+		type "List"
+		since "5.0"
+		clz VolumeSnapshotGroupTreeInventory.class
 	}
 }
