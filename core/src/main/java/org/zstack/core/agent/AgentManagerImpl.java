@@ -151,7 +151,7 @@ public class AgentManagerImpl extends AbstractService implements AgentManager {
                         InitAgentServerCmd cmd = new InitAgentServerCmd();
                         cmd.Config = config;
 
-                        restf.syncJsonPost(url(INIT_PATH), cmd, Void.class);
+                        restf.syncJsonPost(url(INIT_PATH), cmd, Void.class, TimeUnit.SECONDS, 60);
                         trigger.next();
                     }
                 });
