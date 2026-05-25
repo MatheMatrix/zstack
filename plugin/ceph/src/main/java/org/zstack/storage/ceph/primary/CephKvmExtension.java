@@ -14,6 +14,7 @@ import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
+import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.host.HostConnectionReestablishExtensionPoint;
 import org.zstack.header.host.HostException;
 import org.zstack.header.host.HostInventory;
@@ -189,8 +190,20 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
             @Override
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
-                    logger.error(String.format("failed to check host[uuid:%s] connection to some ceph primary storages: %s",
-                            hostUuid, errorCodeList.getCauses()));
+                    boolean allTimeout = true;
+                    for (ErrorCode err : errorCodeList.getCauses()) {
+                        if (!SysErrors.TIMEOUT.toString().equals(err.getCode())) {
+                            allTimeout = false;
+                            break;
+                        }
+                    }
+                    if (allTimeout) {
+                        logger.warn(String.format("check host[uuid:%s] ceph storage connection timed out, degrading gracefully: %s",
+                                hostUuid, errorCodeList.getCauses()));
+                    } else {
+                        logger.error(String.format("host[uuid:%s] has permanent connection failures to ceph primary storages," +
+                                " VM scheduling to ceph volumes may fail: %s", hostUuid, errorCodeList.getCauses()));
+                    }
                 }
                 completion.success();
             }

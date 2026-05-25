@@ -34,7 +34,7 @@ public class CloudBusAopProxy {
     }
 
     public List<Message> getCapturedMessages() {
-        return capturedMessages;
+        return new ArrayList<>(capturedMessages);
     }
 
     public void clearCapturedMessages() {
