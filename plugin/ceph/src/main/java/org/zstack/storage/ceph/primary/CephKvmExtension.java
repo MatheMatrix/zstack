@@ -48,6 +48,7 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
     private DatabaseFacade dbf;
 
     private static final CLogger logger = Utils.getLogger(CephKvmExtension.class);
+    private static final long CHECK_HOST_STORAGE_CONNECTION_TIMEOUT = TimeUnit.SECONDS.toMillis(60);
 
     @Override
     public void connectionReestablished(HostInventory inv) throws HostException {
@@ -168,7 +169,7 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
                 msg.setPrimaryStorageUuid(puuid);
                 msg.setHostUuids(list(hostUuid));
                 bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, puuid);
-                msg.setTimeout(TimeUnit.SECONDS.toMillis(60));
+                msg.setTimeout(CHECK_HOST_STORAGE_CONNECTION_TIMEOUT);
                 return msg;
             }
         });
@@ -178,8 +179,7 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
                 @Override
                 public void run(MessageReply reply) {
                     if (!reply.isSuccess()) {
-                        logger.warn(String.format("failed to check host[uuid:%s] connection to ceph primary storage[uuid:%s], %s",
-                                hostUuid, msg.getPrimaryStorageUuid(), reply.getError()));
+                        whileCompletion.addError(reply.getError());
                     }
 
                     whileCompletion.done();
@@ -188,6 +188,10 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
         }, 10).run(new WhileDoneCompletion(completion) {
             @Override
             public void done(ErrorCodeList errorCodeList) {
+                if (!errorCodeList.getCauses().isEmpty()) {
+                    logger.error(String.format("failed to check host[uuid:%s] connection to some ceph primary storages: %s",
+                            hostUuid, errorCodeList.getCauses()));
+                }
                 completion.success();
             }
         });
