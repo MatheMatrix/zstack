@@ -205,6 +205,9 @@ public class CephKvmExtension implements KVMHostConnectExtensionPoint, HostConne
                                 " VM scheduling to ceph volumes may fail: %s", hostUuid, errorCodeList.getCauses()));
                     }
                 }
+                // Degrade all errors (timeout and permanent) to success: host connection must not be
+                // blocked by PS check failures. The PS subsystem independently tracks PS-host status
+                // via its own health-check/reconnect machinery.
                 completion.success();
             }
         });
