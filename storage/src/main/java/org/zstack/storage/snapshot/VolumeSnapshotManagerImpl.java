@@ -27,6 +27,8 @@ import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.identity.*;
 import org.zstack.header.identity.quota.QuotaMessageHandler;
 import org.zstack.header.message.*;
+import org.zstack.header.query.QueryCondition;
+import org.zstack.header.query.QueryOp;
 import org.zstack.header.storage.backup.CleanUpVmBackupExtensionPoint;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.primary.VolumeSnapshotCapability.VolumeSnapshotArrangementType;
@@ -1338,11 +1340,14 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
     @Override
     public void marshalReplyMessageBeforeSending(Message replyOrEvent, NeedReplyMessage msg) {
         if (replyOrEvent instanceof APIQueryVolumeSnapshotTreeReply) {
-            marshal(((APIMessage) msg).getSession(), (APIQueryVolumeSnapshotTreeReply) replyOrEvent);
+            APIQueryVolumeSnapshotTreeReply reply = (APIQueryVolumeSnapshotTreeReply) replyOrEvent;
+            APIQueryVolumeSnapshotTreeMsg apiMsg = (APIQueryVolumeSnapshotTreeMsg) msg;
+            marshalVolumeTrees(apiMsg.getSession(), reply);
+            marshalGroupTrees(apiMsg, reply);
         }
     }
 
-    private void marshal(SessionInventory session, APIQueryVolumeSnapshotTreeReply reply) {
+    private void marshalVolumeTrees(SessionInventory session, APIQueryVolumeSnapshotTreeReply reply) {
         if (reply.getInventories() == null) {
             // this is for count
             return;
@@ -1355,6 +1360,242 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
             VolumeSnapshotTree tree = VolumeSnapshotTree.fromVOs(vos);
             inv.setTree(tree.getRoot().toLeafInventory(querySnapshotUuids(inv.getUuid(), session)));
         }
+    }
+
+    private void marshalGroupTrees(APIQueryVolumeSnapshotTreeMsg msg, APIQueryVolumeSnapshotTreeReply reply) {
+        if (reply.getInventories() == null) {
+            return;
+        }
+
+        String volumeUuid = extractVolumeUuidCondition(msg);
+        if (volumeUuid == null) {
+            return;
+        }
+
+        String vmInstanceUuid = Q.New(VolumeVO.class)
+                .select(VolumeVO_.vmInstanceUuid)
+                .eq(VolumeVO_.uuid, volumeUuid)
+                .eq(VolumeVO_.type, VolumeType.Root)
+                .findValue();
+        if (vmInstanceUuid == null) {
+            return;
+        }
+
+        reply.setGroupTrees(buildGroupTreeForest(vmInstanceUuid, msg.getSession()));
+    }
+
+    private String extractVolumeUuidCondition(APIQueryVolumeSnapshotTreeMsg msg) {
+        List<QueryCondition> conditions = msg.getConditions();
+        if (conditions == null) {
+            return null;
+        }
+        String found = null;
+        for (QueryCondition c : conditions) {
+            if (!"volumeUuid".equals(c.getName())) {
+                continue;
+            }
+            if (!QueryOp.EQ.toString().equals(c.getOp())) {
+                continue;
+            }
+            if (found != null && !found.equals(c.getValue())) {
+                logger.warn(String.format("multiple conflicting volumeUuid eq conditions in APIQueryVolumeSnapshotTreeMsg: %s vs %s; taking the first",
+                        found, c.getValue()));
+                return found;
+            }
+            found = c.getValue();
+        }
+        return found;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<VolumeSnapshotGroupTreeInventory> buildGroupTreeForest(String vmInstanceUuid, SessionInventory session) {
+        String zql = String.format("query volumesnapshotgroup where vmInstanceUuid = '%s'", vmInstanceUuid);
+        List<Object> groupInvObjs = ZQL.fromString(zql).getSingleResultWithSession(session).inventories;
+        if (groupInvObjs == null || groupInvObjs.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<VolumeSnapshotGroupInventory> visibleGroups = groupInvObjs.stream()
+                .map(o -> (VolumeSnapshotGroupInventory) o)
+                .collect(Collectors.toList());
+        List<String> groupUuids = visibleGroups.stream()
+                .map(VolumeSnapshotGroupInventory::getUuid)
+                .collect(Collectors.toList());
+
+        List<VolumeSnapshotGroupRefVO> refs = Q.New(VolumeSnapshotGroupRefVO.class)
+                .in(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, groupUuids)
+                .list();
+
+        List<String> liveSnapUuids = refs.stream()
+                .filter(r -> !r.isSnapshotDeleted())
+                .map(VolumeSnapshotGroupRefVO::getVolumeSnapshotUuid)
+                .collect(Collectors.toList());
+        Map<String, VolumeSnapshotVO> snapVOs;
+        if (liveSnapUuids.isEmpty()) {
+            snapVOs = Collections.emptyMap();
+        } else {
+            List<VolumeSnapshotVO> svos = Q.New(VolumeSnapshotVO.class)
+                    .in(VolumeSnapshotVO_.uuid, liveSnapUuids)
+                    .list();
+            snapVOs = svos.stream().collect(Collectors.toMap(VolumeSnapshotVO::getUuid, v -> v));
+        }
+
+        Map<String, String> parentMap = new HashMap<>();
+        for (VolumeSnapshotVO v : snapVOs.values()) {
+            parentMap.put(v.getUuid(), v.getParentUuid());
+        }
+
+        Map<String, String> snapToGroup = new HashMap<>();
+        for (VolumeSnapshotGroupRefVO r : refs) {
+            snapToGroup.put(r.getVolumeSnapshotUuid(), r.getVolumeSnapshotGroupUuid());
+        }
+
+        Set<String> visibleSnapUuids = queryVisibleSnapshotUuidsForVm(vmInstanceUuid, session);
+
+        Map<String, List<VolumeSnapshotGroupRefVO>> refsByGroup = refs.stream()
+                .collect(Collectors.groupingBy(VolumeSnapshotGroupRefVO::getVolumeSnapshotGroupUuid));
+
+        Map<String, VolumeSnapshotGroupTreeInventory> groupNodeMap = new HashMap<>();
+        for (VolumeSnapshotGroupInventory g : visibleGroups) {
+            VolumeSnapshotGroupTreeInventory node = new VolumeSnapshotGroupTreeInventory();
+            node.setUuid(g.getUuid());
+            node.setName(g.getName());
+            node.setDescription(g.getDescription());
+            node.setVmInstanceUuid(g.getVmInstanceUuid());
+            node.setCreateDate(g.getCreateDate());
+            node.setLastOpDate(g.getLastOpDate());
+
+            List<VolumeSnapshotGroupRefVO> groupRefs = refsByGroup.getOrDefault(g.getUuid(), Collections.emptyList());
+            long deletedCount = groupRefs.stream().filter(VolumeSnapshotGroupRefVO::isSnapshotDeleted).count();
+            int total = groupRefs.size();
+            node.setIncomplete(deletedCount > 0 && deletedCount < total);
+
+            List<VolumeSnapshotGroupTreeRefInventory> refInvs = new ArrayList<>();
+            for (VolumeSnapshotGroupRefVO r : groupRefs) {
+                VolumeSnapshotGroupTreeRefInventory refInv = new VolumeSnapshotGroupTreeRefInventory();
+                refInv.setVolumeUuid(r.getVolumeUuid());
+                refInv.setVolumeName(r.getVolumeName());
+                refInv.setVolumeType(r.getVolumeType());
+                refInv.setVolumeSnapshotUuid(r.getVolumeSnapshotUuid());
+                refInv.setSnapshotDeleted(r.isSnapshotDeleted());
+                if (r.isSnapshotDeleted()) {
+                    refInv.setSnapshot(null);
+                } else {
+                    VolumeSnapshotVO svo = snapVOs.get(r.getVolumeSnapshotUuid());
+                    if (svo != null && visibleSnapUuids.contains(svo.getUuid())) {
+                        refInv.setSnapshot(VolumeSnapshotInventory.valueOf(svo));
+                    } else if (svo != null) {
+                        VolumeSnapshotInventory masked = new VolumeSnapshotInventory();
+                        masked.setUuid(svo.getUuid());
+                        refInv.setSnapshot(masked);
+                    } else {
+                        refInv.setSnapshot(null);
+                    }
+                }
+                refInvs.add(refInv);
+            }
+            node.setRefs(refInvs);
+            groupNodeMap.put(g.getUuid(), node);
+        }
+
+        for (VolumeSnapshotGroupTreeInventory node : groupNodeMap.values()) {
+            String parentGroupUuid = resolveParentGroupUuid(node.getUuid(),
+                    refsByGroup.getOrDefault(node.getUuid(), Collections.emptyList()),
+                    parentMap, snapToGroup);
+            if (parentGroupUuid != null && groupNodeMap.containsKey(parentGroupUuid)) {
+                node.setParentGroupUuid(parentGroupUuid);
+            }
+        }
+
+        List<VolumeSnapshotGroupTreeInventory> forest = new ArrayList<>();
+        for (VolumeSnapshotGroupTreeInventory node : groupNodeMap.values()) {
+            if (node.getParentGroupUuid() == null) {
+                forest.add(node);
+            } else {
+                groupNodeMap.get(node.getParentGroupUuid()).getChildren().add(node);
+            }
+        }
+
+        Comparator<VolumeSnapshotGroupTreeInventory> byCreateDateAsc =
+                Comparator.comparing(VolumeSnapshotGroupTreeInventory::getCreateDate,
+                        Comparator.nullsFirst(Comparator.naturalOrder()));
+        forest.sort(byCreateDateAsc);
+        for (VolumeSnapshotGroupTreeInventory node : groupNodeMap.values()) {
+            node.getChildren().sort(byCreateDateAsc);
+        }
+
+        VolumeSnapshotGroupTreeInventory newest = null;
+        for (VolumeSnapshotGroupTreeInventory node : groupNodeMap.values()) {
+            if (newest == null) {
+                newest = node;
+                continue;
+            }
+            if (node.getCreateDate() != null && (newest.getCreateDate() == null
+                    || node.getCreateDate().after(newest.getCreateDate()))) {
+                newest = node;
+            }
+        }
+        if (newest != null) {
+            newest.setCurrent(true);
+        }
+
+        return forest;
+    }
+
+    private String resolveParentGroupUuid(String selfGroupUuid,
+                                          List<VolumeSnapshotGroupRefVO> selfRefs,
+                                          Map<String, String> parentMap,
+                                          Map<String, String> snapToGroup) {
+        Map<String, Integer> votes = new HashMap<>();
+        for (VolumeSnapshotGroupRefVO r : selfRefs) {
+            if (r.isSnapshotDeleted()) {
+                continue;
+            }
+            String cur = parentMap.get(r.getVolumeSnapshotUuid());
+            Set<String> visited = new HashSet<>();
+            visited.add(r.getVolumeSnapshotUuid());
+            while (cur != null && !visited.contains(cur)) {
+                visited.add(cur);
+                String g = snapToGroup.get(cur);
+                if (g != null && !g.equals(selfGroupUuid)) {
+                    votes.merge(g, 1, Integer::sum);
+                    break;
+                }
+                cur = parentMap.get(cur);
+            }
+        }
+        if (votes.isEmpty()) {
+            return null;
+        }
+        String winner = null;
+        int top = -1;
+        boolean tie = false;
+        for (Map.Entry<String, Integer> e : votes.entrySet()) {
+            if (e.getValue() > top) {
+                winner = e.getKey();
+                top = e.getValue();
+                tie = false;
+            } else if (e.getValue() == top) {
+                tie = true;
+            }
+        }
+        if (tie) {
+            logger.warn(String.format("group[uuid:%s] has tied parentGroup votes: %s; picking %s",
+                    selfGroupUuid, votes, winner));
+        }
+        return winner;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Set<String> queryVisibleSnapshotUuidsForVm(String vmInstanceUuid, SessionInventory session) {
+        String zql = String.format(
+                "query volumesnapshot.uuid where volumeUuid in (query volume.uuid where vmInstanceUuid = '%s')",
+                vmInstanceUuid);
+        List<Object> invs = ZQL.fromString(zql).getSingleResultWithSession(session).inventories;
+        if (invs == null) {
+            return Collections.emptySet();
+        }
+        return invs.stream().map(it -> ((VolumeSnapshotInventory) it).getUuid()).collect(Collectors.toSet());
     }
 
     @SuppressWarnings("unchecked")
