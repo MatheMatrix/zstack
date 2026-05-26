@@ -9,7 +9,13 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.server.*;
 import org.zstack.utils.network.NetworkUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.zstack.core.Platform.argerr;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.ORG_ZSTACK_PHYSICAL_SERVER_ROLE_DUPLICATE;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.ORG_ZSTACK_PHYSICAL_SERVER_SERIAL_NUMBER_DUPLICATE;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.ORG_ZSTACK_PROVISION_NETWORK_DHCP_MISSING;
 
 public class PhysicalServerApiInterceptor implements ApiMessageInterceptor {
     @Autowired
@@ -33,8 +39,23 @@ public class PhysicalServerApiInterceptor implements ApiMessageInterceptor {
             validate((APIDeleteProvisionNetworkMsg) msg);
         } else if (msg instanceof APICreateProvisionNetworkMsg) {
             validate((APICreateProvisionNetworkMsg) msg);
+        } else if (msg instanceof APIAttachPhysicalServerRoleMsg) {
+            validate((APIAttachPhysicalServerRoleMsg) msg);
         }
         return msg;
+    }
+
+    private void validate(APIAttachPhysicalServerRoleMsg msg) {
+        boolean exists = Q.New(PhysicalServerRoleVO.class)
+            .eq(PhysicalServerRoleVO_.serverUuid, msg.getServerUuid())
+            .eq(PhysicalServerRoleVO_.roleType, msg.getRoleType())
+            .isExists();
+        if (exists) {
+            throw new ApiMessageInterceptionException(argerr(
+                ORG_ZSTACK_PHYSICAL_SERVER_ROLE_DUPLICATE,
+                "PhysicalServer[uuid:%s] already has role[type:%s] attached; detach first or pick a different roleType",
+                msg.getServerUuid(), msg.getRoleType()));
+        }
     }
 
     private void validate(APICreateServerPoolMsg msg) {
@@ -54,6 +75,19 @@ public class PhysicalServerApiInterceptor implements ApiMessageInterceptor {
                     "ServerPool[uuid:%s] belongs to Zone[uuid:%s], but PhysicalServer specifies Zone[uuid:%s]",
                     msg.getPoolUuid(), pool.getZoneUuid(), msg.getZoneUuid()
                 ));
+            }
+        }
+
+        if (msg.getSerialNumber() != null && !msg.getSerialNumber().isEmpty() && msg.getZoneUuid() != null) {
+            boolean dup = Q.New(PhysicalServerVO.class)
+                .eq(PhysicalServerAO_.zoneUuid, msg.getZoneUuid())
+                .eq(PhysicalServerAO_.serialNumber, msg.getSerialNumber())
+                .isExists();
+            if (dup) {
+                throw new ApiMessageInterceptionException(argerr(
+                    ORG_ZSTACK_PHYSICAL_SERVER_SERIAL_NUMBER_DUPLICATE,
+                    "PhysicalServer with serialNumber[%s] already exists in Zone[uuid:%s]; serialNumber must be unique per zone",
+                    msg.getSerialNumber(), msg.getZoneUuid()));
             }
         }
     }
@@ -76,6 +110,28 @@ public class PhysicalServerApiInterceptor implements ApiMessageInterceptor {
         }
         if (msg.getDhcpRangeGateway() != null && !NetworkUtils.isIpv4Address(msg.getDhcpRangeGateway())) {
             throw new ApiMessageInterceptionException(argerr("invalid dhcpRangeGateway[%s]", msg.getDhcpRangeGateway()));
+        }
+
+        if ("GATEWAY_PXE".equals(msg.getType())) {
+            List<String> missing = new ArrayList<>();
+            if (msg.getDhcpInterface() == null || msg.getDhcpInterface().isEmpty()) {
+                missing.add("dhcpInterface");
+            }
+            if (msg.getDhcpRangeStartIp() == null || msg.getDhcpRangeStartIp().isEmpty()) {
+                missing.add("dhcpRangeStartIp");
+            }
+            if (msg.getDhcpRangeEndIp() == null || msg.getDhcpRangeEndIp().isEmpty()) {
+                missing.add("dhcpRangeEndIp");
+            }
+            if (msg.getDhcpRangeNetmask() == null || msg.getDhcpRangeNetmask().isEmpty()) {
+                missing.add("dhcpRangeNetmask");
+            }
+            if (!missing.isEmpty()) {
+                throw new ApiMessageInterceptionException(argerr(
+                    ORG_ZSTACK_PROVISION_NETWORK_DHCP_MISSING,
+                    "ProvisionNetwork[type:GATEWAY_PXE] requires DHCP wiring; missing field(s): %s",
+                    String.join(", ", missing)));
+            }
         }
     }
 
