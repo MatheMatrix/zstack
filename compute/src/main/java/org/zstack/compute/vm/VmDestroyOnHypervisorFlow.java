@@ -97,7 +97,7 @@ public class VmDestroyOnHypervisorFlow extends NoRollbackFlow {
 
         if (isHostDisconnected(hostUuid)) {
             chain.fail(err(ORG_ZSTACK_COMPUTE_VM_10331, HostErrors.HOST_IS_DISCONNECTED,
-                    "host[uuid:%s] is Disconnected, cannot destroy vm[uuid:%s] on it",
+                    "host[uuid:%s] is Disconnected, cannot destroy vm[uuid:%s]; reconnect the host first",
                     hostUuid, spec.getVmInventory().getUuid()));
             return;
         }

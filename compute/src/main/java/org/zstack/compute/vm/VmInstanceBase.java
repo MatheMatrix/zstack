@@ -235,17 +235,11 @@ public class VmInstanceBase extends AbstractVmInstance {
                             completion.fail(errCode);
                         }
                     });
+                } else if (errCode.isError(HostErrors.HOST_IS_DISCONNECTED)) {
+                    restoreOriginalState(originalCopy);
+                    completion.fail(errCode);
                 } else {
-                    new SQLBatch() {
-                        @Override
-                        protected void scripts() {
-                            self = findByUuid(self.getUuid(), self.getClass());
-                            self.setState(originalCopy.getState());
-                            self.setHostUuid(originalCopy.getHostUuid());
-                            self.setLastHostUuid(originalCopy.getLastHostUuid());
-                            self = merge(self);
-                        }
-                    }.execute();
+                    self = changeVmStateInDb(VmInstanceStateEvent.unknown);
                     completion.fail(errCode);
                 }
             }
@@ -258,6 +252,19 @@ public class VmInstanceBase extends AbstractVmInstance {
 
     protected VmInstanceInventory getSelfInventory() {
         return VmInstanceInventory.valueOf(self);
+    }
+
+    private void restoreOriginalState(VmInstanceInventory originalCopy) {
+        new SQLBatch() {
+            @Override
+            protected void scripts() {
+                self = findByUuid(self.getUuid(), self.getClass());
+                self.setState(originalCopy.getState());
+                self.setHostUuid(originalCopy.getHostUuid());
+                self.setLastHostUuid(originalCopy.getLastHostUuid());
+                self = merge(self);
+            }
+        }.execute();
     }
 
     public VmInstanceBase(VmInstanceVO vo) {
