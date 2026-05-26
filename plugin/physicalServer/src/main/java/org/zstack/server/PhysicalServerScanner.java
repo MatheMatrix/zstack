@@ -36,13 +36,7 @@ public class PhysicalServerScanner {
     private static final int DEFAULT_OOB_PORT = 623;
     private static final int DEFAULT_TIMEOUT_PER_HOST = 3;
 
-    // Test seam (UNIT_TEST_ON only): (ip, username) -> ProbeStatus override
-    public static volatile BiFunction<String, String, ProbeStatus> probeOverride;
-
-    // Test seam (UNIT_TEST_ON only): (ip, username) -> simulated PhysicalServerPowerStatus.
-    // Consulted only when probeOverride returns SUCCESS; defaults to POWER_UNKNOWN if unset
-    // (preserves prior behavior of legacy IT cases that only set probeOverride).
-    public static volatile BiFunction<String, String, PhysicalServerPowerStatus> powerOverride;
+    public static volatile BiFunction<String, String, ShellResult> shellResultOverride;
 
     @Autowired
     private DatabaseFacade dbf;
@@ -203,16 +197,25 @@ public class PhysicalServerScanner {
     }
 
     private ProbeOutcome runProbe(String ip, Integer oobPort, Credential credential, Integer timeoutPerHost) {
-        if (CoreGlobalProperty.UNIT_TEST_ON) {
-            ProbeStatus status = probeOverride != null
-                    ? probeOverride.apply(ip, credential.username)
-                    : ProbeStatus.SUCCESS;
-            PhysicalServerPowerStatus power = (status == ProbeStatus.SUCCESS && powerOverride != null)
-                    ? powerOverride.apply(ip, credential.username)
-                    : PhysicalServerPowerStatus.POWER_UNKNOWN;
-            return new ProbeOutcome(status, power);
+        ShellResult ret = runIpmiPowerStatus(ip, oobPort, credential, timeoutPerHost);
+        if (ret.getRetCode() == 0) {
+            return new ProbeOutcome(ProbeStatus.SUCCESS, PhysicalServerPowerStatusParser.parse(ret.getStdout()));
         }
+        ProbeStatus failStatus = isAuthFailure(ret) ? ProbeStatus.AUTH_FAILED : ProbeStatus.UNREACHABLE;
+        return new ProbeOutcome(failStatus, PhysicalServerPowerStatus.POWER_UNKNOWN);
+    }
 
+    private ShellResult runIpmiPowerStatus(String ip, Integer oobPort, Credential credential, Integer timeoutPerHost) {
+        if (CoreGlobalProperty.UNIT_TEST_ON) {
+            if (shellResultOverride != null) {
+                return shellResultOverride.apply(ip, credential.username);
+            }
+            ShellResult ret = new ShellResult();
+            ret.setRetCode(0);
+            ret.setStdout("Chassis Power is on");
+            ret.setStderr("");
+            return ret;
+        }
         String passFile = PathUtil.createTempFileWithContent(credential.password);
         try {
             int timeout = timeoutPerHost == null ? DEFAULT_TIMEOUT_PER_HOST : Math.max(1, timeoutPerHost);
@@ -224,12 +227,7 @@ public class PhysicalServerScanner {
                     port,
                     SshCmdHelper.shellQuote(credential.username),
                     SshCmdHelper.shellQuote(passFile));
-            ShellResult ret = ShellUtils.runAndReturn(cmd);
-            if (ret.getRetCode() == 0) {
-                return new ProbeOutcome(ProbeStatus.SUCCESS, PhysicalServerPowerStatusParser.parse(ret.getStdout()));
-            }
-            ProbeStatus failStatus = isAuthFailure(ret) ? ProbeStatus.AUTH_FAILED : ProbeStatus.UNREACHABLE;
-            return new ProbeOutcome(failStatus, PhysicalServerPowerStatus.POWER_UNKNOWN);
+            return ShellUtils.runAndReturn(cmd);
         } finally {
             PathUtil.forceRemoveFile(passFile);
         }
