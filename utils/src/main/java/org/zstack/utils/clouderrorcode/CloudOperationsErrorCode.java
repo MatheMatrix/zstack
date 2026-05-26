@@ -9942,6 +9942,8 @@ public class CloudOperationsErrorCode {
 
     public static final String ORG_ZSTACK_COMPUTE_VM_10330 = "ORG_ZSTACK_COMPUTE_VM_10330";
 
+    public static final String ORG_ZSTACK_COMPUTE_VM_10331 = "ORG_ZSTACK_COMPUTE_VM_10331";
+
     public static final String ORG_ZSTACK_IDENTITY_LOGIN_10000 = "ORG_ZSTACK_IDENTITY_LOGIN_10000";
 
     public static final String ORG_ZSTACK_STORAGE_VOLUME_BLOCK_EXPON_10000 = "ORG_ZSTACK_STORAGE_VOLUME_BLOCK_EXPON_10000";

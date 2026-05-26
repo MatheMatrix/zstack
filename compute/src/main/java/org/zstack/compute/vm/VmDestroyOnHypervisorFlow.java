@@ -25,6 +25,7 @@ import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
 import static org.zstack.core.Platform.err;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.ORG_ZSTACK_COMPUTE_VM_10331;
 
 import java.util.Collections;
 import java.util.Map;
@@ -67,6 +68,11 @@ public class VmDestroyOnHypervisorFlow extends NoRollbackFlow {
         });
     }
 
+    boolean isHostDisconnected(String hostUuid) {
+        HostVO host = dbf.findByUuid(hostUuid, HostVO.class);
+        return host != null && host.getStatus() == HostStatus.Disconnected;
+    }
+
     @Override
     public void run(final FlowTrigger chain, Map data) {
         final VmInstanceSpec spec = (VmInstanceSpec) data.get(VmInstanceConstant.Params.VmInstanceSpec.toString());
@@ -84,9 +90,8 @@ public class VmDestroyOnHypervisorFlow extends NoRollbackFlow {
             return;
         }
 
-        HostVO host = dbf.findByUuid(hostUuid, HostVO.class);
-        if (host != null && host.getStatus() == HostStatus.Disconnected) {
-            chain.fail(err(HostErrors.HOST_IS_DISCONNECTED,
+        if (isHostDisconnected(hostUuid)) {
+            chain.fail(err(ORG_ZSTACK_COMPUTE_VM_10331, HostErrors.HOST_IS_DISCONNECTED,
                     "host[uuid:%s] is Disconnected, cannot destroy vm[uuid:%s] on it",
                     hostUuid, spec.getVmInventory().getUuid()));
             return;
