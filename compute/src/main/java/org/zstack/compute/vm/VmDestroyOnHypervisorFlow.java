@@ -75,7 +75,7 @@ public class VmDestroyOnHypervisorFlow extends NoRollbackFlow {
                 .select(HostVO_.status)
                 .eq(HostVO_.uuid, hostUuid)
                 .findValue();
-        return HostStatus.Disconnected == status;
+        return status != null && status != HostStatus.Connected;
     }
 
     @Override
