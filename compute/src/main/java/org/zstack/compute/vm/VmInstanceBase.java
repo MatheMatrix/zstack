@@ -255,16 +255,16 @@ public class VmInstanceBase extends AbstractVmInstance {
     }
 
     private void restoreOriginalState(VmInstanceInventory originalCopy) {
-        new SQLBatch() {
-            @Override
-            protected void scripts() {
-                self = findByUuid(self.getUuid(), self.getClass());
-                self.setState(originalCopy.getState());
-                self.setHostUuid(originalCopy.getHostUuid());
-                self.setLastHostUuid(originalCopy.getLastHostUuid());
-                self = merge(self);
-            }
-        }.execute();
+        VmInstanceState origState = originalCopy.getState();
+        if (origState == VmInstanceState.Stopped) {
+            self = changeVmStateInDb(VmInstanceStateEvent.stopped);
+        } else if (origState == VmInstanceState.Running) {
+            self = changeVmStateInDb(VmInstanceStateEvent.running,
+                    () -> self.setHostUuid(originalCopy.getHostUuid()));
+            self.setLastHostUuid(originalCopy.getLastHostUuid());
+        } else {
+            self = changeVmStateInDb(VmInstanceStateEvent.unknown);
+        }
     }
 
     public VmInstanceBase(VmInstanceVO vo) {
