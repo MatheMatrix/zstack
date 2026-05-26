@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.stereotype.Component;
-import org.zstack.core.encrypt.EncryptFacade;
+import org.zstack.header.core.convert.EncryptFacade;
 import org.zstack.core.encrypt.EncryptGlobalConfig;
 import org.zstack.header.core.encrypt.PasswordEncryptType;
 import org.zstack.utils.Utils;
