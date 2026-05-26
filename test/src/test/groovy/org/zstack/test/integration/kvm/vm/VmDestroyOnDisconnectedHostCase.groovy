@@ -10,6 +10,9 @@ import org.zstack.sdk.VmInstanceInventory
 import org.zstack.test.integration.kvm.Env
 import org.zstack.testlib.EnvSpec
 import org.zstack.testlib.HostSpec
+import org.zstack.testlib.ImageSpec
+import org.zstack.testlib.InstanceOfferingSpec
+import org.zstack.testlib.L3NetworkSpec
 import org.zstack.testlib.SubCase
 
 class VmDestroyOnDisconnectedHostCase extends SubCase {

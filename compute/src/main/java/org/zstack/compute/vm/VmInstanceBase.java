@@ -265,7 +265,10 @@ public class VmInstanceBase extends AbstractVmInstance {
                         self.setLastHostUuid(originalCopy.getLastHostUuid());
                     });
         } else {
-            self = changeVmStateInDb(VmInstanceStateEvent.unknown);
+            self.setState(origState);
+            self.setHostUuid(originalCopy.getHostUuid());
+            self.setLastHostUuid(originalCopy.getLastHostUuid());
+            self = dbf.updateAndRefresh(self);
         }
     }
 

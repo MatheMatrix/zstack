@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.db.DatabaseFacade;
-import org.zstack.core.db.Q;
+
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.core.workflow.NoRollbackFlow;
@@ -17,7 +17,7 @@ import org.zstack.header.host.HostConstant;
 import org.zstack.header.host.HostErrors;
 import org.zstack.header.host.HostStatus;
 import org.zstack.header.host.HostVO;
-import org.zstack.header.host.HostVO_;
+
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.vm.DestroyVmOnHypervisorMsg;
 import org.zstack.header.vm.VmInstanceConstant;
@@ -71,11 +71,8 @@ public class VmDestroyOnHypervisorFlow extends NoRollbackFlow {
     }
 
     public boolean isHostDisconnected(String hostUuid) {
-        HostStatus status = Q.New(HostVO.class)
-                .select(HostVO_.status)
-                .eq(HostVO_.uuid, hostUuid)
-                .findValue();
-        return status != null && status != HostStatus.Connected;
+        HostVO hvo = dbf.findByUuid(hostUuid, HostVO.class);
+        return hvo != null && hvo.getStatus() != HostStatus.Connected;
     }
 
     @Override
