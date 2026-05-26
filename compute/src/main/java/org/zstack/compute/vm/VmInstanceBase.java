@@ -260,8 +260,10 @@ public class VmInstanceBase extends AbstractVmInstance {
             self = changeVmStateInDb(VmInstanceStateEvent.stopped);
         } else if (origState == VmInstanceState.Running) {
             self = changeVmStateInDb(VmInstanceStateEvent.running,
-                    () -> self.setHostUuid(originalCopy.getHostUuid()));
-            self.setLastHostUuid(originalCopy.getLastHostUuid());
+                    () -> {
+                        self.setHostUuid(originalCopy.getHostUuid());
+                        self.setLastHostUuid(originalCopy.getLastHostUuid());
+                    });
         } else {
             self = changeVmStateInDb(VmInstanceStateEvent.unknown);
         }
