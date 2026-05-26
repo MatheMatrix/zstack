@@ -65,7 +65,6 @@ public class PhysicalServerHardwareService {
         }
 
         UnifiedHardwareInfo merged = new UnifiedHardwareInfo();
-        String winningSource = null;
 
         // P1-2: drop the per-source hasActiveRole() pre-check. The SPI's discover()
         // contract now requires each impl to resolve its own role uuid exactly once
@@ -75,23 +74,12 @@ public class PhysicalServerHardwareService {
         // out-of-band link is configured at all (a server-level field, not a PSR
         // query) — but BM2's adapter still validates its own role row inside discover.
         if (server.getOobAddress() != null) {
-            UnifiedHardwareInfo fru = runExt(SOURCE_IPMI_FRU, server);
-            if (mergeNonNull(merged, fru)) {
-                winningSource = SOURCE_IPMI_FRU;
-            }
+            mergeNonNull(merged, runExt(SOURCE_IPMI_FRU, server));
         }
+        mergeNonNull(merged, runExt(SOURCE_KVM_AGENT, server));
+        mergeNonNull(merged, runExt(SOURCE_K8S_NODEINFO, server));
 
-        UnifiedHardwareInfo kvm = runExt(SOURCE_KVM_AGENT, server);
-        if (mergeNonNull(merged, kvm) && winningSource == null) {
-            winningSource = SOURCE_KVM_AGENT;
-        }
-
-        UnifiedHardwareInfo k8s = runExt(SOURCE_K8S_NODEINFO, server);
-        if (mergeNonNull(merged, k8s) && winningSource == null) {
-            winningSource = SOURCE_K8S_NODEINFO;
-        }
-
-        persistHardwareInfo(serverUuid, merged, winningSource);
+        persistHardwareInfo(serverUuid, merged);
         return merged;
     }
 
@@ -116,12 +104,6 @@ public class PhysicalServerHardwareService {
         info.setCpuCores(row.getCpuCores());
         info.setCpuArchitecture(row.getCpuArchitecture());
         info.setTotalMemoryBytes(row.getTotalMemoryBytes());
-        info.setMemoryModuleCount(row.getMemoryModuleCount());
-        info.setTotalDiskBytes(row.getTotalDiskBytes());
-        info.setDiskCount(row.getDiskCount());
-        info.setNicCount(row.getNicCount());
-        info.setGpuCount(row.getGpuCount());
-        info.setHealthStatus(row.getHealthStatus());
         return info;
     }
 
@@ -202,30 +184,6 @@ public class PhysicalServerHardwareService {
             target.setTotalMemoryBytes(source.getTotalMemoryBytes());
             changed = true;
         }
-        if (target.getMemoryModuleCount() == null && source.getMemoryModuleCount() != null) {
-            target.setMemoryModuleCount(source.getMemoryModuleCount());
-            changed = true;
-        }
-        if (target.getTotalDiskBytes() == null && source.getTotalDiskBytes() != null) {
-            target.setTotalDiskBytes(source.getTotalDiskBytes());
-            changed = true;
-        }
-        if (target.getDiskCount() == null && source.getDiskCount() != null) {
-            target.setDiskCount(source.getDiskCount());
-            changed = true;
-        }
-        if (target.getNicCount() == null && source.getNicCount() != null) {
-            target.setNicCount(source.getNicCount());
-            changed = true;
-        }
-        if (target.getGpuCount() == null && source.getGpuCount() != null) {
-            target.setGpuCount(source.getGpuCount());
-            changed = true;
-        }
-        if (target.getHealthStatus() == null && source.getHealthStatus() != null) {
-            target.setHealthStatus(source.getHealthStatus());
-            changed = true;
-        }
         return changed;
     }
 
@@ -233,7 +191,7 @@ public class PhysicalServerHardwareService {
      * Upsert merged hardware info. Existing row's non-null columns are preserved when the
      * incoming value for the same column is null (mergeNonNull at the row level).
      */
-    void persistHardwareInfo(String serverUuid, UnifiedHardwareInfo info, String discoverSource) {
+    void persistHardwareInfo(String serverUuid, UnifiedHardwareInfo info) {
         PhysicalServerHardwareInfoVO existing = Q.New(PhysicalServerHardwareInfoVO.class)
                 .eq(PhysicalServerHardwareInfoVO_.serverUuid, serverUuid)
                 .find();
@@ -243,27 +201,17 @@ public class PhysicalServerHardwareService {
             PhysicalServerHardwareInfoVO row = new PhysicalServerHardwareInfoVO();
             row.setServerUuid(serverUuid);
             applyNonNull(row, info);
-            row.setDiscoverSource(discoverSource);
             row.setLastDiscoverDate(now);
             row.setCreateDate(now);
             row.setLastOpDate(now);
             dbf.persist(row);
-            logger.debug(String.format("persisted hardware info for server[uuid:%s] source=%s", serverUuid, discoverSource));
+            logger.debug(String.format("persisted hardware info for server[uuid:%s]", serverUuid));
             return;
         }
         applyNonNull(existing, info);
-        // P1-3: first-writer-wins for discoverSource. The INSERT branch above writes the
-        // initial source tag; subsequent passes refresh the data fields and lastDiscoverDate
-        // but MUST NOT overwrite the source. Rationale: a fleet's discoverSource column
-        // should be a stable signal of "who first identified this host" — not a churning
-        // value that flips when an IPMI tier appears mid-life or a K8s-only adapter
-        // contributes one extra field. Operators wanting "currently strongest contributor"
-        // should derive it from the per-source field provenance once that's wired (out of
-        // scope for v5.5.18); lastDiscoverDate alone tells when the row was last touched.
         existing.setLastDiscoverDate(now);
         dbf.update(existing);
-        logger.debug(String.format("updated hardware info for server[uuid:%s] originalSource=%s",
-                serverUuid, existing.getDiscoverSource()));
+        logger.debug(String.format("updated hardware info for server[uuid:%s]", serverUuid));
     }
 
     /**
@@ -298,24 +246,6 @@ public class PhysicalServerHardwareService {
         }
         if (info.getTotalMemoryBytes() != null) {
             row.setTotalMemoryBytes(info.getTotalMemoryBytes());
-        }
-        if (info.getMemoryModuleCount() != null) {
-            row.setMemoryModuleCount(info.getMemoryModuleCount());
-        }
-        if (info.getTotalDiskBytes() != null) {
-            row.setTotalDiskBytes(info.getTotalDiskBytes());
-        }
-        if (info.getDiskCount() != null) {
-            row.setDiskCount(info.getDiskCount());
-        }
-        if (info.getNicCount() != null) {
-            row.setNicCount(info.getNicCount());
-        }
-        if (info.getGpuCount() != null) {
-            row.setGpuCount(info.getGpuCount());
-        }
-        if (info.getHealthStatus() != null) {
-            row.setHealthStatus(info.getHealthStatus());
         }
     }
 }

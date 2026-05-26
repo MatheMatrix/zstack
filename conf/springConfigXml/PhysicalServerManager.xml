@@ -133,4 +133,18 @@
 
     <bean id="physicalServerPathTwoOrchestrator"
           class="org.zstack.server.PhysicalServerPathTwoOrchestrator" />
+
+    <!--
+        QA gap (Confluence pageId=208903964 #2) / PRD §2.5.1: backfill
+        PhysicalServerVO.serialNumber / manufacturer / model from HostSystemTags
+        in the call-after-add-host-extension hook (chain tail), after connect has
+        written the tags. InitPhysicalServerCapacityFlow runs at chain head per
+        ADR-012 fail-loud ordering, too early to read SystemTag.
+    -->
+    <bean id="PhysicalServerKvmIdentityBackfillExtension"
+          class="org.zstack.server.PhysicalServerKvmIdentityBackfillExtension">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.host.HostAddExtensionPoint" />
+        </zstack:plugin>
+    </bean>
 </beans>

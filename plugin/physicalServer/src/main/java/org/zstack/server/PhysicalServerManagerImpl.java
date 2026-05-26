@@ -164,16 +164,23 @@ public class PhysicalServerManagerImpl extends AbstractService implements Physic
     }
 
     private PhysicalServerPowerStatus probePowerStatus(PhysicalServerVO vo) {
-        // Test seam: PhysicalServerPowerTracker.powerOverride is null in production; IT cases
-        // set it to drive the handler without a real BMC. Mirrors the static-override pattern
-        // used by PhysicalServerScanner.{probe,power}Override.
-        if (PhysicalServerPowerTracker.powerOverride != null) {
-            return PhysicalServerPowerTracker.powerOverride.apply(vo.getOobAddress(), vo.getOobUsername());
-        }
         if (vo.getOobAddress() == null || vo.getOobUsername() == null || vo.getOobPassword() == null) {
             return PhysicalServerPowerStatus.POWER_UNKNOWN;
         }
+        ShellResult ret = runIpmiPowerStatus(vo);
+        if (ret.getRetCode() != 0) {
+            return PhysicalServerPowerStatus.POWER_UNKNOWN;
+        }
+        return PhysicalServerPowerStatusParser.parse(ret.getStdout());
+    }
 
+    private ShellResult runIpmiPowerStatus(PhysicalServerVO vo) {
+        // Test seam: PhysicalServerPowerTracker.shellResultOverride is null in production;
+        // IT cases set it to simulate the `chassis power status` shell-out leaf. Prod-side
+        // PowerStatusParser always runs on the returned ShellResult.
+        if (PhysicalServerPowerTracker.shellResultOverride != null) {
+            return PhysicalServerPowerTracker.shellResultOverride.apply(vo.getOobAddress(), vo.getOobUsername());
+        }
         String passFile = PathUtil.createTempFileWithContent(vo.getOobPassword());
         try {
             int port = vo.getOobPort() == null ? 623 : vo.getOobPort();
@@ -183,11 +190,7 @@ public class PhysicalServerManagerImpl extends AbstractService implements Physic
                     port,
                     SshCmdHelper.shellQuote(vo.getOobUsername()),
                     SshCmdHelper.shellQuote(passFile));
-            ShellResult ret = ShellUtils.runAndReturn(cmd);
-            if (ret.getRetCode() != 0) {
-                return PhysicalServerPowerStatus.POWER_UNKNOWN;
-            }
-            return PhysicalServerPowerStatusParser.parse(ret.getStdout());
+            return ShellUtils.runAndReturn(cmd);
         } finally {
             PathUtil.forceRemoveFile(passFile);
         }

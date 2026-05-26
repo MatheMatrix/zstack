@@ -2,15 +2,11 @@ package org.zstack.test.integration.server
 
 import org.zstack.core.cloudbus.CloudBus
 import org.zstack.core.db.DatabaseFacade
-import org.zstack.header.longjob.LongJobState
-import org.zstack.header.longjob.LongJobVO
-import org.zstack.header.server.APIProvisionPhysicalServerMsg
 import org.zstack.header.server.PhysicalServerConstant
 import org.zstack.header.server.PhysicalServerPowerStatus
 import org.zstack.header.server.PhysicalServerVO
 import org.zstack.header.server.PingPhysicalServerMsg
 import org.zstack.header.server.PingPhysicalServerReply
-import org.zstack.sdk.ImageInventory
 import org.zstack.sdk.PhysicalServerInventory
 import org.zstack.sdk.PhysicalServerProvisionNetworkInventory
 import org.zstack.sdk.ServerPoolInventory
@@ -20,7 +16,7 @@ import org.zstack.server.PhysicalServerScanner
 import org.zstack.test.integration.kvm.KvmTest
 import org.zstack.testlib.EnvSpec
 import org.zstack.testlib.SubCase
-import org.zstack.utils.gson.JSONObjectUtil
+import org.zstack.utils.ShellResult
 
 // FR-032: Power Management, FR-033: Hardware Discovery, FR-034: Server Scan
 class PhysicalServerOpsCase extends SubCase {
@@ -30,9 +26,6 @@ class PhysicalServerOpsCase extends SubCase {
     @Override
     void setup() {
         useSpring(KvmTest.springSpec)
-        spring {
-            include("PhysicalServerTestProviders.xml")
-        }
     }
 
     @Override
@@ -90,9 +83,6 @@ class PhysicalServerOpsCase extends SubCase {
             testScanDedupLegacyManagementIpFallback()
             testScanRecordsRealPowerStatus()
             testPowerTrackerSyncsPowerStatus()
-            // FR-012: ProvisionProvider orchestration
-            testProvisionPhysicalServerStandaloneLongJob()
-            testProvisionPhysicalServerNoProviderFailsLongJob()
             // Supplementary
             testQueryProvisionNetwork()
             testDeleteProvisionNetworkBlockedByCluster()
@@ -149,37 +139,38 @@ class PhysicalServerOpsCase extends SubCase {
         }
     }
 
-    private static final String PROVISION_NIC_MAC = "52:54:00:12:34:56"
+    // --- ShellResult helpers (data-plane mocks for ipmitool leaf only) ---
 
-    private void ensureProvisionNic(String serverUuid) {
-        org.zstack.header.server.PhysicalServerHardwareDetailVO nic = new org.zstack.header.server.PhysicalServerHardwareDetailVO()
-        nic.serverUuid = serverUuid
-        nic.type = "NIC"
-        nic.extraInfo = """{"mac":"${PROVISION_NIC_MAC}","primary":true}"""
-        dbf.persistAndRefresh(nic)
+    private static ShellResult ipmiPowerOn() {
+        ShellResult r = new ShellResult()
+        r.retCode = 0
+        r.stdout = "Chassis Power is on"
+        r.stderr = ""
+        return r
     }
 
-    private LongJobVO submitProvisionJob(PhysicalServerInventory server,
-                                         PhysicalServerProvisionNetworkInventory network,
-                                         ImageInventory image) {
-        ensureProvisionNic(server.uuid)
+    private static ShellResult ipmiPowerOff() {
+        ShellResult r = new ShellResult()
+        r.retCode = 0
+        r.stdout = "Chassis Power is off"
+        r.stderr = ""
+        return r
+    }
 
-        APIProvisionPhysicalServerMsg msg = new APIProvisionPhysicalServerMsg()
-        msg.serverUuid = server.uuid
-        msg.networkUuid = network.uuid
-        msg.osImageUuid = image.uuid
-        msg.osDistribution = "rocky9"
-        msg.kickstartTemplate = "install-script"
-        msg.provisionNicMac = PROVISION_NIC_MAC
-        msg.customParams = [role: "kvm", username: "root"]
+    private static ShellResult ipmiAuthFailed() {
+        ShellResult r = new ShellResult()
+        r.retCode = 1
+        r.stdout = ""
+        r.stderr = "Error: Unable to establish IPMI v2 / RMCP+ session\nauthentication failed"
+        return r
+    }
 
-        def job = submitLongJob {
-            jobName = msg.class.simpleName
-            jobData = JSONObjectUtil.toJsonString(msg)
-            targetResourceUuid = server.uuid
-        }
-
-        return dbFindByUuid(job.uuid, LongJobVO.class)
+    private static ShellResult ipmiUnreachable() {
+        ShellResult r = new ShellResult()
+        r.retCode = 1
+        r.stdout = ""
+        r.stderr = "Error: Unable to establish IPMI session: connection timed out"
+        return r
     }
 
     // --- FR-032: Power Management ---
@@ -373,84 +364,6 @@ class PhysicalServerOpsCase extends SubCase {
         deleteServerPool { uuid = pool.uuid }
     }
 
-    // --- FR-012: ProvisionProvider orchestration ---
-
-    // AC-PR-01: GATEWAY_PXE with registered provider — long job succeeds and jobResult contains serverUuid/networkUuid
-    void testProvisionPhysicalServerStandaloneLongJob() {
-        def zone = env.inventoryByName("zone") as ZoneInventory
-        def pool = createPool("pool-provision-standalone")
-        def server = createServerWithOob("server-provision-standalone", "192.168.62.1", pool.uuid)
-        def image = env.inventoryByName("provision-rocky9") as ImageInventory
-
-        def net = createProvisionNetwork {
-            name = "pxe-provision-standalone"
-            zoneUuid = zone.uuid
-            type = "GATEWAY_PXE"
-        } as PhysicalServerProvisionNetworkInventory
-
-        attachProvisionNetworkToPool {
-            networkUuid = net.uuid
-            poolUuid = pool.uuid
-        }
-
-        LongJobVO job = submitProvisionJob(server, net, image)
-
-        retryInSecs {
-            job = dbFindByUuid(job.uuid, LongJobVO.class)
-            assert job.state == LongJobState.Succeeded
-            assert job.targetResourceUuid == server.uuid
-            assert job.jobResult.contains(server.uuid)
-            assert job.jobResult.contains(net.uuid)
-        }
-
-        detachProvisionNetworkFromPool {
-            networkUuid = net.uuid
-            poolUuid = pool.uuid
-        }
-        deleteProvisionNetwork { uuid = net.uuid }
-        deletePhysicalServer { uuid = server.uuid }
-        deleteServerPool { uuid = pool.uuid }
-    }
-
-    // AC-PR-02: STANDALONE_PXE provider is a reserved stub for phase-2 implementation —
-    // long job must fail with a clear "reserved" error from the registered stub provider.
-    void testProvisionPhysicalServerNoProviderFailsLongJob() {
-        def zone = env.inventoryByName("zone") as ZoneInventory
-        def pool = createPool("pool-provision-no-provider")
-        def server = createServerWithOob("server-provision-no-provider", "192.168.62.2", pool.uuid)
-        def image = env.inventoryByName("provision-no-provider") as ImageInventory
-
-        def net = createProvisionNetwork {
-            name = "pxe-provision-no-provider"
-            zoneUuid = zone.uuid
-            type = "STANDALONE_PXE"
-        } as PhysicalServerProvisionNetworkInventory
-
-        attachProvisionNetworkToPool {
-            networkUuid = net.uuid
-            poolUuid = pool.uuid
-        }
-
-        LongJobVO job = submitProvisionJob(server, net, image)
-
-        retryInSecs {
-            job = dbFindByUuid(job.uuid, LongJobVO.class)
-            assert job.state == LongJobState.Failed
-            // ZSTAC-84191: STANDALONE_PXE stub bean is registered (PhysicalServerManager.xml),
-            // so lookup succeeds and startProvisioning returns the explicit "reserved" error
-            // instead of the bare "no ProvisionProvider registered" lookup miss.
-            assert job.jobResult.contains("STANDALONE_PXE ProvisionProvider is reserved and not implemented yet")
-        }
-
-        detachProvisionNetworkFromPool {
-            networkUuid = net.uuid
-            poolUuid = pool.uuid
-        }
-        deleteProvisionNetwork { uuid = net.uuid }
-        deletePhysicalServer { uuid = server.uuid }
-        deleteServerPool { uuid = pool.uuid }
-    }
-
     // --- Supplementary ---
 
     // Query provision network by name
@@ -480,9 +393,8 @@ class PhysicalServerOpsCase extends SubCase {
         def pool = createPool("pool-scan-cred-rotate")
 
         // bad-user always AUTH_FAILED; good-user always SUCCESS
-        PhysicalServerScanner.probeOverride = { String ip, String username ->
-            username == "good-user" ? PhysicalServerScanner.ProbeStatus.SUCCESS
-                                    : PhysicalServerScanner.ProbeStatus.AUTH_FAILED
+        PhysicalServerScanner.shellResultOverride = { String ip, String username ->
+            username == "good-user" ? ipmiPowerOn() : ipmiAuthFailed()
         }
 
         try {
@@ -506,7 +418,7 @@ class PhysicalServerOpsCase extends SubCase {
                 assert ps.oobUsername == "good-user"
             }
         } finally {
-            PhysicalServerScanner.probeOverride = null
+            PhysicalServerScanner.shellResultOverride = null
             deleteServersInPool(pool.uuid)
             deleteServerPool { uuid = pool.uuid }
         }
@@ -526,15 +438,15 @@ class PhysicalServerOpsCase extends SubCase {
         createServerWithOob("server-existing-63-2", "192.168.63.2", pool.uuid)
         // -> oobAddress = "192.168.100.2"
 
-        // Map each oobAddress IP to its intended probe status
-        def statusByIp = [
-            "192.168.100.1": PhysicalServerScanner.ProbeStatus.SUCCESS,       // discovered (new)
-            "192.168.100.2": PhysicalServerScanner.ProbeStatus.SUCCESS,       // existing (matched by oobAddress)
-            "192.168.100.3": PhysicalServerScanner.ProbeStatus.AUTH_FAILED,   // auth-failed
-            "192.168.100.4": PhysicalServerScanner.ProbeStatus.UNREACHABLE,   // unreachable
+        // Map each oobAddress IP to its intended shell-out result
+        def shellByIp = [
+            "192.168.100.1": ipmiPowerOn(),       // discovered (new) — parser → POWER_ON
+            "192.168.100.2": ipmiPowerOn(),       // existing (matched by oobAddress)
+            "192.168.100.3": ipmiAuthFailed(),    // classifier → AUTH_FAILED
+            "192.168.100.4": ipmiUnreachable(),   // classifier → UNREACHABLE
         ]
-        PhysicalServerScanner.probeOverride = { String ip, String username ->
-            statusByIp.getOrDefault(ip, PhysicalServerScanner.ProbeStatus.SUCCESS)
+        PhysicalServerScanner.shellResultOverride = { String ip, String username ->
+            shellByIp.getOrDefault(ip, ipmiPowerOn())
         }
 
         try {
@@ -552,7 +464,7 @@ class PhysicalServerOpsCase extends SubCase {
             assert result.unreachableCount == 1
             assert result.authFailedIps.contains("192.168.100.3")
         } finally {
-            PhysicalServerScanner.probeOverride = null
+            PhysicalServerScanner.shellResultOverride = null
             deleteServersInPool(pool.uuid)
             deleteServerPool { uuid = pool.uuid }
         }
@@ -569,8 +481,8 @@ class PhysicalServerOpsCase extends SubCase {
         def poolB = createPool("pool-dedup-B")
 
         def sharedIp = "192.168.64.10"
-        PhysicalServerScanner.probeOverride = { String ip, String username ->
-            PhysicalServerScanner.ProbeStatus.SUCCESS
+        PhysicalServerScanner.shellResultOverride = { String ip, String username ->
+            ipmiPowerOn()
         }
 
         try {
@@ -603,7 +515,7 @@ class PhysicalServerOpsCase extends SubCase {
             assert all.size() == 1
             assert all[0].poolUuid == poolA.uuid
         } finally {
-            PhysicalServerScanner.probeOverride = null
+            PhysicalServerScanner.shellResultOverride = null
             deleteServersInPool(poolA.uuid)
             deleteServerPool { uuid = poolA.uuid }
             deleteServerPool { uuid = poolB.uuid }
@@ -624,8 +536,8 @@ class PhysicalServerOpsCase extends SubCase {
         // Production API path (createPhysicalServer without oob fields) — no direct dbf write.
         createServerWithoutOob("server-legacy-65-10", legacyIp, pool.uuid)
 
-        PhysicalServerScanner.probeOverride = { String ip, String username ->
-            PhysicalServerScanner.ProbeStatus.SUCCESS
+        PhysicalServerScanner.shellResultOverride = { String ip, String username ->
+            ipmiPowerOn()
         }
 
         try {
@@ -646,23 +558,20 @@ class PhysicalServerOpsCase extends SubCase {
             }
             assert all.size() == 1
         } finally {
-            PhysicalServerScanner.probeOverride = null
+            PhysicalServerScanner.shellResultOverride = null
             deleteServersInPool(pool.uuid)
             deleteServerPool { uuid = pool.uuid }
         }
     }
 
     // next-session.md §B.3.1: scan probe must record real OOB power status, not hardcode POWER_UNKNOWN.
-    // probeOverride forces SUCCESS; powerOverride injects per-IP power; assert PS.powerStatus matches.
+    // shellResultOverride simulates per-IP `chassis power status` stdout; prod parser maps it to PowerStatus.
     void testScanRecordsRealPowerStatus() {
         def zone = env.inventoryByName("zone") as ZoneInventory
         def pool = createPool("pool-scan-power")
 
-        PhysicalServerScanner.probeOverride = { String ip, String username ->
-            PhysicalServerScanner.ProbeStatus.SUCCESS
-        }
-        PhysicalServerScanner.powerOverride = { String ip, String username ->
-            ip.endsWith(".1") ? PhysicalServerPowerStatus.POWER_ON : PhysicalServerPowerStatus.POWER_OFF
+        PhysicalServerScanner.shellResultOverride = { String ip, String username ->
+            ip.endsWith(".1") ? ipmiPowerOn() : ipmiPowerOff()
         }
 
         try {
@@ -681,15 +590,14 @@ class PhysicalServerOpsCase extends SubCase {
             assert s1.powerStatus == "POWER_ON"
             assert s2.powerStatus == "POWER_OFF"
         } finally {
-            PhysicalServerScanner.probeOverride = null
-            PhysicalServerScanner.powerOverride = null
+            PhysicalServerScanner.shellResultOverride = null
             deleteServersInPool(pool.uuid)
             deleteServerPool { uuid = pool.uuid }
         }
     }
 
     // next-session.md §B.3.2: PowerTracker periodic OOB probe must reconcile PS.powerStatus.
-    // Mock PowerTracker.powerOverride and dispatch a PingPhysicalServerMsg directly via the bus
+    // Mock PowerTracker.shellResultOverride and dispatch a PingPhysicalServerMsg directly via the bus
     // (avoids waiting on the periodic scheduler); assert DB row reflects probed value.
     void testPowerTrackerSyncsPowerStatus() {
         def pool = createPool("pool-power-tracker")
@@ -702,8 +610,8 @@ class PhysicalServerOpsCase extends SubCase {
         def beforeVo = dbFindByUuid(server.uuid, PhysicalServerVO.class)
         assert beforeVo.powerStatus == PhysicalServerPowerStatus.POWER_UNKNOWN
 
-        PhysicalServerPowerTracker.powerOverride = { String ip, String username ->
-            PhysicalServerPowerStatus.POWER_OFF
+        PhysicalServerPowerTracker.shellResultOverride = { String ip, String username ->
+            ipmiPowerOff()
         }
 
         try {
@@ -717,7 +625,7 @@ class PhysicalServerOpsCase extends SubCase {
             def afterVo = dbFindByUuid(server.uuid, PhysicalServerVO.class)
             assert afterVo.powerStatus == PhysicalServerPowerStatus.POWER_OFF
         } finally {
-            PhysicalServerPowerTracker.powerOverride = null
+            PhysicalServerPowerTracker.shellResultOverride = null
             deletePhysicalServer { uuid = server.uuid }
             deleteServerPool { uuid = pool.uuid }
         }

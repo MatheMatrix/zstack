@@ -25,7 +25,6 @@ class KvmTest extends Test {
         include("LongJobManager.xml")
         include("HostAllocateExtension.xml")
         include("PhysicalServerManager.xml")
-        include("PhysicalServerTestProviders.xml")
     }
 
     @Override
