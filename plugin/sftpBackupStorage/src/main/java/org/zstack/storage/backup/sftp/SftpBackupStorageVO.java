@@ -1,6 +1,6 @@
 package org.zstack.storage.backup.sftp;
 
-import org.zstack.core.convert.PasswordConverter;
+import org.zstack.header.core.convert.PasswordConverter;
 import org.zstack.header.storage.backup.BackupStorageEO;
 import org.zstack.header.storage.backup.BackupStorageVO;
 import org.zstack.header.tag.AutoDeleteTag;

@@ -1,13 +1,10 @@
-package org.zstack.core.convert;
+package org.zstack.header.core.convert;
 
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.stereotype.Component;
-import org.zstack.core.encrypt.EncryptFacade;
-import org.zstack.core.encrypt.EncryptGlobalConfig;
-import org.zstack.header.core.encrypt.PasswordEncryptType;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
@@ -16,6 +13,13 @@ import javax.persistence.Converter;
 
 /**
  * Created by kayo on 2018/9/7.
+ *
+ * <p>Relocated from {@code org.zstack.core.convert} to header in ZSTAC-85182 so
+ * header-resident entities (e.g. {@code PhysicalServerAO.oobPassword}) can
+ * apply {@code @Convert(converter = PasswordConverter.class)} directly. The
+ * gating against the global {@code enable.password.encrypt} toggle moved to
+ * {@link EncryptFacade#isEncryptionDisabled()} to keep this class free of any
+ * {@code core} import.</p>
  */
 @Component
 @Converter
@@ -32,7 +36,7 @@ public class PasswordConverter implements AttributeConverter<String, String> {
 
     @Override
     public String convertToDatabaseColumn(String attribute) {
-        if (PasswordEncryptType.None.toString().equals(EncryptGlobalConfig.ENABLE_PASSWORD_ENCRYPT.value(String.class))) {
+        if (encryptFacade == null || encryptFacade.isEncryptionDisabled()) {
             return attribute;
         }
         if (StringUtils.isEmpty(attribute)) {
@@ -43,7 +47,7 @@ public class PasswordConverter implements AttributeConverter<String, String> {
 
     @Override
     public String convertToEntityAttribute(String dbData) {
-        if (PasswordEncryptType.None.toString().equals(EncryptGlobalConfig.ENABLE_PASSWORD_ENCRYPT.value(String.class))) {
+        if (encryptFacade == null || encryptFacade.isEncryptionDisabled()) {
             return dbData;
         }
 

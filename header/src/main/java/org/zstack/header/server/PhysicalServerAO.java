@@ -1,5 +1,6 @@
 package org.zstack.header.server;
 
+import org.zstack.header.core.convert.PasswordConverter;
 import org.zstack.header.vo.ForeignKey;
 import org.zstack.header.vo.ForeignKey.ReferenceOption;
 import org.zstack.header.vo.ResourceVO;
@@ -70,6 +71,7 @@ public class PhysicalServerAO extends ResourceVO {
 
     @EncryptColumn
     @NoLogging
+    @Convert(converter = PasswordConverter.class)
     @Column
     private String oobPassword;
 
