@@ -5,9 +5,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zstack.core.cloudbus.CloudBus;
+
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.gc.GCCompletion;
+import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.host.HostVO;
+import org.zstack.header.message.MessageReply;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.storage.primary.local.LocalStorageReturnHostCapacityGC;
 
@@ -95,14 +98,45 @@ public class LocalStorageReturnHostCapacityGCTest {
     }
 
     @Test
-    public void hasFourGCFields() throws Exception {
-        LocalStorageReturnHostCapacityGC gc = new LocalStorageReturnHostCapacityGC();
-        int gcCount = 0;
-        for (Field f : LocalStorageReturnHostCapacityGC.class.getDeclaredFields()) {
-            if (f.isAnnotationPresent(org.zstack.core.gc.GC.class)) {
-                gcCount++;
-            }
-        }
-        Assert.assertEquals(4, gcCount);
+    public void callsCompletionSuccessOnReplySuccess() throws Exception {
+        LocalStorageReturnHostCapacityGC gc = createGC("ps-1", "host-1", 1024, false);
+
+        AtomicReference<Boolean> successCalled = new AtomicReference<>(false);
+        GCCompletion completion = Mockito.mock(GCCompletion.class);
+        Mockito.doAnswer(invocation -> {
+            successCalled.set(true);
+            return null;
+        }).when(completion).success();
+
+        MessageReply reply = new MessageReply();
+        reply.setSuccess(true);
+
+        Method m = LocalStorageReturnHostCapacityGC.class.getDeclaredMethod("handleReply", MessageReply.class, GCCompletion.class);
+        m.setAccessible(true);
+        m.invoke(gc, reply, completion);
+
+        Assert.assertTrue("should call completion.success() on reply success", successCalled.get());
+    }
+
+    @Test
+    public void callsCompletionFailOnReplyFailure() throws Exception {
+        LocalStorageReturnHostCapacityGC gc = createGC("ps-1", "host-1", 1024, false);
+
+        AtomicReference<ErrorCode> failedError = new AtomicReference<>();
+        GCCompletion completion = Mockito.mock(GCCompletion.class);
+        Mockito.doAnswer(invocation -> {
+            failedError.set(invocation.getArgument(0));
+            return null;
+        }).when(completion).fail(Mockito.any());
+
+        ErrorCode err = new ErrorCode("TEST.ERROR", "test error");
+        MessageReply reply = new MessageReply();
+        reply.setError(err);
+
+        Method m = LocalStorageReturnHostCapacityGC.class.getDeclaredMethod("handleReply", MessageReply.class, GCCompletion.class);
+        m.setAccessible(true);
+        m.invoke(gc, reply, completion);
+
+        Assert.assertNotNull("should call completion.fail() on reply failure", failedError.get());
     }
 }

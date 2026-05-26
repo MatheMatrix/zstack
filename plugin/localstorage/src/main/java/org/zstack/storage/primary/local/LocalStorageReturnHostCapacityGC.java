@@ -39,12 +39,16 @@ public class LocalStorageReturnHostCapacityGC extends TimeBasedGarbageCollector 
         bus.send(msg, new CloudBusCallBack(completion) {
             @Override
             public void run(MessageReply reply) {
-                if (reply.isSuccess()) {
-                    completion.success();
-                } else {
-                    completion.fail(reply.getError());
-                }
+                handleReply(reply, completion);
             }
         });
+    }
+
+    void handleReply(MessageReply reply, GCCompletion completion) {
+        if (reply.isSuccess()) {
+            completion.success();
+        } else {
+            completion.fail(reply.getError());
+        }
     }
 }

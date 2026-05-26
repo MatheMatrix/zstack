@@ -880,7 +880,7 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
                                     gc.primaryStorageUuid = ref.getPrimaryStorageUuid();
                                     gc.hostUuid = srcHostUuid;
                                     gc.size = requiredSize;
-                                    gc.noOverProvisioning = false;
+                                    gc.noOverProvisioning = msg.isNoOverProvisioning();
                                     gc.deduplicateSubmit(60L, TimeUnit.SECONDS);
                                 }
                             }
