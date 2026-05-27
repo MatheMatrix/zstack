@@ -63,6 +63,7 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
         config = JSONObjectUtil.toObject(lvo.getConfig(), LinkedHashMap.class);
         desensitizeConfig(config);
         addonInfo = JSONObjectUtil.toObject(lvo.getAddonInfo(), LinkedHashMap.class);
+        desensitizeAddonInfo(addonInfo);
         outputProtocols = lvo.getOutputProtocols().stream().map(PrimaryStorageOutputProtocolRefVO::getOutputProtocol).collect(Collectors.toList());
         defaultProtocol = lvo.getDefaultProtocol();
     }
@@ -71,10 +72,37 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
         return new ExternalPrimaryStorageInventory(lvo);
     }
 
+    private static final String MASK = "******";
+
     private static void desensitizeConfig(Map config) {
         if (config == null) return;
         desensitizeUrlList(config, "mdsUrls");
-        desensitizeUrlList(config, "mdsInfos");
+        desensitizeMdsInfos(config);
+    }
+
+    private static void desensitizeAddonInfo(Map addonInfo) {
+        if (addonInfo == null) return;
+        desensitizeMdsInfos(addonInfo);
+    }
+
+    private static void desensitizeMdsInfos(Map map) {
+        Object mdsInfos = map.get("mdsInfos");
+        if (mdsInfos instanceof List) {
+            for (Object item : (List) mdsInfos) {
+                if (item instanceof Map) {
+                    Map m = (Map) item;
+                    if (m.containsKey("sshPassword")) {
+                        m.put("sshPassword", MASK);
+                    }
+                    if (m.containsKey("password")) {
+                        m.put("password", MASK);
+                    }
+                    if (m.containsKey("sshUsername")) {
+                        m.put("sshUsername", MASK);
+                    }
+                }
+            }
+        }
     }
 
     private static void desensitizeUrlList(Map config, String key) {
