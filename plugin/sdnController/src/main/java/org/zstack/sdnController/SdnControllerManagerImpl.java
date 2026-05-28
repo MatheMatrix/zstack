@@ -30,6 +30,8 @@ import org.zstack.header.network.l3.SdnControllerL3;
 import org.zstack.header.network.sdncontroller.*;
 import org.zstack.header.network.service.GetSdnControllerExtensionPoint;
 import org.zstack.header.network.service.SdnControllerDhcp;
+import org.zstack.header.rest.RESTFacade;
+import org.zstack.header.rest.SyncHttpCallHandler;
 import org.zstack.header.vm.*;
 import org.zstack.network.l2.L2NetworkSystemTags;
 import org.zstack.network.l3.L3NetworkHelper;
@@ -37,6 +39,8 @@ import org.zstack.network.securitygroup.SecurityGroupGetSdnBackendExtensionPoint
 import org.zstack.network.securitygroup.SecurityGroupManager;
 import org.zstack.network.securitygroup.SecurityGroupSdnBackend;
 import org.zstack.sdnController.header.*;
+import org.zstack.sdnController.znsagent.ZnsAgentInstaller;
+import org.zstack.sdnController.znsagent.ZnsAgentPrepareServiceCmd;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
@@ -66,8 +70,11 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
     private SecurityGroupManager sgMgr;
     @Autowired
     private SdnControllerPingTracker pingTracker;
+    @Autowired
+    private RESTFacade restf;
 
     private Map<String, SdnControllerFactory> sdnControllerFactories = Collections.synchronizedMap(new HashMap<String, SdnControllerFactory>());
+    private ZnsAgentInstaller znsAgentInstaller;
 
     @Override
     public int getSyncLevel() {
@@ -566,6 +573,17 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             }
             sdnControllerFactories.put(f.getVendorType().toString(), f);
         }
+
+        znsAgentInstaller = new ZnsAgentInstaller(dbf);
+        restf.registerSyncHttpCallHandler(ZnsAgentPrepareServiceCmd.COMMAND_PATH, ZnsAgentPrepareServiceCmd.class, new SyncHttpCallHandler<ZnsAgentPrepareServiceCmd>() {
+            @Override
+            public String handleSyncHttpCall(ZnsAgentPrepareServiceCmd cmd) {
+                logger.info(String.format("[ZnsAgent] prepare-service command received: cmUUID=%s hosts=%s controllers=%s",
+                        cmd.computerManagerUuid, cmd.hostUuids, cmd.controllerIps));
+                znsAgentInstaller.install(cmd);
+                return null;
+            }
+        });
 
         return true;
     }
