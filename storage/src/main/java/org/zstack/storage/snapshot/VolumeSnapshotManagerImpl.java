@@ -1366,7 +1366,7 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
     private final VolumeSnapshotGroupTreeBuilder groupTreeBuilder = new VolumeSnapshotGroupTreeBuilder();
 
     private void marshalGroupTrees(APIQueryVolumeSnapshotTreeMsg msg, APIQueryVolumeSnapshotTreeReply reply) {
-        if (reply.getInventories() == null) {
+        if (reply.getInventories() == null || reply.getInventories().isEmpty()) {
             return;
         }
 

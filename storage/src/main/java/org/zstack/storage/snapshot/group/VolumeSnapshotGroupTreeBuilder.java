@@ -22,6 +22,7 @@ import org.zstack.utils.logging.CLogger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -58,7 +59,12 @@ public class VolumeSnapshotGroupTreeBuilder {
         Map<String, VolumeSnapshotGroupTreeInventory> groupNodeMap =
                 buildGroupNodes(groupVOs, refsByGroup, snapVOs);
 
-        linkParents(groupNodeMap, refsByGroup, parentMap, snapToGroup);
+        Map<String, Date> groupCreateDate = groupVOs.stream()
+                .collect(HashMap::new,
+                        (m, g) -> m.put(g.getUuid(), g.getCreateDate()),
+                        HashMap::putAll);
+
+        linkParents(groupNodeMap, refsByGroup, parentMap, snapToGroup, groupCreateDate);
 
         return assembleForest(groupNodeMap);
     }
@@ -174,11 +180,12 @@ public class VolumeSnapshotGroupTreeBuilder {
     private void linkParents(Map<String, VolumeSnapshotGroupTreeInventory> groupNodeMap,
                              Map<String, List<VolumeSnapshotGroupRefVO>> refsByGroup,
                              Map<String, String> parentMap,
-                             Map<String, String> snapToGroup) {
+                             Map<String, String> snapToGroup,
+                             Map<String, Date> groupCreateDate) {
         for (VolumeSnapshotGroupTreeInventory node : groupNodeMap.values()) {
             String parentGroupUuid = resolveParentGroupUuid(node.getUuid(),
                     refsByGroup.getOrDefault(node.getUuid(), Collections.emptyList()),
-                    parentMap, snapToGroup);
+                    parentMap, snapToGroup, groupCreateDate);
             if (parentGroupUuid != null && groupNodeMap.containsKey(parentGroupUuid)) {
                 node.setParentGroupUuid(parentGroupUuid);
             }
@@ -188,7 +195,8 @@ public class VolumeSnapshotGroupTreeBuilder {
     private String resolveParentGroupUuid(String selfGroupUuid,
                                           List<VolumeSnapshotGroupRefVO> selfRefs,
                                           Map<String, String> parentMap,
-                                          Map<String, String> snapToGroup) {
+                                          Map<String, String> snapToGroup,
+                                          Map<String, Date> groupCreateDate) {
         Map<String, Integer> votes = new HashMap<>();
         for (VolumeSnapshotGroupRefVO r : selfRefs) {
             if (r.isSnapshotDeleted()) {
@@ -210,20 +218,25 @@ public class VolumeSnapshotGroupTreeBuilder {
         if (votes.isEmpty()) {
             return null;
         }
-        String winner = null;
-        int top = -1;
-        boolean tie = false;
-        for (Map.Entry<String, Integer> e : votes.entrySet()) {
-            if (e.getValue() > top) {
-                winner = e.getKey();
-                top = e.getValue();
-                tie = false;
-            } else if (e.getValue() == top) {
-                tie = true;
+
+        List<Map.Entry<String, Integer>> ranked = new ArrayList<>(votes.entrySet());
+        ranked.sort((a, b) -> {
+            int cmp = Integer.compare(b.getValue(), a.getValue());
+            if (cmp != 0) {
+                return cmp;
             }
-        }
-        if (tie) {
-            logger.warn(String.format("group[uuid:%s] has tied parentGroup votes: %s; picking %s",
+            Date da = groupCreateDate.get(a.getKey());
+            Date db = groupCreateDate.get(b.getKey());
+            cmp = Comparator.nullsLast(Date::compareTo).compare(da, db);
+            if (cmp != 0) {
+                return cmp;
+            }
+            return a.getKey().compareTo(b.getKey());
+        });
+
+        String winner = ranked.get(0).getKey();
+        if (ranked.size() > 1 && ranked.get(1).getValue().equals(ranked.get(0).getValue())) {
+            logger.warn(String.format("group[uuid:%s] has tied parentGroup votes: %s; picked %s by (createDate asc, uuid asc)",
                     selfGroupUuid, votes, winner));
         }
         return winner;

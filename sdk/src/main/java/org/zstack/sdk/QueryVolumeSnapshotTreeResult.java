@@ -19,12 +19,4 @@ public class QueryVolumeSnapshotTreeResult {
         return this.total;
     }
 
-    public java.util.List groupTrees;
-    public void setGroupTrees(java.util.List groupTrees) {
-        this.groupTrees = groupTrees;
-    }
-    public java.util.List getGroupTrees() {
-        return this.groupTrees;
-    }
-
 }
