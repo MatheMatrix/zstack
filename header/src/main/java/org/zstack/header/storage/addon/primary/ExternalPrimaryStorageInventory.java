@@ -4,10 +4,12 @@ import org.zstack.header.search.Inventory;
 import org.zstack.header.storage.primary.PrimaryStorageInventory;
 import org.zstack.utils.gson.JSONObjectUtil;
 
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Inventory(mappingVOClass = ExternalPrimaryStorageVO.class)
@@ -63,6 +65,7 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
         config = JSONObjectUtil.toObject(lvo.getConfig(), LinkedHashMap.class);
         desensitizeConfig(config);
         addonInfo = JSONObjectUtil.toObject(lvo.getAddonInfo(), LinkedHashMap.class);
+        desensitizeAddonInfo(addonInfo);
         outputProtocols = lvo.getOutputProtocols().stream().map(PrimaryStorageOutputProtocolRefVO::getOutputProtocol).collect(Collectors.toList());
         defaultProtocol = lvo.getDefaultProtocol();
     }
@@ -71,33 +74,100 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
         return new ExternalPrimaryStorageInventory(lvo);
     }
 
-    private static void desensitizeConfig(Map config) {
-        if (config == null) return;
-        desensitizeUrlList(config, "mdsUrls");
-        desensitizeUrlList(config, "mdsInfos");
+    private static final String MASK = "******";
+
+    private static final Set<String> SENSITIVE_KEYS = new HashSet<>(Arrays.asList(
+            "password", "sshpassword", "privatekey", "token", "secret",
+            "accesskey", "apisecret", "credential"));
+
+    private static boolean isSensitiveKey(Object key) {
+        return SENSITIVE_KEYS.contains(String.valueOf(key).toLowerCase());
     }
 
-    private static void desensitizeUrlList(Map config, String key) {
-        Object urls = config.get(key);
-        if (urls instanceof List) {
-            List<String> desensitized = new ArrayList<>();
-            for (Object url : (List) urls) {
-                desensitized.add(desensitizeUrl(String.valueOf(url)));
+    private static void desensitizeConfig(Map config) {
+        if (config == null) return;
+        desensitizeUrlItems(config.get("mdsUrls"));
+        desensitizeUrlItems(config.get("mdsInfos"));
+    }
+
+    private static void desensitizeAddonInfo(Map addonInfo) {
+        if (addonInfo == null) return;
+        desensitizeMap(addonInfo);
+    }
+
+    private static void desensitizeUrlItems(Object val) {
+        if (!(val instanceof List)) return;
+        List list = (List) val;
+        for (int i = 0; i < list.size(); i++) {
+            Object item = list.get(i);
+            if (item instanceof Map) {
+                desensitizeUrlInMap((Map) item);
+            } else if (item instanceof List) {
+                desensitizeUrlItems(item);
+            } else if (item instanceof String) {
+                list.set(i, desensitizeUrl((String) item));
             }
-            config.put(key, desensitized);
+        }
+    }
+
+    private static void desensitizeUrlInMap(Map map) {
+        map.replaceAll((k, v) -> {
+            if (v instanceof String) {
+                return desensitizeUrl((String) v);
+            } else if (v instanceof Map) {
+                desensitizeUrlInMap((Map) v);
+            } else if (v instanceof List) {
+                desensitizeUrlItems(v);
+            }
+            return v;
+        });
+    }
+
+    private static void desensitizeMap(Map map) {
+        map.replaceAll((k, v) -> {
+            if (isSensitiveKey(k)) {
+                return MASK;
+            }
+            if (v instanceof Map) {
+                desensitizeMap((Map) v);
+            } else if (v instanceof List) {
+                desensitizeList((List) v);
+            }
+            return v;
+        });
+    }
+
+    private static void desensitizeList(List list) {
+        for (int i = 0; i < list.size(); i++) {
+            Object item = list.get(i);
+            if (item instanceof Map) {
+                desensitizeMap((Map) item);
+            } else if (item instanceof List) {
+                desensitizeList((List) item);
+            }
         }
     }
 
     private static String desensitizeUrl(String url) {
         int atIndex = url.lastIndexOf('@');
-        if (atIndex > 0) {
-            int schemeIndex = url.indexOf("://");
-            if (schemeIndex >= 0 && schemeIndex < atIndex) {
-                return url.substring(0, schemeIndex + 3) + "***" + url.substring(atIndex);
-            }
-            return "***" + url.substring(atIndex);
+        if (atIndex <= 0) {
+            return url;
         }
-        return url;
+        int schemeIndex = url.indexOf("://");
+        int credentialCheckStart;
+        if (schemeIndex >= 0 && schemeIndex < atIndex) {
+            credentialCheckStart = schemeIndex + 3;
+        } else {
+            credentialCheckStart = 0;
+        }
+        int colonIndex = url.indexOf(':', credentialCheckStart);
+        if (colonIndex < 0 || colonIndex >= atIndex) {
+            return url;
+        }
+        if (schemeIndex >= 0) {
+            return url.substring(0, schemeIndex + 3) + "***" + url.substring(atIndex);
+        }
+        return "***" + url.substring(atIndex);
     }
 
     public String getIdentity() {
