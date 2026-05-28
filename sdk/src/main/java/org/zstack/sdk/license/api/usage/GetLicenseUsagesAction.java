@@ -26,7 +26,7 @@ public class GetLicenseUsagesAction extends AbstractAction {
     }
 
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.util.List licenseTypes;
+    public java.util.List moduleTypes;
 
     @Param(required = false)
     public java.util.List systemTags;
