@@ -1067,10 +1067,13 @@ public class VmInstanceBase extends AbstractVmInstance {
         String suspectHostUuid = StringUtils.trimToNull(CollectionUtils.isEmpty(msg.getSoftAvoidHostUuids()) ?
                 self.getLastHostUuid() : msg.getSoftAvoidHostUuids().get(0));
         String peerHostUuid = StringUtils.trimToNull(msg.getAccessiblePeerHostUuid());
-        if (suspectHostUuid == null || peerHostUuid == null) {
-            logger.debug(String.format("HA-start vm[%s]: skip creating pre-fence tag because suspect host[%s] or peer host[%s] is absent",
-                    self.getUuid(), suspectHostUuid, peerHostUuid));
+        if (suspectHostUuid == null) {
+            logger.debug(String.format("HA-start vm[%s]: skip creating pre-fence tag because suspect host is absent",
+                    self.getUuid()));
             return;
+        }
+        if (peerHostUuid == null) {
+            peerHostUuid = VmSystemTags.HA_PRE_FENCE_ACCESSIBLE_PEER_HOST_UUID_NONE;
         }
 
         Map<String, String> tokens = new HashMap<>();

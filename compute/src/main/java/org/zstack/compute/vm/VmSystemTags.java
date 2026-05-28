@@ -321,6 +321,7 @@ public class VmSystemTags {
 
     public static String HA_PRE_FENCE_SUSPECT_HOST_UUID_TOKEN = "suspectHostUuid";
     public static String HA_PRE_FENCE_ACCESSIBLE_PEER_HOST_UUID_TOKEN = "accessiblePeerHostUuid";
+    public static String HA_PRE_FENCE_ACCESSIBLE_PEER_HOST_UUID_NONE = "none";
     public static PatternedSystemTag HA_PRE_FENCE_PENDING =
             new PatternedSystemTag(String.format("haPreFencePending::{%s}::{%s}",
                     HA_PRE_FENCE_SUSPECT_HOST_UUID_TOKEN,
