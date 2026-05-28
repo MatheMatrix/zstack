@@ -25,6 +25,122 @@ install_pip() {
     pip3.11 --version | grep 22.3.1 >/dev/null || yum install -y python3.11-pip
 }
 
+zstack_local_repo_args() {
+    grep -R "^\[zstack-local\]" /etc/yum.repos.d/*.repo >/dev/null 2>&1 && echo "--disablerepo=* --enablerepo=zstack-local"
+}
+
+yum_install_packages() {
+    local repo_args=`zstack_local_repo_args`
+    yum -y $repo_args install $@
+}
+
+yum_reinstall_packages() {
+    local repo_args=`zstack_local_repo_args`
+    yum -y $repo_args reinstall $@ || yum -y $repo_args install $@
+}
+
+ensure_rpm_packages_installed() {
+    local missing_list=`LANG=en_US.UTF-8 rpm -q $@ 2>/dev/null | grep 'not installed' | awk 'BEGIN{ORS=" "}{ print $2 }'`
+    [ -z "$missing_list" ] && return 0
+
+    echo "Installing zstack-ctl build dependencies: $missing_list"
+    yum_install_packages $missing_list
+}
+
+verify_rpm_packages() {
+    local broken_list=""
+    local pkg
+
+    for pkg in $@; do
+        rpm -q $pkg >/dev/null 2>&1 || continue
+        rpm -V $pkg >/dev/null 2>&1 || broken_list="$broken_list $pkg"
+    done
+
+    [ -z "$broken_list" ] && return 0
+
+    echo "Reinstalling broken zstack-ctl build dependencies:$broken_list"
+    yum_reinstall_packages $broken_list
+}
+
+python_cflags_need_annobin() {
+    $1 - <<'PY' 2>/dev/null | grep -q 'annobin'
+import sysconfig
+print(sysconfig.get_config_var("CFLAGS") or "")
+PY
+}
+
+python_cflags_need_redhat_rpm_config() {
+    $1 - <<'PY' 2>/dev/null | grep -qE 'redhat|^-specs=| -specs='
+import sysconfig
+print(sysconfig.get_config_var("CFLAGS") or "")
+PY
+}
+
+verify_python_c_extension_build() {
+    local python_bin=$1
+    local tmp_c=`mktemp /tmp/zstackctl-build-check.XXXXXX.c`
+    local tmp_o=${tmp_c%.c}.o
+    local py_cflags=`$python_bin - <<'PY'
+import sysconfig
+print(sysconfig.get_config_var("CFLAGS") or "")
+PY
+`
+    local py_include=`$python_bin - <<'PY'
+import sysconfig
+include_dir = sysconfig.get_config_var("INCLUDEPY") or ""
+print("-I%s" % include_dir if include_dir else "")
+PY
+`
+
+    cat > $tmp_c <<'EOF'
+#include <Python.h>
+#include <ffi.h>
+#include <openssl/ssl.h>
+int main(void) { return 0; }
+EOF
+
+    gcc $py_cflags $py_include -c $tmp_c -o $tmp_o
+    local ret=$?
+    rm -f $tmp_c $tmp_o
+
+    if [ $ret -ne 0 ]; then
+        echo "Failed to compile a minimal Python C extension. Please check gcc, python3.11-devel, libffi-devel, openssl-devel, redhat-rpm-config and annobin."
+        return 1
+    fi
+
+    return 0
+}
+
+ensure_zstack_ctl_build_deps() {
+    command -v rpm >/dev/null 2>&1 || return 0
+    command -v yum >/dev/null 2>&1 || return 0
+
+    local python_bin=python3.11
+    local base_deps="python3.11 python3.11-devel python3.11-pip gcc libffi-devel openssl-devel"
+    ensure_rpm_packages_installed $base_deps || return 1
+    local need_redhat_rpm_config=false
+    local need_annobin=false
+
+    if python_cflags_need_redhat_rpm_config $python_bin; then
+        need_redhat_rpm_config=true
+        ensure_rpm_packages_installed redhat-rpm-config || return 1
+    fi
+
+    if python_cflags_need_annobin $python_bin; then
+        need_annobin=true
+        ensure_rpm_packages_installed annobin || return 1
+    fi
+
+    if $need_redhat_rpm_config; then
+        verify_rpm_packages redhat-rpm-config || return 1
+    fi
+    if $need_annobin; then
+        verify_rpm_packages annobin || return 1
+    fi
+
+    verify_python_c_extension_build $python_bin
+}
+
 # Ensure the virtualenv at $1 is a Python 3.11 venv.
 # If it does not exist or is a legacy Python 2 venv, recreate it.
 ensure_python3_venv() {
@@ -46,6 +162,10 @@ ensure_python3_venv() {
 
 
 cd $cwd
+
+if [ $tool = 'zstack-ctl' ]; then
+    ensure_zstack_ctl_build_deps || exit 1
+fi
 
 install_pip
 cd /tmp
@@ -219,4 +339,3 @@ elif [ x"$tool" = x"zstack-ui" ]; then
 else
     usage
 fi
-
