@@ -955,7 +955,7 @@ public abstract class HostBase extends AbstractHost {
         thdf.chainSubmit(new ChainTask(msg) {
             @Override
             public String getSyncSignature() {
-                return "do-ping-host";
+                return String.format("do-ping-host-%s", msg.getHostUuid());
             }
 
             @Override
@@ -979,13 +979,9 @@ public abstract class HostBase extends AbstractHost {
 
             @Override
             public String getName() {
-                return String.format("do-ping-host-%s", msg.getHostUuid());
+                return getSyncSignature();
             }
 
-            @Override
-            protected int getSyncLevel() {
-                return HostGlobalConfig.HOST_TRACK_PARALLELISM_DEGREE.value(Integer.class);
-            }
         });
     }
 

@@ -24,6 +24,7 @@ import org.zstack.testlib.SubCase
 import org.zstack.utils.FieldUtils
 import org.zstack.utils.gson.JSONObjectUtil
 
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class KVMPingCase extends SubCase {
@@ -460,6 +461,50 @@ class KVMPingCase extends SubCase {
         }
     }
 
+    void testDifferentHostPingsNotBlocked() {
+        canDoReconnectFunc = { HostReconnectTask.CanDoAnswer.Ready }
+
+        HostInventory kvm1 = env.inventoryByName("kvm1")
+        HostInventory kvm2 = env.inventoryByName("kvm2")
+
+        waitHostConnected(kvm1.uuid)
+        waitHostConnected(kvm2.uuid)
+
+        // Set parallelism to 1 so the test proves per-host isolation:
+        // old code (shared do-ping-host + level=1) → kvm2 blocked by kvm1
+        // new code (per-host do-ping-host-<uuid> + level=1) → kvm2 unblocked
+        HostGlobalConfig.HOST_TRACK_PARALLELISM_DEGREE.updateValue(1)
+
+        CountDownLatch blockKvm1 = new CountDownLatch(1)
+        CountDownLatch kvm2Pinged = new CountDownLatch(1)
+
+        env.simulator(KVMConstant.KVM_PING_PATH) { HttpEntity<String> e, EnvSpec espec ->
+            KVMAgentCommands.PingCmd cmd = JSONObjectUtil.toObject(e.getBody(), KVMAgentCommands.PingCmd.class)
+            def rsp = new KVMAgentCommands.PingResponse()
+
+            if (cmd.hostUuid == kvm1.uuid) {
+                blockKvm1.await(30, TimeUnit.SECONDS)
+            }
+
+            if (cmd.hostUuid == kvm2.uuid) {
+                kvm2Pinged.countDown()
+            }
+
+            rsp.hostUuid = cmd.hostUuid
+            return rsp
+        }
+
+        try {
+            assert kvm2Pinged.await(30, TimeUnit.SECONDS)
+        } finally {
+            blockKvm1.countDown()
+            env.cleanSimulatorHandlers()
+            HostGlobalConfig.HOST_TRACK_PARALLELISM_DEGREE.updateValue(100)
+            recoverHostToConnected(kvm1.uuid)
+            recoverHostToConnected(kvm2.uuid)
+        }
+    }
+
     @Override
     void test() {
         bus = bean(CloudBus.class)
@@ -490,6 +535,7 @@ class KVMPingCase extends SubCase {
             testHostReconnectAfterPingFailure()
             testContinuePingIfHostNoReconnect()
             testNoPingIfHostNotReadyToReconnect()
+            testDifferentHostPingsNotBlocked()
             testManagementNodeReadyConnectAllHost()
             testPingConnectingHost()
 

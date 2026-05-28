@@ -24,7 +24,7 @@
     <config>
         <category>host</category>
         <name>ping.parallelismDegree</name>
-        <description>The max hosts management server sends ping command to host in parallel</description>
+        <description>The max hosts management server sends ping command to host in parallel. With per-host sync signature, this now controls per-host parallelism (one host does not block another).</description>
         <defaultValue>100</defaultValue>
         <type>java.lang.Integer</type>
     </config>
