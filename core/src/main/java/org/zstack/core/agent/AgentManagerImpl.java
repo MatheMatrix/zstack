@@ -58,6 +58,7 @@ public class AgentManagerImpl extends AbstractService implements AgentManager {
 
     public static final String ECHO_PATH = "/server/echo";
     public static final String INIT_PATH = "/server/init";
+    public static final int AGENT_INIT_TIMEOUT = 60;
 
     public static final class InitAgentServerCmd {
         public Map<String, Object> Config = new HashMap<String, Object>();
@@ -151,7 +152,7 @@ public class AgentManagerImpl extends AbstractService implements AgentManager {
                         InitAgentServerCmd cmd = new InitAgentServerCmd();
                         cmd.Config = config;
 
-                        restf.syncJsonPost(url(INIT_PATH), cmd, Void.class);
+                        restf.syncJsonPost(url(INIT_PATH), cmd, Void.class, TimeUnit.SECONDS, AGENT_INIT_TIMEOUT);
                         trigger.next();
                     }
                 });
