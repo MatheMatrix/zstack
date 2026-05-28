@@ -501,7 +501,7 @@ public class L3BasicNetwork implements L3Network {
                             .set(UsedIpVO_.metaData, reserveRangeUuid)
                             .update();
                 } else {
-                    SQL.New(UsedIpVO.class).eq(UsedIpVO_.uuid, msg.getUsedIpUuid()).hardDelete();
+                    SQL.New(UsedIpVO.class).eq(UsedIpVO_.uuid, msg.getUsedIpUuid()).delete();
                 }
 
                 return null;

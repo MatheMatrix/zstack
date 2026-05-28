@@ -994,10 +994,11 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
                                     .update();
                             for (UsedIpInventory usedIp : newIps) {
                                 /* update usedIpVo */
-                                SQL.New(UsedIpVO.class)
-                                        .eq(UsedIpVO_.uuid, usedIp.getUuid())
-                                        .set(UsedIpVO_.vmNicUuid, nicVO.getUuid())
-                                        .update();
+                                UsedIpVO usedIpVO = dbf.findByUuid(usedIp.getUuid(), UsedIpVO.class);
+                                if (usedIpVO != null) {
+                                    usedIpVO.setVmNicUuid(nicVO.getUuid());
+                                    dbf.update(usedIpVO);
+                                }
                             }
                             trigger.next();
                         }

@@ -2798,11 +2798,15 @@ public class VmInstanceBase extends AbstractVmInstance {
                             sql(VmNicVO.class).eq(VmNicVO_.vmInstanceUuid, self.getUuid()).hardDelete();
                             sql(VolumeVO.class).eq(VolumeVO_.vmInstanceUuid, self.getUuid())
                                     .eq(VolumeVO_.type, VolumeType.Root)
-                                    .hardDelete();
+                                    .delete();
                             sql(VmCdRomVO.class).eq(VmCdRomVO_.vmInstanceUuid, self.getUuid()).hardDelete();
-                            sql(VmInstanceVO.class).eq(VmInstanceVO_.uuid, self.getUuid()).hardDelete();
+                            sql(VmInstanceVO.class).eq(VmInstanceVO_.uuid, self.getUuid()).delete();
                         }
                     }.execute();
+                    dbf.eoCleanup(VmInstanceVO.class, self.getUuid());
+                    if (inv.getRootVolumeUuid() != null) {
+                        dbf.eoCleanup(VolumeVO.class, inv.getRootVolumeUuid());
+                    }
                     callVmJustAfterDeleteFromDbExtensionPoint(inv, accountUuid);
                 } else if (deletionPolicy == VmInstanceDeletionPolicy.Delay) {
                     changeVmStateInDb(VmInstanceStateEvent.destroyed);
