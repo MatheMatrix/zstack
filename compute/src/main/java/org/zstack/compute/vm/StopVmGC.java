@@ -43,6 +43,12 @@ public class StopVmGC extends EventBasedGarbageCollector {
             completion.cancel();
             return;
         }
+        if (state != VmInstanceState.Stopped) {
+            logger.info(String.format("cancel StopVmGC for vm[uuid:%s,name:%s] on host[uuid:%s], current state is %s, only stopped vm can be stopped on hypervisor by this GC",
+                    inventory.getUuid(), inventory.getName(), hostUuid, state));
+            completion.cancel();
+            return;
+        }
 
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
         chain.setName(String.format("gc-stop-vm-%s-on-host-%s", inventory.getUuid(), hostUuid));
