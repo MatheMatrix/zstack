@@ -4,6 +4,7 @@ import org.zstack.header.errorcode.ErrorCode;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface VmInstanceResourceMetadataManager {
     String MEM_BALLOON_UUID = "4780bf6d2fa65700f22e36c27e8ff05c";
@@ -151,4 +152,24 @@ public interface VmInstanceResourceMetadataManager {
     List<VmInstanceResourceMetadataArchiveVO> getArchivedResourceMetadataInfoFromArchiveForResourceUuid(String vmInstanceUuid, String archiveForResourceUuid, String metadataClass);
 
     void updateVmResourceMetadataDeviceAddress(String vmInstanceUuid, String resourceUuid, String deviceAddress);
+
+    /**
+     * Drop rows of this VM whose resourceUuid is NOT in survivingResourceUuids.
+     * Used by start-vm / sync-vm-device-info extension point to reconcile DB
+     * state with the libvirt domain actually running: any extra resourceUuid
+     * that the agent response does not report is considered stale and removed,
+     * regardless of metadataClass.
+     *
+     * Always preserved (whitelist, independent of survivingResourceUuids):
+     *   - row whose resourceUuid == vmInstanceUuid (vmXml archive)
+     *   - MEM_BALLOON_UUID / RESOURCE_CONFIG_UUID / GUEST_TOOLS_RESOURCE_CONFIG_UUID
+     *
+     * Caller is responsible for adding any resourceUuid that must survive
+     * (e.g. every VM nic uuid when rsp.nicInfos is null) to survivingResourceUuids.
+     *
+     * @param vmInstanceUuid         VM uuid
+     * @param survivingResourceUuids resourceUuids that still exist in the libvirt domain
+     * @return number of rows deleted
+     */
+    int pruneStaleDeviceMetadata(String vmInstanceUuid, Set<String> survivingResourceUuids);
 }

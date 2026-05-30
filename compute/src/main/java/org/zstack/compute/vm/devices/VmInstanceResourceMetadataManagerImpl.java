@@ -22,13 +22,29 @@ import org.zstack.utils.logging.CLogger;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
 
 public class VmInstanceResourceMetadataManagerImpl implements VmInstanceResourceMetadataManager {
     private static final CLogger logger = Utils.getLogger(VmInstanceResourceMetadataManagerImpl.class);
+
+    // Synthetic resourceUuids that must survive pruneStaleDeviceMetadata
+    // regardless of what the libvirt snapshot reports. These rows are owned
+    // by other subsystems (memory balloon, resource config, guest tools).
+    private static final Set<String> ALWAYS_KEEP_UUIDS;
+    static {
+        Set<String> s = new HashSet<>();
+        s.add(MEM_BALLOON_UUID);
+        s.add(RESOURCE_CONFIG_UUID);
+        s.add(GUEST_TOOLS_RESOURCE_CONFIG_UUID);
+        ALWAYS_KEEP_UUIDS = Collections.unmodifiableSet(s);
+    }
+
     @Autowired
     private DatabaseFacade dbf;
 
@@ -341,6 +357,53 @@ public class VmInstanceResourceMetadataManagerImpl implements VmInstanceResource
             return;
         }
         createOrUpdateVmResourceMetadata(resourceUuid, DeviceAddress.fromString(deviceAddress), vmInstanceUuid, null, null);
+    }
+
+    @Override
+    public int pruneStaleDeviceMetadata(String vmInstanceUuid, Set<String> survivingResourceUuids) {
+        if (deviceAddressRecordingDisabled()) {
+            return 0;
+        }
+        if (vmInstanceUuid == null) {
+            return 0;
+        }
+
+        List<VmInstanceResourceMetadataVO> candidates = Q.New(VmInstanceResourceMetadataVO.class)
+                .eq(VmInstanceResourceMetadataVO_.vmInstanceUuid, vmInstanceUuid)
+                .list();
+        if (candidates.isEmpty()) {
+            return 0;
+        }
+
+        // Whitelist: always preserved regardless of surviving set.
+        //   - vmInstanceUuid: vmXml archive row
+        //   - MEM_BALLOON / RESOURCE_CONFIG / GUEST_TOOLS: synthetic uuids
+        //     owned by other subsystems, never reported by the libvirt
+        //     device snapshot.
+        Set<String> surviving = survivingResourceUuids == null
+                ? Collections.emptySet() : survivingResourceUuids;
+
+        List<String> toDelete = candidates.stream()
+                .map(VmInstanceResourceMetadataVO::getResourceUuid)
+                .filter(ru -> !ALWAYS_KEEP_UUIDS.contains(ru))
+                .filter(ru -> !vmInstanceUuid.equals(ru))
+                .filter(ru -> !surviving.contains(ru))
+                .collect(Collectors.toList());
+
+        if (toDelete.isEmpty()) {
+            return 0;
+        }
+
+        logger.debug(String.format(
+                "prune stale VmInstanceResourceMetadataVO for vm[%s], resourceUuids=%s",
+                vmInstanceUuid, toDelete));
+
+        SQL.New(VmInstanceResourceMetadataVO.class)
+                .eq(VmInstanceResourceMetadataVO_.vmInstanceUuid, vmInstanceUuid)
+                .in(VmInstanceResourceMetadataVO_.resourceUuid, toDelete)
+                .hardDelete();
+
+        return toDelete.size();
     }
 
     @Override
