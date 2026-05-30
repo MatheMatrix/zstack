@@ -10,6 +10,8 @@ import org.zstack.header.core.workflow.Flow;
 import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.host.CheckVmStateOnHypervisorMsg;
+import org.zstack.header.host.CheckVmStateOnHypervisorReply;
 import org.zstack.header.host.HostConstant;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.host.MigrateVmOnHypervisorMsg;
@@ -17,6 +19,8 @@ import org.zstack.header.vm.*;
 import org.zstack.longjob.LongJobUtils;
 
 import java.util.Map;
+
+import static org.zstack.utils.CollectionDSL.list;
 
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class VmMigrateOnHypervisorFlow implements Flow {
@@ -60,8 +64,34 @@ public class VmMigrateOnHypervisorFlow implements Flow {
                 if (reply.isSuccess()) {
                     chain.next();
                 } else {
-                    chain.fail(reply.getError());
+                    checkVmStateOnDestinationHost(spec, reply.getError(), chain);
                 }
+            }
+        });
+    }
+
+    private void checkVmStateOnDestinationHost(final VmInstanceSpec spec, final ErrorCode migrateError,
+                                               final FlowTrigger chain) {
+        CheckVmStateOnHypervisorMsg msg = new CheckVmStateOnHypervisorMsg();
+        msg.setVmInstanceUuids(list(spec.getVmInventory().getUuid()));
+        msg.setHostUuid(spec.getDestHost().getUuid());
+        bus.makeTargetServiceIdByResourceUuid(msg, HostConstant.SERVICE_ID, msg.getHostUuid());
+        bus.send(msg, new CloudBusCallBack(chain) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    chain.fail(migrateError);
+                    return;
+                }
+
+                CheckVmStateOnHypervisorReply r = reply.castReply();
+                String state = r.getStates().get(spec.getVmInventory().getUuid());
+                if (VmInstanceState.Running.toString().equals(state)) {
+                    chain.next();
+                    return;
+                }
+
+                chain.fail(migrateError);
             }
         });
     }
