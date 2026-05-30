@@ -1099,6 +1099,11 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
     }
 
     @Override
+    public int getMaxDataVolumeNumberForRunningVm() {
+        return Math.min(maxDataVolumeNum, KVMConstant.KVM_MAX_DATA_VOLUME_NUMBER_HOT_PLUG);
+    }
+
+    @Override
     @AsyncThread
     public void managementNodeReady() {
         if (CoreGlobalProperty.UNIT_TEST_ON) {
