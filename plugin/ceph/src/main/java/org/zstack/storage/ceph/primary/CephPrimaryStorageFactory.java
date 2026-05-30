@@ -1228,8 +1228,34 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
                 }
 
                 GetVolumeWatchersReply rly = (GetVolumeWatchersReply)reply;
-                List watchers = rly.getWatchers();
+                List<String> watchers = rly.getWatchers();
                 if (watchers == null || watchers.isEmpty()) {
+                    completion.success();
+                    return;
+                }
+
+                // Filter out stale watchers from disconnected hosts (ZSTAC-73476)
+                // When libvirt hangs on a host, ceph rbd watchers become stale but persist,
+                // blocking VM start on other hosts. Only watchers from connected hosts are valid.
+                Set<String> disconnectedHostIps = new HashSet<>(Q.New(HostVO.class)
+                        .select(HostVO_.managementIp)
+                        .notEq(HostVO_.status, HostStatus.Connected)
+                        .listValues());
+                if (!disconnectedHostIps.isEmpty()) {
+                    List<String> activeWatchers = new ArrayList<>();
+                    for (String watcher : watchers) {
+                        String watcherIp = extractWatcherIp(watcher);
+                        if (watcherIp != null && disconnectedHostIps.contains(watcherIp)) {
+                            logger.info(String.format("filtered stale watcher from disconnected host[ip:%s] for volume[uuid:%s]: %s",
+                                    watcherIp, msg.getVolumeUuid(), watcher));
+                            continue;
+                        }
+                        activeWatchers.add(watcher);
+                    }
+                    watchers = activeWatchers;
+                }
+
+                if (watchers.isEmpty()) {
                     completion.success();
                     return;
                 }
@@ -1242,6 +1268,26 @@ public class CephPrimaryStorageFactory implements PrimaryStorageFactory, CephCap
                     msg.getVolumeUuid(), installPath));
             }
         });
+    }
+
+    /**
+     * Extract IP address from rbd watcher string.
+     * Format: "watcher=IP:port/nonce client.ID cookie=COOKIE"
+     */
+    private String extractWatcherIp(String watcher) {
+        if (watcher == null) {
+            return null;
+        }
+        int idx = watcher.indexOf("watcher=");
+        if (idx < 0) {
+            return null;
+        }
+        String rest = watcher.substring(idx + 8);
+        int colonIdx = rest.indexOf(':');
+        if (colonIdx <= 0) {
+            return null;
+        }
+        return rest.substring(0, colonIdx);
     }
 
     @Override
