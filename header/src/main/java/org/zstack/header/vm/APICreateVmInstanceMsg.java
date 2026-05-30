@@ -78,7 +78,7 @@ import static org.zstack.utils.CollectionDSL.list;
         responseClass = APICreateVmInstanceEvent.class,
         parameterName = "params"
 )
-@DefaultTimeout(timeunit = TimeUnit.HOURS, value = 12)
+@DefaultTimeout(timeunit = TimeUnit.HOURS, value = 12) 
 public class APICreateVmInstanceMsg extends APICreateMessage implements APIAuditor, NewVmInstanceMessage2 {
     /**
      * @desc max length of 255 characters
