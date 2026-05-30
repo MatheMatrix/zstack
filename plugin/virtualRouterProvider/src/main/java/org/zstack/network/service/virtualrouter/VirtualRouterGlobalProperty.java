@@ -17,10 +17,11 @@ public class VirtualRouterGlobalProperty {
     public static String AGENT_URL_ROOT_PATH;
     @GlobalProperty(name="VirtualRouter.agentUrlScheme", defaultValue = "http")
     public static String AGENT_URL_SCHEME;
-    @GlobalProperty(name="VirtualRouter.portsOpenOnManagementNic.tcp.")
+    @GlobalProperty(name="VirtualRouter.portsOpenOnManagementNic.tcp.", immutable = true)
     public static List<String> TCP_PORTS_ON_MGMT_NIC;
-    @GlobalProperty(name="VirtualRouter.portsOpenOnManagementNic.udp.")
+    @GlobalProperty(name="VirtualRouter.portsOpenOnManagementNic.udp.", immutable = true)
     public static List<String> UDP_PORTS_ON_MGMT_NIC;
     @GlobalProperty(name="VirtualRouter.enableMultiSnat", defaultValue = "true")
     public static boolean ENABLE_MULTI_SNAT;
+
 }

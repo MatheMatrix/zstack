@@ -4,6 +4,7 @@ import org.zstack.core.ScatteredValidator;
 import org.zstack.header.apimediator.StopRoutingException;
 
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -11,11 +12,11 @@ import java.util.List;
  * @ Date   : Created in 10:43 2021/10/26
  */
 public class FlatNetworkServiceValidator extends ScatteredValidator {
-    private static List<Method> methods;
+    private static final List<Method> methods;
 
     static {
         // method signature: static void xxx(String hostUuid)
-        methods = collectValidatorMethods(FlatNetworkServiceValidatorMethod.class, String.class);
+        methods = Collections.unmodifiableList(collectValidatorMethods(FlatNetworkServiceValidatorMethod.class, String.class));
     }
 
     public boolean validate(String hostUuid) {

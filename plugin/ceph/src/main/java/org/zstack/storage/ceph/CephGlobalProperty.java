@@ -32,6 +32,6 @@ public class CephGlobalProperty {
     public static String PRIMARY_STORAGE_MODULE_PATH;
     @GlobalProperty(name="Ceph.vendor.getXskyLicense.Port", defaultValue = "8051")
     public static String GET_XSKY_LICENSE_PORT;
-    @GlobalProperty(name="MN.network.", defaultValue = "")
+    @GlobalProperty(name="MN.network.", defaultValue = "", immutable = true)
     public static List<String> MN_NETWORKS;
 }

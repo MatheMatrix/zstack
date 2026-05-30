@@ -20,7 +20,7 @@ public class KVMGlobalProperty {
     public static int AGENT_PORT;
     @GlobalProperty(name="KvmAgentServer.port", defaultValue = "10001")
     public static int AGENT_SERVER_PORT;
-    @GlobalProperty(name="KvmHost.iptables.rule.", defaultValue = "")
+    @GlobalProperty(name="KvmHost.iptables.rule.", defaultValue = "", immutable = true)
     public static List<String> IPTABLES_RULES;
     @GlobalProperty(name="KvmHost.maxThreads.ratio", defaultValue = "0.6")
     public static double KVM_HOST_MAX_THREDS_RATIO;
@@ -28,14 +28,14 @@ public class KVMGlobalProperty {
     public static int TCP_SERVER_PORT;
     @GlobalProperty(name="KvmHost.takeOverFlagPath", defaultValue = "/var/run/zstack/takeOver")
     public static String TAKEVOERFLAGPATH;
-    @GlobalProperty(name="MN.network.", defaultValue = "")
+    @GlobalProperty(name="MN.network.", defaultValue = "", immutable = true)
     public static List<String> MN_NETWORKS;
     @GlobalProperty(name = "host.skip.packages", defaultValue = "qemu, qemu-kvm, qemu-kvm-ev, qemu-img, qemu-img-ev")
     public static String SKIP_PACKAGES;
     @GlobalProperty(name = "host.stop.shutdown.vm", defaultValue = "false")
     public static boolean HOST_STOP_SHUTDOWN_VM;
 
-    @GlobalProperty(name = "host.network.need.alarm.interface.service", defaultListValue = {"ManagementNetwork", "MigrationNetwork"})
+    @GlobalProperty(name = "host.network.need.alarm.interface.service", defaultListValue = {"ManagementNetwork", "MigrationNetwork"}, immutable = true)
     @AvailableValues(value = {"ManagementNetwork", "TenantNetwork", "StorageNetwork", "BackupNetwork", "MigrationNetwork"})
     public static List<String> HOST_NETWORK_NEED_ALARM_INTERFACE_SERVICE;
 

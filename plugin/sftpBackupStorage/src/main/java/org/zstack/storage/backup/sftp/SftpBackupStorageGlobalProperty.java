@@ -20,6 +20,6 @@ public class SftpBackupStorageGlobalProperty {
     public static String AGENT_URL_ROOT_PATH;
     @GlobalProperty(name="SftpBackupStorage.DownloadCmd.timeout", defaultValue = "7200")
     public static int DOWNLOAD_CMD_TIMEOUT;
-    @GlobalProperty(name="MN.network.", defaultValue = "")
+    @GlobalProperty(name="MN.network.", defaultValue = "", immutable = true)
     public static List<String> MN_NETWORKS;
 }

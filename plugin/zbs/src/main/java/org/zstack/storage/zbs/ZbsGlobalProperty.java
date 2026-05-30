@@ -21,6 +21,6 @@ public class ZbsGlobalProperty {
     public static int PRIMARY_STORAGE_AGENT_PORT;
     @GlobalProperty(name="Zbs.primaryStorageAgent.urlRootPath", defaultValue = "")
     public static String PRIMARY_STORAGE_AGENT_URL_ROOT_PATH;
-    @GlobalProperty(name="MN.network.", defaultValue = "")
+    @GlobalProperty(name="MN.network.", defaultValue = "", immutable = true)
     public static List<String> MN_NETWORKS;
 }

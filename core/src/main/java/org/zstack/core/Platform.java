@@ -158,6 +158,9 @@ public class Platform {
                     ret = ret.stream().map(it -> rsa.decrypt(it, encryptionKey)).collect(Collectors.toList());
                 }
 
+                if (at.immutable()) {
+                    ret = Collections.unmodifiableList(ret);
+                }
                 valueToSet = ret;
             } else {
                 String value = propertiesMap.get(name);
