@@ -13,6 +13,7 @@ import org.zstack.header.message.NoJsonSchema;
 import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.storage.primary.PrimaryStorageInventory;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
+import org.zstack.header.vm.devices.VmDevicesSpec;
 import org.zstack.header.volume.VolumeFormat;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.header.volume.VolumeType;
@@ -372,6 +373,8 @@ public class VmInstanceSpec implements Serializable {
     // if true, implementation will be required to offer debug info during operation
     private boolean debug;
     private VmCreationStrategy strategy;
+    private VmDevicesSpec devicesSpec = new VmDevicesSpec();
+    private OperatingSystemBootingSpec osSpec = new OperatingSystemBootingSpec();
 
     public List<String> getRequiredClusterUuids() {
         return requiredClusterUuids;
@@ -452,6 +455,22 @@ public class VmInstanceSpec implements Serializable {
 
     public void setUsbRedirect(boolean usbRedirect) {
         this.usbRedirect = usbRedirect;
+    }
+
+    public VmDevicesSpec getDevicesSpec() {
+        return devicesSpec;
+    }
+
+    public void setDevicesSpec(VmDevicesSpec devicesSpec) {
+        this.devicesSpec = devicesSpec;
+    }
+
+    public OperatingSystemBootingSpec getOsSpec() {
+        return osSpec;
+    }
+
+    public void setOsSpec(OperatingSystemBootingSpec osSpec) {
+        this.osSpec = osSpec;
     }
     
     public boolean isEnableSecurityElement() {
@@ -908,6 +927,21 @@ public class VmInstanceSpec implements Serializable {
             return imageFormat.getOutputFormat(getDestHost().getHypervisorType());
         } else {
             return ImageConstant.QCOW2_FORMAT_STRING;
+        }
+    }
+
+    public static class OperatingSystemBootingSpec implements Serializable {
+        /**
+         * @see VmMachineType
+         */
+        private String machineType;
+
+        public String getMachineType() {
+            return machineType;
+        }
+
+        public void setMachineType(String machineType) {
+            this.machineType = machineType;
         }
     }
 }

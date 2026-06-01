@@ -562,12 +562,7 @@ class EnvSpec extends ApiHelper implements Node  {
                     completion.done()
                 }
             }
-        }).run(new WhileDoneCompletion(null) {
-            @Override
-            void done(org.zstack.header.errorcode.ErrorCodeList errorCodeList) {
-                latch.countDown()
-            }
-        })
+        }).run(WhileDoneCompletions.countDownLatch(latch))
 
         def ret = latch.await(1, TimeUnit.MINUTES)
         if (!ret) {

@@ -63,6 +63,7 @@ public class VmInstanceUtils {
         cmsg.setPrimaryStorageUuidForRootVolume(msg.getPrimaryStorageUuidForRootVolume());
         cmsg.setDataVolumeSystemTagsOnIndex(msg.getDataVolumeSystemTagsOnIndex());
         cmsg.setStrategy(msg.getStrategy());
+        cmsg.setDevicesSpec(msg.getDevicesSpec());
 
         cmsg.setDiskAOs(msg.getDiskAOs());
 

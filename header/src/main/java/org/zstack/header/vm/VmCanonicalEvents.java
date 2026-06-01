@@ -4,6 +4,7 @@ import org.zstack.header.message.NeedJsonSchema;
 import org.zstack.header.errorcode.ErrorCode;
 import java.util.Date;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Created by frank on 3/4/2016.
@@ -20,6 +21,7 @@ public class VmCanonicalEvents {
     public static final String VM_NIC_INFO_DUPLICATE_PATH = "/vm/nicinfo/duplicate";
     public static final String VM_NIC_INFO_IPRANGE_CONFLICT_PATH = "/vm/nicinfo/iprangeConflict";
     public static final String VM_GPU_STATUS_ABNORMAL = "/vm/gpu/status/abnormal";
+    public static final String VM_HOST_FILE_CHANGED_PATH = "/vm/hostfile/change";
 
     @NeedJsonSchema
     public static class VmCrashReportData {
@@ -347,6 +349,46 @@ public class VmCanonicalEvents {
 
         public void setStatus(String status) {
             this.status = status;
+        }
+    }
+
+    @NeedJsonSchema
+    public static class VmHostFileChangedData {
+        private String hostUuid;
+        private String vmUuid;
+        private String type;
+        private List<String> types;
+
+        public String getHostUuid() {
+            return hostUuid;
+        }
+
+        public void setHostUuid(String hostUuid) {
+            this.hostUuid = hostUuid;
+        }
+
+        public String getVmUuid() {
+            return vmUuid;
+        }
+
+        public void setVmUuid(String vmUuid) {
+            this.vmUuid = vmUuid;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public List<String> getTypes() {
+            return types;
+        }
+
+        public void setTypes(List<String> types) {
+            this.types = types;
         }
     }
 }

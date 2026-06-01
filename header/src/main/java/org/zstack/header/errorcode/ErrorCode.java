@@ -174,8 +174,29 @@ public class ErrorCode implements Serializable, Cloneable {
         return this;
     }
 
+    public ErrorCode withCause(ErrorCode cause) {
+        return causedBy(cause);
+    }
+
+    public ErrorCode withCause(ErrorCodeList cause) {
+        return causedBy(cause);
+    }
+
     public ErrorCode causedBy(List<ErrorCode> cause) {
         ((ErrorCodeList) this).setCauses(cause);
+        return this;
+    }
+
+    public ErrorCode withCause(List<ErrorCode> cause) {
+        ErrorCodeList errList = new ErrorCodeList();
+        errList.setCauses(cause);
+        return causedBy(errList);
+    }
+
+    public ErrorCode withException(Object e) {
+        if (e != null) {
+            putToOpaque("exception", e.toString());
+        }
         return this;
     }
 

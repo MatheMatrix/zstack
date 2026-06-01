@@ -5,4 +5,10 @@ package org.zstack.header.vm;
  */
 public interface VmInstanceCreateExtensionPoint {
     void preCreateVmInstance(CreateVmInstanceMsg msg);
+
+    default void afterPersistVmInstanceVO(VmInstanceVO vo, CreateVmInstanceMsg msg) {
+    }
+
+    default void afterRollbackPersistVmInstanceVO(VmInstanceVO vo, CreateVmInstanceMsg msg) {
+    }
 }

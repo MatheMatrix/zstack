@@ -11,5 +11,10 @@ public interface CascadeConstant {
     String DELETION_FORCE_DELETE_CODE = "deletion.forceDelete";
     String DELETION_CLEANUP_CODE = "deletion.cleanup";
 
+    /**
+     * Final removal of VM-associated resources when the VM row is expunged.
+     */
+    String VM_INSTANCE_EXPUNGE_CODE = "vm.instance.expunge";
+
     List<String> DELETION_CODES = Arrays.asList(DELETION_CHECK_CODE, DELETION_DELETE_CODE, DELETION_FORCE_DELETE_CODE);
 }

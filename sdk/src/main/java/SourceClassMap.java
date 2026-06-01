@@ -152,6 +152,9 @@ public class SourceClassMap {
 			put("org.zstack.crypto.ccs.CCSCertificateInventory", "org.zstack.sdk.CCSCertificateInventory");
 			put("org.zstack.crypto.ccs.CCSCertificateUserRefInventory", "org.zstack.sdk.CCSCertificateUserRefInventory");
 			put("org.zstack.crypto.ccs.CCSCertificateUserState", "org.zstack.sdk.CCSCertificateUserState");
+			put("org.zstack.crypto.keyprovider.api.RekeyFailedResource", "org.zstack.sdk.keyprovider.api.RekeyFailedResource");
+			put("org.zstack.crypto.keyprovider.api.RekeyProviderResult", "org.zstack.sdk.keyprovider.api.RekeyProviderResult");
+			put("org.zstack.crypto.keyprovider.api.RekeySkippedResource", "org.zstack.sdk.keyprovider.api.RekeySkippedResource");
 			put("org.zstack.crypto.securitymachine.thirdparty.aisino.AiSiNoSecretResourcePoolInventory", "org.zstack.sdk.AiSiNoSecretResourcePoolInventory");
 			put("org.zstack.crypto.securitymachine.thirdparty.csp.CSPSecretResourcePoolInventory", "org.zstack.sdk.CSPSecretResourcePoolInventory");
 			put("org.zstack.crypto.securitymachine.thirdparty.fiSec.FiSecSecretResourcePoolInventory", "org.zstack.sdk.FiSecSecretResourcePoolInventory");
@@ -325,6 +328,12 @@ public class SourceClassMap {
 			put("org.zstack.header.image.ImageGroupInventory", "org.zstack.sdk.ImageGroupInventory");
 			put("org.zstack.header.image.ImageGroupRefInventory", "org.zstack.sdk.ImageGroupRefInventory");
 			put("org.zstack.header.image.ImageInventory", "org.zstack.sdk.ImageInventory");
+			put("org.zstack.header.keyprovider.CertificateInfo", "org.zstack.sdk.keyprovider.CertificateInfo");
+			put("org.zstack.header.keyprovider.KeyProviderInventory", "org.zstack.sdk.keyprovider.KeyProviderInventory");
+			put("org.zstack.header.keyprovider.KmsIdentityInventory", "org.zstack.sdk.keyprovider.KmsIdentityInventory");
+			put("org.zstack.header.keyprovider.KmsInventory", "org.zstack.sdk.keyprovider.KmsInventory");
+			put("org.zstack.header.keyprovider.NkpInventory", "org.zstack.sdk.keyprovider.NkpInventory");
+			put("org.zstack.header.keyprovider.NkpRestoreInfo", "org.zstack.sdk.keyprovider.NkpRestoreInfo");
 			put("org.zstack.header.longjob.LongJobInventory", "org.zstack.sdk.LongJobInventory");
 			put("org.zstack.header.longjob.LongJobState", "org.zstack.sdk.LongJobState");
 			put("org.zstack.header.managementnode.ManagementNodeInventory", "org.zstack.sdk.ManagementNodeInventory");
@@ -414,6 +423,9 @@ public class SourceClassMap {
 			put("org.zstack.header.tag.TagPatternInventory", "org.zstack.sdk.TagPatternInventory");
 			put("org.zstack.header.tag.TagPatternType", "org.zstack.sdk.TagPatternType");
 			put("org.zstack.header.tag.UserTagInventory", "org.zstack.sdk.UserTagInventory");
+			put("org.zstack.header.tpm.entity.TpmCapabilityView", "org.zstack.sdk.tpm.TpmCapabilityView");
+			put("org.zstack.header.tpm.entity.TpmInventory", "org.zstack.sdk.tpm.TpmInventory");
+			put("org.zstack.header.tpm.entity.TpmSpec", "org.zstack.sdk.tpm.TpmSpec");
 			put("org.zstack.header.vdpa.VmVdpaNicInventory", "org.zstack.sdk.VmVdpaNicInventory");
 			put("org.zstack.header.vipQos.VipQosInventory", "org.zstack.sdk.VipQosInventory");
 			put("org.zstack.header.vipQos.VpcSharedQosInventory", "org.zstack.sdk.VpcSharedQosInventory");
@@ -429,8 +441,11 @@ public class SourceClassMap {
 			put("org.zstack.header.vm.VmPriorityConfigInventory", "org.zstack.sdk.VmPriorityConfigInventory");
 			put("org.zstack.header.vm.VmPriorityLevel", "org.zstack.sdk.VmPriorityLevel");
 			put("org.zstack.header.vm.VmSchedHistoryInventory", "org.zstack.sdk.VmSchedHistoryInventory");
+			put("org.zstack.header.vm.additions.VmHostFileInventory", "org.zstack.sdk.vm.entity.VmHostFileInventory");
 			put("org.zstack.header.vm.cdrom.VmCdRomInventory", "org.zstack.sdk.VmCdRomInventory");
 			put("org.zstack.header.vm.devices.DeviceAddress", "org.zstack.sdk.DeviceAddress");
+			put("org.zstack.header.vm.devices.NvRamSpec", "org.zstack.sdk.NvRamSpec");
+			put("org.zstack.header.vm.devices.VmDevicesSpec", "org.zstack.sdk.VmDevicesSpec");
 			put("org.zstack.header.vm.devices.VmInstanceDeviceAddressArchiveInventory", "org.zstack.sdk.VmInstanceDeviceAddressArchiveInventory");
 			put("org.zstack.header.vm.devices.VmInstanceDeviceAddressGroupInventory", "org.zstack.sdk.VmInstanceDeviceAddressGroupInventory");
 			put("org.zstack.header.vmscheduling.HostSchedulingRuleGroupInventory", "org.zstack.sdk.HostSchedulingRuleGroupInventory");
@@ -1335,6 +1350,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.NginxRedirectRule", "org.zstack.ai.NginxRedirectRule");
 			put("org.zstack.sdk.NicTO", "org.zstack.kvm.KVMAgentCommands$NicTO");
 			put("org.zstack.sdk.NormalIpRangeInventory", "org.zstack.header.network.l3.NormalIpRangeInventory");
+			put("org.zstack.sdk.NvRamSpec", "org.zstack.header.vm.devices.NvRamSpec");
 			put("org.zstack.sdk.NvmeLunHostRefInventory", "org.zstack.storage.device.nvme.NvmeLunHostRefInventory");
 			put("org.zstack.sdk.NvmeLunInventory", "org.zstack.storage.device.nvme.NvmeLunInventory");
 			put("org.zstack.sdk.NvmeServerClusterRefInventory", "org.zstack.storage.device.nvme.NvmeServerClusterRefInventory");
@@ -1583,6 +1599,7 @@ public class SourceClassMap {
 			put("org.zstack.sdk.VmCPUSpendingDetails", "org.zstack.billing.spendingcalculator.vm.VmCPUSpendingDetails");
 			put("org.zstack.sdk.VmCapabilities", "org.zstack.header.vm.VmCapabilities");
 			put("org.zstack.sdk.VmCdRomInventory", "org.zstack.header.vm.cdrom.VmCdRomInventory");
+			put("org.zstack.sdk.VmDevicesSpec", "org.zstack.header.vm.devices.VmDevicesSpec");
 			put("org.zstack.sdk.VmExternalBackupInfo", "org.zstack.externalbackup.VmExternalBackupInfo");
 			put("org.zstack.sdk.VmInstanceDeviceAddressArchiveInventory", "org.zstack.header.vm.devices.VmInstanceDeviceAddressArchiveInventory");
 			put("org.zstack.sdk.VmInstanceDeviceAddressGroupInventory", "org.zstack.header.vm.devices.VmInstanceDeviceAddressGroupInventory");
@@ -1708,6 +1725,15 @@ public class SourceClassMap {
 			put("org.zstack.sdk.identity.role.RoleState", "org.zstack.header.identity.role.RoleState");
 			put("org.zstack.sdk.identity.role.RoleStateEvent", "org.zstack.header.identity.role.RoleStateEvent");
 			put("org.zstack.sdk.identity.role.RoleType", "org.zstack.header.identity.role.RoleType");
+			put("org.zstack.sdk.keyprovider.CertificateInfo", "org.zstack.header.keyprovider.CertificateInfo");
+			put("org.zstack.sdk.keyprovider.KeyProviderInventory", "org.zstack.header.keyprovider.KeyProviderInventory");
+			put("org.zstack.sdk.keyprovider.KmsIdentityInventory", "org.zstack.header.keyprovider.KmsIdentityInventory");
+			put("org.zstack.sdk.keyprovider.KmsInventory", "org.zstack.header.keyprovider.KmsInventory");
+			put("org.zstack.sdk.keyprovider.NkpInventory", "org.zstack.header.keyprovider.NkpInventory");
+			put("org.zstack.sdk.keyprovider.NkpRestoreInfo", "org.zstack.header.keyprovider.NkpRestoreInfo");
+			put("org.zstack.sdk.keyprovider.api.RekeyFailedResource", "org.zstack.crypto.keyprovider.api.RekeyFailedResource");
+			put("org.zstack.sdk.keyprovider.api.RekeyProviderResult", "org.zstack.crypto.keyprovider.api.RekeyProviderResult");
+			put("org.zstack.sdk.keyprovider.api.RekeySkippedResource", "org.zstack.crypto.keyprovider.api.RekeySkippedResource");
 			put("org.zstack.sdk.license.header.server.LicenseAuthorizedCapacityClientAddOnUsageView", "org.zstack.license.header.server.LicenseAuthorizedCapacityClientAddOnUsageView");
 			put("org.zstack.sdk.license.header.server.LicenseAuthorizedCapacityClientUsageView", "org.zstack.license.header.server.LicenseAuthorizedCapacityClientUsageView");
 			put("org.zstack.sdk.license.header.server.LicenseAuthorizedCapacityInventory", "org.zstack.license.header.server.LicenseAuthorizedCapacityInventory");
@@ -1756,6 +1782,10 @@ public class SourceClassMap {
 			put("org.zstack.sdk.ticket.entity.TicketTypeInventory", "org.zstack.ticket.entity.TicketTypeInventory");
 			put("org.zstack.sdk.ticket.iam2.entity.IAM2TicketFlowCollectionInventory", "org.zstack.ticket.iam2.entity.IAM2TicketFlowCollectionInventory");
 			put("org.zstack.sdk.ticket.iam2.entity.IAM2TicketFlowInventory", "org.zstack.ticket.iam2.entity.IAM2TicketFlowInventory");
+			put("org.zstack.sdk.tpm.TpmCapabilityView", "org.zstack.header.tpm.entity.TpmCapabilityView");
+			put("org.zstack.sdk.tpm.TpmInventory", "org.zstack.header.tpm.entity.TpmInventory");
+			put("org.zstack.sdk.tpm.TpmSpec", "org.zstack.header.tpm.entity.TpmSpec");
+			put("org.zstack.sdk.vm.entity.VmHostFileInventory", "org.zstack.header.vm.additions.VmHostFileInventory");
 			put("org.zstack.sdk.zwatch.alarm.ActionParam", "org.zstack.zwatch.alarm.APICreateAlarmMsg$ActionParam");
 			put("org.zstack.sdk.zwatch.alarm.AlarmActionInventory", "org.zstack.zwatch.alarm.AlarmActionInventory");
 			put("org.zstack.sdk.zwatch.alarm.AlarmDataAckInventory", "org.zstack.zwatch.alarm.AlarmDataAckInventory");

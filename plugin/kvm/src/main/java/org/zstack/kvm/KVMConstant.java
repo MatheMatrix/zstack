@@ -70,6 +70,7 @@ public interface KVMConstant {
     String HOST_SECRET_USAGE_INSTANCE_VTPM = "tpm0";
     String NV_RAM_FILE_PATH_FORMAT = "/var/lib/libvirt/qemu/nvram/%s-host-files/%s.fd";
     String TPM_STATE_FILE_PATH_FORMAT = "/var/lib/libvirt/swtpm/%s/";
+    String EDK_VERSION_NONE = "None";
     String KVM_PAUSE_VM_PATH = "/vm/pause";
     String KVM_RESUME_VM_PATH = "/vm/resume";
     String KVM_REBOOT_VM_PATH = "/vm/reboot";

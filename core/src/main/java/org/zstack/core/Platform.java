@@ -966,6 +966,14 @@ public class Platform {
         return err(globalErrorCode, errCode, null, fmt, args);
     }
 
+    public static ErrorCode err(Enum errCode, String fmt, Object...args) {
+        return err(errCode.toString(), errCode, fmt, args);
+    }
+
+    public static ErrorCode err(Enum errCode, ErrorCode cause, String fmt, Object...args) {
+        return err(errCode.toString(), errCode, cause, fmt, args);
+    }
+
     public static ErrorCode err(String globalErrorCode, Enum errCode, ErrorCode cause, String fmt, Object...args) {
         ErrorFacade errf = getComponentLoader().getComponent(ErrorFacade.class);
         String details = null;
@@ -1152,6 +1160,10 @@ public class Platform {
         return err(globalErrorCode, SysErrors.OPERATION_ERROR, fmt, args);
     }
 
+    public static ErrorCode operr(String fmt, Object...args) {
+        return err(SysErrors.OPERATION_ERROR.toString(), SysErrors.OPERATION_ERROR, fmt, args);
+    }
+
     public static ErrorCode operr(String globalErrorCode, ErrorCode cause, String fmt, Object...args) {
         return err(globalErrorCode, SysErrors.OPERATION_ERROR, cause, fmt, args);
     }
@@ -1162,6 +1174,10 @@ public class Platform {
 
     public static ErrorCode argerr(String globalErrorCode, String fmt, Object...args) {
         return err(globalErrorCode, SysErrors.INVALID_ARGUMENT_ERROR, fmt, args);
+    }
+
+    public static ErrorCode argerr(String fmt, Object...args) {
+        return err(SysErrors.INVALID_ARGUMENT_ERROR.toString(), SysErrors.INVALID_ARGUMENT_ERROR, fmt, args);
     }
 
     public static ErrorCode touterr(String globalErrorCode, String fmt, Object...args) {

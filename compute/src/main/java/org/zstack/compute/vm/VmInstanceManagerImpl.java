@@ -1262,6 +1262,28 @@ public class VmInstanceManagerImpl extends AbstractService implements
                 });
 
                 flow(new Flow() {
+                    List<VmInstanceCreateExtensionPoint> done = new ArrayList<>();
+                    String __name__ = String.format("after-persist-create-vm-extension-%s", finalVo.getUuid());
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        for (VmInstanceCreateExtensionPoint extension : pluginRgty.getExtensionList(VmInstanceCreateExtensionPoint.class)) {
+                            done.add(extension);
+                            extension.afterPersistVmInstanceVO(finalVo, msg);
+                        }
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void rollback(FlowRollback trigger, Map data) {
+                        Collections.reverse(done);
+                        CollectionUtils.safeForEach(done,
+                                extension -> extension.afterRollbackPersistVmInstanceVO(finalVo, msg));
+                        trigger.rollback();
+                    }
+                });
+
+                flow(new Flow() {
                     List<ErrorCode> errorCodes = Collections.emptyList();
                     String __name__ = String.format("instantiate-ssh-key-pair-for-vm-%s", finalVo.getUuid());
 

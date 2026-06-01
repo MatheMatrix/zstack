@@ -405,6 +405,39 @@ public class KVMAgentCommands {
         public long kvmagentPhysicalMemoryUsageHardLimit;
     }
 
+    public static class CreatePublicKeyCmd extends AgentCommand {
+    }
+
+    public static class CreatePublicKeyResponse extends AgentResponse {
+    }
+
+    public static class GetPublicKeyCmd extends AgentCommand {
+    }
+
+    public static class GetPublicKeyResponse extends AgentResponse {
+        private String publicKey;
+
+        public String getPublicKey() {
+            return publicKey;
+        }
+
+        public void setPublicKey(String publicKey) {
+            this.publicKey = publicKey;
+        }
+    }
+
+    public static class RotatePublicKeyCmd extends AgentCommand {
+    }
+
+    public static class RotatePublicKeyResponse extends AgentResponse {
+    }
+
+    public static class VerifyPublicKeyCmd extends AgentCommand {
+    }
+
+    public static class VerifyPublicKeyResponse extends AgentResponse {
+    }
+
     public static class SecretHostDefineCmd extends AgentCommand {
         private String encryptedDek;
         private String vmUuid;
@@ -519,6 +552,16 @@ public class KVMAgentCommands {
         private List<VmHostFileTO> hostFiles = new ArrayList<>();
         public List<VmHostFileTO> getHostFiles() { return hostFiles; }
         public void setHostFiles(List<VmHostFileTO> v) { this.hostFiles = v; }
+        public List<String> getPaths() {
+            return hostFiles.stream().map(VmHostFileTO::getPath).collect(Collectors.toList());
+        }
+        public void setPaths(List<String> paths) {
+            hostFiles = paths.stream().map(path -> {
+                VmHostFileTO to = new VmHostFileTO();
+                to.setPath(path);
+                return to;
+            }).collect(Collectors.toList());
+        }
     }
 
     public static class ReadVmHostFileContentResponse extends AgentResponse {
@@ -2544,6 +2587,8 @@ public class KVMAgentCommands {
         @GrayVersion(value = "5.0.0")
         private boolean secureBoot;
         @GrayVersion(value = "5.0.0")
+        private String edkVersion;
+        @GrayVersion(value = "5.0.0")
         private boolean fromForeignHypervisor;
         @GrayVersion(value = "5.0.0")
         private String machineType;
@@ -2714,6 +2759,14 @@ public class KVMAgentCommands {
 
         public void setSecureBoot(boolean secureBoot) {
             this.secureBoot = secureBoot;
+        }
+
+        public String getEdkVersion() {
+            return edkVersion;
+        }
+
+        public void setEdkVersion(String edkVersion) {
+            this.edkVersion = edkVersion;
         }
 
         public boolean isEmulateHyperV() {

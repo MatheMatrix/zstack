@@ -17,6 +17,7 @@ import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.header.tag.TagResourceType;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.header.zone.ZoneVO;
+import org.zstack.header.vm.devices.VmDevicesSpec;
 
 import java.util.Collections;
 import java.util.List;
@@ -116,6 +117,9 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
 
     @APIParam(required = false)
     private String vmNicParams;
+
+    @APIParam(required = false)
+    private VmDevicesSpec devicesSpec;
     /**
      * @desc see type of :ref:`VmInstanceInventory`
      * @choices - UserVm
@@ -451,6 +455,14 @@ public class APICreateVmInstanceMsg extends APICreateMessage implements APIAudit
 
     public void setVmNicParams(String vmNicParams) {
         this.vmNicParams = vmNicParams;
+    }
+
+    public VmDevicesSpec getDevicesSpec() {
+        return devicesSpec;
+    }
+
+    public void setDevicesSpec(VmDevicesSpec devicesSpec) {
+        this.devicesSpec = devicesSpec;
     }
 
     public List<String> getDataDiskOfferingUuids() {

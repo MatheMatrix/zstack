@@ -24,6 +24,7 @@
         <class>org.zstack.header.cluster.ClusterEO</class>
         <class>org.zstack.header.host.HostVO</class>
         <class>org.zstack.header.host.HostEO</class>
+        <class>org.zstack.header.host.HostKeyIdentityVO</class>
         <class>org.zstack.header.host.HostNetworkLabelVO</class>
         <class>org.zstack.header.host.CpuFeaturesHistoryVO</class>
         <class>org.zstack.header.storage.primary.PrimaryStorageVO</class>
@@ -181,6 +182,10 @@
         <class>org.zstack.header.identity.role.SystemRoleVO</class>
         <class>org.zstack.header.identity.role.RolePolicyStatementVO</class>
         <class>org.zstack.header.core.captcha.CaptchaVO</class>
+        <class>org.zstack.header.tpm.entity.TpmVO</class>
+        <class>org.zstack.header.vm.additions.VmHostFileVO</class>
+        <class>org.zstack.header.vm.additions.VmHostBackupFileVO</class>
+        <class>org.zstack.header.vm.additions.VmHostFileContentVO</class>
         <class>org.zstack.header.vm.cdrom.VmCdRomVO</class>
         <class>org.zstack.header.core.trash.InstallPathRecycleVO</class>
         <class>org.zstack.header.vm.VmPriorityConfigVO</class>

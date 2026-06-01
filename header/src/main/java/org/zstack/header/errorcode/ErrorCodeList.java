@@ -20,6 +20,21 @@ public class ErrorCodeList extends ErrorCode {
         this.causes = causes;
     }
 
+    public boolean isEmpty() {
+        return causes == null || causes.isEmpty();
+    }
+
+    public boolean hasError() {
+        return !isEmpty();
+    }
+
+    public int size() {
+        return causes == null ? 0 : causes.size();
+    }
+
+    public boolean add(ErrorCode cause) {
+        return causes.add(cause);
+    }
 
     /**
      *
