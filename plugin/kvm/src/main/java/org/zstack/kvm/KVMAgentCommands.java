@@ -14,6 +14,8 @@ import org.zstack.header.log.NoLogging;
 import org.zstack.header.vm.*;
 import org.zstack.header.vm.devices.DeviceAddress;
 import org.zstack.header.vm.devices.VirtualDeviceInfo;
+import org.zstack.header.vm.additions.VmHostFileBackupJob;
+import org.zstack.kvm.tpm.TpmTO;
 import org.zstack.network.securitygroup.RuleTO;
 import org.zstack.network.securitygroup.SecurityGroupMembersTO;
 import org.zstack.network.securitygroup.VmNicSecurityTO;
@@ -402,6 +404,144 @@ public class KVMAgentCommands {
         public long kvmagentPhysicalMemoryUsageAlarmThreshold;
         public long kvmagentPhysicalMemoryUsageHardLimit;
     }
+
+    public static class SecretHostDefineCmd extends AgentCommand {
+        private String encryptedDek;
+        private String vmUuid;
+        private String purpose;
+        private Integer keyVersion;
+        private String usageInstance;
+        private String secretUuid;
+        private String description;
+
+        public String getEncryptedDek() { return encryptedDek; }
+        public void setEncryptedDek(String v) { this.encryptedDek = v; }
+        public String getVmUuid() { return vmUuid; }
+        public void setVmUuid(String v) { this.vmUuid = v; }
+        public String getPurpose() { return purpose; }
+        public void setPurpose(String v) { this.purpose = v; }
+        public Integer getKeyVersion() { return keyVersion; }
+        public void setKeyVersion(Integer v) { this.keyVersion = v; }
+        public String getUsageInstance() { return usageInstance; }
+        public void setUsageInstance(String v) { this.usageInstance = v; }
+        public String getSecretUuid() { return secretUuid; }
+        public void setSecretUuid(String v) { this.secretUuid = v; }
+        public String getDescription() { return description; }
+        public void setDescription(String v) { this.description = v; }
+    }
+
+    public static class SecretHostDefineResponse extends AgentResponse {
+        private String secretUuid;
+        public String getSecretUuid() { return secretUuid; }
+        public void setSecretUuid(String v) { this.secretUuid = v; }
+    }
+
+    public static class SecretHostGetCmd extends AgentCommand {
+        private String vmUuid;
+        private String purpose;
+        private Integer keyVersion;
+        private String usageInstance;
+
+        public String getVmUuid() { return vmUuid; }
+        public void setVmUuid(String v) { this.vmUuid = v; }
+        public String getPurpose() { return purpose; }
+        public void setPurpose(String v) { this.purpose = v; }
+        public Integer getKeyVersion() { return keyVersion; }
+        public void setKeyVersion(Integer v) { this.keyVersion = v; }
+        public String getUsageInstance() { return usageInstance; }
+        public void setUsageInstance(String v) { this.usageInstance = v; }
+    }
+
+    public static class SecretHostGetResponse extends AgentResponse {
+        public static final String ERROR_CODE_SECRET_NOT_FOUND = "KEY_AGENT_SECRET_NOT_FOUND";
+        private String secretUuid;
+        private String errorCode;
+        public String getSecretUuid() { return secretUuid; }
+        public void setSecretUuid(String v) { this.secretUuid = v; }
+        public String getErrorCode() { return errorCode; }
+        public void setErrorCode(String v) { this.errorCode = v; }
+    }
+
+    public static class SecretHostDeleteCmd extends AgentCommand {
+        private String vmUuid;
+        private String purpose;
+        private Integer keyVersion;
+        private String usageInstance;
+
+        public String getVmUuid() { return vmUuid; }
+        public void setVmUuid(String v) { this.vmUuid = v; }
+        public String getPurpose() { return purpose; }
+        public void setPurpose(String v) { this.purpose = v; }
+        public Integer getKeyVersion() { return keyVersion; }
+        public void setKeyVersion(Integer v) { this.keyVersion = v; }
+        public String getUsageInstance() { return usageInstance; }
+        public void setUsageInstance(String v) { this.usageInstance = v; }
+    }
+
+    public static class SecretHostDeleteResponse extends AgentResponse {}
+
+    public static class ResolveVtpmLibvirtSecretCmd extends AgentCommand {
+        private String vmUuid;
+        public String getVmUuid() { return vmUuid; }
+        public void setVmUuid(String v) { this.vmUuid = v; }
+    }
+
+    public static class ResolveVtpmLibvirtSecretResponse extends AgentResponse {
+        private String secretUuid;
+        public String getSecretUuid() { return secretUuid; }
+        public void setSecretUuid(String v) { this.secretUuid = v; }
+    }
+
+    public static class VmHostFileTO {
+        private String path;
+        private String type;
+        private String fileFormat;
+        private String operation;
+        @NoLogging(type = NoLogging.Type.LongText)
+        private String contentBase64;
+        private String error;
+
+        public String getPath() { return path; }
+        public void setPath(String v) { this.path = v; }
+        public String getType() { return type; }
+        public void setType(String v) { this.type = v; }
+        public String getFileFormat() { return fileFormat; }
+        public void setFileFormat(String v) { this.fileFormat = v; }
+        public String getOperation() { return operation; }
+        public void setOperation(String v) { this.operation = v; }
+        public String getContentBase64() { return contentBase64; }
+        public void setContentBase64(String v) { this.contentBase64 = v; }
+        public String getError() { return error; }
+        public void setError(String v) { this.error = v; }
+    }
+
+    public static class ReadVmHostFileContentCmd extends AgentCommand {
+        private List<VmHostFileTO> hostFiles = new ArrayList<>();
+        public List<VmHostFileTO> getHostFiles() { return hostFiles; }
+        public void setHostFiles(List<VmHostFileTO> v) { this.hostFiles = v; }
+    }
+
+    public static class ReadVmHostFileContentResponse extends AgentResponse {
+        private List<VmHostFileTO> hostFiles = new ArrayList<>();
+        public List<VmHostFileTO> getHostFiles() { return hostFiles; }
+        public void setHostFiles(List<VmHostFileTO> v) { this.hostFiles = v; }
+    }
+
+    public static class WriteVmHostFileContentCmd extends AgentCommand {
+        private List<VmHostFileTO> hostFiles = new ArrayList<>();
+        public List<VmHostFileTO> getHostFiles() { return hostFiles; }
+        public void setHostFiles(List<VmHostFileTO> v) { this.hostFiles = v; }
+    }
+
+    public static class WriteVmHostFileContentResponse extends AgentResponse {}
+
+    public static class BackupVmHostFileCmd extends AgentCommand {
+        private List<VmHostFileBackupJob> vmHostFileBackupJobs;
+        public List<VmHostFileBackupJob> getVmHostFileBackupJobs() { return vmHostFileBackupJobs; }
+        public void setVmHostFileBackupJobs(List<VmHostFileBackupJob> v) { this.vmHostFileBackupJobs = v; }
+    }
+
+    public static class BackupVmHostFileResponse extends AgentResponse {}
 
     public static class PingResponse extends AgentResponse {
         private String hostUuid;
@@ -2407,6 +2547,8 @@ public class KVMAgentCommands {
         private boolean fromForeignHypervisor;
         @GrayVersion(value = "5.0.0")
         private String machineType;
+        private VolumeTO nvRam;
+        private TpmTO tpm;
         @GrayVersion(value = "5.0.0")
         private Integer pciePortNums;
         @GrayVersion(value = "5.0.0")
@@ -2536,6 +2678,11 @@ public class KVMAgentCommands {
         public void setMachineType(String machineType) {
             this.machineType = machineType;
         }
+
+        public VolumeTO getNvRam() { return nvRam; }
+        public void setNvRam(VolumeTO nvRam) { this.nvRam = nvRam; }
+        public TpmTO getTpm() { return tpm; }
+        public void setTpm(TpmTO tpm) { this.tpm = tpm; }
 
         public void setPciePortNums(Integer pciePortNums) {
             this.pciePortNums = pciePortNums;

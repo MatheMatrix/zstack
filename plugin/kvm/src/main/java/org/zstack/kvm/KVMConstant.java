@@ -51,6 +51,25 @@ public interface KVMConstant {
     String KVM_SYNC_VM_DEVICEINFO_PATH = "/sync/vm/deviceinfo";
     String KVM_START_VM_PATH = "/vm/start";
     String KVM_STOP_VM_PATH = "/vm/stop";
+
+    // vTPM / KMS / host file paths
+    String READ_VM_HOST_FILE_PATH = "/vm/hostfile/read";
+    String WRITE_VM_HOST_FILE_PATH = "/vm/hostfile/write";
+    String BACKUP_VM_HOST_FILE_PATH = "/vm/hostfile/backup";
+    String KVM_VTPM_RESOLVE_LIBVIRT_SECRET_UUID_PATH = "/vm/vtpm/resolveLibvirtSecretUuid";
+    String KVM_REPORT_VM_HOST_FILE_CHANGED = "/kvm/reporthostfilechanged";
+    String KVM_CREATE_ENVELOPE_KEY_PATH = "/host/key/envelope/createEnvelopeKey";
+    String KVM_GET_ENVELOPE_KEY_PATH = "/host/key/envelope/getEnvelopePublicKey";
+    String KVM_ROTATE_ENVELOPE_KEY_PATH = "/host/key/envelope/rotateEnvelopeKey";
+    String KVM_VERIFY_ENVELOPE_KEY_PATH = "/host/key/envelope/checkEnvelopeKey";
+    String KVM_GET_SECRET_PATH = "/host/key/envelope/getSecret";
+    String KVM_ENSURE_SECRET_PATH = "/host/key/envelope/ensureSecret";
+    String KVM_DELETE_SECRET_PATH = "/host/key/envelope/deleteSecret";
+    long ENVELOPE_KEY_HTTP_TIMEOUT_SEC = 10L;
+    int MAX_DEK_BYTES = 1024;
+    String HOST_SECRET_USAGE_INSTANCE_VTPM = "tpm0";
+    String NV_RAM_FILE_PATH_FORMAT = "/var/lib/libvirt/qemu/nvram/%s-host-files/%s.fd";
+    String TPM_STATE_FILE_PATH_FORMAT = "/var/lib/libvirt/swtpm/%s/";
     String KVM_PAUSE_VM_PATH = "/vm/pause";
     String KVM_RESUME_VM_PATH = "/vm/resume";
     String KVM_REBOOT_VM_PATH = "/vm/reboot";
