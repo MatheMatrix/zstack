@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.core.cloudbus.CloudBusListCallBack;
+import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
 import org.zstack.core.db.SQLBatch;
@@ -36,9 +37,11 @@ import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
 import org.zstack.header.storage.snapshot.VolumeSnapshotTree;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
+import org.zstack.header.storage.migration.KvmMigrateVmWithStorageExtensionPoint;
 import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.header.vm.VmInstanceSpec;
 import org.zstack.header.volume.VolumeInventory;
+import org.zstack.header.volume.VolumeLuksAgentSpec;
 import org.zstack.header.volume.VolumeType;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.kvm.KVMHostAsyncHttpCallMsg;
@@ -74,6 +77,8 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
     private ThreadFacade thdf;
     @Autowired
     private LocalStorageFactory localStorageFactory;
+    @Autowired
+    private PluginRegistry pluginRgty;
 
     public static final String VERIFY_SNAPSHOT_CHAIN_PATH = "/localstorage/snapshot/verifychain";
     public static final String REBASE_SNAPSHOT_BACKING_FILES_PATH = "/localstorage/snapshot/rebasebackingfiles";
@@ -91,6 +96,8 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
 
     public static class RebaseSnapshotBackingFilesCmd extends LocalStorageKvmBackend.AgentCommand {
         public List<SnapshotTO> snapshots;
+        @NoLogging
+        public String encryptedDek;
     }
 
     public static class CopyBitsFromRemoteCmd extends LocalStorageKvmBackend.AgentCommand implements HasThreadContext, Serializable {
@@ -110,6 +117,28 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
         String path;
         Long size;
         String md5;
+    }
+
+    private VolumeLuksAgentSpec prepareVolumeLuksAgentSpec(String hostUuid, VolumeInventory volume) {
+        for (KvmMigrateVmWithStorageExtensionPoint ext : pluginRgty.getExtensionList(KvmMigrateVmWithStorageExtensionPoint.class)) {
+            VolumeLuksAgentSpec spec = ext.prepareVolumeLuksAgentSpec(hostUuid, volume);
+            if (spec != null && spec.isComplete()) {
+                return spec;
+            }
+        }
+
+        return null;
+    }
+
+    private String prepareVolumeEncryptedDek(String hostUuid, VolumeInventory volume) {
+        for (KvmMigrateVmWithStorageExtensionPoint ext : pluginRgty.getExtensionList(KvmMigrateVmWithStorageExtensionPoint.class)) {
+            String encryptedDek = ext.prepareVolumeEncryptedDek(hostUuid, volume);
+            if (encryptedDek != null && !encryptedDek.isEmpty()) {
+                return encryptedDek;
+            }
+        }
+
+        return null;
     }
 
     @Override
@@ -590,6 +619,7 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
                                 LocalStorageCreateEmptyVolumeMsg msg = new LocalStorageCreateEmptyVolumeMsg();
                                 msg.setHostUuid(dstHostUuid);
                                 msg.setVolume(arg);
+                                msg.setVolumeLuksAgentSpec(prepareVolumeLuksAgentSpec(dstHostUuid, arg));
 
                                 if (VolumeType.Root.toString().equals(arg.getType())) {
                                     msg.setBackingFile(backingImage.path);
@@ -1144,6 +1174,9 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
                     cmd.setInstallUrl(p.volume.getInstallPath());
                     cmd.setSize(p.volume.getSize());
                     cmd.setVolumeUuid(p.volume.getUuid());
+                    if (Boolean.TRUE.equals(p.volume.getEncrypted())) {
+                        cmd.setEncryptedDek(prepareVolumeEncryptedDek(dstHostUuid, p.volume));
+                    }
 
                     if (p.latest == null){
                         // volume has been reimage
@@ -1198,6 +1231,9 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
                 public void run(final FlowTrigger trigger, Map data) {
                     RebaseSnapshotBackingFilesCmd cmd = new RebaseSnapshotBackingFilesCmd();
                     cmd.snapshots = snapshotTOs;
+                    if (Boolean.TRUE.equals(p.volume.getEncrypted())) {
+                        cmd.encryptedDek = prepareVolumeEncryptedDek(dstHostUuid, p.volume);
+                    }
                     callKvmHost(dstHostUuid, p.volume.getPrimaryStorageUuid(), REBASE_SNAPSHOT_BACKING_FILES_PATH, cmd, AgentResponse.class, new ReturnValueCompletion<AgentResponse>(trigger) {
                         @Override
                         public void success(AgentResponse returnValue) {
@@ -1260,6 +1296,7 @@ public class LocalStorageKvmMigrateVmFlow extends NoRollbackFlow {
                     LocalStorageCreateEmptyVolumeMsg msg = new LocalStorageCreateEmptyVolumeMsg();
                     msg.setHostUuid(dstHostUuid);
                     msg.setVolume(vol);
+                    msg.setVolumeLuksAgentSpec(prepareVolumeLuksAgentSpec(dstHostUuid, vol));
 
                     if (VolumeType.Root.toString().equals(vol.getType())) {
                         msg.setBackingFile(image.path);
