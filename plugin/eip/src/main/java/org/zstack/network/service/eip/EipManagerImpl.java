@@ -608,13 +608,19 @@ public class EipManagerImpl extends AbstractService implements EipManager, VipRe
 
             @Override
             public void fail(ErrorCode errorCode) {
-                SQL.New(EipVO.class)
+                int affectedRows = SQL.New(EipVO.class)
                         .eq(EipVO_.uuid, msg.getEipUuid())
                         .eq(EipVO_.vmNicUuid, attachedVmNicUuid)
                         .eq(EipVO_.guestIp, attachedGuestIp)
                         .set(EipVO_.vmNicUuid, null)
                         .set(EipVO_.guestIp, null)
                         .update();
+                if (affectedRows == 0) {
+                    logger.warn(String.format(
+                            "failed to roll back EIP[uuid:%s] attach binding[vmNicUuid:%s, guestIp:%s], " +
+                                    "the binding may have been changed by another flow",
+                            msg.getEipUuid(), attachedVmNicUuid, attachedGuestIp));
+                }
                 evt.setError(errorCode);
                 bus.publish(evt);
             }

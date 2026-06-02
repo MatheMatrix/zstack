@@ -158,6 +158,7 @@ class AttachEipRaceCase extends SubCase {
 
         CountDownLatch applyEntered = new CountDownLatch(1)
         CountDownLatch releaseApply = new CountDownLatch(1)
+        CountDownLatch deleteCalled = new CountDownLatch(1)
         FlatEipBackend.ApplyEipCmd applyCmd = null
         FlatEipBackend.DeleteEipCmd deleteCmd = null
 
@@ -175,6 +176,7 @@ class AttachEipRaceCase extends SubCase {
             FlatEipBackend.DeleteEipCmd cmd = json(entity.getBody(), FlatEipBackend.DeleteEipCmd.class)
             if (cmd.eip.eipUuid == eip.uuid) {
                 deleteCmd = cmd
+                deleteCalled.countDown()
             }
             return rsp
         }
@@ -218,6 +220,7 @@ class AttachEipRaceCase extends SubCase {
         def result = action.call()
 
         assert result.error == null
+        assert deleteCalled.await(30, TimeUnit.SECONDS)
         assert deleteCmd != null
         assert deleteCmd.eip.eipUuid == eip.uuid
     }
