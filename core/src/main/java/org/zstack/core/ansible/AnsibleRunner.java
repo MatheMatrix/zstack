@@ -10,7 +10,6 @@ import org.zstack.header.core.Completion;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
-import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.rest.RESTFacade;
 import org.zstack.utils.ShellUtils;
@@ -407,10 +406,14 @@ public class AnsibleRunner {
             }
 
             callAnsible(completion);
+        } catch (OperationFailureException e) {
+            completion.fail(e.getErrorCode());
         } catch (SshException e) {
-            throw new OperationFailureException(operr(ORG_ZSTACK_CORE_ANSIBLE_10000, "User name or password or port number may be problematic"));
+            logger.warn(String.format("SSH operation failed on host[%s]: %s", targetIp, e.getMessage()));
+            completion.fail(operr(ORG_ZSTACK_CORE_ANSIBLE_10000, "SSH operation failed on host[ip:%s]: %s", targetIp, e.getMessage()));
         } catch (Exception e) {
-            throw new CloudRuntimeException(e);
+            logger.warn(String.format("AnsibleRunner.run() unexpected exception on host[%s]", targetIp), e);
+            completion.fail(operr(ORG_ZSTACK_CORE_ANSIBLE_10000, "unexpected exception during ansible run on host[ip:%s]: %s", targetIp, e.getMessage()));
         }
 
     }
