@@ -20,6 +20,8 @@
     <bean id="HostCapacityOverProvisioningManager"
           class="org.zstack.compute.allocator.HostCapacityOverProvisioningManagerImpl"/>
 
+    <bean id="HostCandidateUniverseBuilder" class="org.zstack.compute.allocator.HostCandidateUniverseBuilder"/>
+
     <util:list id="SimulatorBackupStorageMetric">
         <value>SimulatorPrimaryStorage</value>
     </util:list>

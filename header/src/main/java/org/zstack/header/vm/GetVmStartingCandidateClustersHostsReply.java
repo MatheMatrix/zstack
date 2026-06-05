@@ -1,6 +1,7 @@
 package org.zstack.header.vm;
 
 import org.zstack.header.cluster.ClusterInventory;
+import org.zstack.header.candidate.CandidateDecisionResult;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.message.MessageReply;
 
@@ -12,6 +13,7 @@ import java.util.List;
 public class GetVmStartingCandidateClustersHostsReply extends MessageReply {
     private List<HostInventory> hostInventories;
     private List<ClusterInventory> clusterInventories;
+    private CandidateDecisionResult candidateDecisionResult;
 
     public List<HostInventory> getHostInventories() {
         return hostInventories;
@@ -27,5 +29,13 @@ public class GetVmStartingCandidateClustersHostsReply extends MessageReply {
 
     public void setClusterInventories(List<ClusterInventory> clusterInventories) {
         this.clusterInventories = clusterInventories;
+    }
+
+    public CandidateDecisionResult getCandidateDecisionResult() {
+        return candidateDecisionResult;
+    }
+
+    public void setCandidateDecisionResult(CandidateDecisionResult candidateDecisionResult) {
+        this.candidateDecisionResult = candidateDecisionResult;
     }
 }

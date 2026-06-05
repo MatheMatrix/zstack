@@ -1,6 +1,7 @@
 package org.zstack.header.vm;
 
 import org.zstack.header.allocator.AllocationScene;
+import org.zstack.header.candidate.CandidateDecisionContext;
 import org.zstack.header.message.NeedQuotaCheckMessage;
 import org.zstack.header.message.NeedReplyMessage;
 
@@ -20,6 +21,15 @@ public class StartVmInstanceMsg extends NeedReplyMessage implements VmInstanceMe
     private List<String> softAvoidHostUuids;
     private AllocationScene allocationScene;
     private boolean startPaused;
+    private CandidateDecisionContext candidateDecisionContext;
+
+    public CandidateDecisionContext getCandidateDecisionContext() {
+        return candidateDecisionContext;
+    }
+
+    public void setCandidateDecisionContext(CandidateDecisionContext candidateDecisionContext) {
+        this.candidateDecisionContext = candidateDecisionContext;
+    }
 
     public boolean isStartPaused() {
         return startPaused;

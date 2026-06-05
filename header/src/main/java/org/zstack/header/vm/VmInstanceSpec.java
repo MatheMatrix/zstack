@@ -1,6 +1,7 @@
 package org.zstack.header.vm;
 
 import org.apache.commons.collections.CollectionUtils;
+import org.zstack.header.candidate.CandidateDecisionContext;
 import org.zstack.header.allocator.AllocationScene;
 import org.zstack.header.configuration.DiskOfferingInventory;
 import org.zstack.header.host.HostInventory;
@@ -363,6 +364,7 @@ public class VmInstanceSpec implements Serializable {
     private boolean instantiateResourcesSuccess;
     private boolean instantiateResourcesSkipExisting;
     private AllocationScene allocationScene;
+    private CandidateDecisionContext candidateDecisionContext;
 
     private List<String> rootVolumeSystemTags;
     private List<String> dataVolumeSystemTags;
@@ -428,6 +430,14 @@ public class VmInstanceSpec implements Serializable {
 
     public void setAllocationScene(AllocationScene allocationScene) {
         this.allocationScene = allocationScene;
+    }
+
+    public CandidateDecisionContext getCandidateDecisionContext() {
+        return candidateDecisionContext;
+    }
+
+    public void setCandidateDecisionContext(CandidateDecisionContext candidateDecisionContext) {
+        this.candidateDecisionContext = candidateDecisionContext;
     }
 
     public String getVDIMonitorNumber() {

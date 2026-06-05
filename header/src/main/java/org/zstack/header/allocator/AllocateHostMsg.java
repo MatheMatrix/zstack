@@ -1,6 +1,7 @@
 package org.zstack.header.allocator;
 
 import org.zstack.header.configuration.DiskOfferingInventory;
+import org.zstack.header.candidate.CandidateDecisionContext;
 import org.zstack.header.image.ImageInventory;
 import org.zstack.header.message.NeedReplyMessage;
 import org.zstack.header.vm.VmInstanceInventory;
@@ -32,6 +33,7 @@ public class AllocateHostMsg extends NeedReplyMessage {
     private AllocationScene allocationScene;
     private String architecture;
     private String accountUuid;
+    private CandidateDecisionContext candidateDecisionContext;
     /**
      * Allocation purpose. Defaults to ALLOCATE; LIST_CANDIDATES tells the
      * downstream filters this is a candidate-listing call. Callers must gate
@@ -229,5 +231,13 @@ public class AllocateHostMsg extends NeedReplyMessage {
 
     public void setPurpose(HostAllocationPurpose purpose) {
         this.purpose = purpose == null ? HostAllocationPurpose.ALLOCATE : purpose;
+    }
+
+    public CandidateDecisionContext getCandidateDecisionContext() {
+        return candidateDecisionContext;
+    }
+
+    public void setCandidateDecisionContext(CandidateDecisionContext candidateDecisionContext) {
+        this.candidateDecisionContext = candidateDecisionContext;
     }
 }

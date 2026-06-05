@@ -26,6 +26,9 @@ import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.core.workflow.ShareFlow;
 import org.zstack.core.workflow.SimpleFlowChain;
 import org.zstack.header.allocator.*;
+import org.zstack.header.candidate.CandidateDecisionContext;
+import org.zstack.header.candidate.CandidateDecisionResult;
+import org.zstack.header.candidate.CandidateTypes;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.cluster.ClusterInventory;
 import org.zstack.header.cluster.ClusterState;
@@ -866,6 +869,37 @@ public class VmInstanceBase extends AbstractVmInstance {
         });
     }
 
+    private void handle(final APIGetVmStartingCandidatesMsg msg) {
+        APIGetVmStartingCandidatesReply reply = new APIGetVmStartingCandidatesReply();
+        final GetVmStartingCandidateClustersHostsMsg gmsg = new GetVmStartingCandidateClustersHostsMsg();
+        gmsg.setUuid(msg.getUuid());
+        CandidateDecisionContext ctx = CandidateDecisionContext.fromApiMessage(msg, CandidateTypes.HOST);
+        ctx.getRequestScope().put("vmInstanceUuid", msg.getUuid());
+        gmsg.setCandidateDecisionContext(ctx);
+        bus.makeLocalServiceId(gmsg, VmInstanceConstant.SERVICE_ID);
+        bus.send(gmsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply re) {
+                if (!re.isSuccess()) {
+                    reply.setSuccess(false);
+                    reply.setError(re.getError());
+                } else {
+                    GetVmStartingCandidateClustersHostsReply greply = (GetVmStartingCandidateClustersHostsReply) re;
+                    CandidateDecisionResult result = greply.getCandidateDecisionResult();
+                    if (result == null) {
+                        reply.setError(candidateDecisionMissingError(msg));
+                    } else {
+                        reply.setClusters(greply.getClusterInventories());
+                        reply.setCandidates(result.getCandidates());
+                        reply.setSummary(result.getSummary());
+                        reply.setTruncated(result.getTruncated());
+                    }
+                }
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
     private void handle(final GetVmStartingCandidateClustersHostsMsg msg) {
         thdf.chainSubmit(new ChainTask(msg) {
             @Override
@@ -893,6 +927,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                             reply.setHostInventories(hosts);
                             reply.setClusterInventories(new ArrayList<>());
                         }
+                        reply.setCandidateDecisionResult(returnValue.getCandidateDecisionResult());
                         bus.reply(msg, reply);
                         chain.next();
                     }
@@ -930,7 +965,12 @@ public class VmInstanceBase extends AbstractVmInstance {
         if (msg instanceof GetVmStartingCandidateClustersHostsMsg) {
             // propagate allocation purpose so downstream filters know this is a
             // candidate-listing call rather than a real allocation
-            amsg.setPurpose(((GetVmStartingCandidateClustersHostsMsg) msg).getPurpose());
+            GetVmStartingCandidateClustersHostsMsg gmsg = (GetVmStartingCandidateClustersHostsMsg) msg;
+            amsg.setPurpose(gmsg.getPurpose());
+            amsg.setCandidateDecisionContext(gmsg.getCandidateDecisionContext());
+            if (gmsg.getCandidateDecisionContext() != null) {
+                amsg.setAccountUuid(gmsg.getCandidateDecisionContext().getAccountUuid());
+            }
         }
         amsg.setCpuCapacity(self.getCpuNum());
         amsg.setMemoryCapacity(self.getMemorySize());
@@ -2054,6 +2094,20 @@ public class VmInstanceBase extends AbstractVmInstance {
     }
 
     private void getVmMigrationTargetHost(Message msg, final ReturnValueCompletion<List<HostInventory>> completion) {
+        getVmMigrationTargetHostDryRun(msg, new ReturnValueCompletion<AllocateHostDryRunReply>(completion) {
+            @Override
+            public void success(AllocateHostDryRunReply returnValue) {
+                completion.success(returnValue.getHosts());
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                completion.fail(errorCode);
+            }
+        });
+    }
+
+    private void getVmMigrationTargetHostDryRun(Message msg, final ReturnValueCompletion<AllocateHostDryRunReply> completion) {
         refreshVO();
         ErrorCode allowed = validateOperationByState(msg, self.getState(), VmErrors.MIGRATE_ERROR);
         if (allowed != null) {
@@ -2070,12 +2124,23 @@ public class VmInstanceBase extends AbstractVmInstance {
             if (gmsg.getAvoidHostUuids() != null) {
                 amsg.getAvoidHostUuids().addAll(gmsg.getAvoidHostUuids());
             }
+            amsg.setCandidateDecisionContext(gmsg.getCandidateDecisionContext());
+            if (gmsg.getCandidateDecisionContext() != null) {
+                amsg.setAccountUuid(gmsg.getCandidateDecisionContext().getAccountUuid());
+            }
         } else {
             if (msg instanceof APIMessage) {
                 if (((APIMessage) msg).getSystemTags() != null) {
                     amsg.setSystemTags(new ArrayList<String>(((APIMessage) msg).getSystemTags()));
                 }
             }
+        }
+        if (msg instanceof APIGetVmMigrationCandidatesMsg) {
+            APIGetVmMigrationCandidatesMsg apiMsg = (APIGetVmMigrationCandidatesMsg) msg;
+            CandidateDecisionContext ctx = CandidateDecisionContext.fromApiMessage(apiMsg, CandidateTypes.HOST);
+            ctx.getRequestScope().put("vmInstanceUuid", apiMsg.getVmInstanceUuid());
+            amsg.setCandidateDecisionContext(ctx);
+            amsg.setAccountUuid(ctx.getAccountUuid());
         }
         amsg.setVmInstance(VmInstanceInventory.valueOf(self));
         amsg.setServiceId(bus.makeLocalServiceId(HostAllocatorConstant.SERVICE_ID));
@@ -2090,12 +2155,14 @@ public class VmInstanceBase extends AbstractVmInstance {
             public void run(MessageReply re) {
                 if (!re.isSuccess()) {
                     if (HostAllocatorError.NO_AVAILABLE_HOST.toString().equals(re.getError().getCode())) {
-                        completion.success(new ArrayList<HostInventory>());
+                        AllocateHostDryRunReply reply = new AllocateHostDryRunReply();
+                        reply.setHosts(new ArrayList<>());
+                        completion.success(reply);
                     } else {
                         completion.fail(re.getError());
                     }
                 } else {
-                    completion.success(((AllocateHostDryRunReply) re).getHosts());
+                    completion.success((AllocateHostDryRunReply) re);
                 }
             }
         });
@@ -2111,10 +2178,11 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void run(final SyncTaskChain chain) {
                 final GetVmMigrationTargetHostReply reply = new GetVmMigrationTargetHostReply();
-                getVmMigrationTargetHost(msg, new ReturnValueCompletion<List<HostInventory>>(msg, chain) {
+                getVmMigrationTargetHostDryRun(msg, new ReturnValueCompletion<AllocateHostDryRunReply>(msg, chain) {
                     @Override
-                    public void success(List<HostInventory> returnValue) {
-                        reply.setHosts(returnValue);
+                    public void success(AllocateHostDryRunReply returnValue) {
+                        reply.setHosts(returnValue.getHosts());
+                        reply.setCandidateDecisionResult(returnValue.getCandidateDecisionResult());
                         bus.reply(msg, reply);
                         chain.next();
                     }
@@ -2133,6 +2201,80 @@ public class VmInstanceBase extends AbstractVmInstance {
                 return String.format("get-migration-target-host-for-vm-%s", self.getUuid());
             }
         });
+    }
+
+    private void handle(final APIGetVmMigrationCandidatesMsg msg) {
+        final APIGetVmMigrationCandidatesReply reply = new APIGetVmMigrationCandidatesReply();
+        getVmMigrationTargetHostDryRun(msg, new ReturnValueCompletion<AllocateHostDryRunReply>(msg) {
+            @Override
+            public void success(AllocateHostDryRunReply returnValue) {
+                CandidateDecisionResult result = returnValue.getCandidateDecisionResult();
+                if (result == null) {
+                    reply.setError(candidateDecisionMissingError(msg));
+                } else {
+                    reply.setCandidates(result.getCandidates());
+                    reply.setSummary(result.getSummary());
+                    reply.setTruncated(result.getTruncated());
+                }
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
+    }
+
+    private ErrorCode candidateDecisionMissingError(APIMessage msg) {
+        return inerr(ORG_ZSTACK_COMPUTE_VM_10264,
+                "candidate decision result is missing for diagnostic API[%s], requestUuid[%s]",
+                msg.getClass().getSimpleName(), msg.getId());
+    }
+
+    private CandidateDecisionContext newHostCandidateDecisionContext(APIStartVmInstanceMsg msg) {
+        CandidateDecisionContext ctx = CandidateDecisionContext.fromApiMessage(msg, CandidateTypes.HOST);
+        ctx.getRequestScope().put("vmInstanceUuid", msg.getUuid());
+        ctx.getRequestScope().put("clusterUuid", msg.getClusterUuid());
+        ctx.getRequestScope().put("hostUuid", msg.getHostUuid());
+        return ctx;
+    }
+
+    private CandidateDecisionContext newHostCandidateDecisionContext(APIMigrateVmMsg msg) {
+        CandidateDecisionContext ctx = CandidateDecisionContext.fromApiMessage(msg, CandidateTypes.HOST);
+        ctx.getRequestScope().put("vmInstanceUuid", msg.getVmInstanceUuid());
+        ctx.getRequestScope().put("hostUuid", msg.getHostUuid());
+        return ctx;
+    }
+
+    private CandidateDecisionContext candidateDecisionContextFromMigrateMessage(MigrateVmMessage msg) {
+        if (msg instanceof APIMigrateVmMsg) {
+            return newHostCandidateDecisionContext((APIMigrateVmMsg) msg);
+        }
+        if (msg instanceof MigrateVmMsg) {
+            return ((MigrateVmMsg) msg).getCandidateDecisionContext();
+        }
+        if (msg instanceof MigrateVmInnerMsg) {
+            return ((MigrateVmInnerMsg) msg).getCandidateDecisionContext();
+        }
+        return null;
+    }
+
+    private ErrorCode withCandidateDecisionOpaque(ErrorCode outer, ErrorCode source) {
+        Object result = findCandidateDecisionResult(source);
+        if (result != null) {
+            outer.withOpaque("candidateDecisionResult", result);
+        }
+        return outer;
+    }
+
+    private Object findCandidateDecisionResult(ErrorCode errorCode) {
+        if (errorCode == null) {
+            return null;
+        }
+        Object result = errorCode.getFromOpaque("candidateDecisionResult");
+        return result == null ? findCandidateDecisionResult(errorCode.getCause()) : result;
     }
 
     private void handle(final AttachDataVolumeToVmMsg msg) {
@@ -3413,6 +3555,8 @@ public class VmInstanceBase extends AbstractVmInstance {
             handle((APIChangeVmNicNetworkMsg) msg);
         } else if (msg instanceof APIGetVmMigrationCandidateHostsMsg) {
             handle((APIGetVmMigrationCandidateHostsMsg) msg);
+        } else if (msg instanceof APIGetVmMigrationCandidatesMsg) {
+            handle((APIGetVmMigrationCandidatesMsg) msg);
         } else if (msg instanceof APIGetVmAttachableDataVolumeMsg) {
             handle((APIGetVmAttachableDataVolumeMsg) msg);
         } else if (msg instanceof APIUpdateVmInstanceMsg) {
@@ -3475,6 +3619,8 @@ public class VmInstanceBase extends AbstractVmInstance {
             handle((APIGetVmHostnameMsg) msg);
         } else if (msg instanceof APIGetVmStartingCandidateClustersHostsMsg) {
             handle((APIGetVmStartingCandidateClustersHostsMsg) msg);
+        } else if (msg instanceof APIGetVmStartingCandidatesMsg) {
+            handle((APIGetVmStartingCandidatesMsg) msg);
         } else if (msg instanceof APIGetVmCapabilitiesMsg) {
             handle((APIGetVmCapabilitiesMsg) msg);
         } else if (msg instanceof APISetVmSshKeyMsg) {
@@ -7378,6 +7524,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         changeVmStateInDb(VmInstanceStateEvent.migrating);
         spec.setMessage((Message) msg);
         spec.setAllocationScene(msg.getAllocationScene());
+        spec.setCandidateDecisionContext(candidateDecisionContextFromMigrateMessage(msg));
         FlowChain chain = getMigrateVmWorkFlowChain(inv);
 
         setFlowMarshaller(chain);
@@ -7423,7 +7570,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         }).error(new FlowErrorHandler(completion) {
             @Override
             public void handle(final ErrorCode errCode, Map data) {
-                String destHostUuid = spec.getDestHost().getUuid().equals(lastHostUuid) ? null : spec.getDestHost().getUuid();
+                String destHostUuid = spec.getDestHost() == null || spec.getDestHost().getUuid().equals(lastHostUuid) ? null : spec.getDestHost().getUuid();
                 extEmitter.failedToMigrateVm(VmInstanceInventory.valueOf(self), destHostUuid, errCode, new NoErrorCompletion(completion) {
                     @Override
                     public void done() {
@@ -7527,6 +7674,11 @@ public class VmInstanceBase extends AbstractVmInstance {
             } else {
                 struct.setStrategy(VmCreationStrategy.InstantStart);
             }
+            if (msg instanceof APIStartVmInstanceMsg) {
+                struct.setCandidateDecisionContext(newHostCandidateDecisionContext((APIStartVmInstanceMsg) msg));
+            } else if (msg instanceof StartVmInstanceMsg) {
+                struct.setCandidateDecisionContext(((StartVmInstanceMsg) msg).getCandidateDecisionContext());
+            }
 
             instantiateVmFromNewCreate(struct, completion);
             return;
@@ -7544,6 +7696,7 @@ public class VmInstanceBase extends AbstractVmInstance {
 
         if (msg instanceof APIStartVmInstanceMsg) {
             APIStartVmInstanceMsg amsg = (APIStartVmInstanceMsg) msg;
+            spec.setCandidateDecisionContext(newHostCandidateDecisionContext(amsg));
             spec.setRequiredClusterUuid(amsg.getClusterUuid());
             spec.setRequiredHostUuid(amsg.getHostUuid());
             spec.setUsbRedirect(Boolean.parseBoolean(VmSystemTags.USB_REDIRECT.getTokenByResourceUuid(self.getUuid(), VmSystemTags.USB_REDIRECT_TOKEN)));
@@ -7564,6 +7717,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             }
             spec.setAvoidHostUuids(((StartVmInstanceMsg) msg).getAvoidHostUuids());
             spec.setCreatePaused(((StartVmInstanceMsg) msg).isStartPaused());
+            spec.setCandidateDecisionContext(((StartVmInstanceMsg) msg).getCandidateDecisionContext());
         } else if (msg instanceof RestoreVmInstanceMsg) {
             spec.setMemorySnapshotUuid(((RestoreVmInstanceMsg) msg).getMemorySnapshotUuid());
         }
@@ -7664,6 +7818,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         spec.setDataVolumeSystemTagsOnIndex(struct.getDataVolumeSystemTagsOnIndex());
         spec.setDisableL3Networks(struct.getDisableL3Networks());
         spec.setStrategy(struct.getStrategy());
+        spec.setCandidateDecisionContext(struct.getCandidateDecisionContext());
 
         spec.setVmInventory(getSelfInventory());
         if (struct.getL3NetworkUuids() != null && !struct.getL3NetworkUuids().isEmpty()) {
@@ -7933,7 +8088,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                     logger.warn(e.getMessage());
                 }
 
-                completion.fail(operr(ORG_ZSTACK_COMPUTE_VM_10289, errCode, errCode.getDetails()));
+                completion.fail(withCandidateDecisionOpaque(operr(ORG_ZSTACK_COMPUTE_VM_10289, errCode, errCode.getDetails()), errCode));
             }
         }).start();
     }
@@ -7952,7 +8107,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void fail(ErrorCode errorCode) {
                 StartVmInstanceReply reply = new StartVmInstanceReply();
-                reply.setError(err(ORG_ZSTACK_COMPUTE_VM_10290, VmErrors.START_ERROR, errorCode, errorCode.getDetails()));
+                reply.setError(withCandidateDecisionOpaque(err(ORG_ZSTACK_COMPUTE_VM_10290, VmErrors.START_ERROR, errorCode, errorCode.getDetails()), errorCode));
                 bus.reply(msg, reply);
                 taskChain.next();
             }
@@ -7976,7 +8131,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             @Override
             public void fail(ErrorCode errorCode) {
                 APIStartVmInstanceEvent evt = new APIStartVmInstanceEvent(msg.getId());
-                evt.setError(err(ORG_ZSTACK_COMPUTE_VM_10291, VmErrors.START_ERROR, errorCode, errorCode.getDetails()));
+                evt.setError(withCandidateDecisionOpaque(err(ORG_ZSTACK_COMPUTE_VM_10291, VmErrors.START_ERROR, errorCode, errorCode.getDetails()), errorCode));
                 bus.publish(evt);
                 taskChain.next();
             }

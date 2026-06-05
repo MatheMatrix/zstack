@@ -3,6 +3,7 @@ package org.zstack.header.allocator;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.candidate.CandidateRejectReason;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.HostVO;
@@ -62,6 +63,28 @@ public abstract class AbstractHostAllocatorFlow {
 
     protected void skip() {
         trigger.skip();
+    }
+
+    protected boolean isCandidateDecisionEnabled() {
+        return trigger.isCandidateDecisionEnabled();
+    }
+
+    protected void pass(HostVO host) {
+        if (host != null) {
+            trigger.pass(host.getUuid());
+        }
+    }
+
+    protected void reject(HostVO host, CandidateRejectReason reason) {
+        if (host != null) {
+            trigger.reject(host.getUuid(), reason.detail("checker", getClass().getSimpleName()));
+        }
+    }
+
+    protected void rejectIfNotRejected(HostVO host, CandidateRejectReason reason) {
+        if (host != null) {
+            trigger.rejectIfNotRejected(host.getUuid(), reason.detail("checker", getClass().getSimpleName()));
+        }
     }
 
     protected void fail(String reason) {

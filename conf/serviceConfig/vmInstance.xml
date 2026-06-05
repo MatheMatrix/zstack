@@ -67,6 +67,9 @@
         <name>org.zstack.header.vm.APIGetVmMigrationCandidateHostsMsg</name>
     </message>
     <message>
+        <name>org.zstack.header.vm.APIGetVmMigrationCandidatesMsg</name>
+    </message>
+    <message>
         <name>org.zstack.header.vm.APIGetVmAttachableDataVolumeMsg</name>
     </message>
     <message>
@@ -151,6 +154,9 @@
         <name>org.zstack.header.vm.APIGetVmStartingCandidateClustersHostsMsg</name>
     </message>
     <message>
+        <name>org.zstack.header.vm.APIGetVmStartingCandidatesMsg</name>
+    </message>
+    <message>
         <name>org.zstack.header.vm.APIGetVmCapabilitiesMsg</name>
     </message>
     <message>
@@ -164,6 +170,9 @@
     </message>
     <message>
         <name>org.zstack.header.vm.APIGetCandidateZonesClustersHostsForCreatingVmMsg</name>
+    </message>
+    <message>
+        <name>org.zstack.header.vm.APIGetVmCreationCandidatesMsg</name>
     </message>
     <message>
         <name>org.zstack.header.vm.APIGetCandidatePrimaryStoragesForCreatingVmMsg</name>

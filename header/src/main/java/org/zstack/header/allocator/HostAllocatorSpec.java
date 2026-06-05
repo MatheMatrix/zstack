@@ -1,6 +1,8 @@
 package org.zstack.header.allocator;
 
 import org.zstack.header.configuration.DiskOfferingInventory;
+import org.zstack.header.candidate.CandidateDecisionContext;
+import org.zstack.header.candidate.CandidateDecisionResult;
 import org.zstack.header.image.ImageInventory;
 import org.zstack.header.vm.VmInstanceInventory;
 
@@ -38,6 +40,8 @@ public class HostAllocatorSpec {
     private AllocationScene allocationScene;
     private String architecture;
     private String accountUuid;
+    private CandidateDecisionContext candidateDecisionContext;
+    private CandidateDecisionResult candidateDecisionResult;
     /**
      * Allocation purpose. Defaults to ALLOCATE so existing call sites keep
      * their current behavior. Filters may relax some checks (e.g. PCI device
@@ -246,6 +250,26 @@ public class HostAllocatorSpec {
         this.purpose = purpose == null ? HostAllocationPurpose.ALLOCATE : purpose;
     }
 
+    public CandidateDecisionContext getCandidateDecisionContext() {
+        return candidateDecisionContext;
+    }
+
+    public void setCandidateDecisionContext(CandidateDecisionContext candidateDecisionContext) {
+        this.candidateDecisionContext = candidateDecisionContext;
+    }
+
+    public CandidateDecisionResult getCandidateDecisionResult() {
+        return candidateDecisionResult;
+    }
+
+    public void setCandidateDecisionResult(CandidateDecisionResult candidateDecisionResult) {
+        this.candidateDecisionResult = candidateDecisionResult;
+    }
+
+    public boolean isCandidateDecisionEnabled() {
+        return candidateDecisionContext != null;
+    }
+
     public static HostAllocatorSpec fromAllocationMsg(AllocateHostMsg msg) {
         HostAllocatorSpec spec = new HostAllocatorSpec();
         spec.setAllocatorStrategy(msg.getAllocatorStrategy());
@@ -276,6 +300,7 @@ public class HostAllocatorSpec {
         spec.setArchitecture(msg.getArchitecture());
         spec.setAccountUuid(msg.getAccountUuid());
         spec.setPurpose(msg.getPurpose());
+        spec.setCandidateDecisionContext(msg.getCandidateDecisionContext());
         if (msg.getSystemTags() != null && !msg.getSystemTags().isEmpty()){
             spec.setSystemTags(new ArrayList<String>(msg.getSystemTags()));
         }

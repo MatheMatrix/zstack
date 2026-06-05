@@ -1,6 +1,7 @@
 package org.zstack.header.allocator;
 
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.header.candidate.CandidateRejectReason;
 import org.zstack.header.host.HostVO;
 
 import java.util.List;
@@ -15,4 +16,12 @@ public interface HostAllocatorTrigger {
     boolean isFirstFlow(AbstractHostAllocatorFlow flow);
 
     void fail(ErrorCode errorCode);
+
+    boolean isCandidateDecisionEnabled();
+
+    void pass(String hostUuid);
+
+    void reject(String hostUuid, CandidateRejectReason reason);
+
+    void rejectIfNotRejected(String hostUuid, CandidateRejectReason reason);
 }

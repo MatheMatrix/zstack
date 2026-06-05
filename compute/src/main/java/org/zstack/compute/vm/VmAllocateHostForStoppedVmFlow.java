@@ -90,6 +90,10 @@ public class VmAllocateHostForStoppedVmFlow implements Flow {
         msg.setSoftAvoidHostUuids(spec.getSoftAvoidHostUuids());
         msg.setAllocationScene(spec.getAllocationScene());
         msg.setAvoidHostUuids(spec.getAvoidHostUuids());
+        msg.setCandidateDecisionContext(spec.getCandidateDecisionContext());
+        if (spec.getCandidateDecisionContext() != null) {
+            msg.setAccountUuid(spec.getCandidateDecisionContext().getAccountUuid());
+        }
         amsg = msg;
 
         bus.send(amsg, new CloudBusCallBack(chain) {

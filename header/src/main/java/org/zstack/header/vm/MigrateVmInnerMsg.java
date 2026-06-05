@@ -1,6 +1,7 @@
 package org.zstack.header.vm;
 
 import org.zstack.header.message.NeedReplyMessage;
+import org.zstack.header.candidate.CandidateDecisionContext;
 
 /**
  * Created by camile on 3/7/2018.
@@ -14,6 +15,15 @@ public class MigrateVmInnerMsg extends NeedReplyMessage implements VmInstanceMes
     private Boolean migrateFromDestination;
     private boolean allowUnknown;
     private Integer downTime;
+    private CandidateDecisionContext candidateDecisionContext;
+
+    public CandidateDecisionContext getCandidateDecisionContext() {
+        return candidateDecisionContext;
+    }
+
+    public void setCandidateDecisionContext(CandidateDecisionContext candidateDecisionContext) {
+        this.candidateDecisionContext = candidateDecisionContext;
+    }
 
     public void setVmInstanceUuid(String vmInstanceUuid) {
         this.vmInstanceUuid = vmInstanceUuid;

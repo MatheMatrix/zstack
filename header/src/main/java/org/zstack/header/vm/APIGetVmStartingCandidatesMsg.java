@@ -1,22 +1,19 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
+import org.zstack.header.candidate.CandidateDecisionRequest;
 import org.zstack.header.identity.Action;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.APISyncCallMessage;
 import org.zstack.header.rest.RestRequest;
 
-/**
- * Created by xing5 on 2016/5/14.
- */
 @Action(category = VmInstanceConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
-        path = "/vm-instances/{uuid}/starting-target-hosts",
+        path = "/vm-instances/{uuid}/starting-candidates",
         method = HttpMethod.GET,
-        responseClass = APIGetVmStartingCandidateClustersHostsReply.class
+        responseClass = APIGetVmStartingCandidatesReply.class
 )
-@Deprecated
-public class APIGetVmStartingCandidateClustersHostsMsg extends APISyncCallMessage implements VmInstanceMessage {
+public class APIGetVmStartingCandidatesMsg extends APISyncCallMessage implements VmInstanceMessage, CandidateDecisionRequest {
     @APIParam(resourceType = VmInstanceVO.class, checkAccount = true, operationTarget = true)
     private String uuid;
 
@@ -32,11 +29,10 @@ public class APIGetVmStartingCandidateClustersHostsMsg extends APISyncCallMessag
     public String getVmInstanceUuid() {
         return uuid;
     }
- 
-    public static APIGetVmStartingCandidateClustersHostsMsg __example__() {
-        APIGetVmStartingCandidateClustersHostsMsg msg = new APIGetVmStartingCandidateClustersHostsMsg();
+
+    public static APIGetVmStartingCandidatesMsg __example__() {
+        APIGetVmStartingCandidatesMsg msg = new APIGetVmStartingCandidatesMsg();
         msg.uuid = uuid();
         return msg;
     }
-
 }

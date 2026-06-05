@@ -1,6 +1,7 @@
 package org.zstack.header.vm;
 
 import org.springframework.http.HttpMethod;
+import org.zstack.header.candidate.CandidateDecisionRequest;
 import org.zstack.header.configuration.DiskOfferingVO;
 import org.zstack.header.configuration.InstanceOfferingVO;
 import org.zstack.header.identity.Action;
@@ -14,17 +15,13 @@ import java.util.List;
 
 import static java.util.Arrays.asList;
 
-/**
- * Created by xing5 on 2016/8/17.
- */
 @Action(category = VmInstanceConstant.ACTION_CATEGORY, names = {"read"})
 @RestRequest(
-        path = "/vm-instances/candidate-destinations",
+        path = "/vm-instances/creation-candidates",
         method = HttpMethod.GET,
-        responseClass = APIGetCandidateZonesClustersHostsForCreatingVmReply.class
+        responseClass = APIGetVmCreationCandidatesReply.class
 )
-@Deprecated
-public class APIGetCandidateZonesClustersHostsForCreatingVmMsg extends APISyncCallMessage {
+public class APIGetVmCreationCandidatesMsg extends APISyncCallMessage implements CandidateDecisionRequest {
     @APIParam(resourceType = InstanceOfferingVO.class, checkAccount = true, required = false)
     private String instanceOfferingUuid;
     @APIParam(resourceType = ImageVO.class, checkAccount = true)
@@ -133,8 +130,8 @@ public class APIGetCandidateZonesClustersHostsForCreatingVmMsg extends APISyncCa
         this.memorySize = memorySize;
     }
 
-    public static APIGetCandidateZonesClustersHostsForCreatingVmMsg __example__() {
-        APIGetCandidateZonesClustersHostsForCreatingVmMsg msg = new APIGetCandidateZonesClustersHostsForCreatingVmMsg();
+    public static APIGetVmCreationCandidatesMsg __example__() {
+        APIGetVmCreationCandidatesMsg msg = new APIGetVmCreationCandidatesMsg();
         msg.setClusterUuid(uuid());
         msg.setDataDiskOfferingUuids(asList(uuid(), uuid()));
         msg.setImageUuid(uuid());
@@ -142,5 +139,4 @@ public class APIGetCandidateZonesClustersHostsForCreatingVmMsg extends APISyncCa
         msg.setL3NetworkUuids(asList(uuid()));
         return msg;
     }
-
 }
