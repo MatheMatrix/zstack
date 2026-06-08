@@ -578,8 +578,9 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         restf.registerSyncHttpCallHandler(ZnsAgentPrepareServiceCmd.COMMAND_PATH, ZnsAgentPrepareServiceCmd.class, new SyncHttpCallHandler<ZnsAgentPrepareServiceCmd>() {
             @Override
             public String handleSyncHttpCall(ZnsAgentPrepareServiceCmd cmd) {
-                logger.info(String.format("[ZnsAgent] prepare-service command received: cmUUID=%s hosts=%s controllers=%s",
-                        cmd.computerManagerUuid, cmd.hostUuids, cmd.controllerIps));
+                logger.info(String.format("[ZnsAgent] prepare-service command received: cmUUID=%s hosts=%s controllers=%s packageName=%s agentVersion=%s packageUrl=%s",
+                        cmd.computerManagerUuid, cmd.hostUuids, cmd.controllerAddresses,
+                        cmd.packageName, cmd.agentVersion, cmd.packageUrl));
                 znsAgentInstaller.install(cmd);
                 return null;
             }

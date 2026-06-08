@@ -7,5 +7,10 @@ public class ZnsAgentPrepareServiceCmd {
 
     public String computerManagerUuid;
     public List<String> hostUuids;
+    public List<String> controllerAddresses;
     public List<String> controllerIps;
+    public String agentVersion;
+    public String packageName;
+    public String packageUrl;
+    public String sha256;
 }

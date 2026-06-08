@@ -11,6 +11,12 @@ public class ZnsAgentGlobalProperty {
     @GlobalProperty(name = "ZnsAgent.packageRemotePath", defaultValue = "/var/lib/zstack/zns-agent/package")
     public static String PACKAGE_REMOTE_PATH;
 
+    @GlobalProperty(name = "ZnsAgent.packageRepositoryPath", defaultValue = "/var/lib/zstack/zns-agent/package")
+    public static String PACKAGE_REPOSITORY_PATH;
+
+    @GlobalProperty(name = "ZnsAgent.agentPackageName", defaultValue = "zns-agent.bin")
+    public static String AGENT_PACKAGE_NAME;
+
     @GlobalProperty(name = "ZnsAgent.serviceName", defaultValue = "zstack-zns-agent")
     public static String SERVICE_NAME;
 
