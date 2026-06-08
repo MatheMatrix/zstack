@@ -578,9 +578,8 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
         restf.registerSyncHttpCallHandler(ZnsProxyPrepareServiceCmd.COMMAND_PATH, ZnsProxyPrepareServiceCmd.class, new SyncHttpCallHandler<ZnsProxyPrepareServiceCmd>() {
             @Override
             public String handleSyncHttpCall(ZnsProxyPrepareServiceCmd cmd) {
-                logger.info(String.format("[ZnsProxy] prepare-service command received: cmUUID=%s host=%s managementIp=%s sdnControllerUuid=%s proxyListenPort=%s packageName=%s proxyVersion=%s packageUrl=%s",
-                        cmd.computeManagerUuid, cmd.hostUuid, cmd.managementIp, cmd.sdnControllerUuid,
-                        cmd.proxyListenPort, cmd.packageName, cmd.proxyVersion, cmd.packageUrl));
+                logger.info(String.format("[ZnsProxy] prepare-service command received: cmUUID=%s hosts=%s packageName=%s proxyVersion=%s packageUrl=%s",
+                        cmd.computeManagerUuid, cmd.hostUuid, cmd.packageName, cmd.proxyVersion, cmd.packageUrl));
                 znsProxyInstaller.install(cmd);
                 return null;
             }

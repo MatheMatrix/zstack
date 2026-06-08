@@ -14,6 +14,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import static org.zstack.sdnController.ZnsProxyGlobalProperty.PACKAGE_PATH;
@@ -34,15 +36,15 @@ public class ZnsProxyInstaller {
         if (cmd == null) {
             throw new CloudRuntimeException("prepare zns-proxy service failed: command is empty");
         }
-        if (!StringUtils.hasText(cmd.hostUuid)) {
-            throw new CloudRuntimeException("prepare zns-proxy service failed: hostUuid is empty");
-        }
+        List<String> hostUuids = normalizeHostUuids(cmd.hostUuid);
 
         File localPackage = resolvePackage(cmd);
-        installOnHost(cmd.hostUuid.trim(), normalizeProxyListenPort(cmd.proxyListenPort), localPackage);
+        for (String hostUuid : hostUuids) {
+            installOnHost(hostUuid, localPackage);
+        }
     }
 
-    private void installOnHost(String hostUuid, int proxyListenPort, File localPackage) {
+    private void installOnHost(String hostUuid, File localPackage) {
         KVMHostVO host = dbf.findByUuid(hostUuid, KVMHostVO.class);
         if (host == null) {
             throw new CloudRuntimeException(String.format("prepare zns-proxy service failed: host %s not found", hostUuid));
@@ -73,8 +75,8 @@ public class ZnsProxyInstaller {
                         "mkdir -p " + shellQuote(PACKAGE_REMOTE_PATH),
                         "mv " + shellQuote(remotePackage) + " " + shellQuote(PACKAGE_PATH),
                         "chmod 0755 " + shellQuote(PACKAGE_PATH),
-                        buildInstallCommand(PACKAGE_PATH, proxyListenPort),
-                        "curl -fsS " + shellQuote(healthUrl(proxyListenPort))
+                        buildInstallCommand(PACKAGE_PATH),
+                        "curl -fsS " + shellQuote(healthUrl())
                 )
                 .runAndClose();
         if (ret == null || ret.getReturnCode() != 0) {
@@ -85,8 +87,8 @@ public class ZnsProxyInstaller {
         }
     }
 
-    public static String buildInstallCommand(String packagePath, int proxyListenPort) {
-        return shellQuote(packagePath) + " install --listen-port " + normalizeProxyListenPort(proxyListenPort);
+    public static String buildInstallCommand(String packagePath) {
+        return shellQuote(packagePath) + " install";
     }
 
     public static File resolvePackage(ZnsProxyPrepareServiceCmd cmd) {
@@ -128,12 +130,23 @@ public class ZnsProxyInstaller {
         return localPackage;
     }
 
-    private static int normalizeProxyListenPort(int proxyListenPort) {
-        return proxyListenPort > 0 ? proxyListenPort : DEFAULT_PROXY_LISTEN_PORT;
+    private static String healthUrl() {
+        return "http://127.0.0.1:" + DEFAULT_PROXY_LISTEN_PORT + "/zns-proxy/api/v1/health";
     }
 
-    private static String healthUrl(int proxyListenPort) {
-        return "http://127.0.0.1:" + normalizeProxyListenPort(proxyListenPort) + "/zns-proxy/api/v1/health";
+    private static List<String> normalizeHostUuids(List<String> hostUuids) {
+        if (hostUuids == null || hostUuids.isEmpty()) {
+            throw new CloudRuntimeException("prepare zns-proxy service failed: hostUuid is empty");
+        }
+
+        List<String> normalized = new ArrayList<String>(hostUuids.size());
+        for (String hostUuid : hostUuids) {
+            if (!StringUtils.hasText(hostUuid)) {
+                throw new CloudRuntimeException("prepare zns-proxy service failed: hostUuid is empty");
+            }
+            normalized.add(hostUuid.trim());
+        }
+        return normalized;
     }
 
     private static String shellQuote(String value) {

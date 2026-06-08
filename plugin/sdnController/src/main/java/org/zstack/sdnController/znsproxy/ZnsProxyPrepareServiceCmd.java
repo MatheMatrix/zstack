@@ -1,13 +1,12 @@
 package org.zstack.sdnController.znsproxy;
 
+import java.util.List;
+
 public class ZnsProxyPrepareServiceCmd {
     public static final String COMMAND_PATH = "/zns/notify/prepare-service";
 
     public String computeManagerUuid;
-    public String hostUuid;
-    public String managementIp;
-    public String sdnControllerUuid;
-    public int proxyListenPort;
+    public List<String> hostUuid;
     public String proxyVersion;
     public String packageName;
     public String packageUrl;

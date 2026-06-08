@@ -19,15 +19,9 @@ public class ZnsProxyInstallerTest {
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     @Test
-    public void testBuildInstallCommandPassesListenPortToPackage() {
-        String command = ZnsProxyInstaller.buildInstallCommand("/var/lib/zstack/zns-proxy/package/zns-proxy.bin", 7890);
-        assertEquals("'/var/lib/zstack/zns-proxy/package/zns-proxy.bin' install --listen-port 7890", command);
-    }
-
-    @Test
-    public void testBuildInstallCommandUsesDefaultListenPort() {
-        String command = ZnsProxyInstaller.buildInstallCommand("/tmp/zns-proxy.bin", 0);
-        assertEquals("'/tmp/zns-proxy.bin' install --listen-port 7890", command);
+    public void testBuildInstallCommandUsesPackageDefaults() {
+        String command = ZnsProxyInstaller.buildInstallCommand("/var/lib/zstack/zns-proxy/package/zns-proxy.bin");
+        assertEquals("'/var/lib/zstack/zns-proxy/package/zns-proxy.bin' install", command);
     }
 
     @Test
