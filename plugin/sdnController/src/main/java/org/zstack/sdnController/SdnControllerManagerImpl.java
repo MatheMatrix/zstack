@@ -39,8 +39,8 @@ import org.zstack.network.securitygroup.SecurityGroupGetSdnBackendExtensionPoint
 import org.zstack.network.securitygroup.SecurityGroupManager;
 import org.zstack.network.securitygroup.SecurityGroupSdnBackend;
 import org.zstack.sdnController.header.*;
-import org.zstack.sdnController.znsagent.ZnsAgentInstaller;
-import org.zstack.sdnController.znsagent.ZnsAgentPrepareServiceCmd;
+import org.zstack.sdnController.znsproxy.ZnsProxyInstaller;
+import org.zstack.sdnController.znsproxy.ZnsProxyPrepareServiceCmd;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
@@ -74,7 +74,7 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
     private RESTFacade restf;
 
     private Map<String, SdnControllerFactory> sdnControllerFactories = Collections.synchronizedMap(new HashMap<String, SdnControllerFactory>());
-    private ZnsAgentInstaller znsAgentInstaller;
+    private ZnsProxyInstaller znsProxyInstaller;
 
     @Override
     public int getSyncLevel() {
@@ -574,14 +574,14 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             sdnControllerFactories.put(f.getVendorType().toString(), f);
         }
 
-        znsAgentInstaller = new ZnsAgentInstaller(dbf);
-        restf.registerSyncHttpCallHandler(ZnsAgentPrepareServiceCmd.COMMAND_PATH, ZnsAgentPrepareServiceCmd.class, new SyncHttpCallHandler<ZnsAgentPrepareServiceCmd>() {
+        znsProxyInstaller = new ZnsProxyInstaller(dbf);
+        restf.registerSyncHttpCallHandler(ZnsProxyPrepareServiceCmd.COMMAND_PATH, ZnsProxyPrepareServiceCmd.class, new SyncHttpCallHandler<ZnsProxyPrepareServiceCmd>() {
             @Override
-            public String handleSyncHttpCall(ZnsAgentPrepareServiceCmd cmd) {
-                logger.info(String.format("[ZnsAgent] prepare-service command received: cmUUID=%s hosts=%s controllers=%s packageName=%s agentVersion=%s packageUrl=%s",
-                        cmd.computerManagerUuid, cmd.hostUuids, cmd.controllerAddresses,
-                        cmd.packageName, cmd.agentVersion, cmd.packageUrl));
-                znsAgentInstaller.install(cmd);
+            public String handleSyncHttpCall(ZnsProxyPrepareServiceCmd cmd) {
+                logger.info(String.format("[ZnsProxy] prepare-service command received: cmUUID=%s host=%s managementIp=%s sdnControllerUuid=%s proxyListenPort=%s packageName=%s proxyVersion=%s packageUrl=%s",
+                        cmd.computeManagerUuid, cmd.hostUuid, cmd.managementIp, cmd.sdnControllerUuid,
+                        cmd.proxyListenPort, cmd.packageName, cmd.proxyVersion, cmd.packageUrl));
+                znsProxyInstaller.install(cmd);
                 return null;
             }
         });
