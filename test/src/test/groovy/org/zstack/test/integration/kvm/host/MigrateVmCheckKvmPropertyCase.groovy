@@ -23,6 +23,7 @@ class MigrateVmCheckKvmPropertyCase extends SubCase {
     def qemuImgVersion = "4.2.0"
     def ept = "ept"
     def intelHostCpuModelName = "Intel(R) Xeon(R) CPU E5-2630 v4 @ 2.20GHz"
+    def amdHostCpuModelName = "AMD EPYC 7H12 64-Core Processor"
     def hygonHostCpuModelName = "Hygon C86 7280 Processor"
     HostInventory host2
     VmInstanceInventory vm1, vm2
@@ -254,6 +255,14 @@ class MigrateVmCheckKvmPropertyCase extends SubCase {
 
         // Hygon and Intel hosts are not live-migration compatible even when strict cpu model check is disabled.
         HostSystemTags.HOST_CPU_MODEL_NAME.updateTagByToken(host2.uuid, HostSystemTags.HOST_CPU_MODEL_NAME_TOKEN, hygonHostCpuModelName)
+        confirmMigrateUnavailable(vm1)
+        confirmMigrateUnavailable(vm2)
+
+        HostSystemTags.HOST_CPU_MODEL_NAME.updateTagByToken(host2.uuid, HostSystemTags.HOST_CPU_MODEL_NAME_TOKEN, intelHostCpuModelName)
+        confirmMigrateAvailable(vm1)
+        confirmMigrateAvailable(vm2)
+
+        HostSystemTags.HOST_CPU_MODEL_NAME.updateTagByToken(host2.uuid, HostSystemTags.HOST_CPU_MODEL_NAME_TOKEN, amdHostCpuModelName)
         confirmMigrateUnavailable(vm1)
         confirmMigrateUnavailable(vm2)
 

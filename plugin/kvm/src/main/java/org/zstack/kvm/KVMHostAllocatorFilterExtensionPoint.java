@@ -127,6 +127,7 @@ public class KVMHostAllocatorFilterExtensionPoint implements HostAllocatorFilter
     }
 
     static class HostCpuVendorChecker implements KVMPropertyChecker {
+        private static final String AMD = "amd";
         private static final String HYGON = "hygon";
         private static final String INTEL = "intel";
 
@@ -157,8 +158,12 @@ public class KVMHostAllocatorFilterExtensionPoint implements HostAllocatorFilter
                 return HYGON;
             }
 
-            if (normalized.contains(INTEL)) {
+            if (normalized.contains(INTEL) || normalized.contains("genuineintel")) {
                 return INTEL;
+            }
+
+            if (normalized.contains(AMD) || normalized.contains("epyc") || normalized.contains("authenticamd")) {
+                return AMD;
             }
 
             return null;
