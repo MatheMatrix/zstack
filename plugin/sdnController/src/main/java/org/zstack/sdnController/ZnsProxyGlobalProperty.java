@@ -16,13 +16,4 @@ public class ZnsProxyGlobalProperty {
 
     @GlobalProperty(name = "ZnsProxy.proxyPackageName", defaultValue = "zns-proxy.bin")
     public static String PROXY_PACKAGE_NAME;
-
-    @GlobalProperty(name = "ZnsProxy.serviceName", defaultValue = "zstack-zns-proxy")
-    public static String SERVICE_NAME;
-
-    @GlobalProperty(name = "ZnsProxy.configPath", defaultValue = "/etc/zstack-zns/zns-proxy.toml")
-    public static String CONFIG_PATH;
-
-    @GlobalProperty(name = "ZnsProxy.listenAddress", defaultValue = "0.0.0.0:7890")
-    public static String LISTEN_ADDRESS;
 }

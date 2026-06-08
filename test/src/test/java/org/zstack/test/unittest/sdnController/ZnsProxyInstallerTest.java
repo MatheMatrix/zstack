@@ -12,7 +12,6 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class ZnsProxyInstallerTest {
@@ -20,11 +19,15 @@ public class ZnsProxyInstallerTest {
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     @Test
-    public void testRenderConfigIncludesProxyServer() {
-        String config = ZnsProxyInstaller.renderConfig(7890);
-        assertTrue(config.contains("[server]"));
-        assertTrue(config.contains("address = \"0.0.0.0:7890\""));
-        assertFalse(config.contains("[agent]"));
+    public void testBuildInstallCommandPassesListenPortToPackage() {
+        String command = ZnsProxyInstaller.buildInstallCommand("/var/lib/zstack/zns-proxy/package/zns-proxy.bin", 7890);
+        assertEquals("'/var/lib/zstack/zns-proxy/package/zns-proxy.bin' install --listen-port 7890", command);
+    }
+
+    @Test
+    public void testBuildInstallCommandUsesDefaultListenPort() {
+        String command = ZnsProxyInstaller.buildInstallCommand("/tmp/zns-proxy.bin", 0);
+        assertEquals("'/tmp/zns-proxy.bin' install --listen-port 7890", command);
     }
 
     @Test
@@ -88,6 +91,6 @@ public class ZnsProxyInstallerTest {
         File resolved = ZnsProxyInstaller.resolvePackage(cmd);
         assertEquals(new File(repo, "zns-proxy-url.bin").getAbsolutePath(), resolved.getAbsolutePath());
         assertTrue(resolved.exists());
-        assertFalse(resolved.length() == 0);
+        assertTrue(resolved.length() > 0);
     }
 }

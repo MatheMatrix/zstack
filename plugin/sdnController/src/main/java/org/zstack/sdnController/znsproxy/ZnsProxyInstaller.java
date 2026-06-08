@@ -12,18 +12,14 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 
-import static org.zstack.sdnController.ZnsProxyGlobalProperty.CONFIG_PATH;
-import static org.zstack.sdnController.ZnsProxyGlobalProperty.LISTEN_ADDRESS;
 import static org.zstack.sdnController.ZnsProxyGlobalProperty.PACKAGE_PATH;
 import static org.zstack.sdnController.ZnsProxyGlobalProperty.PACKAGE_REMOTE_PATH;
 import static org.zstack.sdnController.ZnsProxyGlobalProperty.PACKAGE_REPOSITORY_PATH;
 import static org.zstack.sdnController.ZnsProxyGlobalProperty.PROXY_PACKAGE_NAME;
-import static org.zstack.sdnController.ZnsProxyGlobalProperty.SERVICE_NAME;
 
 public class ZnsProxyInstaller {
     private static final int DEFAULT_PROXY_LISTEN_PORT = 7890;
@@ -61,70 +57,36 @@ public class ZnsProxyInstaller {
             throw new CloudRuntimeException(String.format("prepare zns-proxy service failed: host %s has empty password", hostUuid));
         }
 
-        File configFile = null;
-        try {
-            configFile = File.createTempFile("zns-proxy-", ".toml");
-            FileUtils.writeStringToFile(configFile, renderConfig(proxyListenPort), StandardCharsets.UTF_8);
+        String remotePackage = "/tmp/zns-proxy-" + UUID.randomUUID() + ".bin";
 
-            String remotePackage = "/tmp/zns-proxy-" + UUID.randomUUID() + ".bin";
-            String remoteConfig = "/tmp/zns-proxy-" + UUID.randomUUID() + ".toml";
+        Ssh ssh = new Ssh()
+                .setHostname(host.getManagementIp())
+                .setUsername(host.getUsername())
+                .setPassword(host.getPassword())
+                .setPort(host.getPort() == null || host.getPort() <= 0 ? 22 : host.getPort())
+                .setTimeout(10)
+                .setExecTimeout(600);
 
-            Ssh ssh = new Ssh()
-                    .setHostname(host.getManagementIp())
-                    .setUsername(host.getUsername())
-                    .setPassword(host.getPassword())
-                    .setPort(host.getPort() == null || host.getPort() <= 0 ? 22 : host.getPort())
-                    .setTimeout(10)
-                    .setExecTimeout(600);
-
-            SshResult ret = ssh
-                    .scpUpload(localPackage.getAbsolutePath(), remotePackage)
-                    .scpUpload(configFile.getAbsolutePath(), remoteConfig)
-                    .sudoCommand(
-                            "systemctl stop " + SERVICE_NAME + " > /dev/null 2>&1 || true",
-                            "pkill -x zns-proxy > /dev/null 2>&1 || true",
-                            "mkdir -p " + PACKAGE_REMOTE_PATH,
-                            "mkdir -p /etc/zstack-zns",
-                            "mv " + remotePackage + " " + PACKAGE_PATH,
-                            "chmod 0755 " + PACKAGE_PATH,
-                            "mv " + remoteConfig + " " + CONFIG_PATH,
-                            "chmod 0644 " + CONFIG_PATH,
-                            PACKAGE_PATH,
-                            "systemctl daemon-reload",
-                            "systemctl enable " + SERVICE_NAME,
-                            "systemctl restart " + SERVICE_NAME,
-                            "curl -fsS " + healthUrl(proxyListenPort)
-                    )
-                    .runAndClose();
-            if (ret == null || ret.getReturnCode() != 0) {
-                String stderr = ret == null ? "no ssh result returned" : ret.getStderr();
-                throw new CloudRuntimeException(String.format(
-                        "prepare zns-proxy service failed on host %s[%s]: %s",
-                        hostUuid, host.getManagementIp(), stderr));
-            }
-        } catch (IOException e) {
+        SshResult ret = ssh
+                .scpUpload(localPackage.getAbsolutePath(), remotePackage)
+                .sudoCommand(
+                        "mkdir -p " + shellQuote(PACKAGE_REMOTE_PATH),
+                        "mv " + shellQuote(remotePackage) + " " + shellQuote(PACKAGE_PATH),
+                        "chmod 0755 " + shellQuote(PACKAGE_PATH),
+                        buildInstallCommand(PACKAGE_PATH, proxyListenPort),
+                        "curl -fsS " + shellQuote(healthUrl(proxyListenPort))
+                )
+                .runAndClose();
+        if (ret == null || ret.getReturnCode() != 0) {
+            String stderr = ret == null ? "no ssh result returned" : ret.getStderr();
             throw new CloudRuntimeException(String.format(
                     "prepare zns-proxy service failed on host %s[%s]: %s",
-                    hostUuid, host.getManagementIp(), e.getMessage()), e);
-        } finally {
-            if (configFile != null && configFile.exists()) {
-                // best effort cleanup of the local temp config file
-                //noinspection ResultOfMethodCallIgnored
-                configFile.delete();
-            }
+                    hostUuid, host.getManagementIp(), stderr));
         }
     }
 
-    public static String renderConfig(int proxyListenPort) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("[server]\n");
-        sb.append("address = \"").append(listenAddress(proxyListenPort)).append("\"\n");
-        sb.append("readTimeoutSeconds = 30\n");
-        sb.append("writeTimeoutSeconds = 30\n");
-        sb.append("readHeaderTimeoutSeconds = 5\n");
-        sb.append("idleTimeoutSeconds = 120\n");
-        sb.append("maxHeaderBytes = 1048576\n");
-        return sb.toString();
+    public static String buildInstallCommand(String packagePath, int proxyListenPort) {
+        return shellQuote(packagePath) + " install --listen-port " + normalizeProxyListenPort(proxyListenPort);
     }
 
     public static File resolvePackage(ZnsProxyPrepareServiceCmd cmd) {
@@ -170,15 +132,15 @@ public class ZnsProxyInstaller {
         return proxyListenPort > 0 ? proxyListenPort : DEFAULT_PROXY_LISTEN_PORT;
     }
 
-    private static String listenAddress(int proxyListenPort) {
-        if (proxyListenPort <= 0) {
-            return LISTEN_ADDRESS;
-        }
-        return "0.0.0.0:" + proxyListenPort;
-    }
-
     private static String healthUrl(int proxyListenPort) {
         return "http://127.0.0.1:" + normalizeProxyListenPort(proxyListenPort) + "/zns-proxy/api/v1/health";
+    }
+
+    private static String shellQuote(String value) {
+        if (value == null) {
+            return "''";
+        }
+        return "'" + value.replace("'", "'\"'\"'") + "'";
     }
 
     private static File packageInRepository(String packageName) {
