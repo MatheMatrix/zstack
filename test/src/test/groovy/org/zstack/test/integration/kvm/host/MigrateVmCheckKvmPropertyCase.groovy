@@ -1,5 +1,6 @@
 package org.zstack.test.integration.kvm.host
 
+import org.zstack.compute.host.HostSystemTags
 import org.zstack.header.host.HostVO
 import org.zstack.kvm.KVMGlobalConfig
 import org.zstack.kvm.KVMSystemTags
@@ -21,6 +22,9 @@ class MigrateVmCheckKvmPropertyCase extends SubCase {
     def libvirtVersion = "4.9.0"
     def qemuImgVersion = "4.2.0"
     def ept = "ept"
+    def intelHostCpuModelName = "Intel(R) Xeon(R) CPU E5-2630 v4 @ 2.20GHz"
+    def amdHostCpuModelName = "AMD EPYC 7H12 64-Core Processor"
+    def hygonHostCpuModelName = "Hygon C86 7280 Processor"
     HostInventory host2
     VmInstanceInventory vm1, vm2
 
@@ -157,6 +161,7 @@ class MigrateVmCheckKvmPropertyCase extends SubCase {
             rsp.qemuImgVersion = ""
             rsp.libvirtVersion = ""
             rsp.cpuModelName = ""
+            rsp.hostCpuModelName = intelHostCpuModelName
             return rsp
         }
 
@@ -248,6 +253,23 @@ class MigrateVmCheckKvmPropertyCase extends SubCase {
         confirmMigrateAvailable(vm1)
         confirmMigrateAvailable(vm2)
 
+        // Hygon and Intel hosts are not live-migration compatible even when strict cpu model check is disabled.
+        HostSystemTags.HOST_CPU_MODEL_NAME.updateTagByToken(host2.uuid, HostSystemTags.HOST_CPU_MODEL_NAME_TOKEN, hygonHostCpuModelName)
+        confirmMigrateUnavailable(vm1)
+        confirmMigrateUnavailable(vm2)
+
+        HostSystemTags.HOST_CPU_MODEL_NAME.updateTagByToken(host2.uuid, HostSystemTags.HOST_CPU_MODEL_NAME_TOKEN, intelHostCpuModelName)
+        confirmMigrateAvailable(vm1)
+        confirmMigrateAvailable(vm2)
+
+        HostSystemTags.HOST_CPU_MODEL_NAME.updateTagByToken(host2.uuid, HostSystemTags.HOST_CPU_MODEL_NAME_TOKEN, amdHostCpuModelName)
+        confirmMigrateUnavailable(vm1)
+        confirmMigrateUnavailable(vm2)
+
+        HostSystemTags.HOST_CPU_MODEL_NAME.updateTagByToken(host2.uuid, HostSystemTags.HOST_CPU_MODEL_NAME_TOKEN, intelHostCpuModelName)
+        confirmMigrateAvailable(vm1)
+        confirmMigrateAvailable(vm2)
+
         // change ept to different value, both vms expected can not be migrated
         KVMSystemTags.EPT_CPU_FLAG.delete(host2.uuid)
         createSystemTag {
@@ -332,4 +354,3 @@ class MigrateVmCheckKvmPropertyCase extends SubCase {
         confirmMigrateAvailable(vm2)
     }
 }
-

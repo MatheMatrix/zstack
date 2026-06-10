@@ -1,5 +1,6 @@
 package org.zstack.kvm;
 
+import org.zstack.compute.host.HostSystemTags;
 import org.zstack.core.Platform;
 import org.zstack.header.allocator.HostAllocatorFilterExtensionPoint;
 import org.zstack.header.allocator.HostAllocatorSpec;
@@ -20,7 +21,8 @@ public class KVMHostAllocatorFilterExtensionPoint implements HostAllocatorFilter
         EPT("ept"),
         LIBVIRT_VERSION("libvirt version"),
         QEMU_IMG_VERSION("qemu version"),
-        CPU_MODEL_NAME("cpu mode name");
+        CPU_MODEL_NAME("cpu mode name"),
+        HOST_CPU_VENDOR("host cpu vendor");
 
         String name;
 
@@ -64,6 +66,10 @@ public class KVMHostAllocatorFilterExtensionPoint implements HostAllocatorFilter
          */
         default boolean needCheck() {
             return true;
+        }
+
+        default boolean propertyMatched(String srcProperty, String dstProperty) {
+            return Objects.equals(srcProperty, dstProperty);
         }
     }
 
@@ -120,12 +126,57 @@ public class KVMHostAllocatorFilterExtensionPoint implements HostAllocatorFilter
         }
     }
 
+    static class HostCpuVendorChecker implements KVMPropertyChecker {
+        private static final String AMD = "amd";
+        private static final String HYGON = "hygon";
+        private static final String INTEL = "intel";
+
+        @Override
+        public String getKVMHostProperty(String hostUuid) {
+            String hostCpuModelName = HostSystemTags.HOST_CPU_MODEL_NAME.getTokenByResourceUuid(hostUuid,
+                    HostSystemTags.HOST_CPU_MODEL_NAME_TOKEN);
+            return toCpuVendor(hostCpuModelName);
+        }
+
+        @Override
+        public KVMPropertyName getPropertyName() {
+            return KVMPropertyName.HOST_CPU_VENDOR;
+        }
+
+        @Override
+        public boolean propertyMatched(String srcProperty, String dstProperty) {
+            return srcProperty == null || dstProperty == null || Objects.equals(srcProperty, dstProperty);
+        }
+
+        static String toCpuVendor(String hostCpuModelName) {
+            if (hostCpuModelName == null) {
+                return null;
+            }
+
+            String normalized = hostCpuModelName.toLowerCase(Locale.ROOT);
+            if (normalized.contains(HYGON) || normalized.contains("c86")) {
+                return HYGON;
+            }
+
+            if (normalized.contains(INTEL) || normalized.contains("genuineintel")) {
+                return INTEL;
+            }
+
+            if (normalized.contains(AMD) || normalized.contains("epyc") || normalized.contains("authenticamd")) {
+                return AMD;
+            }
+
+            return null;
+        }
+    }
+
     static {
         List<KVMPropertyChecker> checkers = new ArrayList<>();
         checkers.add(new QemuImgVersionChecker());
         checkers.add(new LibvirtVersionChecker());
         checkers.add(new CPUModelChecker());
         checkers.add(new HostEPTChecker());
+        checkers.add(new HostCpuVendorChecker());
         checkers.forEach(checker -> propertyCheckerMap.put(checker.getPropertyName(), checker));
     }
 
@@ -149,7 +200,7 @@ public class KVMHostAllocatorFilterExtensionPoint implements HostAllocatorFilter
         // find not empty property and compare with dest host
         List<Map.Entry<KVMPropertyName, String>> mismatchPropertyList = srcHostProperties.entrySet()
                 .stream()
-                .filter(entry -> !Objects.equals(entry.getValue(), dstHostProperties.get(entry.getKey())))
+                .filter(entry -> !propertyCheckerMap.get(entry.getKey()).propertyMatched(entry.getValue(), dstHostProperties.get(entry.getKey())))
                 .collect(Collectors.toList());
 
         if (mismatchPropertyList.isEmpty()) {
@@ -198,6 +249,6 @@ public class KVMHostAllocatorFilterExtensionPoint implements HostAllocatorFilter
 
     @Override
     public String filterErrorReason() {
-        return Platform.i18n("cannot adapt version for the bellow rpm: libvirt / qemu / cpumodel");
+        return Platform.i18n("cannot adapt version for the bellow rpm: libvirt / qemu / cpumodel, or incompatible host cpu vendor");
     }
 }
