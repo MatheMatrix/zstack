@@ -126,6 +126,7 @@ import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 public class KVMHost extends HostBase implements Host {
     private static final CLogger logger = Utils.getLogger(KVMHost.class);
     private static final ZTester tester = Utils.getTester();
+    private static final String EXTRA_IP_SEPARATOR = ",";
     protected static OperationChecker allowedOperations = new OperationChecker(true);
     protected static OperationChecker skipOperations = new OperationChecker(true);
 
@@ -2205,10 +2206,27 @@ public class KVMHost extends HostBase implements Host {
             return null;
         }
 
-        final String[] ips = extraIps.split(",");
-        for (String ip: ips) {
-            if (NetworkUtils.isIpv4InCidr(ip, cidr)) {
-                return ip;
+        return selectIpInCidr(extraIps, cidr);
+    }
+
+    public static String selectIpInCidr(String ips, String cidr) {
+        if (ips == null) {
+            return null;
+        }
+
+        final String[] ipList = ips.split(EXTRA_IP_SEPARATOR);
+        for (String ip: ipList) {
+            String trimmedIp = ip.trim();
+            if (StringUtils.isBlank(trimmedIp)) {
+                continue;
+            }
+
+            try {
+                if (NetworkUtils.isIpInCidr(trimmedIp, cidr)) {
+                    return trimmedIp;
+                }
+            } catch (RuntimeException e) {
+                logger.warn(String.format("skip invalid host extra IP[%s] when matching CIDR[%s]: %s", trimmedIp, cidr, e.getMessage()));
             }
         }
 
@@ -2708,16 +2726,20 @@ public class KVMHost extends HostBase implements Host {
                 );
     }
 
-    private String buildUrl(String path) {
+    public static String buildAgentUrl(String host, String path) {
         UriComponentsBuilder ub = UriComponentsBuilder.newInstance();
         ub.scheme(KVMGlobalProperty.AGENT_URL_SCHEME);
-        ub.host(self.getManagementIp());
+        ub.host(KVMHostUtils.formatHostForUrl(host));
         ub.port(KVMGlobalProperty.AGENT_PORT);
         if (!"".equals(KVMGlobalProperty.AGENT_URL_ROOT_PATH)) {
             ub.path(KVMGlobalProperty.AGENT_URL_ROOT_PATH);
         }
         ub.path(path);
         return ub.build().toUriString();
+    }
+
+    private String buildUrl(String path) {
+        return buildAgentUrl(self.getManagementIp(), path);
     }
 
     private void executeAsyncHttpCall(final KVMHostAsyncHttpCallMsg msg, final NoErrorCompletion completion) {
@@ -3136,10 +3158,7 @@ public class KVMHost extends HostBase implements Host {
                         CleanVmFirmwareFlashCmd cmd = new CleanVmFirmwareFlashCmd();
                         cmd.vmUuid = vmUuid;
 
-                        UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
-                        ub.host(dstHostMnIp);
-                        ub.path(KVMConstant.CLEAN_FIRMWARE_FLASH);
-                        String url = ub.build().toString();
+                        String url = buildAgentUrl(dstHostMnIp, KVMConstant.CLEAN_FIRMWARE_FLASH);
                         new Http<>(url, cmd, AgentResponse.class).call(dstHostUuid, new ReturnValueCompletion<AgentResponse>(trigger) {
                             @Override
                             public void success(AgentResponse ret) {
@@ -3209,9 +3228,9 @@ public class KVMHost extends HostBase implements Host {
                             cmd.setDisks(diskMigrationMap);
                         }
 
-                        UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(migrateVmPath);
-                        ub.host(migrateFromDestination ? dstHostMnIp : srcHostMnIp);
-                        String migrateUrl = ub.build().toString();
+                        String migrateUrl = buildAgentUrl(
+                                migrateFromDestination ? dstHostMnIp : srcHostMnIp,
+                                KVMConstant.KVM_MIGRATE_VM_PATH);
                         new Http<>(migrateUrl, cmd, MigrateVmResponse.class).call(migrateFromDestination ? dstHostUuid : srcHostUuid, new ReturnValueCompletion<MigrateVmResponse>(trigger) {
                             @Override
                             public void success(MigrateVmResponse ret) {
@@ -3250,10 +3269,7 @@ public class KVMHost extends HostBase implements Host {
                         cmd.vmUuid = vmUuid;
                         cmd.hostManagementIp = dstHostMnIp;
 
-                        UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
-                        ub.host(dstHostMnIp);
-                        ub.path(KVMConstant.KVM_HARDEN_CONSOLE_PATH);
-                        String url = ub.build().toString();
+                        String url = buildAgentUrl(dstHostMnIp, KVMConstant.KVM_HARDEN_CONSOLE_PATH);
                         new Http<>(url, cmd, AgentResponse.class).call(dstHostUuid, new ReturnValueCompletion<AgentResponse>(trigger) {
                             @Override
                             public void success(AgentResponse ret) {
@@ -3286,10 +3302,7 @@ public class KVMHost extends HostBase implements Host {
                         cmd.vmUuid = vmUuid;
                         cmd.hostManagementIp = srcHostMnIp;
 
-                        UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
-                        ub.host(srcHostMnIp);
-                        ub.path(KVMConstant.KVM_DELETE_CONSOLE_FIREWALL_PATH);
-                        String url = ub.build().toString();
+                        String url = buildAgentUrl(srcHostMnIp, KVMConstant.KVM_DELETE_CONSOLE_FIREWALL_PATH);
                         new Http<>(url, cmd, AgentResponse.class).call(new ReturnValueCompletion<AgentResponse>(trigger) {
                             @Override
                             public void success(AgentResponse ret) {
@@ -5740,7 +5753,9 @@ public class KVMHost extends HostBase implements Host {
                             // expectation matches what the host itself reports.
                             String certIpList = KVMHostUtils.collectHostIps(
                                     sshShell, self.getUuid(), managementIp);
-                            List<String> allIps = new ArrayList<>(Arrays.asList(certIpList.split(",")));
+                            String expectedCertIpList = KVMHostUtils.unionTlsCertIps(
+                                    self.getUuid(), managementIp, certIpList);
+                            List<String> allIps = new ArrayList<>(Arrays.asList(expectedCertIpList.split(",")));
                             // Save detected IPs so apply-ansible-playbook can union with
                             // EXTRA_IPS without running a second SSH.
                             data.put("TLS_DETECTED_IPS", certIpList);
@@ -6779,7 +6794,7 @@ public class KVMHost extends HostBase implements Host {
     }
 
     private boolean checkMigrateNetworkCidrOfHost(String cidr) {
-        if (NetworkUtils.isIpv4InCidr(self.getManagementIp(), cidr)) {
+        if (NetworkUtils.isIpInCidr(self.getManagementIp(), cidr)) {
             return true;
         }
 
@@ -6790,14 +6805,7 @@ public class KVMHost extends HostBase implements Host {
             return false;
         }
 
-        final String[] ips = extraIps.split(",");
-        for (String ip: ips) {
-            if (NetworkUtils.isIpv4InCidr(ip, cidr)) {
-                return true;
-            }
-        }
-
-        return false;
+        return selectIpInCidr(extraIps, cidr) != null;
     }
 
     private boolean checkQemuLibvirtVersionOfHost() {
