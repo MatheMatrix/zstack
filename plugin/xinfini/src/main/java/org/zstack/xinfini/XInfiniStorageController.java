@@ -175,8 +175,13 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
 
         VhostVolumeTO to = new VhostVolumeTO();
         BdcBdevModule bdev = apiHelper.queryBdcBdevByVolumeIdAndBdcId(volModule.getSpec().getId(), bdc.getSpec().getId());
-        if (bdev != null && MetadataState.active.toString().equals(bdev.getMetadata().getState().getState())) {
-            logger.info("dest bdc bdev has been created, skip active");
+        if (bdev != null) {
+            if (!MetadataState.active.toString().equals(bdev.getMetadata().getState().getState())) {
+                logger.info("dest bdc bdev exists but is not active yet, wait for it to become active instead of recreating");
+                apiHelper.getBdcBdevUtilStateActive(bdev.getSpec().getId());
+            } else {
+                logger.info("dest bdc bdev has been created, skip active");
+            }
             to.setInstallPath(bdev.getSpec().getSocketPath());
             return to;
         }

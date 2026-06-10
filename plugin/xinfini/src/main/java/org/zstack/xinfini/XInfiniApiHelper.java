@@ -488,6 +488,13 @@ public class XInfiniApiHelper {
         return rsp.getItems().get(0);
     }
 
+    public BdcBdevModule getBdcBdevUtilStateActive(int bdevId) {
+        GetBdcBdevRequest gReq = new GetBdcBdevRequest();
+        gReq.setId(bdevId);
+        return retryUtilStateActive(gReq, GetBdcBdevResponse.class,
+                (GetBdcBdevResponse gvp) -> gvp.toModule().getMetadata().getState().getState()).toModule();
+    }
+
     public List<BdcBdevModule> queryBdcBdevByVolumeId(int volId) {
         QueryBdcBdevRequest req = new QueryBdcBdevRequest();
         req.q = String.format("spec.bs_volume_id:%s", volId);

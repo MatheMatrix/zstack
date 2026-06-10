@@ -13,8 +13,12 @@ import org.zstack.xinfini.XInfiniPathHelper
 import org.zstack.xinfini.sdk.vhost.BdcModule
 import org.zstack.xinfini.sdk.vhost.BdcBdevModule
 import org.zstack.header.core.Completion
+import org.zstack.header.core.ReturnValueCompletion
 import org.zstack.header.errorcode.ErrorCode
 import org.zstack.header.errorcode.OperationFailureException
+import org.zstack.header.storage.addon.primary.ActiveVolumeTO
+import org.zstack.header.storage.addon.primary.BaseVolumeInfo
+import org.zstack.header.volume.VolumeProtocol
 import org.zstack.header.host.HostConstant
 import org.zstack.header.host.HostVO
 import org.zstack.header.host.HostVO_
@@ -189,6 +193,7 @@ class XinfiniPrimaryStorageCase extends SubCase {
             testCreateXinfiniStorage()
             testCreateVm()
             testPreventSplitBrainOnDeactivateFailure()
+            testActivateIdempotentOnInactiveBdev()
             testHandleInactiveVolume()
             testCreateVolumeRollback()
             testAttachIso()
@@ -429,6 +434,112 @@ class XinfiniPrimaryStorageCase extends SubCase {
         // restore default simulator behaviour for the rest of the suite
         simMode[0] = 0
         bdcInactive[0] = false
+    }
+
+    // a bdev mapped by a previous restore/recovery flow can exist in a non-active state.
+    // activate must not call create again (xinfini would reject it as "already mapped");
+    // it must wait for the existing bdev to become active and reuse its socket path.
+    void testActivateIdempotentOnInactiveBdev() {
+        def rootVol = Q.New(VolumeVO.class).eq(VolumeVO_.uuid, vm.rootVolumeUuid).find()
+        int volId = XInfiniPathHelper.getVolIdFromPath(rootVol.installPath)
+        BdcModule bdc = controller.apiHelper.queryBdcByIp(host1.managementIp)
+        BdcBdevModule existing = controller.apiHelper.queryBdcBdevByVolumeIdAndBdcId(volId, bdc.spec.id)
+        assert existing != null
+
+        def storedSpec = ExternalPrimaryStorageSpec.XinfiniSimulators.bdcBdevs.get(existing.spec.id).spec
+        // reuse the stored snake_case spec map so socket_path round-trips through the response parser
+        def stored = ExternalPrimaryStorageSpec.XinfiniSimulators.bdcBdevs.get(existing.spec.id)
+        assert stored != null
+
+        int[] createCount = [0]
+        // query reports the existing bdev as not-active yet; a second GET flips it to active,
+        // proving activate polls the existing bdev instead of recreating it.
+        boolean[] reportActive = [false]
+
+        env.simulator("/afa/v1/bdc-bdevs") { HttpServletRequest req, HttpEntity<String> e, EnvSpec spec ->
+            if (req.getMethod() == "POST") {
+                createCount[0]++
+                throw new HttpError(400, "BsVolume(ID=${volId}) has been mapped".toString())
+            }
+            return [
+                metadata: [pagination: [count: 1, total_count: 1, offset: 0, limit: 100]],
+                items: [[metadata: [id: existing.spec.id, name: existing.spec.name, state: [state: "deleting"]],
+                         spec: stored.spec, status: stored.status]]
+            ]
+        }
+
+        env.simulator("/afa/v1/bdc-bdevs/\\d+") { HttpServletRequest req, HttpEntity<String> e, EnvSpec spec ->
+            String state = reportActive[0] ? "active" : "deleting"
+            reportActive[0] = true
+            return [metadata: [id: existing.spec.id, name: existing.spec.name, state: [state: state]],
+                    spec: stored.spec, status: stored.status]
+        }
+
+        def volInfo = new BaseVolumeInfo()
+        volInfo.uuid = vm.rootVolumeUuid
+        volInfo.installPath = rootVol.installPath
+        volInfo.protocol = VolumeProtocol.Vhost.toString()
+        volInfo.type = "volume"
+
+        def hostVO = Q.New(HostVO.class).eq(HostVO_.uuid, host1.uuid).find()
+        def headerHost = org.zstack.header.host.HostInventory.valueOf(hostVO)
+
+        String[] resultPath = [null]
+        ErrorCode[] failErr = [null]
+        controller.activate(volInfo, headerHost, false, new ReturnValueCompletion<ActiveVolumeTO>(null) {
+            @Override
+            void success(ActiveVolumeTO to) { resultPath[0] = to.installPath }
+
+            @Override
+            void fail(ErrorCode errorCode) { failErr[0] = errorCode }
+        })
+
+        assert failErr[0] == null: "activate must not fail on an existing non-active bdev"
+        assert createCount[0] == 0: "activate must not recreate a bdev that already exists"
+        assert resultPath[0] == existing.spec.socketPath: "activate must reuse the existing bdev socket path"
+        assert reportActive[0]: "activate must poll the existing bdev until it becomes active"
+
+        // restore default simulators for the rest of the suite
+        env.simulator("/afa/v1/bdc-bdevs") { HttpServletRequest req, HttpEntity<String> e, EnvSpec spec ->
+            def store = ExternalPrimaryStorageSpec.XinfiniSimulators.bdcBdevs
+            if (req.getMethod() == "POST") {
+                def body = JSONObjectUtil.toObject(e.body, LinkedHashMap.class)
+                def specData = body?.spec ?: body
+                int bdevId = ExternalPrimaryStorageSpec.XinfiniSimulators.bdcBdevCounter.incrementAndGet()
+                int targetBdcId = specData?.bdc_id ?: bdc.spec.id
+                int bsVolumeId = specData?.bs_volume_id ?: 0
+                String bdevName = specData?.name ?: "volume-${bdevId}"
+                int queueNum = specData?.queue_num ?: 1
+                String clusterUuid = controller.apiHelper.getClusterUuid()
+                String socketPath = "/var/run/bdc-${clusterUuid}/${bdevName}"
+                def bdevSpec = [id: bdevId, name: bdevName, bdc_id: targetBdcId, node_ip: "127.0.0.1",
+                                bs_volume_id: bsVolumeId, socket_path: socketPath, queue_num: queueNum,
+                                bs_volume_name: bdevName, bs_volume_uuid: Platform.getUuid(), numa_node_ids: []]
+                def bdevItem = [spec: bdevSpec, status: [id: bdevId]]
+                store.put(bdevId, bdevItem)
+                return ExternalPrimaryStorageSpec.XinfiniSimulators.makeItemResponse(bdevItem)
+            }
+            def qParam = req.getParameter("q")
+            def allItems = store.values().collect { b ->
+                [metadata: [id: b.spec.id, name: b.spec.name, state: [state: "active"]], spec: b.spec, status: b.status]
+            }
+            def filtered = ExternalPrimaryStorageSpec.XinfiniSimulators.filterItems(allItems, qParam)
+            return ExternalPrimaryStorageSpec.XinfiniSimulators.makeQueryResponse(filtered)
+        }
+        env.simulator("/afa/v1/bdc-bdevs/\\d+") { HttpServletRequest req, HttpEntity<String> e, EnvSpec spec ->
+            def matcher = (req.getRequestURI() =~ /\/(\d+)$/)
+            int bdevId = matcher.find() ? Integer.parseInt(matcher.group(1)) : -1
+            def store = ExternalPrimaryStorageSpec.XinfiniSimulators.bdcBdevs
+            if (req.getMethod() == "DELETE") {
+                store.remove(bdevId)
+                return [:]
+            }
+            def b = store.get(bdevId)
+            if (b == null) {
+                throw new HttpError(404, "not found")
+            }
+            return [metadata: [id: b.spec.id, name: b.spec.name, state: [state: "active"]], spec: b.spec, status: b.status]
+        }
     }
 
     void testHandleInactiveVolume() {
