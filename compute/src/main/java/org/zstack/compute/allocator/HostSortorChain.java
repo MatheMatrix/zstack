@@ -42,6 +42,7 @@ public class HostSortorChain implements HostSortorStrategy {
     private HostCapacityReserveManager reserveMgr;
 
     private HostAllocatorSpec allocationSpec;
+    private final PreferredClusterHostSorter preferredClusterHostSorter = new PreferredClusterHostSorter();
 
     private List<AbstractHostSortorFlow> flows;
 
@@ -80,6 +81,7 @@ public class HostSortorChain implements HostSortorStrategy {
         DebugUtils.Assert(hosts.size() > 0, "must sort at least 1 host");
         List<HostInventory> subHosts = new ArrayList<>();
         subHosts.addAll(hosts);
+        List<HostInventory> preferredSortCandidates = subHosts;
         for (AbstractHostSortorFlow flow: flows) {
             if (subHosts.size() == 0) {
                 break;
@@ -90,12 +92,25 @@ public class HostSortorChain implements HostSortorStrategy {
             logger.debug(String.format("sort by flow: %s", flow.getClass().getSimpleName()));
             flow.sort();
             reSortHosts(subHosts, hosts);
+
+            preferredSortCandidates = subHosts;
             subHosts = flow.getSubCandidates();
+            if (!subHosts.isEmpty()) {
+                preferredSortCandidates = subHosts;
+            }
 
             if (flow.skipNext()) {
                 break;
             }
         }
+
+        if (!preferredSortCandidates.isEmpty()) {
+            List<HostInventory> sortedPreferredCandidates = new ArrayList<>(preferredSortCandidates);
+            if (preferredClusterHostSorter.sort(allocationSpec, sortedPreferredCandidates)) {
+                reSortHosts(sortedPreferredCandidates, hosts);
+            }
+        }
+
         done(hosts);
     }
 

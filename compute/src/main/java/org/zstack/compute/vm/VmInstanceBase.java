@@ -6884,6 +6884,9 @@ public class VmInstanceBase extends AbstractVmInstance {
         if (msg instanceof HaStartVmInstanceMsg) {
             spec.setSoftAvoidHostUuids(((HaStartVmInstanceMsg) msg).getSoftAvoidHostUuids());
             spec.setAllocationScene(AllocationScene.Auto);
+            if (rcf.getResourceConfigValue(VmGlobalConfig.VM_HA_ACROSS_CLUSTERS, self.getUuid(), Boolean.class)) {
+                spec.setPreferClusterUuid(self.getClusterUuid());
+            }
         } else if (msg instanceof StartVmInstanceMsg) {
             spec.setRequiredHostUuid(((StartVmInstanceMsg) msg).getHostUuid());
             spec.setSoftAvoidHostUuids(((StartVmInstanceMsg) msg).getSoftAvoidHostUuids());
