@@ -416,9 +416,20 @@ public class XInfiniApiHelper {
 
     private <T extends XInfiniResponse> void retryUtilResourceDeleted(XInfiniRequest req,
                                                                       Class<T> rsp) {
+        retryUtilResourceDeleted(req, rsp, 150, 2);
+    }
+
+    private <T extends XInfiniResponse> void retryUtilResourceDeleted(XInfiniRequest req,
+                                                                      Class<T> rsp,
+                                                                      int retryTimes,
+                                                                      int retryInterval) {
         new Retry<Void>() {
+            {
+                times = retryTimes;
+                interval = retryInterval;
+            }
+
             @Override
-            @RetryCondition(times = 150, interval = 2)
             protected Void call() {
                 T r = XInfiniApiHelper.this.call(req, rsp);
                 if (!r.resourceIsDeleted()) {
@@ -731,7 +742,10 @@ public class XInfiniApiHelper {
 
         GetVolumeClientGroupMappingRequest gReq = new GetVolumeClientGroupMappingRequest();
         gReq.setId(mapId);
-        retryUtilResourceDeleted(gReq, GetVolumeClientGroupMappingResponse.class);
+        // the storage tears mappings down asynchronously path by path and cannot be
+        // operated on while deleting; observed taking over 30 minutes, so wait long
+        // enough to cover the teardown window
+        retryUtilResourceDeleted(gReq, GetVolumeClientGroupMappingResponse.class, 1800, 2);
     }
 
     public List<IscsiGatewayClientGroupMappingModule> queryIscsiGatewayClientGroupMappingByGroupId(int groupId) {
