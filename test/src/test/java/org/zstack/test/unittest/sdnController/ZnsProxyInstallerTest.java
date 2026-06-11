@@ -21,7 +21,19 @@ public class ZnsProxyInstallerTest {
     @Test
     public void testBuildInstallCommandUsesPackageDefaults() {
         String command = ZnsProxyInstaller.buildInstallCommand("/var/lib/zstack/zns-proxy/package/zns-proxy.bin");
-        assertEquals("'/var/lib/zstack/zns-proxy/package/zns-proxy.bin' install", command);
+        assertEquals("'/var/lib/zstack/zns-proxy/package/zns-proxy.bin' install --listen-address 0.0.0.0:7890", command);
+    }
+
+    @Test
+    public void testBuildCleanupCommandRemovesProxyAndAgent() {
+        ZnsProxyGlobalProperty.PACKAGE_REMOTE_PATH = "/var/lib/zstack/zns-proxy/package";
+
+        String command = ZnsProxyInstaller.buildCleanupCommand();
+        assertTrue(command.contains("systemctl stop zstack-zns-agent.service || true"));
+        assertTrue(command.contains("systemctl disable zstack-zns-agent.service || true"));
+        assertTrue(command.contains("rm -rf /var/lib/zstack/zns-agent/package"));
+        assertTrue(command.contains("systemctl stop zstack-zns-proxy.service || true"));
+        assertTrue(command.contains("rm -rf '/var/lib/zstack/zns-proxy/package'"));
     }
 
     @Test

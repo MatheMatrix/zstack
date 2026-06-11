@@ -6,7 +6,7 @@ public class ZnsProxyPrepareServiceCmd {
     public static final String COMMAND_PATH = "/zns/notify/prepare-service";
 
     public String computeManagerUuid;
-    public List<String> hostUuid;
+    public List<String> hostUuids;
     public String proxyVersion;
     public String packageName;
     public String packageUrl;

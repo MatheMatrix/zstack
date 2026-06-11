@@ -5,6 +5,9 @@ import org.springframework.util.StringUtils;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.kvm.KVMHostVO;
+import org.zstack.sdnController.SdnControllerSystemTags;
+import org.zstack.tag.SystemTagCreator;
+import org.zstack.utils.path.PathUtil;
 import org.zstack.utils.ssh.Ssh;
 import org.zstack.utils.ssh.SshResult;
 
@@ -36,12 +39,26 @@ public class ZnsProxyInstaller {
         if (cmd == null) {
             throw new CloudRuntimeException("prepare zns-proxy service failed: command is empty");
         }
-        List<String> hostUuids = normalizeHostUuids(cmd.hostUuid);
+        List<String> hostUuids = normalizeHostUuids(cmd.hostUuids, "prepare");
 
         File localPackage = resolvePackage(cmd);
         for (String hostUuid : hostUuids) {
             installOnHost(hostUuid, localPackage);
         }
+    }
+
+    public void cleanup(ZnsProxyUnprepareServiceCmd cmd) {
+        if (cmd == null) {
+            throw new CloudRuntimeException("unprepare zns-proxy service failed: command is empty");
+        }
+        List<String> hostUuids = normalizeHostUuids(cmd.hostUuids, "unprepare");
+        for (String hostUuid : hostUuids) {
+            cleanupOnHost(hostUuid);
+        }
+    }
+
+    public void reinstallPreparedHost(String hostUuid) {
+        installOnHost(hostUuid, resolvePackage(new ZnsProxyPrepareServiceCmd()));
     }
 
     private void installOnHost(String hostUuid, File localPackage) {
@@ -85,10 +102,66 @@ public class ZnsProxyInstaller {
                     "prepare zns-proxy service failed on host %s[%s]: %s",
                     hostUuid, host.getManagementIp(), stderr));
         }
+        markHostPrepared(hostUuid);
+    }
+
+    private void cleanupOnHost(String hostUuid) {
+        KVMHostVO host = dbf.findByUuid(hostUuid, KVMHostVO.class);
+        if (host == null) {
+            throw new CloudRuntimeException(String.format("unprepare zns-proxy service failed: host %s not found", hostUuid));
+        }
+        if (StringUtils.isEmpty(host.getManagementIp())) {
+            throw new CloudRuntimeException(String.format("unprepare zns-proxy service failed: host %s has empty management ip", hostUuid));
+        }
+        if (StringUtils.isEmpty(host.getUsername())) {
+            throw new CloudRuntimeException(String.format("unprepare zns-proxy service failed: host %s has empty username", hostUuid));
+        }
+        if (StringUtils.isEmpty(host.getPassword())) {
+            throw new CloudRuntimeException(String.format("unprepare zns-proxy service failed: host %s has empty password", hostUuid));
+        }
+
+        Ssh ssh = new Ssh()
+                .setHostname(host.getManagementIp())
+                .setUsername(host.getUsername())
+                .setPassword(host.getPassword())
+                .setPort(host.getPort() == null || host.getPort() <= 0 ? 22 : host.getPort())
+                .setTimeout(10)
+                .setExecTimeout(600);
+
+        SshResult ret = ssh
+                .sudoCommand(buildCleanupCommand())
+                .runAndClose();
+        if (ret == null || ret.getReturnCode() != 0) {
+            String stderr = ret == null ? "no ssh result returned" : ret.getStderr();
+            throw new CloudRuntimeException(String.format(
+                    "unprepare zns-proxy service failed on host %s[%s]: %s",
+                    hostUuid, host.getManagementIp(), stderr));
+        }
+        clearHostPrepared(hostUuid);
     }
 
     public static String buildInstallCommand(String packagePath) {
-        return shellQuote(packagePath) + " install";
+        return shellQuote(packagePath) + " install --listen-address 0.0.0.0:" + DEFAULT_PROXY_LISTEN_PORT;
+    }
+
+    public static String buildCleanupCommand() {
+        return "systemctl stop zstack-zns-agent.service || true; " +
+                "systemctl disable zstack-zns-agent.service || true; " +
+                "rm -f /usr/lib/systemd/system/zstack-zns-agent.service; " +
+                "rm -f /etc/systemd/system/zstack-zns-agent.service; " +
+                "rm -f /etc/zstack-zns/zns-agent.toml; " +
+                "rm -f /etc/logrotate.d/zns-agent; " +
+                "rm -rf /usr/local/zstack/zns-agent; " +
+                "rm -rf /var/lib/zstack/zns-agent/package; " +
+                "systemctl stop zstack-zns-proxy.service || true; " +
+                "systemctl disable zstack-zns-proxy.service || true; " +
+                "rm -f /usr/lib/systemd/system/zstack-zns-proxy.service; " +
+                "rm -f /etc/systemd/system/zstack-zns-proxy.service; " +
+                "rm -f /etc/zstack-zns/zns-proxy.toml; " +
+                "rm -f /etc/logrotate.d/zns-proxy; " +
+                "rm -rf /usr/local/zstack/zns-proxy; " +
+                "rm -rf " + shellQuote(PACKAGE_REMOTE_PATH) + "; " +
+                "systemctl daemon-reload";
     }
 
     public static File resolvePackage(ZnsProxyPrepareServiceCmd cmd) {
@@ -122,9 +195,13 @@ public class ZnsProxyInstaller {
 
         File localPackage = packageInRepository(packageName);
         if (!localPackage.exists() || !localPackage.isFile()) {
-            throw new CloudRuntimeException(String.format(
-                    "prepare zns-proxy service failed: package %s not found in %s",
-                    packageName, PACKAGE_REPOSITORY_PATH));
+            File classpathPackage = PathUtil.findFileOnClassPath("ansible/znsproxy/" + packageName);
+            if (classpathPackage == null || !classpathPackage.exists() || !classpathPackage.isFile()) {
+                throw new CloudRuntimeException(String.format(
+                        "prepare zns-proxy service failed: package %s not found in %s or classpath ansible/znsproxy",
+                        packageName, PACKAGE_REPOSITORY_PATH));
+            }
+            localPackage = classpathPackage;
         }
         verifySha256(localPackage, cmd.sha256);
         return localPackage;
@@ -134,15 +211,26 @@ public class ZnsProxyInstaller {
         return "http://127.0.0.1:" + DEFAULT_PROXY_LISTEN_PORT + "/zns-proxy/api/v1/health";
     }
 
-    private static List<String> normalizeHostUuids(List<String> hostUuids) {
+    private void markHostPrepared(String hostUuid) {
+        SystemTagCreator creator = SdnControllerSystemTags.ZNS_PROXY_PREPARED.newSystemTagCreator(hostUuid);
+        creator.ignoreIfExisting = true;
+        creator.recreate = false;
+        creator.create();
+    }
+
+    private void clearHostPrepared(String hostUuid) {
+        SdnControllerSystemTags.ZNS_PROXY_PREPARED.delete(hostUuid);
+    }
+
+    private static List<String> normalizeHostUuids(List<String> hostUuids, String action) {
         if (hostUuids == null || hostUuids.isEmpty()) {
-            throw new CloudRuntimeException("prepare zns-proxy service failed: hostUuid is empty");
+            throw new CloudRuntimeException(action + " zns-proxy service failed: hostUuids is empty");
         }
 
         List<String> normalized = new ArrayList<String>(hostUuids.size());
         for (String hostUuid : hostUuids) {
             if (!StringUtils.hasText(hostUuid)) {
-                throw new CloudRuntimeException("prepare zns-proxy service failed: hostUuid is empty");
+                throw new CloudRuntimeException(action + " zns-proxy service failed: hostUuids is empty");
             }
             normalized.add(hostUuid.trim());
         }

@@ -41,6 +41,7 @@ import org.zstack.network.securitygroup.SecurityGroupSdnBackend;
 import org.zstack.sdnController.header.*;
 import org.zstack.sdnController.znsproxy.ZnsProxyInstaller;
 import org.zstack.sdnController.znsproxy.ZnsProxyPrepareServiceCmd;
+import org.zstack.sdnController.znsproxy.ZnsProxyUnprepareServiceCmd;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
@@ -579,8 +580,17 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
             @Override
             public String handleSyncHttpCall(ZnsProxyPrepareServiceCmd cmd) {
                 logger.info(String.format("[ZnsProxy] prepare-service command received: cmUUID=%s hosts=%s packageName=%s proxyVersion=%s packageUrl=%s",
-                        cmd.computeManagerUuid, cmd.hostUuid, cmd.packageName, cmd.proxyVersion, cmd.packageUrl));
+                        cmd.computeManagerUuid, cmd.hostUuids, cmd.packageName, cmd.proxyVersion, cmd.packageUrl));
                 znsProxyInstaller.install(cmd);
+                return null;
+            }
+        });
+        restf.registerSyncHttpCallHandler(ZnsProxyUnprepareServiceCmd.COMMAND_PATH, ZnsProxyUnprepareServiceCmd.class, new SyncHttpCallHandler<ZnsProxyUnprepareServiceCmd>() {
+            @Override
+            public String handleSyncHttpCall(ZnsProxyUnprepareServiceCmd cmd) {
+                logger.info(String.format("[ZnsProxy] unprepare-service command received: cmUUID=%s hosts=%s",
+                        cmd.computeManagerUuid, cmd.hostUuids));
+                znsProxyInstaller.cleanup(cmd);
                 return null;
             }
         });
