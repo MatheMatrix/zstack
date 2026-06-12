@@ -976,6 +976,30 @@ public class VolumeBase extends AbstractVolume implements Volume {
                         }
                     });
                 }
+
+                flow(new Flow() {
+                    String __name__ = "before-final-delete-volume-extension";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        callVolumeBeforeFinalDeleteExtensionPoint(inv, false, new Completion(trigger) {
+                            @Override
+                            public void success() {
+                                trigger.next();
+                            }
+
+                            @Override
+                            public void fail(ErrorCode errorCode) {
+                                trigger.fail(errorCode);
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void rollback(FlowRollback trigger, Map data) {
+                        trigger.rollback();
+                    }
+                });
             }
         }).done(new FlowDoneHandler(completion) {
             @Override
@@ -1327,6 +1351,32 @@ public class VolumeBase extends AbstractVolume implements Volume {
                     }
                 });
 
+                if (deletionPolicy == VolumeDeletionPolicy.Direct || deletionPolicy == VolumeDeletionPolicy.DBOnly) {
+                    flow(new Flow() {
+                        String __name__ = "before-final-delete-volume-extension";
+
+                        @Override
+                        public void run(FlowTrigger trigger, Map data) {
+                            callVolumeBeforeFinalDeleteExtensionPoint(getSelfInventory(), msg.isForceDelete(), new Completion(trigger) {
+                                @Override
+                                public void success() {
+                                    trigger.next();
+                                }
+
+                                @Override
+                                public void fail(ErrorCode errorCode) {
+                                    trigger.fail(errorCode);
+                                }
+                            });
+                        }
+
+                        @Override
+                        public void rollback(FlowRollback trigger, Map data) {
+                            trigger.rollback();
+                        }
+                    });
+                }
+
 
                 done(new FlowDoneHandler(msg) {
                     @Override
@@ -1539,6 +1589,33 @@ public class VolumeBase extends AbstractVolume implements Volume {
     private void callVolumeJustBeforeDeleteFromDbExtensionPoint() {
         VolumeInventory inv = getSelfInventory();
         CollectionUtils.safeForEach(pluginRgty.getExtensionList(VolumeJustBeforeDeleteFromDbExtensionPoint.class), p -> p.volumeJustBeforeDeleteFromDb(inv));
+    }
+
+    private void callVolumeBeforeFinalDeleteExtensionPoint(VolumeInventory inv, boolean bestEffort, Completion completion) {
+        ErrorCodeList errList = new ErrorCodeList();
+        new While<>(pluginRgty.getExtensionList(VolumeBeforeFinalDeleteExtensionPoint.class)).each((ext, c) ->
+                ext.volumeBeforeFinalDelete(inv, bestEffort, new Completion(c) {
+                    @Override
+                    public void success() {
+                        c.done();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        errList.getCauses().add(errorCode);
+                        c.done();
+                    }
+                })).run(new WhileDoneCompletion(completion) {
+            @Override
+            public void done(ErrorCodeList errorCodeList) {
+                if (!errList.getCauses().isEmpty()) {
+                    completion.fail(errList.getCauses().get(0));
+                    return;
+                }
+
+                completion.success();
+            }
+        });
     }
 
     private void handle(final VolumeDeletionMsg msg) {
