@@ -2380,6 +2380,16 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                         }
 
                         private void copyFromImageCache(FlowTrigger trigger) {
+                            List<String> sameCephBsUuids = Q.New(CephBackupStorageVO.class).eq(CephBackupStorageVO_.fsid, getSelf().getFsid())
+                                    .select(CephBackupStorageVO_.uuid)
+                                    .listValues();
+                            if (image.getInventory().getBackupStorageRefs() != null && image.getInventory().getBackupStorageRefs()
+                                    .stream().anyMatch(ref -> sameCephBsUuids.contains(ref.getBackupStorageUuid())
+                                            && ref.getInstallPath().equals(dstPath))) {
+                                logger.info("dest image exists, skip creation");
+                                trigger.next();
+                                return;
+                            }
                             copyToCache(trigger, ImageCacheUtil.getImageCachePath(sourceCache.toInventory()));
                         }
 
