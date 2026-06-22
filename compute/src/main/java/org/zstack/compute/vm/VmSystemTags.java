@@ -251,7 +251,13 @@ public class VmSystemTags {
                 }
 
                 Yaml yaml = new Yaml();
-                Object obj = yaml.load(userdata);
+                Object obj;
+                try {
+                    obj = yaml.load(userdata);
+                } catch (RuntimeException e) {
+                    tokens.put(t, "*****");
+                    continue;
+                }
                 if (!(obj instanceof LinkedHashMap)) {
                     return tag;
                 }
