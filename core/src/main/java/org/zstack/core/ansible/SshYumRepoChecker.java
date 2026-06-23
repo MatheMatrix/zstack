@@ -19,6 +19,11 @@ public class SshYumRepoChecker implements AnsibleChecker {
     protected RESTFacade restf;
 
     private static final CLogger logger = Utils.getLogger(SshYumRepoChecker.class);
+
+    public static final String VALIDATE_REPO_CONTENT_CMD =
+            "for f in /etc/yum.repos.d/zstack-mn.repo /etc/yum.repos.d/qemu-kvm-ev-mn.repo; "
+                    + "do test -e \"$f\" || continue; test -s \"$f\" || exit 1; grep -q '^baseurl=' \"$f\" || exit 1; done";
+
     private String username;
     private String password;
     private String privateKey;
@@ -36,6 +41,16 @@ public class SshYumRepoChecker implements AnsibleChecker {
                 .setPassword(password).setPort(sshPort)
                 .setHostname(targetIp);
         try {
+            ssh.sudoCommand(VALIDATE_REPO_CONTENT_CMD);
+            SshResult validateRet = ssh.setTimeout(60).run();
+            ssh.reset();
+            if (validateRet.getReturnCode() != 0) {
+                logger.warn(String.format("zstack-mn.repo or qemu-kvm-ev-mn.repo is empty or corrupted on %s, " +
+                        "redeploy to regenerate them, return code: %d, stdout: %s, stderr: %s",
+                        targetIp, validateRet.getReturnCode(), validateRet.getStdout(), validateRet.getStderr()));
+                return true;
+            }
+
             ssh.sudoCommand(String.format("sed -i '/baseurl/s/\\([0-9]\\{1,3\\}\\.\\)\\{3\\}[0-9]\\{1,3\\}:\\([0-9]\\+\\)/%s/g' /etc/yum.repos.d/{zstack,qemu-kvm-ev}-mn.repo",
                     restf.getHostName() + ":" + restf.getPort()
             ));
