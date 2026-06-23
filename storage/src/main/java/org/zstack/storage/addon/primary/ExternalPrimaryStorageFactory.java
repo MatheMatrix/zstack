@@ -52,6 +52,7 @@ import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
+import javax.persistence.Query;
 import javax.persistence.Tuple;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -373,27 +374,21 @@ public class ExternalPrimaryStorageFactory implements PrimaryStorageFactory, Com
 
     // per-protocol host connectivity is an external-PS-internal concept; the row is
     // written directly here so generic primary storage messages stay protocol-agnostic.
+    // upsert on the (primaryStorageUuid, hostUuid, protocol) unique key so concurrent pings and
+    // AddProtocol on the same host cannot race a find-then-insert into duplicate rows.
+    @Transactional
     public void updateHostProtocolStatus(String psUuid, String hostUuid, String protocol, PrimaryStorageHostStatus newStatus) {
-        ExternalPrimaryStorageHostProtocolRefVO ref = Q.New(ExternalPrimaryStorageHostProtocolRefVO.class)
-                .eq(ExternalPrimaryStorageHostProtocolRefVO_.primaryStorageUuid, psUuid)
-                .eq(ExternalPrimaryStorageHostProtocolRefVO_.hostUuid, hostUuid)
-                .eq(ExternalPrimaryStorageHostProtocolRefVO_.protocol, protocol)
-                .find();
-        if (ref == null) {
-            ref = new ExternalPrimaryStorageHostProtocolRefVO();
-            ref.setPrimaryStorageUuid(psUuid);
-            ref.setHostUuid(hostUuid);
-            ref.setProtocol(protocol);
-            ref.setStatus(newStatus);
-            dbf.persist(ref);
-            logger.debug(String.format("created protocol[%s] connectivity row between primary storage[uuid:%s]" +
-                    " and host[uuid:%s] with status %s", protocol, psUuid, hostUuid, newStatus));
-        } else if (ref.getStatus() != newStatus) {
-            ref.setStatus(newStatus);
-            dbf.update(ref);
-            logger.debug(String.format("change protocol[%s] connectivity between primary storage[uuid:%s]" +
-                    " and host[uuid:%s] to %s", protocol, psUuid, hostUuid, newStatus));
-        }
+        Query q = dbf.getEntityManager().createNativeQuery("insert into ExternalPrimaryStorageHostProtocolRefVO" +
+                " (hostUuid, primaryStorageUuid, protocol, status, createDate, lastOpDate)" +
+                " values (:hostUuid, :psUuid, :protocol, :status, current_timestamp(), current_timestamp())" +
+                " on duplicate key update lastOpDate = if(status <> :status, current_timestamp(), lastOpDate), status = :status");
+        q.setParameter("hostUuid", hostUuid);
+        q.setParameter("psUuid", psUuid);
+        q.setParameter("protocol", protocol);
+        q.setParameter("status", newStatus.name());
+        q.executeUpdate();
+        logger.debug(String.format("upserted protocol[%s] connectivity between primary storage[uuid:%s]" +
+                " and host[uuid:%s] to %s", protocol, psUuid, hostUuid, newStatus));
     }
 
     private PrimaryStorageNodeSvc getNodeSvcByVolume(VolumeInventory volumeInventory) {

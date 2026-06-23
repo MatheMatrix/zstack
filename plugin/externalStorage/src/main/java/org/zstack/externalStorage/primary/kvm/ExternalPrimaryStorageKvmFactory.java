@@ -27,6 +27,7 @@ import org.zstack.header.storage.primary.*;
 import org.zstack.header.vm.VmInstanceSpec;
 import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.volume.VolumeInventory;
+import org.zstack.header.volume.VolumeProtocol;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.volume.VolumeVO_;
 import org.zstack.kvm.*;
@@ -242,19 +243,29 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
             extPsFactory.getControllerSvc(extPs.getUuid()).reportNodeHealthy(host, new ReturnValueCompletion<NodeHealthy>(compl) {
                 @Override
                 public void success(NodeHealthy returnValue) {
-                    returnValue.getHealthy().forEach((p, h) -> updateHostProtocolRef(host.getUuid(), extPs.getUuid(),
-                            p.toString(), h == StorageHealthy.Ok ? PrimaryStorageHostStatus.Connected : PrimaryStorageHostStatus.Disconnected));
-
+                    Map<VolumeProtocol, StorageHealthy> healthy = returnValue.getHealthy();
                     ErrorCode err = null;
                     PrimaryStorageHostStatus status;
                     // TODO add multi protocol support
-                    if (returnValue.getHealthy().values().stream().allMatch(h -> h == StorageHealthy.Ok)) {
-                        status = PrimaryStorageHostStatus.Connected;
-                    } else {
+                    if (healthy == null || healthy.isEmpty()) {
+                        // an empty health report means the probe yielded nothing; fold it to
+                        // Disconnected instead of letting allMatch() collapse to Connected
                         status = PrimaryStorageHostStatus.Disconnected;
-                        err = operr(ORG_ZSTACK_EXTERNALSTORAGE_PRIMARY_KVM_10000, "external primary storage[uuid:%s, name:%s] returns unhealthy status: %s",
-                                ((ExternalPrimaryStorageVO) extPs).getUuid(), ((ExternalPrimaryStorageVO) extPs).getName(), returnValue.getHealthy());
+                        err = operr(ORG_ZSTACK_EXTERNALSTORAGE_PRIMARY_KVM_10000, "external primary storage[uuid:%s, name:%s] reported no protocol health",
+                                ((ExternalPrimaryStorageVO) extPs).getUuid(), ((ExternalPrimaryStorageVO) extPs).getName());
                         compl.addError(err);
+                    } else {
+                        healthy.forEach((p, h) -> updateHostProtocolRef(host.getUuid(), extPs.getUuid(),
+                                p.toString(), h == StorageHealthy.Ok ? PrimaryStorageHostStatus.Connected : PrimaryStorageHostStatus.Disconnected));
+
+                        if (healthy.values().stream().allMatch(h -> h == StorageHealthy.Ok)) {
+                            status = PrimaryStorageHostStatus.Connected;
+                        } else {
+                            status = PrimaryStorageHostStatus.Disconnected;
+                            err = operr(ORG_ZSTACK_EXTERNALSTORAGE_PRIMARY_KVM_10000, "external primary storage[uuid:%s, name:%s] returns unhealthy status: %s",
+                                    ((ExternalPrimaryStorageVO) extPs).getUuid(), ((ExternalPrimaryStorageVO) extPs).getName(), healthy);
+                            compl.addError(err);
+                        }
                     }
 
                     if (hostStatus.get(extPs.getUuid()) != status) {

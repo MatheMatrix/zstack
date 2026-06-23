@@ -15,7 +15,7 @@
 
 ## 2. 协议枚举（`VolumeProtocol`）
 
-```
+```text
 NVMEoF | iSCSI | Vhost | CBD | NBD | RBD
 ```
 
@@ -45,7 +45,7 @@ NVMEoF | iSCSI | Vhost | CBD | NBD | RBD
 
 **`APIQueryExternalPrimaryStorageHostProtocolRefMsg`**
 
-```
+```http
 GET /zstack/v1/external-primary-storage/host-protocol-refs?q=primaryStorageUuid=xxx
 GET /zstack/v1/external-primary-storage/{primaryStorageUuid}/host-protocol-refs
 ```
@@ -73,7 +73,7 @@ SDK：`QueryExternalPrimaryStorageHostProtocolRefAction`。
 
 **`APIAddStorageProtocolMsg`**（注意拼写：Protocol，产品侧笔记里 "APIAddStoragePotocol" 少了 r）
 
-```
+```http
 POST /zstack/v1/primary-storage/protocol
 {
     "params": {
@@ -98,7 +98,7 @@ POST /zstack/v1/primary-storage/protocol
 
 **`APICreateDataVolumeMsg`**（在现有创建数据卷 API 上新增可选参数）
 
-```
+```http
 POST /zstack/v1/volumes/data
 {
     "params": {
@@ -138,7 +138,7 @@ Cloud 建 VM 走 `APICreateVmInstanceMsg`，数据盘由 `dataDiskOfferingUuids`
 tag 格式（**注意 `ephemeral::` 前缀必填**）：`ephemeral::volumeProtocol::{protocol}`，protocol ∈ §2 枚举。前缀是后端框架的「临时 tag」约定——带前缀的 tag 在建卷时被消费进 `VolumeVO.protocol` 后由框架自动丢弃、绝不落库；漏掉前缀则不被识别（既不消费也不报错，等于没传）。
 
 **例：两块数据盘，盘 0 用 Vhost、盘 1 用 CBD**
-```
+```http
 POST /zstack/v1/vm-instances
 {
     "params": {
@@ -167,7 +167,7 @@ POST /zstack/v1/vm-instances
 
 **`APIChangeVolumeProtocolMsg`**（action 式）
 
-```
+```http
 PUT /zstack/v1/volumes/{volumeUuid}/actions
 {
     "changeVolumeProtocol": {

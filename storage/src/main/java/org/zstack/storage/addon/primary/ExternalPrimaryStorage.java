@@ -2419,15 +2419,32 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                                 PrimaryStorageHostStatus.Disconnected);
                         logger.warn(String.format("failed to prepare host[%s] for protocol[%s] on primary storage[uuid:%s]: %s",
                                 host.getUuid(), msg.getOutputProtocol(), msg.getUuid(), errorCode.getDetails()));
+                        compl.addError(errorCode);
                         compl.done();
                     }
                 })
         ).run(new WhileDoneCompletion(completion) {
             @Override
             public void done(ErrorCodeList errorCodeList) {
-                // protocol is already registered; host preparation self-heals on the next ping
+                int failed = errorCodeList.getCauses().size();
+                if (failed > hostVOs.size() / 2) {
+                    // most hosts cannot serve the protocol; roll back the registration so a
+                    // mostly-unusable protocol is not exposed
+                    unregisterOutputProtocol(msg.getUuid(), msg.getOutputProtocol());
+                    completion.fail(errorCodeList.getCauses().get(0));
+                    return;
+                }
+                // a minority failed; keep the protocol, those hosts self-heal on the next ping
                 ExternalPrimaryStorage.super.doAddProtocol(msg, completion);
             }
         });
+    }
+
+    private void unregisterOutputProtocol(String psUuid, String protocol) {
+        SQL.New("delete from PrimaryStorageOutputProtocolRefVO ref" +
+                " where ref.primaryStorageUuid = :psUuid and ref.outputProtocol = :protocol")
+                .param("psUuid", psUuid)
+                .param("protocol", protocol)
+                .execute();
     }
 }
