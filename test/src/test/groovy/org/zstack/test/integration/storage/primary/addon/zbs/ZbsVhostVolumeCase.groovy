@@ -173,6 +173,7 @@ class ZbsVhostVolumeCase extends SubCase {
             testUnknownRootVolumeProtocolSystemTagRejected()
             testVhostVmStartActivationChain()
             testAddProtocolPreparesHostsAndRecordsProtocolRefs()
+            testAddProtocolRollsBackWhenMajorityHostsFail()
         }
     }
 
@@ -660,6 +661,70 @@ class ZbsVhostVolumeCase extends SubCase {
                     .isExists()
         }
 
+        detachPrimaryStorageFromCluster {
+            primaryStorageUuid = ps.uuid
+            clusterUuid = cluster.uuid
+        }
+    }
+
+    // CR9 hardening: when more than half the connected hosts fail to deploy the ZBS
+    // client for a newly added protocol, the protocol MUST NOT stay exposed. doAddProtocol
+    // persists PrimaryStorageOutputProtocolRefVO before host prep (Flow1 is NoRollbackFlow),
+    // so a majority-failure must roll that row back and fail the API, else the UI advertises
+    // a protocol no host can serve. Only a baseline deployClient failure marks a host failed;
+    // the vhost-target ensure is best-effort/self-healing and is intentionally not counted.
+    void testAddProtocolRollsBackWhenMajorityHostsFail() {
+        AtomicBoolean deployClientShouldFail = new AtomicBoolean(false)
+        env.simulator(ZbsStorageController.DEPLOY_CLIENT_PATH) { HttpEntity<String> e, EnvSpec spec ->
+            def rsp = new ZbsStorageController.DeployClientRsp()
+            if (deployClientShouldFail.get()) {
+                rsp.success = false
+                rsp.error = "injected: host cannot deploy zbs client"
+            }
+            return rsp
+        }
+        env.afterSimulator(ZbsStorageController.CREATE_VOLUME_PATH) { rsp, HttpEntity<String> e ->
+            def cmd = JSONObjectUtil.toObject(e.body, ZbsStorageController.CreateVolumeCmd)
+            if (cmd.volume == ZbsConstants.ZBS_HEARTBEAT_VOLUME_NAME) {
+                def vrsp = new ZbsStorageController.CreateVolumeRsp()
+                vrsp.installPath = "zbs://${cmd.logicalPool}/${cmd.volume}".toString()
+                return vrsp
+            }
+            return rsp
+        }
+
+        // attach with deploy succeeding so the single host becomes Connected
+        attachPrimaryStorageToCluster {
+            primaryStorageUuid = ps.uuid
+            clusterUuid = cluster.uuid
+        }
+
+        // start from a PS that does not yet expose Vhost, then add it while the only
+        // connected host can no longer deploy the client (1 of 1 failed = majority)
+        SQL.New(PrimaryStorageOutputProtocolRefVO.class)
+                .eq(PrimaryStorageOutputProtocolRefVO_.primaryStorageUuid, ps.uuid)
+                .eq(PrimaryStorageOutputProtocolRefVO_.outputProtocol, VolumeProtocol.Vhost.toString())
+                .delete()
+
+        deployClientShouldFail.set(true)
+        expectApiFailure({
+            addStorageProtocol {
+                uuid = ps.uuid
+                outputProtocol = VolumeProtocol.Vhost.toString()
+            }
+        }) {
+            assert delegate != null : "addStorageProtocol must fail when the only connected host cannot be prepared"
+        }
+
+        assert !Q.New(PrimaryStorageOutputProtocolRefVO.class)
+                .eq(PrimaryStorageOutputProtocolRefVO_.primaryStorageUuid, ps.uuid)
+                .eq(PrimaryStorageOutputProtocolRefVO_.outputProtocol, VolumeProtocol.Vhost.toString())
+                .isExists() : \
+                "Vhost output protocol left exposed after a majority of hosts failed to prepare it; " +
+                "doAddProtocol must roll back PrimaryStorageOutputProtocolRefVO on majority-failure (CR9)"
+
+        // restore so a later add of Vhost (and env teardown) behaves normally
+        deployClientShouldFail.set(false)
         detachPrimaryStorageFromCluster {
             primaryStorageUuid = ps.uuid
             clusterUuid = cluster.uuid
