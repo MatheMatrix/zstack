@@ -196,7 +196,20 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
 
         // U-A (NB-30): physical fields written here under PESSIMISTIC_WRITE lock; available*
         // fields are the sole responsibility of psCapacityUpdater.recalculate() below.
-        String serverUuid = HostCapacityUpdater.resolveServerUuidOrThrow(msg.getHostUuid());
+        String serverUuid = HostCapacityUpdater.resolveServerUuid(msg.getHostUuid());
+        if (serverUuid == null) {
+            // Non-unified-hardware host (ESX/vCenter etc.): no KVM_HOST PhysicalServerRoleVO and no
+            // PhysicalServerVO. The HostCapacityVO MERGE VIEW keys these via COALESCE(serverUuid,
+            // hostUuid), so report into a PhysicalServerCapacityVO row keyed by hostUuid; available*
+            // fields are set inline since recalculate() (which needs a PhysicalServerVO) is skipped.
+            // A KVM host missing its role is a FlowChain timing bug — keep failing loud (NB-24).
+            if (HostCapacityUpdater.isKvmHost(msg.getHostUuid())) {
+                HostCapacityUpdater.resolveServerUuidOrThrow(msg.getHostUuid());
+            }
+            handleReportForNonUnifiedHost(msg, totalCpu, availPhysMem);
+            bus.reply(msg, new MessageReply());
+            return;
+        }
         PhysicalServerCapacityVO vo = dbf.getEntityManager()
                 .find(PhysicalServerCapacityVO.class, serverUuid, javax.persistence.LockModeType.PESSIMISTIC_WRITE);
         if (vo == null) {
@@ -231,6 +244,47 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
         return vo.getCpuNum() != msg.getCpuNum() || vo.getTotalCpu() != totalCpu
                 || vo.getTotalPhysicalMemory() != msg.getTotalMemory()
                 || vo.getAvailablePhysicalMemory() != availPhysMem || vo.getTotalMemory() != msg.getTotalMemory()
+                || vo.getCpuSockets() != msg.getCpuSockets() || vo.getCpuCoreNum() != msg.getCpuCoreNum();
+    }
+
+    private void handleReportForNonUnifiedHost(ReportHostCapacityMessage msg, long totalCpu, long availPhysMem) {
+        long availCpu = totalCpu - msg.getUsedCpu();
+        availCpu = availCpu > 0 ? availCpu : 0;
+
+        PhysicalServerCapacityVO vo = dbf.getEntityManager()
+                .find(PhysicalServerCapacityVO.class, msg.getHostUuid(), javax.persistence.LockModeType.PESSIMISTIC_WRITE);
+        if (vo == null) {
+            vo = new PhysicalServerCapacityVO();
+            vo.setUuid(msg.getHostUuid());
+            vo.setTotalCpu(totalCpu);
+            vo.setAvailableCpu(availCpu);
+            vo.setTotalMemory(msg.getTotalMemory());
+            vo.setAvailableMemory(availPhysMem);
+            vo.setTotalPhysicalMemory(msg.getTotalMemory());
+            vo.setAvailablePhysicalMemory(availPhysMem);
+            vo.setCpuNum(msg.getCpuNum());
+            vo.setCpuSockets(msg.getCpuSockets());
+            vo.setCpuCoreNum(msg.getCpuCoreNum());
+            dbf.getEntityManager().persist(vo);
+        } else if (needUpdateNonUnifiedCapacity(vo, msg, totalCpu, availCpu, availPhysMem)) {
+            vo.setCpuNum(msg.getCpuNum());
+            vo.setTotalCpu(totalCpu);
+            vo.setAvailableCpu(availCpu);
+            vo.setTotalPhysicalMemory(msg.getTotalMemory());
+            vo.setAvailablePhysicalMemory(availPhysMem);
+            vo.setTotalMemory(msg.getTotalMemory());
+            vo.setAvailableMemory(availPhysMem);
+            vo.setCpuSockets(msg.getCpuSockets());
+            vo.setCpuCoreNum(msg.getCpuCoreNum());
+            dbf.getEntityManager().merge(vo);
+        }
+    }
+
+    private boolean needUpdateNonUnifiedCapacity(PhysicalServerCapacityVO vo, ReportHostCapacityMessage msg, long totalCpu, long availCpu, long availPhysMem) {
+        return vo.getCpuNum() != msg.getCpuNum() || vo.getTotalCpu() != totalCpu
+                || vo.getAvailableCpu() != availCpu || vo.getTotalPhysicalMemory() != msg.getTotalMemory()
+                || vo.getAvailablePhysicalMemory() != availPhysMem || vo.getTotalMemory() != msg.getTotalMemory()
+                || vo.getAvailableMemory() != availPhysMem
                 || vo.getCpuSockets() != msg.getCpuSockets() || vo.getCpuCoreNum() != msg.getCpuCoreNum();
     }
 
