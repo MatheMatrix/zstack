@@ -319,7 +319,9 @@ abstract class ApiHelper {
         c.delegate = a
         c()
         
-        a.conditions = a.conditions.collect { it.toString() }
+        if (a.conditions != null) {
+            a.conditions = a.conditions.collect { it.toString() }
+        }
 
 
         if (System.getProperty("apipath") != null) {

@@ -84,12 +84,21 @@ public class UpdateAiHostModelCachePolicyAction extends AbstractAction {
         return ret;
     }
 
+    private void validateWatermarks() {
+        if (highWatermarkPercent != null && lowWatermarkPercent != null
+                && lowWatermarkPercent > highWatermarkPercent) {
+            throw new ApiException("lowWatermarkPercent cannot be greater than highWatermarkPercent");
+        }
+    }
+
     public Result call() {
+        validateWatermarks();
         ApiResult res = ZSClient.call(this);
         return makeResult(res);
     }
 
     public void call(final Completion<Result> completion) {
+        validateWatermarks();
         ZSClient.call(this, new InternalCompletion() {
             @Override
             public void complete(ApiResult res) {
