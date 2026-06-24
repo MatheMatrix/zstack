@@ -62,6 +62,7 @@ import static org.zstack.utils.CollectionUtils.transformAndRemoveNull;
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class ImageBase implements Image {
     private static final CLogger logger = Utils.getLogger(ImageBase.class);
+    private static final String UPLOAD_PROTO = "upload://";
 
     protected String syncThreadId;
     @Autowired
@@ -541,6 +542,7 @@ public class ImageBase implements Image {
         AddImageMsg amsg = msg.getMsg();
         List<String> bsUuids = amsg.getBackupStorageUuids();
         ImageInventory img = ImageInventory.valueOf(dbf.findByUuid(msg.getImageUuid(), ImageVO.class));
+        normalizeUploadUrlForCancel(img);
         ErrorCodeList err = new ErrorCodeList();
         new While<>(bsUuids).all((bsUuid, compl) -> {
             CancelDownloadImageMsg cmsg = new CancelDownloadImageMsg();
@@ -567,6 +569,20 @@ public class ImageBase implements Image {
             }
         });
 
+    }
+
+    private void normalizeUploadUrlForCancel(ImageInventory img) {
+        String url = img.getUrl();
+        if (url == null || !url.startsWith(UPLOAD_PROTO)) {
+            return;
+        }
+
+        String rest = url.substring(UPLOAD_PROTO.length());
+        if (rest.equals(img.getUuid()) || rest.startsWith(img.getUuid() + "/")) {
+            return;
+        }
+
+        img.setUrl(UPLOAD_PROTO + img.getUuid() + "/" + rest);
     }
 
 
