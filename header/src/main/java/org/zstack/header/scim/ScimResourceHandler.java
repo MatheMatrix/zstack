@@ -4,4 +4,6 @@ public interface ScimResourceHandler {
     String normalizeResourceType(String resourceType);
 
     void applyResource(ScimOperation operation, String resourceType, String resourceId, ScimPayload payload);
+
+    void cleanupResources(String syncType);
 }
