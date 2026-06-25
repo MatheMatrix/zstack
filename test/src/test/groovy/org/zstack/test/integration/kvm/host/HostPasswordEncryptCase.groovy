@@ -1,9 +1,9 @@
 package org.zstack.test.integration.kvm.host
 
-import org.zstack.core.convert.PasswordConverter
+import org.zstack.header.core.convert.PasswordConverter
 import org.zstack.core.db.Q
 import org.zstack.core.db.SQL
-import org.zstack.core.encrypt.EncryptFacade
+import org.zstack.header.core.convert.EncryptFacade
 import org.zstack.core.encrypt.EncryptFacadeImpl
 import org.zstack.core.encrypt.EncryptGlobalConfig
 import org.zstack.header.core.encrypt.EncryptEntityMetadataVO

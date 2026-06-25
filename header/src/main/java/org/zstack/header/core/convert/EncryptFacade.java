@@ -1,4 +1,4 @@
-package org.zstack.core.encrypt;
+package org.zstack.header.core.convert;
 
 import org.zstack.header.core.encrypt.EncryptEntityState;
 import org.zstack.header.core.encrypt.EncryptedFieldBundle;
@@ -6,9 +6,6 @@ import org.zstack.header.errorcode.ErrorableValue;
 
 import java.util.List;
 
-/**
- * Created by kayo on 2018/9/7.
- */
 public interface EncryptFacade {
     String encrypt(String decryptString);
 
@@ -23,4 +20,6 @@ public interface EncryptFacade {
     List<EncryptedFieldBundle> getIntegrityEncryptionBundle();
 
     List<EncryptedFieldBundle> getConfidentialityEncryptionBundle();
+
+    boolean isEncryptionDisabled();
 }

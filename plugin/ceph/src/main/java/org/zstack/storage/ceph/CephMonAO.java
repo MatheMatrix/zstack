@@ -1,6 +1,6 @@
 package org.zstack.storage.ceph;
 
-import org.zstack.core.convert.PasswordConverter;
+import org.zstack.header.core.convert.PasswordConverter;
 import org.zstack.header.core.encrypt.EncryptColumn;
 import org.zstack.header.vo.ResourceVO;
 

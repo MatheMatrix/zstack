@@ -54,36 +54,6 @@ public class PhysicalServerHardwareInfoVO {
     private Long totalMemoryBytes;
 
     @Column
-    private Integer memoryModuleCount;
-
-    @Column
-    private Long totalDiskBytes;
-
-    @Column
-    private Integer diskCount;
-
-    @Column
-    private Integer nicCount;
-
-    @Column
-    private Integer gpuCount;
-
-    @Column
-    private String healthStatus;
-
-    /**
-     * P1-3: first-writer-wins. The first {@code discoverHardware} pass that produced any
-     * non-null carrier field writes its winning source here (per the in-pass ordering
-     * IPMI_FRU &gt; KVM_AGENT &gt; K8S_NODEINFO). Subsequent passes refresh data columns
-     * and {@link #lastDiscoverDate} but do NOT overwrite this value — it is a stable
-     * "who first identified this host" tag, not a churning "currently primary contributor"
-     * signal. Operators wanting per-field provenance should look at lastDiscoverDate +
-     * field-level audit (out of scope for v5.5.18).
-     */
-    @Column
-    private String discoverSource;
-
-    @Column
     private Timestamp lastDiscoverDate;
 
     @Column
@@ -170,62 +140,6 @@ public class PhysicalServerHardwareInfoVO {
 
     public void setTotalMemoryBytes(Long totalMemoryBytes) {
         this.totalMemoryBytes = totalMemoryBytes;
-    }
-
-    public Integer getMemoryModuleCount() {
-        return memoryModuleCount;
-    }
-
-    public void setMemoryModuleCount(Integer memoryModuleCount) {
-        this.memoryModuleCount = memoryModuleCount;
-    }
-
-    public Long getTotalDiskBytes() {
-        return totalDiskBytes;
-    }
-
-    public void setTotalDiskBytes(Long totalDiskBytes) {
-        this.totalDiskBytes = totalDiskBytes;
-    }
-
-    public Integer getDiskCount() {
-        return diskCount;
-    }
-
-    public void setDiskCount(Integer diskCount) {
-        this.diskCount = diskCount;
-    }
-
-    public Integer getNicCount() {
-        return nicCount;
-    }
-
-    public void setNicCount(Integer nicCount) {
-        this.nicCount = nicCount;
-    }
-
-    public Integer getGpuCount() {
-        return gpuCount;
-    }
-
-    public void setGpuCount(Integer gpuCount) {
-        this.gpuCount = gpuCount;
-    }
-
-    public String getHealthStatus() {
-        return healthStatus;
-    }
-
-    public void setHealthStatus(String healthStatus) {
-        this.healthStatus = healthStatus;
-    }
-
-    public String getDiscoverSource() {
-        return discoverSource;
-    }
-
-    public void setDiscoverSource(String discoverSource) {
-        this.discoverSource = discoverSource;
     }
 
     public Timestamp getLastDiscoverDate() {

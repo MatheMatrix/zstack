@@ -9,10 +9,13 @@ import org.zstack.core.db.DeadlockAutoRestart;
 import org.zstack.core.db.Q;
 import org.zstack.header.allocator.HostCapacityVO;
 import org.zstack.header.exception.CloudRuntimeException;
+import org.zstack.header.host.HostVO;
+import org.zstack.header.host.HostVO_;
 import org.zstack.header.server.PhysicalServerCapacityVO;
 import org.zstack.header.server.PhysicalServerRoleVO;
 import org.zstack.header.server.PhysicalServerRoleVO_;
 import org.zstack.header.server.ServerRoleType;
+import org.zstack.header.vm.VmInstanceConstant;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
@@ -70,10 +73,12 @@ public class HostCapacityUpdater {
     /**
      * Resolve PhysicalServer UUID from a KVM host UUID via PhysicalServerRoleVO mapping.
      *
-     * <p>Throws {@link CloudRuntimeException} when no KVM_HOST role mapping is found (NB-24,
-     * 2026-04-22). Previous NB-22 "log null + boolean" silent-drop was reverted — fail-loud
-     * surfaces FlowChain timing bugs / orphan windows instead of masking them as silent capacity
-     * update losses. The existing "host deleted naturally" semantic is still carried by
+     * <p>Throws {@link CloudRuntimeException} when a KVM host has no KVM_HOST role mapping (NB-24,
+     * 2026-04-22) — a FlowChain timing bug. Non-KVM hosts (ESX/vCenter etc.) legitimately have no
+     * role mapping and return {@code hostUuid} (their PhysicalServerCapacityVO is keyed by hostUuid
+     * via the COALESCE(serverUuid, hostUuid) view). Previous NB-22 "log null + boolean" silent-drop
+     * was reverted — fail-loud surfaces FlowChain timing bugs / orphan windows instead of masking
+     * them as silent capacity update losses. The existing "host deleted naturally" semantic is still carried by
      * {@link #lockCapacity()} returning {@code false} when the capacity row itself is absent.
      *
      * <p>NB-30: Phase 2 lock key invariant. All PESSIMISTIC_WRITE paths on PhysicalServerCapacityVO
@@ -81,18 +86,41 @@ public class HostCapacityUpdater {
      * {@code serverUuid}.
      */
     public static String resolveServerUuidOrThrow(String hostUuid) {
-        String serverUuid = Q.New(PhysicalServerRoleVO.class)
+        String serverUuid = resolveServerUuid(hostUuid);
+        if (serverUuid == null) {
+            // Non-unified-hardware hosts (ESX/vCenter etc.) legitimately have no KVM_HOST role;
+            // their PhysicalServerCapacityVO is keyed by hostUuid via COALESCE(serverUuid, hostUuid).
+            // A KVM host missing its role is a FlowChain timing bug — keep failing loud (NB-24).
+            if (isKvmHost(hostUuid)) {
+                throw new CloudRuntimeException(String.format(
+                        "cannot resolve PhysicalServer UUID for host[uuid:%s]: no KVM_HOST "
+                                + "PhysicalServerRoleVO found. FlowChain timing bug or orphan "
+                                + "PhysicalServerVO — capacity PRD NB-24.", hostUuid));
+            }
+            return hostUuid;
+        }
+        return serverUuid;
+    }
+
+    /**
+     * Non-throwing variant of {@link #resolveServerUuidOrThrow(String)}: returns the KVM_HOST
+     * {@code serverUuid} mapping or {@code null} when none exists. Callers decide fail-loud vs
+     * fallback; non-unified-hardware hosts (ESX/vCenter etc.) legitimately have no role mapping.
+     */
+    public static String resolveServerUuid(String hostUuid) {
+        return Q.New(PhysicalServerRoleVO.class)
                 .eq(PhysicalServerRoleVO_.roleUuid, hostUuid)
                 .eq(PhysicalServerRoleVO_.roleType, ServerRoleType.KVM_HOST.toString())
                 .select(PhysicalServerRoleVO_.serverUuid)
                 .findValue();
-        if (serverUuid == null) {
-            throw new CloudRuntimeException(String.format(
-                    "cannot resolve PhysicalServer UUID for host[uuid:%s]: no KVM_HOST "
-                            + "PhysicalServerRoleVO found. FlowChain timing bug or orphan "
-                            + "PhysicalServerVO — capacity PRD NB-24.", hostUuid));
-        }
-        return serverUuid;
+    }
+
+    public static boolean isKvmHost(String hostUuid) {
+        String hypervisorType = Q.New(HostVO.class)
+                .eq(HostVO_.uuid, hostUuid)
+                .select(HostVO_.hypervisorType)
+                .findValue();
+        return VmInstanceConstant.KVM_HYPERVISOR_TYPE.equals(hypervisorType);
     }
 
     private void logDeletedHost() {

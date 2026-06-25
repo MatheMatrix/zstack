@@ -42,6 +42,6 @@
         </zstack:plugin>
     </bean>
 
-    <bean id="PasswordConvert" class="org.zstack.core.convert.PasswordConverter" />
+    <bean id="PasswordConvert" class="org.zstack.header.core.convert.PasswordConverter" />
     <bean id="SpecialDataConverter" class="org.zstack.core.convert.SpecialDataConverter" />
 </beans>

@@ -24,6 +24,9 @@ import org.zstack.header.identity.SessionVO
 import org.zstack.header.image.GuestOsCategoryVO
 import org.zstack.header.image.ImageDeletionPolicyManager
 import org.zstack.header.message.Message
+import org.zstack.header.server.PhysicalServerProvisionNetworkClusterRefVO
+import org.zstack.header.server.PhysicalServerProvisionNetworkPoolRefVO
+import org.zstack.header.server.PhysicalServerProvisionNetworkVO
 import org.zstack.header.rest.RESTConstant
 import org.zstack.header.vm.VmInstanceDeletionPolicyManager
 import org.zstack.header.vm.VmSchedHistoryVO
@@ -859,6 +862,12 @@ class EnvSpec extends ApiHelper implements Node  {
             if (GLOBAL_DELETE_HOOK != null) {
                 GLOBAL_DELETE_HOOK()
             }
+
+            // Detach provision networks before EO cleanup deletes them: a cluster/pool-attached
+            // PhysicalServerProvisionNetwork blocks deletion and leaks across stability iterations.
+            SQL.New(PhysicalServerProvisionNetworkClusterRefVO.class).hardDelete()
+            SQL.New(PhysicalServerProvisionNetworkPoolRefVO.class).hardDelete()
+            SQL.New(PhysicalServerProvisionNetworkVO.class).hardDelete()
 
             cleanupEO()
             makeSureAllEntitiesDeleted()

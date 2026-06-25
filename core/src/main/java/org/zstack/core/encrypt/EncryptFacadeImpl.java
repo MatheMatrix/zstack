@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.Platform;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.config.*;
-import org.zstack.core.convert.PasswordConverter;
+import org.zstack.header.core.convert.PasswordConverter;
 import org.zstack.core.convert.SpecialDataConverter;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.Q;
@@ -13,6 +13,7 @@ import org.zstack.core.db.SQL;
 import org.zstack.core.db.SQLBatch;
 import org.zstack.header.Component;
 import org.zstack.header.core.encrypt.*;
+import org.zstack.header.core.convert.EncryptFacade;
 import org.zstack.header.errorcode.ErrorableValue;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudRuntimeException;
@@ -74,6 +75,12 @@ public class EncryptFacadeImpl implements EncryptFacade, Component {
     @Override
     public ErrorableValue<String> decrypt(String data, String algType) {
         return encryptDriver.decrypt(data, algType);
+    }
+
+    @Override
+    public boolean isEncryptionDisabled() {
+        return PasswordEncryptType.None.toString()
+                .equals(EncryptGlobalConfig.ENABLE_PASSWORD_ENCRYPT.value(String.class));
     }
 
     private String getQuerySql(List<CovertSubClass> covertSubClasses, String className, String fieldName, String uuid) {

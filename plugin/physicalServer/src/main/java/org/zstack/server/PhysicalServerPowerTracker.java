@@ -15,6 +15,7 @@ import org.zstack.header.server.PhysicalServerConstant;
 import org.zstack.header.server.PhysicalServerPowerStatus;
 import org.zstack.header.server.PhysicalServerVO;
 import org.zstack.header.server.PingPhysicalServerMsg;
+import org.zstack.utils.ShellResult;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
 
@@ -27,10 +28,7 @@ public class PhysicalServerPowerTracker extends PingTracker implements
         ManagementNodeReadyExtensionPoint {
     private static final CLogger logger = Utils.getLogger(PhysicalServerPowerTracker.class);
 
-    // Test seam (UNIT_TEST_ON only): (oobAddress, oobUsername) -> simulated power status.
-    // Consumed by PhysicalServerManagerImpl.handle(PingPhysicalServerMsg) so IT cases
-    // can drive the tracker without a real BMC.
-    public static volatile BiFunction<String, String, PhysicalServerPowerStatus> powerOverride;
+    public static volatile BiFunction<String, String, ShellResult> shellResultOverride;
 
     @Autowired
     private ResourceDestinationMaker destinationMaker;

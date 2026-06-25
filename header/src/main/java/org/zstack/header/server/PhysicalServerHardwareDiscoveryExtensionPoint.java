@@ -80,11 +80,5 @@ public interface PhysicalServerHardwareDiscoveryExtensionPoint {
         void setCpuCores(Integer v);
         void setCpuArchitecture(String v);
         void setTotalMemoryBytes(Long v);
-        void setMemoryModuleCount(Integer v);
-        void setTotalDiskBytes(Long v);
-        void setDiskCount(Integer v);
-        void setNicCount(Integer v);
-        void setGpuCount(Integer v);
-        void setHealthStatus(String v);
     }
 }

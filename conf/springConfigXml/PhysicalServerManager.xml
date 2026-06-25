@@ -133,4 +133,11 @@
 
     <bean id="physicalServerPathTwoOrchestrator"
           class="org.zstack.server.PhysicalServerPathTwoOrchestrator" />
+
+    <bean id="PhysicalServerKvmIdentityBackfillExtension"
+          class="org.zstack.server.PhysicalServerKvmIdentityBackfillExtension">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.host.HostAddExtensionPoint" />
+        </zstack:plugin>
+    </bean>
 </beans>

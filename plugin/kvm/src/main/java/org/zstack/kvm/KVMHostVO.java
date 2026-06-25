@@ -1,6 +1,6 @@
 package org.zstack.kvm;
 
-import org.zstack.core.convert.PasswordConverter;
+import org.zstack.header.core.convert.PasswordConverter;
 import org.zstack.header.core.encrypt.EncryptColumn;
 import org.zstack.header.host.HostEO;
 import org.zstack.header.host.HostVO;
