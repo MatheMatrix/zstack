@@ -146,3 +146,21 @@ CREATE TABLE IF NOT EXISTS `VolumeCacheVO` (
     FOREIGN KEY (`poolUuid`) REFERENCES `HostCacheStoreVO` (`uuid`)
     ON DELETE SET NULL
     ) ENGINE = InnoDB DEFAULT CHARSET = utf8;
+
+-- ZCF-4419: Track resources synchronized from external identity sources.
+CREATE TABLE IF NOT EXISTS `zstack`.`ResourceSourceRefVO` (
+    `uuid` varchar(32) NOT NULL COMMENT 'uuid',
+    `resourceUuid` varchar(255) NOT NULL,
+    `resourceType` varchar(255) NOT NULL,
+    `sourceType` varchar(255) NOT NULL,
+    `sourceName` varchar(255) DEFAULT NULL,
+    `externalUuid` varchar(255) DEFAULT NULL,
+    `externalType` varchar(255) DEFAULT NULL,
+    `syncType` varchar(255) NOT NULL,
+    `lastOpDate` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
+    `createDate` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00',
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `ukResourceSourceRefVOResourceSourceSync` (`resourceUuid`, `resourceType`, `sourceType`, `syncType`),
+    KEY `idxResourceSourceRefVOSourceSyncResourceType` (`sourceType`, `syncType`, `resourceType`),
+    KEY `idxResourceSourceRefVOResourceSync` (`resourceType`, `resourceUuid`, `syncType`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
