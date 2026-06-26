@@ -38,6 +38,7 @@ import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.network.l3.UsedIpInventory;
 import org.zstack.header.network.l3.UsedIpVO;
+import org.zstack.header.network.l3.UsedIpVO_;
 import org.zstack.header.network.service.*;
 import org.zstack.header.tag.SystemTagVO;
 import org.zstack.header.tag.SystemTagVO_;
@@ -214,12 +215,9 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
     private VirtualRouterVmInventory findVirtualRouterVm(String lbUuid) {
         List<VirtualRouterVmVO> vrs = getAllVirtualRouters(lbUuid);
         if (LoadBalancerSystemTags.SEPARATE_VR.hasTag(lbUuid)) {
-            Optional<VirtualRouterVmInventory> vr = vrs.stream()
-                    .filter(v -> VirtualRouterSystemTags.DEDICATED_ROLE_VR.hasTag(v.getUuid()))
+            return findDedicatedLoadBalancerVirtualRouter(lbUuid, vrs)
                     .map(VirtualRouterVmInventory::valueOf)
-                    .findFirst();
-
-            return vr.orElse(null);
+                    .orElse(null);
         }
 
         DebugUtils.Assert(vrs.size() <= 1, String.format("multiple virtual routers[uuids:%s] found",
@@ -232,29 +230,67 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
         List<VirtualRouterVmVO> vrs = getAllVirtualRouters(lbUuid);
 
         if (LoadBalancerSystemTags.SEPARATE_VR.hasTag(lbUuid)) {
-            Optional<VirtualRouterVmVO> vr = vrs.stream()
-                    .filter(v -> VirtualRouterSystemTags.DEDICATED_ROLE_VR.hasTag(v.getUuid()))
-                    .findFirst();
+            Optional<VirtualRouterVmVO> vr = findDedicatedLoadBalancerVirtualRouter(lbUuid, vrs);
 
             if (!vr.isPresent()) {
                 return null;
             }
 
-            List<String> vmNicL3NetworkUuids = Q.New(VmNicVO.class).select(VmNicVO_.l3NetworkUuid).in(VmNicVO_.uuid, vmNics).listValues();
+            if (!vmNics.isEmpty()) {
+                List<String> vmNicL3NetworkUuids = Q.New(VmNicVO.class).select(VmNicVO_.l3NetworkUuid).in(VmNicVO_.uuid, vmNics).listValues();
 
-            VirtualRouterVmInventory vrInventory = VirtualRouterVmInventory.valueOf(vr.get());
-            vmNicL3NetworkUuids.removeAll(vrInventory.getGuestL3Networks());
+                VirtualRouterVmInventory vrInventory = VirtualRouterVmInventory.valueOf(vr.get());
+                vmNicL3NetworkUuids.removeAll(vrInventory.getGuestL3Networks());
 
-            if (!vmNicL3NetworkUuids.isEmpty()) {
-                logger.debug(String.format("found l3 networks[uuids:%s] not attached to separate vr[uuid:%s] for loadbalancer[uuid:%s]",
-                        vmNicL3NetworkUuids, vr.get().getUuid(), lbUuid));
-                throw new CloudRuntimeException("not support separate vr with multiple networks vpc!");
+                if (!vmNicL3NetworkUuids.isEmpty()) {
+                    logger.debug(String.format("found l3 networks[uuids:%s] not attached to separate vr[uuid:%s] for loadbalancer[uuid:%s]",
+                            vmNicL3NetworkUuids, vr.get().getUuid(), lbUuid));
+                    throw new CloudRuntimeException("not support separate vr with multiple networks vpc!");
+                }
             }
         }
 
         DebugUtils.Assert(vrs.size() <= 1, String.format("multiple virtual routers[uuids:%s] found",
                 vrs.stream().map(ResourceVO::getUuid).collect(Collectors.toList())));
         return vrs.isEmpty() ? null : VirtualRouterVmInventory.valueOf(vrs.get(0));
+    }
+
+    private Optional<VirtualRouterVmVO> findDedicatedLoadBalancerVirtualRouter(String lbUuid, List<VirtualRouterVmVO> candidates) {
+        Optional<VirtualRouterVmVO> vr = candidates.stream()
+                .filter(v -> VirtualRouterSystemTags.DEDICATED_ROLE_VR.hasTag(v.getUuid()))
+                .filter(v -> VirtualRouterSystemTags.VR_LB_ROLE.hasTag(v.getUuid()))
+                .findFirst();
+        if (vr.isPresent()) {
+            return vr;
+        }
+
+        List<String> peerL3NetworkUuids = SQL.New("select peer.l3NetworkUuid " +
+                "from LoadBalancerVO lb, VipVO vip, VipPeerL3NetworkRefVO peer " +
+                "where (lb.vipUuid = vip.uuid or lb.ipv6VipUuid = vip.uuid) " +
+                "and vip.uuid = peer.vipUuid " +
+                "and lb.uuid = :lbUuid")
+                .param("lbUuid", lbUuid)
+                .list();
+        if (peerL3NetworkUuids == null || peerL3NetworkUuids.isEmpty()) {
+            return Optional.empty();
+        }
+
+        List<String> vrUuids = Q.New(VmNicVO.class)
+                .select(VmNicVO_.vmInstanceUuid)
+                .in(VmNicVO_.l3NetworkUuid, peerL3NetworkUuids)
+                .eq(VmNicVO_.metaData, VirtualRouterNicMetaData.GUEST_NIC_MASK)
+                .listValues();
+        if (vrUuids == null || vrUuids.isEmpty()) {
+            return Optional.empty();
+        }
+
+        List<VirtualRouterVmVO> virtualRouters = Q.New(VirtualRouterVmVO.class)
+                .in(VirtualRouterVmVO_.uuid, vrUuids)
+                .list();
+        return virtualRouters.stream()
+                .filter(v -> VirtualRouterSystemTags.DEDICATED_ROLE_VR.hasTag(v.getUuid()))
+                .filter(v -> VirtualRouterSystemTags.VR_LB_ROLE.hasTag(v.getUuid()))
+                .findFirst();
     }
 
     public static class LbTO {
@@ -1500,9 +1536,7 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
             ModifyVipAttributesStruct vipStruct = new ModifyVipAttributesStruct();
             vipStruct.setUseFor(f.getNetworkServiceType());
             vipStruct.setServiceUuid(struct.getLb().getUuid());
-            Set<String> guestL3NetworkUuids = nics.stream()
-                    .map(VmNicInventory::getL3NetworkUuid)
-                    .collect(Collectors.toSet());
+            Set<String> guestL3NetworkUuids = getBackendL3NetworkUuids(struct, nics);
 
             if (!guestL3NetworkUuids.isEmpty()) {
                 vipStruct.setPeerL3NetworkUuids(new ArrayList<>(guestL3NetworkUuids));
@@ -1559,9 +1593,7 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
             ModifyVipAttributesStruct vipStruct = new ModifyVipAttributesStruct();
             vipStruct.setUseFor(f.getNetworkServiceType());
             vipStruct.setServiceUuid(struct.getLb().getUuid());
-            Set<String> guestL3NetworkUuids = nics.stream()
-                    .map(VmNicInventory::getL3NetworkUuid)
-                    .collect(Collectors.toSet());
+            Set<String> guestL3NetworkUuids = getBackendL3NetworkUuids(struct, nics);
 
             vipStruct.setPeerL3NetworkUuids(new ArrayList<>(guestL3NetworkUuids));
             vipStruct.setServiceProvider(getLoadLancerServiceProvider(vipStruct.getPeerL3NetworkUuids()));
@@ -1720,7 +1752,8 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
 
     @Override
     public void addVmNics(final LoadBalancerStruct struct, List<VmNicInventory> nics, final Completion completion) {
-        if (struct.getLb().getType().equals(LoadBalancerType.Shared.toString()) && nics.isEmpty()) {
+        boolean separateVr = LoadBalancerSystemTags.SEPARATE_VR.hasTag(struct.getLb().getUuid());
+        if (!separateVr && struct.getLb().getType().equals(LoadBalancerType.Shared.toString()) && nics.isEmpty()) {
             completion.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_VIRTUALROUTER_LB_10006, "vmnic must be specified for share loadbalancer"));
             return;
         }
@@ -1732,11 +1765,7 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
             return;
         }
 
-        L3NetworkInventory nicL3 = null;
-        if (!nics.isEmpty()) {
-            nicL3 = L3NetworkInventory.valueOf(dbf.findByUuid(nics.get(0).getL3NetworkUuid(), L3NetworkVO.class));
-        }
-        final L3NetworkInventory l3 = nicL3;
+        final L3NetworkInventory l3 = findBackendL3Network(struct, nics);
         String vipUuidTemp = StringUtils.isEmpty(struct.getLb().getVipUuid()) ? struct.getLb().getIpv6VipUuid() : struct.getLb().getVipUuid();
         final VipInventory vip = VipInventory.valueOf(dbf.findByUuid(vipUuidTemp, VipVO.class));
         if (!StringUtils.isEmpty(struct.getLb().getVipUuid())) {
@@ -1756,8 +1785,6 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
             }
         }
 
-        final boolean separateVr = LoadBalancerSystemTags.SEPARATE_VR.hasTag(struct.getLb().getUuid());
-
         LoadBalancerVO loadBalancerVO = dbf.findByUuid(struct.getLb().getUuid(), LoadBalancerVO.class);
         LoadBalancerFactory f = lbMgr.getLoadBalancerFactory(loadBalancerVO.getType().toString());
         FlowChain chain = FlowChainBuilder.newShareFlowChain();
@@ -1773,7 +1800,7 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
 
                         @Override
                         public boolean skip(Map data) {
-                            return nics.isEmpty();
+                            return getBackendL3NetworkUuids(struct, nics).isEmpty();
                         }
 
                         /* now the vip support multi services and it doesn't need to lock vip that will be locked
@@ -1783,9 +1810,7 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
                             ModifyVipAttributesStruct vipStruct = new ModifyVipAttributesStruct();
                             vipStruct.setUseFor(f.getNetworkServiceType());
                             vipStruct.setServiceUuid(struct.getLb().getUuid());
-                            Set<String> guestL3NetworkUuids = nics.stream()
-                                    .map(VmNicInventory::getL3NetworkUuid)
-                                    .collect(Collectors.toSet());
+                            Set<String> guestL3NetworkUuids = getBackendL3NetworkUuids(struct, nics);
 
                             vipStruct.setPeerL3NetworkUuids(new ArrayList<>(guestL3NetworkUuids));
 
@@ -1807,9 +1832,7 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
                         @Override
                         public void rollback(FlowRollback trigger, Map data) {
                             List<String> attachedVmNicUuids = struct.getActiveVmNics();
-                            Set<String> guestL3NetworkUuids = nics.stream()
-                                    .map(VmNicInventory::getL3NetworkUuid)
-                                    .collect(Collectors.toSet());
+                            Set<String> guestL3NetworkUuids = getBackendL3NetworkUuids(struct, nics);
                             guestL3NetworkUuids.removeAll(attachedVmNicUuids);
                             if (guestL3NetworkUuids.isEmpty()) {
                                 logger.debug(String.format("there are vmnics[uuids:%s] attached on loadbalancer[uuid:%s], " +
@@ -1850,7 +1873,11 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
                             s.setVirtualRouterVmSelector(new VirtualRouterVmSelector() {
                                 @Override
                                 public VirtualRouterVmVO select(List<VirtualRouterVmVO> vrs) {
-                                    return null;
+                                    return vrs.stream()
+                                            .filter(v -> VirtualRouterSystemTags.DEDICATED_ROLE_VR.hasTag(v.getUuid()))
+                                            .filter(v -> VirtualRouterSystemTags.VR_LB_ROLE.hasTag(v.getUuid()))
+                                            .findFirst()
+                                            .orElse(null);
                                 }
                             });
                             s.setL3Network(l3);
@@ -2077,6 +2104,59 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
         }).start();
     }
 
+    private L3NetworkInventory findBackendL3Network(LoadBalancerStruct struct, List<VmNicInventory> nics) {
+        if (!nics.isEmpty()) {
+            return L3NetworkInventory.valueOf(dbf.findByUuid(nics.get(0).getL3NetworkUuid(), L3NetworkVO.class));
+        }
+
+        for (List<LoadBalancerServerGroupInventory> groups : struct.getListenerServerGroupMap().values()) {
+            if (groups == null) {
+                continue;
+            }
+
+            for (LoadBalancerServerGroupInventory group : groups) {
+                if (group.getServerIps() == null) {
+                    continue;
+                }
+
+                for (LoadBalancerServerGroupServerIpInventory serverIp : group.getServerIps()) {
+                    String l3Uuid = Q.New(UsedIpVO.class)
+                            .select(UsedIpVO_.l3NetworkUuid)
+                            .eq(UsedIpVO_.ip, serverIp.getIpAddress())
+                            .findValue();
+                    if (l3Uuid != null) {
+                        return L3NetworkInventory.valueOf(dbf.findByUuid(l3Uuid, L3NetworkVO.class));
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private Set<String> getBackendL3NetworkUuids(LoadBalancerStruct struct, List<VmNicInventory> nics) {
+        Set<String> l3Uuids = nics.stream()
+                .map(VmNicInventory::getL3NetworkUuid)
+                .collect(Collectors.toSet());
+        if (!l3Uuids.isEmpty()) {
+            return l3Uuids;
+        }
+
+        L3NetworkInventory l3 = findBackendL3Network(struct, nics);
+        if (l3 != null) {
+            l3Uuids.add(l3.getUuid());
+        }
+        return l3Uuids;
+    }
+
+    private boolean hasBackendServers(LoadBalancerStruct struct) {
+        return struct.getListenerServerGroupMap().values().stream()
+                .filter(Objects::nonNull)
+                .flatMap(Collection::stream)
+                .anyMatch(group -> (group.getVmNicRefs() != null && !group.getVmNicRefs().isEmpty()) ||
+                        (group.getServerIps() != null && !group.getServerIps().isEmpty()));
+    }
+
     @Override
     public void addVmNic(final LoadBalancerStruct struct, VmNicInventory nic, final Completion completion) {
         addVmNics(struct, list(nic), completion);
@@ -2090,14 +2170,6 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
     @Override
     public void removeVmNics(LoadBalancerStruct struct, List<VmNicInventory> nics, Completion completion) {
         VirtualRouterVmInventory vr = findVirtualRouterVm(struct.getLb().getUuid());
-
-        final boolean separateVr = LoadBalancerSystemTags.SEPARATE_VR.hasTag(struct.getLb().getUuid());
-        if (separateVr) {
-            logger.error("not support the separate vrouter currently.");
-            // no support the case
-            completion.success();
-            return;
-        }
 
         if (vr == null) {
             // the vr has been destroyed, it just need modify the Vip
@@ -2166,7 +2238,7 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
                 done(new FlowDoneHandler(completion) {
                     @Override
                     public void handle(Map data) {
-                        if (struct.getListeners().isEmpty() || struct.getAllVmNics().isEmpty()) {
+                        if (struct.getListeners().isEmpty() || !hasBackendServers(struct)) {
                             proxy.detachNetworkService(vr.getUuid(), LoadBalancerVO.class.getSimpleName(), asList(struct.getLb().getUuid()));
                         }
 
@@ -2199,13 +2271,6 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
         VirtualRouterVmInventory vr = findVirtualRouterVm(struct.getLb().getUuid());
         if (vr == null) {
             // the vr has been destroyed
-            completion.success();
-            return;
-        }
-
-        final boolean separateVr = LoadBalancerSystemTags.SEPARATE_VR.hasTag(struct.getLb().getUuid());
-        if (separateVr) {
-            logger.error("not support the separate vrouter currently.");
             completion.success();
             return;
         }
@@ -2270,7 +2335,7 @@ public class VirtualRouterLoadBalancerBackend extends AbstractVirtualRouterBacke
                 done(new FlowDoneHandler(completion) {
                     @Override
                     public void handle(Map data) {
-                        if (struct.getListeners().isEmpty() || struct.getAllVmNics().isEmpty()) {
+                        if (struct.getListeners().isEmpty() || !hasBackendServers(struct)) {
                             proxy.detachNetworkService(vr.getUuid(), LoadBalancerVO.class.getSimpleName(), asList(struct.getLb().getUuid()));
                         }
                         completion.success();

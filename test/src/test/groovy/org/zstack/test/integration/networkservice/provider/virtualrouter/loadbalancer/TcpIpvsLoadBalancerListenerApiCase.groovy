@@ -6,26 +6,34 @@ import org.zstack.network.service.eip.EipConstant
 import org.zstack.network.service.lb.LoadBalancerConstants
 import org.zstack.network.service.lb.LoadBalancerListenerVO
 import org.zstack.network.service.lb.LoadBalancerListenerVO_
+import org.zstack.network.service.lb.LoadBalancerVO
+import org.zstack.network.service.lb.LoadBalancerVO_
 import org.zstack.network.service.portforwarding.PortForwardingConstant
+import org.zstack.network.service.virtualrouter.lb.VirtualRouterLoadBalancerBackend
 import org.zstack.network.service.virtualrouter.vyos.VyosConstants
+import org.zstack.kvm.KVMConstant
+import org.zstack.kvm.KVMAgentCommands
+import org.zstack.sdk.ChangeLoadBalancerListenerAction
 import org.zstack.sdk.ApiResult
 import org.zstack.sdk.CreateLoadBalancerListenerAction
 import org.zstack.sdk.CreateLoadBalancerListenerResult
 import org.zstack.sdk.L3NetworkInventory
 import org.zstack.sdk.LoadBalancerInventory
 import org.zstack.sdk.LoadBalancerListenerInventory
+import org.zstack.sdk.LoadBalancerServerGroupInventory
 import org.zstack.sdk.VipInventory
 import org.zstack.sdk.ZSClient
 import org.zstack.test.integration.networkservice.provider.NetworkServiceProviderTest
 import org.zstack.testlib.EnvSpec
 import org.zstack.testlib.SubCase
 import org.zstack.utils.data.SizeUnit
-
-import static java.util.Arrays.asList
+import org.zstack.utils.gson.JSONObjectUtil
+import org.springframework.http.HttpEntity
 
 class TcpIpvsLoadBalancerListenerApiCase extends SubCase {
     EnvSpec env
     LoadBalancerInventory lb
+    List<VirtualRouterLoadBalancerBackend.RefreshLbCmd> refreshCmds = []
 
     @Override
     void setup() {
@@ -103,6 +111,20 @@ class TcpIpvsLoadBalancerListenerApiCase extends SubCase {
                     }
 
                     l3Network {
+                        name = "backendL3"
+                        ip {
+                            startIp = "10.58.0.160"
+                            endIp = "10.58.0.200"
+                            gateway = "10.58.0.1"
+                            netmask = "255.255.255.0"
+                        }
+                        service {
+                            provider = VyosConstants.VYOS_ROUTER_PROVIDER_TYPE
+                            types = [LoadBalancerConstants.LB_NETWORK_SERVICE_TYPE_STRING]
+                        }
+                    }
+
+                    l3Network {
                         name = "managementL3"
                         ip {
                             startIp = "172.21.58.160"
@@ -140,6 +162,7 @@ class TcpIpvsLoadBalancerListenerApiCase extends SubCase {
             testTcpIpvsFullNatListener()
             testTcpIpvsDefaultForwardMode()
             testTcpIpvsCreateValidation()
+            testTcpIpvsDedicatedListenerBackendRefreshPayload()
         }
     }
 
@@ -153,7 +176,7 @@ class TcpIpvsLoadBalancerListenerApiCase extends SubCase {
         lb = createLoadBalancer {
             delegate.name = "tcp-ipvs-api-lb"
             delegate.vipUuid = vip.uuid
-            delegate.systemTags = asList("separateVirtualRouterVm")
+            delegate.systemTags = ["separateVirtualRouterVm"]
         }
     }
 
@@ -235,6 +258,220 @@ class TcpIpvsLoadBalancerListenerApiCase extends SubCase {
         CreateLoadBalancerListenerAction.Result drResult = assertCreateListenerError(11087, LoadBalancerConstants.LB_PROTOCOL_TCP,
                 LoadBalancerConstants.DATA_PLANE_IPVS, LoadBalancerConstants.FORWARD_MODE_DR)
         assert drResult.error.details.contains("TCP IPVS only supports forwardMode[full_nat]")
+    }
+
+    void testTcpIpvsDedicatedListenerBackendRefreshPayload() {
+        env.afterSimulator(VirtualRouterLoadBalancerBackend.REFRESH_LB_PATH) { rsp, HttpEntity<String> e ->
+            refreshCmds.add(JSONObjectUtil.toObject(e.body, VirtualRouterLoadBalancerBackend.RefreshLbCmd.class))
+            return rsp
+        }
+        List<KVMAgentCommands.DestroyVmCmd> destroyVmCmds = []
+        env.afterSimulator(KVMConstant.KVM_DESTROY_VM_PATH) { rsp, HttpEntity<String> e ->
+            destroyVmCmds.add(JSONObjectUtil.toObject(e.body, KVMAgentCommands.DestroyVmCmd.class))
+            return rsp
+        }
+
+        LoadBalancerListenerInventory listener = createTcpIpvsListener("tcp-ipvs-t2", 11090, LoadBalancerConstants.BALANCE_ALGORITHM_LEAST_CONN)
+        LoadBalancerListenerInventory otherIpvsListener = createTcpIpvsListener("tcp-ipvs-t2-other", 11091, LoadBalancerConstants.BALANCE_ALGORITHM_ROUND_ROBIN)
+        LoadBalancerListenerInventory haproxyListener = createLoadBalancerListener {
+            delegate.name = "tcp-haproxy-t2"
+            delegate.loadBalancerUuid = lb.uuid
+            delegate.protocol = LoadBalancerConstants.LB_PROTOCOL_TCP
+            delegate.loadBalancerPort = 11092
+            delegate.instancePort = 8080
+        }
+
+        String backendIp1 = reserveBackendIp("tcp-ipvs-t2-backend-1")
+        String backendIp2 = reserveBackendIp("tcp-ipvs-t2-backend-2")
+        String backendIp3 = reserveBackendIp("tcp-ipvs-t2-backend-3")
+        String backendIp4 = reserveBackendIp("tcp-ipvs-t2-backend-4")
+
+        LoadBalancerServerGroupInventory group1 = createServerGroupWithServerIps(
+                "tcp-ipvs-t2-group-1",
+                [["ipAddress": backendIp1, "weight": "100"]])
+        addServerGroupToLoadBalancerListener {
+            listenerUuid = listener.uuid
+            serverGroupUuid = group1.uuid
+        }
+
+        VirtualRouterLoadBalancerBackend.LbTO to = lastLbTO(listener.uuid)
+        assertTcpIpvsTO(to, listener.uuid, 11090, LoadBalancerConstants.BALANCE_ALGORITHM_LEAST_CONN)
+        assertServerGroups(to, [
+                (group1.uuid): [(backendIp1): 100L]
+        ])
+
+        addBackendServerToServerGroup {
+            serverGroupUuid = group1.uuid
+            servers = [["ipAddress": backendIp2, "weight": "50"], ["ipAddress": backendIp4, "weight": "80"]]
+        }
+        to = lastLbTO(listener.uuid)
+        assertServerGroups(to, [
+                (group1.uuid): [(backendIp1): 100L, (backendIp2): 50L, (backendIp4): 80L]
+        ])
+
+        changeLoadBalancerBackendServer {
+            serverGroupUuid = group1.uuid
+            servers = [["ipAddress": backendIp2, "weight": "0"]]
+        }
+        to = lastLbTO(listener.uuid)
+        assertServerGroups(to, [
+                (group1.uuid): [(backendIp1): 100L, (backendIp2): 0L, (backendIp4): 80L]
+        ])
+
+        LoadBalancerServerGroupInventory group2 = createServerGroupWithServerIps(
+                "tcp-ipvs-t2-group-2",
+                [["ipAddress": backendIp3, "weight": "30"]])
+        addServerGroupToLoadBalancerListener {
+            listenerUuid = listener.uuid
+            serverGroupUuid = group2.uuid
+        }
+        to = lastLbTO(listener.uuid)
+        assertServerGroups(to, [
+                (group1.uuid): [(backendIp1): 100L, (backendIp2): 0L, (backendIp4): 80L],
+                (group2.uuid): [(backendIp3): 30L]
+        ])
+
+        removeBackendServerFromServerGroup {
+            serverGroupUuid = group1.uuid
+            serverIps = [backendIp2]
+        }
+        to = lastLbTO(listener.uuid)
+        assertServerGroups(to, [
+                (group1.uuid): [(backendIp1): 100L, (backendIp4): 80L],
+                (group2.uuid): [(backendIp3): 30L]
+        ])
+
+        [
+                LoadBalancerConstants.BALANCE_ALGORITHM_ROUND_ROBIN,
+                LoadBalancerConstants.BALANCE_ALGORITHM_WEIGHT_ROUND_ROBIN,
+                LoadBalancerConstants.BALANCE_ALGORITHM_LEAST_CONN,
+                LoadBalancerConstants.BALANCE_ALGORITHM_LEAST_SOURCE
+        ].each { String algorithm ->
+            int offset = refreshCmds.size()
+            changeBalancerAlgorithm(listener.uuid, algorithm)
+            to = lastLbTO(listener.uuid, offset)
+            assertTcpIpvsTO(to, listener.uuid, 11090, algorithm)
+        }
+
+        addServerGroupToLoadBalancerListener {
+            listenerUuid = otherIpvsListener.uuid
+            serverGroupUuid = createServerGroupWithServerIps(
+                    "tcp-ipvs-t2-other-group",
+                    [["ipAddress": backendIp1, "weight": "100"]]).uuid
+        }
+        addServerGroupToLoadBalancerListener {
+            listenerUuid = haproxyListener.uuid
+            serverGroupUuid = createServerGroupWithServerIps(
+                    "tcp-ipvs-t2-haproxy-group",
+                    [["ipAddress": backendIp1, "weight": "100"]]).uuid
+        }
+
+        deleteLoadBalancerListener {
+            uuid = listener.uuid
+        }
+        VirtualRouterLoadBalancerBackend.RefreshLbCmd deleteCmd = refreshCmds.last()
+        assert deleteCmd.lbs.find { it.listenerUuid == listener.uuid } != null
+        assert deleteCmd.lbs.find { it.listenerUuid == otherIpvsListener.uuid } != null
+        assert deleteCmd.lbs.find { it.listenerUuid == haproxyListener.uuid } != null
+        assert Q.New(LoadBalancerVO.class)
+                .select(LoadBalancerVO_.providerType)
+                .eq(LoadBalancerVO_.uuid, lb.uuid)
+                .findValue() == VyosConstants.VYOS_ROUTER_PROVIDER_TYPE
+
+        int destroyOffset = destroyVmCmds.size()
+        deleteLoadBalancer {
+            uuid = lb.uuid
+        }
+        assert destroyVmCmds.size() > destroyOffset
+        assert destroyVmCmds.drop(destroyOffset).any { it.uuid != null }
+    }
+
+    LoadBalancerListenerInventory createTcpIpvsListener(String name, int port, String algorithm) {
+        return createLoadBalancerListener {
+            delegate.name = name
+            delegate.loadBalancerUuid = lb.uuid
+            delegate.protocol = LoadBalancerConstants.LB_PROTOCOL_TCP
+            delegate.loadBalancerPort = port
+            delegate.instancePort = 8080
+            delegate.dataPlane = LoadBalancerConstants.DATA_PLANE_IPVS
+            delegate.forwardMode = LoadBalancerConstants.FORWARD_MODE_FULL_NAT
+            delegate.systemTags = ["balancerAlgorithm::${algorithm}".toString()]
+        }
+    }
+
+    String reserveBackendIp(String name) {
+        L3NetworkInventory backendL3 = env.inventoryByName("backendL3") as L3NetworkInventory
+        VipInventory vip = createVip {
+            delegate.name = name
+            delegate.l3NetworkUuid = backendL3.uuid
+        }
+        return vip.ip
+    }
+
+    LoadBalancerServerGroupInventory createServerGroupWithServerIps(String groupName, List<Map<String, String>> backendServers) {
+        LoadBalancerServerGroupInventory group = createLoadBalancerServerGroup {
+            loadBalancerUuid = lb.uuid
+            name = groupName
+        }
+        addBackendServerToServerGroup {
+            serverGroupUuid = group.uuid
+            servers = backendServers
+        }
+        return group
+    }
+
+    VirtualRouterLoadBalancerBackend.LbTO lastLbTO(String listenerUuid, int offset = 0) {
+        long deadline = System.currentTimeMillis() + 5000
+        VirtualRouterLoadBalancerBackend.LbTO to = null
+        while (System.currentTimeMillis() < deadline) {
+            if (refreshCmds.size() > offset) {
+                to = refreshCmds.drop(offset).reverse()
+                        .collectMany { it.lbs }
+                        .find { it.listenerUuid == listenerUuid }
+                if (to != null) {
+                    break
+                }
+            }
+            Thread.sleep(100)
+        }
+        assert refreshCmds.size() > offset
+        assert to != null
+        return to
+    }
+
+    void assertTcpIpvsTO(VirtualRouterLoadBalancerBackend.LbTO to, String listenerUuid, int port, String algorithm) {
+        assert to.listenerUuid == listenerUuid
+        assert to.mode == LoadBalancerConstants.LB_PROTOCOL_TCP
+        assert to.dataPlane == LoadBalancerConstants.DATA_PLANE_IPVS
+        assert to.forwardMode == LoadBalancerConstants.FORWARD_MODE_FULL_NAT
+        assert to.loadBalancerPort == port
+        assert to.instancePort == 8080
+        assert to.parameters.contains("balancerAlgorithm::${algorithm}".toString())
+    }
+
+    void assertServerGroups(VirtualRouterLoadBalancerBackend.LbTO to, Map<String, Map<String, Long>> expected) {
+        assert to.serverGroups.size() == expected.size()
+        expected.each { String groupUuid, Map<String, Long> servers ->
+            def group = to.serverGroups.find { it.serverGroupUuid == groupUuid }
+            assert group != null
+            assert group.backendServers.size() == servers.size()
+            servers.each { String ip, Long weight ->
+                def server = group.backendServers.find { it.ip == ip }
+                assert server != null
+                assert server.weight == weight
+                assert to.nicIps.contains(ip)
+                assert to.parameters.contains("balancerWeight::${ip}::${weight}".toString())
+            }
+        }
+    }
+
+    void changeBalancerAlgorithm(String listenerUuid, String algorithm) {
+        ChangeLoadBalancerListenerAction action = new ChangeLoadBalancerListenerAction()
+        action.uuid = listenerUuid
+        action.balancerAlgorithm = algorithm
+        action.sessionId = adminSession()
+        ChangeLoadBalancerListenerAction.Result result = action.call()
+        assert result.error == null
     }
 
     CreateLoadBalancerListenerAction.Result assertCreateListenerError(int port, String protocol, String dataPlane, String forwardMode) {

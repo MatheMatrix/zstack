@@ -18,5 +18,9 @@ public interface LoadBalancerFactory {
 
     String getProviderTypeByVmNicUuid(String nicUuid);
 
+    default String getDefaultProviderType() {
+        return null;
+    }
+
     List<VmNicVO> getAttachableVmNicsForServerGroup(LoadBalancerVO lbVO, LoadBalancerServerGroupVO groupVO, int ipVersion);
 }

@@ -1878,7 +1878,7 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
                 throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_NETWORK_SERVICE_LB_10143, "the server ips [uuid:%s] are already on the load balancer servegroup [uuid:%s]", existingServerIps, msg.getServerGroupUuid()));
             }
 
-            if (lbVO.getType() == LoadBalancerType.Shared) {
+            if (isSharedLoadBalancerWithoutSeparateVr(loadBalancerUuid, lbVO)) {
                 throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_LB_10144, "could not add server ip to share load balancer server group"));
             }
             canAddServerIp = true;
@@ -2156,7 +2156,7 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
                 }
             }
 
-            if (lbVO.getType() == LoadBalancerType.Shared) {
+            if (isSharedLoadBalancerWithoutSeparateVr(loadBalancerUuid, lbVO)) {
                 throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_LB_10170, "could not add server ip to share load balancer server group"));
             }
         }
@@ -2166,6 +2166,10 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
         }else{
             throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_NETWORK_SERVICE_LB_10171, "could not change backendserver, beacause vmincs and serverips is null"));
         }
+    }
+
+    private boolean isSharedLoadBalancerWithoutSeparateVr(String loadBalancerUuid, LoadBalancerVO lbVO) {
+        return lbVO.getType() == LoadBalancerType.Shared && !LoadBalancerSystemTags.SEPARATE_VR.hasTag(loadBalancerUuid);
     }
 
 }

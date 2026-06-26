@@ -83,6 +83,11 @@ public class SharedLoadBalancerFactory implements LoadBalancerFactory {
     }
 
     @Override
+    public String getDefaultProviderType() {
+        return VyosConstants.VYOS_ROUTER_PROVIDER_TYPE;
+    }
+
+    @Override
     public List<VmNicVO> getAttachableVmNicsForServerGroup(LoadBalancerVO lbVO,
                                                            LoadBalancerServerGroupVO groupVO, int ipVersion) {
         String providerType = VyosConstants.VYOS_ROUTER_PROVIDER_TYPE;

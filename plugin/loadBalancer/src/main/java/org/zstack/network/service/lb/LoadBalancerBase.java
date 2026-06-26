@@ -1670,8 +1670,12 @@ public class LoadBalancerBase {
     private void addVmNicToListener(final AttachServerGroupToListenerStruct struct, final Completion completion) {
         LoadBalancerFactory f = lbMgr.getLoadBalancerFactory(self.getType().toString());
         List<String> nicUuids = new ArrayList<>(struct.getVmNicWeight().keySet());
-        final String providerType = f.getProviderTypeByVmNicUuid(nicUuids.isEmpty() ? null : nicUuids.get(0));
-        if (providerType == null) {
+        String providerType = f.getProviderTypeByVmNicUuid(nicUuids.isEmpty() ? null : nicUuids.get(0));
+        if (providerType == null && nicUuids.isEmpty() && LoadBalancerSystemTags.SEPARATE_VR.hasTag(self.getUuid())) {
+            providerType = f.getDefaultProviderType();
+        }
+        final String finalProviderType = providerType;
+        if (finalProviderType == null) {
             throw new OperationFailureException(operr(ORG_ZSTACK_NETWORK_SERVICE_LB_10022, "can not get service providerType for load balancer listener [uuid:%s]", struct.listenerUuid));
         }
 
@@ -1696,13 +1700,13 @@ public class LoadBalancerBase {
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
                         if (self.getProviderType() == null) {
-                            self.setProviderType(providerType);
+                            self.setProviderType(finalProviderType);
                             self = dbf.updateAndRefresh(self);
                             init = true;
                         } else {
-                            if (!providerType.equals(self.getProviderType())) {
+                            if (!finalProviderType.equals(self.getProviderType())) {
                                 throw new OperationFailureException(operr(ORG_ZSTACK_NETWORK_SERVICE_LB_10023, "service provider type mismatching. The load balancer[uuid:%s] is provided by the service provider[type:%s]," +
-                                                " but new service provider is [type: %s]", self.getUuid(), self.getProviderType(),providerType));
+                                                " but new service provider is [type: %s]", self.getUuid(), self.getProviderType(), finalProviderType));
                             }
                         }
 
