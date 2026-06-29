@@ -76,7 +76,18 @@ public abstract class ZbsMdsBase {
     }
 
     public <T extends AgentResponse> T syncCall(final String path, final Object cmd, final Class<T> retClass, TimeUnit unit, long timeout) {
-        return restf.syncJsonPost(makeHttpPath(self.getAddr(), path), cmd, retClass, unit, timeout);
+        try {
+            return restf.syncJsonPost(makeHttpPath(self.getAddr(), path), cmd, retClass, unit, timeout);
+        } catch (OperationFailureException e) {
+            try {
+                T ret = retClass.getDeclaredConstructor().newInstance();
+                ret.setError(e.getErrorCode().getDetails());
+                return ret;
+            } catch (Exception ex) {
+                throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_ZBS_10041,
+                        "failed to instantiate zbs agent response[%s], because %s", retClass.getName(), ex.getMessage()));
+            }
+        }
     }
 
     public <T extends AgentResponse> void httpCall(final String path, final Object cmd, final Class<T> retClass, final ReturnValueCompletion<T> completion) {
