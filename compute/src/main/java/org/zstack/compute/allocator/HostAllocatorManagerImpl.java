@@ -38,6 +38,8 @@ import org.zstack.header.vm.VmAbnormalLifeCycleExtensionPoint;
 import org.zstack.header.vm.VmAbnormalLifeCycleStruct;
 import org.zstack.header.vm.VmAbnormalLifeCycleStruct.VmAbnormalLifeCycleOperation;
 import org.zstack.header.vm.VmInstanceState;
+import org.zstack.header.vm.VmInstanceVO;
+import org.zstack.header.vm.VmInstanceVO_;
 import org.zstack.header.volume.VolumeFormat;
 import org.zstack.header.zone.ZoneVO;
 import org.zstack.utils.CollectionUtils;
@@ -253,6 +255,9 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
                 public HostCapacityVO call(HostCapacityVO cap) {
                     long before = cap.getAvailableMemory();
                     long avail = s.usedMemory == null ? cap.getTotalMemory() : cap.getTotalMemory() - s.usedMemory;
+                    if (hasInflightMigration() && avail > before) {
+                        avail = before;
+                    }
                     cap.setAvailableMemory(avail);
 
                     long totalCpu = cpuRatioMgr.calculateHostCpuByRatio(s.hostUuid, cap.getCpuNum());
@@ -275,6 +280,12 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
                 }
             });
         }
+    }
+
+    private boolean hasInflightMigration() {
+        return Q.New(VmInstanceVO.class)
+                .eq(VmInstanceVO_.state, VmInstanceState.Migrating)
+                .isExists();
     }
 
     private void handle(ReturnHostCapacityMsg msg) {
