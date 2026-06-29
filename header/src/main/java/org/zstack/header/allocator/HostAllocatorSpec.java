@@ -15,6 +15,7 @@ public class HostAllocatorSpec {
     private long memoryCapacity;
     private List<String> l3NetworkUuids;
     private long diskSize;
+    private long localStorageDiskSize;
     private String hypervisorType;
     private String allocatorStrategy;
     private VmInstanceInventory vmInstance;
@@ -199,6 +200,14 @@ public class HostAllocatorSpec {
         this.diskSize = diskSize;
     }
 
+    public long getLocalStorageDiskSize() {
+        return localStorageDiskSize > 0 ? localStorageDiskSize : diskSize;
+    }
+
+    public void setLocalStorageDiskSize(long localStorageDiskSize) {
+        this.localStorageDiskSize = localStorageDiskSize;
+    }
+
     public String getHypervisorType() {
         return hypervisorType;
     }
@@ -262,6 +271,7 @@ public class HostAllocatorSpec {
         spec.setSoftAvoidHostUuids(msg.getSoftAvoidHostUuids());
         spec.setCpuCapacity(msg.getCpuCapacity());
         spec.setDiskSize(msg.getDiskSize());
+        spec.setLocalStorageDiskSize(msg.getLocalStorageDiskSize());
         spec.setListAllHosts(msg.isListAllHosts());
         spec.setDryRun(msg.isDryRun());
         spec.setFullAllocate(msg.isFullAllocate());

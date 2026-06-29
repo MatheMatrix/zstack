@@ -11,6 +11,9 @@ import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.allocator.*;
 import org.zstack.header.configuration.DiskOfferingInventory;
 import org.zstack.header.configuration.DiskOfferingVO;
+import org.zstack.header.storage.primary.PrimaryStorageConstants;
+import org.zstack.header.storage.primary.PrimaryStorageVO;
+import org.zstack.header.storage.primary.PrimaryStorageVO_;
 import org.zstack.header.core.workflow.Flow;
 import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
@@ -60,25 +63,39 @@ public class VmAllocateHostFlow implements Flow {
         return size;
     }
 
+    private long getDataDiskSizeOnLocalStorage(VmInstanceSpec spec) {
+        String dataPs = spec.getRequiredPrimaryStorageUuidForDataVolume();
+        if (dataPs == null) {
+            return getTotalDataDiskSize(spec);
+        }
+        boolean dataOnLocal = PrimaryStorageConstants.LOCAL_STORAGE_TYPE.equals(
+                org.zstack.core.db.Q.New(PrimaryStorageVO.class)
+                        .eq(PrimaryStorageVO_.uuid, dataPs)
+                        .select(PrimaryStorageVO_.type)
+                        .findValue());
+        return dataOnLocal ? getTotalDataDiskSize(spec) : 0;
+    }
+
     protected AllocateHostMsg prepareMsg(VmInstanceSpec spec) {
         DesignatedAllocateHostMsg msg = new DesignatedAllocateHostMsg();
 
         List<DiskOfferingInventory> diskOfferings = new ArrayList<>();
         ImageInventory image = spec.getImageSpec().getInventory();
-        long diskSize;
+        long rootDiskSize;
         if (image == null || (image.getMediaType() != null && image.getMediaType().equals(ImageMediaType.ISO.toString()))) {
             DiskOfferingVO dvo = dbf.findByUuid(spec.getRootDiskOffering().getUuid(), DiskOfferingVO.class);
-            diskSize = dvo.getDiskSize();
+            rootDiskSize = dvo.getDiskSize();
             diskOfferings.add(DiskOfferingInventory.valueOf(dvo));
         } else {
-            diskSize = image.getSize();
+            rootDiskSize = image.getSize();
         }
-        diskSize += getTotalDataDiskSize(spec);
+        long diskSize = rootDiskSize + getTotalDataDiskSize(spec);
         diskOfferings.addAll(spec.getDataDiskOfferings());
         msg.setSoftAvoidHostUuids(spec.getSoftAvoidHostUuids());
         msg.setAvoidHostUuids(spec.getAvoidHostUuids());
         msg.setDiskOfferings(diskOfferings);
         msg.setDiskSize(diskSize);
+        msg.setLocalStorageDiskSize(rootDiskSize + getDataDiskSizeOnLocalStorage(spec));
         msg.setCpuCapacity(spec.getVmInventory().getCpuNum());
         msg.setMemoryCapacity(spec.getVmInventory().getMemorySize());
         msg.setClusterUuids(spec.getRequiredClusterUuids());
