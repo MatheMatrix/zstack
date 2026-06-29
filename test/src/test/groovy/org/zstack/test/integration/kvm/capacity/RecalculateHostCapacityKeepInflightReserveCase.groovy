@@ -1,6 +1,7 @@
 package org.zstack.test.integration.kvm.capacity
 
 import org.zstack.core.cloudbus.CloudBus
+import org.zstack.core.db.DatabaseFacade
 import org.zstack.core.db.Q
 import org.zstack.core.db.SQL
 import org.zstack.header.allocator.HostAllocatorConstant
@@ -10,6 +11,7 @@ import org.zstack.header.host.RecalculateHostCapacityMsg
 import org.zstack.header.vm.VmInstanceState
 import org.zstack.header.vm.VmInstanceVO
 import org.zstack.header.vm.VmInstanceVO_
+import org.zstack.header.vm.VmSchedHistoryVO
 import org.zstack.sdk.HostInventory
 import org.zstack.sdk.ImageInventory
 import org.zstack.sdk.InstanceOfferingInventory
@@ -23,6 +25,7 @@ import org.zstack.utils.data.SizeUnit
 class RecalculateHostCapacityKeepInflightReserveCase extends SubCase {
     EnvSpec env
     CloudBus bus
+    DatabaseFacade dbf
 
     @Override
     void setup() {
@@ -60,6 +63,13 @@ class RecalculateHostCapacityKeepInflightReserveCase extends SubCase {
                         password = "password"
                         totalMem = SizeUnit.GIGABYTE.toByte(64)
                     }
+                    kvm {
+                        name = "kvm2"
+                        managementIp = "127.0.0.2"
+                        username = "root"
+                        password = "password"
+                        totalMem = SizeUnit.GIGABYTE.toByte(64)
+                    }
                     attachPrimaryStorage("local")
                     attachL2Network("l2")
                 }
@@ -89,6 +99,7 @@ class RecalculateHostCapacityKeepInflightReserveCase extends SubCase {
     void test() {
         env.create {
             bus = bean(CloudBus.class)
+            dbf = bean(DatabaseFacade.class)
             recalcMustKeepInflightMigrateReserve()
         }
     }
@@ -97,7 +108,8 @@ class RecalculateHostCapacityKeepInflightReserveCase extends SubCase {
         InstanceOfferingInventory offering = env.inventoryByName("instanceOffering")
         ImageInventory image = env.inventoryByName("image")
         L3NetworkInventory l3 = env.inventoryByName("l3")
-        HostInventory host = env.inventoryByName("kvm")
+        HostInventory destHost = env.inventoryByName("kvm")
+        HostInventory otherHost = env.inventoryByName("kvm2")
 
         VmInstanceInventory vm = createVmInstance {
             name = "vm"
@@ -107,31 +119,59 @@ class RecalculateHostCapacityKeepInflightReserveCase extends SubCase {
         }
 
         long inflightReserve = SizeUnit.GIGABYTE.toByte(32)
-        long availBefore = Q.New(HostCapacityVO.class)
-                .eq(HostCapacityVO_.uuid, host.uuid)
-                .select(HostCapacityVO_.availableMemory).findValue()
 
-        // simulate a big VM mid-migration: dest host already reserved its memory,
-        // but VM row still belongs to the source host (not yet running here)
-        SQL.New(HostCapacityVO.class)
-                .eq(HostCapacityVO_.uuid, host.uuid)
-                .set(HostCapacityVO_.availableMemory, availBefore - inflightReserve)
-                .update()
+        // a big VM is mid live-migration toward destHost: dest already reserved
+        // its memory and sched-history records the dest, but VM is Migrating
+        VmSchedHistoryVO sched = new VmSchedHistoryVO()
+        sched.setVmInstanceUuid(vm.uuid)
+        sched.setDestHostUuid(destHost.uuid)
+        dbf.persist(sched)
         SQL.New(VmInstanceVO.class)
                 .eq(VmInstanceVO_.uuid, vm.uuid)
                 .set(VmInstanceVO_.state, VmInstanceState.Migrating)
                 .update()
 
+        long destAvail = avail(destHost.uuid)
+        SQL.New(HostCapacityVO.class)
+                .eq(HostCapacityVO_.uuid, destHost.uuid)
+                .set(HostCapacityVO_.availableMemory, destAvail - inflightReserve)
+                .update()
+        // otherHost is unrelated: pretend recalc would correct an under-count
+        long otherTotal = Q.New(HostCapacityVO.class)
+                .eq(HostCapacityVO_.uuid, otherHost.uuid)
+                .select(HostCapacityVO_.totalMemory).findValue()
+        SQL.New(HostCapacityVO.class)
+                .eq(HostCapacityVO_.uuid, otherHost.uuid)
+                .set(HostCapacityVO_.availableMemory, otherTotal - inflightReserve)
+                .update()
+
+        recalcZone()
+
+        // dest host: reservation kept, not raised back to total
+        assert avail(destHost.uuid) <= destAvail - inflightReserve
+        // unrelated host: recalc restores its true available memory
+        assert avail(otherHost.uuid) == otherTotal
+
+        // migration finished: VM landed, no longer frozen, recalc restores dest
+        SQL.New(VmInstanceVO.class)
+                .eq(VmInstanceVO_.uuid, vm.uuid)
+                .set(VmInstanceVO_.state, VmInstanceState.Running)
+                .update()
+        recalcZone()
+        assert avail(destHost.uuid) == destAvail
+    }
+
+    private long avail(String hostUuid) {
+        return Q.New(HostCapacityVO.class)
+                .eq(HostCapacityVO_.uuid, hostUuid)
+                .select(HostCapacityVO_.availableMemory).findValue()
+    }
+
+    private void recalcZone() {
         RecalculateHostCapacityMsg msg = new RecalculateHostCapacityMsg()
-        msg.setHostUuid(host.uuid)
+        msg.setZoneUuid(env.inventoryByName("zone").uuid)
         bus.makeLocalServiceId(msg, HostAllocatorConstant.SERVICE_ID)
         bus.call(msg)
-
-        long availAfter = Q.New(HostCapacityVO.class)
-                .eq(HostCapacityVO_.uuid, host.uuid)
-                .select(HostCapacityVO_.availableMemory).findValue()
-
-        assert availAfter <= availBefore - inflightReserve
     }
 
     @Override

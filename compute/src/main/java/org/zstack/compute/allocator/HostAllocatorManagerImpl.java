@@ -40,6 +40,8 @@ import org.zstack.header.vm.VmAbnormalLifeCycleStruct.VmAbnormalLifeCycleOperati
 import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmInstanceVO_;
+import org.zstack.header.vm.VmSchedHistoryVO;
+import org.zstack.header.vm.VmSchedHistoryVO_;
 import org.zstack.header.volume.VolumeFormat;
 import org.zstack.header.zone.ZoneVO;
 import org.zstack.utils.CollectionUtils;
@@ -255,7 +257,7 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
                 public HostCapacityVO call(HostCapacityVO cap) {
                     long before = cap.getAvailableMemory();
                     long avail = s.usedMemory == null ? cap.getTotalMemory() : cap.getTotalMemory() - s.usedMemory;
-                    if (hasInflightMigration() && avail > before) {
+                    if (isMigrationDestHost(s.hostUuid) && avail > before) {
                         avail = before;
                     }
                     cap.setAvailableMemory(avail);
@@ -282,9 +284,17 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
         }
     }
 
-    private boolean hasInflightMigration() {
-        return Q.New(VmInstanceVO.class)
+    private boolean isMigrationDestHost(String hostUuid) {
+        List<String> migratingVmUuids = Q.New(VmInstanceVO.class)
                 .eq(VmInstanceVO_.state, VmInstanceState.Migrating)
+                .select(VmInstanceVO_.uuid)
+                .listValues();
+        if (migratingVmUuids.isEmpty()) {
+            return false;
+        }
+        return Q.New(VmSchedHistoryVO.class)
+                .in(VmSchedHistoryVO_.vmInstanceUuid, migratingVmUuids)
+                .eq(VmSchedHistoryVO_.destHostUuid, hostUuid)
                 .isExists();
     }
 
