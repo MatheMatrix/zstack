@@ -202,11 +202,25 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
                     extPs.getUuid(), extPs.getName(), context.getInventory().getUuid(), context.getInventory().getName()));
 
             // one deploy pass redeploys the baseline client plus every exposed
-            // protocol's data path (e.g. the vhost SPDK target) on reconnect
-            List<String> protocols = Q.New(PrimaryStorageOutputProtocolRefVO.class)
+            // protocol's data path (e.g. the vhost SPDK target). a protocol already
+            // Connected on this host is skipped so reconnect doesn't bounce a live target.
+            List<String> protocols = new ArrayList<>(Q.New(PrimaryStorageOutputProtocolRefVO.class)
                     .eq(PrimaryStorageOutputProtocolRefVO_.primaryStorageUuid, extPs.getUuid())
                     .select(PrimaryStorageOutputProtocolRefVO_.outputProtocol)
+                    .listValues());
+
+            List<String> connected = Q.New(ExternalPrimaryStorageHostProtocolRefVO.class)
+                    .eq(ExternalPrimaryStorageHostProtocolRefVO_.primaryStorageUuid, extPs.getUuid())
+                    .eq(ExternalPrimaryStorageHostProtocolRefVO_.hostUuid, context.getInventory().getUuid())
+                    .eq(ExternalPrimaryStorageHostProtocolRefVO_.status, PrimaryStorageHostStatus.Connected)
+                    .select(ExternalPrimaryStorageHostProtocolRefVO_.protocol)
                     .listValues();
+            protocols.removeAll(connected);
+
+            if (protocols.isEmpty()) {
+                compl.done();
+                return;
+            }
 
             extPsFactory.getNodeSvc(extPs.getUuid()).deployClient(context.getInventory(), protocols, new Completion(compl) {
                 @Override
