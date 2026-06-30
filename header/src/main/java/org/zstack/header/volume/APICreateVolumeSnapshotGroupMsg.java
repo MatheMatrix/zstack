@@ -119,6 +119,11 @@ public class APICreateVolumeSnapshotGroupMsg extends APICreateMessage implements
     }
 
     @Override
+    public boolean isAllowPartialSuccess() {
+        return true;
+    }
+
+    @Override
     public List<APIAuditor.Result> multiAudit(APIMessage msg, APIEvent rsp) {
         APICreateVolumeSnapshotGroupMsg cmsg = (APICreateVolumeSnapshotGroupMsg) msg;
         List<APIAuditor.Result> res = new ArrayList<>();
@@ -127,6 +132,9 @@ public class APICreateVolumeSnapshotGroupMsg extends APICreateMessage implements
 
             List<VolumeSnapshotGroupRefInventory> volumeSnapshotRefs = ((APICreateVolumeSnapshotGroupEvent) rsp).getInventory().getVolumeSnapshotRefs();
             volumeSnapshotRefs.forEach(it -> {
+                if (it.isSnapshotDeleted()) {
+                    return;
+                }
                 res.add(new APIAuditor.Result(it.getVolumeSnapshotUuid(), VolumeSnapshotVO.class));
             });
         }
