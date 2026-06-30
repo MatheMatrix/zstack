@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class AddThirdpartyPlatformAction extends AbstractAction {
+public class RegisterThirdpartyPushSourceAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class AddThirdpartyPlatformAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.zwatch.thirdparty.api.AddThirdpartyPlatformResult value;
+        public org.zstack.sdk.zwatch.thirdparty.api.RegisterThirdpartyPushSourceResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -31,17 +31,17 @@ public class AddThirdpartyPlatformAction extends AbstractAction {
     @Param(required = true, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String type;
 
-    @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String url;
+    @Param(required = true, maxLength = 32, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String sourceUuid;
 
-    @Param(required = false, maxLength = 8192, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String template;
+    @Param(required = false, maxLength = 32, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String sourceSiteId;
+
+    @Param(required = true, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String managementUrl;
 
     @Param(required = false, maxLength = 2048, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String description;
-
-    @Param(required = false, validValues = {"PULL","PUSH","BOTH"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String receiveMode;
 
     @Param(required = false)
     public java.lang.String resourceUuid;
@@ -81,8 +81,8 @@ public class AddThirdpartyPlatformAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.zwatch.thirdparty.api.AddThirdpartyPlatformResult value = res.getResult(org.zstack.sdk.zwatch.thirdparty.api.AddThirdpartyPlatformResult.class);
-        ret.value = value == null ? new org.zstack.sdk.zwatch.thirdparty.api.AddThirdpartyPlatformResult() : value; 
+        org.zstack.sdk.zwatch.thirdparty.api.RegisterThirdpartyPushSourceResult value = res.getResult(org.zstack.sdk.zwatch.thirdparty.api.RegisterThirdpartyPushSourceResult.class);
+        ret.value = value == null ? new org.zstack.sdk.zwatch.thirdparty.api.RegisterThirdpartyPushSourceResult() : value; 
 
         return ret;
     }
@@ -112,7 +112,7 @@ public class AddThirdpartyPlatformAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "POST";
-        info.path = "/zwatch/third-party/platforms";
+        info.path = "/zwatch/third-party/push-sources";
         info.needSession = true;
         info.needPoll = true;
         info.parameterName = "params";

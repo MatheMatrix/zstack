@@ -60,6 +60,38 @@ public class ThirdpartyPlatformInventory  {
         return this.description;
     }
 
+    public java.lang.String receiveMode;
+    public void setReceiveMode(java.lang.String receiveMode) {
+        this.receiveMode = receiveMode;
+    }
+    public java.lang.String getReceiveMode() {
+        return this.receiveMode;
+    }
+
+    public java.lang.String sourceUuid;
+    public void setSourceUuid(java.lang.String sourceUuid) {
+        this.sourceUuid = sourceUuid;
+    }
+    public java.lang.String getSourceUuid() {
+        return this.sourceUuid;
+    }
+
+    public java.lang.String sourceSiteId;
+    public void setSourceSiteId(java.lang.String sourceSiteId) {
+        this.sourceSiteId = sourceSiteId;
+    }
+    public java.lang.String getSourceSiteId() {
+        return this.sourceSiteId;
+    }
+
+    public java.lang.String pushEndpoint;
+    public void setPushEndpoint(java.lang.String pushEndpoint) {
+        this.pushEndpoint = pushEndpoint;
+    }
+    public java.lang.String getPushEndpoint() {
+        return this.pushEndpoint;
+    }
+
     public java.sql.Timestamp lastSyncDate;
     public void setLastSyncDate(java.sql.Timestamp lastSyncDate) {
         this.lastSyncDate = lastSyncDate;
