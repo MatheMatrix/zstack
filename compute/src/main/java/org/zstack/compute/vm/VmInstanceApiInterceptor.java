@@ -28,6 +28,8 @@ import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.header.storage.primary.PrimaryStorageVO_;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefVO;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefVO_;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO_;
 import org.zstack.header.host.HostState;
@@ -1270,6 +1272,16 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
     }
 
     private void validate(APICreateVmInstanceFromVolumeSnapshotGroupMsg msg) {
+        boolean hasDeletedSnapshot = Q.New(VolumeSnapshotGroupRefVO.class)
+                .eq(VolumeSnapshotGroupRefVO_.volumeSnapshotGroupUuid, msg.getVolumeSnapshotGroupUuid())
+                .eq(VolumeSnapshotGroupRefVO_.snapshotDeleted, true)
+                .isExists();
+        if (hasDeletedSnapshot) {
+            throw new ApiMessageInterceptionException(argerr(
+                    "volume snapshot group[uuid:%s] is incomplete, cannot create vm instance from it",
+                    msg.getVolumeSnapshotGroupUuid()));
+        }
+
         String vmInstanceUuid = Q.New(VolumeSnapshotGroupVO.class).select(VolumeSnapshotGroupVO_.vmInstanceUuid)
                 .eq(VolumeSnapshotGroupVO_.uuid, msg.getVolumeSnapshotGroupUuid()).findValue();
         if (vmInstanceUuid == null) {
