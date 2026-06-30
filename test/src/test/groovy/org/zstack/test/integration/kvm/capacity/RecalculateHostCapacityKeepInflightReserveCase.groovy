@@ -4,6 +4,7 @@ import org.zstack.core.cloudbus.CloudBus
 import org.zstack.core.db.DatabaseFacade
 import org.zstack.core.db.Q
 import org.zstack.core.db.SQL
+import org.zstack.header.identity.AccountConstant
 import org.zstack.header.allocator.HostAllocatorConstant
 import org.zstack.header.allocator.HostCapacityVO
 import org.zstack.header.allocator.HostCapacityVO_
@@ -125,6 +126,8 @@ class RecalculateHostCapacityKeepInflightReserveCase extends SubCase {
         VmSchedHistoryVO sched = new VmSchedHistoryVO()
         sched.setVmInstanceUuid(vm.uuid)
         sched.setDestHostUuid(destHost.uuid)
+        sched.setAccountUuid(AccountConstant.INITIAL_SYSTEM_ADMIN_UUID)
+        sched.setSchedType("migrate")
         dbf.persist(sched)
         SQL.New(VmInstanceVO.class)
                 .eq(VmInstanceVO_.uuid, vm.uuid)
@@ -145,20 +148,21 @@ class RecalculateHostCapacityKeepInflightReserveCase extends SubCase {
                 .set(HostCapacityVO_.availableMemory, otherTotal - inflightReserve)
                 .update()
 
-        recalcZone()
-
-        // dest host: reservation kept, not raised back to total
-        assert avail(destHost.uuid) <= destAvail - inflightReserve
-        // unrelated host: recalc restores its true available memory
-        assert avail(otherHost.uuid) == otherTotal
+        recalcZone {
+            // dest host: reservation kept, not raised back to total
+            assert avail(destHost.uuid) <= destAvail - inflightReserve
+            // unrelated host: recalc restores its true available memory
+            assert avail(otherHost.uuid) == otherTotal
+        }
 
         // migration finished: VM landed, no longer frozen, recalc restores dest
         SQL.New(VmInstanceVO.class)
                 .eq(VmInstanceVO_.uuid, vm.uuid)
                 .set(VmInstanceVO_.state, VmInstanceState.Running)
                 .update()
-        recalcZone()
-        assert avail(destHost.uuid) == destAvail
+        recalcZone {
+            assert avail(destHost.uuid) == destAvail
+        }
     }
 
     private long avail(String hostUuid) {
@@ -167,11 +171,12 @@ class RecalculateHostCapacityKeepInflightReserveCase extends SubCase {
                 .select(HostCapacityVO_.availableMemory).findValue()
     }
 
-    private void recalcZone() {
+    private void recalcZone(Closure assertion) {
         RecalculateHostCapacityMsg msg = new RecalculateHostCapacityMsg()
         msg.setZoneUuid(env.inventoryByName("zone").uuid)
         bus.makeLocalServiceId(msg, HostAllocatorConstant.SERVICE_ID)
-        bus.call(msg)
+        bus.send(msg)
+        retryInSecs(10, 1, assertion)
     }
 
     @Override
