@@ -41,7 +41,7 @@ BEGIN
         update `zstack`.`schema_version` set `checksum`=1648524318   where `script`='V4.4.0__schema.sql' and `checksum` <> 1648524318;
         update `zstack`.`schema_version` set `checksum`=268584834   where `script`='V5.4.6__schema.sql' and `checksum` <> 268584834;
         update `zstack`.`schema_version` set `checksum`=-1455020895   where `script`='V5.1.4__schema.sql' and `checksum` <> -1455020895;
-        update `zstack`.`schema_version` set `checksum`=569762641   where `script`='V5.4.0__schema.sql' and `checksum` <> 569762641;
+        update `zstack`.`schema_version` set `checksum`=1898585412   where `script`='V5.4.0__schema.sql' and `checksum` <> 1898585412;
         update `zstack`.`schema_version` set `checksum`=1175380657   where `script`='V5.4.2__schema.sql' and `checksum` <> 1175380657;
     END IF;
 END $$

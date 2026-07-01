@@ -55,8 +55,8 @@ CREATE TABLE IF NOT EXISTS `zstack`.`LicenseAuthorizeHistoryVO` (
     PRIMARY KEY (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-ALTER TABLE `zstack`.`LicenseHistoryVO` ADD COLUMN `quotaType` varchar(64) DEFAULT 'None';
-ALTER TABLE HostCapacityVO ADD cpuCoreNum int unsigned NOT NULL DEFAULT 0;
+CALL ADD_COLUMN('LicenseHistoryVO', 'quotaType', 'varchar(64)', 1, 'None');
+CALL ADD_COLUMN('HostCapacityVO', 'cpuCoreNum', 'int unsigned', 0, '0');
 
 CREATE TABLE  `zstack`.`L3NetworkSequenceNumberVO` (
     `id` int unsigned NOT NULL UNIQUE AUTO_INCREMENT,
