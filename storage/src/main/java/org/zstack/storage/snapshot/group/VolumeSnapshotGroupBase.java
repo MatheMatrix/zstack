@@ -224,6 +224,12 @@ public class VolumeSnapshotGroupBase implements VolumeSnapshotGroup {
         if (snapshots.size() < self.getSnapshotCount()) {
             logger.debug(String.format("skip snapshots not belong to origin vm[uuid:%s]", self.getVmInstanceUuid()));
         }
+        if (snapshots.isEmpty()) {
+            vmHostFileManager.cleanVmHostBackupFile(self.getUuid());
+            dbf.remove(self);
+            bus.reply(msg, reply);
+            return;
+        }
 
         SimpleFlowChain.of("delete-volume-snapshot-group")
             .then("delete-volume-snapshots", (trigger) ->
