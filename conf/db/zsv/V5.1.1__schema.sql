@@ -1,0 +1,40 @@
+CREATE TABLE IF NOT EXISTS `LiveRecoveryAlertSourceVO` (
+    `uuid` varchar(32) NOT NULL,
+    `sourceUuid` varchar(64) NOT NULL,
+    `sourceSiteId` varchar(128) DEFAULT NULL,
+    `managementUrl` varchar(2048) DEFAULT NULL,
+    `displayName` varchar(255) DEFAULT NULL,
+    `version` varchar(64) DEFAULT NULL,
+    `state` varchar(32) NOT NULL DEFAULT 'Enabled',
+    `ownerAccountUuid` varchar(32) NOT NULL,
+    `lastSeenDate` timestamp NULL DEFAULT NULL,
+    `createDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `lastOpDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_live_recovery_source_uuid` (`sourceUuid`),
+    KEY `idx_live_recovery_source_owner` (`ownerAccountUuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE IF NOT EXISTS `LiveRecoveryAlertEventVO` (
+    `uuid` varchar(32) NOT NULL,
+    `sourceUuid` varchar(64) NOT NULL,
+    `alertUuid` varchar(64) NOT NULL,
+    `alertEventUuid` varchar(64) NOT NULL,
+    `eventSequence` bigint NOT NULL,
+    `alertEventType` varchar(32) NOT NULL,
+    `alertCode` varchar(128) NOT NULL,
+    `severity` varchar(32) NOT NULL,
+    `primaryObjectType` varchar(64) DEFAULT NULL,
+    `primaryObjectUuid` varchar(128) DEFAULT NULL,
+    `sitePairUuid` varchar(128) DEFAULT NULL,
+    `payloadJson` text NOT NULL,
+    `payloadTruncated` tinyint(1) NOT NULL DEFAULT 0,
+    `stale` tinyint(1) NOT NULL DEFAULT 0,
+    `createDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `lastOpDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`uuid`),
+    UNIQUE KEY `uk_live_recovery_alert_event` (`sourceUuid`, `alertEventUuid`),
+    UNIQUE KEY `uk_live_recovery_alert_sequence` (`sourceUuid`, `alertUuid`, `eventSequence`),
+    KEY `idx_live_recovery_alert_code_time` (`alertCode`, `createDate`),
+    KEY `idx_live_recovery_source_alert` (`sourceUuid`, `alertUuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
