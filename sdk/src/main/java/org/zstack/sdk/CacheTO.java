@@ -36,4 +36,12 @@ public class CacheTO extends org.zstack.sdk.BaseVirtualDeviceTO {
         return this.cacheMode;
     }
 
+    public java.lang.Long timeout;
+    public void setTimeout(java.lang.Long timeout) {
+        this.timeout = timeout;
+    }
+    public java.lang.Long getTimeout() {
+        return this.timeout;
+    }
+
 }

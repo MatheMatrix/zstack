@@ -7,6 +7,7 @@ public class CacheTO extends BaseVirtualDeviceTO {
     private String poolUuid;
     private String installPath;
     private String cacheMode;
+    private Long timeout;
 
     public String getCacheUuid() {
         return cacheUuid;
@@ -38,6 +39,14 @@ public class CacheTO extends BaseVirtualDeviceTO {
 
     public void setCacheMode(String cacheMode) {
         this.cacheMode = cacheMode;
+    }
+
+    public Long getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(Long timeout) {
+        this.timeout = timeout;
     }
 
     public static CacheTO valueOf(VolumeCacheInventory inv) {
