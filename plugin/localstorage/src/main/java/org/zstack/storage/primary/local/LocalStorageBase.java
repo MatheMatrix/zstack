@@ -2681,6 +2681,7 @@ public class LocalStorageBase extends PrimaryStorageBase {
         if (VolumeType.Data.toString().equals(volumeType) || VolumeType.Root.toString().equals(volumeType)) {
             capability.setArrangementType(VolumeSnapshotArrangementType.CHAIN);
             capability.setPlacementType(VolumeSnapshotCapability.VolumeSnapshotPlacementType.EXTERNAL);
+            capability.setMode(VolumeSnapshotCapability.VolumeSnapshotMode.REDIRECT_ON_WRITE);
         } else if (VolumeType.Memory.toString().equals(volumeType)) {
             capability.setArrangementType(VolumeSnapshotArrangementType.INDIVIDUAL);
         } else {

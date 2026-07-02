@@ -2460,6 +2460,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
         smsg.setPrimaryStorageUuid(self.getPrimaryStorageUuid());
         smsg.setVolumeUuid(self.getUuid());
         smsg.setInstallPath(self.getInstallPath());
+
         bus.makeTargetServiceIdByResourceUuid(smsg, PrimaryStorageConstant.SERVICE_ID, self.getPrimaryStorageUuid());
         bus.send(smsg, new CloudBusCallBack(completion) {
             @Override
@@ -2471,24 +2472,29 @@ public class VolumeBase extends AbstractVolume implements Volume {
 
                 refreshVO();
                 SyncVolumeSizeOnPrimaryStorageReply r = reply.castReply();
-                self.setSize(r.getSize());
-
-                if (!r.isWithInternalSnapshot()) {
-                    // the actual size = volume actual size + all snapshot size
-                    long snapshotSize = calculateSnapshotSize();
-                    self.setActualSize(r.getActualSize() + snapshotSize);
-                } else {
-                    self.setActualSize(r.getActualSize());
-                }
-
-                self = dbf.updateAndRefresh(self);
-
-                VolumeSize size = new VolumeSize();
-                size.actualSize = self.getActualSize();
-                size.size = self.getSize();
-                completion.success(size);
+                updateVolumeSize(r, completion);
             }
         });
+    }
+
+    private void updateVolumeSize(SyncVolumeSizeOnPrimaryStorageReply r, ReturnValueCompletion<VolumeSize> completion) {
+        refreshVO();
+        self.setSize(r.getSize());
+
+        if (!r.isWithInternalSnapshot()) {
+            // the actual size = volume actual size + all snapshot size
+            long snapshotSize = calculateSnapshotSize();
+            self.setActualSize(r.getActualSize() + snapshotSize);
+        } else {
+            self.setActualSize(r.getActualSize());
+        }
+
+        self = dbf.updateAndRefresh(self);
+
+        VolumeSize size = new VolumeSize();
+        size.actualSize = self.getActualSize();
+        size.size = self.getSize();
+        completion.success(size);
     }
 
     @Transactional(readOnly = true)

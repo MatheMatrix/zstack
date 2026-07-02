@@ -159,6 +159,7 @@ public class SimulatorPrimaryStorage extends PrimaryStorageBase {
         VolumeSnapshotCapability capability = new VolumeSnapshotCapability();
         capability.setArrangementType(VolumeSnapshotArrangementType.CHAIN);
         capability.setPlacementType(VolumeSnapshotCapability.VolumeSnapshotPlacementType.EXTERNAL);
+        capability.setMode(VolumeSnapshotCapability.VolumeSnapshotMode.REDIRECT_ON_WRITE);
         capability.setSupport(true);
         reply.setCapability(capability);
         bus.reply(msg, reply);

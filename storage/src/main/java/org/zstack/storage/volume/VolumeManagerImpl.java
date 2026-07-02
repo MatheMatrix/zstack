@@ -23,6 +23,7 @@ import org.zstack.core.workflow.ShareFlow;
 import org.zstack.header.AbstractService;
 import org.zstack.header.configuration.userconfig.DiskOfferingUserConfig;
 import org.zstack.header.core.Completion;
+import org.zstack.header.core.NoErrorCompletion;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.core.WhileDoneCompletion;
 import org.zstack.header.core.workflow.*;
@@ -51,6 +52,7 @@ import org.zstack.header.volume.VolumeDeletionPolicyManager.VolumeDeletionPolicy
 import org.zstack.identity.AccountManager;
 import org.zstack.storage.primary.PrimaryStorageDeleteBitGC;
 import org.zstack.storage.primary.PrimaryStorageGlobalConfig;
+import org.zstack.storage.snapshot.VolumeSnapshotSizeSyncHelper;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
@@ -766,34 +768,55 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
                 .in(VolumeVO_.vmInstanceUuid, activeVmUuids).listTuple().stream()
                 .collect(Collectors.groupingBy(t -> t.get(0, String.class), Collectors.toMap(
                         t -> ((Tuple)t).get(1, String.class), t -> ((Tuple)t).get(2, String.class))));
+        VolumeSnapshotSizeSyncHelper snapshotSizeSyncHelper = new VolumeSnapshotSizeSyncHelper(bus, dbf);
 
         new While<>(activeVolumesInPs.entrySet()).each((e, completion) -> {
-            BatchSyncVolumeSizeOnPrimaryStorageMsg bmsg = new BatchSyncVolumeSizeOnPrimaryStorageMsg();
-            bmsg.setHostUuid(msg.getHostUuid());
-            bmsg.setPrimaryStorageUuid(e.getKey());
-            bmsg.setVolumeUuidInstallPaths(e.getValue());
-            bus.makeTargetServiceIdByResourceUuid(bmsg, PrimaryStorageConstant.SERVICE_ID, e.getKey());
-            bus.send(bmsg, new CloudBusCallBack(completion) {
+            snapshotSizeSyncHelper.isSnapshotSizeSyncRequired(e.getKey(), new ReturnValueCompletion<Boolean>(completion) {
                 @Override
-                public void run(MessageReply r) {
-                    if (r.isSuccess()) {
-                        BatchSyncVolumeSizeOnPrimaryStorageReply br = r.castReply();
-                        Map<String, Long> actualSizes = br.getActualSizes();
+                public void success(Boolean syncSnapshotSize) {
+                    syncVolumeSize(syncSnapshotSize);
+                }
 
-                        reply.addSuccessCount(actualSizes.size());
-                        reply.addFailCount(e.getValue().size() - actualSizes.size());
+                @Override
+                public void fail(ErrorCode errorCode) {
+                    syncVolumeSize(false);
+                }
 
-                        refreshVolume(actualSizes);
-                    } else {
-                        reply.addFailCount(e.getValue().size());
+                private void syncVolumeSize(boolean syncSnapshotSize) {
+                    BatchSyncVolumeSizeOnPrimaryStorageMsg bmsg = new BatchSyncVolumeSizeOnPrimaryStorageMsg();
+                    bmsg.setHostUuid(msg.getHostUuid());
+                    bmsg.setPrimaryStorageUuid(e.getKey());
+                    bmsg.setVolumeUuidInstallPaths(e.getValue());
+                    bmsg.setWithSnapshot(syncSnapshotSize);
+                    if (syncSnapshotSize) {
+                        bmsg.setSnapshotUuidInstallPaths(snapshotSizeSyncHelper.getSnapshotUuidInstallPaths(e.getKey(), e.getValue().keySet()));
                     }
+                    bus.makeTargetServiceIdByResourceUuid(bmsg, PrimaryStorageConstant.SERVICE_ID, e.getKey());
+                    bus.send(bmsg, new CloudBusCallBack(completion) {
+                        @Override
+                        public void run(MessageReply r) {
+                            if (r.isSuccess()) {
+                                BatchSyncVolumeSizeOnPrimaryStorageReply br = r.castReply();
+                                Map<String, Long> actualSizes = br.getActualSizes();
 
-                    completion.done();
+                                reply.addSuccessCount(actualSizes.size());
+                                reply.addFailCount(e.getValue().size() - actualSizes.size());
+
+                                if (syncSnapshotSize) {
+                                    snapshotSizeSyncHelper.updateSnapshotActualSizes(br.getSnapshotActualSizes());
+                                }
+                                refreshVolume(actualSizes);
+                            } else {
+                                reply.addFailCount(e.getValue().size());
+                            }
+                            completion.done();
+                        }
+                    });
                 }
 
                 @Transactional(readOnly = true)
                 private Map<String, Long> calculateSnapshotSize(Collection<String> volumeUuids) {
-                    String sql = "select sp.uuid, sum(sp.size) from VolumeSnapshotVO sp where sp.volumeUuid in :uuids group by sp.uuid";
+                    String sql = "select sp.volumeUuid, sum(sp.size) from VolumeSnapshotVO sp where sp.volumeUuid in :uuids group by sp.volumeUuid";
                     TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
                     q.setParameter("uuids", volumeUuids);
                     List<Tuple> results = q.getResultList();

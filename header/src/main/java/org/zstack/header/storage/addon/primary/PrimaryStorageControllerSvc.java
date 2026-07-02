@@ -5,6 +5,7 @@ import org.zstack.header.core.Completion;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.storage.addon.*;
+import org.zstack.header.storage.primary.StorageResourceStats;
 import org.zstack.header.storage.snapshot.VolumeSnapshotStats;
 import org.zstack.header.volume.VolumeProtocol;
 import org.zstack.header.volume.VolumeStats;
@@ -64,7 +65,7 @@ public interface PrimaryStorageControllerSvc {
     // support uri or path
     void stats(String installPath, ReturnValueCompletion<VolumeStats> comp);
 
-    void batchStats(Collection<String> installPath, ReturnValueCompletion<List<VolumeStats>> comp);
+    void batchStats(BatchStatsSpec spec, ReturnValueCompletion<List<StorageResourceStats>> comp);
 
     void expandVolume(String installPath, long size, ReturnValueCompletion<VolumeStats> comp);
     void setVolumeQos(BaseVolumeInfo v, Completion comp);

@@ -3330,6 +3330,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
             cap.setSupport(true);
             cap.setArrangementType(VolumeSnapshotArrangementType.INDIVIDUAL);
             cap.setPlacementType(VolumeSnapshotCapability.VolumeSnapshotPlacementType.INTERNAL);
+            cap.setMode(VolumeSnapshotCapability.VolumeSnapshotMode.REDIRECT_ON_WRITE);
             cap.setVolumePathFromInternalSnapshotRegex("^[^@]+");
         } else if (VolumeType.Memory.toString().equals(volumeType)) {
             cap.setSupport(false);
