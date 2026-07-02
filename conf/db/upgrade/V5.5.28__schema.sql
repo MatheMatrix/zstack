@@ -104,7 +104,6 @@ CREATE TABLE IF NOT EXISTS `HostCacheStoreVO` (
     `hostUuid`          VARCHAR(32)    NOT NULL,
     `name`              VARCHAR(255)   DEFAULT NULL,
     `description`       VARCHAR(2048)  DEFAULT NULL,
-    `mountPoint`        VARCHAR(255)   DEFAULT NULL,
     `devices`           TEXT,
     `state`             VARCHAR(32)    NOT NULL,
     `status`            VARCHAR(32)    NOT NULL,

@@ -35,12 +35,6 @@ doc {
 		since "5.5.28"
 	}
 	field {
-		name "mountPoint"
-		desc "缓存池挂载路径"
-		type "String"
-		since "5.5.28"
-	}
-	field {
 		name "totalCapacity"
 		desc "主机缓存存储的总容量，单位为字节"
 		type "long"

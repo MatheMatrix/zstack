@@ -5430,45 +5430,38 @@ public class KVMAgentCommands {
 
     public static class InitPoolCmd extends AgentCommand {
         public String poolUuid;
-        public String mountPoint;
         public boolean force;
         public List<String> devices;
     }
 
     public static class ConnectPoolCmd extends AgentCommand {
         public String poolUuid;
-        public String mountPoint;
         public boolean force;
     }
 
     public static class ExtendPoolCmd extends AgentCommand {
         public String poolUuid;
-        public String mountPoint;
         public boolean force;
         public List<String> devices;
     }
 
     public static class DeletePoolCmd extends AgentCommand {
         public String poolUuid;
-        public String mountPoint;
         public boolean force;
     }
 
     public static class CheckPoolCmd extends AgentCommand {
         public String poolUuid;
-        public String mountPoint;
         public boolean force;
     }
 
     public static class GetPoolCapacityCmd extends AgentCommand {
         public String poolUuid;
-        public String mountPoint;
         public boolean force;
     }
 
     public static class GCPoolCmd extends AgentCommand {
         public String poolUuid;
-        public String mountPoint;
         public boolean force;
         public List<String> inUseCacheUuids;
     }
@@ -5511,7 +5504,6 @@ public class KVMAgentCommands {
 
     public static class PoolRsp extends AgentResponse {
         public String poolUuid;
-        public String mountPoint;
     }
 
     public static class PoolHealthRsp extends AgentResponse {

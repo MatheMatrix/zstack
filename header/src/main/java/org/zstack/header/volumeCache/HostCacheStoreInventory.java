@@ -17,7 +17,6 @@ public class HostCacheStoreInventory implements Serializable {
     private String hostUuid;
     private String name;
     private String description;
-    private String mountPoint;
 
     @Queryable(mappingClass = HostCacheStoreCapacityInventory.class,
             joinColumn = @JoinColumn(name = "uuid", referencedColumnName = "totalCapacity"))
@@ -48,7 +47,6 @@ public class HostCacheStoreInventory implements Serializable {
         inv.setHostUuid(vo.getHostUuid());
         inv.setName(vo.getName());
         inv.setDescription(vo.getDescription());
-        inv.setMountPoint(vo.getMountPoint());
         if (vo.getCapacity() != null) {
             inv.setTotalCapacity(vo.getCapacity().getTotalCapacity());
             inv.setAvailableCapacity(vo.getCapacity().getAvailableCapacity());
@@ -117,14 +115,6 @@ public class HostCacheStoreInventory implements Serializable {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public String getMountPoint() {
-        return mountPoint;
-    }
-
-    public void setMountPoint(String mountPoint) {
-        this.mountPoint = mountPoint;
     }
 
     public long getTotalCapacity() {

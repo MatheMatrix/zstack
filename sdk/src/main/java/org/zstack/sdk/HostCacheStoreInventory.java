@@ -37,14 +37,6 @@ public class HostCacheStoreInventory  {
         return this.description;
     }
 
-    public java.lang.String mountPoint;
-    public void setMountPoint(java.lang.String mountPoint) {
-        this.mountPoint = mountPoint;
-    }
-    public java.lang.String getMountPoint() {
-        return this.mountPoint;
-    }
-
     public long totalCapacity;
     public void setTotalCapacity(long totalCapacity) {
         this.totalCapacity = totalCapacity;

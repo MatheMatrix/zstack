@@ -11,7 +11,6 @@ public class HostCacheStoreVO_ extends ResourceVO_ {
     public static volatile SingularAttribute<HostCacheStoreVO, String> hostUuid;
     public static volatile SingularAttribute<HostCacheStoreVO, String> name;
     public static volatile SingularAttribute<HostCacheStoreVO, String> description;
-    public static volatile SingularAttribute<HostCacheStoreVO, String> mountPoint;
     public static volatile SingularAttribute<HostCacheStoreVO, HostCacheStoreState> state;
     public static volatile SingularAttribute<HostCacheStoreVO, HostCacheStoreStatus> status;
     public static volatile SingularAttribute<HostCacheStoreVO, Timestamp> createDate;

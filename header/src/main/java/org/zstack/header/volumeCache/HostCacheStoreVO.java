@@ -35,9 +35,6 @@ public class HostCacheStoreVO extends ResourceVO implements ToInventory {
     @Column
     private String description;
 
-    @Column(length = 255)
-    private String mountPoint;
-
     @Column(columnDefinition = "TEXT")
     @Convert(converter = HostCacheStoreDeviceRefsConverter.class)
     private List<HostCacheStoreDeviceRef> devices;
@@ -93,14 +90,6 @@ public class HostCacheStoreVO extends ResourceVO implements ToInventory {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public String getMountPoint() {
-        return mountPoint;
-    }
-
-    public void setMountPoint(String mountPoint) {
-        this.mountPoint = mountPoint;
     }
 
     public List<HostCacheStoreDeviceRef> getDevices() {
