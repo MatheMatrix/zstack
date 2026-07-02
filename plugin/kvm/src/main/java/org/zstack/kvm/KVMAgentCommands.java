@@ -5452,6 +5452,7 @@ public class KVMAgentCommands {
         public String poolUuid;
         public String mountPoint;
         public boolean force;
+        public List<String> devices;
     }
 
     public static class CheckPoolCmd extends AgentCommand {
