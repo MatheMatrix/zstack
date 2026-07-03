@@ -781,8 +781,8 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
     }
 
     @Override
-    public void handle(PrimaryStorageInventory inv, BatchSyncVolumeSizeOnPrimaryStorageMsg msg, ReturnValueCompletion<BatchSyncVolumeSizeOnPrimaryStorageReply> completion) {
-        BatchSyncVolumeSizeOnPrimaryStorageReply reply = new BatchSyncVolumeSizeOnPrimaryStorageReply();
+    public void handle(PrimaryStorageInventory inv, BatchSyncVolumeResourceSizeOnPrimaryStorageMsg msg, ReturnValueCompletion<BatchSyncVolumeResourceSizeOnPrimaryStorageReply> completion) {
+        BatchSyncVolumeResourceSizeOnPrimaryStorageReply reply = new BatchSyncVolumeResourceSizeOnPrimaryStorageReply();
 
         GetBatchVolumeActualSizeCmd cmd = new GetBatchVolumeActualSizeCmd();
         cmd.volumeUuidInstallPaths = msg.getVolumeUuidInstallPaths();
@@ -791,7 +791,7 @@ public class NfsPrimaryStorageKVMBackend implements NfsPrimaryStorageBackend,
         asyncHttpCall(BATCH_GET_VOLUME_SIZE_PATH, msg.getHostUuid(), cmd, GetBatchVolumeActualSizeRsp.class, inv, new ReturnValueCompletion<GetBatchVolumeActualSizeRsp>(completion) {
             @Override
             public void success(GetBatchVolumeActualSizeRsp rsp) {
-                reply.setActualSizes(rsp.actualSizes);
+                reply.setVolumeActualSizes(rsp.actualSizes);
                 completion.success(reply);
             }
 

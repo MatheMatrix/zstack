@@ -16,6 +16,11 @@ public class VolumeSnapshotCapability {
         EXTERNAL,
     }
 
+    public static enum VolumeSnapshotMode {
+        REDIRECT_ON_WRITE,
+        COPY_ON_WRITE,
+    }
+
     private boolean support;
 
     /***
@@ -34,6 +39,8 @@ public class VolumeSnapshotCapability {
     private VolumeSnapshotArrangementType arrangementType;
 
     private VolumeSnapshotPlacementType placementType;
+
+    private VolumeSnapshotMode mode;
     
     /***
      * If volume snapshot is inner snapshot on volume, it must be set.
@@ -64,6 +71,14 @@ public class VolumeSnapshotCapability {
 
     public void setPlacementType(VolumeSnapshotPlacementType placementType) {
         this.placementType = placementType;
+    }
+
+    public VolumeSnapshotMode getMode() {
+        return mode;
+    }
+
+    public void setMode(VolumeSnapshotMode mode) {
+        this.mode = mode;
     }
 
     public boolean isSupportCreateOnHypervisor() {

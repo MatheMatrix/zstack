@@ -395,10 +395,15 @@ public class SMPPrimaryStorageBase extends PrimaryStorageBase implements KVMTake
         VolumeSnapshotCapability capability = new VolumeSnapshotCapability();
         capability.setSupport(true);
 
-        String volumeType = msg.getVolume().getType();
+        String volumeType = msg.getVolumeType();
+        if (volumeType == null) {
+            volumeType = msg.getVolume().getType();
+        }
+
         if (VolumeType.Data.toString().equals(volumeType) || VolumeType.Root.toString().equals(volumeType)) {
             capability.setArrangementType(VolumeSnapshotArrangementType.CHAIN);
             capability.setPlacementType(VolumeSnapshotCapability.VolumeSnapshotPlacementType.EXTERNAL);
+            capability.setMode(VolumeSnapshotCapability.VolumeSnapshotMode.REDIRECT_ON_WRITE);
         } else if (VolumeType.Memory.toString().equals(volumeType)) {
             capability.setArrangementType(VolumeSnapshotArrangementType.INDIVIDUAL);
         } else {
@@ -461,8 +466,8 @@ public class SMPPrimaryStorageBase extends PrimaryStorageBase implements KVMTake
     }
 
     @Override
-    protected void handle(BatchSyncVolumeSizeOnPrimaryStorageMsg msg) {
-        BatchSyncVolumeSizeOnPrimaryStorageReply reply = new BatchSyncVolumeSizeOnPrimaryStorageReply();
+    protected void handle(BatchSyncVolumeResourceSizeOnPrimaryStorageMsg msg) {
+        BatchSyncVolumeResourceSizeOnPrimaryStorageReply reply = new BatchSyncVolumeResourceSizeOnPrimaryStorageReply();
         bus.reply(msg, reply);
         logger.warn("Not supported at current edition");
     }

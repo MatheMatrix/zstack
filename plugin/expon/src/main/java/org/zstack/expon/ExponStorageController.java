@@ -36,6 +36,7 @@ import org.zstack.header.image.ImageConstant;
 import org.zstack.header.storage.addon.*;
 import org.zstack.header.storage.addon.primary.*;
 import org.zstack.header.storage.primary.ImageCacheInventory;
+import org.zstack.header.storage.primary.StorageResourceStats;
 import org.zstack.header.storage.primary.VolumeSnapshotCapability;
 import org.zstack.header.storage.snapshot.VolumeSnapshotStats;
 import org.zstack.header.volume.*;
@@ -93,6 +94,7 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
         scap.setSupport(true);
         scap.setArrangementType(VolumeSnapshotCapability.VolumeSnapshotArrangementType.INDIVIDUAL);
         scap.setPlacementType(VolumeSnapshotCapability.VolumeSnapshotPlacementType.INTERNAL);
+        scap.setMode(VolumeSnapshotCapability.VolumeSnapshotMode.REDIRECT_ON_WRITE);
         scap.setSupportCreateOnHypervisor(false);
         scap.setSupportLazyDelete(true);
         scap.setVolumePathFromInternalSnapshotRegex("^[^@]+");
@@ -1158,15 +1160,15 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     }
 
     @Override
-    public void batchStats(Collection<String> installPath, ReturnValueCompletion<List<VolumeStats>> comp) {
-        List<VolumeStats> stats = installPath.stream().map(it -> {
+    public void batchStats(Collection<String> installPaths, ReturnValueCompletion<List<StorageResourceStats>> comp) {
+        List<StorageResourceStats> stats = installPaths.stream().map(it -> {
             VolumeModule vol = apiHelper.getVolume(getVolIdFromPath(it));
             VolumeStats s = new VolumeStats();
             s.setInstallPath(it);
             s.setSize(vol.getVolumeSize());
             s.setActualSize(vol.getDataSize());
             s.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
-            return s;
+            return (StorageResourceStats) s;
         }).collect(Collectors.toList());
         comp.success(stats);
     }

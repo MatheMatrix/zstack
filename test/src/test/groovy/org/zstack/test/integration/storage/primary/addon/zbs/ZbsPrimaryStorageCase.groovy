@@ -4,20 +4,29 @@ import org.springframework.http.HttpEntity
 import org.zstack.core.cloudbus.CloudBus
 import org.zstack.core.cloudbus.EventCallback
 import org.zstack.core.cloudbus.EventFacade
+import org.zstack.core.config.GlobalConfigValidatorExtensionPoint
 import org.zstack.core.db.DatabaseFacade
 import org.zstack.core.db.Q
 import org.zstack.header.errorcode.ErrorCode
 import org.zstack.header.errorcode.OperationFailureException
 import org.zstack.header.message.MessageReply
+import org.zstack.header.storage.backup.UploadImageToRemoteTargetMsg
+import org.zstack.header.storage.backup.UploadImageToRemoteTargetReply
+import org.zstack.header.storage.snapshot.VolumeSnapshotVO
+import org.zstack.header.storage.snapshot.VolumeSnapshotVO_
 import org.zstack.header.storage.primary.GetVolumeBackingChainFromPrimaryStorageMsg
 import org.zstack.header.storage.primary.GetVolumeBackingChainFromPrimaryStorageReply
 import org.zstack.header.storage.primary.PrimaryStorageConstant
-import org.zstack.header.volume.BatchSyncVolumeSizeOnPrimaryStorageMsg
-import org.zstack.header.volume.BatchSyncVolumeSizeOnPrimaryStorageReply
+import org.zstack.header.volume.BatchSyncVolumeResourceSizeOnPrimaryStorageMsg
+import org.zstack.header.volume.BatchSyncVolumeResourceSizeOnPrimaryStorageReply
+import org.zstack.header.volume.VolumeVO
+import org.zstack.header.volume.VolumeVO_
 import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageVO
 import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageSpaceVO
 import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageVO_
 import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageSpaceVO_
+import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageHostProtocolRefVO
+import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageHostProtocolRefVO_
 import org.zstack.header.storage.addon.primary.PrimaryStorageOutputProtocolRefVO
 import org.zstack.header.storage.primary.PrimaryStorageCapacityVO
 import org.zstack.header.storage.primary.PrimaryStorageCapacityVO_
@@ -27,6 +36,7 @@ import org.zstack.header.storage.primary.PrimaryStorageHostRefVO
 import org.zstack.header.storage.primary.PrimaryStorageHostRefVO_
 import org.zstack.header.storage.primary.PrimaryStorageStatus
 import org.zstack.header.storage.primary.PrimaryStorageVO
+import org.zstack.header.volume.VolumeProtocol
 import org.zstack.storage.zbs.MdsStatus
 import org.zstack.storage.zbs.MdsUri
 import org.zstack.sdk.*
@@ -70,6 +80,8 @@ class ZbsPrimaryStorageCase extends SubCase {
 
     @Override
     void clean() {
+        disableScheduledVolumeSizeSyncForTest()
+        detachZbsPrimaryStorageFromClusterIfAttached()
         env.delete()
     }
 
@@ -206,6 +218,8 @@ class ZbsPrimaryStorageCase extends SubCase {
             testMdsReconnectAfterMaximumPingFailures()
             testGetBackingChainNormalizesCbdParentUri()
             testBatchStatsNormalizesCbdInstallPath()
+            testBatchStatsReturnsSnapshotActualSize()
+            testManagedActiveVolumeSizeSyncUpdatesCowSnapshotSize()
         }
     }
 
@@ -1221,18 +1235,225 @@ class ZbsPrimaryStorageCase extends SubCase {
         }
 
         CloudBus bus = bean(CloudBus.class)
-        BatchSyncVolumeSizeOnPrimaryStorageMsg msg = new BatchSyncVolumeSizeOnPrimaryStorageMsg()
+        BatchSyncVolumeResourceSizeOnPrimaryStorageMsg msg = new BatchSyncVolumeResourceSizeOnPrimaryStorageMsg()
         msg.setPrimaryStorageUuid(ps.uuid)
         msg.setVolumeUuidInstallPaths([(volUuid): zbsPath])
         bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, ps.uuid)
         MessageReply reply = bus.call(msg)
 
         assert reply.isSuccess() : "batch size sync must not fail on cbd-form install path: ${reply.error}"
-        BatchSyncVolumeSizeOnPrimaryStorageReply r = reply as BatchSyncVolumeSizeOnPrimaryStorageReply
-        assert r.actualSizes.get(volUuid) == usedSize :
-                "actualSize must map back to uuid via zbs:// install path, got ${r.actualSizes}"
+        BatchSyncVolumeResourceSizeOnPrimaryStorageReply r = reply as BatchSyncVolumeResourceSizeOnPrimaryStorageReply
+        assert r.volumeActualSizes.get(volUuid) == usedSize :
+                "actualSize must map back to uuid via zbs:// install path, got ${r.volumeActualSizes}"
 
         env.cleanSimulatorHandlers()
+    }
+
+    void testBatchStatsReturnsSnapshotActualSize() {
+        String volUuid = "vol85707batchsnap"
+        String snapshotUuid = "snap85707batch"
+        String zbsPath = "zbs://lpool1/volume_batch_snapshot"
+        String snapshotPath = "${zbsPath}@snap1"
+        long usedSize = SizeUnit.MEGABYTE.toByte(7)
+        long snapshotUsedSize = SizeUnit.MEGABYTE.toByte(3)
+
+        env.simulator(ZbsStorageController.BATCH_QUERY_VOLUME_WITH_SNAPSHOT_PATH) { HttpEntity<String> e, EnvSpec spec ->
+            def cmd = JSONObjectUtil.toObject(e.body, ZbsStorageController.BatchQueryVolumeCmd.class)
+            assert cmd.installPaths.any { it.contains("@snap1") }
+
+            def rsp = new ZbsStorageController.BatchQueryVolumeRsp()
+            Map<String, Map<String, Long>> volumes = new HashMap<>()
+            Map<String, Map<String, Long>> snapshots = new HashMap<>()
+            cmd.installPaths.each { cbd ->
+                if (cbd.contains("@")) {
+                    snapshots.put(cbd, ["usedSize": snapshotUsedSize])
+                } else {
+                    volumes.put(cbd, ["length": SizeUnit.GIGABYTE.toByte(8), "usedSize": usedSize])
+                }
+            }
+            rsp.setVolumes(volumes)
+            rsp.setSnapshots(snapshots)
+            return rsp
+        }
+
+        CloudBus bus = bean(CloudBus.class)
+        BatchSyncVolumeResourceSizeOnPrimaryStorageMsg msg = new BatchSyncVolumeResourceSizeOnPrimaryStorageMsg()
+        msg.setPrimaryStorageUuid(ps.uuid)
+        msg.setVolumeUuidInstallPaths([(volUuid): zbsPath])
+        msg.setWithSnapshot(true)
+        msg.setSnapshotUuidInstallPaths([(snapshotUuid): snapshotPath])
+        bus.makeTargetServiceIdByResourceUuid(msg, PrimaryStorageConstant.SERVICE_ID, ps.uuid)
+        MessageReply reply = bus.call(msg)
+
+        assert reply.isSuccess() : "batch size sync with snapshot must not fail: ${reply.error}"
+        BatchSyncVolumeResourceSizeOnPrimaryStorageReply r = reply as BatchSyncVolumeResourceSizeOnPrimaryStorageReply
+        assert r.volumeActualSizes.get(volUuid) == usedSize :
+                "volume actualSize must map back to uuid, got ${r.volumeActualSizes}"
+        assert r.snapshotActualSizes.get(snapshotUuid) == snapshotUsedSize :
+                "snapshot actualSize must map back to uuid, got ${r.snapshotActualSizes}"
+
+        env.cleanSimulatorHandlers()
+    }
+
+    void testManagedActiveVolumeSizeSyncUpdatesCowSnapshotSize() {
+        long volumeActualSize = SizeUnit.MEGABYTE.toByte(11)
+        long snapshotInitialSize = SizeUnit.MEGABYTE.toByte(1)
+        long snapshotSyncedSize = SizeUnit.MEGABYTE.toByte(5)
+        AtomicInteger batchQueryCount = new AtomicInteger(0)
+
+        try {
+            env.afterSimulator(ZbsStorageController.CREATE_VOLUME_PATH) { rsp, HttpEntity<String> e ->
+                ZbsStorageController.CreateVolumeCmd cmd = JSONObjectUtil.toObject(e.body, ZbsStorageController.CreateVolumeCmd)
+                ZbsStorageController.CreateVolumeRsp createVolumeRsp = new ZbsStorageController.CreateVolumeRsp()
+                createVolumeRsp.installPath = "zbs://${cmd.logicalPool}/${cmd.volume}"
+                createVolumeRsp.actualSize = 0L
+                createVolumeRsp.size = cmd.size
+                return createVolumeRsp
+            }
+
+            if (!Q.New(PrimaryStorageClusterRefVO.class)
+                    .eq(PrimaryStorageClusterRefVO_.primaryStorageUuid, ps.uuid)
+                    .eq(PrimaryStorageClusterRefVO_.clusterUuid, cluster.uuid)
+                    .isExists()) {
+                attachPrimaryStorageToCluster {
+                    primaryStorageUuid = ps.uuid
+                    clusterUuid = cluster.uuid
+                }
+            }
+            env.afterSimulator(ZbsStorageController.CHECK_HOST_STORAGE_CONNECTION_PATH) { rsp, HttpEntity<String> e ->
+                ZbsStorageController.CheckHostStorageConnectionRsp checkHostStorageConnectionRsp = new ZbsStorageController.CheckHostStorageConnectionRsp()
+                checkHostStorageConnectionRsp.success = true
+                return checkHostStorageConnectionRsp
+            }
+            reconnectHost {
+                uuid = kvm.uuid
+            }
+            retryInSecs {
+                assert Q.New(ExternalPrimaryStorageHostProtocolRefVO.class)
+                        .eq(ExternalPrimaryStorageHostProtocolRefVO_.primaryStorageUuid, ps.uuid)
+                        .eq(ExternalPrimaryStorageHostProtocolRefVO_.hostUuid, kvm.uuid)
+                        .eq(ExternalPrimaryStorageHostProtocolRefVO_.protocol, VolumeProtocol.CBD.toString())
+                        .eq(ExternalPrimaryStorageHostProtocolRefVO_.status, PrimaryStorageHostStatus.Connected)
+                        .isExists()
+            }
+            env.cleanAfterSimulatorHandlers()
+
+            env.message(UploadImageToRemoteTargetMsg.class) { UploadImageToRemoteTargetMsg msg, CloudBus bus ->
+                assert msg.remoteTargetUrl.startsWith("nbd://")
+                assert msg.format == "raw"
+                bus.reply(msg, new UploadImageToRemoteTargetReply())
+            }
+
+            VmInstanceInventory vm = createVmInstance {
+                name = "vm-for-managed-volume-size-sync"
+                instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
+                imageUuid = env.inventoryByName("image").uuid
+                l3NetworkUuids = [(env.inventoryByName("l3") as L3NetworkInventory).uuid]
+                primaryStorageUuidForRootVolume = ps.uuid
+                dataDiskOfferingUuids = [diskOffering.uuid]
+                hostUuid = kvm.uuid
+            } as VmInstanceInventory
+
+            String volUuid = vm.allVolumes.find { it.uuid != vm.rootVolumeUuid }.uuid
+            String zbsPath = Q.New(VolumeVO.class)
+                    .select(VolumeVO_.installPath)
+                    .eq(VolumeVO_.uuid, volUuid)
+                    .findValue()
+            String snapshotPath = "${zbsPath}@snap1"
+
+            env.afterSimulator(ZbsStorageController.CREATE_SNAPSHOT_PATH) { rsp, HttpEntity<String> e ->
+                ZbsStorageController.CreateSnapshotCmd cmd = JSONObjectUtil.toObject(e.body, ZbsStorageController.CreateSnapshotCmd)
+                ZbsStorageController.CreateSnapshotRsp createSnapshotRsp = new ZbsStorageController.CreateSnapshotRsp()
+                createSnapshotRsp.installPath = "${cmd.path}@${cmd.snapshot}"
+                createSnapshotRsp.actualSize = snapshotInitialSize
+                return createSnapshotRsp
+            }
+
+            VolumeSnapshotInventory snapshot = createVolumeSnapshot {
+                name = "snap1"
+                volumeUuid = volUuid
+            } as VolumeSnapshotInventory
+            String snapshotUuid = snapshot.uuid
+
+            snapshotPath = Q.New(VolumeSnapshotVO.class)
+                    .select(VolumeSnapshotVO_.primaryStorageInstallPath)
+                    .eq(VolumeSnapshotVO_.uuid, snapshotUuid)
+                    .findValue()
+
+            env.cleanAfterSimulatorHandlers()
+
+            env.simulator(ZbsStorageController.BATCH_QUERY_VOLUME_WITH_SNAPSHOT_PATH) { HttpEntity<String> e, EnvSpec spec ->
+                batchQueryCount.incrementAndGet()
+                def cmd = JSONObjectUtil.toObject(e.body, ZbsStorageController.BatchQueryVolumeCmd.class)
+                String volumeName = zbsPath.substring(zbsPath.lastIndexOf("/") + 1)
+                String snapshotName = snapshotPath.substring(snapshotPath.lastIndexOf("@") + 1)
+                String volumeAgentPath = cmd.installPaths.find { it.contains(volumeName) && !it.contains("@") }
+                String snapshotAgentPath = cmd.installPaths.find { it.contains(volumeName) && it.contains(snapshotName) }
+                assert volumeAgentPath != null
+                assert snapshotAgentPath != null
+
+                def rsp = new ZbsStorageController.BatchQueryVolumeRsp()
+                rsp.setVolumes([(volumeAgentPath): ["length": SizeUnit.GIGABYTE.toByte(8), "usedSize": volumeActualSize]])
+                rsp.setSnapshots([(snapshotAgentPath): ["usedSize": snapshotSyncedSize]])
+                return rsp
+            }
+
+            VolumeGlobalConfig.AUTO_REFRESH_VOLUME_SCOPE.updateValue("AllActive")
+            updateRefreshVolumeSizeIntervalForTest("2")
+            updateRefreshVolumeSizeIntervalForTest("1")
+
+            retryInSecs {
+                assert Q.New(VolumeSnapshotVO.class)
+                        .select(VolumeSnapshotVO_.size)
+                        .eq(VolumeSnapshotVO_.uuid, snapshotUuid)
+                        .findValue() == snapshotSyncedSize
+                assert Q.New(VolumeVO.class)
+                        .select(VolumeVO_.actualSize)
+                        .eq(VolumeVO_.uuid, volUuid)
+                        .findValue() == volumeActualSize + snapshotSyncedSize
+                assert env.verifySimulator(ZbsStorageController.BATCH_QUERY_VOLUME_WITH_SNAPSHOT_PATH)
+                assert batchQueryCount.get() >= 1
+            }
+
+            stopVmInstance {
+                uuid = vm.uuid
+            }
+        } finally {
+            disableScheduledVolumeSizeSyncForTest()
+            detachZbsPrimaryStorageFromClusterIfAttached()
+            env.cleanSimulatorAndMessageHandlers()
+        }
+    }
+
+    private void updateRefreshVolumeSizeIntervalForTest(String interval) {
+        List<GlobalConfigValidatorExtensionPoint> validators = VolumeGlobalConfig.REFRESH_VOLUME_SIZE_INTERVAL.validators
+        VolumeGlobalConfig.REFRESH_VOLUME_SIZE_INTERVAL.validators = new ArrayList<>()
+        try {
+            VolumeGlobalConfig.REFRESH_VOLUME_SIZE_INTERVAL.updateValue(interval)
+        } finally {
+            VolumeGlobalConfig.REFRESH_VOLUME_SIZE_INTERVAL.validators = validators
+        }
+    }
+
+    private void disableScheduledVolumeSizeSyncForTest() {
+        VolumeGlobalConfig.AUTO_REFRESH_VOLUME_SCOPE.updateValue("None")
+        updateRefreshVolumeSizeIntervalForTest("3600")
+    }
+
+    private void detachZbsPrimaryStorageFromClusterIfAttached() {
+        if (ps == null || cluster == null) {
+            return
+        }
+
+        if (Q.New(PrimaryStorageClusterRefVO.class)
+                .eq(PrimaryStorageClusterRefVO_.primaryStorageUuid, ps.uuid)
+                .eq(PrimaryStorageClusterRefVO_.clusterUuid, cluster.uuid)
+                .isExists()) {
+            detachPrimaryStorageFromCluster {
+                primaryStorageUuid = ps.uuid
+                clusterUuid = cluster.uuid
+            }
+        }
     }
 
     void deleteVolume(String volUuid) {
