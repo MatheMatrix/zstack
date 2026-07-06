@@ -3741,9 +3741,9 @@ public class KVMAgentCommands {
         private boolean reload;
         @GrayVersion(value = "5.0.0")
         private long bandwidth;
-        @GrayVersion(value = "5.5.12")
+        @GrayVersion(value = "5.4.0")
         private boolean useTls;
-        @GrayVersion(value = "5.5.12")
+        @GrayVersion(value = "5.4.0")
         private String srcHostManagementIp;
 
         public String getSrcHostManagementIp() {
