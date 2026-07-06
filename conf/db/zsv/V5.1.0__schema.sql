@@ -225,9 +225,10 @@ CREATE TABLE IF NOT EXISTS `zstack`.`ExternalServiceConfigurationVO` (
     `description` varchar(2048) DEFAULT NULL,
     `lastOpDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `createDate` timestamp NOT NULL DEFAULT '1999-12-31 23:59:59',
-    PRIMARY KEY (`uuid`),
-    UNIQUE KEY `ukExternalServiceConfigurationVOServiceType` (`serviceType`)
+    PRIMARY KEY (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CALL DELETE_INDEX('ExternalServiceConfigurationVO', 'ukExternalServiceConfigurationVOServiceType');
 -- Feature: System AccessKey | ZSV-12416
 
 CALL ADD_COLUMN('AccessKeyVO', 'type', 'varchar(32)', 0, 'User');
