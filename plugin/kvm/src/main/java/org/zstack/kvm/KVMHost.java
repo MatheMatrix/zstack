@@ -6106,6 +6106,7 @@ public class KVMHost extends HostBase implements Host {
                         String enableKsm = rcf.getResourceConfigValue(KVMGlobalConfig.HOST_KSM, self.getUuid(), String.class);
                         kvmHostConfigChecker.setRequireKsmCheck(enableKsm);
                         kvmHostConfigChecker.setRequireReservePorts("49152-49215");
+                        kvmHostConfigChecker.setRequireHygonQemuConfAclCheck(deployArguments.getEnableHygonQemuConfAclCheck());
                         deployArguments.setIsEnableKsm(enableKsm);
 
                         if (NetworkGlobalProperty.BRIDGE_DISABLE_IPTABLES) {
@@ -6113,6 +6114,12 @@ public class KVMHost extends HostBase implements Host {
                         }
 
                         deployArguments.setRestartLibvirtd(rcf.getResourceConfigValue(KVMGlobalConfig.RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE, self.getUuid(), String.class));
+                        if (kvmHostConfigChecker.needDeployHygonQemuConf()) {
+                            logger.info(String.format("Hygon qemu.conf cgroup_device_acl is incomplete on host[uuid:%s], force ansible deploy and restart libvirtd",
+                                    self.getUuid()));
+                            runner.setForceRun(true);
+                            deployArguments.setRestartLibvirtd("true");
+                        }
                         deployArguments.setHostname(String.format("%s.zstack.org", self.getManagementIp().replaceAll("\\.", "-")));
                         deployArguments.setSkipPackages(info.getSkipPackages());
                         deployArguments.setUpdatePackages(String.valueOf(CoreGlobalProperty.UPDATE_PKG_WHEN_CONNECT));

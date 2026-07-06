@@ -15,6 +15,11 @@ import java.util.Objects;
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class KvmHostConfigChecker implements AnsibleChecker {
     private static final CLogger logger = Utils.getLogger(KvmHostConfigChecker.class);
+    private static final String HYGON_QEMU_CONF_CHECK_COMMAND = "grep -Eq '^[[:space:]]*cgroup_device_acl[[:space:]]*=' /etc/libvirt/qemu.conf && " +
+            "grep -Fq '\"/dev/vfio/1\"' /etc/libvirt/qemu.conf && " +
+            "grep -Fq '\"/dev/vfio/5000\"' /etc/libvirt/qemu.conf && " +
+            "grep -Fq '\"/dev/vfio/vfio\"' /etc/libvirt/qemu.conf && " +
+            "grep -Fq '\"/dev/hct_share\"' /etc/libvirt/qemu.conf";
 
     private String username;
     private String password;
@@ -22,11 +27,40 @@ public class KvmHostConfigChecker implements AnsibleChecker {
     private String targetIp;
     private String requireKsmCheck;
     private String requireReservePorts;
+    private String requireHygonQemuConfAclCheck;
     private int sshPort = 22;
 
     @Override
     public boolean needDeploy() {
-        return needDeployKsmCheck() || needDeployReservePorts();
+        return needDeployKsmCheck() || needDeployReservePorts() || needDeployHygonQemuConf();
+    }
+
+    public boolean needDeployHygonQemuConf() {
+        if (!"true".equalsIgnoreCase(requireHygonQemuConfAclCheck)) {
+            return false;
+        }
+
+        SshResult qemuConfRet = runSshCommand(HYGON_QEMU_CONF_CHECK_COMMAND);
+        if (qemuConfRet.isSshFailure() || qemuConfRet.getReturnCode() != 0) {
+            logger.debug(String.format("Hygon qemu.conf cgroup_device_acl is missing or incomplete on host[%s], need to re-deploy",
+                    targetIp));
+            return true;
+        }
+
+        return false;
+    }
+
+    protected SshResult runSshCommand(String command) {
+        Ssh ssh = new Ssh();
+        ssh.setUsername(username).setPrivateKey(privateKey)
+                .setPassword(password).setPort(sshPort)
+                .setHostname(targetIp);
+        try {
+            ssh.sudoCommand(command);
+            return ssh.setTimeout(60).runAndClose();
+        } finally {
+            ssh.close();
+        }
     }
 
     private boolean needDeployKsmCheck() {
@@ -160,6 +194,14 @@ public class KvmHostConfigChecker implements AnsibleChecker {
 
     public void setRequireReservePorts(String requireReservePorts) {
         this.requireReservePorts = requireReservePorts;
+    }
+
+    public String getRequireHygonQemuConfAclCheck() {
+        return requireHygonQemuConfAclCheck;
+    }
+
+    public void setRequireHygonQemuConfAclCheck(String requireHygonQemuConfAclCheck) {
+        this.requireHygonQemuConfAclCheck = requireHygonQemuConfAclCheck;
     }
 
     public int getSshPort() {

@@ -37,6 +37,8 @@ public class KVMHostDeployArguments extends SyncTimeRequestedDeployArguments {
     private String enableSpiceTls;
     @SerializedName("enable_cgroup_device_acl")
     private String enableCgroupDeviceAcl;
+    @SerializedName("enable_hygon_qemu_conf_acl_check")
+    private String enableHygonQemuConfAclCheck;
     @SerializedName("restart_libvirtd")
     private String restartLibvirtd;
     @SerializedName("extra_packages")
@@ -169,6 +171,14 @@ public class KVMHostDeployArguments extends SyncTimeRequestedDeployArguments {
 
     public void setEnableCgroupDeviceAcl(String enableCgroupDeviceAcl) {
         this.enableCgroupDeviceAcl = enableCgroupDeviceAcl;
+    }
+
+    public String getEnableHygonQemuConfAclCheck() {
+        return enableHygonQemuConfAclCheck;
+    }
+
+    public void setEnableHygonQemuConfAclCheck(String enableHygonQemuConfAclCheck) {
+        this.enableHygonQemuConfAclCheck = enableHygonQemuConfAclCheck;
     }
 
     public String getRestartLibvirtd() {
