@@ -62,6 +62,7 @@ import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -136,6 +137,10 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                 .select(PrimaryStorageOutputProtocolRefVO_.outputProtocol)
                 .listValues();
 
+        int totalHosts = hostInventories.size();
+        double threshold = ExternalPrimaryStorageGlobalConfig.ATTACH_HOST_DEPLOY_FAILURE_RATIO_THRESHOLD.value(Double.class);
+        AtomicInteger failedCount = new AtomicInteger();
+
         // the next attach or reconnect to overwrite.
         new While<>(hostInventories).each((host, compl) -> {
             node.deployClient(host, protocols, new Completion(compl) {
@@ -158,8 +163,12 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                     updateHostProtocolStatus(host.getUuid(), statuses, errorCode, new NoErrorCompletion(compl) {
                         @Override
                         public void done() {
-                            compl.addError(errorCode);
-                            compl.allDone();
+                            if ((double) failedCount.incrementAndGet() / totalHosts >= threshold) {
+                                compl.addError(errorCode);
+                                compl.allDone();
+                                return;
+                            }
+                            compl.done();
                         }
                     });
                 }
@@ -170,6 +179,12 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                 if (!errorCodeList.getCauses().isEmpty()) {
                     completion.fail(errorCodeList.getCauses().get(0));
                     return;
+                }
+
+                if (failedCount.get() > 0) {
+                    logger.warn(String.format("attaching primary storage[uuid: %s] to cluster[uuid: %s]: %d of %d hosts failed to deploy client, " +
+                                    "below the failure ratio threshold[%s], continue the attach and let periodic ping self-heal the failed hosts",
+                            self.getUuid(), clusterUuid, failedCount.get(), totalHosts, threshold));
                 }
 
                 activateHeartbeatVolumeForAttach(hostInventories.get(0), completion);
