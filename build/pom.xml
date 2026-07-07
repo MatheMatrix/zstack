@@ -403,16 +403,6 @@
                 </dependency>
                 <dependency>
                     <groupId>org.zstack</groupId>
-                    <artifactId>routeProtocol</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>flowMeter</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
                     <artifactId>accessKey</artifactId>
                     <version>${project.version}</version>
                 </dependency>
@@ -421,22 +411,7 @@
                     <artifactId>tag2</artifactId>
                     <version>${project.version}</version>
                 </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>vpc</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
 
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>policyRoute</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.zstack</groupId>
-                    <artifactId>vpcFirewall</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
                 <dependency>
                     <groupId>org.zstack</groupId>
                     <artifactId>guesttools</artifactId>

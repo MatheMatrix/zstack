@@ -75,8 +75,6 @@ import org.zstack.network.service.virtualrouter.vip.VirtualRouterVipInventory;
 import org.zstack.network.service.virtualrouter.vip.VirtualRouterVipVO;
 import org.zstack.network.service.virtualrouter.vip.VirtualRouterVipVO_;
 import org.zstack.network.service.virtualrouter.vyos.VyosConstants;
-import org.zstack.network.service.virtualrouter.vyos.VyosVersionCheckResult;
-import org.zstack.network.service.virtualrouter.vyos.VyosVersionManager;
 import org.zstack.tag.SystemTagCreator;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.*;
@@ -163,8 +161,6 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
     private TagManager tagMgr;
     @Autowired
     private NetworkServiceManager nwServiceMgr;
-    @Autowired
-    private VyosVersionManager vyosVersionManager;
     @Autowired
     private LbConfigProxy lbProxy;
     @Autowired
@@ -2238,20 +2234,6 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
             reconenctVirtualRouter(inv.getUuid(), false);
             return;
         }
-
-        vyosVersionManager.vyosRouterVersionCheck(inv.getUuid(), new ReturnValueCompletion<VyosVersionCheckResult>(cmsg) {
-            @Override
-            public void success(VyosVersionCheckResult returnValue) {
-                if (returnValue.isNeedReconnect()) {
-                    logger.warn(String.format("virtual router[uuid: %s] need to be reconnected", inv.getUuid()));
-                    reconenctVirtualRouter(inv.getUuid(), true);
-                }
-            }
-
-            @Override
-            public void fail(ErrorCode errorCode) {
-            }
-        });
     }
 
     @Override

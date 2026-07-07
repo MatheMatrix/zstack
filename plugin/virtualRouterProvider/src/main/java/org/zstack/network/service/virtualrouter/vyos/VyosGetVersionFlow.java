@@ -30,8 +30,6 @@ import java.util.Map;
 public class VyosGetVersionFlow extends NoRollbackFlow {
     private final static CLogger logger = Utils.getLogger(VyosGetVersionFlow.class);
     @Autowired
-    private VyosVersionManager vyosVersionManager;
-    @Autowired
     protected RESTFacade restf;
     @Autowired
     private VirtualRouterManager vrMgr;
@@ -62,22 +60,6 @@ public class VyosGetVersionFlow extends NoRollbackFlow {
         }
 
         flowData.put(VmInstanceConstant.Params.vmInstanceUuid.toString(), vrUuid);
-        vyosVersionManager.vyosRouterVersionCheck(vrUuid, new ReturnValueCompletion<VyosVersionCheckResult>(flowTrigger) {
-            @Override
-            public void fail(ErrorCode errorCode) {
-                flowTrigger.next();
-            }
-
-            @Override
-            public void success(VyosVersionCheckResult returnValue) {
-                if (returnValue.isNeedReconnect()) {
-                    logger.warn(String.format("virtual router [uuid:%s] need to be reconnect: %s", vrUuid, JSONObjectUtil.toJsonString(returnValue)));
-                    flowData.put(ApplianceVmConstant.Params.isReconnect.toString(), Boolean.TRUE.toString());
-                    flowData.put(ApplianceVmConstant.Params.managementNicIp.toString(), mgmtNic.getIp());
-                    flowData.put(ApplianceVmConstant.Params.rebuildSnat.toString(), returnValue.isRebuildSnat());
-                }
-                flowTrigger.next();
-            }
-        });
+        flowTrigger.next();
     }
 }

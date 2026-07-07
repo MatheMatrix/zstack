@@ -55,7 +55,6 @@ class SpringSpec {
     void vyos() {
         include("ApplianceVmFacade.xml")
         include("VirtualRouter.xml")
-        include("vyos.xml")
     }
 
     void virtualRouter() {

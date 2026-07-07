@@ -17,7 +17,6 @@ class BranchCascadeTest extends Test {
         securityGroup()
         kvm()
         ceph()
-        vyos()
         include("KvmTest.xml")
         eip()
         lb()

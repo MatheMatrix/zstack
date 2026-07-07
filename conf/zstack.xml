@@ -102,7 +102,6 @@
     <import resource="springConfigXml/VolumeManager.xml"/>
     <import resource="springConfigXml/volumeSnapshot.xml"/>
     <import resource="springConfigXml/ZoneManager.xml"/>
-    <import resource="springConfigXml/vyos.xml"/>
     <import resource="springConfigXml/rest.xml"/>
     <import resource="springConfigXml/eventlog.xml"/>
     <import resource="springConfigXml/vxlan.xml"/>

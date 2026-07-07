@@ -16,7 +16,6 @@ class PrimaryStorageTest extends Test {
         externalPrimaryStorage()
         zbs()
         virtualRouter()
-        vyos()
         kvm()
         flatNetwork()
         securityGroup()

@@ -20,7 +20,6 @@ class Test3 extends Test {
         spring {
             nfsPrimaryStorage()
             kvm()
-            vyos()
             eip()
             sftpBackupStorage()
             portForwarding()

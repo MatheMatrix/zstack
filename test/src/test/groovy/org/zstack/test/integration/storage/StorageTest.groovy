@@ -15,7 +15,6 @@ class StorageTest extends Test {
         smp()
         ceph()
         virtualRouter()
-        vyos()
         kvm()
         flatNetwork()
         securityGroup()
