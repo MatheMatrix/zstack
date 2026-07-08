@@ -1,17 +1,26 @@
 package org.zstack.core.thread;
 
+import org.zstack.utils.Utils;
+import org.zstack.utils.logging.CLogger;
+
 import java.util.*;
 import java.util.TimerTask;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by MaJin on 2020/5/25.
  */
 public abstract class GroupedConsumeQueue<T> {
-    private Queue<T> itemPool = new LinkedBlockingQueue<>();
-    private Map<String, DelayedQueue<T>> groupedQueue = new HashMap<>();
+    private static final CLogger logger = Utils.getLogger(GroupedConsumeQueue.class);
+    private static final AtomicInteger TIMER_SEQUENCE = new AtomicInteger(0);
 
-    private int maxDelayedTime = 1;
+    private final Queue<T> itemPool = new LinkedBlockingQueue<>();
+    private final Map<String, DelayedQueue<T>> groupedQueue = new HashMap<>();
+    private final Object timerLock = new Object();
+    private Timer timer;
+
+    private volatile int maxDelayedTime = 1;
 
     public GroupedConsumeQueue(int maxDelayedTime) {
         this.maxDelayedTime = maxDelayedTime;
@@ -27,18 +36,34 @@ public abstract class GroupedConsumeQueue<T> {
     }
 
     public void start() {
-        java.util.TimerTask timerTask = new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    collectItems();
-                } finally {
-                    start();
-                }
+        synchronized (timerLock) {
+            if (timer != null) {
+                return;
             }
-        };
 
-        new Timer().schedule(timerTask, 1000);
+            timer = new Timer(String.format("grouped-consume-queue-%s", TIMER_SEQUENCE.incrementAndGet()), true);
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    try {
+                        collectItems();
+                    } catch (Throwable t) {
+                        logger.warn("failed to collect grouped queue items", t);
+                    }
+                }
+            }, 1000, 1000);
+        }
+    }
+
+    public void stop() {
+        synchronized (timerLock) {
+            if (timer == null) {
+                return;
+            }
+
+            timer.cancel();
+            timer = null;
+        }
     }
 
     public void setMaxDelayedTime(int maxDelayedTime) {
