@@ -133,6 +133,7 @@ import static org.zstack.utils.CollectionDSL.map;
 import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class KVMHost extends HostBase implements Host {
+    static final String UNIT_TEST_AGENT_HOST = "KVMHost.unitTestAgentHost";
     private static final CLogger logger = Utils.getLogger(KVMHost.class);
     private static final ZTester tester = Utils.getTester();
     private static final String EXTRA_IP_SEPARATOR = ",";
@@ -318,7 +319,8 @@ public class KVMHost extends HostBase implements Host {
         super(self);
 
         this.context = context;
-        baseUrl = context.getBaseUrl();
+        baseUrl = isUnitTestAgentRedirectEnabled() ?
+                buildAgentUrl(System.getProperty(UNIT_TEST_AGENT_HOST), "") : context.getBaseUrl();
 
         UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
         ub.path(KVMConstant.KVM_CONNECT_PATH);
@@ -2927,7 +2929,14 @@ public class KVMHost extends HostBase implements Host {
     }
 
     private String buildUrl(String path) {
-        return buildAgentUrl(self.getManagementIp(), path);
+        String host = isUnitTestAgentRedirectEnabled() ?
+                System.getProperty(UNIT_TEST_AGENT_HOST) : self.getManagementIp();
+        return buildAgentUrl(host, path);
+    }
+
+    private static boolean isUnitTestAgentRedirectEnabled() {
+        return CoreGlobalProperty.UNIT_TEST_ON &&
+                StringUtils.isNotBlank(System.getProperty(UNIT_TEST_AGENT_HOST));
     }
 
     private void executeAsyncHttpCall(final KVMHostAsyncHttpCallMsg msg, final NoErrorCompletion completion) {
@@ -6058,12 +6067,13 @@ public class KVMHost extends HostBase implements Host {
 
                     @Override
                     public boolean skip(Map data) {
-                        return CoreGlobalProperty.UNIT_TEST_ON;
+                        return CoreGlobalProperty.UNIT_TEST_ON && !isUnitTestAgentRedirectEnabled();
                     }
 
                     @Override
                     public void run(final FlowTrigger trigger, Map data) {
-                        String srcPath = PathUtil.findFileOnClassPath(String.format("ansible/kvm/%s", agentPackageName), true).getAbsolutePath();
+                        String srcPath = isUnitTestAgentRedirectEnabled() ? agentPackageName :
+                                PathUtil.findFileOnClassPath(String.format("ansible/kvm/%s", agentPackageName), true).getAbsolutePath();
                         String destPath = String.format("/var/lib/zstack/kvm/package/%s", agentPackageName);
                         SshFileMd5Checker checker = new SshFileMd5Checker();
                         checker.setUsername(getSelf().getUsername());

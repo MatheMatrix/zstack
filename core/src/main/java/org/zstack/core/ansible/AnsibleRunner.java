@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.CoreGlobalProperty;
+import org.zstack.core.Platform;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.header.core.Completion;
@@ -393,9 +394,11 @@ public class AnsibleRunner {
                 deployArguments = new AnsibleBasicArguments();
             }
 
-            deployArguments.setPipUrl(buildPipUrl(restf.getHostName(), port));
-            deployArguments.setTrustedHost(restf.getHostName());
-            deployArguments.setYumServer(IPv6NetworkUtils.formatHostPort(restf.getHostName(), port));
+            String deploymentHost = NetworkUtils.isIpAddress(targetIp) ?
+                    Platform.getManagementServerIpForRemote(targetIp) : restf.getHostName();
+            deployArguments.setPipUrl(buildPipUrl(deploymentHost, port));
+            deployArguments.setTrustedHost(deploymentHost);
+            deployArguments.setYumServer(IPv6NetworkUtils.formatHostPort(deploymentHost, port));
             deployArguments.setRemoteUser(username);
             if (password != null && !password.isEmpty()) {
                 deployArguments.setRemotePass(password);
