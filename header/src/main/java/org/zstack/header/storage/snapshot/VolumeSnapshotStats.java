@@ -1,22 +1,9 @@
 package org.zstack.header.storage.snapshot;
 
-public class VolumeSnapshotStats {
-    private String installPath;
-    private long actualSize;
+import org.zstack.header.storage.addon.StorageResource;
 
-    public String getInstallPath() {
-        return installPath;
-    }
-
-    public void setInstallPath(String installPath) {
-        this.installPath = installPath;
-    }
-
+public class VolumeSnapshotStats extends StorageResource {
     public long getActualSize() {
-        return actualSize;
-    }
-
-    public void setActualSize(long actualSize) {
-        this.actualSize = actualSize;
+        return actualSize == null ? 0L : actualSize;
     }
 }

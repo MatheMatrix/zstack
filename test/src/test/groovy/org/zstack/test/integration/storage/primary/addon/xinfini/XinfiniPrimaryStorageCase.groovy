@@ -13,13 +13,16 @@ import org.zstack.xinfini.XInfiniPathHelper
 import org.zstack.xinfini.sdk.vhost.BdcModule
 import org.zstack.xinfini.sdk.vhost.BdcBdevModule
 import org.zstack.header.core.Completion
+import org.zstack.header.core.ReturnValueCompletion
 import org.zstack.header.errorcode.ErrorCode
 import org.zstack.header.errorcode.OperationFailureException
 import org.zstack.header.host.HostConstant
 import org.zstack.header.host.HostVO
 import org.zstack.header.host.HostVO_
 import org.zstack.header.host.PingHostMsg
+import org.zstack.header.image.ImageConstant
 import org.zstack.header.message.MessageReply
+import org.zstack.header.storage.addon.StorageResource
 import org.zstack.header.storage.backup.DownloadImageFromRemoteTargetMsg
 import org.zstack.header.storage.backup.DownloadImageFromRemoteTargetReply
 import org.zstack.header.storage.backup.UploadImageToRemoteTargetReply
@@ -30,6 +33,7 @@ import org.zstack.header.storage.primary.ImageCacheVO
 import org.zstack.header.storage.primary.ImageCacheVO_
 import org.zstack.header.storage.primary.PrimaryStorageHostRefVO
 import org.zstack.header.storage.primary.PrimaryStorageHostRefVO_
+import org.zstack.header.storage.snapshot.VolumeSnapshotStats
 import org.zstack.header.vm.VmBootDevice
 import org.zstack.header.vm.VmInstanceState
 import org.zstack.header.vm.VmInstanceVO
@@ -37,6 +41,7 @@ import org.zstack.header.vm.VmInstanceVO_
 import org.zstack.header.vm.VmStateChangedOnHostMsg
 import org.zstack.header.vm.devices.DeviceAddress
 import org.zstack.header.vm.devices.VirtualDeviceInfo
+import org.zstack.header.volume.VolumeStats
 import org.zstack.header.volume.VolumeVO
 import org.zstack.header.volume.VolumeVO_
 import org.zstack.kvm.KVMAgentCommands
@@ -195,6 +200,8 @@ class XinfiniPrimaryStorageCase extends SubCase {
             testCreateDataVolume()
             testCreateSnapshot()
             testCreateTemplate()
+            testRecreateVmWhenImageCacheSnapshotMissing()
+            testMissingReusedSnapshotDoesNotDeleteSourceVolume()
             testClean()
             testImageCacheClean()
             testDeletePs()
@@ -283,12 +290,7 @@ class XinfiniPrimaryStorageCase extends SubCase {
 
         assert result.getRootVolumePrimaryStorages().size() == 1
 
-        env.message(UploadImageToRemoteTargetMsg.class) { UploadImageToRemoteTargetMsg msg, CloudBus bus ->
-            UploadImageToRemoteTargetReply r = new UploadImageToRemoteTargetReply()
-            assert msg.getRemoteTargetUrl().startsWith(exportProtocol)
-            assert msg.getFormat() == "raw"
-            bus.reply(msg, r)
-        }
+        mockUploadImageToRemoteTarget()
 
         env.afterSimulator(KVMConstant.KVM_START_VM_PATH) { rsp, HttpEntity<String> e ->
             def cmd = JSONObjectUtil.toObject(e.body, KVMAgentCommands.StartVmCmd.class)
@@ -349,6 +351,125 @@ class XinfiniPrimaryStorageCase extends SubCase {
         } as VmInstanceInventory
 
         deleteVm(vm2.uuid)
+    }
+
+    void mockUploadImageToRemoteTarget() {
+        env.message(UploadImageToRemoteTargetMsg.class) { UploadImageToRemoteTargetMsg msg, CloudBus bus ->
+            UploadImageToRemoteTargetReply r = new UploadImageToRemoteTargetReply()
+            assert msg.getRemoteTargetUrl().startsWith(exportProtocol)
+            assert msg.getFormat() == "raw"
+            bus.reply(msg, r)
+        }
+    }
+
+    void testRecreateVmWhenImageCacheSnapshotMissing() {
+        List<ImageCacheVO> imageCaches = Q.New(ImageCacheVO.class)
+                .eq(ImageCacheVO_.imageUuid, image.uuid)
+                .eq(ImageCacheVO_.primaryStorageUuid, ps.uuid)
+                .list()
+        assert imageCaches.size() == 1 :
+                "image cache precondition is invalid: expected=1 actual=${imageCaches.size()} imageUuid=${image.uuid} primaryStorageUuid=${ps.uuid}"
+
+        ImageCacheVO oldImageCache = imageCaches[0]
+        int oldSnapshotId = XInfiniPathHelper.getSnapIdFromPath(oldImageCache.installUrl)
+        int backingVolumeId = XInfiniPathHelper.getVolIdFromPath(oldImageCache.installUrl)
+        assert ExternalPrimaryStorageSpec.XinfiniSimulators.snapshots.containsKey(oldSnapshotId) :
+                "image cache snapshot precondition is invalid: expected snapshotId=${oldSnapshotId} to exist actualSnapshotIds=${ExternalPrimaryStorageSpec.XinfiniSimulators.snapshots.keySet()} installUrl=${oldImageCache.installUrl}"
+
+        ExternalPrimaryStorageSpec.XinfiniSimulators.snapshots.remove(oldSnapshotId)
+        long retainedImageCacheCount = Q.New(ImageCacheVO.class)
+                .eq(ImageCacheVO_.imageUuid, image.uuid)
+                .eq(ImageCacheVO_.primaryStorageUuid, ps.uuid)
+                .count()
+        assert !ExternalPrimaryStorageSpec.XinfiniSimulators.snapshots.containsKey(oldSnapshotId) :
+                "stale image cache setup must remove only its snapshot: expected snapshotId=${oldSnapshotId} to be absent actualSnapshotIds=${ExternalPrimaryStorageSpec.XinfiniSimulators.snapshots.keySet()}"
+        assert retainedImageCacheCount == 1 :
+                "stale image cache setup must retain its database record: expected=1 actual=${retainedImageCacheCount} imageUuid=${image.uuid} primaryStorageUuid=${ps.uuid}"
+        assert ExternalPrimaryStorageSpec.XinfiniSimulators.volumes.containsKey(backingVolumeId) :
+                "stale image cache setup must retain its backing volume: expected volumeId=${backingVolumeId} to exist actualVolumeIds=${ExternalPrimaryStorageSpec.XinfiniSimulators.volumes.keySet()} installUrl=${oldImageCache.installUrl}"
+
+        mockUploadImageToRemoteTarget()
+
+        def recreatedVm = createVmInstance {
+            name = "vm-from-stale-image-cache"
+            instanceOfferingUuid = instanceOffering.uuid
+            imageUuid = image.uuid
+            l3NetworkUuids = [l3.uuid]
+            hostUuid = host1.uuid
+            primaryStorageUuidForRootVolume = ps.uuid
+        } as VmInstanceInventory
+
+        List<ImageCacheVO> refreshedImageCaches = Q.New(ImageCacheVO.class)
+                .eq(ImageCacheVO_.imageUuid, image.uuid)
+                .eq(ImageCacheVO_.primaryStorageUuid, ps.uuid)
+                .list()
+        assert refreshedImageCaches.size() == 1 :
+                "stale image cache must be replaced in place: expected=1 actual=${refreshedImageCaches.size()} imageUuid=${image.uuid} primaryStorageUuid=${ps.uuid}"
+
+        int newSnapshotId = XInfiniPathHelper.getSnapIdFromPath(refreshedImageCaches[0].installUrl)
+        assert newSnapshotId != oldSnapshotId :
+                "stale image cache snapshot must be recreated: expectedSnapshotId!=${oldSnapshotId} actualSnapshotId=${newSnapshotId} installUrl=${refreshedImageCaches[0].installUrl}"
+        assert ExternalPrimaryStorageSpec.XinfiniSimulators.snapshots.containsKey(newSnapshotId) :
+                "refreshed image cache must reference an existing snapshot: expected snapshotId=${newSnapshotId} to exist actualSnapshotIds=${ExternalPrimaryStorageSpec.XinfiniSimulators.snapshots.keySet()} installUrl=${refreshedImageCaches[0].installUrl}"
+        assert !ExternalPrimaryStorageSpec.XinfiniSimulators.volumes.containsKey(backingVolumeId) :
+                "stale image cache backing volume must be deleted before redownload: expected volumeId=${backingVolumeId} to be absent actualVolumeIds=${ExternalPrimaryStorageSpec.XinfiniSimulators.volumes.keySet()}"
+
+        deleteVm(recreatedVm.uuid)
+    }
+
+    void testMissingReusedSnapshotDoesNotDeleteSourceVolume() {
+        ImageCacheVO cache = Q.New(ImageCacheVO.class)
+                .eq(ImageCacheVO_.imageUuid, image.uuid)
+                .eq(ImageCacheVO_.primaryStorageUuid, ps.uuid)
+                .find()
+        assert cache != null
+
+        def sourceSnapshot = createVolumeSnapshot {
+            name = "snapshot-reuse-source"
+            volumeUuid = vol.uuid
+        } as VolumeSnapshotInventory
+        int sourceVolumeId = XInfiniPathHelper.getVolIdFromPath(sourceSnapshot.primaryStorageInstallPath)
+        int sourceSnapshotId = XInfiniPathHelper.getSnapIdFromPath(sourceSnapshot.primaryStorageInstallPath)
+        String originalInstallUrl = cache.installUrl
+        String reuseInstallUrl = ImageConstant.SNAPSHOT_REUSE_IMAGE_SCHEMA + sourceSnapshot.uuid
+
+        try {
+            SQL.New(ImageCacheVO.class)
+                    .set(ImageCacheVO_.installUrl, reuseInstallUrl)
+                    .eq(ImageCacheVO_.id, cache.id)
+                    .update()
+            ExternalPrimaryStorageSpec.XinfiniSimulators.snapshots.remove(sourceSnapshotId)
+
+            CreateVmInstanceAction action = new CreateVmInstanceAction()
+            action.name = "vm-from-missing-reused-snapshot"
+            action.instanceOfferingUuid = instanceOffering.uuid
+            action.imageUuid = image.uuid
+            action.l3NetworkUuids = [l3.uuid]
+            action.hostUuid = host1.uuid
+            action.primaryStorageUuidForRootVolume = ps.uuid
+            action.sessionId = adminSession()
+
+            CreateVmInstanceAction.Result result = action.call()
+            assert result.error != null
+            assert JSONObjectUtil.toJsonString(result.error).contains("missing reused volume snapshot")
+
+            ImageCacheVO retainedCache = Q.New(ImageCacheVO.class).eq(ImageCacheVO_.id, cache.id).find()
+            assert retainedCache != null
+            assert retainedCache.installUrl == reuseInstallUrl
+            assert ExternalPrimaryStorageSpec.XinfiniSimulators.volumes.containsKey(sourceVolumeId)
+            assert Q.New(ImageCacheVO.class)
+                    .eq(ImageCacheVO_.imageUuid, image.uuid)
+                    .eq(ImageCacheVO_.primaryStorageUuid, ps.uuid)
+                    .count() == 1
+        } finally {
+            SQL.New(ImageCacheVO.class)
+                    .set(ImageCacheVO_.installUrl, originalInstallUrl)
+                    .eq(ImageCacheVO_.id, cache.id)
+                    .update()
+            deleteVolumeSnapshot {
+                uuid = sourceSnapshot.uuid
+            }
+        }
     }
 
     // when the old host's storage client cannot be isolated, deactivate must report
@@ -613,6 +734,26 @@ class XinfiniPrimaryStorageCase extends SubCase {
             volumeUuid = vol.uuid
         } as VolumeSnapshotInventory
 
+        StorageResource volumeStats = queryStorageResourceStats(vol.installPath)
+        assert volumeStats instanceof VolumeStats :
+                "volume path must return VolumeStats: expected=${VolumeStats.name} actual=${volumeStats.class.name} installPath=${vol.installPath}"
+        assert volumeStats.installPath == vol.installPath :
+                "volume stats installPath mismatch: expected=${vol.installPath} actual=${volumeStats.installPath}"
+        assert volumeStats.size != null && volumeStats.size > 0 :
+                "volume stats size must be positive: expected>0 actual=${volumeStats.size} installPath=${vol.installPath}"
+        assert volumeStats.actualSize != null && volumeStats.actualSize >= 0 :
+                "volume stats actualSize must be non-negative: expected>=0 actual=${volumeStats.actualSize} installPath=${vol.installPath}"
+
+        StorageResource snapshotStats = queryStorageResourceStats(snapshot.primaryStorageInstallPath)
+        assert snapshotStats instanceof VolumeSnapshotStats :
+                "snapshot path must return VolumeSnapshotStats: expected=${VolumeSnapshotStats.name} actual=${snapshotStats.class.name} installPath=${snapshot.primaryStorageInstallPath}"
+        assert snapshotStats.installPath == snapshot.primaryStorageInstallPath :
+                "snapshot stats installPath mismatch: expected=${snapshot.primaryStorageInstallPath} actual=${snapshotStats.installPath}"
+        assert snapshotStats.size != null && snapshotStats.size > 0 :
+                "snapshot stats size must be positive: expected>0 actual=${snapshotStats.size} installPath=${snapshot.primaryStorageInstallPath}"
+        assert snapshotStats.actualSize != null && snapshotStats.actualSize > 0 :
+                "snapshot stats actualSize must be positive: expected>0 actual=${snapshotStats.actualSize} installPath=${snapshot.primaryStorageInstallPath}"
+
         stopVmInstance {
             uuid = vm.uuid
         }
@@ -628,6 +769,28 @@ class XinfiniPrimaryStorageCase extends SubCase {
         startVmInstance {
             uuid = vm.uuid
         }
+    }
+
+    StorageResource queryStorageResourceStats(String installPath) {
+        StorageResource[] stats = new StorageResource[1]
+        ErrorCode[] errors = new ErrorCode[1]
+        controller.stats(installPath, new ReturnValueCompletion<StorageResource>(null) {
+            @Override
+            void success(StorageResource returnValue) {
+                stats[0] = returnValue
+            }
+
+            @Override
+            void fail(ErrorCode errorCode) {
+                errors[0] = errorCode
+            }
+        })
+
+        assert errors[0] == null :
+                "storage resource stats query must succeed: expectedError=null actualError=${errors[0]} installPath=${installPath}"
+        assert stats[0] != null :
+                "storage resource stats query must return a result: actual=null installPath=${installPath}"
+        return stats[0]
     }
 
     void testCreateTemplate() {
