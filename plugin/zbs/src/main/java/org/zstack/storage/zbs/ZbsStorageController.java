@@ -431,9 +431,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                             fillVhostHostParams(cmd, h, host);
                             cmd.hugepageSize = ZbsConstants.VHOST_TARGET_HUGEPAGE_SIZE_MB;
 
-                            httpCall(DEPLOY_VHOST_PATH, cmd, AgentResponse.class, new ReturnValueCompletion<AgentResponse>(trigger) {
+                            new HttpCaller<>(DEPLOY_VHOST_PATH, cmd, AgentResponse.class, new ReturnValueCompletion<AgentResponse>(trigger) {
                                 @Override
                                 public void success(AgentResponse rsp) {
+                                    ErrorCode errorCode = rsp.buildErrorCode();
+                                    if (errorCode != null) {
+                                        trigger.fail(errorCode);
+                                        return;
+                                    }
                                     trigger.next();
                                 }
 
@@ -441,7 +446,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                                 public void fail(ErrorCode errorCode) {
                                     trigger.fail(errorCode);
                                 }
-                            });
+                            }).setTryNext(true).call();
                         }
                     });
                 }

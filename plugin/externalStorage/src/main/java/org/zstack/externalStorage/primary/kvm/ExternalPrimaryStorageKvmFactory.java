@@ -27,6 +27,7 @@ import org.zstack.header.storage.primary.*;
 import org.zstack.header.vm.VmInstanceSpec;
 import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.volume.VolumeInventory;
+import org.zstack.header.volume.VolumeProtocol;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.volume.VolumeVO_;
 import org.zstack.kvm.*;
@@ -212,7 +213,11 @@ public class ExternalPrimaryStorageKvmFactory implements KVMHostConnectExtension
                     .eq(ExternalPrimaryStorageHostProtocolRefVO_.status, PrimaryStorageHostStatus.Connected)
                     .select(ExternalPrimaryStorageHostProtocolRefVO_.protocol)
                     .listValues();
+            boolean deployVhost = protocols.remove(VolumeProtocol.Vhost.toString());
             protocols.removeAll(connected);
+            if (deployVhost) {
+                protocols.add(VolumeProtocol.Vhost.toString());
+            }
 
             if (protocols.isEmpty()) {
                 compl.done();

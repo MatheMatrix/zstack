@@ -160,7 +160,7 @@ class ZbsVhostVolumeCase extends SubCase {
             testVhostVmStartActivationChain()
             testAddProtocolPreparesHostsAndRecordsProtocolRefs()
             testProtocolRecoveryBackoff()
-            testReconnectSkipsConnectedProtocolDeploy()
+            testReconnectRedeploysConnectedVhostProtocol()
         }
     }
 
@@ -696,12 +696,18 @@ class ZbsVhostVolumeCase extends SubCase {
         }
     }
 
-    void testReconnectSkipsConnectedProtocolDeploy() {
+    void testReconnectRedeploysConnectedVhostProtocol() {
         HostInventory host = env.inventoryByName("kvm-1") as HostInventory
         AtomicInteger deployCount = new AtomicInteger(0)
+        AtomicBoolean failNextDeploy = new AtomicBoolean(false)
 
         env.simulator(ZbsStorageController.DEPLOY_VHOST_PATH) { HttpEntity<String> e, EnvSpec spec ->
             deployCount.incrementAndGet()
+            if (failNextDeploy.compareAndSet(true, false)) {
+                def rsp = new ZbsStorageController.AgentResponse()
+                rsp.setError("failed to get registry host config")
+                return rsp
+            }
             return new ZbsStorageController.AgentResponse()
         }
         env.simulator(ZbsStorageController.PREPARE_VHOST_TARGET_ENV_PATH) { HttpEntity<String> e, EnvSpec spec ->
@@ -737,11 +743,13 @@ class ZbsVhostVolumeCase extends SubCase {
         }
 
         deployCount.set(0)
+        failNextDeploy.set(true)
         reconnectHost { uuid = host.uuid }
-        Thread.sleep(2000)
-        assert deployCount.get() == 0 : \
-                "reconnect redeployed an already-Connected vhost target ${deployCount.get()} time(s); " +
-                "host-connect must skip protocols already Connected"
+        retryInSecs {
+            assert deployCount.get() > 1 : \
+                    "reconnect must redeploy vhost even when the protocol ref is still Connected; " +
+                    "the ref can be stale while the container is already gone, and the first MDS failure must try the next one"
+        }
 
         detachPrimaryStorageFromCluster {
             primaryStorageUuid = ps.uuid
