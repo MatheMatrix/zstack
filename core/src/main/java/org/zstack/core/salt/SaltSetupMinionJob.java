@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.Platform;
+import org.zstack.core.ManagementServerIpSelection;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.core.job.Job;
 import org.zstack.core.job.JobContext;
@@ -13,6 +14,8 @@ import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.utils.Utils;
 import org.zstack.utils.data.StringTemplate;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.utils.network.IPv6NetworkUtils;
+import org.zstack.utils.network.NetworkUtils;
 import org.zstack.utils.path.PathUtil;
 import org.zstack.utils.ssh.Ssh;
 import org.zstack.utils.ssh.SshException;
@@ -52,24 +55,28 @@ public class SaltSetupMinionJob implements Job {
     private String minionId;
     @JobContext
     private boolean cleanMasterKey;
+    private ManagementServerIpSelection managementServerIpSelection;
 
     @Autowired
     private ErrorFacade errf;
 
     private static final String SALT_BOOTSTRAP = "salt/salt-bootstrap.sh";
 
-    private File rewriteMinionConfFile(String minionId) throws IOException {
+    private File rewriteMinionConfFile(String minionId, String managementNodeIp) throws IOException {
         File minionConfTmpt = new File(saltMinionConfPath);
-
-        Map<String, String> map = new HashMap<String, String>();
-        map.put("managementNodeIp", Platform.getManagementServerIp());
-        map.put("minionId", minionId);
-
         String srcConf = FileUtils.readFileToString(minionConfTmpt);
-        String conf = StringTemplate.substitute(srcConf, map);
+        String conf = renderMinionConfig(srcConf, managementNodeIp, minionId);
         File minionConf = File.createTempFile("zstack-salt", "minion");
         FileUtils.write(minionConf, conf);
         return minionConf;
+    }
+
+    public static String renderMinionConfig(String template, String managementNodeIp, String minionId) {
+        Map<String, String> map = new HashMap<String, String>();
+        map.put("managementNodeIp", managementNodeIp);
+        map.put("ipv6Enabled", String.valueOf(IPv6NetworkUtils.isIpv6Address(managementNodeIp)));
+        map.put("minionId", minionId);
+        return StringTemplate.substitute(template, map);
     }
 
     @Override
@@ -78,6 +85,18 @@ public class SaltSetupMinionJob implements Job {
         Ssh ssh = null;
         FileInputStream fis = null;
         try {
+            String managementNodeIp;
+            if (NetworkUtils.isIpAddress(targetIp)) {
+                ManagementServerIpSelection selection = managementServerIpSelection == null ?
+                        Platform.resolveManagementServerIpForRemoteStrict(targetIp) : managementServerIpSelection;
+                if (!selection.isSuccess()) {
+                    completion.fail(Platform.managementServerIpSelectionError(selection));
+                    return;
+                }
+                managementNodeIp = selection.getSelectedIp();
+            } else {
+                managementNodeIp = Platform.getManagementServerIp();
+            }
             ssh = new Ssh().setHostname(targetIp).setPassword(password).setPrivateKey(privateKey)
                     .setUsername(username).setPort(port);
             SshResult ret = ssh.checkTool("scp").run();
@@ -100,7 +119,7 @@ public class SaltSetupMinionJob implements Job {
                 logger.debug(String.format("salt-minion is found on system[%s], no need to install new one", targetIp));
             }
 
-            tmpt = rewriteMinionConfFile(minionId);
+            tmpt = rewriteMinionConfFile(minionId, managementNodeIp);
             String minionConfPath = PathUtil.join(SaltConstant.SALT_CONF_HOME, SaltConstant.MINION_CONF_NAME);
             boolean deployMinion = false;
             ret = ssh.reset().command(String.format("md5sum %s", minionConfPath)).run();
@@ -165,6 +184,10 @@ public class SaltSetupMinionJob implements Job {
 
     public void setTargetIp(String targetIp) {
         this.targetIp = targetIp;
+    }
+
+    public void setManagementServerIpSelection(ManagementServerIpSelection selection) {
+        this.managementServerIpSelection = selection;
     }
 
     public String getUsername() {

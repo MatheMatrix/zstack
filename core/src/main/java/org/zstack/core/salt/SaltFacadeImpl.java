@@ -6,6 +6,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.CoreGlobalProperty;
+import org.zstack.core.Platform;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.MessageSafe;
 import org.zstack.header.AbstractService;
@@ -64,17 +65,23 @@ public class SaltFacadeImpl extends AbstractService implements SaltFacade {
 
     private File rewriteMasterConfFile() throws IOException {
         File masterConfTmpt = PathUtil.findFileOnClassPath(PathUtil.join("salt", SaltConstant.MASTER_CONF_NAME), true);
-
-        Map<String, String> map = new HashMap<String, String>();
-        map.put("maxOpenFiles", String.valueOf(masterMaxOpenFiles));
-        map.put("workerThreads", String.valueOf(masterWorkerThreads));
-
         String srcConf = FileUtils.readFileToString(masterConfTmpt);
-        String conf = StringTemplate.substitute(srcConf, map);
+        boolean ipv6Enabled = Platform.getManagementServerIp6() != null;
+        String conf = renderMasterConfig(srcConf, masterMaxOpenFiles, masterWorkerThreads, ipv6Enabled);
         File masterConf = File.createTempFile("zstack-salt", "master");
         FileUtils.write(masterConf, conf);
 
         return masterConf;
+    }
+
+    public static String renderMasterConfig(String template, int maxOpenFiles, int workerThreads,
+                                            boolean ipv6Enabled) {
+        Map<String, String> map = new HashMap<String, String>();
+        map.put("maxOpenFiles", String.valueOf(maxOpenFiles));
+        map.put("workerThreads", String.valueOf(workerThreads));
+        map.put("masterInterface", ipv6Enabled ? "'::'" : "0.0.0.0");
+        map.put("ipv6Enabled", String.valueOf(ipv6Enabled));
+        return StringTemplate.substitute(template, map);
     }
 
 
@@ -84,6 +91,10 @@ public class SaltFacadeImpl extends AbstractService implements SaltFacade {
         try {
             IptablesUtils.insertRuleToFilterTable("-A INPUT -p tcp -m state --state NEW -m tcp --dport 4505 -j ACCEPT");
             IptablesUtils.insertRuleToFilterTable("-A INPUT -p tcp -m state --state NEW -m tcp --dport 4506 -j ACCEPT");
+            if (Platform.getManagementServerIp6() != null) {
+                IptablesUtils.insertRuleToFilterTableV6("-A INPUT -p tcp -m state --state NEW -m tcp --dport 4505 -j ACCEPT");
+                IptablesUtils.insertRuleToFilterTableV6("-A INPUT -p tcp -m state --state NEW -m tcp --dport 4506 -j ACCEPT");
+            }
 
             File dstMasterConf = new File(PathUtil.join(SaltConstant.SALT_CONF_HOME, SaltConstant.MASTER_CONF_NAME));
             if (deployFile(srcMasterConf, dstMasterConf)) {
@@ -322,4 +333,3 @@ public class SaltFacadeImpl extends AbstractService implements SaltFacade {
         this.masterFileRoots = masterFileRoots;
     }
 }
-

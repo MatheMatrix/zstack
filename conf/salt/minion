@@ -12,7 +12,7 @@
 master: {managementNodeIp}
 
 # Set whether the minion should connect to the master via IPv6
-#ipv6: False
+ipv6: {ipv6Enabled}
 
 # Set the number of seconds to wait before attempting to resolve
 # the master hostname if name resolution fails. Defaults to 30 seconds.

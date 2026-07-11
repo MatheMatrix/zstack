@@ -75,6 +75,9 @@ import java.util.stream.Collectors;
 import static org.zstack.utils.CollectionDSL.e;
 import static org.zstack.utils.CollectionDSL.map;
 import static org.zstack.utils.StringDSL.ln;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.ORG_ZSTACK_CORE_MANAGEMENT_SERVER_IP_10000;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.ORG_ZSTACK_CORE_MANAGEMENT_SERVER_IP_10001;
+import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.ORG_ZSTACK_CORE_MANAGEMENT_SERVER_IP_10002;
 
 public class Platform {
     private static final CLogger logger = CLoggerImpl.getLogger(Platform.class);
@@ -1389,6 +1392,125 @@ public class Platform {
 
     public static String getManagementServerIpForRemote(String remoteIp) {
         return selectManagementServerIpForRemote(remoteIp, null);
+    }
+
+    public static ManagementServerIpSelection resolveManagementServerIpForRemoteStrict(String remoteIp) {
+        String normalizedRemoteIp = normalizeManagementIp(remoteIp);
+        int remoteFamily = getIpFamily(normalizedRemoteIp);
+        List<String> managementServerIps = getManagementServerIps().stream()
+                .map(Platform::normalizeManagementIp)
+                .distinct()
+                .collect(Collectors.toList());
+        if (remoteFamily == 0) {
+            return ManagementServerIpSelection.failure(normalizedRemoteIp, remoteFamily,
+                    managementServerIps, null, "remote target is not an IP address",
+                    ManagementServerIpSelection.FailureReason.ROUTE_LOOKUP_FAILED);
+        }
+        boolean hasSameFamily = managementServerIps.stream()
+                .anyMatch(ip -> getIpFamily(ip) == remoteFamily);
+        if (!hasSameFamily) {
+            return ManagementServerIpSelection.failure(normalizedRemoteIp, remoteFamily,
+                    managementServerIps, null, null,
+                    ManagementServerIpSelection.FailureReason.NO_SAME_FAMILY_MGT);
+        }
+
+        String family = remoteFamily == IPv6Constants.IPv6 ? "-6" : "-4";
+        Linux.ShellResult ret = Linux.shell(String.format("/sbin/ip %s route get %s", family, normalizedRemoteIp));
+        if (ret.getExitCode() != 0) {
+            String routeError = String.format("exitCode=%s, stdout=%s, stderr=%s",
+                    ret.getExitCode(), ret.getStdout(), ret.getStderr());
+            return selectManagementServerIpForRemoteStrict(normalizedRemoteIp, null, routeError);
+        }
+
+        String routeSourceIp = parseRouteSourceIp(normalizedRemoteIp, ret.getStdout());
+        if (routeSourceIp == null) {
+            return selectManagementServerIpForRemoteStrict(normalizedRemoteIp, null,
+                    String.format("route output has no same-family source: %s", ret.getStdout()));
+        }
+        return selectManagementServerIpForRemoteStrict(normalizedRemoteIp, routeSourceIp, null);
+    }
+
+    public static ManagementServerIpSelection selectManagementServerIpForRemoteStrict(
+            String remoteIp, String routeSourceIp, String routeError) {
+        String normalizedRemoteIp = normalizeManagementIp(remoteIp);
+        String normalizedRouteSourceIp = normalizeManagementIp(routeSourceIp);
+        int remoteFamily = getIpFamily(normalizedRemoteIp);
+        List<String> managementServerIps = getManagementServerIps().stream()
+                .map(Platform::normalizeManagementIp)
+                .distinct()
+                .collect(Collectors.toList());
+        List<String> sameFamilyIps = managementServerIps.stream()
+                .filter(ip -> getIpFamily(ip) == remoteFamily)
+                .collect(Collectors.toList());
+
+        if (remoteFamily == 0) {
+            return ManagementServerIpSelection.failure(normalizedRemoteIp, remoteFamily,
+                    managementServerIps, normalizedRouteSourceIp, "remote target is not an IP address",
+                    ManagementServerIpSelection.FailureReason.ROUTE_LOOKUP_FAILED);
+        }
+        if (sameFamilyIps.isEmpty()) {
+            return ManagementServerIpSelection.failure(normalizedRemoteIp, remoteFamily,
+                    managementServerIps, normalizedRouteSourceIp, routeError,
+                    ManagementServerIpSelection.FailureReason.NO_SAME_FAMILY_MGT);
+        }
+        if (StringUtils.isBlank(normalizedRouteSourceIp)) {
+            String details = StringUtils.isBlank(routeError) ? "route source is unavailable" : routeError;
+            return ManagementServerIpSelection.failure(normalizedRemoteIp, remoteFamily,
+                    managementServerIps, null, details,
+                    ManagementServerIpSelection.FailureReason.ROUTE_LOOKUP_FAILED);
+        }
+        if (getIpFamily(normalizedRouteSourceIp) != remoteFamily ||
+                !sameFamilyIps.contains(normalizedRouteSourceIp)) {
+            return ManagementServerIpSelection.failure(normalizedRemoteIp, remoteFamily,
+                    managementServerIps, normalizedRouteSourceIp, routeError,
+                    ManagementServerIpSelection.FailureReason.ROUTE_SOURCE_NOT_MANAGEMENT);
+        }
+        return ManagementServerIpSelection.success(normalizedRouteSourceIp, normalizedRemoteIp,
+                remoteFamily, managementServerIps, normalizedRouteSourceIp);
+    }
+
+    public static ErrorCode managementServerIpSelectionError(ManagementServerIpSelection selection) {
+        if (selection == null || selection.isSuccess()) {
+            throw new IllegalArgumentException("selection must contain a failure");
+        }
+        String context = String.format("remote[%s], family[IPv%s], managementIps%s, routeSource[%s], routeError[%s]",
+                selection.getRemoteIp(), selection.getRemoteFamily(), selection.getManagementServerIps(),
+                selection.getRouteSourceIp(), selection.getRouteError());
+        switch (selection.getFailureReason()) {
+            case NO_SAME_FAMILY_MGT:
+                return operr(ORG_ZSTACK_CORE_MANAGEMENT_SERVER_IP_10000,
+                        "cannot find a same-family management server IP for %s", context);
+            case ROUTE_LOOKUP_FAILED:
+                return operr(ORG_ZSTACK_CORE_MANAGEMENT_SERVER_IP_10001,
+                        "failed to resolve the management server route source for %s", context);
+            case ROUTE_SOURCE_NOT_MANAGEMENT:
+                return operr(ORG_ZSTACK_CORE_MANAGEMENT_SERVER_IP_10002,
+                        "route source is not a configured management server IP for %s", context);
+            default:
+                throw new IllegalArgumentException("selection is successful or has no failure reason");
+        }
+    }
+
+    private static int getIpFamily(String ip) {
+        if (IPv6NetworkUtils.isIpv6Address(ip)) {
+            return IPv6Constants.IPv6;
+        }
+        if (NetworkUtils.isIpv4Address(ip)) {
+            return IPv6Constants.IPv4;
+        }
+        return 0;
+    }
+
+    private static String parseRouteSourceIp(String remoteIp, String output) {
+        String[] tokens = StringUtils.defaultString(output).trim().split("\\s+");
+        int remoteFamily = getIpFamily(remoteIp);
+        for (int i = 0; i < tokens.length - 1; i++) {
+            if ("src".equals(tokens[i])) {
+                String sourceIp = normalizeManagementIp(tokens[i + 1]);
+                return getIpFamily(sourceIp) == remoteFamily ? sourceIp : null;
+            }
+        }
+        return null;
     }
 
     public static String selectManagementServerIpForRemote(String remoteIp, String routeSourceIp) {

@@ -62,6 +62,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 import static org.zstack.core.Platform.*;
 import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
@@ -193,7 +194,8 @@ public class RESTFacadeImpl implements RESTFacade {
 
         port = Platform.getManagementNodeServicePort();
 
-        IptablesUtils.insertRuleToFilterTable(String.format("-A INPUT -p tcp -m state --state NEW -m tcp --dport %s -j ACCEPT", port));
+        installRestPortFirewallRules(port, Platform.getManagementServerIp6() != null,
+                IptablesUtils::insertRuleToFilterTable, IptablesUtils::insertRuleToFilterTableV6);
 
         if ("AUTO".equals(hostname)) {
             callbackHostName = Platform.getManagementServerIp();
@@ -213,6 +215,16 @@ public class RESTFacadeImpl implements RESTFacade {
                 CoreGlobalProperty.REST_FACADE_CONNECT_TIMEOUT,
                 CoreGlobalProperty.REST_FACADE_MAX_PER_ROUTE,
                 CoreGlobalProperty.REST_FACADE_MAX_TOTAL);
+    }
+
+    public static void installRestPortFirewallRules(int port, boolean ipv6Enabled,
+                                                     Consumer<String> ipv4RuleInstaller,
+                                                     Consumer<String> ipv6RuleInstaller) {
+        String rule = String.format("-A INPUT -p tcp -m state --state NEW -m tcp --dport %s -j ACCEPT", port);
+        ipv4RuleInstaller.accept(rule);
+        if (ipv6Enabled) {
+            ipv6RuleInstaller.accept(rule);
+        }
     }
 
     public static String buildBaseUrl(String hostName, int port, String path) {
@@ -258,6 +270,13 @@ public class RESTFacadeImpl implements RESTFacade {
         UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(buildBaseUrl(hostName, port, path));
         ub.path(RESTConstant.COMMAND_CHANNEL_PATH);
         return ub.build().toUriString();
+    }
+
+    public static String selectSendCommandUrl(String remoteHost, String defaultSendCommandUrl, int port, String path) {
+        if (!NetworkUtils.isIpAddress(remoteHost)) {
+            return defaultSendCommandUrl;
+        }
+        return buildSendCommandUrl(Platform.getManagementServerIpForRemote(remoteHost), port, path);
     }
 
     // cap the agent-advertised keep-alive to keepAliveMs; also cap when the agent sends none (duration < 0)
@@ -1059,6 +1078,16 @@ public class RESTFacadeImpl implements RESTFacade {
     @Override
     public String getSendCommandUrl() {
         return sendCommandUrl;
+    }
+
+    @Override
+    public String buildSendCommandUrl(String remoteHost) {
+        return selectSendCommandUrl(remoteHost, sendCommandUrl, port, path);
+    }
+
+    @Override
+    public String buildSendCommandUrlForManagementHost(String managementHost) {
+        return buildSendCommandUrl(managementHost, port, path);
     }
 
     @Override

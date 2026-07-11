@@ -19,7 +19,7 @@ import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 /**
  * Created by mingjian.deng on 2019/6/12.
  */
-public class CallBackNetworkChecker implements AnsibleChecker {
+public class CallBackNetworkChecker implements AnsibleChecker, ManagementServerIpAwareChecker {
     private static final CLogger logger = Utils.getLogger(CallBackNetworkChecker.class);
 
     private String username;
@@ -134,6 +134,11 @@ public class CallBackNetworkChecker implements AnsibleChecker {
 
     public void setCallbackIp(String callbackIp) {
         this.callbackIp = callbackIp;
+    }
+
+    @Override
+    public void setManagementServerIp(String managementServerIp) {
+        setCallbackIp(managementServerIp);
     }
 
     public int getCallBackPort() {

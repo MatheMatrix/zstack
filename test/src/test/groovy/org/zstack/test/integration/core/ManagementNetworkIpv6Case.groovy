@@ -95,6 +95,9 @@ class ManagementNetworkIpv6Case extends SubCase {
     void test() {
         testSelectManagementServerIpDualStackPolicy()
         testSelectManagementServerIpSkipsLoopbackAndLinkLocal()
+        testStrictSelectionWithoutSameFamily()
+        testStrictSelectionRejectsUnconfiguredRouteSource()
+        testStrictSelectionReportsRouteFailure()
         testSelectApplianceVmManagementNodeIpByCidr()
         testBuildUrlIpv4()
         testBuildUrlIpv6()
@@ -106,6 +109,8 @@ class ManagementNetworkIpv6Case extends SubCase {
         testKvmAgentUrlsIpv6()
         testKvmCallbackPrecheckUsesTargetAwareCallbackUrl()
         testRestFacadeIpv6Urls()
+        testRestFacadeSelectsSendCommandUrlByTargetIpVersion()
+        testRestPortFirewallRulesFollowManagementAddressFamilies()
         testSshTargetUsesRawIpv6Host()
         testScpTargetUsesBracketedIpv6Host()
         testCallbackCheckerUsesIpv6Options()
@@ -255,7 +260,7 @@ class ManagementNetworkIpv6Case extends SubCase {
                         RESTFacadeImpl.buildCallbackUrl(host, REST_PORT, "zstack")
                     }
             ] as RESTFacade
-            String command = KVMHost.buildManagementNodeCallbackCheckCommand(IPV6_2, restf)
+            String command = KVMHost.buildManagementNodeCallbackCheckCommandForManagementHost(IPV6, restf)
             String callbackUrl = RESTFacadeImpl.buildCallbackUrl(IPV6, REST_PORT, "zstack")
 
             assert callbackUrl == "http://[${IPV6}]:${REST_PORT}/zstack${RESTConstant.CALLBACK_PATH}"
@@ -272,6 +277,35 @@ class ManagementNetworkIpv6Case extends SubCase {
                 "http://[2001:db8::1]:8080/zstack${RESTConstant.CALLBACK_PATH}"
         assert RESTFacadeImpl.buildSendCommandUrl(IPV6, REST_PORT, "zstack") ==
                 "http://[2001:db8::1]:8080/zstack${RESTConstant.COMMAND_CHANNEL_PATH}"
+    }
+
+    void testRestPortFirewallRulesFollowManagementAddressFamilies() {
+        List<String> ipv4Rules = []
+        List<String> ipv6Rules = []
+
+        RESTFacadeImpl.installRestPortFirewallRules(REST_PORT, false,
+                { ipv4Rules.add(it) }, { ipv6Rules.add(it) })
+        assert ipv4Rules == ["-A INPUT -p tcp -m state --state NEW -m tcp --dport ${REST_PORT} -j ACCEPT"]
+        assert ipv6Rules.isEmpty()
+
+        ipv4Rules.clear()
+        RESTFacadeImpl.installRestPortFirewallRules(REST_PORT, true,
+                { ipv4Rules.add(it) }, { ipv6Rules.add(it) })
+        assert ipv4Rules.size() == 1
+        assert ipv6Rules == ipv4Rules
+    }
+
+    void testRestFacadeSelectsSendCommandUrlByTargetIpVersion() {
+        withManagementServerIpProperties([
+                "management.server.ip" : IPV4,
+                "management.server.ip6": IPV6,
+        ]) {
+            String defaultUrl = "http://${IPV4}:${REST_PORT}/zstack${RESTConstant.COMMAND_CHANNEL_PATH}"
+
+            assert RESTFacadeImpl.selectSendCommandUrl(IPV6_2, defaultUrl, REST_PORT, "zstack") ==
+                    "http://[${IPV6}]:${REST_PORT}/zstack${RESTConstant.COMMAND_CHANNEL_PATH}"
+            assert RESTFacadeImpl.selectSendCommandUrl("host.example.com", defaultUrl, REST_PORT, "zstack") == defaultUrl
+        }
     }
 
     void testRestFacadeSelectsCallbackUrlByTargetIpVersion() {
@@ -430,6 +464,62 @@ class ManagementNetworkIpv6Case extends SubCase {
             assert Platform.selectManagementServerIpForRemote("192.168.1.20", null) == IPV4
             assert Platform.selectManagementServerIpForRemote("192.168.1.20", "192.168.1.88") == IPV4
         }
+    }
+
+    void testStrictSelectionWithoutSameFamily() {
+        def selection
+        withManagementServerIpProperties([
+                "management.server.ip": IPV4,
+        ]) {
+            selection = Platform.selectManagementServerIpForRemoteStrict(
+                    IPV6_2, IPV6_2, null)
+
+            assert !selection.success
+            assert selection.failureReason.toString() == "NO_SAME_FAMILY_MGT"
+            assert selection.selectedIp == null
+            assert selection.remoteIp == IPV6_2
+            assert selection.managementServerIps == [IPV4]
+        }
+        assert Platform.managementServerIpSelectionError(selection).globalErrorCode ==
+                "ORG_ZSTACK_CORE_MANAGEMENT_SERVER_IP_10000"
+    }
+
+    void testStrictSelectionRejectsUnconfiguredRouteSource() {
+        String unconfiguredRouteSource = "2001:db8::88"
+        def selection
+        withManagementServerIpProperties([
+                "management.server.ip" : IPV4,
+                "management.server.ip6": IPV6,
+        ]) {
+            selection = Platform.selectManagementServerIpForRemoteStrict(
+                    IPV6_2, unconfiguredRouteSource, null)
+
+            assert !selection.success
+            assert selection.failureReason.toString() == "ROUTE_SOURCE_NOT_MANAGEMENT"
+            assert selection.routeSourceIp == unconfiguredRouteSource
+            assert selection.managementServerIps == [IPV4, IPV6]
+        }
+        assert Platform.managementServerIpSelectionError(selection).globalErrorCode ==
+                "ORG_ZSTACK_CORE_MANAGEMENT_SERVER_IP_10002"
+    }
+
+    void testStrictSelectionReportsRouteFailure() {
+        String routeError = "exitCode=2, stderr=network unreachable"
+        def selection
+        withManagementServerIpProperties([
+                "management.server.ip" : IPV4,
+                "management.server.ip6": IPV6,
+        ]) {
+            selection = Platform.selectManagementServerIpForRemoteStrict(
+                    IPV6_2, null, routeError)
+
+            assert !selection.success
+            assert selection.failureReason.toString() == "ROUTE_LOOKUP_FAILED"
+            assert selection.routeError == routeError
+        }
+        def error = Platform.managementServerIpSelectionError(selection)
+        assert error.globalErrorCode == "ORG_ZSTACK_CORE_MANAGEMENT_SERVER_IP_10001"
+        assert error.formatArgs.any { it.contains(routeError) }
     }
 
     void testManagementServerSecondaryPropertyRejectsWrongAddressFamily() {

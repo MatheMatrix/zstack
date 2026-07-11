@@ -20,6 +20,7 @@ import org.zstack.header.vm.devices.VirtualDeviceInfo;
 import org.zstack.header.vm.devices.VmInstanceDeviceManager;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.MessageCommandRecorder;
+import org.zstack.core.ManagementServerIpSelection;
 import org.zstack.core.Platform;
 import org.zstack.core.agent.AgentConstant;
 import org.zstack.core.ansible.*;
@@ -74,6 +75,7 @@ import org.zstack.header.os.OSArchitecture;
 import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.rest.JsonAsyncRESTCallback;
+import org.zstack.header.rest.RESTConstant;
 import org.zstack.header.rest.RESTFacade;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.snapshot.*;
@@ -133,6 +135,7 @@ import static org.zstack.utils.CollectionDSL.map;
 import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class KVMHost extends HostBase implements Host {
+    static final String UNIT_TEST_AGENT_HOST = "KVMHost.unitTestAgentHost";
     private static final CLogger logger = Utils.getLogger(KVMHost.class);
     private static final ZTester tester = Utils.getTester();
     private static final String EXTRA_IP_SEPARATOR = ",";
@@ -216,6 +219,7 @@ public class KVMHost extends HostBase implements Host {
     protected KVMHostFactory factory;
     @Autowired
     private RESTFacade restf;
+    private volatile ManagementServerIpSelection managementServerIpSelection;
     @Autowired
     private KVMExtensionEmitter extEmitter;
     @Autowired
@@ -318,7 +322,8 @@ public class KVMHost extends HostBase implements Host {
         super(self);
 
         this.context = context;
-        baseUrl = context.getBaseUrl();
+        baseUrl = isUnitTestAgentRedirectEnabled() ?
+                buildAgentUrl(System.getProperty(UNIT_TEST_AGENT_HOST), "") : context.getBaseUrl();
 
         UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
         ub.path(KVMConstant.KVM_CONNECT_PATH);
@@ -559,10 +564,16 @@ public class KVMHost extends HostBase implements Host {
         Class<T> responseClass;
         String commandStr;
         String commandName;
+        String targetManagementIp;
         long timeout = -1;
 
         Http<T> timeout(long timeout) {
             this.timeout = timeout;
+            return this;
+        }
+
+        Http<T> targetManagementIp(String targetManagementIp) {
+            this.targetManagementIp = targetManagementIp;
             return this;
         }
 
@@ -593,6 +604,17 @@ public class KVMHost extends HostBase implements Host {
 
             Map<String, String> header = new HashMap<>();
             header.put(Constants.AGENT_HTTP_HEADER_RESOURCE_UUID, resourceUuid == null ? self.getUuid() : resourceUuid);
+            String callbackTarget = targetManagementIp == null ? self.getManagementIp() : targetManagementIp;
+            if (NetworkUtils.isIpAddress(callbackTarget)) {
+                ManagementServerIpSelection selection =
+                        Platform.resolveManagementServerIpForRemoteStrict(callbackTarget);
+                if (!selection.isSuccess()) {
+                    completion.fail(Platform.managementServerIpSelectionError(selection));
+                    return;
+                }
+                header.put(RESTConstant.CALLBACK_URL,
+                        restf.buildCallbackUrl(selection.getSelectedIp()));
+            }
             runBeforeAsyncJsonPostExts(header);
             if (commandStr != null) {
                 long overall = timeoutManager.getTimeout();
@@ -2903,9 +2925,9 @@ public class KVMHost extends HostBase implements Host {
         return String.format(MANAGEMENT_NODE_CALLBACK_CHECK_COMMAND, callbackUrl, callbackUrl);
     }
 
-    public static String buildManagementNodeCallbackCheckCommand(String hostManagementIp, RESTFacade restf) {
-        String callbackHost = Platform.getManagementServerIpForRemote(hostManagementIp);
-        return buildManagementNodeCallbackCheckCommand(restf.buildCallbackUrl(callbackHost));
+    public static String buildManagementNodeCallbackCheckCommandForManagementHost(
+            String managementHost, RESTFacade restf) {
+        return buildManagementNodeCallbackCheckCommand(restf.buildCallbackUrl(managementHost));
     }
 
     private static String joinAgentPath(String rootPath, String path) {
@@ -2927,7 +2949,14 @@ public class KVMHost extends HostBase implements Host {
     }
 
     private String buildUrl(String path) {
-        return buildAgentUrl(self.getManagementIp(), path);
+        String host = isUnitTestAgentRedirectEnabled() ?
+                System.getProperty(UNIT_TEST_AGENT_HOST) : self.getManagementIp();
+        return buildAgentUrl(host, path);
+    }
+
+    private static boolean isUnitTestAgentRedirectEnabled() {
+        return CoreGlobalProperty.UNIT_TEST_ON &&
+                StringUtils.isNotBlank(System.getProperty(UNIT_TEST_AGENT_HOST));
     }
 
     private void executeAsyncHttpCall(final KVMHostAsyncHttpCallMsg msg, final NoErrorCompletion completion) {
@@ -3370,7 +3399,8 @@ public class KVMHost extends HostBase implements Host {
                         cmd.vmUuid = vmUuid;
 
                         String url = buildAgentUrl(dstHostMnIp, KVMConstant.CLEAN_FIRMWARE_FLASH);
-                        new Http<>(url, cmd, AgentResponse.class).call(dstHostUuid, new ReturnValueCompletion<AgentResponse>(trigger) {
+                        new Http<>(url, cmd, AgentResponse.class).targetManagementIp(dstHostMnIp)
+                                .call(dstHostUuid, new ReturnValueCompletion<AgentResponse>(trigger) {
                             @Override
                             public void success(AgentResponse ret) {
                                 if (!ret.isSuccess()) {
@@ -3442,7 +3472,9 @@ public class KVMHost extends HostBase implements Host {
                         String migrateUrl = buildAgentUrl(
                                 migrateFromDestination ? dstHostMnIp : srcHostMnIp,
                                 KVMConstant.KVM_MIGRATE_VM_PATH);
-                        new Http<>(migrateUrl, cmd, MigrateVmResponse.class).call(migrateFromDestination ? dstHostUuid : srcHostUuid, new ReturnValueCompletion<MigrateVmResponse>(trigger) {
+                        new Http<>(migrateUrl, cmd, MigrateVmResponse.class)
+                                .targetManagementIp(migrateFromDestination ? dstHostMnIp : srcHostMnIp)
+                                .call(migrateFromDestination ? dstHostUuid : srcHostUuid, new ReturnValueCompletion<MigrateVmResponse>(trigger) {
                             @Override
                             public void success(MigrateVmResponse ret) {
                                 if (!ret.isSuccess()) {
@@ -3481,7 +3513,8 @@ public class KVMHost extends HostBase implements Host {
                         cmd.hostManagementIp = dstHostMnIp;
 
                         String url = buildAgentUrl(dstHostMnIp, KVMConstant.KVM_HARDEN_CONSOLE_PATH);
-                        new Http<>(url, cmd, AgentResponse.class).call(dstHostUuid, new ReturnValueCompletion<AgentResponse>(trigger) {
+                        new Http<>(url, cmd, AgentResponse.class).targetManagementIp(dstHostMnIp)
+                                .call(dstHostUuid, new ReturnValueCompletion<AgentResponse>(trigger) {
                             @Override
                             public void success(AgentResponse ret) {
                                 if (!ret.isSuccess()) {
@@ -3514,7 +3547,8 @@ public class KVMHost extends HostBase implements Host {
                         cmd.hostManagementIp = srcHostMnIp;
 
                         String url = buildAgentUrl(srcHostMnIp, KVMConstant.KVM_DELETE_CONSOLE_FIREWALL_PATH);
-                        new Http<>(url, cmd, AgentResponse.class).call(new ReturnValueCompletion<AgentResponse>(trigger) {
+                        new Http<>(url, cmd, AgentResponse.class).targetManagementIp(srcHostMnIp)
+                                .call(new ReturnValueCompletion<AgentResponse>(trigger) {
                             @Override
                             public void success(AgentResponse ret) {
                                 if (!ret.isSuccess()) {
@@ -5177,7 +5211,7 @@ public class KVMHost extends HostBase implements Host {
         bus.send(rmsg);
     }
 
-    private void doUpdateHostConfiguration() {
+    private void doUpdateHostConfiguration(ManagementServerIpSelection pingSelection) {
         thdf.chainSubmit(new ChainTask(null) {
             @Override
             public String getSyncSignature() {
@@ -5186,9 +5220,29 @@ public class KVMHost extends HostBase implements Host {
 
             @Override
             public void run(SyncTaskChain chain) {
+                ManagementServerIpSelection selection = pingSelection;
+                if (NetworkUtils.isIpAddress(self.getManagementIp())) {
+                    if (selection == null) {
+                        selection = Platform.resolveManagementServerIpForRemoteStrict(self.getManagementIp());
+                    }
+                    if (!selection.isSuccess()) {
+                        ErrorCode error = Platform.managementServerIpSelectionError(selection);
+                        logger.warn(String.format("failed to select management server IP for host[uuid:%s]: %s",
+                                self.getUuid(), error));
+                        changeConnectionState(HostStatusEvent.disconnected);
+                        new HostDisconnectedCanonicalEvent(self.getUuid(), error).fire();
+                        ReconnectHostMsg rmsg = new ReconnectHostMsg();
+                        rmsg.setHostUuid(self.getUuid());
+                        bus.makeTargetServiceIdByResourceUuid(rmsg, HostConstant.SERVICE_ID, self.getUuid());
+                        bus.send(rmsg);
+                        chain.next();
+                        return;
+                    }
+                }
                 UpdateHostConfigurationCmd cmd = new UpdateHostConfigurationCmd();
                 cmd.hostUuid = self.getUuid();
-                cmd.sendCommandUrl = restf.getSendCommandUrl();
+                cmd.sendCommandUrl = selection == null ? restf.buildSendCommandUrl(self.getManagementIp()) :
+                        restf.buildSendCommandUrlForManagementHost(selection.getSelectedIp());
                 restf.asyncJsonPost(updateHostConfigurationPath, cmd, new JsonAsyncRESTCallback<UpdateHostConfigurationResponse>(chain) {
                     @Override
                     public void fail(ErrorCode err) {
@@ -5267,9 +5321,26 @@ public class KVMHost extends HostBase implements Host {
         super.connectHostFailHook(errorCode);
     }
 
-    boolean needUpdateHostConfiguration(PingResponse rsp) {
+    boolean needUpdateHostConfiguration(PingResponse rsp, ManagementServerIpSelection selection) {
         // host uuid or send command url or version changed
-        return !restf.getSendCommandUrl().equals(rsp.getSendCommandUrl());
+        if (NetworkUtils.isIpAddress(self.getManagementIp())) {
+            if (selection == null) {
+                selection = Platform.resolveManagementServerIpForRemoteStrict(self.getManagementIp());
+            }
+            if (!selection.isSuccess()) {
+                if (selection.getFailureReason() ==
+                        ManagementServerIpSelection.FailureReason.ROUTE_LOOKUP_FAILED) {
+                    logger.warn(String.format("skip updating host[uuid:%s] configuration because route lookup " +
+                                    "for management IP[%s] failed: %s", self.getUuid(), self.getManagementIp(),
+                            selection.getRouteError()));
+                    return false;
+                }
+                return true;
+            }
+        }
+        String sendCommandUrl = selection == null ? restf.buildSendCommandUrl(self.getManagementIp()) :
+                restf.buildSendCommandUrlForManagementHost(selection.getSelectedIp());
+        return !sendCommandUrl.equals(rsp.getSendCommandUrl());
     }
 
     @Override
@@ -5316,8 +5387,14 @@ public class KVMHost extends HostBase implements Host {
                                     }
 
                                     afterDone.add(() -> doReconnectHostDueToPingResult(ret));
-                                } else if (needUpdateHostConfiguration(ret)) {
-                                    afterDone.add(KVMHost.this::doUpdateHostConfiguration);
+                                } else {
+                                    ManagementServerIpSelection pingSelection =
+                                            NetworkUtils.isIpAddress(self.getManagementIp()) ?
+                                                    Platform.resolveManagementServerIpForRemoteStrict(
+                                                            self.getManagementIp()) : null;
+                                    if (needUpdateHostConfiguration(ret, pingSelection)) {
+                                        afterDone.add(() -> doUpdateHostConfiguration(pingSelection));
+                                    }
                                 }
 
                                 trigger.next();
@@ -5448,9 +5525,18 @@ public class KVMHost extends HostBase implements Host {
     private ErrorCode connectToAgent() {
         ErrorCode errCode = null;
         try {
+            ManagementServerIpSelection selection = null;
+            if (NetworkUtils.isIpAddress(self.getManagementIp())) {
+                selection = Platform.resolveManagementServerIpForRemoteStrict(self.getManagementIp());
+                if (!selection.isSuccess()) {
+                    return Platform.managementServerIpSelectionError(selection);
+                }
+                managementServerIpSelection = selection;
+            }
             ConnectCmd cmd = new ConnectCmd();
             cmd.setHostUuid(self.getUuid());
-            cmd.setSendCommandUrl(restf.getSendCommandUrl());
+            cmd.setSendCommandUrl(selection == null ? restf.buildSendCommandUrl(self.getManagementIp()) :
+                    restf.buildSendCommandUrlForManagementHost(selection.getSelectedIp()));
             cmd.setIptablesRules(KVMGlobalProperty.IPTABLES_RULES);
             cmd.setIgnoreMsrs(KVMGlobalConfig.KVM_IGNORE_MSRS.value(Boolean.class));
             cmd.setTcpServerPort(KVMGlobalProperty.TCP_SERVER_PORT);
@@ -5808,8 +5894,18 @@ public class KVMHost extends HostBase implements Host {
                 sshShell.setPassword(getSelf().getPassword());
                 sshShell.setPort(getSelf().getPort());
                 sshShell.setWithSudo(false);
-                final String callbackHost = Platform.getManagementServerIpForRemote(getSelf().getManagementIp());
-                final String cmd = buildManagementNodeCallbackCheckCommand(getSelf().getManagementIp(), restf);
+                String callbackHost = restf.getHostName();
+                if (NetworkUtils.isIpAddress(getSelf().getManagementIp())) {
+                    ManagementServerIpSelection selection =
+                            Platform.resolveManagementServerIpForRemoteStrict(getSelf().getManagementIp());
+                    if (!selection.isSuccess()) {
+                        trigger.fail(Platform.managementServerIpSelectionError(selection));
+                        return;
+                    }
+                    managementServerIpSelection = selection;
+                    callbackHost = selection.getSelectedIp();
+                }
+                final String cmd = buildManagementNodeCallbackCheckCommandForManagementHost(callbackHost, restf);
                 SshResult ret = sshShell.runCommand(cmd);
                 if (ret.getStderr() != null && ret.getStderr().contains("No route to host")) {
                     // c.f. https://access.redhat.com/solutions/1120533
@@ -6058,12 +6154,25 @@ public class KVMHost extends HostBase implements Host {
 
                     @Override
                     public boolean skip(Map data) {
-                        return CoreGlobalProperty.UNIT_TEST_ON;
+                        return CoreGlobalProperty.UNIT_TEST_ON && !isUnitTestAgentRedirectEnabled();
                     }
 
                     @Override
                     public void run(final FlowTrigger trigger, Map data) {
-                        String srcPath = PathUtil.findFileOnClassPath(String.format("ansible/kvm/%s", agentPackageName), true).getAbsolutePath();
+                        ManagementServerIpSelection selection = null;
+                        String selectedManagementServerIp = restf.getHostName();
+                        if (NetworkUtils.isIpAddress(getSelf().getManagementIp())) {
+                            selection = Platform.resolveManagementServerIpForRemoteStrict(
+                                    getSelf().getManagementIp());
+                            if (!selection.isSuccess()) {
+                                trigger.fail(Platform.managementServerIpSelectionError(selection));
+                                return;
+                            }
+                            managementServerIpSelection = selection;
+                            selectedManagementServerIp = selection.getSelectedIp();
+                        }
+                        String srcPath = isUnitTestAgentRedirectEnabled() ? agentPackageName :
+                                PathUtil.findFileOnClassPath(String.format("ansible/kvm/%s", agentPackageName), true).getAbsolutePath();
                         String destPath = String.format("/var/lib/zstack/kvm/package/%s", agentPackageName);
                         SshFileMd5Checker checker = new SshFileMd5Checker();
                         checker.setUsername(getSelf().getUsername());
@@ -6097,7 +6206,7 @@ public class KVMHost extends HostBase implements Host {
                         callbackChecker.setUsername(getSelf().getUsername());
                         callbackChecker.setPassword(getSelf().getPassword());
                         callbackChecker.setPort(getSelf().getPort());
-                        callbackChecker.setCallbackIp(Platform.getManagementServerIpForRemote(getSelf().getManagementIp()));
+                        callbackChecker.setCallbackIp(selectedManagementServerIp);
                         callbackChecker.setCallBackPort(CloudBusGlobalProperty.HTTP_PORT);
 
                         KvmHostConfigChecker kvmHostConfigChecker = new KvmHostConfigChecker();
@@ -6121,7 +6230,7 @@ public class KVMHost extends HostBase implements Host {
                             hostTcpConnectionCallbackChecker.setUsername(getSelf().getUsername());
                             hostTcpConnectionCallbackChecker.setPassword(getSelf().getPassword());
                             hostTcpConnectionCallbackChecker.setPort(getSelf().getPort());
-                            hostTcpConnectionCallbackChecker.setCallbackIp(Platform.getManagementServerIpForRemote(getSelf().getManagementIp()));
+                            hostTcpConnectionCallbackChecker.setCallbackIp(selectedManagementServerIp);
                             hostTcpConnectionCallbackChecker.setCallBackPort(KVMGlobalProperty.TCP_SERVER_PORT);
                             runner.installChecker(hostTcpConnectionCallbackChecker);
                         }
@@ -6133,6 +6242,7 @@ public class KVMHost extends HostBase implements Host {
                             }
                         }
                         runner.setAgentPort(KVMGlobalProperty.AGENT_PORT);
+                        runner.setManagementServerIpSelection(selection);
                         runner.setTargetIp(getSelf().getManagementIp());
                         runner.setTargetUuid(getSelf().getUuid());
                         runner.setPlayBookName(KVMConstant.ANSIBLE_PLAYBOOK_NAME);

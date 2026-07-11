@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.CoreGlobalProperty;
+import org.zstack.core.Platform;
+import org.zstack.core.ManagementServerIpSelection;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
 import org.zstack.header.core.Completion;
@@ -84,6 +86,7 @@ public class AnsibleRunner {
     private boolean forceRun;
 
     private AnsibleBasicArguments deployArguments;
+    private ManagementServerIpSelection managementServerIpSelection;
 
     public String getAnsibleExecutable() {
         return ansibleExecutable;
@@ -195,6 +198,10 @@ public class AnsibleRunner {
 
     public void setDeployArguments(AnsibleBasicArguments deployArguments) {
         this.deployArguments = deployArguments;
+    }
+
+    public void setManagementServerIpSelection(ManagementServerIpSelection selection) {
+        this.managementServerIpSelection = selection;
     }
 
     public Map<String, Object> getArguments() {
@@ -382,6 +389,24 @@ public class AnsibleRunner {
 
     public void run(ReturnValueCompletion<Boolean> completion) {
         try {
+            String deploymentHost;
+            if (NetworkUtils.isIpAddress(targetIp)) {
+                ManagementServerIpSelection selection = managementServerIpSelection == null ?
+                        Platform.resolveManagementServerIpForRemoteStrict(targetIp) : managementServerIpSelection;
+                if (!selection.isSuccess()) {
+                    completion.fail(Platform.managementServerIpSelectionError(selection));
+                    return;
+                }
+                deploymentHost = selection.getSelectedIp();
+            } else {
+                deploymentHost = restf.getHostName();
+            }
+            for (AnsibleChecker checker : checkers) {
+                if (checker instanceof ManagementServerIpAwareChecker) {
+                    ((ManagementServerIpAwareChecker) checker).setManagementServerIp(deploymentHost);
+                }
+            }
+
             if (!forceRun && !isNeedRun()) {
                 completion.success(false);
                 return;
@@ -393,9 +418,9 @@ public class AnsibleRunner {
                 deployArguments = new AnsibleBasicArguments();
             }
 
-            deployArguments.setPipUrl(buildPipUrl(restf.getHostName(), port));
-            deployArguments.setTrustedHost(restf.getHostName());
-            deployArguments.setYumServer(IPv6NetworkUtils.formatHostPort(restf.getHostName(), port));
+            deployArguments.setPipUrl(buildPipUrl(deploymentHost, port));
+            deployArguments.setTrustedHost(deploymentHost);
+            deployArguments.setYumServer(IPv6NetworkUtils.formatHostPort(deploymentHost, port));
             deployArguments.setRemoteUser(username);
             if (password != null && !password.isEmpty()) {
                 deployArguments.setRemotePass(password);

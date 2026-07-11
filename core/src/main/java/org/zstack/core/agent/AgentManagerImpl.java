@@ -3,6 +3,8 @@ package org.zstack.core.agent;
 import org.apache.commons.io.FileUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.CoreGlobalProperty;
+import org.zstack.core.ManagementServerIpSelection;
+import org.zstack.core.Platform;
 import org.zstack.core.ansible.AnsibleNeedRun;
 import org.zstack.core.ansible.AnsibleRunner;
 import org.zstack.core.ansible.SshFolderMd5Checker;
@@ -50,6 +52,11 @@ public class AgentManagerImpl extends AbstractService implements AgentManager {
 
     public static String buildAgentUrl(String ip, int port, String path) {
         return String.format(HTTP_URL_FORMAT, IPv6NetworkUtils.formatHostForUrl(ip), port, path);
+    }
+
+    public static String buildCommandUrl(RESTFacade restf, ManagementServerIpSelection selection) {
+        return selection == null ? restf.getSendCommandUrl() :
+                restf.buildSendCommandUrlForManagementHost(selection.getSelectedIp());
     }
 
     @Autowired
@@ -114,7 +121,8 @@ public class AgentManagerImpl extends AbstractService implements AgentManager {
         });
     }
 
-    private void connect(final DeployAgentMsg msg, final Completion completion) {
+    private void connect(final DeployAgentMsg msg, final ManagementServerIpSelection managementServerIpSelection,
+                         final Completion completion) {
         FlowChain chain = FlowChainBuilder.newShareFlowChain();
         chain.setName(String.format("continue-connect-agent-server-%s:%s", msg.getIp(), msg.getAgentPort()));
         chain.then(new ShareFlow() {
@@ -149,7 +157,8 @@ public class AgentManagerImpl extends AbstractService implements AgentManager {
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
                         Map<String, Object> config = new HashMap<String, Object>();
-                        config.put(AgentConstant.CONFIG_COMMAND_URL, restf.getSendCommandUrl());
+                        config.put(AgentConstant.CONFIG_COMMAND_URL,
+                                buildCommandUrl(restf, managementServerIpSelection));
                         if (msg.getConfig() != null) {
                             config.putAll(msg.getConfig());
                         }
@@ -191,6 +200,19 @@ public class AgentManagerImpl extends AbstractService implements AgentManager {
             bus.reply(msg, reply);
             noErrorCompletion.done();
             return;
+        }
+
+        final ManagementServerIpSelection managementServerIpSelection;
+        if (NetworkUtils.isIpAddress(msg.getIp())) {
+            managementServerIpSelection = Platform.resolveManagementServerIpForRemoteStrict(msg.getIp());
+            if (!managementServerIpSelection.isSuccess()) {
+                reply.setError(Platform.managementServerIpSelectionError(managementServerIpSelection));
+                bus.reply(msg, reply);
+                noErrorCompletion.done();
+                return;
+            }
+        } else {
+            managementServerIpSelection = null;
         }
 
         try {
@@ -254,6 +276,7 @@ public class AgentManagerImpl extends AbstractService implements AgentManager {
                 runner.setSshPort(msg.getSshPort());
             }
             runner.setTargetIp(msg.getIp());
+            runner.setManagementServerIpSelection(managementServerIpSelection);
             runner.setPlayBookPath(tmpAgentYaml.getAbsolutePath());
             runner.run(new ReturnValueCompletion<Boolean>(msg, noErrorCompletion) {
                 @Override
@@ -271,7 +294,7 @@ public class AgentManagerImpl extends AbstractService implements AgentManager {
                         }
                     });
 
-                    connect(msg, new Completion(msg, noErrorCompletion) {
+                    connect(msg, managementServerIpSelection, new Completion(msg, noErrorCompletion) {
                         @Override
                         public void success() {
                             bus.reply(msg, reply);

@@ -2,15 +2,20 @@ package org.zstack.test.integration.kvm.vm.migrate
 
 import com.google.gson.Gson
 import org.springframework.http.HttpEntity
+import org.zstack.core.Platform
 import org.zstack.core.db.Q
 import org.zstack.core.db.SQL
 import org.zstack.header.Constants
 import org.zstack.header.longjob.LongJobState
 import org.zstack.header.longjob.LongJobVO
 import org.zstack.header.longjob.LongJobVO_
+import org.zstack.header.host.HostVO
+import org.zstack.header.host.HostVO_
 import org.zstack.header.vm.APIMigrateVmMsg
 import org.zstack.header.vm.VmInstanceState
 import org.zstack.header.vm.VmInstanceVO
+import org.zstack.header.rest.RESTConstant
+import org.zstack.header.rest.RESTFacade
 import org.zstack.kvm.KVMAgentCommands
 import org.zstack.kvm.KVMConstant
 import org.zstack.kvm.KVMGlobalConfig
@@ -24,6 +29,8 @@ import org.zstack.testlib.EnvSpec
 import org.zstack.testlib.SubCase
 import org.zstack.utils.data.SizeUnit
 import org.zstack.utils.gson.JSONObjectUtil
+
+import java.lang.reflect.Field
 /**
  * Created by shixin.ruan on 2018/02/10.
  */
@@ -31,15 +38,21 @@ class MigrateVmFromDestitonHostCase extends SubCase {
     EnvSpec env
     VmInstanceInventory vm1
     def disconnectHostUuid = []
+    Map<String, String> oldManagementServerIpProperties
 
     @Override
     void clean() {
-        SQL.New(LongJobVO.class).delete()
-        env.delete()
+        try {
+            SQL.New(LongJobVO.class).delete()
+            env.delete()
+        } finally {
+            restoreManagementServerIpProperties()
+        }
     }
 
     @Override
     void setup() {
+        setManagementServerIpProperties()
         useSpring(KvmTest.springSpec)
         spring {
             ceph()
@@ -210,6 +223,11 @@ class MigrateVmFromDestitonHostCase extends SubCase {
     void testMigrateVmFromDestinationHost() {
         HostInventory host1 = env.inventoryByName("kvm1")
         HostInventory host = env.inventoryByName("kvm2")
+        SQL.New(HostVO.class)
+                .eq(HostVO_.uuid, host.uuid)
+                .set(HostVO_.managementIp, "::1")
+                .update()
+        host.managementIp = "::1"
 
         env.simulator(KVMSecurityGroupBackend.SECURITY_GROUP_CLEANUP_UNUSED_RULE_ON_HOST_PATH) {
             return new KVMAgentCommands.CleanupUnusedRulesOnHostResponse()
@@ -218,8 +236,10 @@ class MigrateVmFromDestitonHostCase extends SubCase {
         KVMGlobalConfig.MIGRATE_AUTO_CONVERGE.updateValue(true)
         KVMAgentCommands.MigrateVmCmd cmd = null
         String huuid = null
+        String callbackUrl = null
         env.afterSimulator(KVMConstant.KVM_MIGRATE_VM_PATH) { rsp, HttpEntity<String> entity ->
             huuid = entity.getHeaders().getFirst(Constants.AGENT_HTTP_HEADER_RESOURCE_UUID)
+            callbackUrl = entity.headers.getFirst(RESTConstant.CALLBACK_URL)
             cmd = json(entity.getBody(), KVMAgentCommands.MigrateVmCmd.class)
             return rsp
         }
@@ -234,6 +254,7 @@ class MigrateVmFromDestitonHostCase extends SubCase {
         assert cmd.destHostIp == host.managementIp
         assert cmd.srcHostIp == host1.managementIp
         assert huuid == host.uuid
+        assert callbackUrl == bean(RESTFacade.class).buildCallbackUrl(host.managementIp)
 
         // confirm migration success
         VmInstanceVO vo1
@@ -266,6 +287,7 @@ class MigrateVmFromDestitonHostCase extends SubCase {
         assert !cmd.xbzrle
         assert cmd.destHostIp == host1.managementIp
         assert cmd.srcHostIp == host.managementIp
+        assert callbackUrl == bean(RESTFacade.class).buildCallbackUrl(host.managementIp)
 
         retryInSecs {
             vo1 = dbFindByUuid(vm1.getUuid(), VmInstanceVO.class)
@@ -294,6 +316,7 @@ class MigrateVmFromDestitonHostCase extends SubCase {
         }
 
         assert !cmd.autoConverge
+        assert callbackUrl == bean(RESTFacade.class).buildCallbackUrl(host1.managementIp)
     }
 
     private void migrateUnknownVm(String destHostUuid) {
@@ -321,5 +344,34 @@ class MigrateVmFromDestitonHostCase extends SubCase {
         assert retryInSecs() {
             return Q.New(LongJobVO.class).eq(LongJobVO_.uuid, jobInv.uuid).select(LongJobVO_.state).findValue() == LongJobState.Succeeded
         }
+    }
+
+    private void setManagementServerIpProperties() {
+        List<String> keys = ["management.server.ip", "management.server.ip4", "management.server.ip6"]
+        oldManagementServerIpProperties = keys.collectEntries { [(it): System.getProperty(it)] }
+        keys.each { System.clearProperty(it) }
+        System.setProperty("management.server.ip", "127.0.0.1")
+        System.setProperty("management.server.ip6", "::1")
+        resetCachedManagementServerIp()
+    }
+
+    private void restoreManagementServerIpProperties() {
+        if (oldManagementServerIpProperties == null) {
+            return
+        }
+        oldManagementServerIpProperties.each { key, value ->
+            if (value == null) {
+                System.clearProperty(key)
+            } else {
+                System.setProperty(key, value)
+            }
+        }
+        resetCachedManagementServerIp()
+    }
+
+    private static void resetCachedManagementServerIp() {
+        Field field = Platform.class.getDeclaredField("managementServerIp")
+        field.accessible = true
+        field.set(null, null)
     }
 }
