@@ -851,7 +851,23 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
     }
 
     @Override
-    public void stats(String installPath, ReturnValueCompletion<VolumeStats> comp) {
+    public void stats(String installPath, ReturnValueCompletion<StorageResource> comp) {
+        if (installPath.contains("@")) {
+            VolumeSnapshotModule snapshot = apiHelper.getVolumeSnapshot(getSnapIdFromPath(installPath));
+            VolumeSnapshotStats stats = new VolumeSnapshotStats();
+            long size = SizeUnit.MEGABYTE.toByte(snapshot.getSpec().getSizeMb());
+            stats.setInstallPath(installPath);
+            stats.setSize(size);
+            stats.setActualSize(size);
+            stats.setParentUri(getParentUri(apiHelper.getVolume(snapshot.getSpec().getBsVolumeId())));
+            comp.success(stats);
+            return;
+        }
+
+        comp.success(getVolumeStats(installPath));
+    }
+
+    private VolumeStats getVolumeStats(String installPath) {
         VolumeModule vol = apiHelper.getVolume(getVolIdFromPath(installPath));
         VolumeStats stats = new VolumeStats();
         stats.setInstallPath(installPath);
@@ -859,7 +875,7 @@ public class XInfiniStorageController implements PrimaryStorageControllerSvc, Pr
         stats.setActualSize(vol.getStatus().getAllocatedSizeByte());
         stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
         stats.setParentUri(getParentUri(vol));
-        comp.success(stats);
+        return stats;
     }
 
     private String getParentUri(VolumeModule vol) {

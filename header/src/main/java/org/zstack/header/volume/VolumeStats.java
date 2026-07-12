@@ -1,14 +1,9 @@
 package org.zstack.header.volume;
 
-public class VolumeStats {
-    protected String installPath;
+import org.zstack.header.storage.addon.StorageResource;
+
+public class VolumeStats extends StorageResource {
     protected String format;
-    protected Long actualSize;
-    protected Long size;
-    /**
-     * The parent uri of the volume, vendor://pool/path@snapshot or snapshot://uuid
-     */
-    protected String parentUri;
 
     // TODO(shenjin): remove it
     @Deprecated
@@ -29,28 +24,8 @@ public class VolumeStats {
     public VolumeStats() {
     }
 
-    public String getInstallPath() {
-        return installPath;
-    }
-
-    public void setInstallPath(String installPath) {
-        this.installPath = installPath;
-    }
-
     public Long getActualSize() {
         return actualSize;
-    }
-
-    public void setActualSize(Long actualSize) {
-        this.actualSize = actualSize;
-    }
-
-    public Long getSize() {
-        return size;
-    }
-
-    public void setSize(long size) {
-        this.size = size;
     }
 
     public void setFormat(String format) {
@@ -59,14 +34,6 @@ public class VolumeStats {
 
     public String getFormat() {
         return format;
-    }
-
-    public void setParentUri(String parentUri) {
-        this.parentUri = parentUri;
-    }
-
-    public String getParentUri() {
-        return parentUri;
     }
 
     @Deprecated
