@@ -1248,12 +1248,32 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             throw new ApiMessageInterceptionException(operr("volume[uuid:%s] could not satisfy conditions[state:Enabled status:Ready]", msg.getVolumeUuid()));
         }
 
-        if (msg.getPlatform() == null) {
-            String vmUuid = Q.New(VolumeVO.class).select(VolumeVO_.vmInstanceUuid)
-                    .eq(VolumeVO_.uuid, msg.getVolumeUuid()).findValue();
-            String platform = Q.New(VmInstanceVO.class).select(VmInstanceVO_.platform)
-                    .eq(VmInstanceVO_.uuid, vmUuid).findValue();
-            msg.setPlatform(platform);
+        if (msg.getPlatform() == null) FIND_PLATFORM: {
+            String vmPlatform = Q.New(VolumeVO.class, VmInstanceVO.class)
+                .table0()
+                    .eq(VolumeVO_.uuid, msg.getVolumeUuid())
+                    .eq(VolumeVO_.vmInstanceUuid).table1(VmInstanceVO_.uuid)
+                .table1()
+                    .select(VmInstanceVO_.platform)
+                    .find();
+            if (vmPlatform != null) {
+                msg.setPlatform(vmPlatform);
+                break FIND_PLATFORM;
+            }
+
+            String imagePlatform = Q.New(VolumeVO.class, ImageVO.class)
+                .table0()
+                    .eq(VolumeVO_.uuid, msg.getVolumeUuid())
+                    .eq(VolumeVO_.rootImageUuid).table1(ImageVO_.uuid)
+                .table1()
+                    .select(ImageVO_.platform)
+                    .find();
+            if (imagePlatform != null) {
+                msg.setPlatform(imagePlatform);
+                break FIND_PLATFORM;
+            }
+
+            throw new ApiMessageInterceptionException(argerr("APICreateVmInstanceFromVolumeMsg.platform is required"));
         }
     }
 
