@@ -46,6 +46,12 @@ public class VolumeEncryptedMigrateVmExtension
 
     @Override
     public void preVmMigration(VmInstanceInventory vm, VmMigrationType type, String dstHostUuid, Completion completion) {
+        ErrorCode error = VolumeEncryptionConversionGuard.validate(vm == null ? null : vm.getUuid(), "migrate");
+        if (error != null) {
+            completion.fail(error);
+            return;
+        }
+
         if (type != VmMigrationType.HostMigration) {
             completion.success();
             return;

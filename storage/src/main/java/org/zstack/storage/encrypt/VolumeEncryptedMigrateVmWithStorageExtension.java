@@ -25,6 +25,11 @@ public class VolumeEncryptedMigrateVmWithStorageExtension implements KvmMigrateV
                                                 List<VolumeVO> volumesToMigrate,
                                                 Map<String, String> volumeMappingDict,
                                                 MigrateVmOnHypervisorMsg msg) {
+        ErrorCode error = VolumeEncryptionConversionGuard.validate(vm == null ? null : vm.getUuid(), "migrate storage for");
+        if (error != null) {
+            return error;
+        }
+
         Map<String, String> volumeLuksSecrets = new HashMap<>();
 
         try {

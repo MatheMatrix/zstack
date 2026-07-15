@@ -55,6 +55,11 @@ public class VolumeEncryptedStartExtension
 
     @Override
     public void beforeStartVmOnHypervisor(VmInstanceSpec spec) {
+        VolumeEncryptionConversionGuard.check(spec.getVmInventory().getUuid(), "start");
+        prepareVolumeSecrets(spec);
+    }
+
+    private void prepareVolumeSecrets(VmInstanceSpec spec) {
         HostInventory destHost = spec.getDestHost();
         if (destHost == null || StringUtils.isBlank(destHost.getUuid())) {
             return;
@@ -95,7 +100,7 @@ public class VolumeEncryptedStartExtension
      */
     @Override
     public void beforeCreateVmOnHypervisor(VmInstanceSpec spec) {
-        beforeStartVmOnHypervisor(spec);
+        prepareVolumeSecrets(spec);
     }
 
     private List<VolumeInventory> collectEncryptedVolumes(VmInstanceSpec spec) {

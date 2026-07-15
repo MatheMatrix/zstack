@@ -6,6 +6,7 @@ import org.zstack.core.cloudbus.CloudBus
 import org.zstack.core.Platform
 import org.zstack.core.db.DatabaseFacade
 import org.zstack.header.core.Completion
+import org.zstack.header.core.FutureCompletion
 import org.zstack.header.core.FutureReturnValueCompletion
 import org.zstack.header.core.ReturnValueCompletion
 import org.zstack.header.errorcode.ErrorCode
@@ -25,6 +26,9 @@ import org.zstack.header.storage.snapshot.VolumeSnapshotStatus
 import org.zstack.header.storage.snapshot.VolumeSnapshotTreeStatus
 import org.zstack.header.storage.snapshot.VolumeSnapshotTreeVO
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO
+import org.zstack.header.vm.VmInstanceInventory
+import org.zstack.header.vm.VmInstanceSpec
+import org.zstack.header.vm.VmMigrationType
 import org.zstack.header.volume.VolumeInventory
 import org.zstack.header.volume.VolumeState
 import org.zstack.header.volume.VolumeStatus
@@ -38,6 +42,10 @@ import org.zstack.sdk.ClusterInventory
 import org.zstack.sdk.KVMHostInventory
 import org.zstack.sdk.PrimaryStorageInventory
 import org.zstack.storage.encrypt.VolumeEncryptedSecretHelper
+import org.zstack.storage.encrypt.VolumeEncryptedMigrateVmExtension
+import org.zstack.storage.encrypt.VolumeEncryptedMigrateVmWithStorageExtension
+import org.zstack.storage.encrypt.VolumeEncryptedStartExtension
+import org.zstack.storage.encrypt.VolumeEncryptionConversionGuard
 import org.zstack.storage.encrypt.DummyVolumeEncryptedResourceKeyBackend
 import org.zstack.storage.encrypt.ZbsVolumeEncryptionExtension
 import org.zstack.storage.encrypt.ZbsVolumeEncryptionKvmCaller
@@ -126,6 +134,7 @@ class ZbsVolumeEncryptionCase extends SubCase {
             primaryStorageAttached = true
 
             testBuildNativeCbdConversionPaths()
+            testVolumeEncryptionConversionGuard()
             testPrepareVolumeEncryptionFallsBackToTargetVolumeKey()
             testEncryptedEmptyVolumeCreatorReusesImageKey()
             testPrepareVolumeEncryptionRejectsIncompleteKeyResource()
@@ -171,6 +180,60 @@ class ZbsVolumeEncryptionCase extends SubCase {
         assert plainTarget != volume.installPath
         assert !encryptedTarget.endsWith(".qcow2")
         assert !plainTarget.endsWith(".qcow2")
+    }
+
+    void testVolumeEncryptionConversionGuard() {
+        DatabaseFacade dbf = bean(DatabaseFacade.class)
+        String vmUuid = Platform.uuid
+        VolumeVO volume = new VolumeVO()
+        volume.uuid = Platform.uuid
+        volume.name = "converting-volume"
+        volume.vmInstanceUuid = vmUuid
+        volume.primaryStorageUuid = ps.uuid
+        volume.installPath = "cbd:pool1/lpool1/${volume.uuid}"
+        volume.type = VolumeType.Data
+        volume.status = VolumeStatus.Converting
+        volume.state = VolumeState.Enabled
+        volume.format = "raw"
+        volume.size = SizeUnit.GIGABYTE.toByte(1)
+        dbf.persistAndRefresh(volume)
+
+        try {
+            OperationFailureException failure = null
+            try {
+                VolumeEncryptionConversionGuard.check(vmUuid, "start VM")
+            } catch (OperationFailureException e) {
+                failure = e
+            }
+            assert failure?.errorCode?.details?.contains(volume.uuid)
+
+            VmInstanceInventory vm = new VmInstanceInventory(uuid: vmUuid)
+            VmInstanceSpec spec = new VmInstanceSpec(vmInventory: vm)
+            bean(VolumeEncryptedStartExtension.class).beforeCreateVmOnHypervisor(spec)
+            OperationFailureException startFailure = null
+            try {
+                bean(VolumeEncryptedStartExtension.class).beforeStartVmOnHypervisor(spec)
+            } catch (OperationFailureException e) {
+                startFailure = e
+            }
+            assert startFailure?.errorCode?.details?.contains(volume.uuid)
+
+            FutureCompletion migration = new FutureCompletion(null)
+            bean(VolumeEncryptedMigrateVmExtension.class).preVmMigration(
+                    vm, VmMigrationType.HostMigration, null, migration)
+            migration.await(TimeUnit.SECONDS.toMillis(3))
+            assert !migration.success
+
+            ErrorCode storageMigration = bean(VolumeEncryptedMigrateVmWithStorageExtension.class)
+                    .beforeMigrateVmWithStorage(null, vm, [], [:], null)
+            assert storageMigration?.details?.contains(volume.uuid)
+
+            volume.status = VolumeStatus.Ready
+            dbf.updateAndRefresh(volume)
+            VolumeEncryptionConversionGuard.check(vmUuid, "start VM")
+        } finally {
+            dbf.removeByPrimaryKey(volume.uuid, VolumeVO.class)
+        }
     }
 
     void testPrepareVolumeEncryptionFallsBackToTargetVolumeKey() {
@@ -290,7 +353,7 @@ class ZbsVolumeEncryptionCase extends SubCase {
         volume.encrypted = true
         dbf.persistAndRefresh(volume)
 
-        Expando tracker = installPublicApiConversionSimulators(sourceInstallPath, sourceSize, actualSize)
+        Expando tracker = installPublicApiConversionSimulators(volumeUuid, sourceInstallPath, sourceSize, actualSize)
         try {
             withSealedDekStub { List<Map<String, String>> requests ->
                 ChangeVolumeEncryptionAction action = new ChangeVolumeEncryptionAction()
@@ -321,6 +384,7 @@ class ZbsVolumeEncryptionCase extends SubCase {
                 assert !current.encrypted
                 assert current.installPath == tracker.targetInstallPath
                 assert current.actualSize == actualSize
+                assert current.status == VolumeStatus.Ready
             }
         } finally {
             dbf.removeByPrimaryKey(volumeUuid, VolumeVO.class)
@@ -797,7 +861,8 @@ class ZbsVolumeEncryptionCase extends SubCase {
         return tracker
     }
 
-    private Expando installPublicApiConversionSimulators(String sourceInstallPath,
+    private Expando installPublicApiConversionSimulators(String volumeUuid,
+                                                          String sourceInstallPath,
                                                           long sourceSize,
                                                           long actualSize) {
         env.cleanSimulatorAndMessageHandlers()
@@ -827,6 +892,7 @@ class ZbsVolumeEncryptionCase extends SubCase {
             tracker.kvmConvertCount++
             assert hmsg.path == KVM_LUKS_CONVERT_PATH
             assert hmsg.hostUuid == host.uuid
+            assert bean(DatabaseFacade.class).findByUuid(volumeUuid, VolumeVO.class).status == VolumeStatus.Converting
             tracker.kvmCmd = JSONObjectUtil.toObject(hmsg.command, LinkedHashMap.class)
             assert tracker.kvmCmd.psUuid == ps.uuid
             assert tracker.kvmCmd.installPath == sourceInstallPath

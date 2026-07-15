@@ -39,6 +39,7 @@ import org.zstack.header.volume.VolumeType;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.volume.VolumeVO_;
 import org.zstack.storage.snapshot.VolumeSnapshotGlobalConfig;
+import org.zstack.storage.encrypt.VolumeEncryptionConversionGuard;
 import org.zstack.utils.DebugUtils;
 import org.zstack.utils.TimeUtils;
 import org.zstack.utils.Utils;
@@ -169,6 +170,7 @@ public class VolumeSnapshotGroupBase implements VolumeSnapshotGroup {
 
             @Override
             public void run(SyncTaskChain chain) {
+                VolumeEncryptionConversionGuard.check(self.getVmInstanceUuid(), "delete snapshot group of");
                 handleDelete(msg, new NoErrorCompletion(chain) {
                     @Override
                     public void done() {

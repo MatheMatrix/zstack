@@ -53,6 +53,7 @@ import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageMsg;
 import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageReply;
 import org.zstack.storage.primary.PrimaryStorageGlobalConfig;
 import org.zstack.storage.encrypt.VolumeEncryptedResourceKeyBackend;
+import org.zstack.storage.encrypt.VolumeEncryptionConversionGuard;
 import org.zstack.storage.encrypt.VolumeEncryptedSecretHelper;
 import org.zstack.storage.snapshot.group.VolumeSnapshotGroupOperationValidator;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
@@ -3102,6 +3103,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
     }
 
     private void createSnapshotGroup(CreateVolumeSnapshotGroupMessage msg, ReturnValueCompletion<VolumeSnapshotGroupInventory> completion) {
+        VolumeEncryptionConversionGuard.check(msg.getVmInstance().getUuid(), "create snapshot group of");
         VolumeSnapshotGroupOperationValidator.validate(msg.getVmInstance().getUuid(), VolumeSnapshotGroupOperationValidator.Operation.CREATE);
         CreateVolumesSnapshotMsg cmsg = new CreateVolumesSnapshotMsg();
         List<CreateVolumesSnapshotsJobStruct> volumesSnapshotsJobs = new ArrayList<>();
@@ -3305,6 +3307,14 @@ public class VolumeBase extends AbstractVolume implements Volume {
         });
     }
 
+    private void updateVolumeStatusForEncryptionConversion(VolumeStatus status) {
+        SQL.New(VolumeVO.class)
+                .eq(VolumeVO_.uuid, self.getUuid())
+                .set(VolumeVO_.status, status)
+                .update();
+        refreshVO();
+    }
+
     private static class VolumeEncryptionConversionContext {
         List<VolumeSnapshotVO> snapshots;
         Map<String, String> oldAndNewInstallPaths;
@@ -3338,6 +3348,22 @@ public class VolumeBase extends AbstractVolume implements Volume {
                             return;
                         }
                         trigger.next();
+                    }
+                });
+
+                flow(new Flow() {
+                    String __name__ = "mark-volume-encryption-conversion-in-progress";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        updateVolumeStatusForEncryptionConversion(VolumeStatus.Converting);
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void rollback(FlowRollback trigger, Map data) {
+                        updateVolumeStatusForEncryptionConversion(VolumeStatus.Ready);
+                        trigger.rollback();
                     }
                 });
 
@@ -3488,6 +3514,16 @@ public class VolumeBase extends AbstractVolume implements Volume {
                             logger.warn(String.format("failed to record old volume bits in trash for volume[uuid:%s] after encryption conversion: %s",
                                     self.getUuid(), e.getMessage()), e);
                         }
+                        trigger.next();
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "finish-volume-encryption-conversion";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        updateVolumeStatusForEncryptionConversion(VolumeStatus.Ready);
                         trigger.next();
                     }
                 });
