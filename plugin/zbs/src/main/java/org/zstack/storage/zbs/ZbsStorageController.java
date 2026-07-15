@@ -1315,19 +1315,21 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     }
 
     @Override
-    public void stats(String installPath, ReturnValueCompletion<VolumeStats> comp) {
+    public void stats(String installPath, ReturnValueCompletion<StorageResource> comp) {
         QueryVolumeCmd cmd = new QueryVolumeCmd();
         cmd.setPath(installPath);
 
         httpCall(QUERY_VOLUME_PATH, cmd, QueryVolumeRsp.class, new ReturnValueCompletion<QueryVolumeRsp>(comp) {
             @Override
             public void success(QueryVolumeRsp returnValue) {
-                VolumeStats stats = new VolumeStats();
+                StorageResource stats = installPath.contains("@") ? new VolumeSnapshotStats() : new VolumeStats();
                 stats.setInstallPath(installPath);
                 stats.setSize(returnValue.getSize());
                 stats.setActualSize(returnValue.getActualSize());
-                stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
                 stats.setParentUri(ZbsHelper.normalizeToZbsPath(returnValue.getParentUri()));
+                if (stats instanceof VolumeStats) {
+                    ((VolumeStats) stats).setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
+                }
                 comp.success(stats);
             }
 

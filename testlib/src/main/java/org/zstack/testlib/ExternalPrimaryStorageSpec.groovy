@@ -1090,16 +1090,14 @@ class ExternalPrimaryStorageSpec extends PrimaryStorageSpec {
             simulator("/afa/v1/bs-volumes/:clone") { HttpServletRequest req, HttpEntity<String> e, EnvSpec spec ->
                 def body = JSONObjectUtil.toObject(e.body, LinkedHashMap.class)
                 def specData = body?.spec ?: body
+                int bsSnapId = specData?.bs_snap_id ?: 0
+                def srcSnap = snapshots.get(bsSnapId)
+                if (srcSnap == null) {
+                    throw new HttpError(404, "BsSnap not found")
+                }
                 int volId = volumeCounter.incrementAndGet()
                 String volName = specData?.name ?: "clone-${volId}"
-                int bsSnapId = specData?.bs_snap_id ?: 0
-
-                // Get size from source snapshot if available
-                long sizeMb = 1024
-                def srcSnap = snapshots.get(bsSnapId)
-                if (srcSnap != null) {
-                    sizeMb = srcSnap.spec.size_mb ?: 1024
-                }
+                long sizeMb = srcSnap.spec.size_mb ?: 1024
 
                 def volSpec = [
                     id: volId, name: volName, pool_id: POOL_ID, size_mb: sizeMb,
