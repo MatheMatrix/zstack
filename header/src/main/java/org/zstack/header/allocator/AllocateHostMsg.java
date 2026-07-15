@@ -11,6 +11,7 @@ public class AllocateHostMsg extends NeedReplyMessage {
     private long cpuCapacity;
     private long memoryCapacity;
     private long diskSize;
+    private long localStorageDiskSize;
     private String allocatorStrategy;
     private List<String> avoidHostUuids;
     private List<String> softAvoidHostUuids;
@@ -148,6 +149,14 @@ public class AllocateHostMsg extends NeedReplyMessage {
 
     public void setDiskSize(long diskSize) {
         this.diskSize = diskSize;
+    }
+
+    public long getLocalStorageDiskSize() {
+        return localStorageDiskSize;
+    }
+
+    public void setLocalStorageDiskSize(long localStorageDiskSize) {
+        this.localStorageDiskSize = localStorageDiskSize;
     }
 
     public String getAllocatorStrategy() {

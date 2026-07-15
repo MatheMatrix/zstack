@@ -122,6 +122,7 @@ public class LocalStorageAllocatorFactory implements PrimaryStorageAllocatorStra
             }
             List<LocalStorageHostRefVO> refs = q.list();
 
+            long requiredSize = spec.getLocalStorageDiskSize();
             final Set<String> toRemoveHuuids = new HashSet<>();
             final Set<String> toAddHuuids = new HashSet<>();
             for (LocalStorageHostRefVO ref : refs) {
@@ -130,7 +131,7 @@ public class LocalStorageAllocatorFactory implements PrimaryStorageAllocatorStra
                 // check primary storage capacity and host physical capacity
                 boolean capacityChecked = PrimaryStorageCapacityChecker.New(psUuid,
                         ref.getAvailableCapacity(), ref.getTotalPhysicalCapacity(), ref.getAvailablePhysicalCapacity())
-                        .checkRequiredSize(spec.getDiskSize());
+                        .checkRequiredSize(requiredSize);
 
                 if (!capacityChecked) {
                     addHostPrimaryStorageBlacklist(huuid, psUuid, spec);
@@ -143,7 +144,7 @@ public class LocalStorageAllocatorFactory implements PrimaryStorageAllocatorStra
             toRemoveHuuids.removeAll(toAddHuuids);
             if (!toRemoveHuuids.isEmpty()) {
                 logger.debug(String.format("local storage filters out hosts%s, because they don't have required disk capacity[%s bytes]",
-                        toRemoveHuuids, spec.getDiskSize()));
+                        toRemoveHuuids, requiredSize));
 
                 candidates = CollectionUtils.transformToList(candidates, new Function<HostVO, HostVO>() {
                     @Override
@@ -155,7 +156,7 @@ public class LocalStorageAllocatorFactory implements PrimaryStorageAllocatorStra
                 if (candidates.isEmpty()) {
                     throw new OperationFailureException(err(ORG_ZSTACK_STORAGE_PRIMARY_LOCAL_10020, HostAllocatorError.NO_AVAILABLE_HOST,
                             "the local primary storage has no hosts with enough disk capacity[%s bytes] required by the vm[uuid:%s]",
-                            spec.getDiskSize(), spec.getVmInstance().getUuid()
+                            requiredSize, spec.getVmInstance().getUuid()
                     ));
                 }
             }
