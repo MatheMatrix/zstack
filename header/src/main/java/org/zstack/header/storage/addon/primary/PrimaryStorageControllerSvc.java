@@ -62,7 +62,7 @@ public interface PrimaryStorageControllerSvc {
     void flattenVolume(String installPath, ReturnValueCompletion<VolumeStats>comp);
 
     // support uri or path
-    void stats(String installPath, ReturnValueCompletion<VolumeStats> comp);
+    void stats(String installPath, ReturnValueCompletion<StorageResource> comp);
 
     void batchStats(Collection<String> installPath, ReturnValueCompletion<List<VolumeStats>> comp);
 

@@ -1143,18 +1143,32 @@ public class ExponStorageController implements PrimaryStorageControllerSvc, Prim
     @Override
     public void flattenVolume(String installPath, ReturnValueCompletion<VolumeStats> comp) {
         // TODO flatten snapshot
-        stats(installPath, comp);
+        comp.success(getVolumeStats(installPath));
     }
 
     @Override
-    public void stats(String installPath, ReturnValueCompletion<VolumeStats> comp) {
+    public void stats(String installPath, ReturnValueCompletion<StorageResource> comp) {
+        if (installPath.contains("@")) {
+            VolumeSnapshotModule snap = apiHelper.getVolumeSnapshot(getSnapIdFromPath(installPath));
+            VolumeSnapshotStats stats = new VolumeSnapshotStats();
+            stats.setInstallPath(installPath);
+            stats.setSize(snap.getSnapSize());
+            stats.setActualSize(snap.getDataSize());
+            comp.success(stats);
+            return;
+        }
+
+        comp.success(getVolumeStats(installPath));
+    }
+
+    private VolumeStats getVolumeStats(String installPath) {
         VolumeModule vol = apiHelper.getVolume(getVolIdFromPath(installPath));
         VolumeStats stats = new VolumeStats();
         stats.setInstallPath(installPath);
         stats.setSize(vol.getVolumeSize());
         stats.setActualSize(vol.getDataSize());
         stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
-        comp.success(stats);
+        return stats;
     }
 
     @Override

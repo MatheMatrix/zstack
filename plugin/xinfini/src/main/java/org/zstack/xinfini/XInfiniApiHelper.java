@@ -9,6 +9,7 @@ import org.zstack.core.retry.Retry;
 import org.zstack.core.retry.RetryCondition;
 import org.zstack.header.core.Completion;
 import org.zstack.header.errorcode.OperationFailureException;
+import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.volume.VolumeConfigs;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.volume.VolumeVO_;
@@ -36,6 +37,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.zstack.core.Platform.err;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
@@ -102,6 +104,11 @@ public class XInfiniApiHelper {
     }
 
     public void errorOut(XInfiniResponse rsp) {
+        if (rsp.resourceIsDeleted()) {
+            throw new OperationFailureException(err(ORG_ZSTACK_XINFINI_10002, SysErrors.RESOURCE_NOT_FOUND,
+                    "xinfini request failed, message: %s.", rsp.getMessage()));
+        }
+
         if (!rsp.isSuccess()) {
             throw new OperationFailureException(operr(ORG_ZSTACK_XINFINI_10002, "xinfini request failed, message: %s.", rsp.getMessage()));
         }

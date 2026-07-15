@@ -28,6 +28,7 @@ import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
+import org.zstack.header.errorcode.SysErrors;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.host.HostState;
 import org.zstack.header.host.HostStatus;
@@ -42,6 +43,7 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.storage.addon.RemoteTarget;
 import org.zstack.header.storage.addon.StorageCapacity;
 import org.zstack.header.storage.addon.StorageHealthy;
+import org.zstack.header.storage.addon.StorageResource;
 import org.zstack.header.storage.addon.primary.*;
 import org.zstack.header.storage.backup.*;
 import org.zstack.header.storage.primary.*;
@@ -1397,19 +1399,59 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                 .eq(ImageCacheVO_.imageUuid, image.getUuid())
                 .list();
 
+        ImageCacheVO candidate = null;
         if (!controller.reportCapabilities().isSupportMultiSpace() && !caches.isEmpty()) {
-            // TODO check exists in ps
-            completion.success(caches.get(0).toInventory());
-            return;
+            candidate = caches.get(0);
+        } else {
+            for (ImageCacheVO cache : caches) {
+                ImageCacheInventory inv = cache.toInventory();
+                // TODO: suppose that path always starts with allocatedUrl
+                if (allocatedUrl != null && ImageCacheUtil.getImageCachePath(inv).startsWith(allocatedUrl)) {
+                    candidate = cache;
+                    break;
+                }
+            }
         }
 
-        for (ImageCacheVO cache : caches) {
-            ImageCacheInventory inv = cache.toInventory();
-            // TODO: suppose that path always starts with allocatedUrl
-            if (allocatedUrl != null && ImageCacheUtil.getImageCachePath(inv).startsWith(allocatedUrl)) {
-                completion.success(inv);
-                return;
-            }
+        if (candidate != null) {
+            ImageCacheVO cache = candidate;
+            String cachePath = ImageCacheUtil.getImageCachePath(cache.getInstallUrl());
+            ReturnValueCompletion<StorageResource> statsCompletion = new ReturnValueCompletion<StorageResource>(completion) {
+                @Override
+                public void success(StorageResource ignored) {
+                    completion.success(cache.toInventory());
+                }
+
+                @Override
+                public void fail(ErrorCode errorCode) {
+                    if (!errorCode.isError(SysErrors.RESOURCE_NOT_FOUND)) {
+                        completion.fail(errorCode);
+                        return;
+                    }
+
+                    if (cache.getInstallUrl().startsWith(ImageConstant.SNAPSHOT_REUSE_IMAGE_SCHEMA)) {
+                        completion.fail(operr("image cache[imageUuid:%s, primaryStorageUuid:%s] refers to a missing reused volume snapshot",
+                                cache.getImageUuid(), cache.getPrimaryStorageUuid()));
+                        return;
+                    }
+
+                    controller.deleteVolumeAndSnapshot(cachePath, new Completion(completion) {
+                        @Override
+                        public void success() {
+                            dbf.removeByPrimaryKey(cache.getId(), ImageCacheVO.class);
+                            doDownloadImageCache(image, allocatedUrl, completion);
+                        }
+
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            completion.fail(errorCode);
+                        }
+                    });
+                }
+            };
+
+            controller.stats(cachePath, statsCompletion);
+            return;
         }
 
         downloadImageTo(image, spec, ImageCacheVO.class.getSimpleName(), new ReturnValueCompletion<VolumeStats>(completion) {
@@ -1649,13 +1691,13 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
     protected void handle(GetVolumeBackingChainFromPrimaryStorageMsg msg) {
         GetVolumeBackingChainFromPrimaryStorageReply r = new GetVolumeBackingChainFromPrimaryStorageReply();
         new While<>(msg.getRootInstallPaths()).each((installPath, compl) -> {
-            getParentChain(installPath, new ArrayList<>(), new ReturnValueCompletion<List<VolumeStats>>(compl) {
+            getParentChain(installPath, new ArrayList<>(), new ReturnValueCompletion<List<StorageResource>>(compl) {
                 @Override
-                public void success(List<VolumeStats> chains) {
+                public void success(List<StorageResource> chains) {
                     long tsize = 0;
                     List<String> chainPaths = new ArrayList<>();
-                    for (VolumeStats stats : chains) {
-                        tsize += stats.getActualSize();
+                    for (StorageResource stats : chains) {
+                        tsize += stats.getResourceActualSize();
                         chainPaths.add(stats.getInstallPath());
                     }
 
@@ -1681,10 +1723,10 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
         });
     }
 
-    private void getParentChain(String installPath, List<VolumeStats> chains, ReturnValueCompletion<List<VolumeStats>> completion) {
-        controller.stats(installPath, new ReturnValueCompletion<VolumeStats>(completion) {
+    private void getParentChain(String installPath, List<StorageResource> chains, ReturnValueCompletion<List<StorageResource>> completion) {
+        controller.stats(installPath, new ReturnValueCompletion<StorageResource>(completion) {
             @Override
-            public void success(VolumeStats stats) {
+            public void success(StorageResource stats) {
                 chains.add(stats);
                 if (stats.getParentUri() == null) {
                     chains.remove(0);  // do not contain self
@@ -1886,10 +1928,10 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
     @Override
     protected void handle(SyncVolumeSizeOnPrimaryStorageMsg msg) {
         SyncVolumeSizeOnPrimaryStorageReply reply = new SyncVolumeSizeOnPrimaryStorageReply();
-        controller.stats(msg.getInstallPath(), new ReturnValueCompletion<VolumeStats>(msg) {
+        controller.stats(msg.getInstallPath(), new ReturnValueCompletion<StorageResource>(msg) {
             @Override
-            public void success(VolumeStats stats) {
-                reply.setActualSize(stats.getActualSize());
+            public void success(StorageResource stats) {
+                reply.setActualSize(stats.getResourceActualSize());
                 reply.setSize(stats.getSize());
                 bus.reply(msg, reply);
             }
@@ -1905,10 +1947,10 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
     @Override
     protected void handle(EstimateVolumeTemplateSizeOnPrimaryStorageMsg msg) {
         EstimateVolumeTemplateSizeOnPrimaryStorageReply reply = new EstimateVolumeTemplateSizeOnPrimaryStorageReply();
-        controller.stats(msg.getInstallPath(), new ReturnValueCompletion<VolumeStats>(msg) {
+        controller.stats(msg.getInstallPath(), new ReturnValueCompletion<StorageResource>(msg) {
             @Override
-            public void success(VolumeStats stats) {
-                reply.setActualSize(stats.getActualSize());
+            public void success(StorageResource stats) {
+                reply.setActualSize(stats.getResourceActualSize());
                 reply.setSize(stats.getSize());
                 bus.reply(msg, reply);
             }
