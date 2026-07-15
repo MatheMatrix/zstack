@@ -276,6 +276,8 @@ CREATE TABLE IF NOT EXISTS `zstack`.`AlarmResourceStateVO` (
     CONSTRAINT `fkAlarmResourceStateVOAlarmVO` FOREIGN KEY (`alarmUuid`) REFERENCES `AlarmVO` (`uuid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+CALL ADD_COLUMN('ZdfsVO', 'authToken', 'varchar(255)', 1, NULL);
+
 -- ZSTAC-75429: scope AI ModelCenter-derived resources by zone.
 CALL ADD_COLUMN('ModelVO', 'zoneUuid', 'VARCHAR(32)', 1, NULL);
 CALL ADD_COLUMN('ModelServiceVO', 'zoneUuid', 'VARCHAR(32)', 1, NULL);
