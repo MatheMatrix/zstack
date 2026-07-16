@@ -1637,6 +1637,8 @@ public class KVMAgentCommands {
         private VolumeTO volume;
         @GrayVersion(value = "5.0.0")
         private String vmInstanceUuid;
+        @GrayVersion(value = "5.5.28")
+        private List<VolumeTO> expectedVolumes;
 
         public VolumeTO getVolume() {
             return volume;
@@ -1652,6 +1654,14 @@ public class KVMAgentCommands {
 
         public void setVmUuid(String vmInstanceUuid) {
             this.vmInstanceUuid = vmInstanceUuid;
+        }
+
+        public List<VolumeTO> getExpectedVolumes() {
+            return expectedVolumes;
+        }
+
+        public void setExpectedVolumes(List<VolumeTO> expectedVolumes) {
+            this.expectedVolumes = expectedVolumes;
         }
     }
 
