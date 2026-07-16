@@ -116,6 +116,14 @@ public class ModelServiceInstanceGroupInventory  {
         return this.yaml;
     }
 
+    public java.lang.String containerImage;
+    public void setContainerImage(java.lang.String containerImage) {
+        this.containerImage = containerImage;
+    }
+    public java.lang.String getContainerImage() {
+        return this.containerImage;
+    }
+
     public java.util.List supportMetrics;
     public void setSupportMetrics(java.util.List supportMetrics) {
         this.supportMetrics = supportMetrics;
