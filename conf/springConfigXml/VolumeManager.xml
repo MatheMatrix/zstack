@@ -145,6 +145,7 @@
 
     <bean id="VolumeEncryptedStartExtension" class="org.zstack.storage.encrypt.VolumeEncryptedStartExtension">
         <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.vm.VmInstanceStartExtensionPoint"/>
             <zstack:extension interface="org.zstack.header.vm.VmBeforeStartOnHypervisorExtensionPoint"/>
             <zstack:extension interface="org.zstack.header.vm.VmBeforeCreateOnHypervisorExtensionPoint"/>
         </zstack:plugin>

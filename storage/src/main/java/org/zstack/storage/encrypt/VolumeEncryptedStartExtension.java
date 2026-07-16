@@ -5,10 +5,13 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.db.DatabaseFacade;
+import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.host.HostInventory;
 import org.zstack.header.vm.VmBeforeCreateOnHypervisorExtensionPoint;
 import org.zstack.header.vm.VmBeforeStartOnHypervisorExtensionPoint;
+import org.zstack.header.vm.VmInstanceInventory;
+import org.zstack.header.vm.VmInstanceStartExtensionPoint;
 import org.zstack.header.vm.VmInstanceSpec;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.header.volume.VolumeVO;
@@ -41,7 +44,8 @@ import static org.zstack.core.Platform.operr;
  */
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class VolumeEncryptedStartExtension
-        implements VmBeforeStartOnHypervisorExtensionPoint, VmBeforeCreateOnHypervisorExtensionPoint {
+        implements VmInstanceStartExtensionPoint, VmBeforeStartOnHypervisorExtensionPoint,
+        VmBeforeCreateOnHypervisorExtensionPoint {
 
     private static final CLogger logger = Utils.getLogger(VolumeEncryptedStartExtension.class);
 
@@ -52,6 +56,24 @@ public class VolumeEncryptedStartExtension
     private VolumeEncryptedSecretHelper secretHelper;
     @Autowired
     private DatabaseFacade dbf;
+
+    @Override
+    public String preStartVm(VmInstanceInventory inv) {
+        ErrorCode error = VolumeEncryptionConversionGuard.validate(inv.getUuid(), "start");
+        return error == null ? null : error.getDetails();
+    }
+
+    @Override
+    public void beforeStartVm(VmInstanceInventory inv) {
+    }
+
+    @Override
+    public void afterStartVm(VmInstanceInventory inv) {
+    }
+
+    @Override
+    public void failedToStartVm(VmInstanceInventory inv, ErrorCode reason) {
+    }
 
     @Override
     public void beforeStartVmOnHypervisor(VmInstanceSpec spec) {
