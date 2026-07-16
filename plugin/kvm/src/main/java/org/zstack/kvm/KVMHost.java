@@ -3798,13 +3798,17 @@ public class KVMHost extends HostBase implements Host {
 
         final VolumeInventory vol = msg.getInventory();
         final VmInstanceInventory vm = msg.getVmInventory();
-        VolumeTO to = VolumeTO.valueOfWithOutExtension(vol, (KVMHostInventory) getSelfInventory(), vm.getPlatform());
+        KVMHostInventory host = (KVMHostInventory) getSelfInventory();
+        VolumeTO to = VolumeTO.valueOfWithOutExtension(vol, host, vm.getPlatform());
 
         final DetachVolumeFromVmOnHypervisorReply reply = new DetachVolumeFromVmOnHypervisorReply();
         final DetachDataVolumeCmd cmd = new DetachDataVolumeCmd();
         cmd.setVolume(to);
         cmd.setVmUuid(vm.getUuid());
-        extEmitter.beforeDetachVolume((KVMHostInventory) getSelfInventory(), vm, vol, cmd);
+        cmd.setExpectedVolumes(vm.getAllDiskVolumes().stream()
+                .map(volume -> VolumeTO.valueOf(volume, host, vm.getPlatform(), true))
+                .collect(Collectors.toList()));
+        extEmitter.beforeDetachVolume(host, vm, vol, cmd);
 
         new Http<>(detachDataVolumePath, cmd, DetachDataVolumeResponse.class).call(new ReturnValueCompletion<DetachDataVolumeResponse>(msg, completion) {
             @Override
