@@ -296,6 +296,40 @@ public class VmCascadeExtension extends AbstractAsyncCascadeExtension {
         completion.success();
     }
 
+    private void cleanupDeletedTemplatedVmInstanceRows(List<VmDeletionStruct> structs) {
+        List<String> vmUuids = transformAndRemoveNull(structs, s -> s.getInventory().getUuid());
+        if (vmUuids.isEmpty()) {
+            return;
+        }
+
+        List<String> templatedVmUuids = Q.New(TemplatedVmInstanceVO.class)
+                .select(TemplatedVmInstanceVO_.uuid)
+                .in(TemplatedVmInstanceVO_.uuid, vmUuids)
+                .listValues();
+        if (!templatedVmUuids.isEmpty()) {
+            cleanupTemplatedVmInstanceRows(templatedVmUuids);
+        }
+
+        SQL.New(TemplatedVmInstanceCacheVO.class)
+                .in(TemplatedVmInstanceCacheVO_.cacheVmInstanceUuid, vmUuids)
+                .hardDelete();
+        SQL.New(TemplatedVmInstanceRefVO.class)
+                .in(TemplatedVmInstanceRefVO_.vmInstanceUuid, vmUuids)
+                .hardDelete();
+    }
+
+    private void cleanupTemplatedVmInstanceRows(List<String> templatedVmUuids) {
+        SQL.New(TemplatedVmInstanceCacheVO.class)
+                .in(TemplatedVmInstanceCacheVO_.templatedVmInstanceUuid, templatedVmUuids)
+                .hardDelete();
+        SQL.New(TemplatedVmInstanceRefVO.class)
+                .in(TemplatedVmInstanceRefVO_.templatedVmInstanceUuid, templatedVmUuids)
+                .hardDelete();
+        SQL.New(TemplatedVmInstanceVO.class)
+                .in(TemplatedVmInstanceVO_.uuid, templatedVmUuids)
+                .hardDelete();
+    }
+
     protected List<DetachNicFromVmMsg> handleDeletionForIpRange(List<VmDeletionStruct> vminvs, List<IpRangeInventory> iprs) {
         List<DetachNicFromVmMsg> msgs = new ArrayList<>();
         List<String> uuids = iprs.stream().map(IpRangeInventory::getUuid).collect(Collectors.toList());
@@ -463,6 +497,11 @@ public class VmCascadeExtension extends AbstractAsyncCascadeExtension {
             }, parallelism).run(new WhileDoneCompletion(completion) {
                 @Override
                 public void done(ErrorCodeList errorCodeList) {
+                    if (PrimaryStorageVO.class.getSimpleName().equals(action.getParentIssuer()) ||
+                            ZoneVO.class.getSimpleName().equals(action.getRootIssuer())) {
+                        cleanupDeletedTemplatedVmInstanceRows(vminvs);
+                    }
+
                     if (ZoneVO.class.getSimpleName().equals(action.getRootIssuer())) {
                         dbf.removeByPrimaryKeys(vminvs.stream().map(vm -> vm.getInventory().getVmNics())
                                         .flatMap(List::stream).map(VmNicInventory::getUuid)
