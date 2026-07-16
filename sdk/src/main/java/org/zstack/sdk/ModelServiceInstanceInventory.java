@@ -133,6 +133,22 @@ public class ModelServiceInstanceInventory  {
         return this.gpuVendor;
     }
 
+    public java.lang.String containerName;
+    public void setContainerName(java.lang.String containerName) {
+        this.containerName = containerName;
+    }
+    public java.lang.String getContainerName() {
+        return this.containerName;
+    }
+
+    public java.lang.String containerImage;
+    public void setContainerImage(java.lang.String containerImage) {
+        this.containerImage = containerImage;
+    }
+    public java.lang.String getContainerImage() {
+        return this.containerImage;
+    }
+
     public VmInstanceInventory vm;
     public void setVm(VmInstanceInventory vm) {
         this.vm = vm;
