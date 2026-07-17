@@ -62,6 +62,7 @@ import javax.persistence.TypedQuery;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -74,6 +75,19 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
         ResourceOwnerAfterChangeExtensionPoint, VmStateChangedExtensionPoint, VmDetachVolumeExtensionPoint,
         VmAttachVolumeExtensionPoint, HostAfterConnectedExtensionPoint {
     private static final CLogger logger = Utils.getLogger(VolumeManagerImpl.class);
+    private final Map<String, Boolean> snapshotSizeSyncRequiredCache = new ConcurrentHashMap<>();
+
+    private static class ActiveVolumeSizeSyncInfo {
+        private final Map<String, String> volumeUuidInstallPaths = new HashMap<>();
+        private final Set<String> volumeTypes = new HashSet<>();
+
+        void add(String volumeUuid, String installPath, VolumeType volumeType) {
+            volumeUuidInstallPaths.put(volumeUuid, installPath);
+            if (VolumeType.Root == volumeType || VolumeType.Data == volumeType) {
+                volumeTypes.add(volumeType.toString());
+            }
+        }
+    }
 
     @Autowired
     private CloudBus bus;
@@ -726,6 +740,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
                 .listValues().stream()
                 .filter(uuid -> destMaker.isManagedByUs((String) uuid)).map(String::valueOf)
                 .collect(Collectors.toList());
+        Set<String> snapshotSizeSyncRequiredCacheKeys = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
        new While<>(hostUuids).step((hostUuid, completion) -> {
            BatchSyncActiveVolumeSizeOnHostMsg bmsg = new BatchSyncActiveVolumeSizeOnHostMsg();
@@ -739,6 +754,7 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
                        BatchSyncActiveVolumeSizeOnHostReply br = r.castReply();
                        reply.addSuccessCount(br.getSuccessCount());
                        reply.addFailCount(br.getFailCount());
+                       snapshotSizeSyncRequiredCacheKeys.addAll(br.getSnapshotSizeSyncRequiredCacheKeys());
                    } else {
                        completion.addError(r.getError());
                    }
@@ -750,6 +766,8 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
             public void done(ErrorCodeList errorCodeList) {
                 if (!errorCodeList.getCauses().isEmpty()) {
                     reply.setError(errorCodeList.getCauses().get(0));
+                } else {
+                    pruneSnapshotSizeSyncRequiredCache(snapshotSizeSyncRequiredCacheKeys);
                 }
                 bus.reply(msg, reply);
             }
@@ -768,69 +786,277 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
             bus.reply(msg, reply);
             return;
         }
-        Map<String, Map<String, String>> activeVolumesInPs = Q.New(VolumeVO.class)
-                .select(VolumeVO_.primaryStorageUuid, VolumeVO_.uuid, VolumeVO_.installPath)
-                .in(VolumeVO_.vmInstanceUuid, activeVmUuids).listTuple().stream()
-                .collect(Collectors.groupingBy(t -> t.get(0, String.class), Collectors.toMap(
-                        t -> ((Tuple)t).get(1, String.class), t -> ((Tuple)t).get(2, String.class))));
 
-        new While<>(activeVolumesInPs.entrySet()).each((e, completion) -> {
-            BatchSyncVolumeSizeOnPrimaryStorageMsg bmsg = new BatchSyncVolumeSizeOnPrimaryStorageMsg();
-            bmsg.setHostUuid(msg.getHostUuid());
-            bmsg.setPrimaryStorageUuid(e.getKey());
-            bmsg.setVolumeUuidInstallPaths(e.getValue());
-            bus.makeTargetServiceIdByResourceUuid(bmsg, PrimaryStorageConstant.SERVICE_ID, e.getKey());
-            bus.send(bmsg, new CloudBusCallBack(completion) {
-                @Override
-                public void run(MessageReply r) {
-                    if (r.isSuccess()) {
-                        BatchSyncVolumeSizeOnPrimaryStorageReply br = r.castReply();
-                        Map<String, Long> actualSizes = br.getActualSizes();
+        Map<String, ActiveVolumeSizeSyncInfo> activeVolumesInPs = new HashMap<>();
+        Q.New(VolumeVO.class)
+                .select(VolumeVO_.primaryStorageUuid, VolumeVO_.uuid, VolumeVO_.installPath, VolumeVO_.type)
+                .in(VolumeVO_.vmInstanceUuid, activeVmUuids)
+                .listTuple().forEach(t -> {
+                    String primaryStorageUuid = t.get(0, String.class);
+                    activeVolumesInPs.computeIfAbsent(primaryStorageUuid, k -> new ActiveVolumeSizeSyncInfo())
+                            .add(t.get(1, String.class), t.get(2, String.class), t.get(3, VolumeType.class));
+                });
 
-                        reply.addSuccessCount(actualSizes.size());
-                        reply.addFailCount(e.getValue().size() - actualSizes.size());
+        FlowChain chain = FlowChainBuilder.newShareFlowChain();
+        chain.setName(String.format("batch-sync-active-volume-size-on-host-%s", msg.getHostUuid()));
+        chain.then(new ShareFlow() {
+            Map<String, String> primaryStorageTypes;
 
-                        refreshVolume(actualSizes);
-                    } else {
-                        reply.addFailCount(e.getValue().size());
-                    }
-
-                    completion.done();
-                }
-
-                @Transactional(readOnly = true)
-                private Map<String, Long> calculateSnapshotSize(Collection<String> volumeUuids) {
-                    String sql = "select sp.uuid, sum(sp.size) from VolumeSnapshotVO sp where sp.volumeUuid in :uuids group by sp.uuid";
-                    TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
-                    q.setParameter("uuids", volumeUuids);
-                    List<Tuple> results = q.getResultList();
-                    return results.stream().collect(Collectors.toMap(
-                            tuple -> tuple.get(0, String.class), tuple -> tuple.get(1, Long.class)));
-                }
-
-                @Transactional
-                private void refreshVolume(Map<String, Long> actualSizes) {
-                    actualSizes.entrySet().removeIf(actualSize -> actualSize.getValue() == null);
-                    Map<String, Long> uuidSnapshotSizes = calculateSnapshotSize(actualSizes.keySet());
-
-                    for (Map.Entry<String, Long> entry : actualSizes.entrySet()) {
-                        // the actual size = volume actual size + all snapshot size
-                        long volActualSize = entry.getValue() + uuidSnapshotSizes.getOrDefault(entry.getKey(), 0L);
-                        SQL.New(VolumeVO.class).eq(VolumeVO_.uuid, entry.getKey())
-                                .set(VolumeVO_.actualSize, volActualSize)
-                                .update();
-                    }
-                }
-            });
-        }).run(new WhileDoneCompletion(msg) {
             @Override
-            public void done(ErrorCodeList errorCodeList) {
-                if (!errorCodeList.getCauses().isEmpty()) {
-                    reply.setError(errorCodeList.getCauses().get(0));
+            public void setup() {
+                flow(new NoRollbackFlow() {
+                    String __name__ = "prepare-snapshot-size-sync-required-cache";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        primaryStorageTypes = getPrimaryStorageTypesForSnapshotCapabilityCache(activeVolumesInPs.keySet());
+                        prepareSnapshotSizeSyncRequiredCache(trigger);
+                    }
+                });
+
+                flow(new NoRollbackFlow() {
+                    String __name__ = "batch-sync-active-volume-size";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        batchSyncActiveVolumeSize(trigger);
+                    }
+                });
+            }
+
+            private void prepareSnapshotSizeSyncRequiredCache(FlowTrigger trigger) {
+                Set<String> currentCacheKeys = new HashSet<>();
+                List<SnapshotSizeSyncCacheMiss> cacheMisses = new ArrayList<>();
+                for (Map.Entry<String, ActiveVolumeSizeSyncInfo> entry : activeVolumesInPs.entrySet()) {
+                    String primaryStorageUuid = entry.getKey();
+                    ActiveVolumeSizeSyncInfo activeVolumeSizeSyncInfo = entry.getValue();
+                    String primaryStorageType = primaryStorageTypes.get(primaryStorageUuid);
+                    if (primaryStorageType == null || activeVolumeSizeSyncInfo.volumeTypes.isEmpty()) {
+                        continue;
+                    }
+
+                    for (String volumeType : activeVolumeSizeSyncInfo.volumeTypes) {
+                        String cacheKey = snapshotSizeSyncRequiredCacheKey(primaryStorageType, volumeType);
+                        currentCacheKeys.add(cacheKey);
+                        if (!snapshotSizeSyncRequiredCache.containsKey(cacheKey)) {
+                            cacheMisses.add(new SnapshotSizeSyncCacheMiss(primaryStorageUuid, primaryStorageType, volumeType));
+                        }
+                    }
                 }
+
+                reply.setSnapshotSizeSyncRequiredCacheKeys(currentCacheKeys);
+                if (cacheMisses.isEmpty()) {
+                    trigger.next();
+                    return;
+                }
+
+                new While<>(cacheMisses).each((cacheMiss, compl) -> {
+                    AskVolumeSnapshotCapabilityMsg amsg = new AskVolumeSnapshotCapabilityMsg();
+                    amsg.setPrimaryStorageUuid(cacheMiss.primaryStorageUuid);
+                    amsg.setVolumeType(cacheMiss.volumeType);
+                    bus.makeTargetServiceIdByResourceUuid(amsg, PrimaryStorageConstant.SERVICE_ID, cacheMiss.primaryStorageUuid);
+                    bus.send(amsg, new CloudBusCallBack(compl) {
+                        @Override
+                        public void run(MessageReply reply) {
+                            if (!reply.isSuccess()) {
+                                compl.done();
+                                return;
+                            }
+
+                            AskVolumeSnapshotCapabilityReply r = reply.castReply();
+                            cacheSnapshotSizeSyncRequired(snapshotSizeSyncRequiredCacheKey(cacheMiss.primaryStorageType, cacheMiss.volumeType),
+                                    isCowSnapshotSupported(r.getCapability()));
+                            compl.done();
+                        }
+                    });
+                }).run(new WhileDoneCompletion(trigger) {
+                    @Override
+                    public void done(ErrorCodeList errorCodeList) {
+                        trigger.next();
+                    }
+                });
+            }
+
+            private void batchSyncActiveVolumeSize(FlowTrigger trigger) {
+                new While<>(activeVolumesInPs.entrySet()).each((e, compl) -> {
+                    String primaryStorageUuid = e.getKey();
+                    ActiveVolumeSizeSyncInfo activeVolumeSizeSyncInfo = e.getValue();
+                    boolean syncSnapshotSize = isSnapshotSizeSyncRequired(primaryStorageTypes.get(primaryStorageUuid),
+                            activeVolumeSizeSyncInfo.volumeTypes);
+                    BatchSyncVolumeResourceSizeOnPrimaryStorageMsg bmsg = new BatchSyncVolumeResourceSizeOnPrimaryStorageMsg();
+                    bmsg.setHostUuid(msg.getHostUuid());
+                    bmsg.setPrimaryStorageUuid(primaryStorageUuid);
+                    bmsg.setVolumeUuidInstallPaths(activeVolumeSizeSyncInfo.volumeUuidInstallPaths);
+                    bmsg.setWithSnapshot(syncSnapshotSize);
+                    if (syncSnapshotSize) {
+                        bmsg.setSnapshotUuidInstallPaths(getSnapshotUuidInstallPaths(primaryStorageUuid,
+                                activeVolumeSizeSyncInfo.volumeUuidInstallPaths.keySet()));
+                    }
+                    bus.makeTargetServiceIdByResourceUuid(bmsg, PrimaryStorageConstant.SERVICE_ID, primaryStorageUuid);
+                    bus.send(bmsg, new CloudBusCallBack(compl) {
+                        @Override
+                        public void run(MessageReply r) {
+                            if (r.isSuccess()) {
+                                BatchSyncVolumeResourceSizeOnPrimaryStorageReply br = r.castReply();
+                                Map<String, Long> volumeActualSizes = br.getVolumeActualSizes();
+
+                                reply.addSuccessCount(volumeActualSizes.size());
+                                reply.addFailCount(activeVolumeSizeSyncInfo.volumeUuidInstallPaths.size() - volumeActualSizes.size());
+
+                                if (syncSnapshotSize) {
+                                    updateSnapshotActualSizes(br.getSnapshotActualSizes());
+                                }
+                                refreshVolume(volumeActualSizes);
+                            } else {
+                                reply.addFailCount(activeVolumeSizeSyncInfo.volumeUuidInstallPaths.size());
+                            }
+                            compl.done();
+                        }
+                    });
+                }).run(new WhileDoneCompletion(trigger) {
+                    @Override
+                    public void done(ErrorCodeList errorCodeList) {
+                        if (!errorCodeList.getCauses().isEmpty()) {
+                            reply.setError(errorCodeList.getCauses().get(0));
+                        }
+                        trigger.next();
+                    }
+                });
+            }
+
+            private boolean isSnapshotSizeSyncRequired(String primaryStorageType, Collection<String> volumeTypes) {
+                return volumeTypes.stream()
+                        .anyMatch(volumeType -> snapshotSizeSyncRequiredCache.getOrDefault(snapshotSizeSyncRequiredCacheKey(primaryStorageType, volumeType), false));
+            }
+        }).done(new FlowDoneHandler(msg) {
+            @Override
+            public void handle(Map data) {
                 bus.reply(msg, reply);
             }
-        });
+        }).error(new FlowErrorHandler(msg) {
+            @Override
+            public void handle(ErrorCode errCode, Map data) {
+                reply.setError(errCode);
+                bus.reply(msg, reply);
+            }
+        }).start();
+    }
+
+    private static class SnapshotSizeSyncCacheMiss {
+        private final String primaryStorageUuid;
+        private final String primaryStorageType;
+        private final String volumeType;
+
+        private SnapshotSizeSyncCacheMiss(String primaryStorageUuid, String primaryStorageType, String volumeType) {
+            this.primaryStorageUuid = primaryStorageUuid;
+            this.primaryStorageType = primaryStorageType;
+            this.volumeType = volumeType;
+        }
+    }
+
+    @Transactional(readOnly = true)
+    private Map<String, Long> calculateSnapshotSize(Collection<String> volumeUuids) {
+        if (volumeUuids == null || volumeUuids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        String sql = "select sp.volumeUuid, sum(sp.size) from VolumeSnapshotVO sp where sp.volumeUuid in :uuids group by sp.volumeUuid";
+        TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
+        q.setParameter("uuids", volumeUuids);
+        List<Tuple> results = q.getResultList();
+        return results.stream().collect(Collectors.toMap(
+                tuple -> tuple.get(0, String.class), tuple -> tuple.get(1, Long.class)));
+    }
+
+    @Transactional
+    private void refreshVolume(Map<String, Long> actualSizes) {
+        actualSizes.entrySet().removeIf(actualSize -> actualSize.getValue() == null);
+        Map<String, Long> uuidSnapshotSizes = calculateSnapshotSize(actualSizes.keySet());
+
+        for (Map.Entry<String, Long> entry : actualSizes.entrySet()) {
+            // the actual size = volume actual size + all snapshot size
+            long volActualSize = entry.getValue() + uuidSnapshotSizes.getOrDefault(entry.getKey(), 0L);
+            SQL.New(VolumeVO.class).eq(VolumeVO_.uuid, entry.getKey())
+                    .set(VolumeVO_.actualSize, volActualSize)
+                    .update();
+        }
+    }
+
+    private Map<String, String> getPrimaryStorageTypesForSnapshotCapabilityCache(Collection<String> primaryStorageUuids) {
+        if (primaryStorageUuids == null || primaryStorageUuids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return Q.New(PrimaryStorageVO.class)
+                .select(PrimaryStorageVO_.uuid, PrimaryStorageVO_.type)
+                .in(PrimaryStorageVO_.uuid, primaryStorageUuids)
+                .listTuple().stream()
+                .collect(Collectors.toMap(
+                        t -> t.get(0, String.class),
+                        t -> getPrimaryStorageTypeForSnapshotCapabilityCache(t.get(0, String.class), t.get(1, String.class))));
+    }
+
+    private String getPrimaryStorageTypeForSnapshotCapabilityCache(String primaryStorageUuid, String primaryStorageType) {
+        Optional<PrimaryStorageFactory> factory = pluginRgty.getExtensionList(PrimaryStorageFactory.class).stream()
+                .filter(f -> f.getPrimaryStorageType().toString().equals(primaryStorageType))
+                .findFirst();
+        if (!factory.isPresent()) {
+            return primaryStorageType;
+        }
+
+        String identity = factory.get().getInventory(primaryStorageUuid).getIdentity();
+        return identity == null ? primaryStorageType : identity;
+    }
+
+    private String snapshotSizeSyncRequiredCacheKey(String primaryStorageType, String volumeType) {
+        return String.format("%s-%s", primaryStorageType, volumeType);
+    }
+
+    private void cacheSnapshotSizeSyncRequired(String cacheKey, boolean required) {
+        snapshotSizeSyncRequiredCache.put(cacheKey, required);
+    }
+
+    private void pruneSnapshotSizeSyncRequiredCache(Collection<String> currentCacheKeys) {
+        snapshotSizeSyncRequiredCache.keySet().retainAll(currentCacheKeys);
+    }
+
+    private boolean isCowSnapshotSupported(VolumeSnapshotCapability capability) {
+        return capability != null && capability.isSupport() &&
+                capability.getMode() == VolumeSnapshotCapability.VolumeSnapshotMode.COPY_ON_WRITE;
+    }
+
+    private Map<String, String> getSnapshotUuidInstallPaths(String primaryStorageUuid, Collection<String> volumeUuids) {
+        if (volumeUuids == null || volumeUuids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        String sql = "select sp.uuid, sp.primaryStorageInstallPath from VolumeSnapshotVO sp " +
+                "where sp.volumeUuid in :volumeUuids " +
+                "and sp.primaryStorageUuid = :primaryStorageUuid " +
+                "and sp.primaryStorageInstallPath is not null " +
+                "and sp.status = :status";
+        TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
+        q.setParameter("volumeUuids", volumeUuids);
+        q.setParameter("primaryStorageUuid", primaryStorageUuid);
+        q.setParameter("status", VolumeSnapshotStatus.Ready);
+        return q.getResultList().stream().collect(Collectors.toMap(
+                t -> t.get(0, String.class),
+                t -> t.get(1, String.class),
+                (v1, v2) -> v1
+        ));
+    }
+
+    private void updateSnapshotActualSizes(Map<String, Long> snapshotActualSizes) {
+        if (snapshotActualSizes == null || snapshotActualSizes.isEmpty()) {
+            return;
+        }
+
+        snapshotActualSizes.entrySet().stream()
+                .filter(e -> e.getValue() != null && e.getValue() >= 0)
+                .forEach(e -> SQL.New(VolumeSnapshotVO.class)
+                        .eq(VolumeSnapshotVO_.uuid, e.getKey())
+                        .set(VolumeSnapshotVO_.size, e.getValue())
+                        .update());
     }
 
     private void handle(CreateDataVolumeFromVolumeSnapshotMsg msg) {

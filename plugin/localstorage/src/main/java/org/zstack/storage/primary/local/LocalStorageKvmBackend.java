@@ -2495,15 +2495,15 @@ public class LocalStorageKvmBackend extends LocalStorageHypervisorBackend {
     }
 
     @Override
-    void handle(BatchSyncVolumeSizeOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<BatchSyncVolumeSizeOnPrimaryStorageReply> completion) {
-        final BatchSyncVolumeSizeOnPrimaryStorageReply reply = new BatchSyncVolumeSizeOnPrimaryStorageReply();
+    void handle(BatchSyncVolumeResourceSizeOnPrimaryStorageMsg msg, String hostUuid, ReturnValueCompletion<BatchSyncVolumeResourceSizeOnPrimaryStorageReply> completion) {
+        final BatchSyncVolumeResourceSizeOnPrimaryStorageReply reply = new BatchSyncVolumeResourceSizeOnPrimaryStorageReply();
         GetBatchVolumeSizeCmd cmd = new GetBatchVolumeSizeCmd();
         cmd.volumeUuidInstallPaths = msg.getVolumeUuidInstallPaths();
 
         httpCall(BATCH_GET_VOLUME_SIZE, msg.getHostUuid(), cmd, GetBatchVolumeSizeRsp.class, new ReturnValueCompletion<GetBatchVolumeSizeRsp>(completion) {
             @Override
             public void success(GetBatchVolumeSizeRsp rsp) {
-                reply.setActualSizes(rsp.actualSizes);
+                reply.setVolumeActualSizes(rsp.actualSizes);
                 completion.success(reply);
             }
 

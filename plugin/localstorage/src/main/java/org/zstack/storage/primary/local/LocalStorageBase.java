@@ -2677,10 +2677,15 @@ public class LocalStorageBase extends PrimaryStorageBase {
         VolumeSnapshotCapability capability = new VolumeSnapshotCapability();
         capability.setSupport(true);
 
-        String volumeType = msg.getVolume().getType();
+        String volumeType = msg.getVolumeType();
+        if (volumeType == null) {
+            volumeType = msg.getVolume().getType();
+        }
+
         if (VolumeType.Data.toString().equals(volumeType) || VolumeType.Root.toString().equals(volumeType)) {
             capability.setArrangementType(VolumeSnapshotArrangementType.CHAIN);
             capability.setPlacementType(VolumeSnapshotCapability.VolumeSnapshotPlacementType.EXTERNAL);
+            capability.setMode(VolumeSnapshotCapability.VolumeSnapshotMode.REDIRECT_ON_WRITE);
         } else if (VolumeType.Memory.toString().equals(volumeType)) {
             capability.setArrangementType(VolumeSnapshotArrangementType.INDIVIDUAL);
         } else {
@@ -2733,17 +2738,17 @@ public class LocalStorageBase extends PrimaryStorageBase {
     }
 
     @Override
-    protected void handle(BatchSyncVolumeSizeOnPrimaryStorageMsg msg) {
+    protected void handle(BatchSyncVolumeResourceSizeOnPrimaryStorageMsg msg) {
         LocalStorageHypervisorFactory f = getHypervisorBackendFactoryByHostUuid(msg.getHostUuid());
         LocalStorageHypervisorBackend bkd = f.getHypervisorBackend(self);
-        bkd.handle(msg, msg.getHostUuid(), new ReturnValueCompletion<BatchSyncVolumeSizeOnPrimaryStorageReply>(msg) {
+        bkd.handle(msg, msg.getHostUuid(), new ReturnValueCompletion<BatchSyncVolumeResourceSizeOnPrimaryStorageReply>(msg) {
             @Override
-            public void success(BatchSyncVolumeSizeOnPrimaryStorageReply returnValue) {
+            public void success(BatchSyncVolumeResourceSizeOnPrimaryStorageReply returnValue) {
                 bus.reply(msg, returnValue);
             }
             @Override
             public void fail(ErrorCode errorCode) {
-                BatchSyncVolumeSizeOnPrimaryStorageReply reply = new BatchSyncVolumeSizeOnPrimaryStorageReply();
+                BatchSyncVolumeResourceSizeOnPrimaryStorageReply reply = new BatchSyncVolumeResourceSizeOnPrimaryStorageReply();
                 reply.setError(errorCode);
                 bus.reply(msg, reply);
             }

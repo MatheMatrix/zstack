@@ -1339,21 +1339,21 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     @Override
     protected void handle(AskVolumeSnapshotCapabilityMsg msg) {
         VolumeSnapshotCapability capability = new VolumeSnapshotCapability();
-        HypervisorType hvType = VolumeFormat.getMasterHypervisorTypeByVolumeFormat(msg.getVolume().getFormat());
-        if (hvType.toString().equals(KVMConstant.KVM_HYPERVISOR_TYPE)) {
-            String volumeType = msg.getVolume().getType();
-            if (VolumeType.Data.toString().equals(volumeType) || VolumeType.Root.toString().equals(volumeType)) {
-                capability.setArrangementType(VolumeSnapshotArrangementType.CHAIN);
-                capability.setPlacementType(VolumeSnapshotCapability.VolumeSnapshotPlacementType.EXTERNAL);
-            } else if (VolumeType.Memory.toString().equals(volumeType)) {
-                capability.setArrangementType(VolumeSnapshotArrangementType.INDIVIDUAL);
-            } else {
-                throw new CloudRuntimeException(String.format("unknown volume type %s", volumeType));
-            }
-            capability.setSupport(true);
-        } else {
-            capability.setSupport(false);
+        String volumeType = msg.getVolumeType();
+        if (volumeType == null) {
+            volumeType = msg.getVolume().getType();
         }
+
+        if (VolumeType.Data.toString().equals(volumeType) || VolumeType.Root.toString().equals(volumeType)) {
+            capability.setArrangementType(VolumeSnapshotArrangementType.CHAIN);
+            capability.setPlacementType(VolumeSnapshotCapability.VolumeSnapshotPlacementType.EXTERNAL);
+            capability.setMode(VolumeSnapshotCapability.VolumeSnapshotMode.REDIRECT_ON_WRITE);
+        } else if (VolumeType.Memory.toString().equals(volumeType)) {
+            capability.setArrangementType(VolumeSnapshotArrangementType.INDIVIDUAL);
+        } else {
+            throw new CloudRuntimeException(String.format("unknown volume type %s", volumeType));
+        }
+        capability.setSupport(true);
 
         AskVolumeSnapshotCapabilityReply reply = new AskVolumeSnapshotCapabilityReply();
         reply.setCapability(capability);
@@ -1409,16 +1409,16 @@ public class NfsPrimaryStorage extends PrimaryStorageBase {
     }
 
     @Override
-    protected void handle(BatchSyncVolumeSizeOnPrimaryStorageMsg msg) {
+    protected void handle(BatchSyncVolumeResourceSizeOnPrimaryStorageMsg msg) {
         NfsPrimaryStorageBackend backend = getBackendByHostUuid(msg.getHostUuid());
-        backend.handle(getSelfInventory(), msg, new ReturnValueCompletion<BatchSyncVolumeSizeOnPrimaryStorageReply>(msg) {
+        backend.handle(getSelfInventory(), msg, new ReturnValueCompletion<BatchSyncVolumeResourceSizeOnPrimaryStorageReply>(msg) {
             @Override
-            public void success(BatchSyncVolumeSizeOnPrimaryStorageReply reply) {
+            public void success(BatchSyncVolumeResourceSizeOnPrimaryStorageReply reply) {
                 bus.reply(msg, reply);
             }
             @Override
             public void fail(ErrorCode errorCode) {
-                BatchSyncVolumeSizeOnPrimaryStorageReply reply = new BatchSyncVolumeSizeOnPrimaryStorageReply();
+                BatchSyncVolumeResourceSizeOnPrimaryStorageReply reply = new BatchSyncVolumeResourceSizeOnPrimaryStorageReply();
                 reply.setError(errorCode);
                 bus.reply(msg, reply);
             }

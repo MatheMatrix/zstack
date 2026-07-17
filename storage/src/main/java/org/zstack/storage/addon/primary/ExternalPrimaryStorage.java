@@ -1922,19 +1922,43 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
     }
 
     @Override
-    protected void handle(BatchSyncVolumeSizeOnPrimaryStorageMsg msg) {
-        BatchSyncVolumeSizeOnPrimaryStorageReply reply = new BatchSyncVolumeSizeOnPrimaryStorageReply();
+    protected void handle(BatchSyncVolumeResourceSizeOnPrimaryStorageMsg msg) {
+        BatchSyncVolumeResourceSizeOnPrimaryStorageReply reply = new BatchSyncVolumeResourceSizeOnPrimaryStorageReply();
 
         Map<String, String> installPathToUuids = msg.getVolumeUuidInstallPaths().entrySet().stream().collect(Collectors.toMap(
                 Map.Entry::getValue, Map.Entry::getKey, (k1, k2) -> k1
         ));
-        controller.batchStats(msg.getVolumeUuidInstallPaths().values(), new ReturnValueCompletion<List<VolumeStats>>(msg) {
-            @Override
-            public void success(List<VolumeStats> stats) {
-                Map<String, Long> actualSizeByUuids = stats.stream().collect(Collectors.toMap(
-                        s -> installPathToUuids.get(s.getInstallPath()), VolumeStats::getActualSize, (k1, k2) -> k1
+        Map<String, String> snapshotInstallPathToUuids = !msg.isWithSnapshot() || msg.getSnapshotUuidInstallPaths() == null ? Collections.emptyMap() :
+                msg.getSnapshotUuidInstallPaths().entrySet().stream().collect(Collectors.toMap(
+                        Map.Entry::getValue, Map.Entry::getKey, (k1, k2) -> k1
                 ));
-                reply.setActualSizes(actualSizeByUuids);
+        Collection<String> installPaths = new ArrayList<>(msg.getVolumeUuidInstallPaths().values());
+        if (msg.isWithSnapshot() && msg.getSnapshotUuidInstallPaths() != null) {
+            installPaths.addAll(msg.getSnapshotUuidInstallPaths().values());
+        }
+        controller.batchStats(installPaths, new ReturnValueCompletion<List<StorageResourceStats>>(msg) {
+            @Override
+            public void success(List<StorageResourceStats> stats) {
+                Map<String, Long> actualSizeByUuids = stats.stream()
+                        .filter(it -> it instanceof VolumeStats)
+                        .filter(it -> it.getActualSize() != null)
+                        .filter(it -> installPathToUuids.containsKey(it.getInstallPath()))
+                        .collect(Collectors.toMap(
+                                s -> installPathToUuids.get(s.getInstallPath()),
+                                StorageResourceStats::getActualSize,
+                                (k1, k2) -> k1
+                        ));
+                reply.setVolumeActualSizes(actualSizeByUuids);
+                reply.setSnapshotActualSizes(snapshotInstallPathToUuids.isEmpty() ? Collections.emptyMap() :
+                        stats.stream()
+                                .filter(it -> it instanceof VolumeSnapshotStats)
+                                .filter(it -> it.getActualSize() != null)
+                                .filter(it -> snapshotInstallPathToUuids.containsKey(it.getInstallPath()))
+                                .collect(Collectors.toMap(
+                                        it -> snapshotInstallPathToUuids.get(it.getInstallPath()),
+                                        StorageResourceStats::getActualSize,
+                                        (k1, k2) -> k1
+                                )));
                 bus.reply(msg, reply);
             }
 

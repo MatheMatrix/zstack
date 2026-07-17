@@ -150,7 +150,7 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
 
     protected abstract void handle(EstimateVolumeTemplateSizeOnPrimaryStorageMsg msg);
 
-    protected abstract void handle(BatchSyncVolumeSizeOnPrimaryStorageMsg msg);
+    protected abstract void handle(BatchSyncVolumeResourceSizeOnPrimaryStorageMsg msg);
 
     protected abstract void handle(MergeVolumeSnapshotOnPrimaryStorageMsg msg);
 
@@ -367,8 +367,8 @@ public abstract class PrimaryStorageBase extends AbstractPrimaryStorage {
             handle((SyncVolumeSizeOnPrimaryStorageMsg) msg);
         } else if (msg instanceof EstimateVolumeTemplateSizeOnPrimaryStorageMsg) {
             handle((EstimateVolumeTemplateSizeOnPrimaryStorageMsg) msg);
-        } else if (msg instanceof BatchSyncVolumeSizeOnPrimaryStorageMsg) {
-            handle((BatchSyncVolumeSizeOnPrimaryStorageMsg) msg);
+        } else if (msg instanceof BatchSyncVolumeResourceSizeOnPrimaryStorageMsg) {
+            handle((BatchSyncVolumeResourceSizeOnPrimaryStorageMsg) msg);
         } else if (msg instanceof PingPrimaryStorageMsg) {
             handle((PingPrimaryStorageMsg) msg);
         } else if (msg instanceof ChangePrimaryStorageStatusMsg) {
