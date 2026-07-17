@@ -290,6 +290,10 @@ public class PrimaryStorageInventory implements Serializable {
         return type;
     }
 
+    public String getIdentity() {
+        return type;
+    }
+
     public void setType(String type) {
         this.type = type;
     }

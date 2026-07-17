@@ -3325,11 +3325,16 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         AskVolumeSnapshotCapabilityReply reply = new AskVolumeSnapshotCapabilityReply();
         VolumeSnapshotCapability cap = new VolumeSnapshotCapability();
 
-        String volumeType = msg.getVolume().getType();
+        String volumeType = msg.getVolumeType();
+        if (volumeType == null && msg.getVolume() != null) {
+            volumeType = msg.getVolume().getType();
+        }
+
         if (VolumeType.Data.toString().equals(volumeType) || VolumeType.Root.toString().equals(volumeType)) {
             cap.setSupport(true);
             cap.setArrangementType(VolumeSnapshotArrangementType.INDIVIDUAL);
             cap.setPlacementType(VolumeSnapshotCapability.VolumeSnapshotPlacementType.INTERNAL);
+            cap.setMode(VolumeSnapshotCapability.VolumeSnapshotMode.REDIRECT_ON_WRITE);
             cap.setVolumePathFromInternalSnapshotRegex("^[^@]+");
         } else if (VolumeType.Memory.toString().equals(volumeType)) {
             cap.setSupport(false);
@@ -3397,10 +3402,10 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
     }
 
     @Override
-    protected void handle(BatchSyncVolumeSizeOnPrimaryStorageMsg msg) {
+    protected void handle(BatchSyncVolumeResourceSizeOnPrimaryStorageMsg msg) {
         inQueue().name(String.format("batch-sync-volume-size-on-primarystorage-%s", self.getUuid()))
                 .asyncBackup(msg)
-                .run(chain -> BatchSyncVolumeSizeOnPrimaryStorage(msg, new NoErrorCompletion(chain) {
+                .run(chain -> BatchSyncVolumeResourceSizeOnPrimaryStorage(msg, new NoErrorCompletion(chain) {
                     @Override
                     public void done() {
                         chain.next();
@@ -3419,8 +3424,8 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         httpCall(GET_VOLUME_SIZE_PATH, cmd, GetVolumeSizeRsp.class, completion);
     }
 
-    private void BatchSyncVolumeSizeOnPrimaryStorage(BatchSyncVolumeSizeOnPrimaryStorageMsg msg, NoErrorCompletion completion) {
-        BatchSyncVolumeSizeOnPrimaryStorageReply reply = new BatchSyncVolumeSizeOnPrimaryStorageReply();
+    private void BatchSyncVolumeResourceSizeOnPrimaryStorage(BatchSyncVolumeResourceSizeOnPrimaryStorageMsg msg, NoErrorCompletion completion) {
+        BatchSyncVolumeResourceSizeOnPrimaryStorageReply reply = new BatchSyncVolumeResourceSizeOnPrimaryStorageReply();
 
         GetBatchVolumeSizeCmd cmd = new GetBatchVolumeSizeCmd();
         cmd.volumeUuidInstallPaths = msg.getVolumeUuidInstallPaths();
@@ -3436,7 +3441,7 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
                     markVolumeActualSize(volumeUuid, actualSize);
                 }
 
-                reply.setActualSizes(rsp.actualSizes);
+                reply.setVolumeActualSizes(rsp.actualSizes);
                 bus.reply(msg, reply);
                 completion.done();
             }
