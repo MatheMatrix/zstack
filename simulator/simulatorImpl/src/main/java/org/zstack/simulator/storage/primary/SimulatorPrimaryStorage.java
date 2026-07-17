@@ -9,8 +9,8 @@ import org.zstack.header.simulator.SimulatorConstant;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.primary.VolumeSnapshotCapability.VolumeSnapshotArrangementType;
 import org.zstack.header.storage.snapshot.ShrinkVolumeSnapshotOnPrimaryStorageMsg;
-import org.zstack.header.volume.BatchSyncVolumeSizeOnPrimaryStorageMsg;
-import org.zstack.header.volume.BatchSyncVolumeSizeOnPrimaryStorageReply;
+import org.zstack.header.volume.BatchSyncVolumeResourceSizeOnPrimaryStorageMsg;
+import org.zstack.header.volume.BatchSyncVolumeResourceSizeOnPrimaryStorageReply;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageMsg;
 import org.zstack.storage.primary.PrimaryStorageBase;
@@ -159,6 +159,7 @@ public class SimulatorPrimaryStorage extends PrimaryStorageBase {
         VolumeSnapshotCapability capability = new VolumeSnapshotCapability();
         capability.setArrangementType(VolumeSnapshotArrangementType.CHAIN);
         capability.setPlacementType(VolumeSnapshotCapability.VolumeSnapshotPlacementType.EXTERNAL);
+        capability.setMode(VolumeSnapshotCapability.VolumeSnapshotMode.REDIRECT_ON_WRITE);
         capability.setSupport(true);
         reply.setCapability(capability);
         bus.reply(msg, reply);
@@ -179,11 +180,11 @@ public class SimulatorPrimaryStorage extends PrimaryStorageBase {
     }
 
     @Override
-    protected void handle(BatchSyncVolumeSizeOnPrimaryStorageMsg msg) {
-        BatchSyncVolumeSizeOnPrimaryStorageReply reply = new BatchSyncVolumeSizeOnPrimaryStorageReply();
+    protected void handle(BatchSyncVolumeResourceSizeOnPrimaryStorageMsg msg) {
+        BatchSyncVolumeResourceSizeOnPrimaryStorageReply reply = new BatchSyncVolumeResourceSizeOnPrimaryStorageReply();
         Map<String, Long> actualSize = msg.getVolumeUuidInstallPaths()
                 .entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> 0L));
-        reply.setActualSizes(actualSize);
+        reply.setVolumeActualSizes(actualSize);
         bus.reply(msg, reply);
     }
 

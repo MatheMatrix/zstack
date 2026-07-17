@@ -8,8 +8,8 @@ import org.zstack.header.image.ImageInventory;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.snapshot.VolumeSnapshotInventory;
 import org.zstack.header.volume.VolumeStats;
-import org.zstack.header.volume.BatchSyncVolumeSizeOnPrimaryStorageMsg;
-import org.zstack.header.volume.BatchSyncVolumeSizeOnPrimaryStorageReply;
+import org.zstack.header.volume.BatchSyncVolumeResourceSizeOnPrimaryStorageMsg;
+import org.zstack.header.volume.BatchSyncVolumeResourceSizeOnPrimaryStorageReply;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageMsg;
 import org.zstack.storage.primary.EstimateVolumeTemplateSizeOnPrimaryStorageReply;
@@ -30,7 +30,7 @@ public interface NfsPrimaryStorageBackend {
 
     void handle(PrimaryStorageInventory inv, EstimateVolumeTemplateSizeOnPrimaryStorageMsg msg, ReturnValueCompletion<EstimateVolumeTemplateSizeOnPrimaryStorageReply> completion);
 
-    void handle(PrimaryStorageInventory inv, BatchSyncVolumeSizeOnPrimaryStorageMsg msg, ReturnValueCompletion<BatchSyncVolumeSizeOnPrimaryStorageReply> completion);
+    void handle(PrimaryStorageInventory inv, BatchSyncVolumeResourceSizeOnPrimaryStorageMsg msg, ReturnValueCompletion<BatchSyncVolumeResourceSizeOnPrimaryStorageReply> completion);
 
     void handle(PrimaryStorageInventory inv, GetVolumeRootImageUuidFromPrimaryStorageMsg msg, ReturnValueCompletion<GetVolumeRootImageUuidFromPrimaryStorageReply> completion);
 

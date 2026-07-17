@@ -100,6 +100,7 @@ public class ExternalPrimaryStorageInventory extends PrimaryStorageInventory {
         return url;
     }
 
+    @Override
     public String getIdentity() {
         return identity;
     }

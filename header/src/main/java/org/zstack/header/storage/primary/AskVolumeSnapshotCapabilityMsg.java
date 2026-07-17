@@ -9,6 +9,7 @@ import org.zstack.header.volume.VolumeInventory;
 public class AskVolumeSnapshotCapabilityMsg extends NeedReplyMessage implements PrimaryStorageMessage {
     private String primaryStorageUuid;
     private VolumeInventory volume;
+    private String volumeType;
 
     @Override
     public String getPrimaryStorageUuid() {
@@ -25,5 +26,13 @@ public class AskVolumeSnapshotCapabilityMsg extends NeedReplyMessage implements 
 
     public void setVolume(VolumeInventory volume) {
         this.volume = volume;
+    }
+
+    public String getVolumeType() {
+        return volumeType;
+    }
+
+    public void setVolumeType(String volumeType) {
+        this.volumeType = volumeType;
     }
 }
