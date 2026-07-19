@@ -43,6 +43,7 @@ import org.zstack.storage.encrypt.ZbsVolumeEncryptionExtension
 import org.zstack.storage.encrypt.ZbsVolumeEncryptionKvmCaller
 import org.zstack.storage.encrypt.ZbsVolumeEncryptionMaterialFactory
 import org.zstack.storage.volume.VolumeBase
+import org.zstack.storage.volume.VolumeSystemTags
 import org.zstack.storage.zbs.ZbsConstants
 import org.zstack.storage.zbs.ZbsStorageController
 import org.zstack.test.integration.storage.StorageTest
@@ -322,6 +323,7 @@ class ZbsVolumeEncryptionCase extends SubCase {
                 assert current.installPath == tracker.targetInstallPath
                 assert current.actualSize == actualSize
                 assert current.status == VolumeStatus.Ready
+                assert !VolumeSystemTags.VOLUME_ENCRYPTION_CONVERSION_OWNER.hasTag(volumeUuid, VolumeVO.class)
             }
         } finally {
             dbf.removeByPrimaryKey(volumeUuid, VolumeVO.class)
@@ -830,6 +832,8 @@ class ZbsVolumeEncryptionCase extends SubCase {
             assert hmsg.path == KVM_LUKS_CONVERT_PATH
             assert hmsg.hostUuid == host.uuid
             assert bean(DatabaseFacade.class).findByUuid(volumeUuid, VolumeVO.class).status == VolumeStatus.Converting
+            assert VolumeSystemTags.VOLUME_ENCRYPTION_CONVERSION_OWNER.getTokenByResourceUuid(volumeUuid,
+                    VolumeSystemTags.VOLUME_ENCRYPTION_CONVERSION_OWNER_TOKEN) == Platform.getManagementServerId()
             tracker.kvmCmd = JSONObjectUtil.toObject(hmsg.command, LinkedHashMap.class)
             assert tracker.kvmCmd.psUuid == ps.uuid
             assert tracker.kvmCmd.installPath == sourceInstallPath

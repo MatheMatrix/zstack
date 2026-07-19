@@ -9,6 +9,7 @@ import org.zstack.core.Platform;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
+import org.zstack.core.cloudbus.CloudBusListCallBack;
 import org.zstack.core.cloudbus.MessageSafe;
 import org.zstack.core.cloudbus.ResourceDestinationMaker;
 import org.zstack.core.componentloader.PluginRegistry;
@@ -16,6 +17,8 @@ import org.zstack.core.config.GlobalConfig;
 import org.zstack.core.config.GlobalConfigUpdateExtensionPoint;
 import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
+import org.zstack.core.jsonlabel.JsonLabelVO;
+import org.zstack.core.jsonlabel.JsonLabelVO_;
 import org.zstack.core.thread.CancelablePeriodicTask;
 import org.zstack.core.thread.ThreadFacade;
 import org.zstack.core.workflow.FlowChainBuilder;
@@ -34,7 +37,11 @@ import org.zstack.header.host.*;
 import org.zstack.header.identity.AccountResourceRefInventory;
 import org.zstack.header.identity.ResourceOwnerAfterChangeExtensionPoint;
 import org.zstack.header.image.*;
+import org.zstack.header.managementnode.ManagementNodeChangeListener;
+import org.zstack.header.managementnode.ManagementNodeInventory;
 import org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint;
+import org.zstack.header.managementnode.ManagementNodeVO;
+import org.zstack.header.managementnode.ManagementNodeVO_;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
@@ -43,6 +50,8 @@ import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO_;
+import org.zstack.header.tag.SystemTagVO;
+import org.zstack.header.tag.SystemTagVO_;
 import org.zstack.storage.encrypt.VolumeEncryptedResourceKeyBackend;
 import org.zstack.storage.encrypt.VolumeSnapshotEncryptionHelper;
 import org.zstack.header.vm.*;
@@ -55,8 +64,10 @@ import org.zstack.storage.primary.PrimaryStorageDeleteBitGC;
 import org.zstack.storage.primary.PrimaryStorageGlobalConfig;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.CollectionUtils;
+import org.zstack.utils.TagUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
+import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 
 import javax.persistence.Tuple;
@@ -66,6 +77,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.operr;
@@ -73,6 +85,7 @@ import static org.zstack.header.host.HostStatus.Connected;
 import static org.zstack.utils.CollectionUtils.transformAndRemoveNull;
 
 public class VolumeManagerImpl extends AbstractService implements VolumeManager, ManagementNodeReadyExtensionPoint,
+        ManagementNodeChangeListener,
         ResourceOwnerAfterChangeExtensionPoint, VmStateChangedExtensionPoint, VmDetachVolumeExtensionPoint,
         VmAttachVolumeExtensionPoint, HostAfterConnectedExtensionPoint {
     private static final CLogger logger = Utils.getLogger(VolumeManagerImpl.class);
@@ -1511,7 +1524,205 @@ public class VolumeManagerImpl extends AbstractService implements VolumeManager,
 
     @Override
     public void managementNodeReady() {
+        Set<String> activeManagementNodeUuids = new HashSet<>(Q.New(ManagementNodeVO.class)
+                .select(ManagementNodeVO_.uuid)
+                .listValues());
+        String managementNodeUuid = Platform.getManagementServerId();
+        recoverInterruptedVolumeEncryptionConversions(ownerUuid -> managementNodeUuid.equals(ownerUuid)
+                || !activeManagementNodeUuids.contains(ownerUuid));
         startExpungeTask();
+    }
+
+    private void recoverInterruptedVolumeEncryptionConversions(Predicate<String> ownerMatcher) {
+        String tagPattern = TagUtils.tagPatternToSqlPattern(
+                VolumeSystemTags.VOLUME_ENCRYPTION_CONVERSION_OWNER.getTagFormat());
+        List<Tuple> tags = Q.New(SystemTagVO.class)
+                .select(SystemTagVO_.resourceUuid, SystemTagVO_.tag)
+                .eq(SystemTagVO_.resourceType, VolumeVO.class.getSimpleName())
+                .like(SystemTagVO_.tag, tagPattern)
+                .listTuple();
+        List<String> volumeUuids = tags.stream()
+                .filter(tuple -> ownerMatcher.test(VolumeSystemTags.VOLUME_ENCRYPTION_CONVERSION_OWNER.getTokenByTag(
+                        tuple.get(1, String.class), VolumeSystemTags.VOLUME_ENCRYPTION_CONVERSION_OWNER_TOKEN)))
+                .map(tuple -> tuple.get(0, String.class))
+                .filter(destMaker::isManagedByUs)
+                .distinct()
+                .collect(Collectors.toList());
+        if (volumeUuids.isEmpty()) {
+            return;
+        }
+
+        List<VolumeVO> volumeVOs = Q.New(VolumeVO.class)
+                .in(VolumeVO_.uuid, volumeUuids)
+                .list();
+        Map<String, VolumeVO> volumes = volumeVOs.stream()
+                .collect(Collectors.toMap(VolumeVO::getUuid, it -> it));
+        List<JsonLabelVO> contextVOs = Q.New(JsonLabelVO.class)
+                .in(JsonLabelVO_.resourceUuid, volumeUuids)
+                .like(JsonLabelVO_.labelKey, VolumeBase.VOLUME_ENCRYPTION_CONVERSION_CONTEXT_LABEL_PREFIX + "%")
+                .list();
+        Map<String, JsonLabelVO> contexts = contextVOs.stream()
+                .filter(it -> VolumeBase.makeVolumeEncryptionConversionContextLabelKey(it.getResourceUuid())
+                        .equals(it.getLabelKey()))
+                .collect(Collectors.toMap(JsonLabelVO::getResourceUuid, it -> it, (left, right) -> right));
+        List<String> metadataCleanupVolumeUuids = new ArrayList<>();
+        for (String volumeUuid : volumeUuids) {
+            VolumeVO volume = volumes.get(volumeUuid);
+            if (volume == null || volume.getStatus() != VolumeStatus.Converting) {
+                metadataCleanupVolumeUuids.add(volumeUuid);
+                continue;
+            }
+
+            JsonLabelVO context = contexts.get(volumeUuid);
+            if (context == null) {
+                logger.warn(String.format("cannot recover interrupted encryption conversion for volume[uuid:%s]: conversion context is missing",
+                        volumeUuid));
+                continue;
+            }
+
+            try {
+                VolumeBase.VolumeEncryptionConversionRecoveryContext recoveryContext = JSONObjectUtil.toObject(
+                        context.getLabelValue(), VolumeBase.VolumeEncryptionConversionRecoveryContext.class);
+                recoverInterruptedVolumeEncryptionConversion(volume, recoveryContext);
+            } catch (RuntimeException e) {
+                logger.warn(String.format("cannot recover interrupted encryption conversion for volume[uuid:%s]: %s",
+                        volumeUuid, e.getMessage()), e);
+            }
+        }
+
+        clearVolumeEncryptionConversionMetadata(metadataCleanupVolumeUuids, tagPattern);
+    }
+
+    private void recoverInterruptedVolumeEncryptionConversion(VolumeVO volume,
+            VolumeBase.VolumeEncryptionConversionRecoveryContext context) {
+        List<DeleteVolumeBitsOnPrimaryStorageMsg> messages = buildInterruptedVolumeEncryptionConversionDeleteMessages(
+                volume, context);
+        bus.send(messages, new CloudBusListCallBack(null) {
+            @Override
+            public void run(List<MessageReply> replies) {
+                for (MessageReply reply : replies) {
+                    if (!reply.isSuccess()) {
+                        logger.warn(String.format("cannot recover interrupted encryption conversion for volume[uuid:%s]: %s",
+                                volume.getUuid(), reply.getError()));
+                        return;
+                    }
+                }
+
+                try {
+                    if (context.createdKeyBinding) {
+                        volumeEncryptedResourceKeyBackend.detachKeyProviderFromVolume(volume.getUuid());
+                    }
+                    SQL.New(VolumeVO.class)
+                            .eq(VolumeVO_.uuid, volume.getUuid())
+                            .eq(VolumeVO_.status, VolumeStatus.Converting)
+                            .set(VolumeVO_.status, VolumeStatus.Ready)
+                            .update();
+                    String tagPattern = TagUtils.tagPatternToSqlPattern(
+                            VolumeSystemTags.VOLUME_ENCRYPTION_CONVERSION_OWNER.getTagFormat());
+                    clearVolumeEncryptionConversionMetadata(Collections.singletonList(volume.getUuid()), tagPattern);
+                    logger.info(String.format("recovered interrupted encryption conversion for volume[uuid:%s]",
+                            volume.getUuid()));
+                } catch (RuntimeException e) {
+                    logger.warn(String.format("cannot finish recovering interrupted encryption conversion for volume[uuid:%s]: %s",
+                            volume.getUuid(), e.getMessage()), e);
+                }
+            }
+        });
+    }
+
+    private List<DeleteVolumeBitsOnPrimaryStorageMsg> buildInterruptedVolumeEncryptionConversionDeleteMessages(
+            VolumeVO volume, VolumeBase.VolumeEncryptionConversionRecoveryContext context) {
+        if (context == null || context.items == null || context.items.isEmpty()) {
+            throw new IllegalArgumentException("conversion context has no items");
+        }
+
+        List<String> snapshotUuids = context.items.stream()
+                .filter(item -> VolumeSnapshotVO.class.getSimpleName().equals(item.getResourceType()))
+                .map(ConvertVolumeEncryptionOnPrimaryStorageMsg.VolumeEncryptionConversionItem::getResourceUuid)
+                .collect(Collectors.toList());
+        List<VolumeSnapshotVO> snapshotVOs = snapshotUuids.isEmpty() ? Collections.emptyList() :
+                Q.New(VolumeSnapshotVO.class)
+                        .in(VolumeSnapshotVO_.uuid, snapshotUuids)
+                        .eq(VolumeSnapshotVO_.volumeUuid, volume.getUuid())
+                        .list();
+        Map<String, VolumeSnapshotVO> snapshots = snapshotVOs.stream()
+                .collect(Collectors.toMap(VolumeSnapshotVO::getUuid, it -> it));
+        Set<String> targetInstallPaths = new HashSet<>();
+        int volumeItemCount = 0;
+        List<DeleteVolumeBitsOnPrimaryStorageMsg> messages = new ArrayList<>();
+        for (ConvertVolumeEncryptionOnPrimaryStorageMsg.VolumeEncryptionConversionItem item : context.items) {
+            if (StringUtils.isBlank(item.getResourceUuid()) || StringUtils.isBlank(item.getResourceType())
+                    || StringUtils.isBlank(item.getSourceInstallPath()) || StringUtils.isBlank(item.getTargetInstallPath())
+                    || item.getSourceInstallPath().equals(item.getTargetInstallPath())
+                    || !targetInstallPaths.add(item.getTargetInstallPath())) {
+                throw new IllegalArgumentException("conversion context contains an invalid item");
+            }
+            String convertedResourceNamePrefix = item.getResourceUuid() + ".";
+            if (!item.getTargetInstallPath().contains(convertedResourceNamePrefix)
+                    || (!item.getTargetInstallPath().contains(".encrypted.")
+                    && !item.getTargetInstallPath().contains(".plain."))) {
+                throw new IllegalArgumentException("conversion context contains an invalid target install path");
+            }
+            if (VolumeVO.class.getSimpleName().equals(item.getResourceType())) {
+                volumeItemCount++;
+                if (!volume.getUuid().equals(item.getResourceUuid())
+                        || !Objects.equals(volume.getInstallPath(), item.getSourceInstallPath())) {
+                    throw new IllegalArgumentException("conversion context does not match the volume");
+                }
+            } else if (VolumeSnapshotVO.class.getSimpleName().equals(item.getResourceType())) {
+                VolumeSnapshotVO snapshot = snapshots.get(item.getResourceUuid());
+                if (snapshot == null || !Objects.equals(snapshot.getPrimaryStorageInstallPath(), item.getSourceInstallPath())) {
+                    throw new IllegalArgumentException("conversion context does not match the volume snapshot");
+                }
+            } else {
+                throw new IllegalArgumentException("conversion context contains an unsupported resource type");
+            }
+
+            DeleteVolumeBitsOnPrimaryStorageMsg dmsg = new DeleteVolumeBitsOnPrimaryStorageMsg();
+            dmsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+            dmsg.setInstallPath(item.getTargetInstallPath());
+            dmsg.setBitsUuid(item.getResourceUuid());
+            dmsg.setBitsType(item.getResourceType());
+            dmsg.setHypervisorType(VolumeFormat.getMasterHypervisorTypeByVolumeFormat(volume.getFormat()).toString());
+            bus.makeTargetServiceIdByResourceUuid(dmsg, PrimaryStorageConstant.SERVICE_ID, volume.getPrimaryStorageUuid());
+            messages.add(dmsg);
+        }
+        if (volumeItemCount != 1) {
+            throw new IllegalArgumentException("conversion context must contain exactly one volume item");
+        }
+        return messages;
+    }
+
+    private void clearVolumeEncryptionConversionMetadata(List<String> volumeUuids, String tagPattern) {
+        if (volumeUuids.isEmpty()) {
+            return;
+        }
+        SQL.New(JsonLabelVO.class)
+                .in(JsonLabelVO_.resourceUuid, volumeUuids)
+                .like(JsonLabelVO_.labelKey, VolumeBase.VOLUME_ENCRYPTION_CONVERSION_CONTEXT_LABEL_PREFIX + "%")
+                .hardDelete();
+        SQL.New(SystemTagVO.class)
+                .in(SystemTagVO_.resourceUuid, volumeUuids)
+                .eq(SystemTagVO_.resourceType, VolumeVO.class.getSimpleName())
+                .like(SystemTagVO_.tag, tagPattern)
+                .delete();
+    }
+
+    @Override
+    public void nodeJoin(ManagementNodeInventory inv) {
+    }
+
+    @Override
+    public void nodeLeft(ManagementNodeInventory inv) {
+        recoverInterruptedVolumeEncryptionConversions(inv.getUuid()::equals);
+    }
+
+    @Override
+    public void iAmDead(ManagementNodeInventory inv) {
+    }
+
+    @Override
+    public void iJoin(ManagementNodeInventory inv) {
     }
 
     @Override

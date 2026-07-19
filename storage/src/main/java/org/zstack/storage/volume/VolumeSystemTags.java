@@ -54,4 +54,9 @@ public class VolumeSystemTags {
     public static String VOLUME_LIBVIRT_SECRET_HOST_TOKEN = "hostUuid";
     public static PatternedSystemTag VOLUME_LIBVIRT_SECRET_HOST = new PatternedSystemTag(
             String.format("volumeLibvirtSecretHost::{%s}", VOLUME_LIBVIRT_SECRET_HOST_TOKEN), VolumeVO.class);
+
+    public static String VOLUME_ENCRYPTION_CONVERSION_OWNER_TOKEN = "managementNodeUuid";
+    @NonCloneable
+    public static PatternedSystemTag VOLUME_ENCRYPTION_CONVERSION_OWNER = new PatternedSystemTag(
+            String.format("volumeEncryptionConversionOwner::{%s}", VOLUME_ENCRYPTION_CONVERSION_OWNER_TOKEN), VolumeVO.class);
 }

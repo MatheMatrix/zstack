@@ -227,7 +227,8 @@ public class CephOsdGroupCapacityHelper {
 
         long usedSize = 0;
 
-        List<VolumeStatus> needCountVolumeStates = asList(VolumeStatus.Creating, VolumeStatus.Ready, VolumeStatus.Deleted);
+        List<VolumeStatus> needCountVolumeStates = asList(
+                VolumeStatus.Creating, VolumeStatus.Ready, VolumeStatus.Deleted, VolumeStatus.Converting);
         List<VolumeVO> volumes = Q.New(VolumeVO.class)
                 .in(VolumeVO_.status, needCountVolumeStates)
                 .eq(VolumeVO_.primaryStorageUuid, primaryStorageUuid)

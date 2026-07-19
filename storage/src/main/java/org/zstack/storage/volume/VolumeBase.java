@@ -17,6 +17,7 @@ import org.zstack.core.db.*;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.defer.Defer;
 import org.zstack.core.defer.Deferred;
+import org.zstack.core.jsonlabel.JsonLabel;
 import org.zstack.core.trash.StorageTrash;
 import org.zstack.core.trash.TrashType;
 import org.zstack.core.thread.ChainTask;
@@ -86,6 +87,9 @@ import static org.zstack.utils.CollectionDSL.*;
 @Configurable(preConstruction = true, autowire = Autowire.BY_TYPE)
 public class VolumeBase extends AbstractVolume implements Volume {
     private static final CLogger logger = Utils.getLogger(VolumeBase.class);
+    private static final String VOLUME_ENCRYPTION_DB_CUTOVER_COMPLETED = "volumeEncryptionDbCutoverCompleted";
+    private static final String VOLUME_ENCRYPTION_DB_CUTOVER_UNCERTAIN = "volumeEncryptionDbCutoverUncertain";
+    static final String VOLUME_ENCRYPTION_CONVERSION_CONTEXT_LABEL_PREFIX = "volumeEncryptionConversion::";
     protected String syncThreadId;
     protected VolumeVO self;
     @Autowired
@@ -3315,12 +3319,49 @@ public class VolumeBase extends AbstractVolume implements Volume {
         refreshVO();
     }
 
+    static String makeVolumeEncryptionConversionContextLabelKey(String volumeUuid) {
+        return VOLUME_ENCRYPTION_CONVERSION_CONTEXT_LABEL_PREFIX + volumeUuid;
+    }
+
+    private void markVolumeEncryptionConversionInProgress(
+            List<ConvertVolumeEncryptionOnPrimaryStorageMsg.VolumeEncryptionConversionItem> items,
+            boolean createdKeyBinding) {
+        SystemTagCreator creator = VolumeSystemTags.VOLUME_ENCRYPTION_CONVERSION_OWNER.newSystemTagCreator(self.getUuid());
+        creator.setTagByTokens(Collections.singletonMap(
+                VolumeSystemTags.VOLUME_ENCRYPTION_CONVERSION_OWNER_TOKEN, Platform.getManagementServerId()));
+        creator.recreate = true;
+        creator.create();
+        JsonLabel conversionContext = new JsonLabel();
+        String labelKey = makeVolumeEncryptionConversionContextLabelKey(self.getUuid());
+        conversionContext.delete(labelKey);
+        VolumeEncryptionConversionRecoveryContext recoveryContext = new VolumeEncryptionConversionRecoveryContext();
+        recoveryContext.items = items;
+        recoveryContext.createdKeyBinding = createdKeyBinding;
+        conversionContext.create(labelKey, recoveryContext, self.getUuid());
+        updateVolumeStatusForEncryptionConversion(VolumeStatus.Converting);
+    }
+
+    private void clearVolumeEncryptionConversionMetadataBestEffort() {
+        try {
+            new JsonLabel().delete(makeVolumeEncryptionConversionContextLabelKey(self.getUuid()));
+            VolumeSystemTags.VOLUME_ENCRYPTION_CONVERSION_OWNER.delete(self.getUuid(), VolumeVO.class);
+        } catch (RuntimeException e) {
+            logger.warn(String.format("failed to clear encryption conversion metadata for volume[uuid:%s]: %s",
+                    self.getUuid(), e.getMessage()), e);
+        }
+    }
+
     private static class VolumeEncryptionConversionContext {
         List<VolumeSnapshotVO> snapshots;
         Map<String, String> oldAndNewInstallPaths;
         VolumeInventory oldVolumeInventory;
         List<VolumeSnapshotInventory> oldSnapshotInventories;
         List<ConvertVolumeEncryptionOnPrimaryStorageMsg.VolumeEncryptionConversionItem> items;
+    }
+
+    static class VolumeEncryptionConversionRecoveryContext {
+        List<ConvertVolumeEncryptionOnPrimaryStorageMsg.VolumeEncryptionConversionItem> items;
+        boolean createdKeyBinding;
     }
 
     private void changeVolumeEncryption(boolean targetEncrypted, ReturnValueCompletion<VolumeInventory> completion) {
@@ -3352,22 +3393,6 @@ public class VolumeBase extends AbstractVolume implements Volume {
                 });
 
                 flow(new Flow() {
-                    String __name__ = "mark-volume-encryption-conversion-in-progress";
-
-                    @Override
-                    public void run(FlowTrigger trigger, Map data) {
-                        updateVolumeStatusForEncryptionConversion(VolumeStatus.Converting);
-                        trigger.next();
-                    }
-
-                    @Override
-                    public void rollback(FlowRollback trigger, Map data) {
-                        updateVolumeStatusForEncryptionConversion(VolumeStatus.Ready);
-                        trigger.rollback();
-                    }
-                });
-
-                flow(new Flow() {
                     String __name__ = "prepare-target-volume-key";
 
                     @Override
@@ -3378,7 +3403,9 @@ public class VolumeBase extends AbstractVolume implements Volume {
 
                     @Override
                     public void rollback(FlowRollback trigger, Map data) {
-                        if (createdKeyBinding) {
+                        if (createdKeyBinding
+                                && !Boolean.TRUE.equals(data.get(VOLUME_ENCRYPTION_DB_CUTOVER_COMPLETED))
+                                && !Boolean.TRUE.equals(data.get(VOLUME_ENCRYPTION_DB_CUTOVER_UNCERTAIN))) {
                             volumeEncryptedResourceKeyBackend.detachKeyProviderFromVolume(self.getUuid());
                         }
                         trigger.rollback();
@@ -3392,6 +3419,27 @@ public class VolumeBase extends AbstractVolume implements Volume {
                     public void run(FlowTrigger trigger, Map data) {
                         conversionContext.set(buildVolumeEncryptionConversionContext(targetEncrypted));
                         trigger.next();
+                    }
+                });
+
+                flow(new Flow() {
+                    String __name__ = "mark-volume-encryption-conversion-in-progress";
+
+                    @Override
+                    public void run(FlowTrigger trigger, Map data) {
+                        markVolumeEncryptionConversionInProgress(conversionContext.get().items, createdKeyBinding);
+                        trigger.next();
+                    }
+
+                    @Override
+                    public void rollback(FlowRollback trigger, Map data) {
+                        if (Boolean.TRUE.equals(data.get(VOLUME_ENCRYPTION_DB_CUTOVER_UNCERTAIN))) {
+                            trigger.rollback();
+                            return;
+                        }
+                        updateVolumeStatusForEncryptionConversion(VolumeStatus.Ready);
+                        clearVolumeEncryptionConversionMetadataBestEffort();
+                        trigger.rollback();
                     }
                 });
 
@@ -3421,7 +3469,9 @@ public class VolumeBase extends AbstractVolume implements Volume {
 
                     @Override
                     public void rollback(FlowRollback trigger, Map data) {
-                        deleteConvertedVolumeEncryptionBits(conversionContext.get().items);
+                        if (shouldDeleteConvertedVolumeEncryptionBits(data, conversionContext.get().items)) {
+                            deleteConvertedVolumeEncryptionBits(conversionContext.get().items);
+                        }
                         trigger.rollback();
                     }
                 });
@@ -3434,12 +3484,14 @@ public class VolumeBase extends AbstractVolume implements Volume {
                         VolumeEncryptionConversionContext ctx = conversionContext.get();
                         updateVolumeEncryptionConversionInDb(targetEncrypted, ctx.snapshots, ctx.oldAndNewInstallPaths,
                                 (Map<String, Long>) data.get("actualSizes"));
+                        data.put(VOLUME_ENCRYPTION_DB_CUTOVER_COMPLETED, true);
                         try {
                             refreshVO();
                         } catch (RuntimeException e) {
                             logger.warn(String.format("failed to refresh volume[uuid:%s] after encryption conversion DB update: %s",
                                     self.getUuid(), e.getMessage()), e);
                         }
+                        clearVolumeEncryptionConversionMetadataBestEffort();
                         trigger.next();
                     }
 
@@ -3518,15 +3570,6 @@ public class VolumeBase extends AbstractVolume implements Volume {
                     }
                 });
 
-                flow(new NoRollbackFlow() {
-                    String __name__ = "finish-volume-encryption-conversion";
-
-                    @Override
-                    public void run(FlowTrigger trigger, Map data) {
-                        updateVolumeStatusForEncryptionConversion(VolumeStatus.Ready);
-                        trigger.next();
-                    }
-                });
             }
         }).done(new FlowDoneHandler(completion) {
             @Override
@@ -3792,6 +3835,35 @@ public class VolumeBase extends AbstractVolume implements Volume {
         }
     }
 
+    private boolean shouldDeleteConvertedVolumeEncryptionBits(Map data,
+            List<ConvertVolumeEncryptionOnPrimaryStorageMsg.VolumeEncryptionConversionItem> items) {
+        if (Boolean.TRUE.equals(data.get(VOLUME_ENCRYPTION_DB_CUTOVER_COMPLETED))
+                || Boolean.TRUE.equals(data.get(VOLUME_ENCRYPTION_DB_CUTOVER_UNCERTAIN))) {
+            return false;
+        }
+
+        try {
+            String currentInstallPath = Q.New(VolumeVO.class)
+                    .select(VolumeVO_.installPath)
+                    .eq(VolumeVO_.uuid, self.getUuid())
+                    .findValue();
+            boolean cutoverCompleted = items.stream()
+                    .filter(item -> VolumeVO.class.getSimpleName().equals(item.getResourceType()))
+                    .filter(item -> self.getUuid().equals(item.getResourceUuid()))
+                    .anyMatch(item -> Objects.equals(currentInstallPath, item.getTargetInstallPath()));
+            if (cutoverCompleted) {
+                data.put(VOLUME_ENCRYPTION_DB_CUTOVER_COMPLETED, true);
+                return false;
+            }
+            return true;
+        } catch (RuntimeException e) {
+            data.put(VOLUME_ENCRYPTION_DB_CUTOVER_UNCERTAIN, true);
+            logger.warn(String.format("cannot determine encryption conversion DB cutover state for volume[uuid:%s], preserving target bits: %s",
+                    self.getUuid(), e.getMessage()), e);
+            return false;
+        }
+    }
+
     private void updateVolumeEncryptionConversionInDb(boolean targetEncrypted, List<VolumeSnapshotVO> snapshots,
                                                       Map<String, String> oldAndNewInstallPaths,
                                                       Map<String, Long> actualSizes) {
@@ -3803,7 +3875,8 @@ public class VolumeBase extends AbstractVolume implements Volume {
                 UpdateQuery q = SQL.New(VolumeVO.class)
                         .eq(VolumeVO_.uuid, self.getUuid())
                         .set(VolumeVO_.installPath, oldAndNewInstallPaths.get(self.getInstallPath()))
-                        .set(VolumeVO_.encrypted, targetEncrypted);
+                        .set(VolumeVO_.encrypted, targetEncrypted)
+                        .set(VolumeVO_.status, VolumeStatus.Ready);
                 if (actualSizes != null && actualSizes.get(self.getUuid()) != null) {
                     q.set(VolumeVO_.actualSize, actualSizes.get(self.getUuid()));
                 }

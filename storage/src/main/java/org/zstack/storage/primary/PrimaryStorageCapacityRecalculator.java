@@ -75,7 +75,8 @@ public class PrimaryStorageCapacityRecalculator {
                             " group by vol.primaryStorageUuid";
                     TypedQuery<Tuple> q = dbf.getEntityManager().createQuery(sql, Tuple.class);
                     q.setParameter("psUuids", psUuids);
-                    List<VolumeStatus> needCountVolumeStates = asList(VolumeStatus.Creating, VolumeStatus.Ready, VolumeStatus.Deleted);
+                    List<VolumeStatus> needCountVolumeStates = asList(
+                            VolumeStatus.Creating, VolumeStatus.Ready, VolumeStatus.Deleted, VolumeStatus.Converting);
                     q.setParameter("volStatus", needCountVolumeStates);
                     List<Tuple> ts = q.getResultList();
 
