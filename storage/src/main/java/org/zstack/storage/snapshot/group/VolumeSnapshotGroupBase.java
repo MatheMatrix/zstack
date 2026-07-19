@@ -170,7 +170,14 @@ public class VolumeSnapshotGroupBase implements VolumeSnapshotGroup {
 
             @Override
             public void run(SyncTaskChain chain) {
-                VolumeEncryptionConversionGuard.check(self.getVmInstanceUuid(), "delete snapshot group of");
+                ErrorCode error = VolumeEncryptionConversionGuard.validate(self.getVmInstanceUuid(), "delete snapshot group of");
+                if (error != null) {
+                    APIDeleteVolumeSnapshotGroupEvent event = new APIDeleteVolumeSnapshotGroupEvent(msg.getId());
+                    event.setError(error);
+                    bus.publish(event);
+                    chain.next();
+                    return;
+                }
                 handleDelete(msg, new NoErrorCompletion(chain) {
                     @Override
                     public void done() {
