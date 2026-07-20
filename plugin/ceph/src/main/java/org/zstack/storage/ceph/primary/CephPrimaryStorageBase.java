@@ -5734,43 +5734,95 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
         kcmd.encryptedDek = volumeEncryptedSecretHelper.materializeAndSealVolumeDekForHost(hostUuid, msg.getVolumeUuid());
 
         VolumeVO volume = Q.New(VolumeVO.class).eq(VolumeVO_.uuid, msg.getVolumeUuid()).find();
-        if (volume != null && volume.getSize() != 0) {
-            kcmd.virtualSizeForLuksClone = volume.getSize();
+        long virtualSize = volume == null ? 0 : volume.getSize();
+        if (virtualSize > 0) {
+            continueFlattenSnapshotToEncryptedVolume(msg, reply, completion, hostUuid, kcmd, volPath, virtualSize);
+            return;
         }
 
-        httpCallToKvmHost(hostUuid,
-                KVM_HOST_LUKS_CLONE_PATH, kcmd, KVMHostLuksRsp.class,
+        getCephSnapshotVirtualSize(sp, snapshotPath, new ReturnValueCompletion<Long>(completion) {
+            @Override
+            public void success(Long snapshotVirtualSize) {
+                continueFlattenSnapshotToEncryptedVolume(msg, reply, completion, hostUuid, kcmd, volPath,
+                        snapshotVirtualSize);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                failFlattenSnapshotToEncryptedVolume(msg, reply, completion, errorCode);
+            }
+        });
+    }
+
+    private void getCephSnapshotVirtualSize(VolumeSnapshotInventory sp, String snapshotPath,
+                                            ReturnValueCompletion<Long> completion) {
+        syncVolumeSize(sp.getUuid(), snapshotPath, new ReturnValueCompletion<GetVolumeSizeRsp>(completion) {
+            @Override
+            public void success(GetVolumeSizeRsp rsp) {
+                if (rsp.size == null || rsp.size <= 0) {
+                    completion.fail(operr("failed to get valid virtual size of ceph snapshot[uuid:%s, path:%s]," +
+                                    " expected > 0 but got %s", sp.getUuid(), snapshotPath, rsp.size));
+                    return;
+                }
+
+                completion.success(rsp.size);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                completion.fail(errorCode);
+            }
+        });
+    }
+
+    private void continueFlattenSnapshotToEncryptedVolume(CreateVolumeFromVolumeSnapshotOnPrimaryStorageMsg msg,
+                                                          CreateVolumeFromVolumeSnapshotOnPrimaryStorageReply reply,
+                                                          NoErrorCompletion completion, String hostUuid,
+                                                          KVMHostLuksCloneCmd kcmd, String volPath,
+                                                          long luksVirtualSize) {
+        kcmd.virtualSizeForLuksClone = luksVirtualSize;
+        httpCallToKvmHost(hostUuid, KVM_HOST_LUKS_CLONE_PATH, kcmd, KVMHostLuksRsp.class,
                 new ReturnValueCompletion<KVMHostLuksRsp>(completion) {
                     @Override
                     public void success(KVMHostLuksRsp rsp) {
-                        getRbdActualSizeFromPrimaryStorageAgent(msg.getVolumeUuid(), volPath,
-                                new ReturnValueCompletion<Long>(completion) {
-                                    @Override
-                                    public void success(Long actualSize) {
-                                        reply.setInstallPath(volPath);
-                                        long asize = actualSize == null ? 1 : actualSize;
-                                        reply.setActualSize(asize);
-                                        reply.setSize(volume == null ? sp.getSize() : volume.getSize());
-                                        bus.reply(msg, reply);
-                                        completion.done();
-                                    }
-
-                                    @Override
-                                    public void fail(ErrorCode errorCode) {
-                                        reply.setError(errorCode);
-                                        bus.reply(msg, reply);
-                                        completion.done();
-                                    }
-                                });
+                        replyFlattenedEncryptedSnapshotVolume(msg, reply, completion, volPath, luksVirtualSize);
                     }
 
                     @Override
                     public void fail(ErrorCode errorCode) {
-                        reply.setError(errorCode);
-                        bus.reply(msg, reply);
-                        completion.done();
+                        failFlattenSnapshotToEncryptedVolume(msg, reply, completion, errorCode);
                     }
                 });
+    }
+
+    private void replyFlattenedEncryptedSnapshotVolume(CreateVolumeFromVolumeSnapshotOnPrimaryStorageMsg msg,
+                                                       CreateVolumeFromVolumeSnapshotOnPrimaryStorageReply reply,
+                                                       NoErrorCompletion completion, String volPath,
+                                                       long luksVirtualSize) {
+        getRbdActualSizeFromPrimaryStorageAgent(msg.getVolumeUuid(), volPath, new ReturnValueCompletion<Long>(completion) {
+            @Override
+            public void success(Long actualSize) {
+                reply.setInstallPath(volPath);
+                long asize = actualSize == null ? 1 : actualSize;
+                reply.setActualSize(asize);
+                reply.setSize(luksVirtualSize);
+                bus.reply(msg, reply);
+                completion.done();
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                failFlattenSnapshotToEncryptedVolume(msg, reply, completion, errorCode);
+            }
+        });
+    }
+
+    private void failFlattenSnapshotToEncryptedVolume(CreateVolumeFromVolumeSnapshotOnPrimaryStorageMsg msg,
+                                                      CreateVolumeFromVolumeSnapshotOnPrimaryStorageReply reply,
+                                                      NoErrorCompletion completion, ErrorCode errorCode) {
+        reply.setError(errorCode);
+        bus.reply(msg, reply);
+        completion.done();
     }
 
     private String findConnectedHostForCephLuks() {
