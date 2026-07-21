@@ -5749,7 +5749,9 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
 
             @Override
             public void fail(ErrorCode errorCode) {
-                failFlattenSnapshotToEncryptedVolume(msg, reply, completion, errorCode);
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+                completion.done();
             }
         });
     }
@@ -5790,7 +5792,9 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
 
                     @Override
                     public void fail(ErrorCode errorCode) {
-                        failFlattenSnapshotToEncryptedVolume(msg, reply, completion, errorCode);
+                        reply.setError(errorCode);
+                        bus.reply(msg, reply);
+                        completion.done();
                     }
                 });
     }
@@ -5812,17 +5816,11 @@ public class CephPrimaryStorageBase extends PrimaryStorageBase {
 
             @Override
             public void fail(ErrorCode errorCode) {
-                failFlattenSnapshotToEncryptedVolume(msg, reply, completion, errorCode);
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+                completion.done();
             }
         });
-    }
-
-    private void failFlattenSnapshotToEncryptedVolume(CreateVolumeFromVolumeSnapshotOnPrimaryStorageMsg msg,
-                                                      CreateVolumeFromVolumeSnapshotOnPrimaryStorageReply reply,
-                                                      NoErrorCompletion completion, ErrorCode errorCode) {
-        reply.setError(errorCode);
-        bus.reply(msg, reply);
-        completion.done();
     }
 
     private String findConnectedHostForCephLuks() {
