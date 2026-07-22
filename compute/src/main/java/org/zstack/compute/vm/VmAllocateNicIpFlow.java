@@ -117,7 +117,8 @@ public class VmAllocateNicIpFlow implements Flow {
 
             VmNicVO nic = dbf.findByUuid(nicUuid.getUuid(), VmNicVO.class);
             List<Integer> ipVersions = nw.getIpVersions();
-            Map<Integer, String> nicStaticIpMap = new StaticIpOperator().getNicStaticIpMap(vmStaticIps.get(nw.getUuid()));
+            Map<Integer, String> nicStaticIpMap = new StaticIpOperator().getNicStaticIpMap(
+                    vmStaticIps.get(nw.getUuid()), nicSpec.getVmNicParam());
             List<AllocateIpMsg> msgs = new ArrayList<>();
             for (int ipversion : ipVersions) {
                 AllocateIpMsg msg = new AllocateIpMsg();
