@@ -1,5 +1,6 @@
 package org.zstack.header.vm;
 
+import org.zstack.header.candidate.CandidateDecisionContext;
 import org.zstack.header.message.NeedReplyMessage;
 
 import java.util.ArrayList;
@@ -19,10 +20,19 @@ public class InstantiateNewCreatedVmInstanceMsg extends NeedReplyMessage impleme
     private List<String> dataVolumeSystemTags;
     private List<String> softAvoidHostUuids;
     private List<String> avoidHostUuids;
+    private CandidateDecisionContext candidateDecisionContext;
     private Map<String, List<String>> dataVolumeSystemTagsOnIndex;
     private List<String> disableL3Networks;
     private final List<String> candidatePrimaryStorageUuidsForRootVolume = new ArrayList<>();
     private final List<String> candidatePrimaryStorageUuidsForDataVolume = new ArrayList<>();
+
+    public CandidateDecisionContext getCandidateDecisionContext() {
+        return candidateDecisionContext;
+    }
+
+    public void setCandidateDecisionContext(CandidateDecisionContext candidateDecisionContext) {
+        this.candidateDecisionContext = candidateDecisionContext;
+    }
 
     public List<String> getCandidatePrimaryStorageUuidsForRootVolume() {
         return candidatePrimaryStorageUuidsForRootVolume;
@@ -197,4 +207,3 @@ public class InstantiateNewCreatedVmInstanceMsg extends NeedReplyMessage impleme
         this.disableL3Networks = disableL3Networks;
     }
 }
-

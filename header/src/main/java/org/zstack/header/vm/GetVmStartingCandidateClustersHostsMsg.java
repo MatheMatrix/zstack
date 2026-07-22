@@ -1,6 +1,7 @@
 package org.zstack.header.vm;
 
 import org.zstack.header.allocator.HostAllocationPurpose;
+import org.zstack.header.candidate.CandidateDecisionContext;
 import org.zstack.header.message.APIParam;
 import org.zstack.header.message.NeedReplyMessage;
 
@@ -19,6 +20,7 @@ public class GetVmStartingCandidateClustersHostsMsg extends NeedReplyMessage imp
      * filters trust the value as-is.
      */
     private HostAllocationPurpose purpose = HostAllocationPurpose.ALLOCATE;
+    private CandidateDecisionContext candidateDecisionContext;
 
     public String getUuid() {
         return uuid;
@@ -39,5 +41,13 @@ public class GetVmStartingCandidateClustersHostsMsg extends NeedReplyMessage imp
 
     public void setPurpose(HostAllocationPurpose purpose) {
         this.purpose = purpose == null ? HostAllocationPurpose.ALLOCATE : purpose;
+    }
+
+    public CandidateDecisionContext getCandidateDecisionContext() {
+        return candidateDecisionContext;
+    }
+
+    public void setCandidateDecisionContext(CandidateDecisionContext candidateDecisionContext) {
+        this.candidateDecisionContext = candidateDecisionContext;
     }
 }

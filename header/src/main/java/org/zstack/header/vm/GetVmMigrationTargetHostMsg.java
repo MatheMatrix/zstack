@@ -1,5 +1,6 @@
 package org.zstack.header.vm;
 
+import org.zstack.header.candidate.CandidateDecisionContext;
 import org.zstack.header.message.NeedReplyMessage;
 
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.List;
 public class GetVmMigrationTargetHostMsg extends NeedReplyMessage implements VmInstanceMessage {
     private String vmInstanceUuid;
     private List<String> avoidHostUuids;
+    private CandidateDecisionContext candidateDecisionContext;
 
     public List<String> getAvoidHostUuids() {
         return avoidHostUuids;
@@ -24,5 +26,13 @@ public class GetVmMigrationTargetHostMsg extends NeedReplyMessage implements VmI
 
     public void setVmInstanceUuid(String vmInstanceUuid) {
         this.vmInstanceUuid = vmInstanceUuid;
+    }
+
+    public CandidateDecisionContext getCandidateDecisionContext() {
+        return candidateDecisionContext;
+    }
+
+    public void setCandidateDecisionContext(CandidateDecisionContext candidateDecisionContext) {
+        this.candidateDecisionContext = candidateDecisionContext;
     }
 }

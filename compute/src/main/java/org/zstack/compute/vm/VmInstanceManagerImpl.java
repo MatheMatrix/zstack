@@ -30,6 +30,9 @@ import org.zstack.header.AbstractService;
 import org.zstack.header.allocator.AllocateHostDryRunReply;
 import org.zstack.header.allocator.DesignatedAllocateHostMsg;
 import org.zstack.header.allocator.HostAllocatorConstant;
+import org.zstack.header.candidate.CandidateDecisionContext;
+import org.zstack.header.candidate.CandidateDecisionResult;
+import org.zstack.header.candidate.CandidateTypes;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.GlobalApiMessageInterceptor;
 import org.zstack.header.cluster.ClusterInventory;
@@ -229,6 +232,8 @@ public class VmInstanceManagerImpl extends AbstractService implements
             handle((APIDeleteVmNicMsg) msg);
         } else if (msg instanceof APIGetCandidateZonesClustersHostsForCreatingVmMsg) {
             handle((APIGetCandidateZonesClustersHostsForCreatingVmMsg) msg);
+        } else if (msg instanceof APIGetVmCreationCandidatesMsg) {
+            handle((APIGetVmCreationCandidatesMsg) msg);
         } else if (msg instanceof APIGetCandidatePrimaryStoragesForCreatingVmMsg) {
             handle((APIGetCandidatePrimaryStoragesForCreatingVmMsg) msg);
         } else if (msg instanceof APIGetInterdependentL3NetworksImagesMsg) {
@@ -774,6 +779,162 @@ public class VmInstanceManagerImpl extends AbstractService implements
         });
     }
 
+    private void handle(APIGetVmCreationCandidatesMsg msg) {
+        DesignatedAllocateHostMsg amsg = new DesignatedAllocateHostMsg();
+
+        ImageVO image = dbf.findByUuid(msg.getImageUuid(), ImageVO.class);
+        amsg.setImage(ImageInventory.valueOf(image));
+        amsg.setZoneUuid(msg.getZoneUuid());
+        amsg.setClusterUuid(msg.getClusterUuid());
+
+        InstanceOfferingVO insvo = null;
+        if (msg.getInstanceOfferingUuid() == null) {
+            amsg.setCpuCapacity(msg.getCpuNum());
+            amsg.setMemoryCapacity(msg.getMemorySize());
+        } else {
+            insvo = dbf.findByUuid(msg.getInstanceOfferingUuid(), InstanceOfferingVO.class);
+            amsg.setCpuCapacity(insvo.getCpuNum());
+            amsg.setMemoryCapacity(insvo.getMemorySize());
+        }
+
+        long diskSize = 0;
+        List<DiskOfferingInventory> diskOfferings = new ArrayList<>();
+        if (msg.getDataDiskOfferingUuids() != null) {
+            SimpleQuery<DiskOfferingVO> q = dbf.createQuery(DiskOfferingVO.class);
+            q.add(DiskOfferingVO_.uuid, Op.IN, msg.getDataDiskOfferingUuids());
+            List<DiskOfferingVO> dvos = q.list();
+            diskOfferings.addAll(DiskOfferingInventory.valueOf(dvos));
+        }
+
+        if (image.getMediaType() == ImageMediaType.ISO) {
+            if (msg.getRootDiskOfferingUuid() == null) {
+                diskSize = msg.getRootDiskSize();
+            } else {
+                DiskOfferingVO rootDiskOffering = dbf.findByUuid(msg.getRootDiskOfferingUuid(), DiskOfferingVO.class);
+                diskOfferings.add(DiskOfferingInventory.valueOf(rootDiskOffering));
+            }
+        } else {
+            diskSize = image.getSize();
+        }
+
+        diskSize += diskOfferings.stream().mapToLong(DiskOfferingInventory::getDiskSize).sum();
+        amsg.setDiskSize(diskSize);
+        amsg.setL3NetworkUuids(msg.getL3NetworkUuids());
+        amsg.setVmOperation(VmOperation.NewCreate.toString());
+        amsg.setDryRun(true);
+        amsg.setListAllHosts(true);
+        amsg.setAllocatorStrategy(HostAllocatorConstant.DESIGNATED_HOST_ALLOCATOR_STRATEGY_TYPE);
+        if (msg.getSession() != null) {
+            amsg.setAccountUuid(msg.getSession().getAccountUuid());
+        }
+
+        CandidateDecisionContext ctx = newHostCandidateDecisionContext(msg);
+        amsg.setCandidateDecisionContext(ctx);
+
+        if (image.getBackupStorageRefs().size() == 1) {
+            amsg.setRequiredBackupStorageUuid(image.getBackupStorageRefs().iterator().next().getBackupStorageUuid());
+        } else {
+            if (msg.getZoneUuid() == null) {
+                throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10237, "zoneUuid must be set because the image[name:%s, uuid:%s] is on multiple backup storage",
+                        image.getName(), image.getUuid()));
+            }
+
+            ImageBackupStorageSelector selector = new ImageBackupStorageSelector();
+            selector.setZoneUuid(msg.getZoneUuid());
+            selector.setImageUuid(image.getUuid());
+            amsg.setRequiredBackupStorageUuid(selector.select());
+        }
+
+        VmInstanceInventory vm = new VmInstanceInventory();
+        vm.setUuid(Platform.FAKE_UUID);
+        vm.setImageUuid(image.getUuid());
+        if (insvo == null) {
+            vm.setCpuNum(msg.getCpuNum());
+            vm.setMemorySize(msg.getMemorySize());
+        } else {
+            vm.setInstanceOfferingUuid(insvo.getUuid());
+            vm.setCpuNum(insvo.getCpuNum());
+            vm.setMemorySize(insvo.getMemorySize());
+        }
+        vm.setDefaultL3NetworkUuid(msg.getDefaultL3NetworkUuid() == null ? msg.getL3NetworkUuids().get(0) : msg.getDefaultL3NetworkUuid());
+        vm.setName("for-getting-vm-creation-candidates");
+        amsg.setVmInstance(vm);
+        if (msg.getSystemTags() != null && !msg.getSystemTags().isEmpty()) {
+            amsg.setSystemTags(new ArrayList<String>(msg.getSystemTags()));
+        }
+
+        APIGetVmCreationCandidatesReply areply = new APIGetVmCreationCandidatesReply();
+        bus.makeLocalServiceId(amsg, HostAllocatorConstant.SERVICE_ID);
+        bus.send(amsg, new CloudBusCallBack(msg) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    areply.setError(reply.getError());
+                } else {
+                    AllocateHostDryRunReply re = reply.castReply();
+                    CandidateDecisionResult result = requireCandidateDecisionResult(re, msg);
+                    if (result == null) {
+                        areply.setError(candidateDecisionMissingError(msg));
+                    } else {
+                        areply.setCandidates(result.getCandidates());
+                        areply.setSummary(result.getSummary());
+                        areply.setTruncated(result.getTruncated());
+                        fillCreationCandidateDestinations(areply, re.getHosts());
+                    }
+                }
+
+                bus.reply(msg, areply);
+            }
+        });
+    }
+
+    private CandidateDecisionResult requireCandidateDecisionResult(AllocateHostDryRunReply reply, APIMessage msg) {
+        return reply == null ? null : reply.getCandidateDecisionResult();
+    }
+
+    private CandidateDecisionContext newHostCandidateDecisionContext(APICreateVmInstanceMsg msg) {
+        CandidateDecisionContext ctx = CandidateDecisionContext.fromApiMessage(msg, CandidateTypes.HOST);
+        ctx.getRequestScope().put("zoneUuid", msg.getZoneUuid());
+        ctx.getRequestScope().put("clusterUuid", msg.getClusterUuid());
+        ctx.getRequestScope().put("hostUuid", msg.getHostUuid());
+        ctx.getRequestScope().put("imageUuid", msg.getImageUuid());
+        ctx.getRequestScope().put("instanceOfferingUuid", msg.getInstanceOfferingUuid());
+        ctx.getRequestScope().put("rootDiskOfferingUuid", msg.getRootDiskOfferingUuid());
+        ctx.getRequestScope().put("dataDiskOfferingUuids", msg.getDataDiskOfferingUuids());
+        return ctx;
+    }
+
+    private CandidateDecisionContext newHostCandidateDecisionContext(APIGetVmCreationCandidatesMsg msg) {
+        CandidateDecisionContext ctx = CandidateDecisionContext.fromApiMessage(msg, CandidateTypes.HOST);
+        ctx.getRequestScope().put("zoneUuid", msg.getZoneUuid());
+        ctx.getRequestScope().put("clusterUuid", msg.getClusterUuid());
+        ctx.getRequestScope().put("imageUuid", msg.getImageUuid());
+        ctx.getRequestScope().put("instanceOfferingUuid", msg.getInstanceOfferingUuid());
+        ctx.getRequestScope().put("rootDiskOfferingUuid", msg.getRootDiskOfferingUuid());
+        ctx.getRequestScope().put("dataDiskOfferingUuids", msg.getDataDiskOfferingUuids());
+        return ctx;
+    }
+
+    private ErrorCode candidateDecisionMissingError(APIMessage msg) {
+        return inerr(ORG_ZSTACK_COMPUTE_VM_10263,
+                "candidate decision result is missing for diagnostic API[%s], requestUuid[%s]",
+                msg.getClass().getSimpleName(), msg.getId());
+    }
+
+    private void fillCreationCandidateDestinations(APIGetVmCreationCandidatesReply reply, List<HostInventory> hosts) {
+        if (!hosts.isEmpty()) {
+            Set<String> clusterUuids = hosts.stream().map(HostInventory::getClusterUuid).collect(Collectors.toSet());
+            List<ClusterInventory> clusters = ClusterInventory.valueOf(dbf.listByPrimaryKeys(clusterUuids, ClusterVO.class));
+            reply.setClusters(clusters);
+
+            Set<String> zoneUuids = clusters.stream().map(ClusterInventory::getZoneUuid).collect(Collectors.toSet());
+            reply.setZones(ZoneInventory.valueOf(dbf.listByPrimaryKeys(zoneUuids, ZoneVO.class)));
+        } else {
+            reply.setClusters(new ArrayList<>());
+            reply.setZones(new ArrayList<>());
+        }
+    }
+
     private void handle(APIGetCandidatePrimaryStoragesForCreatingVmMsg msg) {
         APIGetCandidatePrimaryStoragesForCreatingVmReply reply = new APIGetCandidatePrimaryStoragesForCreatingVmReply();
         List<AllocatePrimaryStorageMsg> msgs = new ArrayList<>();
@@ -1312,6 +1473,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                         smsg.setVmInstanceInventory(VmInstanceInventory.valueOf(finalVo));
                         smsg.setCandidatePrimaryStorageUuidsForDataVolume(msg.getCandidatePrimaryStorageUuidsForDataVolume());
                         smsg.setCandidatePrimaryStorageUuidsForRootVolume(msg.getCandidatePrimaryStorageUuidsForRootVolume());
+                        smsg.setCandidateDecisionContext(msg.getCandidateDecisionContext());
                         if (Objects.equals(msg.getStrategy(), VmCreationStrategy.InstantStart.toString()) && attachOtherDisk) {
                             smsg.setStrategy(VmCreationStrategy.CreateStopped.toString());
                         } else {
@@ -1392,6 +1554,7 @@ public class VmInstanceManagerImpl extends AbstractService implements
                             StartVmInstanceMsg smsg = new StartVmInstanceMsg();
                             smsg.setVmInstanceUuid(instantiateVm.getUuid());
                             smsg.setHostUuid(instantiateVm.getLastHostUuid());
+                            smsg.setCandidateDecisionContext(msg.getCandidateDecisionContext());
                             bus.makeTargetServiceIdByResourceUuid(smsg, VmInstanceConstant.SERVICE_ID, finalVo.getUuid());
                             bus.send(smsg, new CloudBusCallBack(trigger) {
                                 @Override
@@ -1486,7 +1649,9 @@ public class VmInstanceManagerImpl extends AbstractService implements
     }
 
     private void handle(final APICreateVmInstanceMsg msg) {
-        doCreateVmInstance(VmInstanceUtils.fromAPICreateVmInstanceMsg(msg), msg, new ReturnValueCompletion<VmInstanceInventory>(msg) {
+        CreateVmInstanceMsg cmsg = VmInstanceUtils.fromAPICreateVmInstanceMsg(msg);
+        cmsg.setCandidateDecisionContext(newHostCandidateDecisionContext(msg));
+        doCreateVmInstance(cmsg, msg, new ReturnValueCompletion<VmInstanceInventory>(msg) {
             APICreateVmInstanceEvent evt = new APICreateVmInstanceEvent(msg.getId());
 
             @Override

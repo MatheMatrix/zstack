@@ -96,12 +96,18 @@ public class DesignatedHostAllocatorFlow extends AbstractHostAllocatorFlow {
             }
         }
 
+        if (isCandidateDecisionEnabled()) {
+            hypervisorType = null;
+        }
+
         if (zoneUuid == null && CollectionUtils.isEmpty(clusterUuids) && hostUuid == null && hypervisorType == null) {
             next(candidates);
             return;
         }
 
-        if (amITheFirstFlow()) {
+        if (isCandidateDecisionEnabled()) {
+            candidates = allocate(candidates, zoneUuid, clusterUuids, hostUuid, null);
+        } else if (amITheFirstFlow()) {
             candidates = allocate(zoneUuid, clusterUuids, hostUuid, hypervisorType);
         } else {
             candidates = allocate(candidates, zoneUuid, clusterUuids, hostUuid, hypervisorType);

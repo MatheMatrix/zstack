@@ -17,6 +17,9 @@ import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.header.AbstractService;
 import org.zstack.header.allocator.*;
 import org.zstack.header.allocator.datatypes.CpuMemoryCapacityData;
+import org.zstack.header.candidate.CandidateDecisionResult;
+import org.zstack.header.candidate.CandidateRecord;
+import org.zstack.header.candidate.CandidateTypes;
 import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.cluster.ClusterVO_;
 import org.zstack.header.cluster.ReportHostCapacityMessage;
@@ -465,6 +468,7 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
                 public void success(List<HostInventory> hosts) {
                     if (hosts.isEmpty()){
                         reply.setHosts(new ArrayList<>());
+                        fillCandidateDecisionResult(reply, spec, hosts);
                         bus.reply(msg, reply);
                         completion.success();
                         return;
@@ -474,12 +478,14 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
                         @Override
                         public void success(List<HostInventory> returnValue) {
                             reply.setHosts(returnValue);
+                            fillCandidateDecisionResult(reply, spec, returnValue);
                             bus.reply(msg, reply);
                             completion.success();
                         }
 
                         @Override
                         public void fail(ErrorCode errorCode) {
+                            attachCandidateDecisionToError(errorCode, spec);
                             reply.setError(errorCode);
                             bus.reply(msg, reply);
                             completion.fail(errorCode);
@@ -489,6 +495,7 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
 
                 @Override
                 public void fail(ErrorCode errorCode) {
+                    attachCandidateDecisionToError(errorCode, spec);
                     reply.setError(errorCode);
                     bus.reply(msg, reply);
                     completion.fail(errorCode);
@@ -514,6 +521,7 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
 
                         @Override
                         public void fail(ErrorCode errorCode) {
+                            attachCandidateDecisionToError(errorCode, spec);
                             trigger.fail(errorCode);
                         }
                     });
@@ -537,6 +545,7 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
 
                         @Override
                         public void fail(ErrorCode errorCode) {
+                            attachCandidateDecisionToError(errorCode, spec);
                             trigger.fail(errorCode);
                         }
                     });
@@ -571,12 +580,61 @@ public class HostAllocatorManagerImpl extends AbstractService implements HostAll
             }).error(new FlowErrorHandler(completion, msg) {
                 @Override
                 public void handle(ErrorCode errCode, Map data) {
+                    attachCandidateDecisionToError(errCode, spec);
                     reply.setError(errCode);
                     bus.reply(msg, reply);
                     completion.fail(errCode);
                 }
             }).start();
         }
+    }
+
+    private void fillCandidateDecisionResult(AllocateHostDryRunReply reply, HostAllocatorSpec spec, List<HostInventory> sortedHosts) {
+        if (!spec.isCandidateDecisionEnabled()) {
+            return;
+        }
+
+        reply.setCandidateDecisionResult(reorderSelectedCandidates(spec.getCandidateDecisionResult(), sortedHosts));
+    }
+
+    private void attachCandidateDecisionToError(ErrorCode errorCode, HostAllocatorSpec spec) {
+        if (errorCode == null || !spec.isCandidateDecisionEnabled() || spec.getCandidateDecisionResult() == null) {
+            return;
+        }
+
+        errorCode.withOpaque("candidateDecisionResult", spec.getCandidateDecisionResult());
+    }
+
+    private CandidateDecisionResult reorderSelectedCandidates(CandidateDecisionResult result, List<HostInventory> sortedHosts) {
+        if (result == null || sortedHosts == null || sortedHosts.isEmpty()) {
+            return result;
+        }
+
+        Map<String, CandidateRecord<?>> selected = new LinkedHashMap<>();
+        List<CandidateRecord<?>> rest = new ArrayList<>();
+        for (CandidateRecord<?> record : result.getCandidates()) {
+            if (CandidateTypes.SELECTED.equals(record.getDecision())) {
+                selected.put(record.getCandidateUuid(), record);
+            } else {
+                rest.add(record);
+            }
+        }
+
+        if (selected.isEmpty()) {
+            return result;
+        }
+
+        List<CandidateRecord<?>> reordered = new ArrayList<>();
+        for (HostInventory host : sortedHosts) {
+            CandidateRecord<?> record = selected.remove(host.getUuid());
+            if (record != null) {
+                reordered.add(record);
+            }
+        }
+        reordered.addAll(selected.values());
+        reordered.addAll(rest);
+        result.setCandidates(reordered);
+        return result;
     }
 
     private void handleApiMessage(APIMessage msg) {

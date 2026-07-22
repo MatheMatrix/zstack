@@ -1,6 +1,7 @@
 package org.zstack.header.vm;
 
 import org.zstack.header.allocator.AllocationScene;
+import org.zstack.header.candidate.CandidateDecisionContext;
 import org.zstack.header.message.NeedReplyMessage;
 
 import java.util.List;
@@ -17,6 +18,15 @@ public class MigrateVmMsg extends NeedReplyMessage implements VmInstanceMessage,
     private boolean migrateFromDestination;
     private boolean allowUnknown;
     private Integer downTime;
+    private CandidateDecisionContext candidateDecisionContext;
+
+    public CandidateDecisionContext getCandidateDecisionContext() {
+        return candidateDecisionContext;
+    }
+
+    public void setCandidateDecisionContext(CandidateDecisionContext candidateDecisionContext) {
+        this.candidateDecisionContext = candidateDecisionContext;
+    }
 
     @Override
     public Integer getDownTime() {

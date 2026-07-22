@@ -1,5 +1,6 @@
 package org.zstack.compute.vm;
 
+import org.zstack.header.candidate.CandidateDecisionContext;
 import org.zstack.header.vm.APICreateVmInstanceMsg;
 import org.zstack.header.vm.CreateVmInstanceMsg;
 import org.zstack.header.vm.InstantiateNewCreatedVmInstanceMsg;
@@ -29,8 +30,17 @@ public class InstantiateVmFromNewCreatedStruct {
     private Map<String, List<String>> dataVolumeSystemTagsOnIndex;
     private List<String> disableL3Networks;
     private List<String> sshKeyPairUuids;
+    private CandidateDecisionContext candidateDecisionContext;
     private final List<String> candidatePrimaryStorageUuidsForRootVolume = new ArrayList<>();
     private final List<String> candidatePrimaryStorageUuidsForDataVolume = new ArrayList<>();
+
+    public CandidateDecisionContext getCandidateDecisionContext() {
+        return candidateDecisionContext;
+    }
+
+    public void setCandidateDecisionContext(CandidateDecisionContext candidateDecisionContext) {
+        this.candidateDecisionContext = candidateDecisionContext;
+    }
 
     public List<String> getCandidatePrimaryStorageUuidsForRootVolume() {
         return candidatePrimaryStorageUuidsForRootVolume;
@@ -142,6 +152,7 @@ public class InstantiateVmFromNewCreatedStruct {
         struct.setDataVolumeSystemTagsOnIndex(msg.getDataVolumeSystemTagsOnIndex());
         struct.setDisableL3Networks(msg.getDisableL3Networks());
         struct.setDiskAOs(msg.getDiskAOs());
+        struct.setCandidateDecisionContext(msg.getCandidateDecisionContext());
         return struct;
     }
 
@@ -161,6 +172,7 @@ public class InstantiateVmFromNewCreatedStruct {
         struct.setDataVolumeSystemTagsOnIndex(msg.getDataVolumeSystemTagsOnIndex());
         struct.setDisableL3Networks(msg.getDisableL3Networks());
         struct.setDiskAOs(msg.getDiskAOs());
+        struct.setCandidateDecisionContext(msg.getCandidateDecisionContext());
         return struct;
     }
 

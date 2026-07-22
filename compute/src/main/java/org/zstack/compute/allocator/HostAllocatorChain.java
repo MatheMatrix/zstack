@@ -9,6 +9,7 @@ import org.zstack.core.config.GlobalConfigVO_;
 import org.zstack.core.db.Q;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.allocator.*;
+import org.zstack.header.candidate.*;
 import org.zstack.header.core.ReturnValueCompletion;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
@@ -49,10 +50,12 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     private int skipCounter = 0;
 
     private AbstractHostAllocatorFlow lastFlow;
+    private List<HostVO> lastFlowInput;
 
     private HostAllocationPaginationInfo paginationInfo;
 
     private Set<ErrorCode> seriesErrorWhenPagination = new HashSet<>();
+    private CandidateDecisionRecorder<HostInventory> decisionRecorder;
 
     @Autowired
     private ErrorFacade errf;
@@ -60,6 +63,8 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     private PluginRegistry pluginRgty;
     @Autowired
     private HostCapacityOverProvisioningManager ratioMgr;
+    @Autowired
+    private HostCandidateUniverseBuilder hostCandidateUniverseBuilder;
 
     public HostAllocatorSpec getAllocationSpec() {
         return allocationSpec;
@@ -86,6 +91,7 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     }
 
     private void done() {
+        finishCandidateDecision();
         if (result == null) {
             if (isDryRun) {
                 if (HostAllocatorError.NO_AVAILABLE_HOST.toString().equals(errorCode.getCode())) {
@@ -118,6 +124,112 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
         }
     }
 
+    private boolean initCandidateDecision() {
+        if (!allocationSpec.isCandidateDecisionEnabled()) {
+            return true;
+        }
+
+        decisionRecorder = new CandidateDecisionRecorder<>(allocationSpec.getCandidateDecisionContext());
+        List<HostVO> universe = hostCandidateUniverseBuilder.build(allocationSpec, allocationSpec.getCandidateDecisionContext());
+        decisionRecorder.registerHostUniverse(universe);
+        result = universe;
+
+        if (!universe.isEmpty()) {
+            return true;
+        }
+
+        allocationSpec.setCandidateDecisionResult(decisionRecorder.build());
+        ErrorCode errCode = err(ORG_ZSTACK_COMPUTE_ALLOCATOR_10018, HostAllocatorError.NO_AVAILABLE_HOST,
+                "no visible host in candidate universe");
+        errCode.withOpaque("candidateDecisionResult", allocationSpec.getCandidateDecisionResult());
+        if (isDryRun) {
+            dryRunCompletion.success(new ArrayList<HostInventory>());
+        } else {
+            completion.fail(errCode);
+        }
+        return false;
+    }
+
+    private boolean isDecisionRecorderEnabled() {
+        return decisionRecorder != null && decisionRecorder.isEnabled();
+    }
+
+    private void finishCandidateDecision() {
+        if (!isDecisionRecorderEnabled()) {
+            return;
+        }
+
+        if (result != null) {
+            decisionRecorder.markFinalCandidates(result.stream().map(HostVO::getUuid).collect(Collectors.toList()));
+        }
+
+        CandidateDecisionResult candidateDecisionResult = decisionRecorder.build();
+        allocationSpec.setCandidateDecisionResult(candidateDecisionResult);
+        if (errorCode != null) {
+            errorCode.withOpaque("candidateDecisionResult", candidateDecisionResult);
+        }
+    }
+
+    private void recordFlowDiff(List<HostVO> before, List<HostVO> after, AbstractHostAllocatorFlow flow) {
+        if (!isDecisionRecorderEnabled() || before == null) {
+            return;
+        }
+
+        Set<String> afterUuids = after == null ? Collections.emptySet() :
+                after.stream().map(HostVO::getUuid).collect(Collectors.toSet());
+        for (HostVO host : before) {
+            if (!afterUuids.contains(host.getUuid())) {
+                decisionRecorder.rejectIfNotRejected(host.getUuid(), fallbackReasonForFlow(flow));
+            }
+        }
+    }
+
+    private void recordFlowFailure(ErrorCode errCode) {
+        if (!isDecisionRecorderEnabled()) {
+            return;
+        }
+
+        List<HostVO> active = result != null ? result : lastFlowInput;
+        if (active == null) {
+            return;
+        }
+
+        CandidateRejectReason reason = fallbackReasonForFlow(lastFlow);
+        if (errCode != null && errCode.getDetails() != null) {
+            reason.setMessage(errCode.getDetails());
+        }
+        for (HostVO host : active) {
+            decisionRecorder.rejectIfNotRejected(host.getUuid(), reason);
+        }
+    }
+
+    private CandidateRejectReason fallbackReasonForFlow(AbstractHostAllocatorFlow flow) {
+        String code = CandidateReasonCodes.HOST_REJECTED_BY_ALLOCATOR_FLOW;
+        String category = CandidateCategories.UNKNOWN;
+        String stage = "allocator";
+        String message = "host was rejected by allocator flow";
+
+        if (flow instanceof HostStateAndHypervisorAllocatorFlow) {
+            category = CandidateCategories.STATUS;
+            stage = "status";
+        } else if (flow instanceof HostCapacityAllocatorFlow) {
+            category = CandidateCategories.CAPACITY;
+            stage = "capacity";
+        } else if (flow instanceof HostPrimaryStorageAllocatorFlow) {
+            code = CandidateReasonCodes.HOST_PRIMARY_STORAGE_REQUIREMENT_NOT_SATISFIED;
+            category = CandidateCategories.STORAGE;
+            stage = "storage";
+            message = "host does not satisfy primary storage requirement";
+        } else if (flow instanceof AvoidHostAllocatorFlow || flow instanceof FilterFlow) {
+            category = CandidateCategories.POLICY;
+            stage = "policy";
+        }
+
+        return CandidateRejectReason.of(code, category, message)
+                .detail("stage", stage)
+                .detail("checker", flow == null ? null : flow.getClass().getSimpleName());
+    }
+
     private void startOver() {
         it = flows.iterator();
         result = null;
@@ -128,6 +240,7 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     private void runFlow(AbstractHostAllocatorFlow flow) {
         try {
             lastFlow = flow;
+            lastFlowInput = result == null ? null : new ArrayList<>(result);
             flow.setCandidates(result);
             flow.setSpec(allocationSpec);
             flow.setTrigger(this);
@@ -163,8 +276,13 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
         }
 
         if (HostAllocatorGlobalConfig.USE_PAGINATION.value(Boolean.class)) {
-            paginationInfo = new HostAllocationPaginationInfo();
-            paginationInfo.setLimit(HostAllocatorGlobalConfig.PAGINATION_LIMIT.value(Integer.class));
+            if (!allocationSpec.isCandidateDecisionEnabled()) {
+                paginationInfo = new HostAllocationPaginationInfo();
+                paginationInfo.setLimit(HostAllocatorGlobalConfig.PAGINATION_LIMIT.value(Integer.class));
+            }
+        }
+        if (!initCandidateDecision()) {
+            return;
         }
         it = flows.iterator();
         DebugUtils.Assert(it.hasNext(), "can not run an empty host allocation chain");
@@ -187,6 +305,7 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
     public void next(List<HostVO> candidates) {
         DebugUtils.Assert(candidates != null, "cannot pass null to next() method");
         DebugUtils.Assert(!candidates.isEmpty(), "cannot pass empty candidates to next() method");
+        recordFlowDiff(lastFlowInput, candidates, lastFlow);
         result = candidates;
         VmInstanceInventory vm = allocationSpec.getVmInstance();
         logger.debug(String.format("[Host Allocation]: flow[%s] successfully found %s candidate hosts for vm[uuid:%s, name:%s]",
@@ -230,7 +349,6 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
 
     @Override
     public void fail(ErrorCode errorCode) {
-        result = null;
         if (seriesErrorWhenPagination.isEmpty()) {
             logger.debug(String.format("[Host Allocation] flow[%s] failed to allocate host; %s",
                     lastFlow.getClass().getName(), errorCode.getDetails()));
@@ -242,7 +360,35 @@ public class HostAllocatorChain implements HostAllocatorTrigger, HostAllocatorSt
             logger.debug(this.errorCode.getDetails());
         }
 
+        recordFlowFailure(this.errorCode);
+        result = null;
         done();
+    }
+
+    @Override
+    public boolean isCandidateDecisionEnabled() {
+        return isDecisionRecorderEnabled();
+    }
+
+    @Override
+    public void pass(String hostUuid) {
+        if (isDecisionRecorderEnabled()) {
+            decisionRecorder.pass(hostUuid);
+        }
+    }
+
+    @Override
+    public void reject(String hostUuid, CandidateRejectReason reason) {
+        if (isDecisionRecorderEnabled()) {
+            decisionRecorder.reject(hostUuid, reason);
+        }
+    }
+
+    @Override
+    public void rejectIfNotRejected(String hostUuid, CandidateRejectReason reason) {
+        if (isDecisionRecorderEnabled()) {
+            decisionRecorder.rejectIfNotRejected(hostUuid, reason);
+        }
     }
 
     @Override

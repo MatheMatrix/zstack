@@ -222,6 +222,8 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
             validate((APIUpdateVmNicDriverMsg) msg);
         } else if (msg instanceof APIGetCandidateZonesClustersHostsForCreatingVmMsg) {
             validate((APIGetCandidateZonesClustersHostsForCreatingVmMsg) msg);
+        } else if (msg instanceof APIGetVmCreationCandidatesMsg) {
+            validate((APIGetVmCreationCandidatesMsg) msg);
         } else if (msg instanceof APIFstrimVmMsg) {
             validate((APIFstrimVmMsg) msg);
         } else if (msg instanceof APITakeVmConsoleScreenshotMsg) {
@@ -426,6 +428,26 @@ public class VmInstanceApiInterceptor implements ApiMessageInterceptor {
     }
 
     private void validate(APIGetCandidateZonesClustersHostsForCreatingVmMsg msg) {
+        final String instanceOfferingUuid = msg.getInstanceOfferingUuid();
+
+        if (instanceOfferingUuid == null) {
+            if (msg.getCpuNum() == null || msg.getMemorySize() == null) {
+                throw new ApiMessageInterceptionException(operr(ORG_ZSTACK_COMPUTE_VM_10111, "Missing CPU/memory settings"));
+            }
+        }
+
+        ImageVO image = dbf.findByUuid(msg.getImageUuid(), ImageVO.class);
+        if (image != null && image.getMediaType() == ImageMediaType.ISO) {
+            if (msg.getRootDiskOfferingUuid() == null) {
+                if (msg.getRootDiskSize() == null || msg.getRootDiskSize() <= 0) {
+                    throw new OperationFailureException(argerr(ORG_ZSTACK_COMPUTE_VM_10112, "the image[name:%s, uuid:%s] is an ISO, rootDiskSize must be set",
+                            image.getName(), image.getUuid()));
+                }
+            }
+        }
+    }
+
+    private void validate(APIGetVmCreationCandidatesMsg msg) {
         final String instanceOfferingUuid = msg.getInstanceOfferingUuid();
 
         if (instanceOfferingUuid == null) {

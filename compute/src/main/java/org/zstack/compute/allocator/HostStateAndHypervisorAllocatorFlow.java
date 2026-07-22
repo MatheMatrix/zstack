@@ -8,6 +8,9 @@ import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.header.allocator.AbstractHostAllocatorFlow;
+import org.zstack.header.candidate.CandidateCategories;
+import org.zstack.header.candidate.CandidateReasonCodes;
+import org.zstack.header.candidate.CandidateRejectReason;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.host.HostState;
 import org.zstack.header.host.HostStatus;
@@ -59,6 +62,48 @@ public class HostStateAndHypervisorAllocatorFlow extends AbstractHostAllocatorFl
         return lst;
     }
 
+    private List<HostVO> allocateWithDecision(List<HostVO> vos, String hypervisorType) {
+        List<HostVO> lst = new ArrayList<HostVO>(vos.size());
+        for (HostVO vo : vos) {
+            if (vo.getState() != HostState.Enabled) {
+                reject(vo, CandidateRejectReason.of(
+                        CandidateReasonCodes.HOST_STATE_NOT_ENABLED,
+                        CandidateCategories.STATUS,
+                        "host state is not Enabled"
+                ).detail("stage", "status")
+                 .detail("expected", HostState.Enabled.toString())
+                 .detail("actual", vo.getState() == null ? null : vo.getState().toString()));
+                continue;
+            }
+
+            if (vo.getStatus() != HostStatus.Connected) {
+                reject(vo, CandidateRejectReason.of(
+                        CandidateReasonCodes.HOST_STATUS_NOT_CONNECTED,
+                        CandidateCategories.STATUS,
+                        "host status is not Connected"
+                ).detail("stage", "status")
+                 .detail("expected", HostStatus.Connected.toString())
+                 .detail("actual", vo.getStatus() == null ? null : vo.getStatus().toString()));
+                continue;
+            }
+
+            if (hypervisorType != null && !hypervisorType.equals(vo.getHypervisorType())) {
+                reject(vo, CandidateRejectReason.of(
+                        CandidateReasonCodes.HOST_HYPERVISOR_TYPE_NOT_MATCHED,
+                        CandidateCategories.STATUS,
+                        "host hypervisor type does not match"
+                ).detail("stage", "status")
+                 .detail("expected", hypervisorType)
+                 .detail("actual", vo.getHypervisorType()));
+                continue;
+            }
+
+            pass(vo);
+            lst.add(vo);
+        }
+        return lst;
+    }
+
     private boolean isNoEnabledHost() {
         return !candidates.stream().anyMatch(vo -> HostState.Enabled == vo.getState());
     }
@@ -74,7 +119,9 @@ public class HostStateAndHypervisorAllocatorFlow extends AbstractHostAllocatorFl
     @Override
     public void allocate() {
         List<HostVO> ret;
-        if (amITheFirstFlow()) {
+        if (isCandidateDecisionEnabled()) {
+            ret = allocateWithDecision(candidates, spec.getHypervisorType());
+        } else if (amITheFirstFlow()) {
             ret = allocate(spec.getHypervisorType());
         } else {
             ret = allocate(candidates, spec.getHypervisorType());

@@ -63,6 +63,10 @@ public class VmAllocateHostForMigrateVmFlow implements Flow {
         msg.setZoneUuid(spec.getVmInventory().getZoneUuid());
         msg.setVmInstance(spec.getVmInventory());
         msg.setServiceId(bus.makeLocalServiceId(HostAllocatorConstant.SERVICE_ID));
+        msg.setCandidateDecisionContext(spec.getCandidateDecisionContext());
+        if (spec.getCandidateDecisionContext() != null) {
+            msg.setAccountUuid(spec.getCandidateDecisionContext().getAccountUuid());
+        }
         msg.setAllocatorStrategy(HostAllocatorConstant.MIGRATE_VM_ALLOCATOR_TYPE);
         msg.setVmOperation(spec.getCurrentVmOperation().toString());
         msg.setRequiredPrimaryStorageUuids(spec.getVmInventory().getAllVolumes().stream()
