@@ -142,15 +142,9 @@ public class ZbsEncryptedVolumeCloner {
     private void resolveCloneVirtualSize(ZbsVolumeEncryptionBackend backend, String srcInstallPath,
                                          String resolvedSrcInstallPath, CreateVolumeSpec dst,
                                          ReturnValueCompletion<Long> completion) {
-        if (dst.getSize() > 0) {
-            completion.success(dst.getSize());
-            return;
-        }
-
         Long dbSize = findSourceVirtualSizeInDb(backend, srcInstallPath);
         if (dbSize != null && dbSize > 0) {
-            dst.setSize(dbSize);
-            completion.success(dbSize);
+            completeCloneVirtualSize(dst, dbSize, completion);
             return;
         }
 
@@ -165,8 +159,7 @@ public class ZbsEncryptedVolumeCloner {
                     return;
                 }
 
-                dst.setSize(size);
-                completion.success(size);
+                completeCloneVirtualSize(dst, size, completion);
             }
 
             @Override
@@ -174,6 +167,13 @@ public class ZbsEncryptedVolumeCloner {
                 completion.fail(errorCode);
             }
         });
+    }
+
+    private void completeCloneVirtualSize(CreateVolumeSpec dst, long sourceSize,
+                                          ReturnValueCompletion<Long> completion) {
+        long virtualSize = Math.max(dst.getSize(), sourceSize);
+        dst.setSize(virtualSize);
+        completion.success(virtualSize);
     }
 
     private Long findSourceVirtualSizeInDb(ZbsVolumeEncryptionBackend backend, String srcInstallPath) {

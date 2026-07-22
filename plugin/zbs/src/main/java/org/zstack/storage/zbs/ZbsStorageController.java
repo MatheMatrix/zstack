@@ -600,12 +600,19 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         return new ZbsVolumeEncryptionBackendImpl(this, self.getUuid(), addonInfo, config);
     }
 
+    private void alignEncryptedVolumeSize(CreateVolumeSpec spec) {
+        if (spec.getSize() > 0) {
+            spec.setSize(alignSize(spec.getSize()));
+        }
+    }
+
     @Override
     public void createVolume(CreateVolumeSpec v, ReturnValueCompletion<VolumeStats> comp) {
         reloadDbInfo();
 
         if (v.isEncrypted()) {
             try {
+                alignEncryptedVolumeSize(v);
                 getVolumeEncryptionExtension().createEncryptedEmptyVolume(encryptionBackend(), v, comp);
             } catch (OperationFailureException e) {
                 comp.fail(e.getErrorCode());
@@ -657,7 +664,9 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     public void cloneVolume(String srcInstallPath, CreateVolumeSpec dst, ReturnValueCompletion<VolumeStats> comp) {
         if (dst.isEncrypted()) {
             try {
-                getVolumeEncryptionExtension().cloneEncryptedVolumeFromImage(encryptionBackend(), srcInstallPath, dst, comp);
+                ZbsVolumeEncryptionBackend backend = encryptionBackend();
+                alignEncryptedVolumeSize(dst);
+                getVolumeEncryptionExtension().cloneEncryptedVolumeFromImage(backend, srcInstallPath, dst, comp);
             } catch (OperationFailureException e) {
                 comp.fail(e.getErrorCode());
             }
@@ -750,7 +759,9 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     public void copyVolume(String srcInstallPath, CreateVolumeSpec dst, ReturnValueCompletion<VolumeStats> comp) {
         if (dst.isEncrypted()) {
             try {
-                getVolumeEncryptionExtension().copyEncryptedVolumeFromSnapshot(encryptionBackend(), srcInstallPath, dst, comp);
+                ZbsVolumeEncryptionBackend backend = encryptionBackend();
+                alignEncryptedVolumeSize(dst);
+                getVolumeEncryptionExtension().copyEncryptedVolumeFromSnapshot(backend, srcInstallPath, dst, comp);
             } catch (OperationFailureException e) {
                 comp.fail(e.getErrorCode());
             }
@@ -880,7 +891,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 comp.fail(operr("cannot find ZBS volume encryption extension"));
                 return;
             }
-            exts.get(0).resizeEncryptedVolume(self.getUuid(), volume, size, comp);
+            exts.get(0).resizeEncryptedVolume(self.getUuid(), volume, alignSize(size), comp);
             return;
         }
 
