@@ -3,6 +3,7 @@ package org.zstack.test.integration.core
 import org.junit.Test
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
+import org.zstack.core.CoreGlobalProperty
 import org.zstack.core.ManagementEndpointData
 import org.zstack.core.Platform
 import org.zstack.core.aspect.AsyncSafeAspect
@@ -104,47 +105,77 @@ class PlatformManagementEndpointSelectionCase {
 
     @Test
     void testAsyncRestCallbackSelectionFailsInsteadOfUsingAnotherFamily() {
-        withErrorFacade {
-            withManagementServerIpProperties([
-                    "management.server.ip": IPV4,
-            ]) {
-                def callback = RESTFacadeImpl.selectCallbackUrl(
-                        "http://[2001:db8::20]:7070/host/ping", [:], "http://${IPV4}:8080/zstack/asyncrest/callback", 8080, "zstack")
+        withUnitTestOn(false) {
+            withErrorFacade {
+                withManagementServerIpProperties([
+                        "management.server.ip": IPV4,
+                ]) {
+                    def callback = RESTFacadeImpl.selectCallbackUrl(
+                            "http://[2001:db8::20]:7070/host/ping", [:], "http://${IPV4}:8080/zstack/asyncrest/callback", 8080, "zstack")
 
-                assert !callback.success
-                assert callback.error.globalErrorCode == "ORG_ZSTACK_CORE_PLATFORM_10001"
+                    assert !callback.success
+                    assert callback.error.globalErrorCode == "ORG_ZSTACK_CORE_PLATFORM_10001"
+                }
+            }
+        }
+    }
+
+    @Test
+    void testAsyncRestCallbackSelectionUsesDefaultCallbackInUnitTest() {
+        String defaultCallbackUrl = "http://${IPV4}:8080/zstack/asyncrest/callback"
+        withUnitTestOn(true) {
+            withManagementServerIpProperties([:]) {
+                def callback = RESTFacadeImpl.selectCallbackUrl(
+                        "http://127.0.0.1:7070/host/ping", [:], defaultCallbackUrl, 8080, "zstack")
+
+                assert callback.success
+                assert callback.result == defaultCallbackUrl
             }
         }
     }
 
     @Test
     void testAsyncRestCallbackSelectionFailsBeforeInterceptors() {
-        withErrorFacade {
-            withManagementServerIpProperties([
-                    "management.server.ip": IPV4,
-            ]) {
-                AtomicInteger interceptorCalls = new AtomicInteger()
-                AtomicReference error = new AtomicReference()
-                RESTFacadeImpl restf = new RESTFacadeImpl()
-                restf.installBeforeAsyncJsonPostInterceptor([
-                        beforeAsyncJsonPost: { Object... ignored -> interceptorCalls.incrementAndGet() },
-                ] as org.zstack.header.rest.BeforeAsyncJsonPostInterceptor)
+        withUnitTestOn(false) {
+            withErrorFacade {
+                withManagementServerIpProperties([
+                        "management.server.ip": IPV4,
+                ]) {
+                    AtomicInteger interceptorCalls = new AtomicInteger()
+                    AtomicReference error = new AtomicReference()
+                    RESTFacadeImpl restf = new RESTFacadeImpl()
+                    restf.installBeforeAsyncJsonPostInterceptor([
+                            beforeAsyncJsonPost: { Object... ignored -> interceptorCalls.incrementAndGet() },
+                    ] as org.zstack.header.rest.BeforeAsyncJsonPostInterceptor)
 
-                restf.asyncJson("http://[2001:db8::20]:7070/host/ping", "{}", [:], HttpMethod.POST,
-                        new AsyncRESTCallback(null) {
-                            @Override
-                            void fail(org.zstack.header.errorcode.ErrorCode errorCode) {
-                                error.set(errorCode)
-                            }
+                    restf.asyncJson("http://[2001:db8::20]:7070/host/ping", "{}", [:], HttpMethod.POST,
+                            new AsyncRESTCallback(null) {
+                                @Override
+                                void fail(org.zstack.header.errorcode.ErrorCode errorCode) {
+                                    error.set(errorCode)
+                                }
 
-                            @Override
-                            void success(HttpEntity<String> responseEntity) {
-                            }
-                        }, TimeUnit.SECONDS, 10)
+                                @Override
+                                void success(HttpEntity<String> responseEntity) {
+                                }
+                            }, TimeUnit.SECONDS, 10)
 
-                assert interceptorCalls.get() == 0
-                assert error.get().globalErrorCode == "ORG_ZSTACK_CORE_PLATFORM_10001"
+                    assert interceptorCalls.get() == 0
+                    assert error.get().globalErrorCode == "ORG_ZSTACK_CORE_PLATFORM_10001"
+                }
             }
+        }
+    }
+
+    private static void withUnitTestOn(boolean unitTestOn, Closure closure) {
+        Class.forName(Platform.class.name)
+        Class.forName(RESTFacadeImpl.class.name)
+        boolean oldUnitTestOn = CoreGlobalProperty.UNIT_TEST_ON
+        try {
+            CoreGlobalProperty.UNIT_TEST_ON = unitTestOn
+            closure.call()
+        } finally {
+            CoreGlobalProperty.UNIT_TEST_ON = oldUnitTestOn
         }
     }
 
