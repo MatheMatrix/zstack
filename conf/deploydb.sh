@@ -41,8 +41,6 @@ rm -rf $flyway_sql
 mkdir -p $flyway_sql
 
 cp $base/db/V0.6__schema.sql $flyway_sql
-cp $base/db/upgrade/* $flyway_sql
-cp $base/db/zsv/* $flyway_sql
 
 url="jdbc:mysql://$host:$port/zstack"
 
@@ -60,6 +58,15 @@ cp $base/db/V0.6__schema_buildin_httpserver.sql $flyway_sql
 
 url="jdbc:mysql://$host:$port/zstack_rest"
 bash $flyway -user=$user -password=$password -url=$url clean
+bash $flyway -user=$user -password=$password -url=$url migrate
+
+eval "rm -f $flyway_sql/*"
+
+cp $base/db/V0.6__schema.sql $flyway_sql
+cp $base/db/upgrade/* $flyway_sql
+cp $base/db/zsv/* $flyway_sql
+
+url="jdbc:mysql://$host:$port/zstack"
 bash $flyway -user=$user -password=$password -url=$url migrate
 
 eval "rm -f $flyway_sql/*"

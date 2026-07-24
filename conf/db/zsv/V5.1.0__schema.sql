@@ -314,3 +314,7 @@ CREATE TABLE IF NOT EXISTS `zstack`.`PlatformServiceInstanceVO` (
 
 -- Feature: LicenseHistoryVO cause | ZSV-12697
 CALL INSERT_COLUMN('LicenseHistoryVO', 'cause', 'varchar(32)', 0, 'UpdateLicense', 'source');
+
+-- Feature: REST API result truncation | ZSV-12719
+-- zstack_rest is created before upgrade; convert existing result column to hold larger payloads.
+ALTER TABLE `zstack_rest`.`RestAPIVO` MODIFY COLUMN `result` mediumtext DEFAULT NULL;

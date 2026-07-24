@@ -93,7 +93,7 @@ public class CoreGlobalProperty {
     public static boolean RECORD_TO_DB_ELABORATION;
     @GlobalProperty(name = "chain.task.qos", defaultValue = "false")
     public static boolean CHAIN_TASK_QOS;
-    @GlobalProperty(name = "rest.api.result.max.length", defaultValue = "64000")
+    @GlobalProperty(name = "rest.api.result.max.length", defaultValue = "16777215")
     public static int REST_API_RESULT_MAX_LENGTH;
     @GlobalProperty(name = "pending.queue.minimum.threshold", defaultValue = "50")
     public static int PENDING_QUEUE_MINIMUM_THRESHOLD;

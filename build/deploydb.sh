@@ -41,8 +41,6 @@ mkdir -p ${flyway_sql}
 
 eval "rm -f ${flyway_sql}/*"
 cp ${base}/../conf/db/V0.6__schema.sql ${flyway_sql}
-cp ${base}/../conf/db/upgrade/* ${flyway_sql}
-cp ${base}/../conf/db/zsv/* ${flyway_sql}
 
 if [[ ! -n $host ]] || [[ ! -n $port ]];then
   url="jdbc:mysql://localhost:3306/zstack"
@@ -58,7 +56,6 @@ ${MYSQL} ${loginCmd} zstack -e "DELETE FROM schema_version"
 ${flyway} -outOfOrder=true -user=${user} -password=${password} -url=${url} migrate
 
 eval "rm -f ${flyway_sql}/*"
-
 cp ${base}/../conf/db/V0.6__schema_buildin_httpserver.sql ${flyway_sql}
 
 if [[ ! -n $host ]] || [[ ! -n $port ]];then
@@ -67,6 +64,18 @@ else
   url="jdbc:mysql://$host:$port/zstack_rest"
 fi
 ${flyway} -user=${user} -password=${password} -url=${url} clean
+${flyway} -outOfOrder=true -user=${user} -password=${password} -url=${url} migrate
+
+eval "rm -f ${flyway_sql}/*"
+cp ${base}/../conf/db/V0.6__schema.sql ${flyway_sql}
+cp ${base}/../conf/db/upgrade/* ${flyway_sql}
+cp ${base}/../conf/db/zsv/* ${flyway_sql}
+
+if [[ ! -n $host ]] || [[ ! -n $port ]];then
+  url="jdbc:mysql://localhost:3306/zstack"
+else
+  url="jdbc:mysql://$host:$port/zstack"
+fi
 ${flyway} -outOfOrder=true -user=${user} -password=${password} -url=${url} migrate
 
 eval "rm -f ${flyway_sql}/*"

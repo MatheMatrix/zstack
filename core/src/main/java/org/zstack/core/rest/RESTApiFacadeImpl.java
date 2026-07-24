@@ -1,6 +1,5 @@
 package org.zstack.core.rest;
 
-import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
@@ -45,7 +44,8 @@ public class RESTApiFacadeImpl extends AbstractService implements RESTApiFacade,
     private Set<String> basePkgNames;
     private List<String> processingRequests = Collections.synchronizedList(new ArrayList<String>(100));
     private Future<Void> restAPIVOCleanTask = null;
-    private final static int restResultMaxLength = initMaxRestResultLength();
+    private static final int REST_RESULT_MEDIUMTEXT_MAX_BYTES = 16 * 1024 * 1024 - 1;
+    private final static int restResultMaxBytes = initMaxRestResultLength();
 
     private static final Set<String> maskSensitiveInfoClassNames = Platform.getReflections()
             .getTypesAnnotatedWith(MaskSensitiveInfo.class).stream()
@@ -125,7 +125,7 @@ public class RESTApiFacadeImpl extends AbstractService implements RESTApiFacade,
 
     private static int initMaxRestResultLength() {
         int limit = CoreGlobalProperty.REST_API_RESULT_MAX_LENGTH;
-        limit = Math.min(limit, 64000);
+        limit = Math.min(limit, REST_RESULT_MEDIUMTEXT_MAX_BYTES);
         return Math.max(limit, 1000);
     }
 
@@ -183,7 +183,7 @@ public class RESTApiFacadeImpl extends AbstractService implements RESTApiFacade,
         rsp.setFinishedDate(new Date());
         rsp.setState(RestAPIState.Done.toString());
 
-        if (CoreGlobalProperty.MASK_SENSITIVE_INFO || maskSensitiveInfoClassNames.contains(reply.getClass().getSimpleName())) {
+        if (shouldMaskSensitiveInfo(reply)) {
             reply = (MessageReply) LogSafeGson.desensitize(reply);
         }
 
@@ -248,10 +248,54 @@ public class RESTApiFacadeImpl extends AbstractService implements RESTApiFacade,
     }
 
     private static String getApiResult(APIEvent e) {
+        return getApiResult(e, restResultMaxBytes);
+    }
+
+    private static String getApiResult(APIEvent e, int maxBytes) {
+        if (shouldMaskSensitiveInfo(e)) {
+            e = (APIEvent) LogSafeGson.desensitize(e);
+        }
+
         String apiResult = RESTApiDecoder.dump(e);
-        apiResult = StringUtils.length(apiResult) > restResultMaxLength ?
-                StringUtils.left(apiResult, restResultMaxLength) : apiResult;
-        return apiResult;
+        return leftByUtf8Bytes(apiResult, maxBytes);
+    }
+
+    private static boolean shouldMaskSensitiveInfo(Message msg) {
+        return CoreGlobalProperty.MASK_SENSITIVE_INFO
+                || maskSensitiveInfoClassNames.contains(msg.getClass().getSimpleName())
+                || msg.getClass().isAnnotationPresent(MaskSensitiveInfo.class);
+    }
+
+    private static String leftByUtf8Bytes(String value, int maxBytes) {
+        if (value == null) {
+            return null;
+        }
+
+        int bytes = 0;
+        for (int i = 0; i < value.length();) {
+            int codePoint = value.codePointAt(i);
+            int codePointBytes = utf8ByteLength(codePoint);
+            if (bytes + codePointBytes > maxBytes) {
+                return value.substring(0, i);
+            }
+
+            bytes += codePointBytes;
+            i += Character.charCount(codePoint);
+        }
+
+        return value;
+    }
+
+    private static int utf8ByteLength(int codePoint) {
+        if (codePoint <= 0x7F) {
+            return 1;
+        } else if (codePoint <= 0x7FF) {
+            return 2;
+        } else if (codePoint <= 0xFFFF) {
+            return 3;
+        } else {
+            return 4;
+        }
     }
 
     @Override
