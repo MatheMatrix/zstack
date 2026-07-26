@@ -34,7 +34,7 @@ public class CreateVmFromVmBackupAction extends AbstractAction {
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String backupStorageUuid;
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String instanceOfferingUuid;
 
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
@@ -69,6 +69,15 @@ public class CreateVmFromVmBackupAction extends AbstractAction {
 
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.util.List dataVolumeSystemTags;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.Integer cpuNum;
+
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.Long memorySize;
+
+    @Param(required = false, validValues = {"InstantStart","CreateStopped"}, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String strategy = "InstantStart";
 
     @Param(required = false)
     public java.lang.String defaultL3NetworkUuid;

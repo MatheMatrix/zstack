@@ -1,10 +1,10 @@
-package org.zstack.heder.storage.volume.backup;
+package org.zstack.sdk;
 
 import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class RevertVmFromVmBackupAction extends AbstractAction {
+public class DetachSchedulerJobGroupFromZoneAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class RevertVmFromVmBackupAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.heder.storage.volume.backup.RevertVmFromVmBackupResult value;
+        public org.zstack.sdk.DetachSchedulerJobGroupFromZoneResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -26,13 +26,10 @@ public class RevertVmFromVmBackupAction extends AbstractAction {
     }
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String groupUuid;
+    public java.lang.String schedulerJobGroupUuid;
 
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String backupStorageUuid;
-
-    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public boolean instantStart = false;
+    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.String zoneUuid;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -66,8 +63,8 @@ public class RevertVmFromVmBackupAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.heder.storage.volume.backup.RevertVmFromVmBackupResult value = res.getResult(org.zstack.heder.storage.volume.backup.RevertVmFromVmBackupResult.class);
-        ret.value = value == null ? new org.zstack.heder.storage.volume.backup.RevertVmFromVmBackupResult() : value; 
+        org.zstack.sdk.DetachSchedulerJobGroupFromZoneResult value = res.getResult(org.zstack.sdk.DetachSchedulerJobGroupFromZoneResult.class);
+        ret.value = value == null ? new org.zstack.sdk.DetachSchedulerJobGroupFromZoneResult() : value; 
 
         return ret;
     }
@@ -96,11 +93,11 @@ public class RevertVmFromVmBackupAction extends AbstractAction {
 
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
-        info.httpMethod = "PUT";
-        info.path = "/vm-backups/{groupUuid}/actions";
+        info.httpMethod = "DELETE";
+        info.path = "/scheduler/zone/{zoneUuid}/scheduler-job-group/{schedulerJobGroupUuid}";
         info.needSession = true;
         info.needPoll = true;
-        info.parameterName = "revertVmFromVmBackup";
+        info.parameterName = "";
         return info;
     }
 
