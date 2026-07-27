@@ -13,6 +13,7 @@ import org.zstack.core.db.SQL;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.core.timeout.ApiTimeoutManager;
 import org.zstack.header.core.Completion;
+import org.zstack.header.core.NoErrorCompletion;
 import org.zstack.header.core.NopeCompletion;
 import org.zstack.header.core.workflow.Flow;
 import org.zstack.header.core.workflow.FlowRollback;
@@ -126,61 +127,137 @@ public class FlatEipBackend implements EipBackend, KVMHostConnectExtensionPoint,
         public List<EipTO> eips;
     }
 
+    public static class BatchEipMigrationCmd extends AgentCmd {
+        public List<EipTO> eips;
+    }
+
     public static final String APPLY_EIP_PATH = "/flatnetworkprovider/eip/apply";
     public static final String DELETE_EIP_PATH = "/flatnetworkprovider/eip/delete";
     public static final String BATCH_APPLY_EIP_PATH = "/flatnetworkprovider/eip/batchapply";
     public static final String BATCH_DELETE_EIP_PATH = "/flatnetworkprovider/eip/batchdelete";
+    public static final String BATCH_PREPARE_EIP_PATH = "/flatnetworkprovider/eip/batchprepare";
+    public static final String BATCH_ENABLE_EIP_PATH = "/flatnetworkprovider/eip/batchenable";
+
+    @Override
+    public void preMigrateVm(VmInstanceInventory inv, String destHostUuid, Completion completion) {
+        List<EipTO> eips = getEipsByVmUuid(inv.getUuid());
+        if (eips == null || eips.isEmpty()) {
+            completion.success();
+            return;
+        }
+
+        batchChangeEipMigrationState(eips, destHostUuid, BATCH_PREPARE_EIP_PATH, new Completion(completion) {
+            @Override
+            public void success() {
+                completion.success();
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                completion.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10016,
+                        "failed to prepare EIPs for vm[uuid:%s] on destination host[uuid:%s]",
+                        inv.getUuid(), destHostUuid).causedBy(errorCode));
+            }
+        });
+    }
+
     @Override
     public void beforeMigrateVm(VmInstanceInventory inv, String destHostUuid) {
     }
 
     @Override
-    public void afterMigrateVm(final VmInstanceInventory inv, String srcHostUuid) {
+    public void afterMigrateVm(final VmInstanceInventory inv, String srcHostUuid, NoErrorCompletion completion) {
         List<EipTO> eips = getEipsByVmUuid(inv.getUuid());
         if (eips == null || eips.isEmpty()) {
+            completion.done();
             return;
         }
 
-        batchDeleteEips(eips, srcHostUuid, new Completion(null) {
+        batchChangeEipMigrationState(eips, inv.getHostUuid(), BATCH_ENABLE_EIP_PATH, new Completion(completion) {
             @Override
             public void success() {
-                batchApplyEips(eips, inv.getHostUuid(), new Completion(null) {
+                batchDeleteEips(eips, srcHostUuid, new Completion(completion) {
                     @Override
                     public void success() {
-                        logger.warn(String.format("after migration, successfully applied EIPs[uuids:%s] to the vm[uuid:%s, name:%s] on the destination host[uuid:%s] after delete eip on src host[uuid:%s] succeeded",
-                                eips.stream().map(e -> e.vip).collect(Collectors.toList()), inv.getUuid(), inv.getName(), inv.getHostUuid(), srcHostUuid));
+                        completion.done();
                     }
 
                     @Override
                     public void fail(ErrorCode errorCode) {
-                        logger.warn(String.format("after migration, failed to apply EIPs[uuids:%s] to the vm[uuid:%s, name:%s] on the destination host[uuid:%s] after delete eip on src host[uuid:%s] succeeded, %s",
-                                eips.stream().map(e -> e.vip).collect(Collectors.toList()), inv.getUuid(), inv.getName(), inv.getHostUuid(), srcHostUuid, errorCode));
+                        logger.warn(String.format("failed to delete EIPs[vips:%s] for migrated vm[uuid:%s] on source host[uuid:%s], %s",
+                                eips.stream().map(e -> e.vip).collect(Collectors.toList()),
+                                inv.getUuid(), srcHostUuid, errorCode));
+                        completion.done();
                     }
                 });
             }
 
             @Override
             public void fail(ErrorCode errorCode) {
-                batchApplyEips(eips, inv.getHostUuid(), new Completion(null) {
-                    @Override
-                    public void success() {
-                        logger.warn(String.format("after migration, successfully applied EIPs[uuids:%s] to the vm[uuid:%s, name:%s] on the destination host[uuid:%s] after delete eip on src host[uuid:%s] failed",
-                                eips.stream().map(e -> e.vip).collect(Collectors.toList()), inv.getUuid(), inv.getName(), inv.getHostUuid(), srcHostUuid));
-                    }
-
-                    @Override
-                    public void fail(ErrorCode errorCode) {
-                        logger.warn(String.format("after migration, failed to apply EIPs[uuids:%s] to the vm[uuid:%s, name:%s] on the destination host[uuid:%s] after delete eip on src host[uuid:%s] failed, %s",
-                                eips.stream().map(e -> e.vip).collect(Collectors.toList()), inv.getUuid(), inv.getName(), inv.getHostUuid(), srcHostUuid, errorCode));
-                    }
-                });
+                logger.warn(String.format("failed to enable EIPs[vips:%s] for migrated vm[uuid:%s] on destination host[uuid:%s], keep source EIPs on host[uuid:%s], %s",
+                        eips.stream().map(e -> e.vip).collect(Collectors.toList()), inv.getUuid(),
+                        inv.getHostUuid(), srcHostUuid, errorCode));
+                completion.done();
             }
         });
     }
 
     @Override
-    public void failedToMigrateVm(VmInstanceInventory inv, String destHostUuid, ErrorCode reason) {
+    public void failedToMigrateVm(VmInstanceInventory inv, String destHostUuid, ErrorCode reason,
+                                  NoErrorCompletion completion) {
+        List<EipTO> eips = getEipsByVmUuid(inv.getUuid());
+        if (eips == null || eips.isEmpty()) {
+            completion.done();
+            return;
+        }
 
+        if (destHostUuid != null && destHostUuid.equals(inv.getHostUuid())) {
+            afterMigrateVm(inv, inv.getLastHostUuid(), completion);
+            return;
+        }
+
+        if (destHostUuid == null) {
+            restoreSourceEipsAfterFailedMigration(inv, eips, completion);
+            return;
+        }
+
+        batchDeleteEips(eips, destHostUuid, new Completion(completion) {
+            @Override
+            public void success() {
+                restoreSourceEipsAfterFailedMigration(inv, eips, completion);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                logger.warn(String.format("failed to clean prepared EIPs[vips:%s] for vm[uuid:%s] on destination host[uuid:%s], %s",
+                        eips.stream().map(e -> e.vip).collect(Collectors.toList()), inv.getUuid(),
+                        destHostUuid, errorCode));
+                restoreSourceEipsAfterFailedMigration(inv, eips, completion);
+            }
+        });
+    }
+
+    private void restoreSourceEipsAfterFailedMigration(VmInstanceInventory inv, List<EipTO> eips,
+                                                       NoErrorCompletion completion) {
+        if (inv.getHostUuid() == null) {
+            completion.done();
+            return;
+        }
+
+        batchChangeEipMigrationState(eips, inv.getHostUuid(), BATCH_ENABLE_EIP_PATH, new Completion(completion) {
+            @Override
+            public void success() {
+                completion.done();
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                logger.warn(String.format("failed to restore EIPs[vips:%s] for vm[uuid:%s] on source host[uuid:%s] after migration failure, %s",
+                        eips.stream().map(e -> e.vip).collect(Collectors.toList()),
+                        inv.getUuid(), inv.getHostUuid(), errorCode));
+                completion.done();
+            }
+        });
     }
 
     @Transactional(readOnly = true)
@@ -521,6 +598,37 @@ public class FlatEipBackend implements EipBackend, KVMHostConnectExtensionPoint,
 
     private void batchApplyEips(List<EipTO> eips, String hostUuid, final Completion completion) {
         batchApplyEips(eips, hostUuid, false, completion);
+    }
+
+    private void batchChangeEipMigrationState(List<EipTO> eips, String hostUuid, String path,
+                                              final Completion completion) {
+        BatchEipMigrationCmd cmd = new BatchEipMigrationCmd();
+        cmd.eips = eips;
+
+        KVMHostAsyncHttpCallMsg msg = new KVMHostAsyncHttpCallMsg();
+        msg.setCommand(cmd);
+        msg.setHostUuid(hostUuid);
+        msg.setPath(path);
+        bus.makeTargetServiceIdByResourceUuid(msg, HostConstant.SERVICE_ID, hostUuid);
+        bus.send(msg, new CloudBusCallBack(completion) {
+            @Override
+            public void run(MessageReply reply) {
+                if (!reply.isSuccess()) {
+                    completion.fail(reply.getError());
+                    return;
+                }
+
+                KVMHostAsyncHttpCallReply ar = reply.castReply();
+                AgentRsp rsp = ar.toResponse(AgentRsp.class);
+                if (!rsp.success) {
+                    completion.fail(operr(ORG_ZSTACK_NETWORK_SERVICE_FLAT_10016,
+                            "operation error, because:%s", rsp.error));
+                    return;
+                }
+
+                completion.success();
+            }
+        });
     }
 
     private void batchApplyEips(List<EipTO> eips, String hostUuid, boolean noHostStatusCheck, final Completion completion) {
