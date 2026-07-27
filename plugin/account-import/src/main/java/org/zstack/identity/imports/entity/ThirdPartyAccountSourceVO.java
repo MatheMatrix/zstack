@@ -26,7 +26,8 @@ public class ThirdPartyAccountSourceVO extends ResourceVO {
     private String description;
 
     /**
-     * ex: "ldap"
+     * ex: "WindowsAD" (exclude "Local")
+     * @see {@link org.zstack.header.identity.AccountSource}
      */
     @Column
     private String type;
@@ -34,6 +35,13 @@ public class ThirdPartyAccountSourceVO extends ResourceVO {
     @Column
     @Enumerated(value = EnumType.STRING)
     private SyncCreatedAccountStrategy createAccountStrategy;
+
+    /**
+     * support more than one {@link SyncUpdateAccountStrategy}, join by ","
+     * ex: "AccountStateKeepSameWithSource,BindingNormalAccount", or ""
+     */
+    @Column
+    private String updateAccountStrategies = "";
 
     @Column
     @Enumerated(value = EnumType.STRING)
@@ -72,6 +80,14 @@ public class ThirdPartyAccountSourceVO extends ResourceVO {
 
     public void setCreateAccountStrategy(SyncCreatedAccountStrategy createAccountStrategy) {
         this.createAccountStrategy = createAccountStrategy;
+    }
+
+    public String getUpdateAccountStrategies() {
+        return updateAccountStrategies;
+    }
+
+    public void setUpdateAccountStrategies(String updateAccountStrategies) {
+        this.updateAccountStrategies = updateAccountStrategies;
     }
 
     public SyncDeletedAccountStrategy getDeleteAccountStrategy() {

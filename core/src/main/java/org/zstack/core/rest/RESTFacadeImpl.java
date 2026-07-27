@@ -2,6 +2,8 @@ package org.zstack.core.rest;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpStatus;
+import org.apache.http.conn.ConnectionKeepAliveStrategy;
+import org.apache.http.impl.client.DefaultConnectionKeepAliveStrategy;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
@@ -189,8 +191,16 @@ public class RESTFacadeImpl extends AbstractRESTFacade {
         connectionManager.setDefaultMaxPerRoute(maxPerRoute);
         connectionManager.setMaxTotal(maxTotal);
 
+        // cap the agent-advertised keep-alive to keepAliveMs; also set defaults when the agent sends none (duration < 0)
+        ConnectionKeepAliveStrategy keepAliveStrategy = (response, context) -> {
+            long serverDuration = DefaultConnectionKeepAliveStrategy.INSTANCE.getKeepAliveDuration(response, context);
+            long defaults = CoreGlobalProperty.REST_FACADE_KEEPALIVE_TIME_MILLIS;
+            return (serverDuration < 0 || serverDuration > defaults) ? defaults : serverDuration;
+        };
+
         CloseableHttpAsyncClient httpAsyncClient = HttpAsyncClients.custom()
                 .setConnectionManager(connectionManager)
+                .setKeepAliveStrategy(keepAliveStrategy)
                 .build();
 
         HttpComponentsAsyncClientHttpRequestFactory cf = new HttpComponentsAsyncClientHttpRequestFactory(httpAsyncClient);
@@ -552,12 +562,14 @@ public class RESTFacadeImpl extends AbstractRESTFacade {
                 .withErrorCodeBuilder((e, http2) -> {
                     if (e instanceof HttpStatusCodeException) {
                         final HttpStatusCodeException exception = (HttpStatusCodeException) e;
-                        return operr("failed to %s to %s, status code: %s, response body: %s",
+                        return err(SysErrors.HTTP_ERROR, "failed to %s to %s, status code: %s, response body: %s",
                                 http2.getMethod().toString().toLowerCase(),
                                 http2.getPath(),
-                                exception.getStatusCode(), exception.getResponseBodyAsString());
+                                exception.getStatusCode(), exception.getResponseBodyAsString())
+                                .withOpaque("http.code", exception.getStatusCode())
+                                .withOpaque("body", exception.getResponseBodyAsString());
                     } else if (e instanceof ResourceAccessException) {
-                        return operr("failed to %s to %s: IO Error",
+                        return err(SysErrors.HTTP_ERROR, "failed to %s to %s: IO Error",
                                 http2.getMethod().toString().toLowerCase(),
                                 http2.getPath())
                                 .withException(e);

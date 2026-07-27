@@ -31,6 +31,9 @@ public class RegisterLicenseRequestedApplicationAction extends AbstractAction {
     @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
     public java.lang.String clientPubKey;
 
+    @Param(required = false, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
+    public java.lang.Long currentTimeMillis;
+
     @Param(required = false)
     public java.util.List systemTags;
 

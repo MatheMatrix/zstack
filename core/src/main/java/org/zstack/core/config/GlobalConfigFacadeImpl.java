@@ -558,7 +558,19 @@ public class GlobalConfigFacadeImpl extends AbstractService implements GlobalCon
                 GlobalConfig xmlConfig = configsFromXml.get(old.getIdentity());
                 DebugUtils.Assert(xmlConfig != null, String.format("unable to find GlobalConfig[category:%s, name:%s] for linking to %s.%s",
                         old.getCategory(), old.getName(), field.getDeclaringClass().getName(), field.getName()));
-                final GlobalConfig config = old.copy(xmlConfig);
+                final GlobalConfig config;
+                if (old.getEvtf() == null) {
+                    if (xmlConfig.getEvtf() != null) {
+                        config = xmlConfig;
+                    } else {
+                        config = new GlobalConfig();
+                        config.copy(xmlConfig);
+                    }
+                    logger.debug(String.format("GlobalConfig[category: %s, name: %s] static field was initialized before Spring autowiring, relink to autowired instance",
+                            config.getCategory(), config.getName()));
+                } else {
+                    config = old.copy(xmlConfig);
+                }
                 field.set(null, config);
                 // all global config base on Field allConfig which is origin from configsFromXml, so update its value
                 configsFromXml.put(old.getIdentity(), config);
@@ -583,7 +595,7 @@ public class GlobalConfigFacadeImpl extends AbstractService implements GlobalCon
                         }
                     });
 
-                    if (at.inNumberRange().length > 0 || at.numberGreaterThan() != Long.MIN_VALUE || at.numberLessThan() != Long.MAX_VALUE) {
+                    if (at.inNumberRange().length > 0 || at.min() != Long.MIN_VALUE || at.max() != Long.MAX_VALUE) {
                         if (config.getType() != null && TypeUtils.isTypeOf(config.getType(), Long.class, Integer.class)) {
                             throw new CloudRuntimeException(String.format("%s has @GlobalConfigValidation defined on field[%s.%s] which indicates its numeric type, but its type is neither Long nor Integer, it's %s",
                                     config.getCanonicalName(), field.getDeclaringClass(), field.getName(), config.getType()));
@@ -595,15 +607,15 @@ public class GlobalConfigFacadeImpl extends AbstractService implements GlobalCon
                         }
                     }
 
-                    if (at.numberLessThan() != Long.MAX_VALUE) {
+                    if (at.max() != Long.MAX_VALUE) {
                         config.installValidateExtension(new GlobalConfigValidatorExtensionPoint() {
                             @Override
                             public void validateGlobalConfig(String category, String name, String oldValue, String value) throws GlobalConfigException {
                                 try {
                                     long num = Long.parseLong(value);
-                                    if (num > at.numberLessThan()) {
+                                    if (num > at.max()) {
                                         throw new GlobalConfigException(String.format("%s should not greater than %s, but got %s",
-                                                config.getCanonicalName(), at.numberLessThan(), num));
+                                                config.getCanonicalName(), at.max(), num));
                                     }
                                 } catch (NumberFormatException e) {
                                     throw new GlobalConfigException(String.format("%s is not a number or out of range of a Long type", value), e);
@@ -612,15 +624,15 @@ public class GlobalConfigFacadeImpl extends AbstractService implements GlobalCon
                         });
                     }
 
-                    if (at.numberGreaterThan() != Long.MIN_VALUE) {
+                    if (at.min() != Long.MIN_VALUE) {
                         config.installValidateExtension(new GlobalConfigValidatorExtensionPoint() {
                             @Override
                             public void validateGlobalConfig(String category, String name, String oldValue, String value) throws GlobalConfigException {
                                 try {
                                     long num = Long.parseLong(value);
-                                    if (num < at.numberGreaterThan()) {
+                                    if (num < at.min()) {
                                         throw new GlobalConfigException(String.format("%s should not less than %s, but got %s",
-                                                config.getCanonicalName(), at.numberGreaterThan(), num));
+                                                config.getCanonicalName(), at.min(), num));
                                     }
                                 } catch (NumberFormatException e) {
                                     throw new GlobalConfigException(String.format("%s is not a number or out of range of a Long type", value), e);
@@ -676,7 +688,7 @@ public class GlobalConfigFacadeImpl extends AbstractService implements GlobalCon
                         } else if (at.inNumberRange().length == 2){
                             options.setNumberLessThanOrEqual(at.inNumberRange()[1]);
                             options.setNumberGreaterThanOrEqual(at.inNumberRange()[0]);
-                        } else if (at.numberLessThan() != Long.MAX_VALUE || at.numberGreaterThan() != Long.MIN_VALUE) {
+                        } else if (at.max() != Long.MAX_VALUE || at.min() != Long.MIN_VALUE) {
                             if (isInteger) {
                                 options.setNumberLessThanOrEqual((long) Integer.MAX_VALUE);
                                 options.setNumberGreaterThanOrEqual((long) Integer.MIN_VALUE);
@@ -686,12 +698,12 @@ public class GlobalConfigFacadeImpl extends AbstractService implements GlobalCon
                             }
                         }
 
-                        if (at.numberLessThan() != Long.MAX_VALUE) {
-                            options.setNumberLessThanOrEqual(at.numberLessThan());
+                        if (at.max() != Long.MAX_VALUE) {
+                            options.setNumberLessThanOrEqual(at.max());
                         }
 
-                        if (at.numberGreaterThan() != Long.MIN_VALUE) {
-                            options.setNumberGreaterThanOrEqual(at.numberGreaterThan());
+                        if (at.min() != Long.MIN_VALUE) {
+                            options.setNumberGreaterThanOrEqual(at.min());
                         }
 
                         return options;

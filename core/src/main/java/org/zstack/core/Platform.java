@@ -51,6 +51,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -82,6 +83,8 @@ public class Platform {
     public static final String FAKE_UUID = "THIS_IS_A_FAKE_UUID";
     public static final String BASE_PACKAGE_NAME = AccountConstant.POLICY_BASE_PACKAGE;
 
+    public static final String DEFAULT_OS_USER = "zstack";
+
     private static final Map<String, String> globalProperties = new HashMap<String, String>();
 
     private static Locale locale;
@@ -99,6 +102,10 @@ public class Platform {
     public static Map<String, String> childResourceToBaseResourceMap = new HashMap<>();
 
     static Map<Class, DynamicObjectMetadata> dynamicObjectMetadata = new HashMap<>();
+
+    public static String localOsUserName() {
+        return DEFAULT_OS_USER;
+    }
 
     public static Locale getLocale() {
         return locale;
@@ -819,9 +826,14 @@ public class Platform {
             for (NetworkInterface iface : Collections.list(nets)) {
                 String name = iface.getName();
                 if (defaultLine.contains(name)) {
-                    InetAddress ia = iface.getInetAddresses().nextElement();
-                    ip = ia.getHostAddress();
-                    break;
+                    for (InetAddress ia : Collections.list(iface.getInetAddresses())) {
+                        ip = ia.getHostAddress();
+                        if (ia instanceof Inet4Address) {
+                            // we prefer IPv4 address
+                            ip = ia.getHostAddress();
+                            break;
+                        }
+                    }
                 }
             }
         } catch (SocketException e) {
