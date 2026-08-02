@@ -96,6 +96,15 @@ doc {
 					values ("tcp","udp","http","none")
 				}
 				column {
+					name "maxConnection"
+					enclosedIn "params"
+					desc "最大并发连接数"
+					location "body"
+					type "Integer"
+					optional true
+					since "5.5.38"
+				}
+				column {
 					name "healthCheckMethod"
 					enclosedIn "params"
 					desc "健康检查方法"
