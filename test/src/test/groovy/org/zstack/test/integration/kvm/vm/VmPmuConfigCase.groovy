@@ -188,7 +188,7 @@ class VmPmuConfigCase extends SubCase {
         assert cmd.pmu
     }
 
-    KVMAgentCommands.StartVmCmd createVmAndCaptureStartCmd(String name, String imageName) {
+    KVMAgentCommands.StartVmCmd createVmAndCaptureStartCmd(String vmName, String imageName) {
         ImageInventory image = env.inventoryByName(imageName) as ImageInventory
         L3NetworkInventory l3 = env.inventoryByName("l3") as L3NetworkInventory
         InstanceOfferingInventory instanceOffering = env.inventoryByName("instanceOffering") as InstanceOfferingInventory
@@ -200,7 +200,7 @@ class VmPmuConfigCase extends SubCase {
         }
 
         createVmInstance {
-            name = name
+            name = vmName
             imageUuid = image.uuid
             l3NetworkUuids = [l3.uuid]
             instanceOfferingUuid = instanceOffering.uuid

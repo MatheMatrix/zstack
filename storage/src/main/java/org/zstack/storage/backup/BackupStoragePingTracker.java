@@ -76,10 +76,12 @@ public class BackupStoragePingTracker extends PingTracker implements ManagementN
     protected void untrackHook(String resUuid) {
         statusMap.remove(resUuid);
 
-        BackupStorageReconnectTask reconnectTask = reconnectTaskMap.get(resUuid);
-        if (reconnectTask != null) {
-            reconnectTask.cancel();
-            reconnectTaskMap.remove(resUuid);
+        synchronized (reconnectTaskMap) {
+            BackupStorageReconnectTask reconnectTask = reconnectTaskMap.get(resUuid);
+            if (reconnectTask != null) {
+                reconnectTask.cancel();
+                reconnectTaskMap.remove(resUuid);
+            }
         }
     }
 
@@ -160,9 +162,18 @@ public class BackupStoragePingTracker extends PingTracker implements ManagementN
                 } else if (BackupStorageStatus.Disconnected.toString().equals(d.getNewStatus()) &&
                         BackupStorageStatus.Connecting.toString().equals(d.getOldStatus())) {
                     backupStorageDisconnectCount.computeIfAbsent(d.getBackupStorageUuid(), key -> new AtomicInteger(0)).addAndGet(1);
+                    if (isReconnectLimitReached(d.getBackupStorageUuid())) {
+                        cancel(d.getBackupStorageUuid());
+                    }
                 }
             }
         });
+    }
+
+    private boolean isReconnectLimitReached(String uuid) {
+        AtomicInteger disconnectCount = backupStorageDisconnectCount.get(uuid);
+        int threshold = BackupStorageGlobalConfig.AUTO_RECONNECT_ON_ERROR_MAX_ATTEMPT_NUM.value(Integer.class);
+        return threshold > 0 && disconnectCount != null && disconnectCount.get() >= threshold;
     }
 
     private void decideWhatToDoNext(String resUuid, ReconnectDecision decision) {
@@ -186,9 +197,7 @@ public class BackupStoragePingTracker extends PingTracker implements ManagementN
             return ReconnectDecision.StopReconnectTask;
         }
 
-        AtomicInteger disconnectCount = backupStorageDisconnectCount.get(uuid);
-        int threshold = BackupStorageGlobalConfig.AUTO_RECONNECT_ON_ERROR_MAX_ATTEMPT_NUM.value(Integer.class);
-        if (threshold > 0 && disconnectCount != null && disconnectCount.get() >= threshold) {
+        if (isReconnectLimitReached(uuid)) {
             logger.warn(String.format("[Backup storage Tracker]: stop pinging backup storage[uuid: %s] because it fail to reconnect too many times.", uuid));
             return ReconnectDecision.StopReconnectTask;
         }
@@ -212,27 +221,35 @@ public class BackupStoragePingTracker extends PingTracker implements ManagementN
     }
 
     private void submitReconnectTask(String uuid) {
-        BackupStorageReconnectTask reconnectTask = reconnectTaskMap.get(uuid);
-
-        if (reconnectTask != null && !reconnectTask.taskIsCanceled()) {
-            return;
-        }
-
-        reconnectTask = new BackupStorageReconnectTask(uuid, new NoErrorCompletion() {
-            @Override
-            public void done() {
-                logger.debug(String.format("[Backup storage Tracker]: successfully create reconnect backup storage[uuid: %s] task.", uuid));
+        synchronized (reconnectTaskMap) {
+            if (isReconnectLimitReached(uuid)) {
+                return;
             }
-        });
 
-        reconnectTaskMap.put(uuid, reconnectTask);
-        reconnectTask.start();
+            BackupStorageReconnectTask reconnectTask = reconnectTaskMap.get(uuid);
+
+            if (reconnectTask != null && !reconnectTask.taskIsCanceled()) {
+                return;
+            }
+
+            reconnectTask = new BackupStorageReconnectTask(uuid, new NoErrorCompletion() {
+                @Override
+                public void done() {
+                    logger.debug(String.format("[Backup storage Tracker]: successfully create reconnect backup storage[uuid: %s] task.", uuid));
+                }
+            });
+
+            reconnectTaskMap.put(uuid, reconnectTask);
+            reconnectTask.start();
+        }
     }
 
     public void cancel(String resUuid) {
-        BackupStorageReconnectTask reconnectTask = reconnectTaskMap.get(resUuid);
-        if (reconnectTask != null && !reconnectTask.taskIsCanceled()) {
-            untrackHook(resUuid);
+        synchronized (reconnectTaskMap) {
+            BackupStorageReconnectTask reconnectTask = reconnectTaskMap.get(resUuid);
+            if (reconnectTask != null && !reconnectTask.taskIsCanceled()) {
+                untrackHook(resUuid);
+            }
         }
     }
 }
