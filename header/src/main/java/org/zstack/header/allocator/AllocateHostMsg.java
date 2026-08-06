@@ -5,12 +5,13 @@ import org.zstack.header.image.ImageInventory;
 import org.zstack.header.message.NeedReplyMessage;
 import org.zstack.header.vm.VmInstanceInventory;
 
+import javax.persistence.Tuple;
+import javax.persistence.TupleElement;
 import java.util.*;
 
 public class AllocateHostMsg extends NeedReplyMessage {
     private long cpuCapacity;
     private long memoryCapacity;
-    private long diskSize;
     private String allocatorStrategy;
     private List<String> avoidHostUuids;
     private List<String> softAvoidHostUuids;
@@ -27,6 +28,7 @@ public class AllocateHostMsg extends NeedReplyMessage {
     private Set<String> requiredPrimaryStorageUuids = new HashSet<>();
     // for each set in the list, the primary storage inside is optional
     private final List<Set<String>> optionalPrimaryStorageUuids = new ArrayList<>();
+    private final List<Tuple> requiredDiskCapacities = new ArrayList<>();
     private boolean fullAllocate = true;
     private long oldMemoryCapacity = 0;
     private AllocationScene allocationScene;
@@ -68,6 +70,14 @@ public class AllocateHostMsg extends NeedReplyMessage {
 
     public void addRequiredPrimaryStorageUuid(String requiredPrimaryStorageUuid) {
         this.requiredPrimaryStorageUuids.add(requiredPrimaryStorageUuid);
+    }
+
+    public List<Tuple> getRequiredDiskCapacities() {
+        return requiredDiskCapacities;
+    }
+
+    public void addRequiredDiskCapacity(String primaryStorageUuid, long size) {
+        requiredDiskCapacities.add(newRequiredDiskCapacity(primaryStorageUuid, size));
     }
 
     public String getRequiredBackupStorageUuid() {
@@ -143,11 +153,55 @@ public class AllocateHostMsg extends NeedReplyMessage {
     }
 
     public long getDiskSize() {
-        return diskSize;
+        return requiredDiskCapacities.stream().mapToLong(it -> it.get(1, Long.class)).sum();
     }
 
+    // Compatibility entry for callers that cannot determine primary storage yet.
     public void setDiskSize(long diskSize) {
-        this.diskSize = diskSize;
+        requiredDiskCapacities.clear();
+        requiredDiskCapacities.add(newRequiredDiskCapacity(null, diskSize));
+    }
+
+    private Tuple newRequiredDiskCapacity(String primaryStorageUuid, long size) {
+        return new Tuple() {
+            @Override
+            public <X> X get(TupleElement<X> tupleElement) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public Object get(String alias) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public <X> X get(String alias, Class<X> type) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public Object get(int i) {
+                if (i == 0) {
+                    return primaryStorageUuid;
+                }
+                return size;
+            }
+
+            @Override
+            public <X> X get(int i, Class<X> type) {
+                return type.cast(get(i));
+            }
+
+            @Override
+            public Object[] toArray() {
+                return new Object[]{primaryStorageUuid, size};
+            }
+
+            @Override
+            public List<TupleElement<?>> getElements() {
+                return Collections.emptyList();
+            }
+        };
     }
 
     public String getAllocatorStrategy() {

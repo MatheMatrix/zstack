@@ -4,6 +4,7 @@ import org.zstack.header.configuration.DiskOfferingInventory;
 import org.zstack.header.image.ImageInventory;
 import org.zstack.header.vm.VmInstanceInventory;
 
+import javax.persistence.Tuple;
 import java.util.*;
 
 /**
@@ -14,7 +15,6 @@ public class HostAllocatorSpec {
     private long cpuCapacity;
     private long memoryCapacity;
     private List<String> l3NetworkUuids;
-    private long diskSize;
     private String hypervisorType;
     private String allocatorStrategy;
     private VmInstanceInventory vmInstance;
@@ -29,6 +29,7 @@ public class HostAllocatorSpec {
     private Set<String> requiredPrimaryStorageUuids = new HashSet<>();
     // for each set in the list, the primary storage inside is optional
     private final List<Set<String>> optionalPrimaryStorageUuids = new ArrayList<>();
+    private final List<Tuple> requiredDiskCapacities = new ArrayList<>();
     private Map<String, List<String>> backupStoragePrimaryStorageMetrics;
     private boolean dryRun;
     private List<String> systemTags;
@@ -87,6 +88,17 @@ public class HostAllocatorSpec {
 
     public Set<String> getRequiredPrimaryStorageUuids() {
         return requiredPrimaryStorageUuids;
+    }
+
+    public List<Tuple> getRequiredDiskCapacities() {
+        return requiredDiskCapacities;
+    }
+
+    public void setRequiredDiskCapacities(List<Tuple> requiredDiskCapacities) {
+        this.requiredDiskCapacities.clear();
+        if (requiredDiskCapacities != null) {
+            this.requiredDiskCapacities.addAll(requiredDiskCapacities);
+        }
     }
 
     public List<Set<String>> getOptionalPrimaryStorageUuids() {
@@ -192,11 +204,7 @@ public class HostAllocatorSpec {
     }
 
     public long getDiskSize() {
-        return diskSize;
-    }
-
-    public void setDiskSize(long diskSize) {
-        this.diskSize = diskSize;
+        return requiredDiskCapacities.stream().mapToLong(it -> it.get(1, Long.class)).sum();
     }
 
     public String getHypervisorType() {
@@ -261,7 +269,6 @@ public class HostAllocatorSpec {
         spec.setAvoidHostUuids(msg.getAvoidHostUuids());
         spec.setSoftAvoidHostUuids(msg.getSoftAvoidHostUuids());
         spec.setCpuCapacity(msg.getCpuCapacity());
-        spec.setDiskSize(msg.getDiskSize());
         spec.setListAllHosts(msg.isListAllHosts());
         spec.setDryRun(msg.isDryRun());
         spec.setFullAllocate(msg.isFullAllocate());
@@ -280,6 +287,7 @@ public class HostAllocatorSpec {
         spec.setAllowNoL3Networks(msg.isAllowNoL3Networks());
         spec.setRequiredBackupStorageUuid(msg.getRequiredBackupStorageUuid());
         spec.setRequiredPrimaryStorageUuids(msg.getRequiredPrimaryStorageUuids());
+        spec.setRequiredDiskCapacities(msg.getRequiredDiskCapacities());
         msg.getOptionalPrimaryStorageUuids().forEach(spec::addOptionalPrimaryStorageUuids);
         spec.setAllocationScene(msg.getAllocationScene());
         spec.setArchitecture(msg.getArchitecture());

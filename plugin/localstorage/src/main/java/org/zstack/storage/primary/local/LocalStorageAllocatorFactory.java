@@ -126,10 +126,15 @@ public class LocalStorageAllocatorFactory implements PrimaryStorageAllocatorStra
             for (LocalStorageHostRefVO ref : refs) {
                 String huuid = ref.getHostUuid();
                 String psUuid = ref.getPrimaryStorageUuid();
+                long requiredSize = getRequiredLocalStorageSize(spec, psUuid);
+                if (requiredSize == 0) {
+                    continue;
+                }
+
                 // check primary storage capacity and host physical capacity
                 boolean capacityChecked = PrimaryStorageCapacityChecker.New(psUuid,
                         ref.getAvailableCapacity(), ref.getTotalPhysicalCapacity(), ref.getAvailablePhysicalCapacity())
-                        .checkRequiredSize(spec.getDiskSize());
+                        .checkRequiredSize(requiredSize);
 
                 if (!capacityChecked) {
                     addHostPrimaryStorageBlacklist(huuid, psUuid, spec);
@@ -176,6 +181,21 @@ public class LocalStorageAllocatorFactory implements PrimaryStorageAllocatorStra
         */
 
         return candidates;
+    }
+
+    private long getRequiredLocalStorageSize(HostAllocatorSpec spec, String psUuid) {
+        if (VmOperation.MigrateVolume.toString().equals(spec.getVmOperation())) {
+            return spec.getDiskSize();
+        }
+
+        long requiredSize = spec.getRequiredDiskCapacities().stream()
+                .filter(it -> psUuid.equals(it.get(0, String.class)))
+                .mapToLong(it -> it.get(1, Long.class))
+                .sum();
+
+        boolean allPrimaryStorageUndetermined = spec.getRequiredDiskCapacities().stream()
+                .allMatch(it -> it.get(0, String.class) == null);
+        return allPrimaryStorageUndetermined ? spec.getDiskSize() : requiredSize;
     }
 
     private void checkLocalStorageForVmStart(VmInstanceInventory vm, List<HostVO> candidates) {
