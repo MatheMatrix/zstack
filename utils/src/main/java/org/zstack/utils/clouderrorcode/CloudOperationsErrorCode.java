@@ -12274,6 +12274,16 @@ public class CloudOperationsErrorCode {
     // 10058 targeted Tenant Router pull returned an unknown projection state
     public static final String ORG_ZSTACK_NETWORK_ZNS_10057 = "ORG_ZSTACK_NETWORK_ZNS_10057";
     public static final String ORG_ZSTACK_NETWORK_ZNS_10058 = "ORG_ZSTACK_NETWORK_ZNS_10058";
+    // 10059 ZNS L2 owner change found a non-Ready relation
+    // 10060 ZNS L2 owner change found an active or unknown operation step
+    // 10061 ZNS L2 owner change found an invalid L2 ownership reference count
+    // 10062 ZNS L2 owner change found an invalid relation ownership reference count
+    // 10063 ZNS L2 and relation ownership records are inconsistent
+    public static final String ORG_ZSTACK_NETWORK_ZNS_10059 = "ORG_ZSTACK_NETWORK_ZNS_10059";
+    public static final String ORG_ZSTACK_NETWORK_ZNS_10060 = "ORG_ZSTACK_NETWORK_ZNS_10060";
+    public static final String ORG_ZSTACK_NETWORK_ZNS_10061 = "ORG_ZSTACK_NETWORK_ZNS_10061";
+    public static final String ORG_ZSTACK_NETWORK_ZNS_10062 = "ORG_ZSTACK_NETWORK_ZNS_10062";
+    public static final String ORG_ZSTACK_NETWORK_ZNS_10063 = "ORG_ZSTACK_NETWORK_ZNS_10063";
 
     public static final String ORG_ZSTACK_PREMIUM_EXTERNALSERVICE_MARKETPLACE_10000 = "ORG_ZSTACK_PREMIUM_EXTERNALSERVICE_MARKETPLACE_10000";
 
