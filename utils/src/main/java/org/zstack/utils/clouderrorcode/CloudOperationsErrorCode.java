@@ -12279,11 +12279,15 @@ public class CloudOperationsErrorCode {
     // 10061 ZNS L2 owner change found an invalid L2 ownership reference count
     // 10062 ZNS L2 owner change found an invalid relation ownership reference count
     // 10063 ZNS L2 and relation ownership records are inconsistent
+    // 10064 account cascade cannot prove the outcome of a ZNS reservation
+    // 10065 account cascade failed to compensate an exact ZNS binding
     public static final String ORG_ZSTACK_NETWORK_ZNS_10059 = "ORG_ZSTACK_NETWORK_ZNS_10059";
     public static final String ORG_ZSTACK_NETWORK_ZNS_10060 = "ORG_ZSTACK_NETWORK_ZNS_10060";
     public static final String ORG_ZSTACK_NETWORK_ZNS_10061 = "ORG_ZSTACK_NETWORK_ZNS_10061";
     public static final String ORG_ZSTACK_NETWORK_ZNS_10062 = "ORG_ZSTACK_NETWORK_ZNS_10062";
     public static final String ORG_ZSTACK_NETWORK_ZNS_10063 = "ORG_ZSTACK_NETWORK_ZNS_10063";
+    public static final String ORG_ZSTACK_NETWORK_ZNS_10064 = "ORG_ZSTACK_NETWORK_ZNS_10064";
+    public static final String ORG_ZSTACK_NETWORK_ZNS_10065 = "ORG_ZSTACK_NETWORK_ZNS_10065";
 
     public static final String ORG_ZSTACK_PREMIUM_EXTERNALSERVICE_MARKETPLACE_10000 = "ORG_ZSTACK_PREMIUM_EXTERNALSERVICE_MARKETPLACE_10000";
 
