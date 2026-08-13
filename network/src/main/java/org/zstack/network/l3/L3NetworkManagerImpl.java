@@ -34,6 +34,9 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l2.*;
 import org.zstack.header.network.NetworkDependencyAdmissionExtensionPoint;
 import org.zstack.header.network.NetworkDependencyAdmissionRequest;
+import org.zstack.header.network.NetworkConfigLocalContinuation;
+import org.zstack.header.network.NetworkConfigMutation;
+import org.zstack.header.network.NetworkConfigMutationExtensionPoint;
 import org.zstack.header.network.l3.*;
 import org.zstack.header.network.l3.datatypes.IpCapacityData;
 import org.zstack.header.network.service.GetSdnControllerExtensionPoint;
@@ -594,6 +597,35 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
     private void handle(APICreateL3NetworkMsg msg, NetworkCreateContext context,
                         ReturnValueCompletion<L3NetworkInventory> completion) {
 
+        if (context.getOrigin() == NetworkOperationOrigin.API) {
+            if (msg.getResourceUuid() == null) {
+                msg.setResourceUuid(Platform.getUuid());
+            }
+            NetworkConfigMutation mutation = NetworkConfigMutation.l3Create(
+                    msg.getL2NetworkUuid(), context.getOrigin(), msg.getId(),
+                    msg.getSession() == null ? null : msg.getSession().getAccountUuid(),
+                    msg.getResourceUuid(), msg.getType(), msg.getSystemTags());
+            java.util.concurrent.atomic.AtomicReference<L3NetworkInventory> created =
+                    new java.util.concurrent.atomic.AtomicReference<>();
+            if (mutateNetworkConfig(mutation,
+                    localCompletion -> handle(msg,
+                            NetworkCreateContext.cloudCommit(msg.getId()),
+                            new ReturnValueCompletion<L3NetworkInventory>(localCompletion) {
+                                @Override
+                                public void success(L3NetworkInventory inventory) {
+                                    created.set(inventory);
+                                    localCompletion.success();
+                                }
+
+                                @Override
+                                public void fail(ErrorCode errorCode) {
+                                    localCompletion.fail(errorCode);
+                                }
+                            }), created, completion)) {
+                return;
+            }
+        }
+
         L2NetworkVO l2Vo = Q.New(L2NetworkVO.class).eq(L2NetworkVO_.uuid, msg.getL2NetworkUuid()).find();
         assert l2Vo.getZoneUuid() != null;
 
@@ -700,6 +732,37 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
             }
         }).start();
 
+    }
+
+    private boolean mutateNetworkConfig(NetworkConfigMutation mutation,
+                                        NetworkConfigLocalContinuation continuation,
+                                        java.util.concurrent.atomic.AtomicReference<L3NetworkInventory> result,
+                                        ReturnValueCompletion<L3NetworkInventory> completion) {
+        List<NetworkConfigMutationExtensionPoint> providers = pluginRgty
+                .getExtensionList(NetworkConfigMutationExtensionPoint.class).stream()
+                .filter(provider -> provider.supports(mutation))
+                .collect(java.util.stream.Collectors.toList());
+        if (providers.isEmpty()) {
+            return false;
+        }
+        if (providers.size() != 1) {
+            completion.fail(errf.stringToInternalError(String.format(
+                    "network mutation[%s] matched[%s] providers",
+                    mutation.getKind(), providers.size())));
+            return true;
+        }
+        providers.get(0).mutate(mutation, continuation, new Completion(completion) {
+            @Override
+            public void success() {
+                completion.success(result.get());
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                completion.fail(errorCode);
+            }
+        });
+        return true;
     }
 
     @Override
@@ -887,22 +950,33 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
 
     @Override
     public UsedIpInventory reserveIp(IpRangeVO ipRange, String ip, boolean allowDuplicatedAddress) {
-        NetworkDependencyAdmissionRequest request = new NetworkDependencyAdmissionRequest(
-                ipRange.getL3NetworkUuid(), "UsedIp", null, "RESERVE_IP");
-        for (NetworkDependencyAdmissionExtensionPoint extension :
-                pluginRgty.getExtensionList(NetworkDependencyAdmissionExtensionPoint.class)) {
-            ErrorCode errorCode = extension.admit(request);
-            if (errorCode != null) {
-                throw new CloudRuntimeException(errorCode.getDetails());
+        return reserveIp(ipRange, ip, allowDuplicatedAddress, null, null);
+    }
+
+    @Override
+    public UsedIpInventory reserveIp(IpRangeVO ipRange, String ip, boolean allowDuplicatedAddress,
+                                     String operationUuid, String operationStep) {
+        return new SQLBatchWithReturn<UsedIpInventory>() {
+            @Override
+            protected UsedIpInventory scripts() {
+                NetworkDependencyAdmissionRequest request = new NetworkDependencyAdmissionRequest(
+                        ipRange.getL3NetworkUuid(), "UsedIp", operationUuid,
+                        operationStep == null ? "RESERVE_IP" : operationStep);
+                for (NetworkDependencyAdmissionExtensionPoint extension :
+                        pluginRgty.getExtensionList(NetworkDependencyAdmissionExtensionPoint.class)) {
+                    ErrorCode errorCode = extension.admitWithLock(request);
+                    if (errorCode != null) {
+                        throw new CloudRuntimeException(errorCode.getDetails());
+                    }
+                }
+                if (NetworkUtils.isIpv4Address(ip)) {
+                    return reserveIpv4(ipRange, ip, allowDuplicatedAddress);
+                } else if (IPv6NetworkUtils.isIpv6Address(ip)) {
+                    return reserveIpv6(ipRange, ip, allowDuplicatedAddress);
+                }
+                return null;
             }
-        }
-        if (NetworkUtils.isIpv4Address(ip)) {
-            return reserveIpv4(ipRange, ip, allowDuplicatedAddress);
-        } else if (IPv6NetworkUtils.isIpv6Address(ip)) {
-            return reserveIpv6(ipRange, ip, allowDuplicatedAddress);
-        } else {
-            return null;
-        }
+        }.execute();
     }
 
     @Override

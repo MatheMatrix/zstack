@@ -21,20 +21,20 @@ abstract class ApiHelper {
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
         c()
-        
+
 
         if (System.getProperty("apipath") != null) {
             if (a.apiId == null) {
                 a.apiId = Platform.uuid
             }
-    
+
             def tracker = new ApiPathTracker(a.apiId)
             def out = errorOut(a.call())
             def path = tracker.getApiPath()
             if (!path.isEmpty()) {
                 Test.apiPaths[a.class.name] = path.join(" --->\n")
             }
-        
+
             return out
         } else {
             return errorOut(a.call())
@@ -53309,62 +53309,8 @@ abstract class ApiHelper {
     }
 
 
-    def getCandidateZnsSegments(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.network.zns.GetCandidateZnsSegmentsAction.class) Closure c) {
-        def a = new org.zstack.sdk.network.zns.GetCandidateZnsSegmentsAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-
-    def getZnsSegmentSyncStatus(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.network.zns.GetZnsSegmentSyncStatusAction.class) Closure c) {
-        def a = new org.zstack.sdk.network.zns.GetZnsSegmentSyncStatusAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-
-    def queryZnsSegmentRef(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.network.zns.QueryZnsSegmentRefAction.class) Closure c) {
-        def a = new org.zstack.sdk.network.zns.QueryZnsSegmentRefAction()
+    def queryZnsSegmentCloudProjection(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.network.zns.QueryZnsSegmentCloudProjectionAction.class) Closure c) {
+        def a = new org.zstack.sdk.network.zns.QueryZnsSegmentCloudProjectionAction()
         a.sessionId = Test.currentEnvSpec?.session?.uuid
         c.resolveStrategy = Closure.OWNER_FIRST
         c.delegate = a
@@ -53443,33 +53389,6 @@ abstract class ApiHelper {
                 Test.apiPaths[a.class.name] = path.join(" --->\n")
             }
         
-            return out
-        } else {
-            return errorOut(a.call())
-        }
-    }
-
-
-    def useZnsSegment(@DelegatesTo(strategy = Closure.OWNER_FIRST, value = org.zstack.sdk.network.zns.UseZnsSegmentAction.class) Closure c) {
-        def a = new org.zstack.sdk.network.zns.UseZnsSegmentAction()
-        a.sessionId = Test.currentEnvSpec?.session?.uuid
-        c.resolveStrategy = Closure.OWNER_FIRST
-        c.delegate = a
-        c()
-
-
-        if (System.getProperty("apipath") != null) {
-            if (a.apiId == null) {
-                a.apiId = Platform.uuid
-            }
-
-            def tracker = new ApiPathTracker(a.apiId)
-            def out = errorOut(a.call())
-            def path = tracker.getApiPath()
-            if (!path.isEmpty()) {
-                Test.apiPaths[a.class.name] = path.join(" --->\n")
-            }
-
             return out
         } else {
             return errorOut(a.call())

@@ -4,4 +4,8 @@ import org.zstack.header.errorcode.ErrorCode;
 
 public interface NetworkDependencyAdmissionExtensionPoint {
     ErrorCode admit(NetworkDependencyAdmissionRequest request);
+
+    default ErrorCode admitWithLock(NetworkDependencyAdmissionRequest request) {
+        return admit(request);
+    }
 }

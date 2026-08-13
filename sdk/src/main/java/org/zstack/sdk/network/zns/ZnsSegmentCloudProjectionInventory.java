@@ -1,8 +1,10 @@
 package org.zstack.sdk.network.zns;
 
+import org.zstack.sdk.L2NetworkInventory;
+import org.zstack.sdk.L3NetworkInventory;
+import org.zstack.sdk.network.zns.ZnsSegmentSyncOperationInventory;
 
-
-public class ZnsSegmentRefInventory  {
+public class ZnsSegmentCloudProjectionInventory  {
 
     public java.lang.String uuid;
     public void setUuid(java.lang.String uuid) {
@@ -52,20 +54,28 @@ public class ZnsSegmentRefInventory  {
         return this.l3NetworkUuid;
     }
 
-    public java.lang.String znsTenantRouterUuid;
-    public void setZnsTenantRouterUuid(java.lang.String znsTenantRouterUuid) {
-        this.znsTenantRouterUuid = znsTenantRouterUuid;
-    }
-    public java.lang.String getZnsTenantRouterUuid() {
-        return this.znsTenantRouterUuid;
-    }
-
     public java.lang.String state;
     public void setState(java.lang.String state) {
         this.state = state;
     }
     public java.lang.String getState() {
         return this.state;
+    }
+
+    public java.lang.Long currentConfigVersion;
+    public void setCurrentConfigVersion(java.lang.Long currentConfigVersion) {
+        this.currentConfigVersion = currentConfigVersion;
+    }
+    public java.lang.Long getCurrentConfigVersion() {
+        return this.currentConfigVersion;
+    }
+
+    public java.lang.Long appliedConfigVersion;
+    public void setAppliedConfigVersion(java.lang.Long appliedConfigVersion) {
+        this.appliedConfigVersion = appliedConfigVersion;
+    }
+    public java.lang.Long getAppliedConfigVersion() {
+        return this.appliedConfigVersion;
     }
 
     public java.lang.String operationUuid;
@@ -82,14 +92,6 @@ public class ZnsSegmentRefInventory  {
     }
     public java.lang.String getOperationStep() {
         return this.operationStep;
-    }
-
-    public java.lang.Long appliedConfigVersion;
-    public void setAppliedConfigVersion(java.lang.Long appliedConfigVersion) {
-        this.appliedConfigVersion = appliedConfigVersion;
-    }
-    public java.lang.Long getAppliedConfigVersion() {
-        return this.appliedConfigVersion;
     }
 
     public java.lang.String lastErrorCode;
@@ -122,6 +124,30 @@ public class ZnsSegmentRefInventory  {
     }
     public java.sql.Timestamp getLastOpDate() {
         return this.lastOpDate;
+    }
+
+    public L2NetworkInventory l2Network;
+    public void setL2Network(L2NetworkInventory l2Network) {
+        this.l2Network = l2Network;
+    }
+    public L2NetworkInventory getL2Network() {
+        return this.l2Network;
+    }
+
+    public L3NetworkInventory l3Network;
+    public void setL3Network(L3NetworkInventory l3Network) {
+        this.l3Network = l3Network;
+    }
+    public L3NetworkInventory getL3Network() {
+        return this.l3Network;
+    }
+
+    public ZnsSegmentSyncOperationInventory operation;
+    public void setOperation(ZnsSegmentSyncOperationInventory operation) {
+        this.operation = operation;
+    }
+    public ZnsSegmentSyncOperationInventory getOperation() {
+        return this.operation;
     }
 
 }

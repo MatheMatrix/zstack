@@ -127,7 +127,7 @@ public class NormalIpRangeFactory implements IpRangeFactory {
 
             @Override
             public void run(FlowTrigger trigger, Map data) {
-                if (context.isProjection()) {
+                if (context.isRemoteWriteSuppressed()) {
                     trigger.next();
                     return;
                 }
@@ -158,7 +158,7 @@ public class NormalIpRangeFactory implements IpRangeFactory {
 
             @Override
             public void run(FlowTrigger trigger, Map data) {
-                if (context.isProjection()) {
+                if (context.isRemoteWriteSuppressed()) {
                     trigger.next();
                     return;
                 }

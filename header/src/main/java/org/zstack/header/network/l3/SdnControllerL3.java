@@ -16,4 +16,22 @@ public interface SdnControllerL3 {
         createIpRange(inv, completion);
     }
     void deleteIpRange(IpRangeInventory inv, Completion completion);
+
+    default void deleteIpRange(IpRangeInventory inv, boolean lastIpRange, Completion completion) {
+        if (lastIpRange) {
+            deleteIpRange(inv, new Completion(completion) {
+                @Override
+                public void success() {
+                    completion.success();
+                }
+
+                @Override
+                public void fail(org.zstack.header.errorcode.ErrorCode errorCode) {
+                    completion.success();
+                }
+            });
+        } else {
+            completion.success();
+        }
+    }
 }

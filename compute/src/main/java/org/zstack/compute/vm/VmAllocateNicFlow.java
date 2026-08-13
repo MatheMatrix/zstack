@@ -10,6 +10,7 @@ import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.DatabaseFacade;
 import org.zstack.core.db.SQLBatch;
+import org.zstack.core.db.SQLBatchWithReturn;
 import org.zstack.core.errorcode.ErrorFacade;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.WhileDoneCompletion;
@@ -18,6 +19,7 @@ import org.zstack.header.core.workflow.FlowRollback;
 import org.zstack.header.core.workflow.FlowTrigger;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
+import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.image.ImagePlatform;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.network.l3.*;
@@ -123,31 +125,53 @@ public class VmAllocateNicFlow implements Flow {
                 return;
             }
 
-            ErrorCode admissionError = admitDependency(nw.getUuid(),
-                    NetworkDependencyAdmissionRequest.DEPENDENCY_VM_NIC, null,
-                    NetworkDependencyAdmissionRequest.OPERATION_CREATE_VM_NIC);
-            if (admissionError != null) {
-                errs.add(admissionError);
+            // Persist VmNicVO first so that ResourceVO entry exists before extensions
+            // (e.g. SDN controllers) attempt to create SystemTags referencing the NIC UUID.
+            VmNicVO nicVO;
+            try {
+                nicVO = new SQLBatchWithReturn<VmNicVO>() {
+                    @Override
+                    protected VmNicVO scripts() {
+                        ErrorCode admissionError = admitDependency(nw.getUuid(),
+                                NetworkDependencyAdmissionRequest.DEPENDENCY_VM_NIC, null,
+                                NetworkDependencyAdmissionRequest.OPERATION_CREATE_VM_NIC);
+                        if (admissionError != null) {
+                            throw new OperationFailureException(admissionError);
+                        }
+                        return vnicFactory.createVmNic(nic, spec);
+                    }
+                }.execute();
+            } catch (OperationFailureException e) {
+                errs.add(e.getErrorCode());
                 wcomp.allDone();
                 return;
             }
 
-            // Persist VmNicVO first so that ResourceVO entry exists before extensions
-            // (e.g. SDN controllers) attempt to create SystemTags referencing the NIC UUID.
-            VmNicVO nicVO = vnicFactory.createVmNic(nic, spec);
-
             callBeforeAllocateVmNicExtensions(nic, spec, new Completion(wcomp) {
                 @Override
                 public void success() {
-                    new SQLBatch() {
-                        @Override
-                        protected void scripts() {
-                            persistStaticIpIfNeeded(nic, nicVO, nw, nicNetworkInfoMap, spec);
-                            nics.add(nic);
-                            VmNicVO updated = dbf.updateAndRefresh(nicVO);
-                            addVmNicConfig(updated, spec, nicSpec);
-                        }
-                    }.execute();
+                    try {
+                        new SQLBatch() {
+                            @Override
+                            protected void scripts() {
+                                ErrorCode admissionError = admitDependency(nw.getUuid(),
+                                        NetworkDependencyAdmissionRequest.DEPENDENCY_VM_NIC,
+                                        null, NetworkDependencyAdmissionRequest.OPERATION_CREATE_VM_NIC);
+                                if (admissionError != null) {
+                                    throw new OperationFailureException(admissionError);
+                                }
+                                persistStaticIpIfNeeded(nic, nicVO, nw, nicNetworkInfoMap, spec);
+                                VmNicVO updated = dbf.updateAndRefresh(nicVO);
+                                addVmNicConfig(updated, spec, nicSpec);
+                            }
+                        }.execute();
+                    } catch (OperationFailureException e) {
+                        dbf.removeByPrimaryKey(nicVO.getUuid(), VmNicVO.class);
+                        errs.add(e.getErrorCode());
+                        wcomp.allDone();
+                        return;
+                    }
+                    nics.add(nic);
                     if (customMac != null) {
                         mo.deleteCustomMacSystemTag(spec.getVmInventory().getUuid(), nw.getUuid(), customMac);
                     }
@@ -279,7 +303,7 @@ public class VmAllocateNicFlow implements Flow {
                     NetworkDependencyAdmissionRequest.DEPENDENCY_VM_NIC_QOS, null,
                     NetworkDependencyAdmissionRequest.OPERATION_ADD_VM_NIC_QOS);
             if (admissionError != null) {
-                throw new org.zstack.header.exception.CloudRuntimeException(admissionError.getDetails());
+                throw new OperationFailureException(admissionError);
             }
         }
 
@@ -297,12 +321,13 @@ public class VmAllocateNicFlow implements Flow {
         }
     }
 
-    private ErrorCode admitDependency(String resourceUuid, String dependencyType, String operationUuid, String operationStep) {
+    private ErrorCode admitDependency(String resourceUuid, String dependencyType, String operationUuid,
+                                      String operationStep) {
         NetworkDependencyAdmissionRequest request = new NetworkDependencyAdmissionRequest(
                 resourceUuid, dependencyType, operationUuid, operationStep);
         for (NetworkDependencyAdmissionExtensionPoint extension :
                 pluginRgty.getExtensionList(NetworkDependencyAdmissionExtensionPoint.class)) {
-            ErrorCode errorCode = extension.admit(request);
+            ErrorCode errorCode = extension.admitWithLock(request);
             if (errorCode != null) {
                 return errorCode;
             }

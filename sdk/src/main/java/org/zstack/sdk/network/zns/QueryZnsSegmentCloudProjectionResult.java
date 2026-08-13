@@ -2,7 +2,7 @@ package org.zstack.sdk.network.zns;
 
 
 
-public class QueryZnsSegmentRefResult {
+public class QueryZnsSegmentCloudProjectionResult {
     public java.util.List inventories;
     public void setInventories(java.util.List inventories) {
         this.inventories = inventories;

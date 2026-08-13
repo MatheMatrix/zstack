@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS `zstack`.`SnmpEngineVO` (
     `lastOpDate` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 -- ZNS segment binding state and controller inventory
 
 CREATE TABLE IF NOT EXISTS `zstack`.`ZnsControllerStateVO` (
@@ -75,14 +76,15 @@ CREATE TABLE IF NOT EXISTS `zstack`.`ZnsSegmentRefVO` (
     `operationUuid` varchar(36) DEFAULT NULL,
     `operationStep` varchar(32) DEFAULT NULL,
     `operationDigest` varchar(64) DEFAULT NULL,
+    `currentConfigVersion` bigint DEFAULT NULL,
     `appliedConfigVersion` bigint DEFAULT NULL,
     `lastErrorCode` varchar(128) DEFAULT NULL,
     `lastErrorDetails` text DEFAULT NULL,
     `createDate` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00',
     `lastOpDate` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`uuid`),
-    UNIQUE KEY `uk_zns_seg_ref_controller_segment_zone`
-        (`sdnControllerUuid`, `znsSegmentUuid`, `zoneUuid`),
+    UNIQUE KEY `uk_zns_seg_ref_controller_segment`
+        (`sdnControllerUuid`, `znsSegmentUuid`),
     UNIQUE KEY `uk_zns_seg_ref_l2` (`l2NetworkUuid`),
     KEY `idx_zns_seg_ref_account` (`accountUuid`),
     KEY `idx_zns_seg_ref_state` (`sdnControllerUuid`, `state`),
@@ -91,3 +93,5 @@ CREATE TABLE IF NOT EXISTS `zstack`.`ZnsSegmentRefVO` (
     CONSTRAINT `chk_zns_seg_ref_segment_state`
         CHECK (`znsSegmentUuid` IS NOT NULL OR `state` = 'MigrationFailed')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CALL ADD_COLUMN('ZnsSegmentRefVO', 'currentConfigVersion', 'BIGINT', 1, NULL);

@@ -41,6 +41,9 @@ import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.network.l3.L3NetworkVO_;
 import org.zstack.header.network.NetworkDependencyAdmissionExtensionPoint;
 import org.zstack.header.network.NetworkDependencyAdmissionRequest;
+import org.zstack.header.network.NetworkConfigLocalContinuation;
+import org.zstack.header.network.NetworkConfigMutation;
+import org.zstack.header.network.NetworkConfigMutationExtensionPoint;
 import org.zstack.network.l3.ServiceTypeExtensionPoint;
 import org.zstack.utils.Utils;
 import org.zstack.utils.logging.CLogger;
@@ -462,12 +465,36 @@ public class L2NoVlanNetwork implements L2Network {
 
             @Override
             public void run(SyncTaskChain chain) {
-                extpEmitter.beforeUpdate(getSelfInventory());
-                changeL2NetworkVlanId(msg, new Completion(chain) {
+                L2NetworkInventory target = getSelfInventory();
+                target.setType(msg.getType());
+                target.setVirtualNetworkId(msg.getVlan() == null ? 0 : msg.getVlan());
+                NetworkConfigMutation mutation = NetworkConfigMutation.encapsulation(
+                        msg.getL2NetworkUuid(), NetworkOperationOrigin.API, msg.getId(),
+                        msg.getSession() == null ? null : msg.getSession().getAccountUuid(),
+                        target.getType(), target.getVirtualNetworkId());
+                mutateNetworkConfig(mutation, localCompletion -> {
+                    try {
+                        extpEmitter.beforeUpdate(target);
+                    } catch (OperationFailureException e) {
+                        localCompletion.fail(e.getErrorCode());
+                        return;
+                    }
+                    changeL2NetworkVlanId(msg, new Completion(localCompletion) {
+                        @Override
+                        public void success() {
+                            changeL2NetworkVlanIdInDb(msg);
+                            extpEmitter.afterUpdate(getSelfInventory());
+                            localCompletion.success();
+                        }
+
+                        @Override
+                        public void fail(ErrorCode errorCode) {
+                            localCompletion.fail(errorCode);
+                        }
+                    });
+                }, new Completion(chain) {
                     @Override
                     public void success() {
-                        changeL2NetworkVlanIdInDb(msg);
-                        extpEmitter.afterUpdate(getSelfInventory());
                         event.setInventory(getSelfInventory());
                         bus.publish(event);
                         chain.next();
@@ -487,6 +514,26 @@ public class L2NoVlanNetwork implements L2Network {
                 return getSyncSignature();
             }
         });
+    }
+
+    protected void mutateNetworkConfig(NetworkConfigMutation mutation,
+                                       NetworkConfigLocalContinuation continuation,
+                                       Completion completion) {
+        List<NetworkConfigMutationExtensionPoint> providers = pluginRgty
+                .getExtensionList(NetworkConfigMutationExtensionPoint.class).stream()
+                .filter(provider -> provider.supports(mutation))
+                .collect(Collectors.toList());
+        if (providers.isEmpty()) {
+            continuation.run(completion);
+            return;
+        }
+        if (providers.size() != 1) {
+            completion.fail(errf.stringToInternalError(String.format(
+                    "network mutation[%s] matched[%s] providers",
+                    mutation.getKind(), providers.size())));
+            return;
+        }
+        providers.get(0).mutate(mutation, continuation, completion);
     }
 
     private void handle(APIUpdateL2NetworkMsg msg) {
@@ -946,7 +993,8 @@ public class L2NoVlanNetwork implements L2Network {
 
     private void  attachL2NetworkToCluster(final AttachL2NetworkToClusterMsg msg, final Completion completion){
         NetworkDependencyAdmissionRequest admission = new NetworkDependencyAdmissionRequest(
-                msg.getL2NetworkUuid(), "ClusterAttach", null, "ATTACH_CLUSTER");
+                msg.getL2NetworkUuid(), "ClusterAttach", msg.getOperationUuid(),
+                msg.getOperationStep() == null ? "ATTACH_CLUSTER" : msg.getOperationStep());
         for (NetworkDependencyAdmissionExtensionPoint extension :
                 pluginRgty.getExtensionList(NetworkDependencyAdmissionExtensionPoint.class)) {
             ErrorCode errorCode = extension.admit(admission);
@@ -1068,11 +1116,31 @@ public class L2NoVlanNetwork implements L2Network {
         prepareL2NetworkOnHosts(hvinvs, msg.getL2ProviderType(), new Completion(msg,completion) {
             @Override
             public void success() {
-                L2NetworkClusterRefVO rvo = new L2NetworkClusterRefVO();
-                rvo.setClusterUuid(msg.getClusterUuid());
-                rvo.setL2NetworkUuid(self.getUuid());
-                rvo.setL2ProviderType(msg.getL2ProviderType());
-                dbf.persist(rvo);
+                try {
+                    new SQLBatch() {
+                        @Override
+                        protected void scripts() {
+                            NetworkDependencyAdmissionRequest admission = new NetworkDependencyAdmissionRequest(
+                                    msg.getL2NetworkUuid(), "ClusterAttach", msg.getOperationUuid(),
+                                    msg.getOperationStep() == null ? "ATTACH_CLUSTER" : msg.getOperationStep());
+                            for (NetworkDependencyAdmissionExtensionPoint extension :
+                                    pluginRgty.getExtensionList(NetworkDependencyAdmissionExtensionPoint.class)) {
+                                ErrorCode errorCode = extension.admitWithLock(admission);
+                                if (errorCode != null) {
+                                    throw new OperationFailureException(errorCode);
+                                }
+                            }
+                            L2NetworkClusterRefVO rvo = new L2NetworkClusterRefVO();
+                            rvo.setClusterUuid(msg.getClusterUuid());
+                            rvo.setL2NetworkUuid(self.getUuid());
+                            rvo.setL2ProviderType(msg.getL2ProviderType());
+                            persist(rvo);
+                        }
+                    }.execute();
+                } catch (OperationFailureException e) {
+                    completion.fail(e.getErrorCode());
+                    return;
+                }
                 logger.debug(String.format("successfully attached L2Network[uuid:%s] to cluster [uuid:%s]", self.getUuid(), msg.getClusterUuid()));
                 self = dbf.findByUuid(self.getUuid(), L2NetworkVO.class);
                 completion.success();

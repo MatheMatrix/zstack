@@ -3,6 +3,7 @@ package org.zstack.network.l2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.header.Component;
+import org.zstack.header.core.Completion;
 import org.zstack.header.network.l2.L2NetworkDeleteExtensionPoint;
 import org.zstack.header.network.l2.L2NetworkException;
 import org.zstack.header.network.l2.L2NetworkInventory;
@@ -65,6 +66,28 @@ public class L2NetworkExtensionPointEmitter implements Component {
                         ext.getClass().getCanonicalName()), e);
             }
         }
+    }
+
+    public void beforeUpdate(final L2NetworkInventory inv, Completion completion) {
+        beforeUpdate(inv, 0, completion);
+    }
+
+    private void beforeUpdate(final L2NetworkInventory inv, int index, Completion completion) {
+        if (index >= updateExtensions.size()) {
+            completion.success();
+            return;
+        }
+        updateExtensions.get(index).beforeChangeL2NetworkVlanId(inv, new Completion(completion) {
+            @Override
+            public void success() {
+                beforeUpdate(inv, index + 1, completion);
+            }
+
+            @Override
+            public void fail(org.zstack.header.errorcode.ErrorCode errorCode) {
+                completion.fail(errorCode);
+            }
+        });
     }
 
     public void afterUpdate(final L2NetworkInventory inv) {

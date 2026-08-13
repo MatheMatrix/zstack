@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class GetZnsSegmentSyncStatusAction extends AbstractAction {
+public class QueryZnsSegmentCloudProjectionAction extends QueryAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class GetZnsSegmentSyncStatusAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.network.zns.GetZnsSegmentSyncStatusResult value;
+        public org.zstack.sdk.network.zns.QueryZnsSegmentCloudProjectionResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -25,26 +25,6 @@ public class GetZnsSegmentSyncStatusAction extends AbstractAction {
         }
     }
 
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String uuid;
-
-    @Param(required = false)
-    public java.util.List systemTags;
-
-    @Param(required = false)
-    public java.util.List userTags;
-
-    @Param(required = false)
-    public String sessionId;
-
-    @Param(required = false)
-    public String accessKeyId;
-
-    @Param(required = false)
-    public String accessKeySecret;
-
-    @Param(required = false)
-    public String requestIp;
 
 
     private Result makeResult(ApiResult res) {
@@ -54,8 +34,8 @@ public class GetZnsSegmentSyncStatusAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.network.zns.GetZnsSegmentSyncStatusResult value = res.getResult(org.zstack.sdk.network.zns.GetZnsSegmentSyncStatusResult.class);
-        ret.value = value == null ? new org.zstack.sdk.network.zns.GetZnsSegmentSyncStatusResult() : value; 
+        org.zstack.sdk.network.zns.QueryZnsSegmentCloudProjectionResult value = res.getResult(org.zstack.sdk.network.zns.QueryZnsSegmentCloudProjectionResult.class);
+        ret.value = value == null ? new org.zstack.sdk.network.zns.QueryZnsSegmentCloudProjectionResult() : value;
 
         return ret;
     }
@@ -85,7 +65,7 @@ public class GetZnsSegmentSyncStatusAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "GET";
-        info.path = "/zns-segment-refs/{uuid}/sync-status";
+        info.path = "/zns-segment-cloud-projections";
         info.needSession = true;
         info.needPoll = false;
         info.parameterName = "";
