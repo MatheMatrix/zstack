@@ -4,12 +4,28 @@ package org.zstack.sdk.network.zns;
 
 public class ZnsSegmentCandidateInventory  {
 
-    public java.lang.String uuid;
-    public void setUuid(java.lang.String uuid) {
-        this.uuid = uuid;
+    public java.lang.String znsSegmentUuid;
+    public void setZnsSegmentUuid(java.lang.String znsSegmentUuid) {
+        this.znsSegmentUuid = znsSegmentUuid;
     }
-    public java.lang.String getUuid() {
-        return this.uuid;
+    public java.lang.String getZnsSegmentUuid() {
+        return this.znsSegmentUuid;
+    }
+
+    public java.lang.String sdnControllerUuid;
+    public void setSdnControllerUuid(java.lang.String sdnControllerUuid) {
+        this.sdnControllerUuid = sdnControllerUuid;
+    }
+    public java.lang.String getSdnControllerUuid() {
+        return this.sdnControllerUuid;
+    }
+
+    public java.lang.String zoneUuid;
+    public void setZoneUuid(java.lang.String zoneUuid) {
+        this.zoneUuid = zoneUuid;
+    }
+    public java.lang.String getZoneUuid() {
+        return this.zoneUuid;
     }
 
     public java.lang.String name;
@@ -42,6 +58,14 @@ public class ZnsSegmentCandidateInventory  {
     }
     public java.lang.String getReasonCode() {
         return this.reasonCode;
+    }
+
+    public java.sql.Timestamp lastSeenDate;
+    public void setLastSeenDate(java.sql.Timestamp lastSeenDate) {
+        this.lastSeenDate = lastSeenDate;
+    }
+    public java.sql.Timestamp getLastSeenDate() {
+        return this.lastSeenDate;
     }
 
 }

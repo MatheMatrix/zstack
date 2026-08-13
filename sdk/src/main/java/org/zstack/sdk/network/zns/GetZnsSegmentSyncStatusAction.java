@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.zstack.sdk.*;
 
-public class GetCandidateZnsSegmentsAction extends AbstractAction {
+public class GetZnsSegmentSyncStatusAction extends AbstractAction {
 
     private static final HashMap<String, Parameter> parameterMap = new HashMap<>();
 
@@ -12,7 +12,7 @@ public class GetCandidateZnsSegmentsAction extends AbstractAction {
 
     public static class Result {
         public ErrorCode error;
-        public org.zstack.sdk.network.zns.GetCandidateZnsSegmentsResult value;
+        public org.zstack.sdk.network.zns.GetZnsSegmentSyncStatusResult value;
 
         public Result throwExceptionIfError() {
             if (error != null) {
@@ -26,19 +26,7 @@ public class GetCandidateZnsSegmentsAction extends AbstractAction {
     }
 
     @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String sdnControllerUuid;
-
-    @Param(required = true, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String zoneUuid;
-
-    @Param(required = false, maxLength = 255, nonempty = false, nullElements = false, emptyString = true, noTrim = false)
-    public java.lang.String keyword;
-
-    @Param(required = false)
-    public java.lang.Integer limit = 20;
-
-    @Param(required = false)
-    public java.lang.Integer start = 0;
+    public java.lang.String uuid;
 
     @Param(required = false)
     public java.util.List systemTags;
@@ -66,8 +54,8 @@ public class GetCandidateZnsSegmentsAction extends AbstractAction {
             return ret;
         }
         
-        org.zstack.sdk.network.zns.GetCandidateZnsSegmentsResult value = res.getResult(org.zstack.sdk.network.zns.GetCandidateZnsSegmentsResult.class);
-        ret.value = value == null ? new org.zstack.sdk.network.zns.GetCandidateZnsSegmentsResult() : value; 
+        org.zstack.sdk.network.zns.GetZnsSegmentSyncStatusResult value = res.getResult(org.zstack.sdk.network.zns.GetZnsSegmentSyncStatusResult.class);
+        ret.value = value == null ? new org.zstack.sdk.network.zns.GetZnsSegmentSyncStatusResult() : value; 
 
         return ret;
     }
@@ -97,7 +85,7 @@ public class GetCandidateZnsSegmentsAction extends AbstractAction {
     protected RestInfo getRestInfo() {
         RestInfo info = new RestInfo();
         info.httpMethod = "GET";
-        info.path = "/sdn-controllers/{sdnControllerUuid}/zns-segment-candidates";
+        info.path = "/zns-segment-refs/{uuid}/sync-status";
         info.needSession = true;
         info.needPoll = false;
         info.parameterName = "";

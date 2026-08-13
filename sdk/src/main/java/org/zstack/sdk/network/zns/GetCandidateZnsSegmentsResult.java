@@ -11,4 +11,12 @@ public class GetCandidateZnsSegmentsResult {
         return this.candidates;
     }
 
+    public long total;
+    public void setTotal(long total) {
+        this.total = total;
+    }
+    public long getTotal() {
+        return this.total;
+    }
+
 }
