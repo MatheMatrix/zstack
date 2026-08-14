@@ -109,10 +109,14 @@ public class RESTFacadeImpl implements RESTFacade {
 
         default void handle(HttpEntity<String> entity, HttpServletResponse response) {
             String body = handle(entity);
-            if (body == null) {
-                response.setStatus(HttpStatus.SC_OK);
-            } else {
-                response.setStatus(HttpStatus.SC_OK, body);
+            response.setStatus(HttpStatus.SC_OK);
+            if (body != null) {
+                response.setContentType(RESTConstant.APP_JSON_UTF8);
+                try {
+                    response.getWriter().write(body);
+                } catch (IOException e) {
+                    throw new CloudRuntimeException(e);
+                }
             }
         }
 

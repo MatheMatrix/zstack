@@ -27,7 +27,7 @@ public interface SdnControllerL3 {
 
                 @Override
                 public void fail(org.zstack.header.errorcode.ErrorCode errorCode) {
-                    completion.success();
+                    completion.fail(errorCode);
                 }
             });
         } else {
