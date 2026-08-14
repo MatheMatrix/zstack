@@ -32,8 +32,7 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l2.*;
-import org.zstack.header.network.NetworkDependencyAdmissionExtensionPoint;
-import org.zstack.header.network.NetworkDependencyAdmissionRequest;
+import org.zstack.header.network.NetworkDeleteGuardExtensionPoint;
 import org.zstack.header.network.NetworkConfigLocalContinuation;
 import org.zstack.header.network.NetworkConfigMutation;
 import org.zstack.header.network.NetworkConfigMutationExtensionPoint;
@@ -959,12 +958,9 @@ public class L3NetworkManagerImpl extends AbstractService implements L3NetworkMa
         return new SQLBatchWithReturn<UsedIpInventory>() {
             @Override
             protected UsedIpInventory scripts() {
-                NetworkDependencyAdmissionRequest request = new NetworkDependencyAdmissionRequest(
-                        ipRange.getL3NetworkUuid(), "UsedIp", operationUuid,
-                        operationStep == null ? "RESERVE_IP" : operationStep);
-                for (NetworkDependencyAdmissionExtensionPoint extension :
-                        pluginRgty.getExtensionList(NetworkDependencyAdmissionExtensionPoint.class)) {
-                    ErrorCode errorCode = extension.admitWithLock(request);
+                for (NetworkDeleteGuardExtensionPoint extension :
+                        pluginRgty.getExtensionList(NetworkDeleteGuardExtensionPoint.class)) {
+                    ErrorCode errorCode = extension.checkL3NetworkWithLock(ipRange.getL3NetworkUuid());
                     if (errorCode != null) {
                         throw new CloudRuntimeException(errorCode.getDetails());
                     }

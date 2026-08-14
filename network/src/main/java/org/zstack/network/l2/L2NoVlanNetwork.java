@@ -39,8 +39,6 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.network.l2.*;
 import org.zstack.header.network.l3.L3NetworkVO;
 import org.zstack.header.network.l3.L3NetworkVO_;
-import org.zstack.header.network.NetworkDependencyAdmissionExtensionPoint;
-import org.zstack.header.network.NetworkDependencyAdmissionRequest;
 import org.zstack.header.network.NetworkConfigLocalContinuation;
 import org.zstack.header.network.NetworkConfigMutation;
 import org.zstack.header.network.NetworkConfigMutationExtensionPoint;
@@ -995,17 +993,6 @@ public class L2NoVlanNetwork implements L2Network {
     }
 
     private void  attachL2NetworkToCluster(final AttachL2NetworkToClusterMsg msg, final Completion completion){
-        NetworkDependencyAdmissionRequest admission = new NetworkDependencyAdmissionRequest(
-                msg.getL2NetworkUuid(), "ClusterAttach", msg.getOperationUuid(),
-                msg.getOperationStep() == null ? "ATTACH_CLUSTER" : msg.getOperationStep());
-        for (NetworkDependencyAdmissionExtensionPoint extension :
-                pluginRgty.getExtensionList(NetworkDependencyAdmissionExtensionPoint.class)) {
-            ErrorCode errorCode = extension.admit(admission);
-            if (errorCode != null) {
-                completion.fail(errorCode);
-                return;
-            }
-        }
         long count = Q.New(L2NetworkClusterRefVO.class).eq(L2NetworkClusterRefVO_.clusterUuid, msg.getClusterUuid())
                 .eq(L2NetworkClusterRefVO_.l2NetworkUuid, msg.getL2NetworkUuid()).count();
         if (count != 0) {
@@ -1123,16 +1110,6 @@ public class L2NoVlanNetwork implements L2Network {
                     new SQLBatch() {
                         @Override
                         protected void scripts() {
-                            NetworkDependencyAdmissionRequest admission = new NetworkDependencyAdmissionRequest(
-                                    msg.getL2NetworkUuid(), "ClusterAttach", msg.getOperationUuid(),
-                                    msg.getOperationStep() == null ? "ATTACH_CLUSTER" : msg.getOperationStep());
-                            for (NetworkDependencyAdmissionExtensionPoint extension :
-                                    pluginRgty.getExtensionList(NetworkDependencyAdmissionExtensionPoint.class)) {
-                                ErrorCode errorCode = extension.admitWithLock(admission);
-                                if (errorCode != null) {
-                                    throw new OperationFailureException(errorCode);
-                                }
-                            }
                             L2NetworkClusterRefVO rvo = new L2NetworkClusterRefVO();
                             rvo.setClusterUuid(msg.getClusterUuid());
                             rvo.setL2NetworkUuid(self.getUuid());

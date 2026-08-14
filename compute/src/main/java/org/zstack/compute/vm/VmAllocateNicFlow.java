@@ -23,8 +23,7 @@ import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.image.ImagePlatform;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.network.l3.*;
-import org.zstack.header.network.NetworkDependencyAdmissionExtensionPoint;
-import org.zstack.header.network.NetworkDependencyAdmissionRequest;
+import org.zstack.header.network.NetworkDeleteGuardExtensionPoint;
 import org.zstack.header.vm.*;
 import org.zstack.network.l3.L3NetworkManager;
 import org.zstack.resourceconfig.ResourceConfig;
@@ -98,8 +97,6 @@ public class VmAllocateNicFlow implements Flow {
         data.put(VmInstanceConstant.Params.VmAllocateNicFlow_nics.toString(), nics);
         List<ErrorCode> errs = new ArrayList<>();
         List<String> vmSystemTags = spec.getMessage() instanceof APIMessage ? ((APIMessage) spec.getMessage()).getSystemTags() : null;
-        String operationUuid = spec.getMessage() == null ? null : spec.getMessage().getId();
-
         new While<>(VmNicSpec.getFirstL3NetworkInventoryOfSpec(spec.getL3Networks())).each((nicSpec, wcomp) -> {
             L3NetworkInventory nw = nicSpec.getL3Invs().get(0);
             int deviceId = deviceIdBitmap.nextClearBit(0);
@@ -133,11 +130,9 @@ public class VmAllocateNicFlow implements Flow {
                 nicVO = new SQLBatchWithReturn<VmNicVO>() {
                     @Override
                     protected VmNicVO scripts() {
-                        ErrorCode admissionError = admitDependency(nw.getUuid(),
-                                NetworkDependencyAdmissionRequest.DEPENDENCY_VM_NIC, operationUuid,
-                                NetworkDependencyAdmissionRequest.OPERATION_CREATE_VM_NIC);
-                        if (admissionError != null) {
-                            throw new OperationFailureException(admissionError);
+                        ErrorCode guardError = checkNetworkDeleteGuards(nw.getUuid(), true);
+                        if (guardError != null) {
+                            throw new OperationFailureException(guardError);
                         }
                         return vnicFactory.createVmNic(nic, spec);
                     }
@@ -155,15 +150,13 @@ public class VmAllocateNicFlow implements Flow {
                         new SQLBatch() {
                             @Override
                             protected void scripts() {
-                                ErrorCode admissionError = admitDependency(nw.getUuid(),
-                                        NetworkDependencyAdmissionRequest.DEPENDENCY_VM_NIC,
-                                        operationUuid, NetworkDependencyAdmissionRequest.OPERATION_CREATE_VM_NIC);
-                                if (admissionError != null) {
-                                    throw new OperationFailureException(admissionError);
+                                ErrorCode guardError = checkNetworkDeleteGuards(nw.getUuid(), true);
+                                if (guardError != null) {
+                                    throw new OperationFailureException(guardError);
                                 }
                                 persistStaticIpIfNeeded(nic, nicVO, nw, nicNetworkInfoMap, spec);
                                 VmNicVO updated = dbf.updateAndRefresh(nicVO);
-                                addVmNicConfig(updated, spec, nicSpec, operationUuid);
+                                addVmNicConfig(updated, spec, nicSpec);
                             }
                         }.execute();
                     } catch (OperationFailureException e) {
@@ -287,8 +280,7 @@ public class VmAllocateNicFlow implements Flow {
         }
     }
 
-    private void addVmNicConfig(VmNicVO vmNicVO, VmInstanceSpec vmSpec, VmNicSpec nicSpec,
-                                String operationUuid) {
+    private void addVmNicConfig(VmNicVO vmNicVO, VmInstanceSpec vmSpec, VmNicSpec nicSpec) {
         if (nicSpec == null) {
             return;
         }
@@ -301,12 +293,9 @@ public class VmAllocateNicFlow implements Flow {
         VmNicParam vmNicParm = vmNicParms.get(0);
 
         if (vmNicParm.getInboundBandwidth() != null || vmNicParm.getOutboundBandwidth() != null) {
-            ErrorCode admissionError = admitDependency(vmNicVO.getL3NetworkUuid(),
-                    NetworkDependencyAdmissionRequest.DEPENDENCY_VM_NIC_QOS,
-                    operationUuid,
-                    NetworkDependencyAdmissionRequest.OPERATION_ADD_VM_NIC_QOS);
-            if (admissionError != null) {
-                throw new OperationFailureException(admissionError);
+            ErrorCode qosError = validateVmNicQos(vmNicVO.getL3NetworkUuid());
+            if (qosError != null) {
+                throw new OperationFailureException(qosError);
             }
         }
 
@@ -324,13 +313,22 @@ public class VmAllocateNicFlow implements Flow {
         }
     }
 
-    private ErrorCode admitDependency(String resourceUuid, String dependencyType, String operationUuid,
-                                      String operationStep) {
-        NetworkDependencyAdmissionRequest request = new NetworkDependencyAdmissionRequest(
-                resourceUuid, dependencyType, operationUuid, operationStep);
-        for (NetworkDependencyAdmissionExtensionPoint extension :
-                pluginRgty.getExtensionList(NetworkDependencyAdmissionExtensionPoint.class)) {
-            ErrorCode errorCode = extension.admitWithLock(request);
+    private ErrorCode checkNetworkDeleteGuards(String l3NetworkUuid, boolean lock) {
+        for (NetworkDeleteGuardExtensionPoint extension :
+                pluginRgty.getExtensionList(NetworkDeleteGuardExtensionPoint.class)) {
+            ErrorCode errorCode = lock ? extension.checkL3NetworkWithLock(l3NetworkUuid)
+                    : extension.checkL3Network(l3NetworkUuid);
+            if (errorCode != null) {
+                return errorCode;
+            }
+        }
+        return null;
+    }
+
+    private ErrorCode validateVmNicQos(String l3NetworkUuid) {
+        for (VmNicQosConfigExtensionPoint extension :
+                pluginRgty.getExtensionList(VmNicQosConfigExtensionPoint.class)) {
+            ErrorCode errorCode = extension.validateVmNicQos(l3NetworkUuid);
             if (errorCode != null) {
                 return errorCode;
             }

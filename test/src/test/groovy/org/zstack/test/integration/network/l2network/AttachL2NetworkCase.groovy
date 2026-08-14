@@ -2,15 +2,11 @@ package org.zstack.test.integration.network.l2network
 
 import org.springframework.http.HttpEntity
 import org.zstack.core.asyncbatch.While
-import org.zstack.core.componentloader.PluginRegistry
 import org.zstack.core.db.DatabaseFacade
 import org.zstack.core.db.Q
 import org.zstack.header.core.NoErrorCompletion
 import org.zstack.header.core.NopeWhileDoneCompletion
 import org.zstack.header.core.WhileCompletion
-import org.zstack.header.errorcode.ErrorCode
-import org.zstack.header.network.NetworkDependencyAdmissionExtensionPoint
-import org.zstack.header.network.NetworkDependencyAdmissionRequest
 import org.zstack.header.network.l2.L2NetworkClusterRefVO
 import org.zstack.header.network.l2.L2NetworkClusterRefVO_
 import org.zstack.kvm.KVMAgentCommands
@@ -201,31 +197,6 @@ public class AttachL2NetworkCase extends SubCase{
         }
     }
 
-    void testAttachL2NetworkReturnsFailureWhenAdmissionThrows() {
-        L2NetworkInventory l2 = env.inventoryByName("l2-2")
-        ClusterInventory cluster = env.inventoryByName("cluster2")
-        List<NetworkDependencyAdmissionExtensionPoint> extensions = bean(PluginRegistry.class)
-                .getExtensionList(NetworkDependencyAdmissionExtensionPoint.class)
-        def extension = new ThrowingNetworkDependencyAdmissionExtension()
-        extensions.add(extension)
-
-        try {
-            expectError {
-                attachL2NetworkToCluster {
-                    l2NetworkUuid = l2.uuid
-                    clusterUuid = cluster.uuid
-                }
-            }
-        } finally {
-            extensions.remove(extension)
-        }
-
-        assert Q.New(L2NetworkClusterRefVO.class)
-                .eq(L2NetworkClusterRefVO_.l2NetworkUuid, l2.uuid)
-                .eq(L2NetworkClusterRefVO_.clusterUuid, cluster.uuid)
-                .count() == 0L
-    }
-
     void testAttachL2NoVlanNetworkSynchronously(){
         L2NetworkInventory l21 = env.inventoryByName("l2-1")
         L2NetworkInventory l22 = env.inventoryByName("l2-2")
@@ -315,14 +286,6 @@ public class AttachL2NetworkCase extends SubCase{
             username = "root"
             password = "password"
             clusterUuid = cluster.uuid
-        }
-    }
-
-    private static class ThrowingNetworkDependencyAdmissionExtension
-            implements NetworkDependencyAdmissionExtensionPoint {
-        @Override
-        ErrorCode admit(NetworkDependencyAdmissionRequest request) {
-            throw new IllegalStateException("simulated admission callback failure")
         }
     }
 
