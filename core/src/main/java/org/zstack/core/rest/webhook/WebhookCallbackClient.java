@@ -99,14 +99,28 @@ public class WebhookCallbackClient<T> {
      * @return the generated taskId
      */
     public String submit(ReturnValueCompletion<T> completion, TimeUnit unit, long timeout) {
-        String taskId = Platform.getUuid();
+        return submit(Platform.getUuid(), completion, unit, timeout);
+    }
+
+    public String submit(String taskId, ReturnValueCompletion<T> completion,
+                         TimeUnit unit, long timeout) {
+        if (taskId == null || taskId.trim().isEmpty()) {
+            throw new IllegalArgumentException("taskId cannot be empty");
+        }
 
         ThreadFacadeImpl.TimeoutTaskReceipt timeoutReceipt = thdf.submitTimeoutTask(() -> {
             fail(taskId, operr("[Webhook Timeout] callback timed out for taskId[%s], path[%s]",
                     taskId, protocol.getCallbackPath()));
         }, unit, timeout);
 
-        pendingCalls.put(taskId, new PendingEntry<>(completion, timeoutReceipt));
+        PendingEntry<T> previous = pendingCalls.putIfAbsent(taskId,
+                new PendingEntry<>(completion, timeoutReceipt));
+        if (previous != null) {
+            timeoutReceipt.cancel();
+            throw new IllegalStateException(String.format(
+                    "webhook taskId[%s] is already pending for path[%s]",
+                    taskId, protocol.getCallbackPath()));
+        }
         return taskId;
     }
 

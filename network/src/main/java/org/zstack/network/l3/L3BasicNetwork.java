@@ -743,13 +743,13 @@ public class L3BasicNetwork implements L3Network {
                 final IpRangeInventory inv = IpRangeInventory.valueOf(iprvo);
 
                 for (IpRangeDeletionExtensionPoint ext : exts) {
-                    ext.preDeleteIpRange(inv);
+                    ext.preDeleteIpRange(inv, msg.getNetworkDeletionContext());
                 }
 
                 CollectionUtils.safeForEach(exts, new ForEachFunction<IpRangeDeletionExtensionPoint>() {
                     @Override
                     public void run(IpRangeDeletionExtensionPoint arg) {
-                        arg.beforeDeleteIpRange(inv);
+                        arg.beforeDeleteIpRange(inv, msg.getNetworkDeletionContext());
                     }
                 });
 
@@ -766,13 +766,14 @@ public class L3BasicNetwork implements L3Network {
                             return;
                         }
 
-                        SdnControllerDisableDHCPMsg msg = new SdnControllerDisableDHCPMsg();
-                        msg.setL3NetworkUuid(self.getUuid());
-                        msg.setIpVersion(iprvo.getIpVersion());
-                        msg.setSdnControllerUuid(sdnControllerUuid);
-                        msg.setCheckIpRange(true);
-                        bus.makeTargetServiceIdByResourceUuid(msg, SdnControllerConstant.SERVICE_ID, sdnControllerUuid);
-                        bus.send(msg, new CloudBusCallBack(trigger) {
+                        SdnControllerDisableDHCPMsg dhcpMsg = new SdnControllerDisableDHCPMsg();
+                        dhcpMsg.setL3NetworkUuid(self.getUuid());
+                        dhcpMsg.setIpVersion(iprvo.getIpVersion());
+                        dhcpMsg.setSdnControllerUuid(sdnControllerUuid);
+                        dhcpMsg.setCheckIpRange(true);
+                        dhcpMsg.setNetworkDeletionContext(msg.getNetworkDeletionContext());
+                        bus.makeTargetServiceIdByResourceUuid(dhcpMsg, SdnControllerConstant.SERVICE_ID, sdnControllerUuid);
+                        bus.send(dhcpMsg, new CloudBusCallBack(trigger) {
                             @Override
                             public void run(MessageReply reply) {
                                 if (!reply.isSuccess()) {
@@ -795,7 +796,8 @@ public class L3BasicNetwork implements L3Network {
                         }
 
                         boolean isLastIpRange = isLastNormalIpRangeOfVersion(msg.getIpRangeUuid(), inv.getIpVersion());
-                        sdnL3.deleteIpRange(inv, isLastIpRange, new Completion(trigger) {
+                        sdnL3.deleteIpRange(inv, isLastIpRange, msg.getNetworkDeletionContext(),
+                                new Completion(trigger) {
                             @Override
                             public void success() {
                                 trigger.next();
@@ -819,7 +821,7 @@ public class L3BasicNetwork implements L3Network {
                         CollectionUtils.safeForEach(exts, new ForEachFunction<IpRangeDeletionExtensionPoint>() {
                             @Override
                             public void run(IpRangeDeletionExtensionPoint arg) {
-                                arg.afterDeleteIpRange(inv);
+                                arg.afterDeleteIpRange(inv, msg.getNetworkDeletionContext());
                             }
                         });
                         trigger.next();
@@ -831,7 +833,7 @@ public class L3BasicNetwork implements L3Network {
                     public void run (FlowTrigger trigger, Map data){
                         CollectionUtils.safeForEach(
                                 pluginRgty.getExtensionList(AfterDeleteIpRangeExtensionPoint.class),
-                                ext -> ext.afterDeleteIpRange(inv)
+                                ext -> ext.afterDeleteIpRange(inv, msg.getNetworkDeletionContext())
                         );
                         trigger.next();
                     }
@@ -886,7 +888,8 @@ public class L3BasicNetwork implements L3Network {
                             return;
                         }
 
-                        controllerL3.deleteL3Network(L3NetworkInventory.valueOf(l3NetworkVO), new Completion(trigger) {
+                        controllerL3.deleteL3Network(L3NetworkInventory.valueOf(l3NetworkVO),
+                                msg.getNetworkDeletionContext(), new Completion(trigger) {
                             @Override
                             public void success() {
                                 trigger.next();
@@ -894,7 +897,12 @@ public class L3BasicNetwork implements L3Network {
 
                             @Override
                             public void fail(ErrorCode errorCode) {
-                                trigger.next();//ignore error
+                                if (msg.getNetworkDeletionContext() != null &&
+                                        msg.getNetworkDeletionContext().isWholeL2SegmentDelete()) {
+                                    trigger.fail(errorCode);
+                                } else {
+                                    trigger.next();
+                                }
                             }
                         });
                     }
@@ -928,9 +936,9 @@ public class L3BasicNetwork implements L3Network {
                         }
 
                         L3NetworkInventory inv = L3NetworkInventory.valueOf(self);
-                        extpEmitter.beforeDelete(inv);
+                        extpEmitter.beforeDelete(inv, msg.getNetworkDeletionContext());
                         deleteHook();
-                        extpEmitter.afterDelete(inv);
+                        extpEmitter.afterDelete(inv, msg.getNetworkDeletionContext());
 
                         trigger.next();
                     }

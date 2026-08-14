@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cascade.CascadeConstant;
+import org.zstack.core.cascade.CascadeAction;
 import org.zstack.core.cascade.CascadeFacade;
 import org.zstack.core.cloudbus.CloudBus;
 import org.zstack.core.cloudbus.CloudBusCallBack;
@@ -159,13 +160,15 @@ public class L2NoVlanNetwork implements L2Network {
         DeleteL2NetworkReply reply = new DeleteL2NetworkReply();
         final String issuer = L2NetworkVO.class.getSimpleName();
         final List<L2NetworkInventory> ctx = L2NetworkInventory.valueOf(Arrays.asList(self));
+        final CascadeAction cascadeAction = new CascadeAction().setRootIssuer(issuer)
+                .setRootIssuerContext(ctx).setParentIssuer(issuer).setParentIssuerContext(ctx);
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
         chain.setName(String.format("delete-l2Network-%s", msg.getL2NetworkUuid()));
         if (msg.isForceDelete() == false) {
             chain.then(new NoRollbackFlow() {
                 @Override
                 public void run(final FlowTrigger trigger, Map data) {
-                    casf.asyncCascade(CascadeConstant.DELETION_CHECK_CODE, issuer, ctx, new Completion(trigger) {
+                    casf.asyncCascade(cascadeAction.setActionCode(CascadeConstant.DELETION_CHECK_CODE), new Completion(trigger) {
                         @Override
                         public void success() {
                             trigger.next();
@@ -180,7 +183,7 @@ public class L2NoVlanNetwork implements L2Network {
             }).then(new NoRollbackFlow() {
                 @Override
                 public void run(final FlowTrigger trigger, Map data) {
-                    casf.asyncCascade(CascadeConstant.DELETION_DELETE_CODE, issuer, ctx, new Completion(trigger) {
+                    casf.asyncCascade(cascadeAction.setActionCode(CascadeConstant.DELETION_DELETE_CODE), new Completion(trigger) {
                         @Override
                         public void success() {
                             trigger.next();
@@ -197,7 +200,7 @@ public class L2NoVlanNetwork implements L2Network {
             chain.then(new NoRollbackFlow() {
                 @Override
                 public void run(final FlowTrigger trigger, Map data) {
-                    casf.asyncCascade(CascadeConstant.DELETION_FORCE_DELETE_CODE, issuer, ctx, new Completion(trigger) {
+                    casf.asyncCascade(cascadeAction.setActionCode(CascadeConstant.DELETION_FORCE_DELETE_CODE), new Completion(trigger) {
                         @Override
                         public void success() {
                             trigger.next();
@@ -357,7 +360,7 @@ public class L2NoVlanNetwork implements L2Network {
                 new While<>(pluginRgty.getExtensionList(L2NetworkDeleteExtensionPoint.class))
                         .each((exp, wcompl) -> {
                             if (exp.requiresConfirmedDelete(inv)) {
-                                exp.deleteL2Network(inv, msg.getOperationUuid(), new Completion(trigger) {
+                                exp.deleteL2Network(inv, msg.getNetworkDeletionContext(), new Completion(trigger) {
                                     @Override
                                     public void success() {
                                         wcompl.done();
@@ -923,13 +926,15 @@ public class L2NoVlanNetwork implements L2Network {
         final APIDeleteL2NetworkEvent evt = new APIDeleteL2NetworkEvent(msg.getId());
         final String issuer = L2NetworkVO.class.getSimpleName();
         final List<L2NetworkInventory> ctx = L2NetworkInventory.valueOf(Arrays.asList(self));
+        final CascadeAction cascadeAction = new CascadeAction().setRootIssuer(issuer)
+                .setRootIssuerContext(ctx).setParentIssuer(issuer).setParentIssuerContext(ctx);
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
         chain.setName(String.format("delete-l2Network-%s", msg.getL2NetworkUuid()));
         if (msg.getDeletionMode() == APIDeleteMessage.DeletionMode.Permissive) {
             chain.then(new NoRollbackFlow() {
                 @Override
                 public void run(final FlowTrigger trigger, Map data) {
-                    casf.asyncCascade(CascadeConstant.DELETION_CHECK_CODE, issuer, ctx, new Completion(trigger) {
+                    casf.asyncCascade(cascadeAction.setActionCode(CascadeConstant.DELETION_CHECK_CODE), new Completion(trigger) {
                         @Override
                         public void success() {
                             trigger.next();
@@ -944,7 +949,7 @@ public class L2NoVlanNetwork implements L2Network {
             }).then(new NoRollbackFlow() {
                 @Override
                 public void run(final FlowTrigger trigger, Map data) {
-                    casf.asyncCascade(CascadeConstant.DELETION_DELETE_CODE, issuer, ctx, new Completion(trigger) {
+                    casf.asyncCascade(cascadeAction.setActionCode(CascadeConstant.DELETION_DELETE_CODE), new Completion(trigger) {
                         @Override
                         public void success() {
                             trigger.next();
@@ -961,7 +966,7 @@ public class L2NoVlanNetwork implements L2Network {
             chain.then(new NoRollbackFlow() {
                 @Override
                 public void run(final FlowTrigger trigger, Map data) {
-                    casf.asyncCascade(CascadeConstant.DELETION_FORCE_DELETE_CODE, issuer, ctx, new Completion(trigger) {
+                    casf.asyncCascade(cascadeAction.setActionCode(CascadeConstant.DELETION_FORCE_DELETE_CODE), new Completion(trigger) {
                         @Override
                         public void success() {
                             trigger.next();

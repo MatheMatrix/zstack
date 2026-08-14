@@ -21,5 +21,10 @@ public interface L2NetworkDeleteExtensionPoint {
         });
     }
 
+    default void deleteL2Network(L2NetworkInventory inv, NetworkDeletionContext context,
+                                 Completion completion) {
+        deleteL2Network(inv, context == null ? null : context.getOperationUuid(), completion);
+    }
+
     void afterDeleteL2Network(L2NetworkInventory inventory);
 }

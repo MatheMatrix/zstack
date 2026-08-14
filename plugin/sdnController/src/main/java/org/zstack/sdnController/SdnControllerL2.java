@@ -6,6 +6,7 @@ import org.zstack.header.host.HostInventory;
 import org.zstack.header.network.l2.APICreateL2NetworkMsg;
 import org.zstack.header.network.l2.L2NetworkInventory;
 import org.zstack.header.network.l2.NetworkCreateContext;
+import org.zstack.header.network.l2.NetworkDeletionContext;
 import org.zstack.header.network.l3.IpRangeInventory;
 import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.vm.VmNicInventory;
@@ -39,11 +40,30 @@ public interface SdnControllerL2 {
     default void deleteL2Network(L2NetworkInventory inv, String operationUuid, Completion completion) {
         deleteL2Network(inv, completion);
     }
+    default void deleteL2Network(L2NetworkInventory inv, NetworkDeletionContext context,
+                                 Completion completion) {
+        deleteL2Network(inv, context == null ? null : context.getOperationUuid(), completion);
+    }
     default ErrorCode beginConfirmedDelete(L2NetworkInventory inv) { return null; }
+    default ErrorCode beginConfirmedDelete(L2NetworkInventory inv, NetworkDeletionContext context) {
+        return beginConfirmedDelete(inv);
+    }
     default ErrorCode checkConfirmedDelete(L2NetworkInventory inv) { return null; }
+    default ErrorCode checkConfirmedDelete(L2NetworkInventory inv, NetworkDeletionContext context) {
+        return checkConfirmedDelete(inv);
+    }
     default ErrorCode completeConfirmedDelete(L2NetworkInventory inv) { return null; }
+    default ErrorCode completeConfirmedDelete(L2NetworkInventory inv, NetworkDeletionContext context) {
+        return completeConfirmedDelete(inv);
+    }
     default ErrorCode cancelConfirmedDelete(L2NetworkInventory inv) { return null; }
+    default ErrorCode cancelConfirmedDelete(L2NetworkInventory inv, NetworkDeletionContext context) {
+        return cancelConfirmedDelete(inv);
+    }
     default void deleteConfirmedLocalMetadata(L2NetworkInventory inv) { }
+    default void deleteConfirmedLocalMetadata(L2NetworkInventory inv, NetworkDeletionContext context) {
+        deleteConfirmedLocalMetadata(inv);
+    }
 
     List<SdnVniRange> getVniRange(SdnControllerInventory controller);
     List<SdnVlanRange> getVlanRange(SdnControllerInventory controller);

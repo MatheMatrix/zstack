@@ -212,6 +212,14 @@ public class CascadeFacadeImpl implements CascadeFacade, Component {
 
         TreeNode root = cascadeTree.get(action.getRootIssuer());
         DebugUtils.Assert(root != null, String.format("found no CascadeExtension for %s", action.getRootIssuer()));
+        List<Bucket> prepared = new ArrayList<>();
+        ErrorCode prepareError = prepareAsyncCascade(root, true, action.isFullTraverse(), action,
+                prepared, new HashSet<>());
+        if (prepareError != null) {
+            rollbackPreparedCascade(prepared);
+            completion.fail(prepareError);
+            return;
+        }
         List<Bucket> paths = new ArrayList<>();
         collectPathsForAsyncCascade(root, true, action.isFullTraverse(), action, paths, new HashSet<>());
         FlowChain chain = FlowChainBuilder.newSimpleFlowChain();
@@ -248,9 +256,70 @@ public class CascadeFacadeImpl implements CascadeFacade, Component {
         }).error(new FlowErrorHandler(completion) {
             @Override
             public void handle(ErrorCode errCode, Map data) {
+                rollbackPreparedCascade(prepared);
                 completion.fail(errCode);
             }
         }).setName(String.format("Cascade: %s", action.getActionCode())).start();
+    }
+
+    private ErrorCode prepareAsyncCascade(TreeNode treeNode, boolean init, boolean fullTraverse,
+                                          CascadeAction action, List<Bucket> prepared,
+                                          Set<String> mergePaths) {
+        Node node = treeNode.node;
+        String cascadePath = getCascadePath(action.getParentIssuer(), node.getName());
+        if (mergePaths.add(cascadePath)) {
+            CascadeExtensionPoint extension = extensionForAction(node, action);
+            if (extension instanceof CascadePreExtensionPoint) {
+                ErrorCode error = ((CascadePreExtensionPoint) extension).beforeCascade(action);
+                if (error != null) {
+                    return error;
+                }
+                prepared.add(Bucket.newBucket(extension, action));
+            }
+        }
+
+        CascadeAction childAction = init ? action : node.getExtension().createActionForChildResource(action);
+        if (fullTraverse && childAction == null) {
+            childAction = new CascadeAction();
+            childAction.setActionCode(action.getActionCode());
+            childAction.setRootIssuer(action.getRootIssuer());
+            childAction.setRootIssuerContext(action.getRootIssuerContext());
+            childAction.setParentIssuer(node.getName());
+            childAction.setParentIssuerContext(null);
+        }
+
+        if (childAction != null) {
+            checkForNullElement(node, childAction);
+            for (TreeNode child : treeNode.leafs) {
+                ErrorCode error = prepareAsyncCascade(child, false, fullTraverse, childAction,
+                        prepared, mergePaths);
+                if (error != null) {
+                    return error;
+                }
+            }
+        }
+        return null;
+    }
+
+    private CascadeExtensionPoint extensionForAction(Node node, CascadeAction action) {
+        CascadeExtensionPoint extension = node.getExtension();
+        if (extension instanceof CascadeWrapper) {
+            return ((CascadeWrapper) extension).findExtensionPointByParent(action.getParentIssuer());
+        }
+        return extension;
+    }
+
+    private void rollbackPreparedCascade(List<Bucket> prepared) {
+        for (int i = prepared.size() - 1; i >= 0; i--) {
+            CascadePreExtensionPoint extension = prepared.get(i).get(0);
+            CascadeAction action = prepared.get(i).get(1);
+            try {
+                extension.afterCascadeFailure(action);
+            } catch (RuntimeException e) {
+                logger.warn(String.format("failed to roll back cascade preparation[%s]",
+                        extension.getClass().getName()), e);
+            }
+        }
     }
 
     private void runNode(Node node, CascadeAction caction, Completion completion) {

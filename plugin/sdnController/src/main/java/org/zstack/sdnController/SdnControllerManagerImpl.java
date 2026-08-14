@@ -385,12 +385,21 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
     public void deleteL2Network(L2NetworkInventory inv, String operationUuid, Completion completion) {
         SdnControllerL2 controllerL2 = findSdnControllerL2(inv);
         if (controllerL2 == null) {
-            completion.fail(operr(ORG_ZSTACK_SDNCONTROLLER_10002,
-                    "cannot find sdn controller for confirmed l2 network deletion[uuid:%s, vswitchType:%s]",
-                    inv.getUuid(), inv.getvSwitchType()));
+            completion.fail(confirmedDeleteControllerMissing(inv));
             return;
         }
         controllerL2.deleteL2Network(inv, operationUuid, completion);
+    }
+
+    @Override
+    public void deleteL2Network(L2NetworkInventory inv, NetworkDeletionContext context,
+                                Completion completion) {
+        SdnControllerL2 controllerL2 = findSdnControllerL2(inv);
+        if (controllerL2 == null) {
+            completion.fail(confirmedDeleteControllerMissing(inv));
+            return;
+        }
+        controllerL2.deleteL2Network(inv, context, completion);
     }
 
     @Override
@@ -401,33 +410,63 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
     @Override
     public ErrorCode begin(L2NetworkInventory inventory) {
         SdnControllerL2 controllerL2 = findSdnControllerL2(inventory);
-        return controllerL2 == null ? operr(ORG_ZSTACK_SDNCONTROLLER_10002,
-                "cannot find sdn controller for confirmed l2 network deletion[uuid:%s]", inventory.getUuid())
+        return controllerL2 == null ? confirmedDeleteControllerMissing(inventory)
                 : controllerL2.beginConfirmedDelete(inventory);
+    }
+
+    @Override
+    public ErrorCode begin(L2NetworkInventory inventory, NetworkDeletionContext context) {
+        SdnControllerL2 controllerL2 = findSdnControllerL2(inventory);
+        return controllerL2 == null ? confirmedDeleteControllerMissing(inventory)
+                : controllerL2.beginConfirmedDelete(inventory, context);
     }
 
     @Override
     public ErrorCode check(L2NetworkInventory inventory) {
         SdnControllerL2 controllerL2 = findSdnControllerL2(inventory);
-        return controllerL2 == null ? operr(ORG_ZSTACK_SDNCONTROLLER_10002,
-                "cannot find sdn controller for confirmed l2 network deletion[uuid:%s]", inventory.getUuid())
+        return controllerL2 == null ? confirmedDeleteControllerMissing(inventory)
                 : controllerL2.checkConfirmedDelete(inventory);
+    }
+
+    @Override
+    public ErrorCode check(L2NetworkInventory inventory, NetworkDeletionContext context) {
+        SdnControllerL2 controllerL2 = findSdnControllerL2(inventory);
+        return controllerL2 == null ? confirmedDeleteControllerMissing(inventory)
+                : controllerL2.checkConfirmedDelete(inventory, context);
     }
 
     @Override
     public ErrorCode delete(L2NetworkInventory inventory) {
         SdnControllerL2 controllerL2 = findSdnControllerL2(inventory);
-        return controllerL2 == null ? operr(ORG_ZSTACK_SDNCONTROLLER_10002,
-                "cannot find sdn controller for confirmed l2 network deletion[uuid:%s]", inventory.getUuid())
+        return controllerL2 == null ? confirmedDeleteControllerMissing(inventory)
                 : controllerL2.completeConfirmedDelete(inventory);
+    }
+
+    @Override
+    public ErrorCode delete(L2NetworkInventory inventory, NetworkDeletionContext context) {
+        SdnControllerL2 controllerL2 = findSdnControllerL2(inventory);
+        return controllerL2 == null ? confirmedDeleteControllerMissing(inventory)
+                : controllerL2.completeConfirmedDelete(inventory, context);
     }
 
     @Override
     public ErrorCode cancel(L2NetworkInventory inventory) {
         SdnControllerL2 controllerL2 = findSdnControllerL2(inventory);
-        return controllerL2 == null ? operr(ORG_ZSTACK_SDNCONTROLLER_10002,
-                "cannot find sdn controller for confirmed l2 network deletion[uuid:%s]", inventory.getUuid())
+        return controllerL2 == null ? confirmedDeleteControllerMissing(inventory)
                 : controllerL2.cancelConfirmedDelete(inventory);
+    }
+
+    @Override
+    public ErrorCode cancel(L2NetworkInventory inventory, NetworkDeletionContext context) {
+        SdnControllerL2 controllerL2 = findSdnControllerL2(inventory);
+        return controllerL2 == null ? confirmedDeleteControllerMissing(inventory)
+                : controllerL2.cancelConfirmedDelete(inventory, context);
+    }
+
+    private ErrorCode confirmedDeleteControllerMissing(L2NetworkInventory inventory) {
+        return operr(ORG_ZSTACK_SDNCONTROLLER_10034,
+                "cannot find sdn controller for confirmed L2Network deletion[uuid:%s, vswitchType:%s]",
+                inventory.getUuid(), inventory.getvSwitchType());
     }
 
     @Override
@@ -438,6 +477,16 @@ public class SdnControllerManagerImpl extends AbstractService implements SdnCont
                     "cannot find sdn controller for confirmed l2 network deletion[uuid:%s]", inventory.getUuid()));
         }
         controllerL2.deleteConfirmedLocalMetadata(inventory);
+    }
+
+    @Override
+    public void deleteLocalMetadata(L2NetworkInventory inventory, NetworkDeletionContext context) {
+        SdnControllerL2 controllerL2 = findSdnControllerL2(inventory);
+        if (controllerL2 == null) {
+            throw new CloudRuntimeException(String.format(
+                    "cannot find sdn controller for confirmed l2 network deletion[uuid:%s]", inventory.getUuid()));
+        }
+        controllerL2.deleteConfirmedLocalMetadata(inventory, context);
     }
 
     private SdnControllerL2 findSdnControllerL2(L2NetworkInventory inv) {
