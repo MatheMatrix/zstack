@@ -478,6 +478,9 @@ public class L2NoVlanNetwork implements L2Network {
                     } catch (OperationFailureException e) {
                         localCompletion.fail(e.getErrorCode());
                         return;
+                    } catch (Exception e) {
+                        localCompletion.fail(errf.throwableToInternalError(e));
+                        return;
                     }
                     changeL2NetworkVlanId(msg, new Completion(localCompletion) {
                         @Override
@@ -1139,6 +1142,9 @@ public class L2NoVlanNetwork implements L2Network {
                     }.execute();
                 } catch (OperationFailureException e) {
                     completion.fail(e.getErrorCode());
+                    return;
+                } catch (Exception e) {
+                    completion.fail(errf.throwableToInternalError(e));
                     return;
                 }
                 logger.debug(String.format("successfully attached L2Network[uuid:%s] to cluster [uuid:%s]", self.getUuid(), msg.getClusterUuid()));

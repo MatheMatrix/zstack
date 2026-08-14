@@ -94,4 +94,30 @@ CREATE TABLE IF NOT EXISTS `zstack`.`ZnsSegmentRefVO` (
         CHECK (`znsSegmentUuid` IS NOT NULL OR `state` = 'MigrationFailed')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+DROP TRIGGER IF EXISTS `zstack`.`trg_zns_seg_ref_validate_insert`;
+DELIMITER $$
+CREATE TRIGGER `zstack`.`trg_zns_seg_ref_validate_insert`
+BEFORE INSERT ON `zstack`.`ZnsSegmentRefVO`
+FOR EACH ROW
+BEGIN
+    IF NEW.`znsSegmentUuid` IS NULL AND NEW.`state` <> 'MigrationFailed' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'ZnsSegmentRefVO requires znsSegmentUuid unless migration failed';
+    END IF;
+END$$
+DELIMITER ;
+
+DROP TRIGGER IF EXISTS `zstack`.`trg_zns_seg_ref_validate_update`;
+DELIMITER $$
+CREATE TRIGGER `zstack`.`trg_zns_seg_ref_validate_update`
+BEFORE UPDATE ON `zstack`.`ZnsSegmentRefVO`
+FOR EACH ROW
+BEGIN
+    IF NEW.`znsSegmentUuid` IS NULL AND NEW.`state` <> 'MigrationFailed' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'ZnsSegmentRefVO requires znsSegmentUuid unless migration failed';
+    END IF;
+END$$
+DELIMITER ;
+
 CALL ADD_COLUMN('ZnsSegmentRefVO', 'currentConfigVersion', 'BIGINT', 1, NULL);

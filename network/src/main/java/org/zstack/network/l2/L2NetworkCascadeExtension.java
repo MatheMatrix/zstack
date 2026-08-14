@@ -108,11 +108,6 @@ public class L2NetworkCascadeExtension extends AbstractAsyncCascadeExtension {
             final List<L2NetworkInventory> l2invs = l2NetworkFromAction(action);
             if (l2invs != null) {
                 l2invs.forEach(l -> {
-                    for (L2DeleteConfirmExtensionPoint ext : pluginRgty.getExtensionList(L2DeleteConfirmExtensionPoint.class)) {
-                        if (ext.supports(l)) {
-                            ext.deleteLocalMetadata(l);
-                        }
-                    }
                     dbf.eoCleanup(L2NetworkVO.class, l.getUuid());
                 });
             } else {
@@ -219,6 +214,7 @@ public class L2NetworkCascadeExtension extends AbstractAsyncCascadeExtension {
             return;
         }
 
+        List<ConfirmedDelete> begun = new ArrayList<>();
         try {
             for (L2NetworkInventory prinv : l2invs) {
                 extpEmitter.preDelete(prinv);
@@ -226,12 +222,14 @@ public class L2NetworkCascadeExtension extends AbstractAsyncCascadeExtension {
                     if (ext.supports(prinv)) {
                         ErrorCode errorCode = ext.begin(prinv);
                         if (errorCode != null) {
+                            cancelConfirmedDeletes(begun);
                             completion.fail(errorCode);
                             return;
                         }
+                        begun.add(new ConfirmedDelete(prinv, ext));
                         errorCode = ext.check(prinv);
                         if (errorCode != null) {
-                            ext.cancel(prinv);
+                            cancelConfirmedDeletes(begun);
                             completion.fail(errorCode);
                             return;
                         }
@@ -241,7 +239,34 @@ public class L2NetworkCascadeExtension extends AbstractAsyncCascadeExtension {
 
             completion.success();
         } catch (L2NetworkException e) {
+            cancelConfirmedDeletes(begun);
             completion.fail(inerr(ORG_ZSTACK_NETWORK_L2_10000, e.getMessage()));
+        }
+    }
+
+    private void cancelConfirmedDeletes(List<ConfirmedDelete> begun) {
+        for (int i = begun.size() - 1; i >= 0; i--) {
+            ConfirmedDelete delete = begun.get(i);
+            try {
+                ErrorCode errorCode = delete.extension.cancel(delete.inventory);
+                if (errorCode != null) {
+                    logger.warn(String.format("failed to cancel confirmed l2 network deletion[uuid:%s]: %s",
+                            delete.inventory.getUuid(), errorCode));
+                }
+            } catch (RuntimeException e) {
+                logger.warn(String.format("failed to cancel confirmed l2 network deletion[uuid:%s]",
+                        delete.inventory.getUuid()), e);
+            }
+        }
+    }
+
+    private static class ConfirmedDelete {
+        private final L2NetworkInventory inventory;
+        private final L2DeleteConfirmExtensionPoint extension;
+
+        private ConfirmedDelete(L2NetworkInventory inventory, L2DeleteConfirmExtensionPoint extension) {
+            this.inventory = inventory;
+            this.extension = extension;
         }
     }
 

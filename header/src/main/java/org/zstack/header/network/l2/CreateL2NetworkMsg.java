@@ -59,7 +59,8 @@ public class CreateL2NetworkMsg extends NeedReplyMessage {
         }
 
         try {
-            Class<?> subtypeClass = Class.forName(subtypeMessageClassName);
+            Class<?> subtypeClass = Class.forName(subtypeMessageClassName, false,
+                    CreateL2NetworkMsg.class.getClassLoader());
             if (!APICreateL2NetworkMsg.class.isAssignableFrom(subtypeClass)) {
                 throw new IllegalArgumentException(String.format(
                         "invalid l2 subtype message class[%s]", subtypeMessageClassName));

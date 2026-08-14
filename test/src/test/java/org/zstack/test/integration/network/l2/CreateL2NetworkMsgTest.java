@@ -19,9 +19,19 @@ import org.zstack.header.network.l3.UpdateProjectedIpRangeMsg;
 import org.zstack.network.l3.AttachNetworkServiceToL3Msg;
 import org.zstack.utils.gson.JSONObjectUtil;
 
+import java.lang.reflect.Field;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CreateL2NetworkMsgTest {
+    private static final AtomicBoolean invalidSubtypeInitialized = new AtomicBoolean();
+
+    public static class InvalidSubtype {
+        static {
+            invalidSubtypeInitialized.set(true);
+        }
+    }
+
     @Test
     public void internalCreateCarriesProviderSubtypeMessage() {
         CreateL2NetworkMsg msg = new CreateL2NetworkMsg();
@@ -46,6 +56,28 @@ public class CreateL2NetworkMsgTest {
         Assert.assertTrue(restored.getSubtypeMessage() instanceof APICreateL2VlanNetworkMsg);
         Assert.assertEquals(101,
                 ((APICreateL2VlanNetworkMsg) restored.getSubtypeMessage()).getVlan());
+    }
+
+    @Test
+    public void internalCreateRejectsInvalidSubtypeWithoutInitializingIt() throws Exception {
+        invalidSubtypeInitialized.set(false);
+        CreateL2NetworkMsg msg = new CreateL2NetworkMsg();
+        setPrivateField(msg, "subtypeMessage", Collections.emptyMap());
+        setPrivateField(msg, "subtypeMessageClassName", InvalidSubtype.class.getName());
+
+        try {
+            msg.getSubtypeMessage();
+            Assert.fail("invalid subtype must be rejected");
+        } catch (IllegalArgumentException ignored) {
+        }
+
+        Assert.assertFalse(invalidSubtypeInitialized.get());
+    }
+
+    private void setPrivateField(Object target, String name, Object value) throws Exception {
+        Field field = target.getClass().getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(target, value);
     }
 
     @Test

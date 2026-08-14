@@ -98,6 +98,7 @@ public class VmAllocateNicFlow implements Flow {
         data.put(VmInstanceConstant.Params.VmAllocateNicFlow_nics.toString(), nics);
         List<ErrorCode> errs = new ArrayList<>();
         List<String> vmSystemTags = spec.getMessage() instanceof APIMessage ? ((APIMessage) spec.getMessage()).getSystemTags() : null;
+        String operationUuid = spec.getMessage() == null ? null : spec.getMessage().getId();
 
         new While<>(VmNicSpec.getFirstL3NetworkInventoryOfSpec(spec.getL3Networks())).each((nicSpec, wcomp) -> {
             L3NetworkInventory nw = nicSpec.getL3Invs().get(0);
@@ -133,7 +134,7 @@ public class VmAllocateNicFlow implements Flow {
                     @Override
                     protected VmNicVO scripts() {
                         ErrorCode admissionError = admitDependency(nw.getUuid(),
-                                NetworkDependencyAdmissionRequest.DEPENDENCY_VM_NIC, null,
+                                NetworkDependencyAdmissionRequest.DEPENDENCY_VM_NIC, operationUuid,
                                 NetworkDependencyAdmissionRequest.OPERATION_CREATE_VM_NIC);
                         if (admissionError != null) {
                             throw new OperationFailureException(admissionError);
@@ -156,13 +157,13 @@ public class VmAllocateNicFlow implements Flow {
                             protected void scripts() {
                                 ErrorCode admissionError = admitDependency(nw.getUuid(),
                                         NetworkDependencyAdmissionRequest.DEPENDENCY_VM_NIC,
-                                        null, NetworkDependencyAdmissionRequest.OPERATION_CREATE_VM_NIC);
+                                        operationUuid, NetworkDependencyAdmissionRequest.OPERATION_CREATE_VM_NIC);
                                 if (admissionError != null) {
                                     throw new OperationFailureException(admissionError);
                                 }
                                 persistStaticIpIfNeeded(nic, nicVO, nw, nicNetworkInfoMap, spec);
                                 VmNicVO updated = dbf.updateAndRefresh(nicVO);
-                                addVmNicConfig(updated, spec, nicSpec);
+                                addVmNicConfig(updated, spec, nicSpec, operationUuid);
                             }
                         }.execute();
                     } catch (OperationFailureException e) {
@@ -286,7 +287,8 @@ public class VmAllocateNicFlow implements Flow {
         }
     }
 
-    private void addVmNicConfig(VmNicVO vmNicVO, VmInstanceSpec vmSpec, VmNicSpec nicSpec) {
+    private void addVmNicConfig(VmNicVO vmNicVO, VmInstanceSpec vmSpec, VmNicSpec nicSpec,
+                                String operationUuid) {
         if (nicSpec == null) {
             return;
         }
@@ -300,7 +302,8 @@ public class VmAllocateNicFlow implements Flow {
 
         if (vmNicParm.getInboundBandwidth() != null || vmNicParm.getOutboundBandwidth() != null) {
             ErrorCode admissionError = admitDependency(vmNicVO.getL3NetworkUuid(),
-                    NetworkDependencyAdmissionRequest.DEPENDENCY_VM_NIC_QOS, null,
+                    NetworkDependencyAdmissionRequest.DEPENDENCY_VM_NIC_QOS,
+                    operationUuid,
                     NetworkDependencyAdmissionRequest.OPERATION_ADD_VM_NIC_QOS);
             if (admissionError != null) {
                 throw new OperationFailureException(admissionError);
