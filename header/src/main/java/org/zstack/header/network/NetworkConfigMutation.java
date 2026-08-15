@@ -9,9 +9,28 @@ import java.util.List;
 public final class NetworkConfigMutation {
     public enum Kind {
         ENCAP,
+        L2_METADATA,
         L3_CREATE,
         IPAM,
         DHCP_DNS
+    }
+
+    public static final class MetadataTarget {
+        private final String name;
+        private final String description;
+
+        private MetadataTarget(String name, String description) {
+            this.name = name;
+            this.description = description;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getDescription() {
+            return description;
+        }
     }
 
     public static final class EncapsulationTarget {
@@ -163,6 +182,7 @@ public final class NetworkConfigMutation {
     private final String operationUuid;
     private final String accountUuid;
     private final EncapsulationTarget encapsulation;
+    private final MetadataTarget metadata;
     private final L3CreateTarget l3Create;
     private final IpamTarget ipam;
     private final DhcpTarget dhcp;
@@ -170,6 +190,7 @@ public final class NetworkConfigMutation {
     private NetworkConfigMutation(Kind kind, String l2Uuid, NetworkOperationOrigin origin,
                                   String operationUuid, String accountUuid,
                                   EncapsulationTarget encapsulation,
+                                  MetadataTarget metadata,
                                   L3CreateTarget l3Create,
                                   IpamTarget ipam,
                                   DhcpTarget dhcp) {
@@ -179,6 +200,7 @@ public final class NetworkConfigMutation {
         this.operationUuid = operationUuid;
         this.accountUuid = accountUuid;
         this.encapsulation = encapsulation;
+        this.metadata = metadata;
         this.l3Create = l3Create;
         this.ipam = ipam;
         this.dhcp = dhcp;
@@ -191,7 +213,19 @@ public final class NetworkConfigMutation {
                                                        String l2Type,
                                                        int virtualNetworkId) {
         return new NetworkConfigMutation(Kind.ENCAP, l2Uuid, origin, operationUuid,
-                accountUuid, new EncapsulationTarget(l2Type, virtualNetworkId), null, null, null);
+                accountUuid, new EncapsulationTarget(l2Type, virtualNetworkId), null,
+                null, null, null);
+    }
+
+    public static NetworkConfigMutation metadata(String l2Uuid,
+                                                  NetworkOperationOrigin origin,
+                                                  String operationUuid,
+                                                  String accountUuid,
+                                                  String name,
+                                                  String description) {
+        return new NetworkConfigMutation(Kind.L2_METADATA, l2Uuid, origin, operationUuid,
+                accountUuid, null, new MetadataTarget(name, description),
+                null, null, null);
     }
 
     public static NetworkConfigMutation l3Create(String l2Uuid,
@@ -202,7 +236,8 @@ public final class NetworkConfigMutation {
                                                   String l3Type,
                                                   List<String> systemTags) {
         return new NetworkConfigMutation(Kind.L3_CREATE, l2Uuid, origin, operationUuid,
-                accountUuid, null, new L3CreateTarget(l3Uuid, l3Type, systemTags), null, null);
+                accountUuid, null, null,
+                new L3CreateTarget(l3Uuid, l3Type, systemTags), null, null);
     }
 
     public static NetworkConfigMutation ipam(String l2Uuid,
@@ -214,7 +249,7 @@ public final class NetworkConfigMutation {
                                               String gatewayAddress,
                                               List<IpRangeTarget> ranges) {
         return new NetworkConfigMutation(Kind.IPAM, l2Uuid, origin, operationUuid,
-                accountUuid, null, null,
+                accountUuid, null, null, null,
                 new IpamTarget(l3Uuid, ipVersion, gatewayAddress, ranges, false), null);
     }
 
@@ -225,7 +260,7 @@ public final class NetworkConfigMutation {
                                                     String l3Uuid,
                                                     int ipVersion) {
         return new NetworkConfigMutation(Kind.IPAM, l2Uuid, origin, operationUuid,
-                accountUuid, null, null,
+                accountUuid, null, null, null,
                 new IpamTarget(l3Uuid, ipVersion, null, Collections.emptyList(), true), null);
     }
 
@@ -237,7 +272,7 @@ public final class NetworkConfigMutation {
                                               boolean enabled,
                                               List<String> systemTags) {
         return new NetworkConfigMutation(Kind.DHCP_DNS, l2Uuid, origin, operationUuid,
-                accountUuid, null, null, null,
+                accountUuid, null, null, null, null,
                 new DhcpTarget(l3Uuid, enabled, systemTags, null, null));
     }
 
@@ -249,7 +284,7 @@ public final class NetworkConfigMutation {
                                                  int ipVersion,
                                                  List<String> dnsServers) {
         return new NetworkConfigMutation(Kind.DHCP_DNS, l2Uuid, origin, operationUuid,
-                accountUuid, null, null, null,
+                accountUuid, null, null, null, null,
                 new DhcpTarget(l3Uuid, true, Collections.emptyList(), ipVersion, dnsServers));
     }
 
@@ -275,6 +310,10 @@ public final class NetworkConfigMutation {
 
     public EncapsulationTarget getEncapsulation() {
         return encapsulation;
+    }
+
+    public MetadataTarget getMetadata() {
+        return metadata;
     }
 
     public L3CreateTarget getL3Create() {

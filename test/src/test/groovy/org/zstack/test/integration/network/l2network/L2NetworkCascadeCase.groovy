@@ -3,9 +3,13 @@ package org.zstack.test.integration.network.l2network
 import org.zstack.core.componentloader.PluginRegistry
 import org.zstack.core.cloudbus.CloudBus
 import org.zstack.core.db.DatabaseFacade
+import org.zstack.header.core.Completion
 import org.zstack.header.errorcode.ErrorCode
 import org.zstack.header.message.AbstractBeforeDeliveryMessageInterceptor
 import org.zstack.header.message.Message
+import org.zstack.header.network.NetworkConfigLocalContinuation
+import org.zstack.header.network.NetworkConfigMutation
+import org.zstack.header.network.NetworkConfigMutationExtensionPoint
 import org.zstack.header.network.l2.L2DeleteConfirmExtensionPoint
 import org.zstack.header.network.l2.L2NetworkInventory
 import org.zstack.header.network.l2.L2NetworkVO
@@ -94,6 +98,11 @@ class L2NetworkCascadeCase extends SubCase {
                     name = "plain-l2"
                     physicalInterface = "eth5"
                 }
+
+                l2NoVlanNetwork {
+                    name = "metadata-update-l2"
+                    physicalInterface = "eth7"
+                }
             }
         }
     }
@@ -108,6 +117,7 @@ class L2NetworkCascadeCase extends SubCase {
             testParentForceChecksBeforeDeletingChildren()
             testParentForcePreservesProviderError()
             testUnsupportedProviderKeepsExistingDeleteBehavior()
+            testL2MetadataMutationCommitsRemoteBeforeLocal()
             testDeleteL2NetworkRemovesConfirmedMetadataOnce()
         }
     }
@@ -276,6 +286,41 @@ class L2NetworkCascadeCase extends SubCase {
         assert extension.begun.isEmpty()
     }
 
+    void testL2MetadataMutationCommitsRemoteBeforeLocal() {
+        SdkL2NetworkInventory l2 = env.inventoryByName("metadata-update-l2")
+        def extension = new RecordingMetadataMutation(dbf: dbf, l2Uuid: l2.uuid, failRemote: true)
+        bean(PluginRegistry.class).defineDynamicExtension(
+                NetworkConfigMutationExtensionPoint.class, extension)
+
+        try {
+            expectError {
+                updateL2Network {
+                    uuid = l2.uuid
+                    name = "must-not-commit"
+                    description = "must-not-commit"
+                }
+            }
+            assert dbf.findByUuid(l2.uuid, L2NetworkVO.class).name == "metadata-update-l2"
+
+            extension.failRemote = false
+            updateL2Network {
+                uuid = l2.uuid
+                name = "metadata-updated"
+                description = "metadata-description"
+            }
+        } finally {
+            extension.l2Uuid = null
+        }
+
+        L2NetworkVO updated = dbf.findByUuid(l2.uuid, L2NetworkVO.class)
+        assert extension.nameBeforeContinuation == "metadata-update-l2"
+        assert extension.mutations*.kind == [
+                NetworkConfigMutation.Kind.L2_METADATA,
+                NetworkConfigMutation.Kind.L2_METADATA]
+        assert updated.name == "metadata-updated"
+        assert updated.description == "metadata-description"
+    }
+
     @Override
     void clean() {
         env.delete()
@@ -356,6 +401,31 @@ class L2NetworkCascadeCase extends SubCase {
 
         @Override
         void afterDeleteL3Network(L3NetworkInventory inventory) {
+        }
+    }
+
+    private static class RecordingMetadataMutation implements NetworkConfigMutationExtensionPoint {
+        DatabaseFacade dbf
+        String l2Uuid
+        boolean failRemote
+        String nameBeforeContinuation
+        List<NetworkConfigMutation> mutations = []
+
+        @Override
+        boolean supports(NetworkConfigMutation mutation) {
+            return mutation.kind == NetworkConfigMutation.Kind.L2_METADATA && mutation.l2Uuid == l2Uuid
+        }
+
+        @Override
+        void mutate(NetworkConfigMutation mutation, NetworkConfigLocalContinuation continuation,
+                    Completion completion) {
+            mutations.add(mutation)
+            nameBeforeContinuation = dbf.findByUuid(l2Uuid, L2NetworkVO.class).name
+            if (failRemote) {
+                completion.fail(new ErrorCode("TEST.REMOTE.FAILURE", "simulated remote failure"))
+                return
+            }
+            continuation.run(completion)
         }
     }
 }

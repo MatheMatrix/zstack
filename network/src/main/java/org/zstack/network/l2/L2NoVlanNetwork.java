@@ -541,22 +541,64 @@ public class L2NoVlanNetwork implements L2Network {
     }
 
     private void handle(APIUpdateL2NetworkMsg msg) {
-        boolean update = false;
-        if (msg.getName() != null) {
-            self.setName(msg.getName());
-            update = true;
-        }
-        if (msg.getDescription() != null) {
-            self.setDescription(msg.getDescription());
-            update = true;
-        }
-        if (update) {
-            self = dbf.updateAndRefresh(self);
+        APIUpdateL2NetworkEvent evt = new APIUpdateL2NetworkEvent(msg.getId());
+        if (msg.getName() == null && msg.getDescription() == null) {
+            evt.setInventory(getSelfInventory());
+            bus.publish(evt);
+            return;
         }
 
-        APIUpdateL2NetworkEvent evt = new APIUpdateL2NetworkEvent(msg.getId());
-        evt.setInventory(getSelfInventory());
-        bus.publish(evt);
+        thdf.chainSubmit(new ChainTask(msg) {
+            @Override
+            public String getSyncSignature() {
+                return String.format("update-l2-network-%s-metadata", msg.getL2NetworkUuid());
+            }
+
+            @Override
+            public void run(SyncTaskChain chain) {
+                NetworkConfigMutation mutation = NetworkConfigMutation.metadata(
+                        msg.getL2NetworkUuid(), NetworkOperationOrigin.API, msg.getId(),
+                        msg.getSession() == null ? null : msg.getSession().getAccountUuid(),
+                        msg.getName(), msg.getDescription());
+                mutateNetworkConfig(mutation, localCompletion -> {
+                    String originalName = self.getName();
+                    String originalDescription = self.getDescription();
+                    try {
+                        if (msg.getName() != null) {
+                            self.setName(msg.getName());
+                        }
+                        if (msg.getDescription() != null) {
+                            self.setDescription(msg.getDescription());
+                        }
+                        self = dbf.updateAndRefresh(self);
+                        localCompletion.success();
+                    } catch (Exception e) {
+                        self.setName(originalName);
+                        self.setDescription(originalDescription);
+                        localCompletion.fail(errf.throwableToInternalError(e));
+                    }
+                }, new Completion(chain) {
+                    @Override
+                    public void success() {
+                        evt.setInventory(getSelfInventory());
+                        bus.publish(evt);
+                        chain.next();
+                    }
+
+                    @Override
+                    public void fail(ErrorCode errorCode) {
+                        evt.setError(errorCode);
+                        bus.publish(evt);
+                        chain.next();
+                    }
+                });
+            }
+
+            @Override
+            public String getName() {
+                return getSyncSignature();
+            }
+        });
     }
 
     private void handle(final APIDetachL2NetworkFromClusterMsg msg) {

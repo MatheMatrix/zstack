@@ -22,6 +22,7 @@ import org.zstack.network.l3.L3NetworkHelper;
 import org.zstack.network.securitygroup.*;
 import org.zstack.sdnController.header.*;
 import org.zstack.utils.Utils;
+import org.zstack.utils.StringDSL;
 import org.zstack.utils.logging.CLogger;
 import org.zstack.utils.network.NetworkUtils;
 
@@ -29,6 +30,7 @@ import java.util.List;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.Map;
 
 import static org.zstack.core.Platform.argerr;
@@ -275,6 +277,12 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
             throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10030,
                     "Unsupported resource type[%s]", msg.getResourceType()));
         }
+        try {
+            msg.setResourceUuids(normalizeResourceUuids(msg.getResourceUuids()));
+        } catch (IllegalArgumentException e) {
+            throw new ApiMessageInterceptionException(argerr(
+                    ORG_ZSTACK_SDNCONTROLLER_10031, e.getMessage()));
+        }
         if (msg.getResourceUuids() != null && msg.getResourceUuids().size() > 100) {
             throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10031,
                     "At most 100 resource uuids can be pulled in one request"));
@@ -283,6 +291,21 @@ public class SdnControllerApiInterceptor implements ApiMessageInterceptor, Globa
             throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_SDNCONTROLLER_10032,
                     "SDN controller[uuid:%s] not found", msg.getSdnControllerUuid()));
         }
+    }
+
+    static List<String> normalizeResourceUuids(List<String> resourceUuids) {
+        if (resourceUuids == null) {
+            return null;
+        }
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        for (String resourceUuid : resourceUuids) {
+            if (!StringDSL.isUuid(resourceUuid) && !StringDSL.isZStackUuid(resourceUuid)) {
+                throw new IllegalArgumentException(String.format(
+                        "Invalid resource uuid[%s]", resourceUuid));
+            }
+            normalized.add(resourceUuid);
+        }
+        return new ArrayList<>(normalized);
     }
 
     private void validateVlanRanges(List<String> ranges) {

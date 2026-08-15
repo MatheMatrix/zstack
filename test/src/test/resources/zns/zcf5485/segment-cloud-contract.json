@@ -1,0 +1,330 @@
+{
+  "contract": "ZCF-5485",
+  "revision": "zcf5485-final-v3",
+  "version": 3,
+  "identities": {
+    "segment_uuid": "00000000-0000-0000-0000-000000000101",
+    "compute_manager_uuid": "00000000-0000-0000-0000-000000000102",
+    "cloud_zone_uuid": "00000000-0000-0000-0000-000000000103",
+    "cloud_l2_uuid": "00000000-0000-0000-0000-000000000104",
+    "tenant_router_uuid": "00000000-0000-0000-0000-000000000105",
+    "segment_port_uuid": "00000000-0000-0000-0000-000000000106",
+    "cms_resource_uuid": "00000000-0000-0000-0000-000000000107",
+    "transport_zone_uuid": "00000000-0000-0000-0000-000000000201",
+    "cluster_uuid": "00000000-0000-0000-0000-000000000401",
+    "operation_uuid": "00000000-0000-0000-0000-000000000701"
+  },
+  "cloud_api": {
+    "pull": {
+      "message": "APIPullSdnControllerMsg",
+      "event": "APIPullSdnControllerEvent",
+      "method": "PUT",
+      "path": "/sdn-controllers/{uuid}/resources/actions",
+      "request": {
+        "pullSdnController": {
+          "resourceType": "Segment",
+          "resourceUuids": ["00000000-0000-0000-0000-000000000101"]
+        }
+      },
+      "supported_resource_types": ["Segment", "TenantRouter"],
+      "resource_uuid_limit": 100,
+      "full_refresh_when_uuids_empty": true,
+      "event_means_accepted_only": true
+    },
+    "projection_query": {
+      "message": "APIQueryZnsSegmentCloudProjectionMsg",
+      "reply": "APIQueryZnsSegmentCloudProjectionReply",
+      "method": "GET",
+      "path": "/zns-segment-cloud-projections",
+      "side_effect_free": true,
+      "required_inventory_fields": [
+        "znsSegmentUuid",
+        "sdnControllerUuid",
+        "zoneUuid",
+        "l2NetworkUuid",
+        "l2Network",
+        "state",
+        "createDate",
+        "lastOpDate"
+      ],
+      "optional_inventory_fields": [
+        "l3NetworkUuid",
+        "l3Network",
+        "currentConfigVersion",
+        "appliedConfigVersion",
+        "operationUuid",
+        "operationStep",
+        "lastError"
+      ]
+    }
+  },
+  "cloud_inventory": {
+    "segment_uuid": "00000000-0000-0000-0000-000000000101",
+    "name": "canonical-segment",
+    "transport_zone_uuid": "00000000-0000-0000-0000-000000000201",
+    "transport_type": "overlay",
+    "availability": "Available",
+    "reason": "",
+    "placement": {
+      "transport_zone_uuid": "00000000-0000-0000-0000-000000000201",
+      "transport_type": "overlay",
+      "topology_version": 11,
+      "targets": [
+        {
+          "compute_manager_uuid": "00000000-0000-0000-0000-000000000102",
+          "zones": [
+            {
+              "cloud_zone_uuid": "00000000-0000-0000-0000-000000000103",
+              "complete_cluster_uuids": ["00000000-0000-0000-0000-000000000401"]
+            }
+          ]
+        }
+      ]
+    },
+    "cloud_zone_uuid": "00000000-0000-0000-0000-000000000103",
+    "cluster_uuids": ["00000000-0000-0000-0000-000000000401"],
+    "tenant_router_uuid": "00000000-0000-0000-0000-000000000105"
+  },
+  "cloud_projection": {
+    "segment_uuid": "00000000-0000-0000-0000-000000000101",
+    "name": "canonical-segment",
+    "description": "canonical description",
+    "config_version": 7,
+    "etag": "\"7-abc\"",
+    "mtu": 1400,
+    "mtu_inherited": true,
+    "virtual_network_id": 30001,
+    "transport_zone_uuid": "00000000-0000-0000-0000-000000000201",
+    "transport_type": "overlay",
+    "router_uuid": "00000000-0000-0000-0000-000000000105",
+    "placement": {
+      "transport_zone_uuid": "00000000-0000-0000-0000-000000000201",
+      "transport_type": "overlay",
+      "topology_version": 11,
+      "targets": [
+        {
+          "compute_manager_uuid": "00000000-0000-0000-0000-000000000102",
+          "zones": [
+            {
+              "cloud_zone_uuid": "00000000-0000-0000-0000-000000000103",
+              "complete_cluster_uuids": ["00000000-0000-0000-0000-000000000401"]
+            }
+          ]
+        }
+      ]
+    },
+    "ipams": [
+      {
+        "ip_version": 4,
+        "range_uuid": "00000000-0000-0000-0000-000000000601",
+        "cidr": "192.0.2.0/24",
+        "start_ip": "192.0.2.10",
+        "end_ip": "192.0.2.200"
+      }
+    ],
+    "dhcp": {"enabled": true}
+  },
+  "digest_vectors": [
+    {
+      "name": "patch-segment-name-description",
+      "purpose": "PATCH_SEGMENT",
+      "canonical_request": "{\"purpose\":\"PATCH_SEGMENT\",\"request\":{\"description\":\"canonical description\",\"name\":\"canonical-name\",\"segment_uuid\":\"00000000-0000-0000-0000-000000000101\"}}",
+      "sha256": "7fa8b82380eabd7de547dbd61ea16e023bde7d9a26919ebc2ddcee60e83dc47b"
+    }
+  ],
+  "child_operation_uuid_vectors": [
+    {
+      "purpose": "delete-orphan-port",
+      "root_operation_uuid": "00000000-0000-0000-0000-000000000701",
+      "resource_uuid": "00000000-0000-0000-0000-000000000106",
+      "derived_uuid_v3": "07c1e718-28c8-3e0a-b2cc-44212e14c3ad"
+    },
+    {
+      "purpose": "delete-router-interface",
+      "root_operation_uuid": "00000000-0000-0000-0000-000000000701",
+      "resource_uuid": "00000000-0000-0000-0000-000000000105",
+      "derived_uuid_v3": "814a7757-32b3-3782-9fff-895abe559f06"
+    }
+  ],
+  "mutations": [
+    {
+      "method": "PATCH",
+      "path": "/zns/api/v1/segments/00000000-0000-0000-0000-000000000101/ipams",
+      "headers": {"If-Match": "7", "x-job-uuid": "00000000-0000-0000-0000-000000000711"},
+      "body": {
+        "ip_version": 4,
+        "ip_ranges": [{"range_uuid": "00000000-0000-0000-0000-000000000601", "start_ip": "192.0.2.10", "end_ip": "192.0.2.200"}]
+      },
+      "wire": {"status": 200, "has_data": true, "result_config_version": 8}
+    },
+    {
+      "method": "PATCH",
+      "path": "/zns/api/v1/segments/00000000-0000-0000-0000-000000000101",
+      "headers": {"If-Match": "7", "x-job-uuid": "00000000-0000-0000-0000-000000000712"},
+      "body": {"mtu": 1400, "virtual_network_id": 30001},
+      "fields": ["mtu", "virtual_network_id"],
+      "wire": {"status": 202, "has_data": false, "accepted_only": true}
+    },
+    {
+      "method": "PATCH",
+      "path": "/zns/api/v1/segments/00000000-0000-0000-0000-000000000101",
+      "headers": {"If-Match": "7", "x-job-uuid": "00000000-0000-0000-0000-000000000713"},
+      "body": {"name": "canonical-name", "description": "canonical description"},
+      "fields": ["name", "description"],
+      "wire": {"status": 202, "has_data": false, "accepted_only": true}
+    }
+  ],
+  "binding_contract": {
+    "collection_path": "/zns/api/v1/segments/{segmentUuid}/cloud-bindings",
+    "exact_path": "/zns/api/v1/segments/{segmentUuid}/cloud-bindings/{computeManagerUuid}/{cloudZoneUuid}",
+    "active_key": ["segment_uuid", "compute_manager_uuid", "cloud_zone_uuid"],
+    "active_value": "cloud_l2_uuid",
+    "cloud_l2_unique_key": ["compute_manager_uuid", "cloud_l2_uuid"],
+    "put_body": {"cloud_l2_uuid": "00000000-0000-0000-0000-000000000104"},
+    "data": {
+      "segment_uuid": "00000000-0000-0000-0000-000000000101",
+      "compute_manager_uuid": "00000000-0000-0000-0000-000000000102",
+      "cloud_zone_uuid": "00000000-0000-0000-0000-000000000103",
+      "cloud_l2_uuid": "00000000-0000-0000-0000-000000000104",
+      "create_date": "2026-08-15T00:00:00Z",
+      "last_op_date": "2026-08-15T00:00:01Z"
+    },
+    "principal_target_match_required": true
+  },
+  "operation_contract": {
+    "path": "/zns/api/v1/segment-operations/{operationUuid}",
+    "statuses": ["Preparing", "Committed", "Failed"],
+    "terminal_statuses": ["Committed", "Failed"],
+    "terminal_result_immutable": true,
+    "authorization_scope_required": true,
+    "data": {
+      "operation_uuid": "00000000-0000-0000-0000-000000000701",
+      "segment_uuid": "00000000-0000-0000-0000-000000000101",
+      "purpose": "PATCH_SEGMENT",
+      "request_digest": "7fa8b82380eabd7de547dbd61ea16e023bde7d9a26919ebc2ddcee60e83dc47b",
+      "status": "Committed",
+      "config_version": 8,
+      "result": {"success": true, "config_version": 8},
+      "create_date": "2026-08-15T00:00:00Z",
+      "last_op_date": "2026-08-15T00:00:01Z"
+    },
+    "authorization_scope": {
+      "scope_version": 1,
+      "principal_type": "COMPUTE_MANAGER",
+      "principal_uuid": "00000000-0000-0000-0000-000000000102",
+      "compute_manager_uuids": ["00000000-0000-0000-0000-000000000102"]
+    }
+  },
+  "fence_contract": {
+    "command_path": "/zns/notify/check-segment-change",
+    "phases": ["PREPARE", "COMPLETE", "CANCEL"],
+    "persisted_phases": ["PREPARING", "PERMITTED", "CANCELLED", "COMPLETED"],
+    "request": {
+      "computerManagerUuid": "00000000-0000-0000-0000-000000000102",
+      "segmentUuid": "00000000-0000-0000-0000-000000000101",
+      "bindingKeys": [{"zoneUuid": "00000000-0000-0000-0000-000000000103", "cloudL2Uuid": "00000000-0000-0000-0000-000000000104"}],
+      "operationUuid": "00000000-0000-0000-0000-000000000701",
+      "phase": "PREPARE",
+      "expectedConfigVersion": 7,
+      "changeSet": {}
+    },
+    "replay_key": ["operationUuid", "phase", "bindingDigest"],
+    "cancel_after_commit_forbidden": true
+  },
+  "delete_contract": {
+    "check_delete": {
+      "method": "POST",
+      "path": "/zns/api/v1/segments/00000000-0000-0000-0000-000000000101/actions/check-delete",
+      "headers": {"x-job-uuid": "00000000-0000-0000-0000-000000000701"},
+      "request": {"cloud_delete_binding": {"compute_manager_uuid": "00000000-0000-0000-0000-000000000102", "zone_uuid": "00000000-0000-0000-0000-000000000103", "cloud_l2_uuid": "00000000-0000-0000-0000-000000000104"}},
+      "responses": [
+        {"name": "permitted", "status": 200, "body": {"success": true, "data": {"segment_uuid": "00000000-0000-0000-0000-000000000101", "zns_permitted": true, "config_version": 7, "binding_match": true, "blockers": [], "owned_config_digest": "sha256:0123456789abcdef", "port_candidates": [{"segment_port_uuid": "00000000-0000-0000-0000-000000000106", "cms_resource_uuid": "00000000-0000-0000-0000-000000000107"}]}}},
+        {"name": "denied", "status": 200, "body": {"success": true, "data": {"segment_uuid": "00000000-0000-0000-0000-000000000101", "zns_permitted": false, "config_version": 7, "binding_match": true, "blockers": [{"type": "ROUTER", "resource_uuid": "00000000-0000-0000-0000-000000000105", "reason": "segment has an external router attachment"}], "owned_config_digest": "sha256:0123456789abcdef", "port_candidates": []}}},
+        {"name": "identity_conflict", "status": 409, "body": {"success": false, "code": "SEGMENT.CONFLICT.DELETE_BINDING_MISMATCH", "message": "The exact Cloud delete binding does not match the Segment binding"}}
+      ]
+    },
+    "final_delete": {
+      "method": "DELETE",
+      "path": "/zns/api/v1/segments",
+      "headers": {"If-Match": "7", "x-job-uuid": "00000000-0000-0000-0000-000000000701"},
+      "request": {"uuids": ["00000000-0000-0000-0000-000000000101"], "cloud_delete_binding": {"compute_manager_uuid": "00000000-0000-0000-0000-000000000102", "zone_uuid": "00000000-0000-0000-0000-000000000103", "cloud_l2_uuid": "00000000-0000-0000-0000-000000000104"}},
+      "responses": [
+        {"name": "success", "status": 202, "body": {"success": true}},
+        {"name": "replay_success", "status": 202, "body": {"success": true}},
+        {"name": "version_conflict", "status": 409, "body": {"success": false, "code": "SEGMENT.CONFLICT.STALE_VERSION", "message": "The Segment config version changed"}},
+        {"name": "missing_if_match", "status": 428, "body": {"success": false, "code": "SEGMENT.INVALID.IF_MATCH_REQUIRED", "message": "If-Match is required for Cloud-authorized Segment deletion"}},
+        {"name": "response_loss_retry", "status": 202, "body": {"success": true}},
+        {"name": "bare_404_negative", "status": 404, "body": {"success": false, "code": "SEGMENT.NOT_FOUND.ID", "message": "The specified Segment was not found"}}
+      ]
+    }
+  },
+  "compatibility_contract": {
+    "modes": ["LEGACY", "MIGRATING_READ_ONLY", "STRICT", "INCOMPATIBLE_READ_ONLY"],
+    "wire_contracts": ["LEGACY_V1", "RESOURCE_V2"],
+    "get_path": "/zns/api/v1/fabric/compute-managers/{computeManagerUuid}",
+    "transition_path": "/zns/api/v1/fabric/compute-managers/{computeManagerUuid}/compatibility",
+    "transition_request": {"expected_epoch": 7, "mode": "STRICT"},
+    "transition_response": {"success": true, "mode": "STRICT", "epoch": 8},
+    "missing_fields_default": {"mode": "LEGACY", "epoch": 0},
+    "strict_never_falls_back": true
+  },
+  "outbox_contract": {
+    "statuses": ["pending", "delivering", "delivered", "failed", "delivery_expired"],
+    "retryable_statuses": [408, 425, 429, 500, 502, 503, 504],
+    "max_attempts": 12,
+    "max_age_seconds": 86400,
+    "request_timeout_seconds": 10,
+    "lease_seconds": 30,
+    "backoff_cap_seconds": 60,
+    "unique_key": ["subscriber", "resourceType", "externalId", "deliveryKey"],
+    "resource_v2": {
+      "command_path": "/zns/notify/sync-resource",
+      "wire_contract": "RESOURCE_V2",
+      "body": {"computerManagerUuid": "00000000-0000-0000-0000-000000000102", "resourceType": "SEGMENT", "action": "UPDATE", "resourceUuid": "00000000-0000-0000-0000-000000000101"},
+      "delivery_key": "config:8",
+      "mode_epoch": 8
+    },
+    "legacy_v1": {
+      "command_path": "/zns/notify/sync-fabric",
+      "wire_contract": "LEGACY_V1",
+      "body": {"computerManagerUuid": "00000000-0000-0000-0000-000000000102", "scope": "fabric"},
+      "mode_epoch": 0
+    },
+    "wire_frozen_after_enqueue": true,
+    "fallback_or_dual_delivery_forbidden": true
+  },
+  "cloud_state_contract": {
+    "controller_state": {
+      "primary_key": ["sdnControllerUuid"],
+      "migration_states": ["NotStarted", "InventoryScanning", "RelationMigrating", "Ready"],
+      "compatibility_modes": ["LEGACY", "MIGRATING_READ_ONLY", "STRICT", "INCOMPATIBLE_READ_ONLY"]
+    },
+    "segment_inventory": {
+      "unique_key": ["sdnControllerUuid", "znsSegmentUuid"],
+      "required_fields": ["uuid", "sdnControllerUuid", "znsSegmentUuid", "name", "transportZoneUuid", "availability", "lastSeenToken", "lastSeenDate"]
+    },
+    "segment_ref": {
+      "unique_keys": [["sdnControllerUuid", "znsSegmentUuid"], ["l2NetworkUuid"]],
+      "states": ["Initializing", "AwaitL3", "Syncing", "Ready", "Error", "PlacementConflict", "SourceUnavailable", "PreparingChange", "Deleting", "DeleteError", "MigrationFailed", "UpgradeSyncError"]
+    },
+    "operation": {
+      "primary_key": ["operation_uuid"],
+      "statuses": ["Preparing", "Committed", "Failed"],
+      "authorization_scope_required": true
+    }
+  },
+  "error_codes": [
+    "SEGMENT.CONFLICT.STALE_VERSION",
+    "SEGMENT.CONFLICT.OPERATION_REPLAY",
+    "SEGMENT.CONFLICT.CLOUD_FENCE_REJECTED",
+    "SEGMENT.INVALID.IF_MATCH_REQUIRED",
+    "SEGMENT.CONFLICT.DELETE_BINDING_MISMATCH",
+    "SEGMENT.CONFLICT.DELETE_DEPENDENCY",
+    "SEGMENT_CLOUD_BINDING.NOT_FOUND.ID",
+    "SEGMENT_CLOUD_BINDING.CONFLICT.IDENTITY",
+    "SEGMENT.NOT_FOUND.ID",
+    "COMPUTE_MANAGER.CONFLICT.COMPATIBILITY_EPOCH",
+    "ORG_ZSTACK_NETWORK_ZNS_10072"
+  ],
+  "wire": {"error_code": "", "retryable": false}
+}

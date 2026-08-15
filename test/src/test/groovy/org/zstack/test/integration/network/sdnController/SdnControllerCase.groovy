@@ -360,6 +360,23 @@ class SdnControllerCase extends SubCase {
             conditions=["type=" + SdnControllerConstant.HARDWARE_VXLAN_NETWORK_TYPE]}
         assert vxlanNetworks.size() == 2
 
+        expectError {
+            pullSdnController {
+                uuid = sdn2.uuid
+                resourceType = "Segment"
+                resourceUuids = ["dc9905ec-e6fc-4122-8861-7f56decafcaa"]
+            }
+        }
+        assert queryL2Network { conditions=["type=" + SdnControllerConstant.HARDWARE_VXLAN_NETWORK_TYPE] }.size() == 2
+
+        expectError {
+            pullSdnController {
+                uuid = sdn2.uuid
+                resourceType = "Segment"
+                resourceUuids = ["not-a-uuid"]
+            }
+        }
+
         removeSdnController {
             uuid = sdn2.uuid
         }

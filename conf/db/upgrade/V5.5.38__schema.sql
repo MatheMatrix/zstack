@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS `zstack`.`ZnsControllerStateVO` (
     `sdnControllerUuid` varchar(32) NOT NULL,
     `activeScanToken` varchar(255) DEFAULT NULL,
     `activeScanStartedAt` timestamp NULL DEFAULT NULL,
+    `previousCompleteScanToken` varchar(255) DEFAULT NULL,
+    `previousCompleteScanDigest` varchar(64) DEFAULT NULL,
+    `previousCompleteScanTotal` int DEFAULT NULL,
     `migrationState` varchar(32) NOT NULL DEFAULT 'NotStarted',
     `compatibilityMode` varchar(32) NOT NULL DEFAULT 'LEGACY',
     `compatibilityEpoch` bigint NOT NULL DEFAULT 0,
@@ -119,5 +122,3 @@ BEGIN
     END IF;
 END$$
 DELIMITER ;
-
-CALL ADD_COLUMN('ZnsSegmentRefVO', 'currentConfigVersion', 'BIGINT', 1, NULL);

@@ -1074,25 +1074,31 @@ public class RESTFacadeImpl implements RESTFacade {
 
             @Override
             public void handle(HttpEntity<String> entity, HttpServletResponse servletResponse) {
-                SyncHttpResponse response = handler.handleSyncHttpCall(JSONObjectUtil.toObject(entity.getBody(), objectType));
-                if (response == null) {
-                    servletResponse.setStatus(HttpStatus.SC_OK);
-                    return;
-                }
-                servletResponse.setStatus(response.getStatus());
-                if (response.getBody() != null) {
-                    servletResponse.setHeader("Content-Type", "application/json");
-                    try {
-                        servletResponse.getWriter().write(response.getBody());
-                    } catch (IOException e) {
-                        throw new CloudRuntimeException(e);
-                    }
-                }
+                writeSyncHttpResponse(handler.handleSyncHttpCall(
+                        JSONObjectUtil.toObject(entity.getBody(), objectType)), servletResponse);
             }
 
             @Override
             public HttpCallHandler getHandler() { return handler; }
         });
+    }
+
+    static void writeSyncHttpResponse(SyncHttpResponse response,
+                                      HttpServletResponse servletResponse) {
+        if (response == null) {
+            servletResponse.setStatus(HttpStatus.SC_OK);
+            return;
+        }
+        servletResponse.setStatus(response.getStatus());
+        if (response.getBody() == null) {
+            return;
+        }
+        servletResponse.setHeader("Content-Type", "application/json");
+        try {
+            servletResponse.getWriter().write(response.getBody());
+        } catch (IOException e) {
+            throw new CloudRuntimeException(e);
+        }
     }
 
     @Override

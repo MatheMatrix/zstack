@@ -11,6 +11,9 @@ public class NetworkDeletionContext {
     private String rootIssuer;
     private boolean forceDelete;
     private boolean sourceUnavailableCleanup;
+    private Long expectedConfigVersion;
+    private boolean remoteCommitted;
+    private String continuationStep;
 
     public NetworkDeletionContext() {
     }
@@ -73,5 +76,29 @@ public class NetworkDeletionContext {
 
     public void setSourceUnavailableCleanup(boolean sourceUnavailableCleanup) {
         this.sourceUnavailableCleanup = sourceUnavailableCleanup;
+    }
+
+    public Long getExpectedConfigVersion() {
+        return expectedConfigVersion;
+    }
+
+    public void setExpectedConfigVersion(Long expectedConfigVersion) {
+        this.expectedConfigVersion = expectedConfigVersion;
+    }
+
+    public boolean isRemoteCommitted() {
+        return remoteCommitted;
+    }
+
+    public void setRemoteCommitted(boolean remoteCommitted) {
+        this.remoteCommitted = remoteCommitted;
+    }
+
+    public String getContinuationStep() {
+        return continuationStep;
+    }
+
+    public void setContinuationStep(String continuationStep) {
+        this.continuationStep = continuationStep;
     }
 }
