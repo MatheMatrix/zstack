@@ -44,4 +44,20 @@ public class MetricStruct  {
         return this.driver;
     }
 
+    public java.lang.String cause;
+    public void setCause(java.lang.String cause) {
+        this.cause = cause;
+    }
+    public java.lang.String getCause() {
+        return this.cause;
+    }
+
+    public java.lang.String solution;
+    public void setSolution(java.lang.String solution) {
+        this.solution = solution;
+    }
+    public java.lang.String getSolution() {
+        return this.solution;
+    }
+
 }
