@@ -13,6 +13,7 @@ import org.zstack.header.message.NoJsonSchema;
 import org.zstack.header.network.l3.L3NetworkInventory;
 import org.zstack.header.storage.primary.PrimaryStorageInventory;
 import org.zstack.header.vm.VmInstanceConstant.VmOperation;
+import org.zstack.header.vm.devices.VmDevicesSpec;
 import org.zstack.header.volume.VolumeFormat;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.header.volume.VolumeType;
@@ -405,6 +406,8 @@ public class VmInstanceSpec implements Serializable {
 
     private List<String> disableL3Networks;
     private List<APICreateVmInstanceMsg.DiskAO> diskAOs;
+    private VmDevicesSpec devicesSpec;
+    private DiskAO nvRamSpec;
 
     public List<APICreateVmInstanceMsg.DiskAO> getDiskAOs() {
         return diskAOs;
@@ -412,6 +415,22 @@ public class VmInstanceSpec implements Serializable {
 
     public void setDiskAOs(List<APICreateVmInstanceMsg.DiskAO> diskAOs) {
         this.diskAOs = diskAOs;
+    }
+
+    public VmDevicesSpec getDevicesSpec() {
+        return devicesSpec;
+    }
+
+    public void setDevicesSpec(VmDevicesSpec devicesSpec) {
+        this.devicesSpec = devicesSpec;
+    }
+
+    public DiskAO getNvRamSpec() {
+        return nvRamSpec;
+    }
+
+    public void setNvRamSpec(DiskAO nvRamSpec) {
+        this.nvRamSpec = nvRamSpec;
     }
 
     public boolean isSkipIpAllocation() {

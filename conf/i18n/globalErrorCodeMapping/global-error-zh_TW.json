@@ -2961,6 +2961,7 @@
   "ORG_ZSTACK_CRYPTO_AUTH_10019": "从數据库獲取完整性密碼失敗，因为 [%s] 未生成完整性密碼",
   "ORG_ZSTACK_VHOST_KVM_10000": "vhostuser磁碟仅支持virtio模式，請检查镜像平台是否包含virtio驱動程序",
   "ORG_ZSTACK_VHOST_KVM_10001": "vhost-user磁碟不支持virtio-scsi模式，請關閉virtio-scsi模式",
+  "ORG_ZSTACK_VHOST_KVM_10002": "無法在線掛載vhost資料磁碟：該執行中雲主機未啟用共享記憶體。兩種方式：1) 關機後再掛載；2) 將全域配置 generate.config.vhost.required 設為 auto 或 true 後重啟該雲主機（會停用該雲主機的記憶體超分配）",
   "ORG_ZSTACK_NETWORK_L3_10029": "%s 不是一個有效的IPv6地址",
   "ORG_ZSTACK_USBDEVICE_10005": "PassThrough 只支持在運行中的主機 VM 上使用",
   "ORG_ZSTACK_ALIYUN_ECS_10019": "只有管理員可以将參數 [onlyZstack] 設置为 false",
@@ -4729,5 +4730,6 @@
   "ORG_ZSTACK_AI_10162": "虛擬機「%s」(UUID: %s) 必須處於運行狀態才能掛載/卸載模型，當前狀態: %s",
   "ORG_ZSTACK_AI_10163": "虛擬機「%s」(UUID: %s) 未運行在任何主機上",
   "ORG_ZSTACK_AI_10164": "模型「%s」(UUID: %s) 與該虛擬機所屬帳戶的共享規則不匹配，無法掛載。\n請確認模型已共享給該帳戶或設為公開。",
-  "ORG_ZSTACK_AI_10165": "模型中心 (UUID: %s) 未找到（關聯模型: 「%s」UUID: %s）。\n請檢查模型中心是否已被刪除。"
+  "ORG_ZSTACK_AI_10165": "模型中心 (UUID: %s) 未找到（關聯模型: 「%s」UUID: %s）。\n請檢查模型中心是否已被刪除。",
+  "ORG_ZSTACK_AI_10167": "推理服務實例組[uuid:%s]正在刪除，停止等待服務啟動"
 }

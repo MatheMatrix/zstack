@@ -14,10 +14,13 @@ import org.zstack.header.message.APIMessage;
 import org.zstack.header.vm.VmInstanceState;
 import org.zstack.header.vm.VmInstanceVO;
 import org.zstack.header.vm.VmInstanceVO_;
+import org.zstack.utils.network.IPv6NetworkUtils;
+import org.zstack.utils.network.NetworkUtils;
 
 import java.util.Arrays;
 import java.util.List;
 
+import static org.zstack.core.Platform.argerr;
 import static org.zstack.core.Platform.operr;
 import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
@@ -65,9 +68,59 @@ public class ConsoleApiInterceptor implements ApiMessageInterceptor {
     }
 
     private void validate(APIUpdateConsoleProxyAgentMsg msg) {
-        // consoleProxyOverriddenIp default value is 0.0.0.0
-        if (msg.getConsoleProxyOverriddenIp().trim().equals("")) {
-            msg.setConsoleProxyOverriddenIp("0.0.0.0");
+        msg.setConsoleProxyOverriddenIp(normalizeOptionalConsoleProxyHost(msg.getConsoleProxyOverriddenIp()));
+        msg.setConsoleProxyOverriddenIpv4(normalizeOptionalConsoleProxyHost(msg.getConsoleProxyOverriddenIpv4()));
+        msg.setConsoleProxyOverriddenIpv6(normalizeOptionalConsoleProxyHost(msg.getConsoleProxyOverriddenIpv6()));
+        validateFamilySpecificAddress("consoleProxyOverriddenIpv4", msg.getConsoleProxyOverriddenIpv4(), true);
+        validateFamilySpecificAddress("consoleProxyOverriddenIpv6", msg.getConsoleProxyOverriddenIpv6(), false);
+        validateLegacyHostnameConflict(msg);
+    }
+
+    private String normalizeOptionalConsoleProxyHost(String host) {
+        if (host == null) {
+            return null;
+        }
+
+        String normalized = IPv6NetworkUtils.stripHostUrlBrackets(host.trim());
+        return normalized;
+    }
+
+    private void validateFamilySpecificAddress(String fieldName, String host, boolean ipv4) {
+        if (host == null || host.isEmpty()) {
+            return;
+        }
+        if (ipv4 && "0.0.0.0".equals(host)) {
+            return;
+        }
+        if (!ipv4 && "::".equals(host)) {
+            return;
+        }
+
+        boolean valid = ipv4 ? NetworkUtils.isIpv4Address(host) : IPv6NetworkUtils.isIpv6Address(host);
+        if (!valid) {
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_CONSOLE_10016,
+                    "%s must be an %s address", fieldName, ipv4 ? "IPv4" : "IPv6"));
+        }
+    }
+
+    private void validateLegacyHostnameConflict(APIUpdateConsoleProxyAgentMsg msg) {
+        String legacy = msg.getConsoleProxyOverriddenIp();
+        if (legacy == null || legacy.isEmpty() || "0.0.0.0".equals(legacy) || "::".equals(legacy)) {
+            return;
+        }
+        if (NetworkUtils.isIpv4Address(legacy) || IPv6NetworkUtils.isIpv6Address(legacy)) {
+            return;
+        }
+
+        if (msg.getConsoleProxyOverriddenIpv4() != null && !msg.getConsoleProxyOverriddenIpv4().isEmpty()) {
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_CONSOLE_10017,
+                    "%s conflicts with %s; hostname legacy must be used by all clients",
+                    "consoleProxyOverriddenIp", "consoleProxyOverriddenIpv4"));
+        }
+        if (msg.getConsoleProxyOverriddenIpv6() != null && !msg.getConsoleProxyOverriddenIpv6().isEmpty()) {
+            throw new ApiMessageInterceptionException(argerr(ORG_ZSTACK_CONSOLE_10017,
+                    "%s conflicts with %s; hostname legacy must be used by all clients",
+                    "consoleProxyOverriddenIp", "consoleProxyOverriddenIpv6"));
         }
     }
 }

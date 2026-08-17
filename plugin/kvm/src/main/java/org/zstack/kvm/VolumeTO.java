@@ -3,6 +3,7 @@ package org.zstack.kvm;
 import org.zstack.core.Platform;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.Q;
+import org.zstack.header.host.HostInventory;
 import org.zstack.header.image.ImagePlatform;
 import org.zstack.header.storage.primary.PrimaryStorageVO;
 import org.zstack.header.storage.primary.PrimaryStorageVO_;
@@ -11,6 +12,7 @@ import org.zstack.header.vm.VmInstanceVO_;
 import org.zstack.header.volume.VolumeInventory;
 import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.header.volume.VolumeProtocol;
+import org.springframework.beans.BeanUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -32,6 +34,7 @@ public class VolumeTO extends BaseVirtualDeviceTO {
     public static List<KVMConvertVolumeExtensionPoint> exts;
 
     private String installPath;
+    private Long size;
     private int deviceId;
     private String deviceType = FILE;
     private String volumeUuid;
@@ -51,7 +54,11 @@ public class VolumeTO extends BaseVirtualDeviceTO {
     private String multiQueues;
     private int ioThreadId;
     private String ioThreadPin;
+    // 0 means automatic IOThread VQ Mapping is disabled.
+    private int ioThreads;
     private int controllerIndex;
+    private CacheTO cache;
+
 
     static {
         deviceTypes.put(VolumeProtocol.Vhost, VHOST);
@@ -63,6 +70,7 @@ public class VolumeTO extends BaseVirtualDeviceTO {
 
     public VolumeTO(VolumeTO other) {
         this.installPath = other.installPath;
+        this.size = other.size;
         this.deviceId = other.deviceId;
         this.deviceType = other.deviceType;
         this.volumeUuid = other.volumeUuid;
@@ -80,7 +88,9 @@ public class VolumeTO extends BaseVirtualDeviceTO {
         this.multiQueues = other.multiQueues;
         this.ioThreadId = other.ioThreadId;
         this.ioThreadPin = other.ioThreadPin;
+        this.ioThreads = other.ioThreads;
         this.controllerIndex = other.controllerIndex;
+        this.cache = other.cache;
     }
 
     public static List<VolumeTO> valueOf(List<VolumeInventory> vols, KVMHostInventory host) {
@@ -95,10 +105,25 @@ public class VolumeTO extends BaseVirtualDeviceTO {
         return valueOf(vol, host, platform, false);
     }
 
+    public static VolumeTO valueOfWithOutExtension(VolumeInventory vol, HostInventory host, String platform) {
+        return valueOf(vol, host, platform, false);
+    }
+
+    public static VolumeTO valueOf(VolumeInventory vol, HostInventory host, String platform) {
+        return valueOf(vol, host, platform, true);
+    }
+
+    public static VolumeTO valueOf(VolumeInventory vol, HostInventory host, String platform, boolean withExtension) {
+        KVMHostInventory kvmHostInventory = new KVMHostInventory();
+        BeanUtils.copyProperties(host, kvmHostInventory);
+        return valueOf(vol, kvmHostInventory, platform, withExtension);
+    }
+
     public static VolumeTO valueOf(VolumeInventory vol, KVMHostInventory host, String platform, boolean withExtension) {
         VolumeTO to = new VolumeTO();
         to.setResourceUuid(vol.getUuid());
         to.setInstallPath(vol.getInstallPath());
+        to.setSize(vol.getSize());
         if (vol.getDeviceId() != null) {
             to.setDeviceId(vol.getDeviceId());
         }
@@ -136,8 +161,8 @@ public class VolumeTO extends BaseVirtualDeviceTO {
         }
         for (KVMConvertVolumeExtensionPoint ext : exts) {
             to = ext.convertVolumeIfNeed(host, vol, to);
-        }   
-        return  to;
+        }
+        return to;
     }
 
     private synchronized static void prepareExts() {
@@ -201,6 +226,10 @@ public class VolumeTO extends BaseVirtualDeviceTO {
     public void setInstallPath(String installPath) {
         this.installPath = installPath;
     }
+
+    public Long getSize() { return size; }
+
+    public void setSize(Long size) { this.size = size; }
 
     public int getDeviceId() {
         return deviceId;
@@ -290,11 +319,27 @@ public class VolumeTO extends BaseVirtualDeviceTO {
         return ioThreadPin;
     }
 
+    public int getIoThreads() {
+        return ioThreads;
+    }
+
+    public void setIoThreads(int ioThreads) {
+        this.ioThreads = ioThreads;
+    }
+
     public int getControllerIndex() {
         return controllerIndex;
     }
 
     public void setControllerIndex(int controllerIndex) {
         this.controllerIndex = controllerIndex;
+    }
+
+    public CacheTO getCache() {
+        return cache;
+    }
+
+    public void setCache(CacheTO cache) {
+        this.cache = cache;
     }
 }

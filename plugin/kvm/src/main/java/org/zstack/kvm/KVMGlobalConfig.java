@@ -11,6 +11,8 @@ import org.zstack.header.cluster.ClusterVO;
 import org.zstack.header.host.HostVO;
 import org.zstack.header.zone.ZoneVO;
 
+import static org.zstack.kvm.KVMConstant.EDK_VERSION_NONE;
+
 /**
  */
 @GlobalConfigDefinition
@@ -96,6 +98,10 @@ public class KVMGlobalConfig {
 
     @GlobalConfigValidation(validValues = {"true", "false"})
     @BindResourceConfig({VmInstanceVO.class})
+    public static GlobalConfig VM_CPU_HARDWARE_VIRTUALIZATION = new GlobalConfig(CATEGORY, "vm.cpu.hardwareVirtualization");
+
+    @GlobalConfigValidation(validValues = {"true", "false"})
+    @BindResourceConfig({VmInstanceVO.class})
     public static GlobalConfig VM_HYPERV_CLOCK_FEATURE = new GlobalConfig(CATEGORY, "vm.hyperv.clock.feature");
 
     @GlobalConfigValidation(validValues = {"true", "false"})
@@ -135,6 +141,11 @@ public class KVMGlobalConfig {
     public static GlobalConfig HOST_KSM = new GlobalConfig(CATEGORY, "host.ksm");
 
     @GlobalConfigValidation(validValues = {"true", "false"})
+    @GlobalConfigDef(defaultValue = "true", type = Boolean.class, description = "enable host IPv6")
+    @BindResourceConfig({HostVO.class, ClusterVO.class, ZoneVO.class})
+    public static GlobalConfig HOST_IPV6 = new GlobalConfig(CATEGORY, "host.ipv6.enable");
+
+    @GlobalConfigValidation(validValues = {"true", "false"})
     @GlobalConfigDef(defaultValue = "false", description = "restart kvm host libvirtd service or not")
     @BindResourceConfig({HostVO.class, ClusterVO.class})
     public static GlobalConfig RECONNECT_HOST_RESTART_LIBVIRTD_SERVICE = new GlobalConfig(CATEGORY, "reconnect.host.restart.libvirtd.service");
@@ -143,7 +154,7 @@ public class KVMGlobalConfig {
     @GlobalConfigDef(defaultValue = "true", type = Boolean.class, description = "enable TLS encryption for libvirt remote connections (migration)")
     public static GlobalConfig LIBVIRT_TLS_ENABLED = new GlobalConfig(CATEGORY, "libvirt.tls.enabled");
 
-    @GlobalConfigValidation
+    @GlobalConfigValidation(numberGreaterThan = 1)
     @GlobalConfigDef(defaultValue = "300", type = Long.class, description = "timeout in seconds for KVM agent connectivity-check commands that opt out of the default command timeout")
     public static GlobalConfig AGENT_CONNECTIVITY_CHECK_TIMEOUT = new GlobalConfig(CATEGORY, "agent.connectivityCheck.timeout");
 
@@ -157,4 +168,18 @@ public class KVMGlobalConfig {
     @BindResourceConfig({HostVO.class, ClusterVO.class})
     public static GlobalConfig MINIMUM_MEMORY_SIZE_BEFORE_START_VM = new GlobalConfig(CATEGORY, "min.free.memory.size");
 
+    @GlobalConfigDef(defaultValue = EDK_VERSION_NONE,
+            description = "Specify the EDK version to be used for the next VM startup. None indicates the use of the system's default EDK version")
+    @BindResourceConfig(value = {VmInstanceVO.class, ClusterVO.class})
+    public static GlobalConfig VM_EDK_VERSION_CONFIG = new GlobalConfig(CATEGORY, "vm.edk.version");
+
+    @GlobalConfigValidation(numberGreaterThan = 1, numberLessThan = 86400)
+    @GlobalConfigDef(defaultValue = "1800", type = Long.class,
+            description = "Interval in seconds for syncing VM host files (NvRam, TpmState) from KVM hosts")
+    public static GlobalConfig VM_HOST_FILE_SYNC_INTERVAL = new GlobalConfig(CATEGORY, "vm.host.file.sync.interval");
+
+    @GlobalConfigValidation(numberGreaterThan = 1, numberLessThan = 30)
+    @GlobalConfigDef(defaultValue = "5", type = Integer.class,
+            description = "The concurrency level for syncing VM host files from KVM hosts")
+    public static GlobalConfig VM_HOST_FILE_SYNC_CONCURRENCY = new GlobalConfig(CATEGORY, "vm.host.file.sync.concurrency");
 }

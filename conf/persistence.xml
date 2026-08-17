@@ -18,6 +18,10 @@
         <class>org.zstack.resourceconfig.ResourceConfigVO</class>
         <class>org.zstack.header.managementnode.ManagementNodeVO</class>
         <class>org.zstack.header.managementnode.ManagementNodeContextVO</class>
+        <class>org.zstack.header.tpm.entity.TpmVO</class>
+        <class>org.zstack.header.vm.additions.VmHostFileVO</class>
+        <class>org.zstack.header.vm.additions.VmHostBackupFileVO</class>
+        <class>org.zstack.header.vm.additions.VmHostFileContentVO</class>
         <class>org.zstack.header.zone.ZoneVO</class>
         <class>org.zstack.header.zone.ZoneEO</class>
         <class>org.zstack.header.cluster.ClusterVO</class>
@@ -25,6 +29,7 @@
         <class>org.zstack.header.host.HostVO</class>
         <class>org.zstack.header.host.HostEO</class>
         <class>org.zstack.header.host.HostNetworkLabelVO</class>
+        <class>org.zstack.header.host.HostKeyIdentityVO</class>
         <class>org.zstack.header.host.CpuFeaturesHistoryVO</class>
         <class>org.zstack.header.storage.primary.PrimaryStorageVO</class>
         <class>org.zstack.header.storage.primary.PrimaryStorageEO</class>
@@ -90,6 +95,7 @@
         <class>org.zstack.header.identity.SessionVO</class>
         <class>org.zstack.header.identity.AccountVO</class>
         <class>org.zstack.header.identity.AccountResourceRefVO</class>
+        <class>org.zstack.header.resource.ResourceSourceRefVO</class>
         <class>org.zstack.header.identity.UserVO</class>
         <class>org.zstack.header.identity.PolicyVO</class>
         <class>org.zstack.header.identity.UserPolicyRefVO</class>
@@ -142,6 +148,7 @@
         <class>org.zstack.header.storage.addon.primary.ExternalPrimaryStorageSpaceVO</class>
         <class>org.zstack.header.storage.addon.primary.PrimaryStorageOutputProtocolRefVO</class>
         <class>org.zstack.header.storage.addon.primary.ExternalPrimaryStorageHostRefVO</class>
+        <class>org.zstack.header.storage.addon.primary.ExternalPrimaryStorageHostProtocolRefVO</class>
         <class>org.zstack.storage.ceph.backup.CephBackupStorageVO</class>
         <class>org.zstack.storage.ceph.backup.CephBackupStorageMonVO</class>
         <class>org.zstack.storage.ceph.primary.CephPrimaryStorageMonVO</class>
@@ -189,6 +196,11 @@
         <class>org.zstack.header.vm.VmInstanceNumaNodeVO</class>
         <class>org.zstack.header.host.HostNumaNodeVO</class>
         <class>org.zstack.header.core.encrypt.EncryptionIntegrityVO</class>
+        <class>org.zstack.header.keyprovider.KeyProviderVO</class>
+        <class>org.zstack.header.keyprovider.KmsVO</class>
+        <class>org.zstack.header.keyprovider.KmsIdentityVO</class>
+        <class>org.zstack.header.keyprovider.NkpVO</class>
+        <class>org.zstack.header.keyprovider.EncryptedResourceKeyRefVO</class>
         <class>org.zstack.storage.primary.sharedblock.SharedBlockCapacityVO</class>
         <class>org.zstack.header.vm.devices.VmInstanceDeviceAddressVO</class>
         <class>org.zstack.header.vm.devices.VmInstanceDeviceAddressArchiveVO</class>
@@ -217,6 +229,9 @@
         <class>org.zstack.network.hostNetworkInterface.lldp.entity.HostNetworkInterfaceLldpRefVO</class>
         <class>org.zstack.header.volume.block.BlockVolumeVO</class>
         <class>org.zstack.header.host.HostHwMonitorStatusVO</class>
+        <class>org.zstack.header.volumeCache.HostCacheStoreVO</class>
+        <class>org.zstack.header.volumeCache.HostCacheStoreCapacityVO</class>
+        <class>org.zstack.header.volumeCache.VolumeCacheVO</class>
         <class>org.zstack.kvm.xmlhook.XmlHookVO</class>
         <class>org.zstack.kvm.xmlhook.XmlHookVmInstanceRefVO</class>
         <class>org.zstack.log.server.LogServerVO</class>

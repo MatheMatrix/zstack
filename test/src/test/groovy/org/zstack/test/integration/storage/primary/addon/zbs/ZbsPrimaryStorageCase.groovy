@@ -6,6 +6,8 @@ import org.zstack.core.cloudbus.EventCallback
 import org.zstack.core.cloudbus.EventFacade
 import org.zstack.core.db.DatabaseFacade
 import org.zstack.core.db.Q
+import org.zstack.header.errorcode.ErrorCode
+import org.zstack.header.errorcode.OperationFailureException
 import org.zstack.header.message.MessageReply
 import org.zstack.header.storage.primary.GetVolumeBackingChainFromPrimaryStorageMsg
 import org.zstack.header.storage.primary.GetVolumeBackingChainFromPrimaryStorageReply
@@ -35,7 +37,9 @@ import org.zstack.header.storage.primary.PrimaryStorageHostStatus
 import org.zstack.storage.volume.VolumeGlobalConfig
 import org.zstack.storage.zbs.AddonInfo
 import org.zstack.storage.zbs.Config
+import org.zstack.storage.zbs.ZbsAgentUrl
 import org.zstack.storage.zbs.ZbsConstants
+import org.zstack.storage.zbs.ZbsGlobalProperty
 import org.zstack.storage.zbs.ZbsPrimaryStorageMdsBase
 import org.zstack.storage.zbs.ZbsStorageController
 import org.zstack.test.integration.storage.StorageTest
@@ -194,9 +198,11 @@ class ZbsPrimaryStorageCase extends SubCase {
             testMdsPing()
             testCheckHostStorageConnection()
             testNegativeScenario()
+            testDeleteVolumeTriesNextMdsAfterSyncFailure()
             testAddExternalPrimaryStorageWithMalformedJsonRejectedByInterceptor()
             testDataVolumeNegativeScenario()
             testDecodeMdsUriWithSpecialPassword()
+            testZbsMdsUriAndAgentUrlSupportIpv6()
             testMdsReconnectAfterMaximumPingFailures()
             testGetBackingChainNormalizesCbdParentUri()
             testBatchStatsNormalizesCbdInstallPath()
@@ -588,7 +594,7 @@ class ZbsPrimaryStorageCase extends SubCase {
             uuid = kvm2.uuid
         }
 
-        assert reconnectCalls.contains("deploy:127.0.0.2")
+        assert !reconnectCalls.contains("deploy:127.0.0.2")
         assert reconnectCalls.containsAll(["heartbeat:lpool1", "heartbeat:lpool2"])
         assert reconnectCheckHostStatusCount.get() > 0
 
@@ -897,6 +903,35 @@ class ZbsPrimaryStorageCase extends SubCase {
         }
     }
 
+    void testDeleteVolumeTriesNextMdsAfterSyncFailure() {
+        AtomicInteger getVolumeClientsCallCount = new AtomicInteger(0)
+        List<String> getVolumeClientsMds = Collections.synchronizedList(new ArrayList<>())
+        env.simulator(ZbsStorageController.GET_VOLUME_CLIENTS_PATH) { HttpEntity<String> e, EnvSpec spec ->
+            def cmd = JSONObjectUtil.toObject(e.body, ZbsStorageController.GetVolumeClientsCmd.class)
+            getVolumeClientsMds.add(cmd.addr)
+            if (getVolumeClientsCallCount.incrementAndGet() == 1) {
+                throw new OperationFailureException(new ErrorCode("TEST.1000", "test error", "simulated MDS network failure"))
+            }
+
+            return new ZbsStorageController.GetVolumeClientsRsp()
+        }
+
+        VolumeInventory volume = createDataVolume {
+            name = "delete-after-mds-sync-failure"
+            diskOfferingUuid = diskOffering.uuid
+            primaryStorageUuid = ps.uuid
+        } as VolumeInventory
+
+        deleteVolume(volume.uuid)
+
+        assert getVolumeClientsCallCount.get() == 2 :
+                "deleteVolume expunge should retry GET_VOLUME_CLIENTS on next MDS after sync failure: expectedCalls=2 actualCalls=${getVolumeClientsCallCount.get()} mds=${getVolumeClientsMds}"
+        assert getVolumeClientsMds.toSet().size() == 2 :
+                "deleteVolume expunge should use two different MDS nodes after first sync failure: expectedDistinctMds=2 actualMds=${getVolumeClientsMds}"
+
+        env.cleanSimulatorHandlers()
+    }
+
     void testNegativeScenario() {
         expect(AssertionError.class) {
             addExternalPrimaryStorage {
@@ -1048,6 +1083,36 @@ class ZbsPrimaryStorageCase extends SubCase {
         def mdsUri = "root:${specialPassword}@127.0.2.1"
         MdsUri uri = new MdsUri(mdsUri);
         assert uri.password == specialPassword
+    }
+
+    void testZbsMdsUriAndAgentUrlSupportIpv6() {
+        def ipv6Uri = new MdsUri("root:password@[2001:db8::10]:2222/?mdsPort=7777")
+        assert ipv6Uri.hostname == "2001:db8::10"
+        assert ipv6Uri.sshPort == 2222
+        assert ipv6Uri.mdsPort == 7777
+        assert ZbsAgentUrl.primaryStorageUrl(ipv6Uri.hostname, ZbsPrimaryStorageMdsBase.PING_PATH) ==
+                "http://[2001:db8::10]:${ZbsGlobalProperty.PRIMARY_STORAGE_AGENT_PORT}${ZbsPrimaryStorageMdsBase.PING_PATH}"
+
+        def ipv4Uri = new MdsUri("root:password@172.24.249.182:2222/?mdsPort=7777")
+        assert ipv4Uri.hostname == "172.24.249.182"
+        assert ZbsAgentUrl.primaryStorageUrl(ipv4Uri.hostname, ZbsPrimaryStorageMdsBase.PING_PATH) ==
+                "http://172.24.249.182:${ZbsGlobalProperty.PRIMARY_STORAGE_AGENT_PORT}${ZbsPrimaryStorageMdsBase.PING_PATH}"
+
+        def endpoints = [
+                "http://172.24.249.182:7763${ZbsPrimaryStorageMdsBase.PING_PATH}",
+                ZbsAgentUrl.primaryStorageUrl(ipv6Uri.hostname, ZbsPrimaryStorageMdsBase.PING_PATH)
+        ]
+        String ipv6PingUrl = "http://[2001:db8::10]:${ZbsGlobalProperty.PRIMARY_STORAGE_AGENT_PORT}${ZbsPrimaryStorageMdsBase.PING_PATH}"
+        assert endpoints.contains(ipv6PingUrl)
+
+        String oldRootPath = ZbsGlobalProperty.PRIMARY_STORAGE_AGENT_URL_ROOT_PATH
+        try {
+            ZbsGlobalProperty.PRIMARY_STORAGE_AGENT_URL_ROOT_PATH = "zstack"
+            assert ZbsAgentUrl.primaryStorageUrl(ipv6Uri.hostname, ZbsPrimaryStorageMdsBase.PING_PATH) ==
+                    "http://[2001:db8::10]:${ZbsGlobalProperty.PRIMARY_STORAGE_AGENT_PORT}/zstack${ZbsPrimaryStorageMdsBase.PING_PATH}"
+        } finally {
+            ZbsGlobalProperty.PRIMARY_STORAGE_AGENT_URL_ROOT_PATH = oldRootPath
+        }
     }
 
     void testMdsReconnectAfterMaximumPingFailures() {

@@ -845,7 +845,7 @@
   "ORG_ZSTACK_ZWATCH_ALARM_10026": "clé en double[%s] avec des valeurs différentes{%s}%",
   "ORG_ZSTACK_NETWORK_SERVICE_LB_10170": "impossible d'ajouter l'IP du serveur au groupe de serveurs d'équilibrage de charge partagé %s",
   "ORG_ZSTACK_ZWATCH_ALARM_10025": "la métrique ne possède pas l'étiquette spécifiée[%s]",
-  "ORG_ZSTACK_ZWATCH_ALARM_10023": "étiquette en double définie pour l'alarme avec UUID [uuid:%s]",
+  "ORG_ZSTACK_ZWATCH_ALARM_10023": "étiquette en double[key:%s, operator:%s, value:%s] définie pour l'alarme[uuid:%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10029": "la métrique[%s] est restreinte aux administrateurs et n'est pas disponible pour votre rôle utilisateur actuel.",
   "ORG_ZSTACK_NETWORK_SERVICE_LB_10171": "impossible de modifier le serveur backend car vmincs et les IPs du serveur sont null",
   "ORG_ZSTACK_ZWATCH_ALARM_10028": "l'espace de noms[%s] ne contient pas la métrique[%s]",
@@ -2961,6 +2961,7 @@
   "ORG_ZSTACK_CRYPTO_AUTH_10019": "Échec de l'obtention du mot de passe d'intégrité de la base de données car %s ne génère pas de mot de passe d'intégrité",
   "ORG_ZSTACK_VHOST_KVM_10000": "Le disque vHostUser ne prend en charge que le mode virtio. Veuillez vérifier que la plateforme d'image dispose des pilotes virtio nécessaires.",
   "ORG_ZSTACK_VHOST_KVM_10001": "Le disque vhost-user ne prend pas en charge le mode virtio-scsi ; veuillez désactiver le mode virtio-scsi.",
+  "ORG_ZSTACK_VHOST_KVM_10002": "Impossible d’attacher le disque vhost-user en ligne : la VM en cours d’exécution n’a pas la mémoire partagée activée. Arrêtez la VM puis attachez, ou définissez la configuration globale « generate.config.vhost.required » sur « auto » ou « true » et redémarrez la VM (cela désactive la surallocation mémoire pour la VM).",
   "ORG_ZSTACK_NETWORK_L3_10029": "%s n'est pas une adresse IPv6 valide pour la configuration des ressources cloud",
   "ORG_ZSTACK_USBDEVICE_10005": "PassThrough ne peut être utilisé que sur une machine virtuelle s'exécutant dans l'environnement hôte.",
   "ORG_ZSTACK_ALIYUN_ECS_10019": "Seuls les utilisateurs administratifs peuvent définir le paramètre [onlyZstack] sur false.",
@@ -4729,5 +4730,6 @@
   "ORG_ZSTACK_AI_10162": "La VM[nom:%s, uuid:%s] doit être en cours d'exécution pour monter/démonter le modèle. État actuel : %s",
   "ORG_ZSTACK_AI_10163": "La VM[nom:%s, uuid:%s] ne s'exécute sur aucun hôte",
   "ORG_ZSTACK_AI_10164": "Le modèle[nom:%s, uuid:%s] n'est pas partagé avec le compte propriétaire de cette VM (ni public). Le montage exige que le modèle soit accessible selon les mêmes règles de partage.",
-  "ORG_ZSTACK_AI_10165": "ModelCenter[uuid:%s] introuvable pour le modèle[nom:%s, uuid:%s]"
+  "ORG_ZSTACK_AI_10165": "ModelCenter[uuid:%s] introuvable pour le modèle[nom:%s, uuid:%s]",
+  "ORG_ZSTACK_AI_10167": "Model service instance group[uuid:%s] is being deleted; stop waiting for service boot up"
 }

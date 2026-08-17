@@ -1,10 +1,12 @@
 package org.zstack.header.vm;
 
 import org.zstack.header.configuration.PythonClass;
+import org.zstack.utils.data.SizeUnit;
 
 @PythonClass
 public interface VmInstanceConstant {
     String SERVICE_ID = "vmInstance";
+    String SECURE_BOOT_SERVICE_ID = "secureBoot";
     String ACTION_CATEGORY = "instance";
     @PythonClass
     String USER_VM_TYPE = "UserVm";
@@ -25,6 +27,8 @@ public interface VmInstanceConstant {
 
     String L2_TF_VSWITCH_TYPE = "TfL2Network";
     String TF_VIRTUAL_NIC_TYPE = "TFVNIC";
+
+    long NV_RAM_DEFAULT_SIZE = SizeUnit.MEGABYTE.toByte(1);
 
     enum Params {
         VmInstanceSpec,
@@ -62,6 +66,7 @@ public interface VmInstanceConstant {
         Reboot,
         Destroy,
         Migrate,
+        MigrateVolume,
         AttachVolume,
         AttachNic,
         ChangeNicNetwork,

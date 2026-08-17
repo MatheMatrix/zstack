@@ -31,6 +31,7 @@ import org.zstack.utils.CollectionUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.function.Function;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.utils.network.IPv6NetworkUtils;
 import org.zstack.utils.path.PathUtil;
 import org.zstack.utils.ssh.Ssh;
 import org.zstack.utils.ssh.SshException;
@@ -75,7 +76,7 @@ public class SftpBackupStorage extends BackupStorageBase {
         if (CoreGlobalProperty.UNIT_TEST_ON) {
             ub.host("localhost");
         } else {
-            ub.host(getSelf().getHostname());
+            ub.host(IPv6NetworkUtils.formatHostForUrl(getSelf().getHostname()));
         }
 
         ub.port(SftpBackupStorageGlobalProperty.AGENT_PORT);
@@ -391,7 +392,7 @@ public class SftpBackupStorage extends BackupStorageBase {
         callbackChecker.setUsername(getSelf().getUsername());
         callbackChecker.setPassword(getSelf().getPassword());
         callbackChecker.setPort(getSelf().getSshPort());
-        callbackChecker.setCallbackIp(Platform.getManagementServerIp());
+        callbackChecker.setCallbackIp(Platform.getManagementServerIpForRemote(getSelf().getHostname()));
         callbackChecker.setCallBackPort(CloudBusGlobalProperty.HTTP_PORT);
 
         AnsibleRunner runner = new AnsibleRunner();

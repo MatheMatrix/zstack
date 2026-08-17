@@ -20,6 +20,7 @@ import org.zstack.core.db.SimpleQuery.Op;
 import org.zstack.core.thread.ChainTask;
 import org.zstack.core.thread.SyncTaskChain;
 import org.zstack.core.thread.ThreadFacade;
+import org.zstack.core.upgrade.UpgradeChecker;
 import org.zstack.core.upgrade.UpgradeGlobalConfig;
 import org.zstack.core.workflow.FlowChainBuilder;
 import org.zstack.header.AbstractService;
@@ -51,6 +52,8 @@ import org.zstack.header.query.AddExpandedQueryExtensionPoint;
 import org.zstack.header.query.ExpandedQueryAliasStruct;
 import org.zstack.header.query.ExpandedQueryStruct;
 import org.zstack.header.query.QueryBelongFilter;
+import org.zstack.header.rest.RESTConstant;
+import org.zstack.header.rest.RESTFacade;
 import org.zstack.header.tag.*;
 import org.zstack.header.vm.*;
 import org.zstack.identity.Account;
@@ -113,10 +116,14 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
         VmInstanceMigrateExtensionPoint, VmPreMigrationExtensionPoint {
 	private final static CLogger logger = Utils.getLogger(VirtualRouterManagerImpl.class);
 	
-	private final static List<String> supportedL2NetworkTypes = new ArrayList<String>();
+    private final static List<String> supportedL2NetworkTypes = new ArrayList<String>();
+
 	private NetworkServiceProviderInventory virtualRouterProvider;
 	private final Map<String, VirtualRouterHypervisorBackend> hypervisorBackends = new HashMap<String, VirtualRouterHypervisorBackend>();
     private final Map<String, Integer> vrParallelismDegrees = new ConcurrentHashMap<String, Integer>();
+
+    @Autowired
+    private RESTFacade restf;
 
     private List<String> virtualRouterPostCreateFlows;
     private List<String> virtualRouterPostStartFlows;
@@ -180,6 +187,8 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
     protected VirtualRouterHaBackend haBackend;
     @Autowired
     private ApplianceVmFactory apvmFactory;
+    @Autowired
+    private UpgradeChecker upgradeChecker;
 
     @Override
     @MessageSafe
@@ -606,6 +615,7 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
 
 	@Override
 	public boolean start() {
+        upgradeChecker.addPredefinedApiClassName(APIReconnectVirtualRouterMsg.class.getSimpleName());
 		populateExtensions();
         deployAnsible();
 		buildWorkFlowBuilder();
@@ -956,7 +966,7 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
         if (CoreGlobalProperty.UNIT_TEST_ON) {
             ub.host("localhost");
         } else {
-            ub.host(mgmtNicIp);
+            ub.host(IPv6NetworkUtils.formatHostForUrl(mgmtNicIp));
         }
 
         ub.port(VirtualRouterGlobalProperty.AGENT_PORT);
@@ -966,6 +976,34 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
         ub.path(subPath);
 
         return ub.build().toUriString();
+    }
+
+    @Override
+    public Map<String, String> buildAgentCallbackUrlHeaders(String mgmtNicIp) {
+        return Collections.singletonMap(RESTConstant.CALLBACK_URL, restf.buildCallbackUrl(selectManagementIpForAgent(mgmtNicIp)));
+    }
+
+    private String selectManagementIpForAgent(String agentIp) {
+        String routeSourceIp = Platform.getRouteSourceIp(agentIp);
+        if (routeSourceIp != null) {
+            return routeSourceIp;
+        }
+
+        if (IPv6NetworkUtils.isIpv6Address(agentIp)) {
+            return Platform.getManagementServerIps().stream()
+                    .filter(IPv6NetworkUtils::isIpv6Address)
+                    .findFirst()
+                    .orElse(Platform.getManagementServerIp());
+        }
+
+        if (NetworkUtils.isIpv4Address(agentIp)) {
+            return Platform.getManagementServerIps().stream()
+                    .filter(NetworkUtils::isIpv4Address)
+                    .findFirst()
+                    .orElse(Platform.getManagementServerIp());
+        }
+
+        return Platform.getManagementServerIp();
     }
 
 	private void buildWorkFlowBuilder() {
@@ -2287,12 +2325,20 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
 
     @Override
     public void managementNodeReady() {
+        List<VirtualRouterVmVO> vrVos = Q.New(VirtualRouterVmVO.class).list();
+        String expectedVersion = new VirtualRouterMetadataOperator().getManagementVersion();
+        for (VirtualRouterVmVO vrVo : vrVos) {
+            if (!destMaker.isManagedByUs(vrVo.getUuid())) {
+                continue;
+            }
+            upgradeChecker.refreshAgentExpectedVersion(vrVo.getUuid(), VirtualRouterConstant.VIRTUAL_ROUTER_PROVIDER_TYPE, expectedVersion);
+        }
+
         if (UpgradeGlobalConfig.GRAYSCALE_UPGRADE.value(Boolean.class)) {
-            logger.debug("skip checking virtual router versions on management node ready because grayscale upgrade is enabled");
+            logger.debug("skip checking virtual router versions on management node ready because grayscale upgrade is enabled, refreshed expected versions");
             return;
         }
 
-        List<VirtualRouterVmVO> vrVos = Q.New(VirtualRouterVmVO.class).list();
         for (VirtualRouterVmVO vrVo : vrVos) {
             CheckVirtualRouterVmVersionMsg msg = new CheckVirtualRouterVmVersionMsg();
             msg.setVirtualRouterVmUuid(vrVo.getUuid());
@@ -2896,6 +2942,7 @@ public class VirtualRouterManagerImpl extends AbstractService implements Virtual
                             completion.success();
                         }
                     });
+                    return;
                 }
             }
         }

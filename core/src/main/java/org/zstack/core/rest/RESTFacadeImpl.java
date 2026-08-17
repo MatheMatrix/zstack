@@ -6,6 +6,8 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import org.apache.http.HttpStatus;
+import org.apache.http.conn.ConnectionKeepAliveStrategy;
+import org.apache.http.impl.client.DefaultConnectionKeepAliveStrategy;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
@@ -47,12 +49,15 @@ import org.zstack.utils.IptablesUtils;
 import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.utils.network.IPv6NetworkUtils;
+import org.zstack.utils.network.NetworkUtils;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -196,22 +201,10 @@ public class RESTFacadeImpl implements RESTFacade {
             callbackHostName = hostname.trim();
         }
 
-        String url;
-        if ("".equals(path) || path == null) {
-            url = String.format("http://%s:%s", callbackHostName, port);
-        } else {
-            url = String.format("http://%s:%s/%s", callbackHostName, port, path);
-        }
-        UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(url);
-        ub.path(RESTConstant.CALLBACK_PATH);
-        callbackUrl = ub.build().toUriString();
-
-        ub = UriComponentsBuilder.fromHttpUrl(url);
-        baseUrl = ub.build().toUriString();
-
-        ub = UriComponentsBuilder.fromHttpUrl(url);
-        ub.path(RESTConstant.COMMAND_CHANNEL_PATH);
-        sendCommandUrl = ub.build().toUriString();
+        String url = buildBaseUrl(callbackHostName, port, path);
+        callbackUrl = buildCallbackUrl(callbackHostName, port, path);
+        baseUrl = url;
+        sendCommandUrl = buildSendCommandUrl(callbackHostName, port, path);
 
         logger.debug(String.format("RESTFacade built callback url: %s", callbackUrl));
         template = RESTFacade.createRestTemplate(CoreGlobalProperty.REST_FACADE_READ_TIMEOUT, CoreGlobalProperty.REST_FACADE_CONNECT_TIMEOUT);
@@ -220,6 +213,56 @@ public class RESTFacadeImpl implements RESTFacade {
                 CoreGlobalProperty.REST_FACADE_CONNECT_TIMEOUT,
                 CoreGlobalProperty.REST_FACADE_MAX_PER_ROUTE,
                 CoreGlobalProperty.REST_FACADE_MAX_TOTAL);
+    }
+
+    public static String buildBaseUrl(String hostName, int port, String path) {
+        String url = IPv6NetworkUtils.buildHttpUrl(hostName, port);
+        if (path != null && !path.isEmpty()) {
+            url = String.format("%s/%s", url, path);
+        }
+        return UriComponentsBuilder.fromHttpUrl(url).build().toUriString();
+    }
+
+    public static String buildCallbackUrl(String hostName, int port, String path) {
+        UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(buildBaseUrl(hostName, port, path));
+        ub.path(RESTConstant.CALLBACK_PATH);
+        return ub.build().toUriString();
+    }
+
+    public static String selectCallbackUrl(String requestUrl, Map<String, String> headers, String defaultCallbackUrl, int port, String path) {
+        if (headers != null && headers.keySet().stream().anyMatch(RESTConstant.CALLBACK_URL::equalsIgnoreCase)) {
+            return defaultCallbackUrl;
+        }
+
+        String host = extractRequestHost(requestUrl);
+        if (host == null) {
+            return defaultCallbackUrl;
+        }
+
+        if (!NetworkUtils.isIpv4Address(host) && !IPv6NetworkUtils.isIpv6Address(host)) {
+            return defaultCallbackUrl;
+        }
+
+        return buildCallbackUrl(Platform.getManagementServerIpForRemote(host), port, path);
+    }
+
+    private static String extractRequestHost(String requestUrl) {
+        try {
+            return IPv6NetworkUtils.stripHostUrlBrackets(new URI(requestUrl).getHost());
+        } catch (URISyntaxException | IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    public static String buildSendCommandUrl(String hostName, int port, String path) {
+        UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(buildBaseUrl(hostName, port, path));
+        ub.path(RESTConstant.COMMAND_CHANNEL_PATH);
+        return ub.build().toUriString();
+    }
+
+    // cap the agent-advertised keep-alive to keepAliveMs; also cap when the agent sends none (duration < 0)
+    static long cappedKeepAlive(long serverDuration, long capMs) {
+        return (serverDuration < 0 || serverDuration > capMs) ? capMs : serverDuration;
     }
 
     // timeout are in milliseconds
@@ -234,8 +277,14 @@ public class RESTFacadeImpl implements RESTFacade {
         connectionManager.setDefaultMaxPerRoute(maxPerRoute);
         connectionManager.setMaxTotal(maxTotal);
 
+        // cap client keep-alive below agent socket_timeout so we never reuse a connection the agent already closed
+        final long keepAliveMs = CoreGlobalProperty.REST_FACADE_KEEPALIVE_TIME;
+        ConnectionKeepAliveStrategy keepAliveStrategy = (response, context) ->
+                cappedKeepAlive(DefaultConnectionKeepAliveStrategy.INSTANCE.getKeepAliveDuration(response, context), keepAliveMs);
+
         CloseableHttpAsyncClient httpAsyncClient = HttpAsyncClients.custom()
                 .setConnectionManager(connectionManager)
+                .setKeepAliveStrategy(keepAliveStrategy)
                 .build();
 
         HttpComponentsAsyncClientHttpRequestFactory cf = new HttpComponentsAsyncClientHttpRequestFactory(httpAsyncClient);
@@ -393,7 +442,7 @@ public class RESTFacadeImpl implements RESTFacade {
         HttpHeaders requestHeaders = new HttpHeaders();
         requestHeaders.setContentLength(body.length());
         requestHeaders.set(RESTConstant.TASK_UUID, taskUuid);
-        requestHeaders.set(RESTConstant.CALLBACK_URL, callbackUrl);
+        requestHeaders.set(RESTConstant.CALLBACK_URL, selectCallbackUrl(url, headers, callbackUrl, port, path));
         MediaType JSON = MediaType.parseMediaType("application/json; charset=utf-8");
         requestHeaders.setContentType(JSON);
         if (headers != null) {
@@ -1015,6 +1064,11 @@ public class RESTFacadeImpl implements RESTFacade {
     @Override
     public String getCallbackUrl() {
         return callbackUrl;
+    }
+
+    @Override
+    public String buildCallbackUrl(String hostName) {
+        return buildCallbackUrl(hostName, port, path);
     }
 
     @Override

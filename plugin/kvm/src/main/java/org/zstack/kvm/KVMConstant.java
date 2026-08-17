@@ -1,7 +1,9 @@
 package org.zstack.kvm;
 
 import org.zstack.header.configuration.PythonClass;
+import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.vm.VmInstanceState;
+import org.zstack.header.vm.additions.VmHostFileType;
 
 @PythonClass
 public interface KVMConstant {
@@ -92,12 +94,15 @@ public interface KVMConstant {
     String GET_VIRTUALIZER_INFO_PATH = "/vm/getvirtualizerinfo";
     String KVM_SCAN_VM_PORT_STATUS = "/host/vm/scanport";
     String GET_DEV_CAPACITY = "/host/dev/capacity";
+    String KVM_GET_BLOCK_DEVICES_PATH = "/host/blockdevices";
     String KVM_CONFIG_PRIMARY_VM_PATH = "/primary/vm/config";
     String KVM_CONFIG_SECONDARY_VM_PATH = "/secondary/vm/config";
     String KVM_START_COLO_SYNC_PATH = "/start/colo/sync";
     String KVM_REGISTER_PRIMARY_VM_HEARTBEAT = "/register/primary/vm/heartbeat";
     String CLEAN_FIRMWARE_FLASH = "/clean/firmware/flash";
     String FSTRIM_VM_PATH = "/vm/fstrim";
+    String READ_VM_HOST_FILE_PATH = "/vm/hostfile/read";
+    String WRITE_VM_HOST_FILE_PATH = "/vm/hostfile/write";
 
     // ZSTAC-83157: virtiofs model mount paths
     String KVM_VIRTIOFS_ATTACH_PATH = "/virtiofs/attach";
@@ -112,6 +117,10 @@ public interface KVMConstant {
     String MIN_QEMU_LIVESNAPSHOT_VERSION = "1.3.0";
     String MIN_LIBVIRT_LIVE_BLOCK_COMMIT_VERSION = "1.2.7";
     String MIN_LIBVIRT_VIRTIO_SCSI_VERSION = "1.0.4";
+    String MIN_X86_64_QEMU_KVM_IOTHREAD_VQ_MAPPING_PACKAGE_VERSION = "6.2.0-546";
+    String MIN_X86_64_LIBVIRT_IOTHREAD_VQ_MAPPING_PACKAGE_VERSION = "8.0.0-163";
+    String MIN_AARCH64_QEMU_KVM_IOTHREAD_VQ_MAPPING_PACKAGE_VERSION = "6.2.0-1141";
+    String MIN_AARCH64_LIBVIRT_IOTHREAD_VQ_MAPPING_PACKAGE_VERSION = "6.2.0-490";
 
     String KVM_REPORT_VM_STATE = "/kvm/reportvmstate";
     String KVM_RECONNECT_ME = "/kvm/reconnectme";
@@ -139,6 +148,22 @@ public interface KVMConstant {
     String RECONCILE_VM_HA_ENABLED_METADATA_LIVE_PATH = "/host/vm/reconcileHaEnabledMetadata/live";
     String HA_NETWORK_GROUP_SYNC_PATH = "/ha/networkgroup/sync";
 
+    String KVM_CREATE_ENVELOPE_KEY_PATH = "/host/key/envelope/createEnvelopeKey";
+    String KVM_GET_ENVELOPE_KEY_PATH = "/host/key/envelope/getEnvelopePublicKey";
+    String KVM_ROTATE_ENVELOPE_KEY_PATH = "/host/key/envelope/rotateEnvelopeKey";
+    String KVM_VERIFY_ENVELOPE_KEY_PATH = "/host/key/envelope/checkEnvelopeKey";
+    String KVM_ENSURE_SECRET_PATH = "/host/key/envelope/ensureSecret";
+
+    /** HTTP timeout in seconds for envelope key sync (verify/create/rotate/get) to agent. */
+    long ENVELOPE_KEY_HTTP_TIMEOUT_SEC = 5L;
+
+    /** Max size in bytes for DEK payload in SecretHostDefine (decoded from dekBase64). */
+    int MAX_DEK_BYTES = 1024;
+
+    String KVM_HOST_FILE_DOWNLOAD_PATH = "/host/file/download";
+    String KVM_HOST_FILE_UPLOAD_PATH = "/host/file/upload";
+    String KVM_HOST_FILE_DOWNLOAD_PROGRESS_PATH = "/host/file/progress";
+
     String KVM_HOST_IPSET_ATTACH_NIC_PATH = "/network/ipset/attach";
     String KVM_HOST_IPSET_DETACH_NIC_PATH = "/network/ipset/detach";
     String KVM_HOST_IPSET_SYNC_PATH = "/network/ipset/sync";
@@ -150,6 +175,7 @@ public interface KVMConstant {
     String HOST_PHYSICAL_DISK_REMOVE_ALARM_EVENT = "/host/physical/disk/remove/alarm";
     String HOST_PHYSICAL_MEMORY_ECC_ERROR_ALARM_EVENT = "/host/physical/memory/ecc/error/alarm";
     String HOST_PHYSICAL_GPU_REMOVE_ALARM_EVENT = "/host/physical/gpu/remove/alarm";
+    String HOST_VM_EVENT_ALARM = "/host/vm/event/alarm";
     String HOST_STORAGEDEVICE_HBA_STATE_EVENT = "/storagedevice/hba/state/alarm";
     String HOST_PROCESS_PHYSICAL_MEMORY_USAGE_ALARM_PATH = "/host/process/physicalMemory/usage/alarm";
     String HOST_KVMAGENT_STATUS_PATH = "/host/kvmagent/status";
@@ -197,6 +223,26 @@ public interface KVMConstant {
 
 
     public static final String L2_PROVIDER_TYPE_LINUX_BRIDGE = "LinuxBridge";
+
+    public static final String EDK_VERSION_NONE = "None";
+    public static final String NV_RAM_FILE_PATH_FORMAT = "/var/lib/libvirt/qemu/nvram/%s-host-files/%s.fd";
+    public static String buildNvramFilePath(String vmUuid) {
+        return String.format(NV_RAM_FILE_PATH_FORMAT, vmUuid, vmUuid);
+    }
+
+    public static final String TPM_STATE_FILE_PATH_FORMAT = "/var/lib/libvirt/swtpm/%s/";
+    public static String buildTpmStateFilePath(String vmUuid) {
+        String vmUuidWithHyphen = vmUuid.replaceFirst("(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})", "$1-$2-$3-$4-$5");
+        return String.format(TPM_STATE_FILE_PATH_FORMAT, vmUuidWithHyphen);
+    }
+
+    public static String buildPathForVmHostFileType(VmHostFileType type, String vmUuid) {
+        switch (type) {
+            case NvRam: return buildNvramFilePath(vmUuid);
+            case TpmState: return buildTpmStateFilePath(vmUuid);
+            default: throw new CloudRuntimeException("unsupported VmHostFileType: " + type);
+        }
+    }
 
     public static final String DHCP_BIN_FILE_PATH = "/usr/local/zstack/dnsmasq";
     String KVM_HOST_NETWORK_INTERFACE_DEFAULT = "None";

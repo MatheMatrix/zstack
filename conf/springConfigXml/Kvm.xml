@@ -171,9 +171,10 @@
         </zstack:plugin>
     </bean>
 
-    <bean id="BootOrderKvmStartVmExtension" class="org.zstack.kvm.BootOrderKvmStartVmExtension">
+    <bean id="BootOrderKvmStartVmExtension" class="org.zstack.kvm.BootKvmStartVmExtension">
         <zstack:plugin>
             <zstack:extension interface="org.zstack.kvm.KVMStartVmExtensionPoint" />
+            <zstack:extension interface="org.zstack.kvm.KVMSyncVmDeviceInfoExtensionPoint" />
         </zstack:plugin>
     </bean>
 
@@ -213,6 +214,8 @@
         </zstack:plugin>
     </bean>
     <bean id="HypervisorMetadataCollector" class="org.zstack.kvm.hypervisor.HypervisorMetadataCollectorImpl">
+    </bean>
+    <bean id="KvmHypervisorMetadataStore" class="org.zstack.kvm.hypervisor.KvmHypervisorMetadataStoreImpl">
     </bean>
 
     <bean id="KvmHypervisorZQLExtension" class="org.zstack.kvm.hypervisor.KvmHypervisorZQLExtension">
@@ -258,5 +261,46 @@
             <zstack:extension interface="org.zstack.header.vm.VmInstanceBeforeStartExtensionPoint"/>
             <zstack:extension interface="org.zstack.header.cluster.ClusterUpdateOSExtensionPoint"/>
         </zstack:plugin>
+    </bean>
+    <bean id="KvmTpmManager" class="org.zstack.kvm.tpm.KvmTpmManager">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.Component"/>
+            <zstack:extension interface="org.zstack.header.Service" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="KvmTpmExtensions" class="org.zstack.kvm.tpm.KvmTpmExtensions">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.kvm.KVMStartVmExtensionPoint" />
+            <zstack:extension interface="org.zstack.header.vm.PreVmInstantiateResourceExtensionPoint" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="KvmSecureBootManager" class="org.zstack.kvm.efi.KvmSecureBootManager">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.Component"/>
+            <zstack:extension interface="org.zstack.header.Service" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="KvmSecureBootExtensions" class="org.zstack.kvm.efi.KvmSecureBootExtensions">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.kvm.KVMStartVmExtensionPoint" />
+            <zstack:extension interface="org.zstack.header.vm.PreVmInstantiateResourceExtensionPoint" />
+            <zstack:extension interface="org.zstack.header.vm.VmJustBeforeDeleteFromDbExtensionPoint" />
+            <zstack:extension interface="org.zstack.header.vm.VmPreMigrationExtensionPoint" />
+            <zstack:extension interface="org.zstack.header.vm.AfterReimageVmInstanceExtensionPoint" />
+            <zstack:extension interface="org.zstack.header.vm.VmReleaseResourceExtensionPoint" />
+            <zstack:extension interface="org.zstack.header.vm.VmInstanceMigrateExtensionPoint" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="VmHostFileTracker" class="org.zstack.kvm.efi.VmHostFileTracker">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.Component"/>
+        </zstack:plugin>
+    </bean>
+
+    <bean id="KvmVmHostFileFactory" class="org.zstack.kvm.efi.KvmVmHostFileFactory">
     </bean>
 </beans>

@@ -10,6 +10,7 @@ import org.zstack.compute.vm.VmGlobalConfig;
 import org.zstack.compute.vm.VmNicManager;
 import org.zstack.core.CoreGlobalProperty;
 import org.zstack.core.ansible.AnsibleFacade;
+import org.zstack.core.ansible.AnsibleConstant;
 import org.zstack.core.jsonlabel.JsonLabel;
 import org.zstack.core.jsonlabel.JsonLabelInventory;
 import org.zstack.core.cloudbus.CloudBus;
@@ -33,6 +34,8 @@ import org.zstack.core.db.SimpleQuery;
 import org.zstack.core.thread.AsyncThread;
 import org.zstack.core.thread.PeriodicTask;
 import org.zstack.core.thread.ThreadFacade;
+import org.zstack.core.upgrade.UpgradeChecker;
+import org.zstack.core.upgrade.UpgradeGlobalConfig;
 import org.zstack.core.timeout.TimeHelper;
 import org.zstack.header.AbstractService;
 import org.zstack.header.Component;
@@ -42,6 +45,7 @@ import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.*;
 import org.zstack.header.managementnode.ManagementNodeReadyExtensionPoint;
+import org.zstack.header.message.AbstractBeforeSendMessageInterceptor;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
 import org.zstack.header.message.NeedReplyMessage;
@@ -88,10 +92,12 @@ import org.zstack.utils.function.Function;
 import org.zstack.utils.function.ValidateFunction;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.utils.network.IPv6NetworkUtils;
 
 import javax.persistence.Tuple;
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.StandardSocketOptions;
@@ -176,6 +182,8 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
     private VmNicManager vmNicManager;
     @Autowired
     private GlobalConfigFacade gcf;
+    @Autowired
+    private UpgradeChecker upgradeChecker;
     @Autowired
     KvmVmSyncPingTask pingTask;
     private Future<Void> checkSocketChannelTimeoutThread;
@@ -262,16 +270,22 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
     }
 
     private List<String> getHostManagedByUs() {
+        return getHostManagedByUs(true);
+    }
+
+    private List<String> getHostManagedByUs(boolean connectedOnly) {
         int qun = 10000;
-        long amount = dbf.count(HostVO.class);
+        long amount = dbf.count(KVMHostVO.class);
         int times = (int) (amount / qun) + (amount % qun != 0 ? 1 : 0);
         List<String> hostUuids = new ArrayList<String>();
         int start = 0;
         for (int i = 0; i < times; i++) {
             SimpleQuery<KVMHostVO> q = dbf.createQuery(KVMHostVO.class);
             q.select(HostVO_.uuid);
-            // disconnected host will be handled by HostManager
-            q.add(HostVO_.status, SimpleQuery.Op.EQ, HostStatus.Connected);
+            if (connectedOnly) {
+                // disconnected host will be handled by HostManager
+                q.add(HostVO_.status, SimpleQuery.Op.EQ, HostStatus.Connected);
+            }
             q.setLimit(qun);
             q.setStart(start);
             List<String> lst = q.listValue();
@@ -384,6 +398,28 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
                 agentHttpPathsWithShortTimeout.addAll(paths);
             }
         }
+    }
+
+    private void installAgentHttpShortTimeoutInterceptor() {
+        bus.installBeforeSendMessageInterceptor(new AbstractBeforeSendMessageInterceptor() {
+            @Override
+            public void beforeSendMessage(Message message) {
+                KVMHostAsyncHttpCallMsg msg = (KVMHostAsyncHttpCallMsg) message;
+                long timeout = getAgentHttpShortTimeout(msg.getPath());
+                if (timeout == -1) {
+                    return;
+                }
+
+                if (msg.getTimeout() > 0) {
+                    timeout = Math.min(timeout, msg.getTimeout());
+                }
+                if (msg.getMessageDeadline() != -1) {
+                    timeout = Math.min(timeout,
+                            Math.max(1L, msg.getMessageDeadline() - System.currentTimeMillis()));
+                }
+                msg.setTimeout(timeout);
+            }
+        }, KVMHostAsyncHttpCallMsg.class);
     }
 
     public long getAgentHttpShortTimeout(String path) {
@@ -535,6 +571,7 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
         initLibvirtTlsCA();
         deployAnsibleModule();
         populateExtensions();
+        installAgentHttpShortTimeoutInterceptor();
         configKVMDeviceType();
 
         if (KVMGlobalConfig.ENABLE_HOST_TCP_CONNECTION_CHECK.value(Boolean.class)) {
@@ -600,6 +637,17 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
                     && !VmInstanceState.offlineStates.contains(vmState)) {
                 throw new GlobalConfigException("Can not change vm.cpuMode while VM is living.");
             }
+        });
+
+        resourceConfig = rcf.getResourceConfig(KVMGlobalConfig.VM_CPU_HARDWARE_VIRTUALIZATION.getIdentity());
+        resourceConfig.installValidatorExtension((resourceUuid, oldValue, newValue) -> {
+            Boolean isWindowsVm = KVMHostUtils.isWindowsVmByUuid(resourceUuid);
+            if (isWindowsVm == null || isWindowsVm) {
+                return;
+            }
+
+            throw new GlobalConfigException(String.format("ResourceConfig [category:%s, name:%s] only supports Windows VM, but vm[uuid:%s] is not Windows",
+                    KVMGlobalConfig.CATEGORY, KVMGlobalConfig.VM_CPU_HARDWARE_VIRTUALIZATION.getName(), resourceUuid));
         });
 
         restf.registerSyncHttpCallHandler(KVMConstant.KVM_RECONNECT_ME, ReconnectMeCmd.class, new SyncHttpCallHandler<ReconnectMeCmd>() {
@@ -739,6 +787,11 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
                         ext.handleKvmHardwareStatus(HostHardware.GPU, cmd);
                     }
                     break;
+                case GPU_XID:
+                    for (KvmHardwareStatusHandlerExtensionPoint ext : pluginRgty.getExtensionList(KvmHardwareStatusHandlerExtensionPoint.class)) {
+                        ext.handleKvmHardwareStatus(HostHardware.GPU_XID, cmd);
+                    }
+                    break;
                 case POWERSUPPLY:
                     physicalPowerSupplyStatusAlarmEvent(cmd);
                     break;
@@ -762,6 +815,12 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             return null;
         });
 
+        restf.registerSyncHttpCallHandler(KVMConstant.HOST_VM_EVENT_ALARM, KVMAgentCommands.VmEventAlarmCmd.class, cmd -> {
+            for (VmEventAlarmHandlerExtensionPoint ext : pluginRgty.getExtensionList(VmEventAlarmHandlerExtensionPoint.class)) {
+                ext.handleVmEventAlarm(cmd);
+            }
+            return null;
+        });
 
         restf.registerSyncHttpCallHandler(KVMConstant.HOST_PROCESS_PHYSICAL_MEMORY_USAGE_ALARM_PATH, HostProcessPhysicalMemoryUsageAlarmCmd.class, cmd -> {
             HostCanonicalEvents.HostProcessPhysicalMemoryUsageAlarmData data = new HostCanonicalEvents.HostProcessPhysicalMemoryUsageAlarmData();
@@ -974,7 +1033,7 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
     @AsyncThread
     private void startTcpServer() throws IOException {
         try (Selector selector = Selector.open(); ServerSocketChannel serverSocket = ServerSocketChannel.open()) {
-            serverSocket.bind(new InetSocketAddress("0.0.0.0", KVMGlobalProperty.TCP_SERVER_PORT));
+            serverSocket.bind(makeTcpServerBindAddress(KVMGlobalProperty.TCP_SERVER_PORT));
             serverSocket.configureBlocking(false);
             serverSocket.register(selector, SelectionKey.OP_ACCEPT);
             ByteBuffer buffer = ByteBuffer.allocate(256);
@@ -1021,7 +1080,11 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
         client.close();
         socketTimeoutMap.remove(client, timeHelper.getCurrentTimeMillis());
 
-        String managementIp = remoteAddress.toString().split("/")[1].split(":")[0];
+        String managementIp = extractRemoteManagementIp(remoteAddress);
+        if (managementIp == null) {
+            return;
+        }
+
         String hostUuid = Q.New(HostVO.class)
                 .select(HostVO_.uuid)
                 .eq(HostVO_.managementIp, managementIp)
@@ -1047,6 +1110,29 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
         client.register(selector, SelectionKey.OP_READ);
 
         socketTimeoutMap.put(client, timeHelper.getCurrentTimeMillis());
+    }
+
+    static InetSocketAddress makeTcpServerBindAddress(int port) {
+        return new InetSocketAddress(port);
+    }
+
+    static String extractRemoteManagementIp(SocketAddress remoteAddress) {
+        if (!(remoteAddress instanceof InetSocketAddress)) {
+            return null;
+        }
+
+        InetAddress address = ((InetSocketAddress) remoteAddress).getAddress();
+        if (address == null) {
+            return null;
+        }
+
+        String hostAddress = address.getHostAddress();
+        int scopeIndex = hostAddress.indexOf('%');
+        if (scopeIndex >= 0) {
+            hostAddress = hostAddress.substring(0, scopeIndex);
+        }
+
+        return IPv6NetworkUtils.isIpv6Address(hostAddress) ? IPv6NetworkUtils.normalizeIpv6(hostAddress) : hostAddress;
     }
 
     private Map<String, String> getHostsWithDiffModel(String clusterUuid) {
@@ -1086,7 +1172,7 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
     public KVMHostContext createHostContext(KVMHostVO vo) {
         UriComponentsBuilder ub = UriComponentsBuilder.newInstance();
         ub.scheme(KVMGlobalProperty.AGENT_URL_SCHEME);
-        ub.host(vo.getManagementIp());
+        ub.host(KVMHostUtils.formatHostForUrl(vo.getManagementIp()));
         ub.port(KVMGlobalProperty.AGENT_PORT);
         if (!"".equals(KVMGlobalProperty.AGENT_URL_ROOT_PATH)) {
             ub.path(KVMGlobalProperty.AGENT_URL_ROOT_PATH);
@@ -1121,17 +1207,27 @@ public class KVMHostFactory extends AbstractService implements HypervisorFactory
             return;
         }
 
-        if (!asf.isModuleChanged(KVMConstant.ANSIBLE_PLAYBOOK_NAME)) {
+        List<String> allHostUuids = getHostManagedByUs(false);
+        for (String huuid : allHostUuids) {
+            upgradeChecker.refreshAgentExpectedVersion(huuid, AnsibleConstant.KVM_AGENT_NAME, dbf.getDbVersion());
+        }
+
+        if (UpgradeGlobalConfig.GRAYSCALE_UPGRADE.value(Boolean.class)) {
+            logger.debug(String.format("skip connecting kvm hosts on management node ready because grayscale upgrade is enabled, refreshed expected versions for hosts:%s", allHostUuids));
             return;
         }
 
-        // KVM hosts need to deploy new agent
-        // connect hosts even if they are ConnectionState is Connected
+        if (!asf.isModuleChanged(KVMConstant.ANSIBLE_PLAYBOOK_NAME)) {
+            return;
+        }
 
         List<String> hostUuids = getHostManagedByUs();
         if (hostUuids.isEmpty()) {
             return;
         }
+
+        // KVM hosts need to deploy new agent
+        // connect hosts even if they are ConnectionState is Connected
 
         logger.debug(String.format("need to connect kvm hosts because kvm agent changed, uuids:%s", hostUuids));
 

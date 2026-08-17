@@ -20,6 +20,7 @@ public class VmCanonicalEvents {
     public static final String VM_NIC_INFO_DUPLICATE_PATH = "/vm/nicinfo/duplicate";
     public static final String VM_NIC_INFO_IPRANGE_CONFLICT_PATH = "/vm/nicinfo/iprangeConflict";
     public static final String VM_GPU_STATUS_ABNORMAL = "/vm/gpu/status/abnormal";
+    public static final String VM_GPU_XID_ERROR = "/vm/gpu/xid/error";
 
     @NeedJsonSchema
     public static class VmCrashReportData {
@@ -155,6 +156,7 @@ public class VmCanonicalEvents {
         private String vmUuid;
         private String oldState;
         private String newState;
+        private String stateChangeSource;
         private VmInstanceInventory inventory;
         private Date date = new Date();
 
@@ -196,6 +198,14 @@ public class VmCanonicalEvents {
 
         public void setNewState(String newState) {
             this.newState = newState;
+        }
+
+        public String getStateChangeSource() {
+            return stateChangeSource;
+        }
+
+        public void setStateChangeSource(String stateChangeSource) {
+            this.stateChangeSource = stateChangeSource;
         }
     }
 
@@ -347,6 +357,46 @@ public class VmCanonicalEvents {
 
         public void setStatus(String status) {
             this.status = status;
+        }
+    }
+
+    @NeedJsonSchema
+    public static class VmGpuXidErrorData {
+        private String vmUuid;
+        private String pciDeviceAddress;
+        private String xidCode;
+        private String message;
+
+        public String getVmUuid() {
+            return vmUuid;
+        }
+
+        public void setVmUuid(String vmUuid) {
+            this.vmUuid = vmUuid;
+        }
+
+        public String getPciDeviceAddress() {
+            return pciDeviceAddress;
+        }
+
+        public void setPciDeviceAddress(String pciDeviceAddress) {
+            this.pciDeviceAddress = pciDeviceAddress;
+        }
+
+        public String getXidCode() {
+            return xidCode;
+        }
+
+        public void setXidCode(String xidCode) {
+            this.xidCode = xidCode;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
         }
     }
 }

@@ -18,6 +18,7 @@ import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.core.*;
 import org.zstack.header.core.workflow.*;
 import org.zstack.header.errorcode.ErrorCode;
+import org.zstack.core.config.GlobalConfigException;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.exception.CloudRuntimeException;
@@ -41,6 +42,7 @@ import org.zstack.header.vm.cdrom.VmCdRomVO;
 import org.zstack.header.vm.cdrom.VmCdRomVO_;
 import org.zstack.header.volume.VolumeDeletionPolicyManager;
 import org.zstack.header.volume.VolumeInventory;
+import org.zstack.header.volume.VolumeProtocol;
 import org.zstack.header.volume.VolumeVO;
 import org.zstack.header.volume.VolumeVO_;
 import org.zstack.header.volume.block.BlockVolumeVO;
@@ -171,6 +173,20 @@ public class ExternalPrimaryStorageFactory implements PrimaryStorageFactory, Com
                     controller.syncConfig(t.get(0, String.class));
                     controller.syncAddonInfo(t.get(1, String.class));
                 }
+            }
+        });
+
+        ExternalPrimaryStorageGlobalConfig.ATTACH_HOST_DEPLOY_FAILURE_RATIO_THRESHOLD.installValidateExtension((category, name, oldValue, newValue) -> {
+            double v;
+            try {
+                v = Double.parseDouble(newValue);
+            } catch (NumberFormatException e) {
+                throw new GlobalConfigException(String.format(
+                        "the value[%s] of %s.%s is not a valid number", newValue, category, name), e);
+            }
+            if (v <= 0 || v > 1) {
+                throw new GlobalConfigException(String.format(
+                        "the value[%s] of %s.%s must be greater than 0 and not greater than 1", newValue, category, name));
             }
         });
 
@@ -369,6 +385,29 @@ public class ExternalPrimaryStorageFactory implements PrimaryStorageFactory, Com
 
     public PrimaryStorageNodeSvc getNodeSvc(String primaryStorageUuid) {
         return nodes.get(primaryStorageUuid);
+    }
+
+    public void updateHostProtocolStatus(String psUuid, String hostUuid, String protocol, PrimaryStorageHostStatus newStatus) {
+        ExternalPrimaryStorageHostProtocolRefVO ref = Q.New(ExternalPrimaryStorageHostProtocolRefVO.class)
+                .eq(ExternalPrimaryStorageHostProtocolRefVO_.primaryStorageUuid, psUuid)
+                .eq(ExternalPrimaryStorageHostProtocolRefVO_.hostUuid, hostUuid)
+                .eq(ExternalPrimaryStorageHostProtocolRefVO_.protocol, protocol)
+                .find();
+        if (ref == null) {
+            ref = new ExternalPrimaryStorageHostProtocolRefVO();
+            ref.setPrimaryStorageUuid(psUuid);
+            ref.setHostUuid(hostUuid);
+            ref.setProtocol(protocol);
+            ref.setStatus(newStatus);
+            dbf.persist(ref);
+            logger.debug(String.format("created protocol[%s] connectivity row between primary storage[uuid:%s]" +
+                    " and host[uuid:%s] with status %s", protocol, psUuid, hostUuid, newStatus));
+        } else if (ref.getStatus() != newStatus) {
+            ref.setStatus(newStatus);
+            dbf.update(ref);
+            logger.debug(String.format("change protocol[%s] connectivity between primary storage[uuid:%s]" +
+                    " and host[uuid:%s] to %s", protocol, psUuid, hostUuid, newStatus));
+        }
     }
 
     private PrimaryStorageNodeSvc getNodeSvcByVolume(VolumeInventory volumeInventory) {
@@ -1080,7 +1119,7 @@ public class ExternalPrimaryStorageFactory implements PrimaryStorageFactory, Com
     }
 
     @Override
-    public List<PrimaryStorageVO> allocatePrimaryStorage(Set<PrimaryStorageFeature> requiredFeatures, List<PrimaryStorageVO> candidates) {
+    public List<PrimaryStorageVO> allocatePrimaryStorage(Set<PrimaryStorageFeature> requiredFeatures, String requiredProtocol, List<PrimaryStorageVO> candidates) {
         if (requiredFeatures.contains(PrimaryStorageFeature.SHARED_VOLUME)) {
             List<PrimaryStorageVO> excludeCandidates = candidates.stream()
                     .filter(v -> PrimaryStorageConstant.EXTERNAL_PRIMARY_STORAGE_TYPE.equals(v.getType()))
@@ -1090,6 +1129,37 @@ public class ExternalPrimaryStorageFactory implements PrimaryStorageFactory, Com
             logger.info(String.format("exclude external primary storage candidates: %s for shared volume feature", excludeCandidates));
 
             candidates.removeAll(excludeCandidates);
+        }
+
+        if (requiredFeatures.contains(PrimaryStorageFeature.LEGACY_BOOT)) {
+            List<PrimaryStorageVO> externalCandidates = candidates.stream()
+                    .filter(v -> PrimaryStorageConstant.EXTERNAL_PRIMARY_STORAGE_TYPE.equals(v.getType()))
+                    .filter(v -> controllers.containsKey(v.getUuid()))
+                    .collect(Collectors.toList());
+
+            if (!externalCandidates.isEmpty()) {
+                Map<String, String> protocolByUuid = requiredProtocol != null ? Collections.emptyMap() :
+                        Q.New(ExternalPrimaryStorageVO.class)
+                                .select(ExternalPrimaryStorageVO_.uuid, ExternalPrimaryStorageVO_.defaultProtocol)
+                                .in(ExternalPrimaryStorageVO_.uuid, externalCandidates.stream().map(PrimaryStorageVO::getUuid).collect(Collectors.toList()))
+                                .listTuple().stream()
+                                .collect(Collectors.toMap(t -> t.get(0, String.class), t -> t.get(1, String.class)));
+
+                List<PrimaryStorageVO> excludeCandidates = externalCandidates.stream()
+                        .filter(v -> {
+                            String protocol = requiredProtocol != null ? requiredProtocol : protocolByUuid.get(v.getUuid());
+                            // only vhost-user-blk exposes the raw logical sector to the guest; other protocols
+                            // go through the qemu block layer which does 512e emulation
+                            return VolumeProtocol.Vhost.toString().equals(protocol)
+                                    && controllers.get(v.getUuid()).reportCapabilities().getMinLogicalSectorSize() > 512;
+                        })
+                        .collect(Collectors.toList());
+
+                logger.info(String.format("exclude external primary storage candidates: %s for legacy boot feature, " +
+                        "they expose a logical sector size larger than 512 bytes on which a Legacy-BIOS image cannot boot", excludeCandidates));
+
+                candidates.removeAll(excludeCandidates);
+            }
         }
 
         return candidates;

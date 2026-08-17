@@ -32,6 +32,10 @@ public class CoreGlobalProperty {
     public static String PID_FILE_PATH;
     @GlobalProperty(name = "consoleProxyOverriddenIp", defaultValue = "0.0.0.0")
     public static String CONSOLE_PROXY_OVERRIDDEN_IP;
+    @GlobalProperty(name = "consoleProxyOverriddenIpv4", defaultValue = "")
+    public static String CONSOLE_PROXY_OVERRIDDEN_IPV4;
+    @GlobalProperty(name = "consoleProxyOverriddenIpv6", defaultValue = "")
+    public static String CONSOLE_PROXY_OVERRIDDEN_IPV6;
     @GlobalProperty(name = "exposeSimulatorType", defaultValue = "false")
     public static boolean EXPOSE_SIMULATOR_TYPE;
     @GlobalProperty(name = "exitJVMOnStop", defaultValue = "true")
@@ -50,6 +54,9 @@ public class CoreGlobalProperty {
     public static int REST_FACADE_MAX_PER_ROUTE;
     @GlobalProperty(name = "RESTFacade.maxTotal", defaultValue = "128")
     public static int REST_FACADE_MAX_TOTAL;
+    // client keep-alive cap, must be < agent socket_timeout to avoid reusing a closed connection
+    @GlobalProperty(name = "RESTFacade.keepAliveTimeMillis", defaultValue = "5000")
+    public static int REST_FACADE_KEEPALIVE_TIME;
     /**
      * When set RestServer.maskSensitiveInfo to true, sensitive info will be
      * masked see @NoLogging.

@@ -37,7 +37,11 @@ import org.zstack.header.message.MessageReply;
 import org.zstack.header.vm.VmInstanceInventory;
 import org.zstack.utils.*;
 import org.zstack.utils.function.Function;
+import org.zstack.utils.ctl.ConfigureCommand;
+import org.zstack.utils.ctl.ZStackCtlResult;
 import org.zstack.utils.logging.CLogger;
+import org.zstack.utils.network.IPv6NetworkUtils;
+import org.zstack.utils.network.NetworkUtils;
 import org.zstack.utils.path.PathUtil;
 
 import java.io.File;
@@ -70,25 +74,117 @@ public class ManagementServerConsoleProxyBackend extends AbstractConsoleProxyBac
     private ConsoleProxyAgentTracker tracker;
 
     protected int setConsoleProxyOverridenIp(String newIp) {
-        if (CoreGlobalProperty.UNIT_TEST_ON) {
-            return 0;
-        }
+        return configureZStackProperty("consoleProxyOverriddenIp", formatConsoleProxyConfigureValue(newIp));
+    }
 
-        ShellResult rst = ShellUtils.runAndReturn(
-                "/usr/bin/zstack-ctl configure consoleProxyOverriddenIp=" + newIp
-        );
-        return rst.getRetCode();
+    protected int setConsoleProxyOverridenIpv4(String newIp) {
+        return configureZStackProperty("consoleProxyOverriddenIpv4", formatConsoleProxyConfigureValue(newIp));
+    }
+
+    protected int setConsoleProxyOverridenIpv6(String newIp) {
+        return configureZStackProperty("consoleProxyOverriddenIpv6", formatConsoleProxyConfigureValue(newIp));
+    }
+
+    private String formatConsoleProxyConfigureValue(String value) {
+        return value == null ? "" : value;
     }
 
     protected int setConsoleProxyPort(int Port) {
+        return configureZStackProperty("consoleProxyPort", Integer.toString(Port));
+    }
+
+    private int configureZStackProperty(String key, String value) {
         if (CoreGlobalProperty.UNIT_TEST_ON) {
             return 0;
         }
 
-        ShellResult rst = ShellUtils.runAndReturn(
-                "/usr/bin/zstack-ctl configure consoleProxyPort=" + Port
-        );
-        return rst.getRetCode();
+        ZStackCtlResult rst = new ConfigureCommand().Configure(String.format("%s=%s", key, value)).exec();
+        return rst.isSuccess() ? 0 : 1;
+    }
+
+    public static class ConsoleProxyAddressConfig {
+        String legacy;
+        String ipv4;
+        String ipv6;
+
+        ConsoleProxyAddressConfig(String legacy, String ipv4, String ipv6) {
+            this.legacy = normalizeConsoleProxyAddressValue(legacy);
+            this.ipv4 = normalizeConsoleProxyAddressValue(ipv4);
+            this.ipv6 = normalizeConsoleProxyAddressValue(ipv6);
+        }
+
+        public String getLegacy() {
+            return legacy;
+        }
+
+        public String getIpv4() {
+            return ipv4;
+        }
+
+        public String getIpv6() {
+            return ipv6;
+        }
+    }
+
+    /*
+     * Normalize console proxy addresses for API updates.
+     *
+     * The API is partial-update: null means the caller did not touch the field,
+     * while an empty string means the caller wants to clear it. This method first
+     * merges old values with provided values, then applies compatibility rules:
+     *
+     * - If only the legacy field is explicitly set to an IPv4/IPv6 literal, copy
+     *   it to the same-family field. For example, setting legacy to 172.24.1.10
+     *   also updates consoleProxyOverriddenIpv4 when IPv4-specific is omitted.
+     * - If the legacy field is a hostname, clear IPv4/IPv6-specific fields so
+     *   both IPv4 and IPv6 clients use that hostname.
+     */
+    static ConsoleProxyAddressConfig normalizeForUpdate(ConsoleProxyAgentVO vo, UpdateConsoleProxyAgentMsg msg) {
+        boolean legacyProvided = msg.getConsoleProxyOverriddenIp() != null;
+        boolean ipv4Provided = msg.getConsoleProxyOverriddenIpv4() != null;
+        boolean ipv6Provided = msg.getConsoleProxyOverriddenIpv6() != null;
+        ConsoleProxyAddressConfig config = new ConsoleProxyAddressConfig(
+                legacyProvided ? msg.getConsoleProxyOverriddenIp() : vo.getConsoleProxyOverriddenIp(),
+                ipv4Provided ? msg.getConsoleProxyOverriddenIpv4() : vo.getConsoleProxyOverriddenIpv4(),
+                ipv6Provided ? msg.getConsoleProxyOverriddenIpv6() : vo.getConsoleProxyOverriddenIpv6());
+
+        if (!legacyProvided) {
+            return config;
+        }
+
+        String legacy = normalizeConsoleProxyAddressValue(config.legacy);
+        if (legacy == null || legacy.isEmpty() || "0.0.0.0".equals(legacy) || "::".equals(legacy)) {
+            return config;
+        }
+
+        if (NetworkUtils.isIpv4Address(legacy)) {
+            if (!ipv4Provided) {
+                config.ipv4 = legacy;
+            }
+        } else if (IPv6NetworkUtils.isIpv6Address(legacy)) {
+            if (!ipv6Provided) {
+                config.ipv6 = legacy;
+            }
+        } else {
+            config.ipv4 = "";
+            config.ipv6 = "";
+        }
+
+        return config;
+    }
+
+    /*
+     * Basic value normalization shared by all console proxy address helpers.
+     *
+     * This method does not decide whether the value is a valid endpoint. It only
+     * trims whitespace and removes IPv6 URL brackets so later comparisons see a
+     * stable form; null remains null and an intentionally empty value remains "".
+     */
+    private static String normalizeConsoleProxyAddressValue(String address) {
+        if (address == null) {
+            return null;
+        }
+        return IPv6NetworkUtils.stripHostUrlBrackets(address.trim());
     }
 
     protected ConsoleProxy getConsoleProxy(VmInstanceInventory vm, ConsoleProxyVO vo) {
@@ -142,6 +238,8 @@ public class ManagementServerConsoleProxyBackend extends AbstractConsoleProxyBac
                     vo.setManagementIp(Platform.getManagementServerIp());
                     vo.setUuid(Platform.getManagementServerId());
                     vo.setConsoleProxyOverriddenIp(CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IP);
+                    vo.setConsoleProxyOverriddenIpv4(CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IPV4);
+                    vo.setConsoleProxyOverriddenIpv6(CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IPV6);
                     vo.setConsoleProxyPort(CoreGlobalProperty.CONSOLE_PROXY_PORT);
                     vo.setState(ConsoleProxyAgentState.Enabled);
                     vo.setStatus(ConsoleProxyAgentStatus.Connecting);
@@ -457,6 +555,8 @@ public class ManagementServerConsoleProxyBackend extends AbstractConsoleProxyBac
         UpdateConsoleProxyAgentMsg umsg = new UpdateConsoleProxyAgentMsg();
         umsg.setUuid(msg.getUuid());
         umsg.setConsoleProxyOverriddenIp(msg.getConsoleProxyOverriddenIp());
+        umsg.setConsoleProxyOverriddenIpv4(msg.getConsoleProxyOverriddenIpv4());
+        umsg.setConsoleProxyOverriddenIpv6(msg.getConsoleProxyOverriddenIpv6());
         umsg.setConsoleProxyPort(msg.getConsoleProxyPort());
         bus.makeServiceIdByManagementNodeId(umsg, ConsoleConstants.SERVICE_ID, msg.getUuid());
         bus.send(umsg, new CloudBusCallBack(msg) {
@@ -480,6 +580,11 @@ public class ManagementServerConsoleProxyBackend extends AbstractConsoleProxyBac
         chain.then(new ShareFlow() {
             ConsoleProxyAgentVO vo;
             String oldProxyIp;
+            String oldProxyIpv4;
+            String oldProxyIpv6;
+            String newProxyIp;
+            String newProxyIpv4;
+            String newProxyIpv6;
             int oldProxyPort;
             int newProxyPort = msg.getConsoleProxyPort() == null ? CoreGlobalProperty.CONSOLE_PROXY_PORT : msg.getConsoleProxyPort();
 
@@ -521,8 +626,16 @@ public class ManagementServerConsoleProxyBackend extends AbstractConsoleProxyBac
                     public void run(FlowTrigger trigger, Map data) {
                         vo = dbf.findByUuid(msg.getUuid(), ConsoleProxyAgentVO.class);
                         oldProxyIp = vo.getConsoleProxyOverriddenIp();
+                        oldProxyIpv4 = vo.getConsoleProxyOverriddenIpv4();
+                        oldProxyIpv6 = vo.getConsoleProxyOverriddenIpv6();
                         oldProxyPort = vo.getConsoleProxyPort();
-                        vo.setConsoleProxyOverriddenIp(msg.getConsoleProxyOverriddenIp());
+                        ConsoleProxyAddressConfig addressConfig = normalizeForUpdate(vo, msg);
+                        newProxyIp = addressConfig.legacy;
+                        newProxyIpv4 = addressConfig.ipv4;
+                        newProxyIpv6 = addressConfig.ipv6;
+                        vo.setConsoleProxyOverriddenIp(newProxyIp);
+                        vo.setConsoleProxyOverriddenIpv4(newProxyIpv4);
+                        vo.setConsoleProxyOverriddenIpv6(newProxyIpv6);
                         vo.setConsoleProxyPort(newProxyPort);
                         dbf.update(vo);
                         trigger.next();
@@ -532,6 +645,8 @@ public class ManagementServerConsoleProxyBackend extends AbstractConsoleProxyBac
                     public void rollback(FlowRollback trigger, Map data) {
                         vo = dbf.reload(vo);
                         vo.setConsoleProxyOverriddenIp(oldProxyIp);
+                        vo.setConsoleProxyOverriddenIpv4(oldProxyIpv4);
+                        vo.setConsoleProxyOverriddenIpv6(oldProxyIpv6);
                         vo.setConsoleProxyPort(oldProxyPort);
                         dbf.update(vo);
                         trigger.rollback();
@@ -542,18 +657,26 @@ public class ManagementServerConsoleProxyBackend extends AbstractConsoleProxyBac
                     String __name__ = "update-platform-global-properties";
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        Platform.getGlobalProperties().put("consoleProxyOverriddenIp", msg.getConsoleProxyOverriddenIp());
+                        Platform.getGlobalProperties().put("consoleProxyOverriddenIp", formatConsoleProxyConfigureValue(newProxyIp));
+                        Platform.getGlobalProperties().put("consoleProxyOverriddenIpv4", formatConsoleProxyConfigureValue(newProxyIpv4));
+                        Platform.getGlobalProperties().put("consoleProxyOverriddenIpv6", formatConsoleProxyConfigureValue(newProxyIpv6));
                         Platform.getGlobalProperties().put("consoleProxyPort", Integer.toString(newProxyPort));
-                        CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IP = msg.getConsoleProxyOverriddenIp();
+                        CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IP = newProxyIp;
+                        CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IPV4 = newProxyIpv4;
+                        CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IPV6 = newProxyIpv6;
                         CoreGlobalProperty.CONSOLE_PROXY_PORT = newProxyPort;
                         trigger.next();
                     }
 
                     @Override
                     public void rollback(FlowRollback trigger, Map data) {
-                        Platform.getGlobalProperties().put("consoleProxyOverriddenIp", oldProxyIp);
+                        Platform.getGlobalProperties().put("consoleProxyOverriddenIp", formatConsoleProxyConfigureValue(oldProxyIp));
+                        Platform.getGlobalProperties().put("consoleProxyOverriddenIpv4", formatConsoleProxyConfigureValue(oldProxyIpv4));
+                        Platform.getGlobalProperties().put("consoleProxyOverriddenIpv6", formatConsoleProxyConfigureValue(oldProxyIpv6));
                         Platform.getGlobalProperties().put("consoleProxyPort", Integer.toString(oldProxyPort));
                         CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IP = oldProxyIp;
+                        CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IPV4 = oldProxyIpv4;
+                        CoreGlobalProperty.CONSOLE_PROXY_OVERRIDDEN_IPV6 = oldProxyIpv6;
                         CoreGlobalProperty.CONSOLE_PROXY_PORT = oldProxyPort;
                         trigger.rollback();
                     }
@@ -563,18 +686,22 @@ public class ManagementServerConsoleProxyBackend extends AbstractConsoleProxyBac
                     String __name__ = "zstack-ctl-configure-consoleProxyOverriddenIp";
                     @Override
                     public void run(FlowTrigger trigger, Map data) {
-                        int rst = setConsoleProxyOverridenIp(msg.getConsoleProxyOverriddenIp());
+                        int rst = setConsoleProxyOverridenIp(newProxyIp);
+                        int ipv4Rst = setConsoleProxyOverridenIpv4(newProxyIpv4);
+                        int ipv6Rst = setConsoleProxyOverridenIpv6(newProxyIpv6);
                         int portRst = setConsoleProxyPort(newProxyPort);
-                        if (rst == 0) {
+                        if (rst == 0 && ipv4Rst == 0 && ipv6Rst == 0 && portRst == 0) {
                             trigger.next();
                         } else {
-                            trigger.fail(operr(ORG_ZSTACK_CONSOLE_10003, "failed to configure consoleProxyOverriddenIp[code:%d] or consoleProxyPort[code:%d]"));
+                            trigger.fail(operr(ORG_ZSTACK_CONSOLE_10015, "failed to configure consoleProxyOverriddenIp[code:%d], consoleProxyOverriddenIpv4[code:%d], consoleProxyOverriddenIpv6[code:%d], or consoleProxyPort[code:%d]", rst, ipv4Rst, ipv6Rst, portRst));
                         }
                     }
 
                     @Override
                     public void rollback(FlowRollback trigger, Map data) {
                         setConsoleProxyOverridenIp(oldProxyIp);
+                        setConsoleProxyOverridenIpv4(oldProxyIpv4);
+                        setConsoleProxyOverridenIpv6(oldProxyIpv6);
                         setConsoleProxyPort(oldProxyPort);
                         trigger.rollback();
                     }

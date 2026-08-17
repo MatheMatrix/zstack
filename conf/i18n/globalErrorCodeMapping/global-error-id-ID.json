@@ -845,7 +845,7 @@
   "ORG_ZSTACK_ZWATCH_ALARM_10026": "kunci[%s] duplikat dengan nilai berbeda{%s}%",
   "ORG_ZSTACK_NETWORK_SERVICE_LB_10170": "tidak dapat menambahkan IP server ke grup server load balancer bersama %s",
   "ORG_ZSTACK_ZWATCH_ALARM_10025": "metrik tidak memiliki label yang ditentukan[%s]",
-  "ORG_ZSTACK_ZWATCH_ALARM_10023": "label duplikat didefinisikan untuk alarm dengan UUID [uuid:%s]",
+  "ORG_ZSTACK_ZWATCH_ALARM_10023": "label duplikat[key:%s, operator:%s, value:%s] didefinisikan untuk alarm[uuid:%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10029": "metrik[%s] dibatasi untuk administrator dan tidak tersedia untuk peran pengguna Anda saat ini.",
   "ORG_ZSTACK_NETWORK_SERVICE_LB_10171": "tidak dapat memodifikasi server backend karena vmincs dan IP server kosong",
   "ORG_ZSTACK_ZWATCH_ALARM_10028": "namespace[%s] tidak berisi metrik[%s]",
@@ -2961,6 +2961,7 @@
   "ORG_ZSTACK_CRYPTO_AUTH_10019": "Gagal mendapatkan kata sandi integritas dari database karena %s tidak menghasilkan kata sandi integritas",
   "ORG_ZSTACK_VHOST_KVM_10000": "Disk vHostUser hanya mendukung mode virtio. Harap verifikasi bahwa platform gambar memiliki driver virtio yang diperlukan terinstal.",
   "ORG_ZSTACK_VHOST_KVM_10001": "Disk vhost-user tidak mendukung mode virtio-scsi; harap nonaktifkan mode virtio-scsi.",
+  "ORG_ZSTACK_VHOST_KVM_10002": "Tidak dapat memasang disk vhost-user secara online: VM yang berjalan tidak mengaktifkan shared memory. Matikan VM lalu pasang, atau atur konfigurasi global 'generate.config.vhost.required' ke 'auto' atau 'true' dan mulai ulang VM (ini menonaktifkan overcommit memori untuk VM).",
   "ORG_ZSTACK_NETWORK_L3_10029": "%s bukan alamat IPv6 yang valid untuk konfigurasi sumber daya cloud",
   "ORG_ZSTACK_USBDEVICE_10005": "PassThrough hanya didukung untuk penggunaan pada VM yang berjalan di lingkungan host.",
   "ORG_ZSTACK_ALIYUN_ECS_10019": "Hanya pengguna administratif yang dapat menetapkan parameter [onlyZstack] ke false.",
@@ -4729,5 +4730,6 @@
   "ORG_ZSTACK_AI_10162": "VM[nama:%s, uuid:%s] harus dalam status running untuk mount/unmount model. Status saat ini: %s",
   "ORG_ZSTACK_AI_10163": "VM[nama:%s, uuid:%s] tidak berjalan pada host manapun",
   "ORG_ZSTACK_AI_10164": "Model[nama:%s, uuid:%s] tidak dibagikan ke akun pemilik VM ini (atau ke publik). Mount membutuhkan model yang dapat diakses dengan aturan berbagi yang sama dengan VM.",
-  "ORG_ZSTACK_AI_10165": "ModelCenter[uuid:%s] tidak ditemukan untuk Model[nama:%s, uuid:%s]"
+  "ORG_ZSTACK_AI_10165": "ModelCenter[uuid:%s] tidak ditemukan untuk Model[nama:%s, uuid:%s]",
+  "ORG_ZSTACK_AI_10167": "Model service instance group[uuid:%s] is being deleted; stop waiting for service boot up"
 }

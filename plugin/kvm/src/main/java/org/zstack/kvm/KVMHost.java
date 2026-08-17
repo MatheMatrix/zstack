@@ -1,7 +1,9 @@
 package org.zstack.kvm;
 
 import okhttp3.Response;
+
 import org.apache.commons.lang.StringUtils;
+import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -63,6 +65,8 @@ import org.zstack.header.exception.CloudRuntimeException;
 import org.zstack.header.host.*;
 import org.zstack.header.host.MigrateVmOnHypervisorMsg.StorageMigrationPolicy;
 import org.zstack.header.image.*;
+import org.zstack.header.secret.SecretHostDefineMsg;
+import org.zstack.header.secret.SecretHostDefineReply;
 import org.zstack.header.message.APIMessage;
 import org.zstack.header.message.Message;
 import org.zstack.header.message.MessageReply;
@@ -100,6 +104,7 @@ import org.zstack.utils.data.SizeUnit;
 import org.zstack.utils.gson.JSONObjectUtil;
 import org.zstack.utils.logging.CLogger;
 import org.zstack.utils.message.OperationChecker;
+import org.zstack.utils.network.IPv6NetworkUtils;
 import org.zstack.utils.network.NetworkUtils;
 import org.zstack.utils.path.PathUtil;
 import org.zstack.utils.ssh.Ssh;
@@ -110,11 +115,18 @@ import org.zstack.utils.tester.ZTester;
 
 import javax.persistence.TypedQuery;
 import java.io.IOException;
+import java.net.URI;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
+import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.zstack.core.Platform.*;
@@ -128,8 +140,67 @@ import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 public class KVMHost extends HostBase implements Host {
     private static final CLogger logger = Utils.getLogger(KVMHost.class);
     private static final ZTester tester = Utils.getTester();
+    private static final String EXTRA_IP_SEPARATOR = ",";
+    private static final String MANAGEMENT_NODE_CALLBACK_CHECK_COMMAND =
+            "curl --connect-timeout 10 --max-time 15 %s"
+                    + "|| wget --spider -q --connect-timeout=10 --read-timeout=10 --tries=1 %s"
+                    + "|| test $? -eq 8";
     protected static OperationChecker allowedOperations = new OperationChecker(true);
     protected static OperationChecker skipOperations = new OperationChecker(true);
+    private static final Pattern NUMERIC_VERSION_TOKEN = Pattern.compile("\\d+(?:\\.\\d+)*");
+
+    private static boolean isIothreadVqMappingSupported(String architecture, String qemuKvmPackageVersion, String libvirtPackageVersion) {
+        return versionAtLeast(qemuKvmPackageVersion, minQemuKvmIothreadVqMappingPackageVersion(architecture))
+                && versionAtLeast(libvirtPackageVersion, minLibvirtIothreadVqMappingPackageVersion(architecture));
+    }
+
+    private static String minQemuKvmIothreadVqMappingPackageVersion(String architecture) {
+        if (CpuArchitecture.x86_64.name().equals(architecture)) {
+            return KVMConstant.MIN_X86_64_QEMU_KVM_IOTHREAD_VQ_MAPPING_PACKAGE_VERSION;
+        } else if (CpuArchitecture.aarch64.name().equals(architecture)) {
+            return KVMConstant.MIN_AARCH64_QEMU_KVM_IOTHREAD_VQ_MAPPING_PACKAGE_VERSION;
+        }
+        return null;
+    }
+
+    private static String minLibvirtIothreadVqMappingPackageVersion(String architecture) {
+        if (CpuArchitecture.x86_64.name().equals(architecture)) {
+            return KVMConstant.MIN_X86_64_LIBVIRT_IOTHREAD_VQ_MAPPING_PACKAGE_VERSION;
+        } else if (CpuArchitecture.aarch64.name().equals(architecture)) {
+            return KVMConstant.MIN_AARCH64_LIBVIRT_IOTHREAD_VQ_MAPPING_PACKAGE_VERSION;
+        }
+        return null;
+    }
+
+    private static boolean versionAtLeast(String current, String required) {
+        if (StringUtils.isBlank(required)) {
+            return false;
+        }
+
+        String normalized = normalizePackageVersion(current);
+        if (normalized == null) {
+            return false;
+        }
+
+        return new ComparableVersion(normalized).compareTo(new ComparableVersion(required)) >= 0;
+    }
+
+    private static String normalizePackageVersion(String version) {
+        if (StringUtils.isBlank(version)) {
+            return null;
+        }
+
+        String normalized = Arrays.stream(version.trim().split("\\s+")[0].split("-"))
+                .map(KVMHost::numericPrefix)
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.joining("-"));
+        return StringUtils.isBlank(normalized) ? null : normalized;
+    }
+
+    private static String numericPrefix(String versionSegment) {
+        Matcher matcher = NUMERIC_VERSION_TOKEN.matcher(versionSegment);
+        return matcher.lookingAt() ? matcher.group() : null;
+    }
 
     public static Set<String> parseSanIps(String sanOutput) {
         Set<String> sanIps = new HashSet<>();
@@ -233,6 +304,7 @@ public class KVMHost extends HostBase implements Host {
     private String getVirtualizerInfo;
     private String scanVmPortPath;
     private String getDevCapacityPath;
+    private String getBlockDevicesPath;
     private String configPrimaryVmPath;
     private String configSecondaryVmPath;
     private String startColoSyncPath;
@@ -246,6 +318,8 @@ public class KVMHost extends HostBase implements Host {
     private String blockPullPath;
     private String agentPackageName = KVMGlobalProperty.AGENT_PACKAGE_NAME;
     private String hostTakeOverFlagPath = KVMGlobalProperty.TAKEVOERFLAGPATH;
+    private String readVmHostFilePath;
+    private String writeVmHostFilePath;
 
     public KVMHost(KVMHostVO self, KVMHostContext context) {
         super(self);
@@ -430,6 +504,10 @@ public class KVMHost extends HostBase implements Host {
         getDevCapacityPath = ub.build().toString();
 
         ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
+        ub.path(KVMConstant.KVM_GET_BLOCK_DEVICES_PATH);
+        getBlockDevicesPath = ub.build().toString();
+
+        ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
         ub.path(KVMConstant.KVM_CONFIG_PRIMARY_VM_PATH);
         configPrimaryVmPath = ub.build().toString();
 
@@ -472,6 +550,14 @@ public class KVMHost extends HostBase implements Host {
         ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
         ub.path(KVMConstant.KVM_BLOCK_PULL_VOLUME_PATH);
         blockPullPath = ub.build().toString();
+
+        ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
+        ub.path(KVMConstant.READ_VM_HOST_FILE_PATH);
+        readVmHostFilePath = ub.build().toString();
+
+        ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
+        ub.path(KVMConstant.WRITE_VM_HOST_FILE_PATH);
+        writeVmHostFilePath = ub.build().toString();
     }
 
     static {
@@ -519,7 +605,7 @@ public class KVMHost extends HostBase implements Host {
                 completion.fail(errorCode);
                 return;
             }
-            
+
             Map<String, String> header = new HashMap<>();
             header.put(Constants.AGENT_HTTP_HEADER_RESOURCE_UUID, resourceUuid == null ? self.getUuid() : resourceUuid);
             runBeforeAsyncJsonPostExts(header);
@@ -596,7 +682,7 @@ public class KVMHost extends HostBase implements Host {
             commandStr = JSONObjectUtil.toJsonString(commandMap);
         }
     }
-    
+
     @Override
     protected void handleApiMessage(APIMessage msg) {
         super.handleApiMessage(msg);
@@ -732,9 +818,37 @@ public class KVMHost extends HostBase implements Host {
             handle((RestartKvmAgentMsg) msg);
         } else if (msg instanceof UpdateVmConsolePasswordOnHypervisorMsg) {
             handle((UpdateVmConsolePasswordOnHypervisorMsg) msg);
+        } else if (msg instanceof GetBlockDevicesOnHostMsg) {
+            handle((GetBlockDevicesOnHostMsg) msg);
+        } else if (msg instanceof SecretHostDefineMsg) {
+            handle((SecretHostDefineMsg) msg);
         } else {
             super.handleLocalMessage(msg);
         }
+    }
+
+    private void handle(GetBlockDevicesOnHostMsg msg) {
+        GetBlockDevicesOnHostReply reply = new GetBlockDevicesOnHostReply();
+        KVMAgentCommands.GetBlockDevicesCmd cmd = new KVMAgentCommands.GetBlockDevicesCmd();
+        cmd.setIncludeInUse(msg.isIncludeInUse());
+        new Http<>(getBlockDevicesPath, cmd, KVMAgentCommands.GetBlockDevicesRsp.class)
+                .call(new ReturnValueCompletion<KVMAgentCommands.GetBlockDevicesRsp>(msg) {
+            @Override
+            public void success(KVMAgentCommands.GetBlockDevicesRsp rsp) {
+                if (!rsp.isSuccess()) {
+                    reply.setError(operr("operation error, because:%s", rsp.getError()));
+                } else {
+                    reply.setBlockDevices(rsp.getBlockDevices());
+                }
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void fail(ErrorCode errorCode) {
+                reply.setError(errorCode);
+                bus.reply(msg, reply);
+            }
+        });
     }
 
     private void handle(RestartKvmAgentMsg msg) {
@@ -2219,10 +2333,27 @@ public class KVMHost extends HostBase implements Host {
             return null;
         }
 
-        final String[] ips = extraIps.split(",");
-        for (String ip: ips) {
-            if (NetworkUtils.isIpv4InCidr(ip, cidr)) {
-                return ip;
+        return selectIpInCidr(extraIps, cidr);
+    }
+
+    public static String selectIpInCidr(String ips, String cidr) {
+        if (ips == null) {
+            return null;
+        }
+
+        final String[] ipList = ips.split(EXTRA_IP_SEPARATOR);
+        for (String ip: ipList) {
+            String trimmedIp = ip.trim();
+            if (StringUtils.isBlank(trimmedIp)) {
+                continue;
+            }
+
+            try {
+                if (NetworkUtils.isIpInCidr(trimmedIp, cidr)) {
+                    return trimmedIp;
+                }
+            } catch (RuntimeException e) {
+                logger.warn(String.format("skip invalid host extra IP[%s] when matching CIDR[%s]: %s", trimmedIp, cidr, e.getMessage()));
             }
         }
 
@@ -2770,16 +2901,50 @@ public class KVMHost extends HostBase implements Host {
         });
     }
 
-    private String buildUrl(String path) {
-        UriComponentsBuilder ub = UriComponentsBuilder.newInstance();
-        ub.scheme(KVMGlobalProperty.AGENT_URL_SCHEME);
-        ub.host(self.getManagementIp());
-        ub.port(KVMGlobalProperty.AGENT_PORT);
-        if (!"".equals(KVMGlobalProperty.AGENT_URL_ROOT_PATH)) {
-            ub.path(KVMGlobalProperty.AGENT_URL_ROOT_PATH);
+    public static String buildAgentUrl(String host, String path) {
+        try {
+            return new URI(
+                    KVMGlobalProperty.AGENT_URL_SCHEME,
+                    null,
+                    IPv6NetworkUtils.stripHostUrlBrackets(host),
+                    KVMGlobalProperty.AGENT_PORT,
+                    joinAgentPath(KVMGlobalProperty.AGENT_URL_ROOT_PATH, path),
+                    null,
+                    null).toString();
+        } catch (URISyntaxException e) {
+            throw new CloudRuntimeException(String.format("failed to build KVM agent url for host[%s], path[%s]", host, path), e);
         }
-        ub.path(path);
-        return ub.build().toUriString();
+    }
+
+    public static String buildManagementNodeCallbackCheckCommand(String callbackUrl) {
+        return String.format(MANAGEMENT_NODE_CALLBACK_CHECK_COMMAND, callbackUrl, callbackUrl);
+    }
+
+    public static String buildManagementNodeCallbackCheckCommand(String hostManagementIp, RESTFacade restf) {
+        String callbackHost = Platform.getManagementServerIpForRemote(hostManagementIp);
+        return buildManagementNodeCallbackCheckCommand(restf.buildCallbackUrl(callbackHost));
+    }
+
+    private static String joinAgentPath(String rootPath, String path) {
+        if (rootPath == null || rootPath.isEmpty()) {
+            return path;
+        }
+        if (path == null || path.isEmpty()) {
+            return rootPath.startsWith("/") ? rootPath : "/" + rootPath;
+        }
+
+        String normalizedRootPath = rootPath.startsWith("/") ? rootPath : "/" + rootPath;
+        if (normalizedRootPath.endsWith("/") && path.startsWith("/")) {
+            return normalizedRootPath + path.substring(1);
+        }
+        if (!normalizedRootPath.endsWith("/") && !path.startsWith("/")) {
+            return normalizedRootPath + "/" + path;
+        }
+        return normalizedRootPath + path;
+    }
+
+    private String buildUrl(String path) {
+        return buildAgentUrl(self.getManagementIp(), path);
     }
 
     private void executeAsyncHttpCall(final KVMHostAsyncHttpCallMsg msg, final NoErrorCompletion completion) {
@@ -2790,7 +2955,7 @@ public class KVMHost extends HostBase implements Host {
         String url = buildUrl(msg.getPath());
         MessageCommandRecorder.record(msg.getCommandClassName());
         new Http<>(url, msg.getCommand(), msg.getCommandClassName(), LinkedHashMap.class)
-                .timeout(msg.getTimeout() > 0 ? msg.getTimeout() : factory.getAgentHttpShortTimeout(msg.getPath()))
+                .timeout(msg.getTimeout())
                 .call(new ReturnValueCompletion<LinkedHashMap>(msg, completion) {
             @Override
             public void success(LinkedHashMap ret) {
@@ -3221,10 +3386,7 @@ public class KVMHost extends HostBase implements Host {
                         CleanVmFirmwareFlashCmd cmd = new CleanVmFirmwareFlashCmd();
                         cmd.vmUuid = vmUuid;
 
-                        UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
-                        ub.host(dstHostMnIp);
-                        ub.path(KVMConstant.CLEAN_FIRMWARE_FLASH);
-                        String url = ub.build().toString();
+                        String url = buildAgentUrl(dstHostMnIp, KVMConstant.CLEAN_FIRMWARE_FLASH);
                         new Http<>(url, cmd, AgentResponse.class).call(dstHostUuid, new ReturnValueCompletion<AgentResponse>(trigger) {
                             @Override
                             public void success(AgentResponse ret) {
@@ -3294,9 +3456,9 @@ public class KVMHost extends HostBase implements Host {
                             cmd.setDisks(diskMigrationMap);
                         }
 
-                        UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(migrateVmPath);
-                        ub.host(migrateFromDestination ? dstHostMnIp : srcHostMnIp);
-                        String migrateUrl = ub.build().toString();
+                        String migrateUrl = buildAgentUrl(
+                                migrateFromDestination ? dstHostMnIp : srcHostMnIp,
+                                KVMConstant.KVM_MIGRATE_VM_PATH);
                         new Http<>(migrateUrl, cmd, MigrateVmResponse.class).call(migrateFromDestination ? dstHostUuid : srcHostUuid, new ReturnValueCompletion<MigrateVmResponse>(trigger) {
                             @Override
                             public void success(MigrateVmResponse ret) {
@@ -3335,10 +3497,7 @@ public class KVMHost extends HostBase implements Host {
                         cmd.vmUuid = vmUuid;
                         cmd.hostManagementIp = dstHostMnIp;
 
-                        UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
-                        ub.host(dstHostMnIp);
-                        ub.path(KVMConstant.KVM_HARDEN_CONSOLE_PATH);
-                        String url = ub.build().toString();
+                        String url = buildAgentUrl(dstHostMnIp, KVMConstant.KVM_HARDEN_CONSOLE_PATH);
                         new Http<>(url, cmd, AgentResponse.class).call(dstHostUuid, new ReturnValueCompletion<AgentResponse>(trigger) {
                             @Override
                             public void success(AgentResponse ret) {
@@ -3371,10 +3530,7 @@ public class KVMHost extends HostBase implements Host {
                         cmd.vmUuid = vmUuid;
                         cmd.hostManagementIp = srcHostMnIp;
 
-                        UriComponentsBuilder ub = UriComponentsBuilder.fromHttpUrl(baseUrl);
-                        ub.host(srcHostMnIp);
-                        ub.path(KVMConstant.KVM_DELETE_CONSOLE_FIREWALL_PATH);
-                        String url = ub.build().toString();
+                        String url = buildAgentUrl(srcHostMnIp, KVMConstant.KVM_DELETE_CONSOLE_FIREWALL_PATH);
                         new Http<>(url, cmd, AgentResponse.class).call(new ReturnValueCompletion<AgentResponse>(trigger) {
                             @Override
                             public void success(AgentResponse ret) {
@@ -4663,10 +4819,6 @@ public class KVMHost extends HostBase implements Host {
 
         String bootMode = VmSystemTags.BOOT_MODE.getTokenByResourceUuid(spec.getVmInventory().getUuid(), VmSystemTags.BOOT_MODE_TOKEN);
         cmd.setBootMode(bootMode == null ? ImageBootMode.Legacy.toString() : bootMode);
-        if (cmd.getBootMode().equals(ImageBootMode.UEFI.toString())
-                || cmd.getBootMode().equals(ImageBootMode.UEFI_WITH_CSM.toString())) {
-            cmd.setSecureBoot(VmGlobalConfig.ENABLE_UEFI_SECURE_BOOT.value(Boolean.class));
-        }
 
         deviceBootOrderOperator.updateVmDeviceBootOrder(cmd, spec);
         cmd.setBootDev(toKvmBootDev(spec.getBootOrders()));
@@ -4707,6 +4859,23 @@ public class KVMHost extends HostBase implements Host {
         cmd.setCpuHypervisorFeature(rcf.getResourceConfigValue(KVMGlobalConfig.VM_CPU_HYPERVISOR_FEATURE,
                 spec.getVmInventory().getUuid(),
                 Boolean.class));
+        String imageGuestOsType = spec.getImageSpec() == null || spec.getImageSpec().getInventory() == null ?
+                null : spec.getImageSpec().getInventory().getGuestOsType();
+        if (KVMHostUtils.isWindowsVm(platform, spec.getVmInventory().getGuestOsType(), imageGuestOsType)) {
+            Boolean cpuHardwareVirtualization = rcf.getResourceConfigValue(
+                    KVMGlobalConfig.VM_CPU_HARDWARE_VIRTUALIZATION,
+                    spec.getVmInventory().getUuid(),
+                    Boolean.class);
+            if (Boolean.FALSE.equals(cpuHardwareVirtualization)) {
+                if (KVMConstant.CPU_MODE_NONE.equals(vmCpuMode)) {
+                    logger.info(String.format("skip disabling cpu hardware virtualization for vm[uuid:%s] because vm.cpuMode is none",
+                            spec.getVmInventory().getUuid()));
+                } else {
+                    // Only false is sent; true and null keep the kvmagent default CPU feature behavior.
+                    cmd.setCpuHardwareVirtualization(cpuHardwareVirtualization);
+                }
+            }
+        }
 
         VirtualDeviceInfo memBalloon = new VirtualDeviceInfo();
         memBalloon.setResourceUuid(vidm.MEM_BALLOON_UUID);
@@ -5264,6 +5433,127 @@ public class KVMHost extends HostBase implements Host {
         }).start();
     }
 
+    private void handle(SecretHostDefineMsg msg) {
+        SecretHostDefineReply reply = new SecretHostDefineReply();
+        if (org.apache.commons.lang.StringUtils.isBlank(msg.getDekBase64())) {
+            reply.setError(operr("dekBase64 is required"));
+            bus.reply(msg, reply);
+            return;
+        }
+        if (StringUtils.isBlank(msg.getVmUuid()) || StringUtils.isBlank(msg.getPurpose()) || StringUtils.isBlank(msg.getProviderName())) {
+            reply.setError(operr("vmUuid, purpose and providerName are required for ensure secret"));
+            bus.reply(msg, reply);
+            return;
+        }
+        String hostUuid = getSelf().getUuid();
+        HostKeyIdentityVO identity = HostKeyIdentityHelper.getHostKeyIdentity(dbf, hostUuid);
+        String pubKey = identity != null ? org.apache.commons.lang.StringUtils.trimToNull(identity.getPublicKey()) : null;
+        Boolean verifyOk = identity != null ? identity.getVerified() : null;
+        if (pubKey == null) {
+            reply.setError(operr("no public key for host, connect/reconnect did not sync key"));
+            bus.reply(msg, reply);
+            return;
+        }
+        String storedFingerprint = StringUtils.trimToNull(identity.getFingerprint());
+        String computed = HostKeyIdentityHelper.fingerprintFromPublicKey(pubKey);
+        if (storedFingerprint == null || !StringUtils.equals(storedFingerprint, computed)) {
+            reply.setError(operr("host public key fingerprint mismatch, key may be corrupted or tampered"));
+            bus.reply(msg, reply);
+            return;
+        }
+        if (!Boolean.TRUE.equals(verifyOk)) {
+            reply.setError(operr("host secret key verify not ok, not synced"));
+            bus.reply(msg, reply);
+            return;
+        }
+        byte[] dekRaw;
+        try {
+            dekRaw = java.util.Base64.getDecoder().decode(msg.getDekBase64().trim());
+        } catch (IllegalArgumentException e) {
+            reply.setError(operr("invalid dekBase64: %s", e.getMessage()));
+            bus.reply(msg, reply);
+            return;
+        }
+        if (dekRaw == null || dekRaw.length == 0) {
+            reply.setError(operr("dekBase64 decoded to empty"));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        if (dekRaw.length > KVMConstant.MAX_DEK_BYTES) {
+            reply.setError(operr("dekBase64 decoded payload is too large"));
+            bus.reply(msg, reply);
+            return;
+        }
+
+        byte[] pubKeyBytes;
+        try {
+            pubKeyBytes = java.util.Base64.getDecoder().decode(pubKey);
+        } catch (IllegalArgumentException e) {
+            reply.setError(operr("invalid host public key in DB: %s", e.getMessage()));
+            bus.reply(msg, reply);
+            return;
+        }
+        if (pubKeyBytes == null || pubKeyBytes.length != 32) {
+            reply.setError(operr("host public key must be 32 bytes (X25519)"));
+            bus.reply(msg, reply);
+            return;
+        }
+        java.util.List<HostSecretEnvelopeCryptoExtensionPoint> sealers = pluginRegistry.getExtensionList(HostSecretEnvelopeCryptoExtensionPoint.class);
+        if (sealers == null || sealers.isEmpty()) {
+            reply.setError(operr("host secret envelope sealer not available (premium crypto module required)"));
+            bus.reply(msg, reply);
+            return;
+        }
+        byte[] envelope;
+        try {
+            envelope = sealers.get(0).seal(pubKeyBytes, dekRaw);
+        } catch (Exception e) {
+            reply.setError(operr("HPKE seal failed: %s", e.getMessage()));
+            bus.reply(msg, reply);
+            return;
+        }
+        String envelopeDekBase64 = java.util.Base64.getEncoder().encodeToString(envelope);
+        String url = buildUrl(KVMConstant.KVM_ENSURE_SECRET_PATH);
+        KVMAgentCommands.SecretHostDefineCmd cmd = new KVMAgentCommands.SecretHostDefineCmd();
+        cmd.setEncryptedDek(envelopeDekBase64);
+        cmd.setVmUuid(msg.getVmUuid());
+        cmd.setPurpose(msg.getPurpose());
+        cmd.setProviderName(msg.getProviderName());
+        cmd.setDescription(msg.getDescription() != null ? msg.getDescription() : "");
+        restf.asyncJsonPost(url, cmd, new JsonAsyncRESTCallback<KVMAgentCommands.SecretHostDefineResponse>(msg, reply) {
+            @Override
+            public void fail(ErrorCode err) {
+                reply.setError(err != null ? err : operr("ensure secret on agent failed"));
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public void success(KVMAgentCommands.SecretHostDefineResponse rsp) {
+                if (rsp != null && rsp.isSuccess()) {
+                    if (rsp.getSecretUuid() != null) {
+                        reply.setSecretUuid(rsp.getSecretUuid());
+                    }
+                } else {
+                    if (rsp != null && rsp.getError() != null) {
+                        ErrorCode err = new ErrorCode();
+                        err.setCode(rsp.getError());
+                        err.setDetails(rsp.getError());
+                        reply.setError(err);
+                    } else {
+                        reply.setError(operr(rsp != null ? rsp.getError() : "ensure secret failed"));
+                    }
+                }
+                bus.reply(msg, reply);
+            }
+
+            @Override
+            public Class<KVMAgentCommands.SecretHostDefineResponse> getReturnClass() {
+                return KVMAgentCommands.SecretHostDefineResponse.class;
+            }
+        }, TimeUnit.SECONDS, KVMConstant.ENVELOPE_KEY_HTTP_TIMEOUT_SEC);
+    }
+
     @Override
     protected void deleteTakeOverFlag(Completion completion) {
         if (CoreGlobalProperty.UNIT_TEST_ON) {
@@ -5652,7 +5942,8 @@ public class KVMHost extends HostBase implements Host {
                 sshShell.setPassword(getSelf().getPassword());
                 sshShell.setPort(getSelf().getPort());
                 sshShell.setWithSudo(false);
-                final String cmd = String.format("curl --connect-timeout 10 --max-time 15 %s|| wget --spider -q --connect-timeout=10 --read-timeout=10 --tries=1 %s|| test $? -eq 8", restf.getCallbackUrl(), restf.getCallbackUrl());
+                final String callbackHost = Platform.getManagementServerIpForRemote(getSelf().getManagementIp());
+                final String cmd = buildManagementNodeCallbackCheckCommand(getSelf().getManagementIp(), restf);
                 SshResult ret = sshShell.runCommand(cmd);
                 if (ret.getStderr() != null && ret.getStderr().contains("No route to host")) {
                     // c.f. https://access.redhat.com/solutions/1120533
@@ -5670,7 +5961,7 @@ public class KVMHost extends HostBase implements Host {
                                     "please check if username/password is wrong; %s", self.getManagementIp(), getSelf().getUsername(), getSelf().getPort(), ret.getExitErrorMessage()));
                 } else if (ret.getReturnCode() != 0) {
                     throw new OperationFailureException(operr(ORG_ZSTACK_KVM_10106, "the KVM host[ip:%s] cannot access the management node's callback url. It seems" +
-                                    " that the KVM host cannot reach the management IP[%s]. %s %s", restf.getHostName(), self.getManagementIp(),
+                                    " that the KVM host cannot reach the management IP[%s]. %s %s", self.getManagementIp(), callbackHost,
                             ret.getStderr(), ret.getExitErrorMessage()));
                 }
 
@@ -5857,7 +6148,9 @@ public class KVMHost extends HostBase implements Host {
                             // expectation matches what the host itself reports.
                             String certIpList = KVMHostUtils.collectHostIps(
                                     sshShell, self.getUuid(), managementIp);
-                            List<String> allIps = new ArrayList<>(Arrays.asList(certIpList.split(",")));
+                            String expectedCertIpList = KVMHostUtils.unionTlsCertIps(
+                                    self.getUuid(), managementIp, certIpList);
+                            List<String> allIps = new ArrayList<>(Arrays.asList(expectedCertIpList.split(",")));
                             // Save detected IPs so apply-ansible-playbook can union with
                             // EXTRA_IPS without running a second SSH.
                             data.put("TLS_DETECTED_IPS", certIpList);
@@ -5938,7 +6231,7 @@ public class KVMHost extends HostBase implements Host {
                         callbackChecker.setUsername(getSelf().getUsername());
                         callbackChecker.setPassword(getSelf().getPassword());
                         callbackChecker.setPort(getSelf().getPort());
-                        callbackChecker.setCallbackIp(Platform.getManagementServerIp());
+                        callbackChecker.setCallbackIp(Platform.getManagementServerIpForRemote(getSelf().getManagementIp()));
                         callbackChecker.setCallBackPort(CloudBusGlobalProperty.HTTP_PORT);
 
                         KvmHostConfigChecker kvmHostConfigChecker = new KvmHostConfigChecker();
@@ -5962,7 +6255,7 @@ public class KVMHost extends HostBase implements Host {
                             hostTcpConnectionCallbackChecker.setUsername(getSelf().getUsername());
                             hostTcpConnectionCallbackChecker.setPassword(getSelf().getPassword());
                             hostTcpConnectionCallbackChecker.setPort(getSelf().getPort());
-                            hostTcpConnectionCallbackChecker.setCallbackIp(Platform.getManagementServerIp());
+                            hostTcpConnectionCallbackChecker.setCallbackIp(Platform.getManagementServerIpForRemote(getSelf().getManagementIp()));
                             hostTcpConnectionCallbackChecker.setCallBackPort(KVMGlobalProperty.TCP_SERVER_PORT);
                             runner.installChecker(hostTcpConnectionCallbackChecker);
                         }
@@ -5989,6 +6282,7 @@ public class KVMHost extends HostBase implements Host {
                         if (NetworkGlobalProperty.SKIP_IPV6 || NetworkGlobalProperty.BRIDGE_DISABLE_IP6TABLES) {
                             deployArguments.setDisableIp6Tables("true");
                         }
+                        deployArguments.setEnableIpv6(rcf.getResourceConfigValue(KVMGlobalConfig.HOST_IPV6, self.getUuid(), String.class));
 
                         for (KvmHostAgentDeploymentExtensionPoint ext : pluginRegistry.getExtensionList(KvmHostAgentDeploymentExtensionPoint.class)) {
                             if (logger.isTraceEnabled()) {
@@ -6448,8 +6742,23 @@ public class KVMHost extends HostBase implements Host {
             private void saveKvmHostRelatedFacts(HostFactResponse ret) {
                 updateHostOsInformation(ret.getOsDistribution(), ret.getOsRelease(), ret.getOsVersion());
 
-                if (ret.getLibvirtPackageVersion() != null) {
+                if (StringUtils.isNotBlank(ret.getLibvirtPackageVersion())) {
                     createTagWithoutNonValue(KVMSystemTags.LIBVIRT_PACKAGE_VERSION, KVMSystemTags.LIBVIRT_PACKAGE_VERSION_TOKEN, ret.getLibvirtPackageVersion().trim(), false);
+                } else {
+                    KVMSystemTags.LIBVIRT_PACKAGE_VERSION.delete(self.getUuid());
+                }
+
+                if (StringUtils.isNotBlank(ret.getQemuKvmPackageVersion())) {
+                    createTagWithoutNonValue(KVMSystemTags.QEMU_KVM_PACKAGE_VERSION, KVMSystemTags.QEMU_KVM_PACKAGE_VERSION_TOKEN, ret.getQemuKvmPackageVersion().trim(), false);
+                } else {
+                    KVMSystemTags.QEMU_KVM_PACKAGE_VERSION.delete(self.getUuid());
+                }
+
+                String architecture = StringUtils.isNotBlank(ret.getCpuArchitecture()) ? ret.getCpuArchitecture() : self.getArchitecture();
+                if (isIothreadVqMappingSupported(architecture, ret.getQemuKvmPackageVersion(), ret.getLibvirtPackageVersion())) {
+                    recreateNonInherentTag(KVMSystemTags.IOTHREAD_VQ_MAPPING);
+                } else {
+                    KVMSystemTags.IOTHREAD_VQ_MAPPING.delete(self.getUuid());
                 }
 
                 createTagWithoutNonValue(KVMSystemTags.QEMU_IMG_VERSION, KVMSystemTags.QEMU_IMG_VERSION_TOKEN, ret.getQemuImgVersion(), false);
@@ -6908,7 +7217,7 @@ public class KVMHost extends HostBase implements Host {
     }
 
     private boolean checkMigrateNetworkCidrOfHost(String cidr) {
-        if (NetworkUtils.isIpv4InCidr(self.getManagementIp(), cidr)) {
+        if (NetworkUtils.isIpInCidr(self.getManagementIp(), cidr)) {
             return true;
         }
 
@@ -6919,14 +7228,7 @@ public class KVMHost extends HostBase implements Host {
             return false;
         }
 
-        final String[] ips = extraIps.split(",");
-        for (String ip: ips) {
-            if (NetworkUtils.isIpv4InCidr(ip, cidr)) {
-                return true;
-            }
-        }
-
-        return false;
+        return selectIpInCidr(extraIps, cidr) != null;
     }
 
     private boolean checkQemuLibvirtVersionOfHost() {

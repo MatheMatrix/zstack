@@ -845,7 +845,7 @@
   "ORG_ZSTACK_ZWATCH_ALARM_10026": "รหัสซ้ำ[%s] พร้อมค่าที่แตกต่างกัน{%s}%",
   "ORG_ZSTACK_NETWORK_SERVICE_LB_10170": "ไม่สามารถเพิ่ม IP เซิร์ฟเวอร์ไปยังกลุ่มเซิร์ฟเวอร์ load balancer ที่แชร์ได้ %s",
   "ORG_ZSTACK_ZWATCH_ALARM_10025": "เมทริกไม่มีป้ายกำกับที่ระบุ[%s]",
-  "ORG_ZSTACK_ZWATCH_ALARM_10023": "มีการกำหนดป้ายกำกับซ้ำสำหรับ alarm ที่มี UUID [uuid:%s]",
+  "ORG_ZSTACK_ZWATCH_ALARM_10023": "ป้ายกำกับซ้ำ[key:%s, operator:%s, value:%s] สำหรับ alarm[uuid:%s]",
   "ORG_ZSTACK_ZWATCH_ALARM_10029": "เมทริก[%s] จำกัดสำหรับผู้ดูแลระบบและไม่พร้อมใช้งานสำหรับบทบาทผู้ใช้ปัจจุบันของคุณ",
   "ORG_ZSTACK_NETWORK_SERVICE_LB_10171": "ไม่สามารถแก้ไขเซิร์ฟเวอร์แบ็กเอนด์ได้เนื่องจาก vmincs และ IP เซิร์ฟเวอร์เป็นค่าว่าง",
   "ORG_ZSTACK_ZWATCH_ALARM_10028": "namespace[%s] ไม่มีเมทริก[%s]",
@@ -2961,6 +2961,7 @@
   "ORG_ZSTACK_CRYPTO_AUTH_10019": "การรับรหัสผ่านความสมบูรณ์จากฐานข้อมูลล้มเหลวเนื่องจาก %s ไม่ได้สร้างรหัสผ่านความสมบูรณ์",
   "ORG_ZSTACK_VHOST_KVM_10000": "ดิสก์ vHostUser รองรับเฉพาะโหมด virtio เท่านั้น โปรดตรวจสอบว่าแพลตฟอร์มอิมเมจมีไดรเวอร์ virtio ที่จำเป็นติดตั้งอยู่",
   "ORG_ZSTACK_VHOST_KVM_10001": "ดิสก์ vhost-user ไม่รองรับโหมด virtio-scsi โปรดปิดใช้งานโหมด virtio-scsi",
+  "ORG_ZSTACK_VHOST_KVM_10002": "ไม่สามารถแนบดิสก์ vhost-user แบบออนไลน์ได้: VM ที่กำลังทำงานไม่ได้เปิดใช้หน่วยความจำแบบแชร์ กรุณาปิด VM แล้วแนบ หรือตั้งค่าคอนฟิกส่วนกลาง generate.config.vhost.required เป็น auto หรือ true แล้วรีสตาร์ท VM (จะปิดการ overcommit หน่วยความจำของ VM นี้)",
   "ORG_ZSTACK_NETWORK_L3_10029": "%s ไม่ใช่ที่อยู่ IPv6 ที่ถูกต้องสำหรับการกำหนดค่าทรัพยากรคลาว์",
   "ORG_ZSTACK_USBDEVICE_10005": "PassThrough รองรับการใช้งานบน VM ที่ทำงานในสภาพแวดล้อมโฮสต์เท่านั้น",
   "ORG_ZSTACK_ALIYUN_ECS_10019": "เฉพาะผู้ใช้ผู้ดูแลระบบเท่านั้นที่สามารถตั้งค่าพารามิเตอร์ [onlyZstack] เป็น false ได้",
@@ -4729,5 +4730,6 @@
   "ORG_ZSTACK_AI_10162": "VM「%s」(UUID: %s) ต้องอยู่ในสถานะ Running เพื่อ mount/unmount โมเดล สถานะปัจจุบัน: %s",
   "ORG_ZSTACK_AI_10163": "VM「%s」(UUID: %s) ไม่ได้ทำงานอยู่บนโฮสต์ใด ๆ",
   "ORG_ZSTACK_AI_10164": "โมเดล「%s」(UUID: %s) ไม่ได้แชร์ให้บัญชีของ VM นี้ (หรือสาธารณะ) การ mount ต้องเข้าถึงได้ตามกฎการแชร์เดียวกับ VM",
-  "ORG_ZSTACK_AI_10165": "ไม่พบ ModelCenter[uuid:%s] สำหรับโมเดล[name:%s, uuid:%s]"
+  "ORG_ZSTACK_AI_10165": "ไม่พบ ModelCenter[uuid:%s] สำหรับโมเดล[name:%s, uuid:%s]",
+  "ORG_ZSTACK_AI_10167": "Model service instance group[uuid:%s] is being deleted; stop waiting for service boot up"
 }

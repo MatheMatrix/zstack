@@ -337,6 +337,10 @@ public class VmInstanceBase extends AbstractVmInstance {
     }
 
     protected VmInstanceVO changeVmStateInDb(VmInstanceStateEvent stateEvent, Runnable runnable) {
+        return changeVmStateInDb(stateEvent, runnable, null);
+    }
+
+    protected VmInstanceVO changeVmStateInDb(VmInstanceStateEvent stateEvent, Runnable runnable, String stateChangeSource) {
         VmInstanceState bs = self.getState();
         final VmInstanceState state = self.getState().nextState(stateEvent);
 
@@ -385,6 +389,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             data.setVmUuid(self.getUuid());
             data.setOldState(bs.toString());
             data.setNewState(state.toString());
+            data.setStateChangeSource(stateChangeSource);
             data.setInventory(getSelfInventory());
             evtf.fire(VmCanonicalEvents.VM_FULL_STATE_CHANGED_PATH, data);
 
@@ -1024,17 +1029,7 @@ public class VmInstanceBase extends AbstractVmInstance {
                         String hostUuid = self.getHostUuid();
                         String suspectHostUuid = StringUtils.trimToNull(hostUuid);
                         String peerHostUuid = StringUtils.trimToNull(msg.getAccessiblePeerHostUuid());
-                        UpdateQuery sql = SQL.New(VmInstanceVO.class)
-                                .eq(VmInstanceVO_.uuid, self.getUuid())
-                                .set(VmInstanceVO_.state, VmInstanceState.Stopped)
-                                .set(VmInstanceVO_.hostUuid, null);
-
-                        if (hostUuid != null) {
-                            sql.set(VmInstanceVO_.lastHostUuid, hostUuid);
-                        }
-
-                        sql.update();
-                        refreshVO();
+                        changeVmStateInDb(VmInstanceStateEvent.stopped, null, HaStartVmInstanceMsg.class.getName());
                         if (suspectHostUuid == null) {
                             logger.debug(String.format("HA-start vm[%s]: skip creating pre-fence tag because suspect host is absent",
                                     self.getUuid()));
@@ -1349,6 +1344,31 @@ public class VmInstanceBase extends AbstractVmInstance {
                 });
     }
 
+    private void notifyVmNameChanged(String oldName, String newName) {
+        if (Objects.equals(oldName, newName)) {
+            return;
+        }
+
+        VmInstanceVO latestVm = dbf.findByUuid(self.getUuid(), VmInstanceVO.class);
+        if (latestVm == null) {
+            return;
+        }
+        self = latestVm;
+        final VmInstanceInventory vm = VmInstanceInventory.valueOf(latestVm);
+        String currentName = latestVm.getName();
+        if (Objects.equals(oldName, currentName)) {
+            return;
+        }
+
+        CollectionUtils.safeForEach(pluginRgty.getExtensionList(VmNameChangedExtensionPoint.class),
+                new ForEachFunction<VmNameChangedExtensionPoint>() {
+                    @Override
+                    public void run(VmNameChangedExtensionPoint ext) {
+                        ext.vmNameChanged(vm, oldName, currentName);
+                    }
+                });
+    }
+
     private UsedIpInventory toUsedIpInventory(UsedIpVO ipvo) {
         UsedIpInventory ip = new UsedIpInventory();
         ip.setIp(ipvo.getIp());
@@ -1656,7 +1676,8 @@ public class VmInstanceBase extends AbstractVmInstance {
             completion.done();
             return;
         } else if (operation == VmAbnormalLifeCycleOperation.VmPausedFromRunningStateHostNotChanged
-                || operation == VmAbnormalLifeCycleOperation.VmPausedFromMigratingStateHostNotChanged) {
+                || operation == VmAbnormalLifeCycleOperation.VmPausedFromMigratingStateHostNotChanged
+                || operation == VmAbnormalLifeCycleOperation.VmPausedFromVolumeRecoveringStateHostNotChanged) {
             // just synchronize database
             changeVmStateInDb(VmInstanceStateEvent.paused, () -> self.setHostUuid(msg.getHostUuid()));
             fireEvent.run();
@@ -5881,6 +5902,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             public void run(FlowTrigger trigger, Map data) {
                 boolean update = false;
                 if (msg.getName() != null) {
+                    String oldName = self.getName();
                     Boolean unique = VmGlobalConfig.UNIQUE_VM_NAME.value(Boolean.class);
                     boolean exists = Q.New(VmInstanceVO.class).eq(VmInstanceVO_.name, msg.getName()).notEq(VmInstanceVO_.uuid, self.getUuid()).isExists();
                     if (unique && exists) {
@@ -5889,6 +5911,9 @@ public class VmInstanceBase extends AbstractVmInstance {
                     }
                     self.setName(msg.getName());
                     update = true;
+                    if (!Objects.equals(oldName, msg.getName())) {
+                        extensions.add(() -> notifyVmNameChanged(oldName, msg.getName()));
+                    }
                 }
                 if (msg.getDescription() != null) {
                     self.setDescription(msg.getDescription());
@@ -6154,6 +6179,7 @@ public class VmInstanceBase extends AbstractVmInstance {
             return;
         }
         refreshVO();
+        String oldName = self.getName();
         if (reply.isCpuUpdated()) {
             self.setCpuNum(reply.getCpuUpdatedTo());
         }
@@ -6164,6 +6190,9 @@ public class VmInstanceBase extends AbstractVmInstance {
             self.setName(reply.getNameUpdatedTo());
         }
         dbf.update(self);
+        if (reply.isNameUpdated() && !Objects.equals(oldName, reply.getNameUpdatedTo())) {
+            notifyVmNameChanged(oldName, reply.getNameUpdatedTo());
+        }
     }
 
     @Transactional(readOnly = true)
@@ -7738,6 +7767,7 @@ public class VmInstanceBase extends AbstractVmInstance {
         }
 
         spec.setDiskAOs(struct.getDiskAOs());
+        spec.setDevicesSpec(struct.getDevicesSpec());
 
         List<CdRomSpec> cdRomSpecs = buildVmCdRomSpecsForNewCreated(spec);
         spec.setCdRomSpecs(cdRomSpecs);

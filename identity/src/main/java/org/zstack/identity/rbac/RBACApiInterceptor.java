@@ -1,7 +1,5 @@
 package org.zstack.identity.rbac;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.core.db.Q;
 import org.zstack.header.apimediator.ApiMessageInterceptionException;
 import org.zstack.header.apimediator.ApiMessageInterceptor;
@@ -27,9 +25,6 @@ import static org.zstack.utils.CollectionDSL.list;
 import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.*;
 
 public class RBACApiInterceptor implements ApiMessageInterceptor {
-    @Autowired
-    private PluginRegistry pluginRgty;
-
     @Override
     public APIMessage intercept(APIMessage msg) throws ApiMessageInterceptionException {
         if (msg instanceof APIDeleteRoleMsg) {
@@ -40,8 +35,7 @@ public class RBACApiInterceptor implements ApiMessageInterceptor {
             validate((APIAddPolicyStatementsToRoleMsg) msg);
         } else if (msg instanceof APICreateRoleMsg) {
             validate((APICreateRoleMsg) msg);
-        } 
-
+        }
         return msg;
     }
 
