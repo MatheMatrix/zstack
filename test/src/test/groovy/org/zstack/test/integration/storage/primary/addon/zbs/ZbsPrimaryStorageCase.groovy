@@ -6,12 +6,21 @@ import org.zstack.core.cloudbus.EventCallback
 import org.zstack.core.cloudbus.EventFacade
 import org.zstack.core.db.DatabaseFacade
 import org.zstack.core.db.Q
+import org.zstack.core.trash.TrashType
 import org.zstack.header.errorcode.ErrorCode
 import org.zstack.header.errorcode.OperationFailureException
+import org.zstack.header.core.trash.InstallPathRecycleVO
+import org.zstack.header.core.trash.InstallPathRecycleVO_
 import org.zstack.header.message.MessageReply
+import org.zstack.header.storage.backup.UploadImageToRemoteTargetMsg
+import org.zstack.header.storage.backup.UploadImageToRemoteTargetReply
 import org.zstack.header.storage.primary.GetVolumeBackingChainFromPrimaryStorageMsg
 import org.zstack.header.storage.primary.GetVolumeBackingChainFromPrimaryStorageReply
 import org.zstack.header.storage.primary.PrimaryStorageConstant
+import org.zstack.header.storage.snapshot.VolumeSnapshotVO
+import org.zstack.header.storage.snapshot.VolumeSnapshotVO_
+import org.zstack.header.storage.snapshot.reference.VolumeSnapshotReferenceVO
+import org.zstack.header.storage.snapshot.reference.VolumeSnapshotReferenceVO_
 import org.zstack.header.volume.BatchSyncVolumeSizeOnPrimaryStorageMsg
 import org.zstack.header.volume.BatchSyncVolumeSizeOnPrimaryStorageReply
 import org.zstack.header.storage.addon.primary.ExternalPrimaryStorageVO
@@ -40,8 +49,10 @@ import org.zstack.storage.zbs.Config
 import org.zstack.storage.zbs.ZbsAgentUrl
 import org.zstack.storage.zbs.ZbsConstants
 import org.zstack.storage.zbs.ZbsGlobalProperty
+import org.zstack.storage.zbs.ZbsHelper
 import org.zstack.storage.zbs.ZbsPrimaryStorageMdsBase
 import org.zstack.storage.zbs.ZbsStorageController
+import org.zstack.storage.volume.VolumeSystemTags
 import org.zstack.test.integration.storage.StorageTest
 import org.zstack.testlib.EnvSpec
 import org.zstack.testlib.HttpError
@@ -194,6 +205,7 @@ class ZbsPrimaryStorageCase extends SubCase {
             testAttachPrimaryStorageFailsWhenActivatingHeartbeatVolumeFails()
             testMdsConnectFailed()
             testLifecycle()
+            testReimageReferencedRootCleanup()
             testDataVolumeLifecycle()
             testMdsPing()
             testCheckHostStorageConnection()
@@ -754,6 +766,155 @@ class ZbsPrimaryStorageCase extends SubCase {
             primaryStorageUuid = ps.uuid
             clusterUuid = cluster.uuid
         }
+    }
+
+    void testReimageReferencedRootCleanup() {
+        attachPrimaryStorageToCluster {
+            primaryStorageUuid = ps.uuid
+            clusterUuid = cluster.uuid
+        }
+
+        env.message(UploadImageToRemoteTargetMsg.class) { UploadImageToRemoteTargetMsg msg, CloudBus bus ->
+            bus.reply(msg, new UploadImageToRemoteTargetReply())
+        }
+
+        testReimageReferencedRootCleanup(true)
+        testReimageReferencedRootCleanup(false)
+
+        detachPrimaryStorageFromCluster {
+            primaryStorageUuid = ps.uuid
+            clusterUuid = cluster.uuid
+        }
+        env.cleanSimulatorHandlers()
+    }
+
+    void testReimageReferencedRootCleanup(boolean childFirst) {
+        String suffix = childFirst ? "child-first" : "vm-first"
+
+        def instanceOffering = env.inventoryByName("instanceOffering") as InstanceOfferingInventory
+        def image = env.inventoryByName("image") as ImageInventory
+        def l3 = env.inventoryByName("l3") as L3NetworkInventory
+        def vm = createVmInstance {
+            name = "reimage-referenced-root-${suffix}"
+            imageUuid = image.uuid
+            l3NetworkUuids = [l3.uuid]
+            instanceOfferingUuid = instanceOffering.uuid
+        } as VmInstanceInventory
+        def oldRoot = queryVolume {
+            conditions = ["uuid=${vm.rootVolumeUuid}"]
+        }[0] as VolumeInventory
+        def snapshot = createVolumeSnapshot {
+            name = "referenced-root-snapshot-${suffix}"
+            volumeUuid = oldRoot.uuid
+        } as VolumeSnapshotInventory
+        def child = createDataVolumeFromVolumeSnapshot {
+            name = "referenced-root-child-${suffix}"
+            volumeSnapshotUuid = snapshot.uuid
+            systemTags = [VolumeSystemTags.FAST_CREATE.tagFormat]
+        } as VolumeInventory
+
+        assert Q.New(VolumeSnapshotReferenceVO.class)
+                .eq(VolumeSnapshotReferenceVO_.referenceVolumeUuid, child.uuid).isExists() :
+                "FAST_CREATE child must retain the backing reference: childUuid=${child.uuid}"
+
+        List<String> deleteAttempts = Collections.synchronizedList(new ArrayList<>())
+        env.simulator(ZbsStorageController.QUERY_VOLUME_PATH) { HttpEntity<String> e, EnvSpec spec ->
+            def cmd = JSONObjectUtil.toObject(e.body, ZbsStorageController.QueryVolumeCmd.class)
+            def rsp = new ZbsStorageController.QueryVolumeRsp()
+            rsp.size = oldRoot.size
+            rsp.actualSize = oldRoot.actualSize
+            if (ZbsHelper.normalizeToZbsPath(cmd.path) == snapshot.primaryStorageInstallPath) {
+                rsp.parentUri = oldRoot.installPath
+            }
+            return rsp
+        }
+        env.simulator(ZbsStorageController.DELETE_VOLUME_PATH) { HttpEntity<String> e, EnvSpec spec ->
+            def cmd = JSONObjectUtil.toObject(e.body, ZbsStorageController.DeleteVolumeCmd.class)
+            String path = ZbsHelper.normalizeToZbsPath(cmd.path)
+            deleteAttempts.add(path)
+            return new ZbsStorageController.DeleteVolumeRsp()
+        }
+
+        stopVmInstance {
+            uuid = vm.uuid
+        }
+        reimageVmInstance {
+            vmInstanceUuid = vm.uuid
+        }
+
+        assert !deleteAttempts.contains(oldRoot.installPath) :
+                "reimage must not delete an old root with downstream references: oldRoot=${oldRoot.installPath} attempts=${deleteAttempts}"
+        assert !Q.New(InstallPathRecycleVO.class)
+                .eq(InstallPathRecycleVO_.storageUuid, ps.uuid)
+                .eq(InstallPathRecycleVO_.installPath, oldRoot.installPath)
+                .eq(InstallPathRecycleVO_.trashType, TrashType.ReimageVolume.toString())
+                .isExists() : "reimage must not create trash for referenced old root: oldRoot=${oldRoot.installPath}"
+        assert Q.New(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, snapshot.uuid).isExists() :
+                "reimage must retain the old root snapshot in DB: snapshotUuid=${snapshot.uuid}"
+
+        if (childFirst) {
+            int cleanupStartIndex = deleteAttempts.size()
+            deleteDataVolume {
+                uuid = child.uuid
+            }
+            expungeDataVolume {
+                uuid = child.uuid
+            }
+
+            retryInSecs {
+                assert !Q.New(VolumeSnapshotReferenceVO.class)
+                        .eq(VolumeSnapshotReferenceVO_.referenceVolumeUuid, child.uuid).isExists() :
+                        "reference must be removed after child expunge: childUuid=${child.uuid}"
+            }
+            sleep(1000)
+            List<String> cleanupAttempts = deleteAttempts.drop(cleanupStartIndex)
+            assert Q.New(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.uuid, snapshot.uuid).isExists() :
+                    "child expunge must retain the old root snapshot in DB: snapshotUuid=${snapshot.uuid}"
+            assert !cleanupAttempts.contains(snapshot.primaryStorageInstallPath) :
+                    "child expunge must not delete an existing snapshot: snapshot=${snapshot.primaryStorageInstallPath} attempts=${cleanupAttempts}"
+            assert !cleanupAttempts.contains(oldRoot.installPath) :
+                    "child expunge must not delete an old root used by an existing snapshot: oldRoot=${oldRoot.installPath} attempts=${cleanupAttempts}"
+
+            destroyVmInstance {
+                uuid = vm.uuid
+            }
+            expungeVmInstance {
+                uuid = vm.uuid
+            }
+            return
+        }
+
+        destroyVmInstance {
+            uuid = vm.uuid
+        }
+        expungeVmInstance {
+            uuid = vm.uuid
+        }
+        assert !Q.New(VolumeSnapshotVO.class).eq(VolumeSnapshotVO_.volumeUuid, oldRoot.uuid).isExists() :
+                "old root snapshots must be removed after VM expunge: volumeUuid=${oldRoot.uuid}"
+        assert Q.New(VolumeSnapshotReferenceVO.class)
+                .eq(VolumeSnapshotReferenceVO_.referenceVolumeUuid, child.uuid).isExists() :
+                "VM expunge must retain the FAST_CREATE child reference: childUuid=${child.uuid}"
+
+        int cleanupStartIndex = deleteAttempts.size()
+        deleteDataVolume {
+            uuid = child.uuid
+        }
+        expungeDataVolume {
+            uuid = child.uuid
+        }
+
+        retryInSecs {
+            List<String> cleanupAttempts = deleteAttempts.drop(cleanupStartIndex)
+            int snapshotIndex = cleanupAttempts.lastIndexOf(snapshot.primaryStorageInstallPath)
+            int oldRootIndex = cleanupAttempts.indexOf(oldRoot.installPath)
+            assert snapshotIndex >= 0 && oldRootIndex > snapshotIndex :
+                    "cleanup must delete leaf-to-root: snapshot=${snapshot.primaryStorageInstallPath} oldRoot=${oldRoot.installPath} attempts=${cleanupAttempts}"
+        }
+
+        assert !Q.New(VolumeSnapshotReferenceVO.class)
+                .eq(VolumeSnapshotReferenceVO_.referenceVolumeUuid, child.uuid).isExists() :
+                "reference must be removed after child expunge: childUuid=${child.uuid}"
     }
 
     void testMdsPing() {

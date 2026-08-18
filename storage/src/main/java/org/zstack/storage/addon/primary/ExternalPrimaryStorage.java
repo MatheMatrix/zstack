@@ -56,6 +56,7 @@ import org.zstack.identity.AccountManager;
 import org.zstack.resourceconfig.ResourceConfigFacade;
 import org.zstack.storage.backup.BackupStorageSystemTags;
 import org.zstack.storage.primary.*;
+import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
 import org.zstack.storage.volume.VolumeSystemTags;
 import org.zstack.utils.Utils;
 import org.zstack.utils.gson.JSONObjectUtil;
@@ -2099,7 +2100,8 @@ public class ExternalPrimaryStorage extends PrimaryStorageBase {
                     @Override
                     public boolean skip(Map data) {
                         return controller.reportCapabilities().getSnapshotCapability()
-                                .getPlacementType() != VolumeSnapshotCapability.VolumeSnapshotPlacementType.INTERNAL;
+                                .getPlacementType() != VolumeSnapshotCapability.VolumeSnapshotPlacementType.INTERNAL
+                                || VolumeSnapshotReferenceUtils.isVolumeDirectlyReferenceByOthers(msg.getVolume());
                     }
 
                     @Override
