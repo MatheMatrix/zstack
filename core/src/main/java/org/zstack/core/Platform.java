@@ -120,8 +120,10 @@ public class Platform {
     };
     private static final List<String> UNUSABLE_MACHINE_IDENTITIES = Arrays.asList(
             "none",
+            "n/a",
             "unknown",
             "not specified",
+            "to be filled",
             "to be filled by o.e.m.",
             "to be filled by oem",
             "default string",
@@ -894,6 +896,18 @@ public class Platform {
         }
 
         return MANAGEMENT_SERVER_FINGERPRINT_ALGORITHM + DigestUtils.sha256Hex(StringUtils.join(identities, "\n"));
+    }
+
+    public static String getManagementServerSerialNumber() {
+        String serialNumber = normalizeMachineSerialNumber(
+                readMachineIdentity("/sys/class/dmi/id/product_serial"));
+        return serialNumber == null
+                ? normalizeMachineSerialNumber(readDmiMachineIdentity("system-serial-number"))
+                : serialNumber;
+    }
+
+    public static String normalizeMachineSerialNumber(String serialNumber) {
+        return normalizeMachineIdentity(serialNumber);
     }
 
     private static String readMachineIdentity(String path) {

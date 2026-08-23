@@ -10,6 +10,7 @@ import org.zstack.vhost.kvm.VhostVolumeTO;
 import org.zstack.compute.host.HostGlobalConfig;
 import org.zstack.compute.host.HostSystemTags;
 import org.zstack.core.CoreGlobalProperty;
+import org.zstack.core.Platform;
 import org.zstack.core.ansible.AnsibleGlobalProperty;
 import org.zstack.core.asyncbatch.While;
 import org.zstack.core.cloudbus.CloudBus;
@@ -92,6 +93,10 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     @Autowired
     @Deprecated
     private CloudBus bus;
+    @Autowired
+    private ZbsCpuIsolationCascadeExtension cpuIsolationCascade;
+    @Autowired
+    private ZbsPhysicalServerIdentityResolver physicalServerIdentities;
 
     private ExternalPrimaryStorageVO self;
     private AddonInfo addonInfo;
@@ -632,6 +637,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         AddonInfo newAddonInfo = new AddonInfo();
         Config current = JSONObjectUtil.toObject(cfg, Config.class);
         List<MdsInfo> mdsInfos = MdsInfo.valueOf(current.getMdsUrls());
+        preservePhysicalServerSerialNumbers(mdsInfos);
         newAddonInfo.setMdsInfos(mdsInfos);
         final List<ZbsPrimaryStorageMdsBase> mdsList = CollectionUtils.transformToList(newAddonInfo.getMdsInfos(),
                 ZbsPrimaryStorageMdsBase::new);
@@ -781,6 +787,8 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 done(new FlowDoneHandler(completion) {
                     @Override
                     public void handle(Map data) {
+                        physicalServerIdentities.enrichPhysicalServerSerialNumbers(
+                                self.getUuid(), newAddonInfo);
                         addonInfo = newAddonInfo;
                         completion.success(newAddonInfo);
                     }
@@ -1650,6 +1658,21 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         this.config = StringUtils.isEmpty(config) ? new Config() : JSONObjectUtil.toObject(config, Config.class);
     }
 
+    @Override
+    public void beforePersistAddonInfo(
+            org.zstack.header.storage.addon.primary.AddonInfo addonInfo,
+            Completion completion) {
+        if (!(addonInfo instanceof AddonInfo)) {
+            completion.fail(operr(
+                    ORG_ZSTACK_STORAGE_ZBS_10012,
+                    "cannot update ZBS primary storage[uuid:%s]: invalid addonInfo type[%s]",
+                    self.getUuid(), addonInfo == null ? null : addonInfo.getClass().getName()));
+            return;
+        }
+        cpuIsolationCascade.beforePersistAddonInfo(
+                self.getUuid(), (AddonInfo) addonInfo, completion);
+    }
+
     private void syncMdsStatuses(AddonInfo newAddonInfo) {
         if (addonInfo == null || newAddonInfo == null) {
             return;
@@ -1666,6 +1689,27 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         SQL.New(ExternalPrimaryStorageVO.class).eq(ExternalPrimaryStorageVO_.uuid, self.getUuid())
                 .set(ExternalPrimaryStorageVO_.addonInfo, JSONObjectUtil.toJsonString(addonInfo))
                 .update();
+    }
+
+    private void preservePhysicalServerSerialNumbers(List<MdsInfo> mdsInfos) {
+        if (addonInfo == null || addonInfo.getMdsInfos() == null) {
+            return;
+        }
+        Map<String, String> serialNumbersByAddress = new HashMap<>();
+        for (MdsInfo existing : addonInfo.getMdsInfos()) {
+            if (existing == null || existing.getAddr() == null) {
+                continue;
+            }
+            String serialNumber = Platform.normalizeMachineSerialNumber(
+                    existing.getPhysicalServerSerialNumber());
+            if (serialNumber != null) {
+                serialNumbersByAddress.put(existing.getAddr(), serialNumber);
+            }
+        }
+        for (MdsInfo mds : mdsInfos) {
+            mds.setPhysicalServerSerialNumber(
+                    serialNumbersByAddress.get(mds.getAddr()));
+        }
     }
 
     @Deprecated

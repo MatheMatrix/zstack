@@ -29,4 +29,32 @@
             <zstack:extension interface="org.zstack.header.Component" />
         </zstack:plugin>
     </bean>
+
+    <bean id="ZbsNodeRefContributor" class="org.zstack.storage.zbs.ZbsNodeRefContributorImpl">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.storage.zbs.ZbsNodeRefContributor" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="FakeZbsCpuIsolationProvider"
+          class="org.zstack.storage.zbs.FakeZbsCpuIsolationProvider">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.storage.zbs.ZbsCpuIsolationProvider" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="ZbsResourceAssignmentBackend"
+          class="org.zstack.storage.zbs.ZbsResourceAssignmentBackend">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.physicalserver.PhysicalServerResourceControlAdapter" />
+        </zstack:plugin>
+    </bean>
+
+    <bean id="ZbsCpuIsolationCascadeExtension"
+          class="org.zstack.storage.zbs.ZbsCpuIsolationCascadeExtension">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.Component" />
+            <zstack:extension interface="org.zstack.core.cascade.CascadeExtensionPoint" />
+        </zstack:plugin>
+    </bean>
 </beans>

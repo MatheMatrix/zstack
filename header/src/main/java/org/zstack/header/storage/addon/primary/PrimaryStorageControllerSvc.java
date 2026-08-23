@@ -43,6 +43,10 @@ public interface PrimaryStorageControllerSvc {
      */
     void syncConfig(String config);
 
+    default void beforePersistAddonInfo(AddonInfo addonInfo, Completion completion) {
+        completion.success();
+    }
+
     void getCapacity(List<String> requiredUrls, ReturnValueCompletion<StorageCapacity> comp);
     void reportCapacity(ReturnValueCompletion<StorageCapacity> comp);
     void reportHealthy(ReturnValueCompletion<StorageHealthy> comp);

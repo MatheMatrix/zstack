@@ -1,0 +1,4 @@
+roleType: ZBS
+applicationMode: PROVIDER_MANAGED
+services:
+  - name: zbs-node
