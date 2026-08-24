@@ -1662,11 +1662,6 @@ public class LoadBalancerApiInterceptor implements ApiMessageInterceptor, Global
             throw new ApiMessageInterceptionException(
                     operr(ORG_ZSTACK_NETWORK_SERVICE_LB_10187, "tcp ipvs listener doesn't support http health check parameters"));
         }
-        if (isTcpIpvsListener(listenerVO.getProtocol(), dataPlane) && msg.getHealthCheckTimeout() != null) {
-            throw new ApiMessageInterceptionException(
-                    operr(ORG_ZSTACK_NETWORK_SERVICE_LB_10189, "tcp ipvs listener doesn't support healthCheckTimeout"));
-        }
-
         if (msg.getHealthCheckProtocol() != null) {
             if (isHealthCheckProtocolNotSupportedByListenerProtocol(listenerVO.getProtocol(), dataPlane, msg.getHealthCheckProtocol())) {
                 throw new ApiMessageInterceptionException(

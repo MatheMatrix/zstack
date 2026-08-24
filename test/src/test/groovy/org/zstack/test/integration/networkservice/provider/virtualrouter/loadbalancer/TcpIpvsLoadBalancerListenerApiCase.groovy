@@ -28,6 +28,7 @@ import org.zstack.sdk.ChangeLoadBalancerListenerAction
 import org.zstack.sdk.ApiResult
 import org.zstack.sdk.CreateLoadBalancerListenerAction
 import org.zstack.sdk.CreateLoadBalancerListenerResult
+import org.zstack.sdk.CreateSystemTagAction
 import org.zstack.sdk.L3NetworkInventory
 import org.zstack.sdk.LoadBalancerInventory
 import org.zstack.sdk.LoadBalancerListenerInventory
@@ -616,6 +617,17 @@ class TcpIpvsLoadBalancerListenerApiCase extends SubCase {
         }
         assertUnsupportedHealthCheckTimeoutError(timeoutResult.error)
 
+        LoadBalancerListenerInventory invalidNoneTargetListener = createTcpIpvsListener(
+                "tcp-ipvs-invalid-none-target", 11107, LoadBalancerConstants.BALANCE_ALGORITHM_ROUND_ROBIN)
+        CreateSystemTagAction invalidNoneTargetAction = new CreateSystemTagAction()
+        invalidNoneTargetAction.resourceUuid = invalidNoneTargetListener.uuid
+        invalidNoneTargetAction.resourceType = LoadBalancerListenerVO.simpleName
+        invalidNoneTargetAction.tag = "healthCheckTarget::none:8080"
+        invalidNoneTargetAction.sessionId = adminSession()
+        CreateSystemTagAction.Result invalidNoneTargetResult = invalidNoneTargetAction.call()
+        assert invalidNoneTargetResult.error != null
+        assert invalidNoneTargetResult.error.globalErrorCode == "ORG_ZSTACK_NETWORK_SERVICE_LB_10192"
+
         LoadBalancerListenerInventory listener = createLoadBalancerListener {
             delegate.name = "tcp-ipvs-health-check-parameters"
             delegate.loadBalancerUuid = lb.uuid
@@ -674,11 +686,6 @@ class TcpIpvsLoadBalancerListenerApiCase extends SubCase {
                 healthyThreshold: "2",
                 unhealthyThreshold: "2"
         ])
-
-        ChangeLoadBalancerListenerAction.Result timeoutChangeResult = assertChangeListenerError(listener.uuid) { ChangeLoadBalancerListenerAction action ->
-            action.healthCheckTimeout = 2
-        }
-        assertUnsupportedHealthCheckTimeoutError(timeoutChangeResult.error)
 
         changeOffset = refreshCmds.size()
         assertChangeListenerSuccess(listener.uuid) { ChangeLoadBalancerListenerAction action ->
