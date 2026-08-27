@@ -21,6 +21,12 @@
         </zstack:plugin>
     </bean>
 
+    <bean id="BackupMessageManager" class="org.zstack.storage.backup.BackupMessageManagerImpl">
+        <zstack:plugin>
+            <zstack:extension interface="org.zstack.header.Service"/>
+        </zstack:plugin>
+    </bean>
+
     <bean id="BackupStorageApiInterceptor" class="org.zstack.storage.backup.BackupStorageApiInterceptor">
         <zstack:plugin>
             <zstack:extension interface="org.zstack.header.apimediator.ApiMessageInterceptor" />

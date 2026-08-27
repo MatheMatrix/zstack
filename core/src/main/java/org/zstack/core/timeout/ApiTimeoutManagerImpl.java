@@ -343,7 +343,13 @@ public class ApiTimeoutManagerImpl implements ApiTimeoutManager, Component,
     @Override
     public void setMessageTimeout(Message msg) {
         if (msg instanceof ConfigurableTimeoutMessage) {
+            long existingDeadline = ((ConfigurableTimeoutMessage) msg).getMessageDeadline();
             MessageTimeoutDsc mtd = evalTimeout(getMessageTimeout((ConfigurableTimeoutMessage) msg));
+            if (existingDeadline != -1) {
+                mtd.setMessageDeadline(Math.min(existingDeadline, mtd.getMessageDeadline()));
+                mtd.setMessageTimeout(Math.min(mtd.getMessageTimeout(),
+                        Math.max(1L, mtd.getMessageDeadline() - timer.getCurrentTimeMillis())));
+            }
             ((ConfigurableTimeoutMessage) msg).setTimeout(mtd.getMessageTimeout());
             ((ConfigurableTimeoutMessage) msg).setMessageDeadline(mtd.getMessageDeadline());
         } else if (msg instanceof NeedReplyMessage) {

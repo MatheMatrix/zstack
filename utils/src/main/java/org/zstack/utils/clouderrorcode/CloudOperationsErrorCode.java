@@ -1400,6 +1400,8 @@ public class CloudOperationsErrorCode {
 
     public static final String ORG_ZSTACK_STORAGE_SNAPSHOT_10029 = "ORG_ZSTACK_STORAGE_SNAPSHOT_10029";
 
+    public static final String ORG_ZSTACK_STORAGE_SNAPSHOT_10030 = "ORG_ZSTACK_STORAGE_SNAPSHOT_10030";
+
     public static final String ORG_ZSTACK_ZWATCH_NAMESPACE_10000 = "ORG_ZSTACK_ZWATCH_NAMESPACE_10000";
 
     public static final String ORG_ZSTACK_ZWATCH_NAMESPACE_10001 = "ORG_ZSTACK_ZWATCH_NAMESPACE_10001";
@@ -7521,6 +7523,10 @@ public class CloudOperationsErrorCode {
     public static final String ORG_ZSTACK_STORAGE_CDP_10120 = "ORG_ZSTACK_STORAGE_CDP_10120";
 
     public static final String ORG_ZSTACK_STORAGE_CDP_10121 = "ORG_ZSTACK_STORAGE_CDP_10121";
+
+    public static final String ORG_ZSTACK_STORAGE_CDP_10122 = "ORG_ZSTACK_STORAGE_CDP_10122";
+
+    public static final String ORG_ZSTACK_STORAGE_CDP_10123 = "ORG_ZSTACK_STORAGE_CDP_10123";
 
     public static final String ORG_ZSTACK_SNS_PLATFORM_EMAIL_10000 = "ORG_ZSTACK_SNS_PLATFORM_EMAIL_10000";
 
