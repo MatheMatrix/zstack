@@ -25,7 +25,7 @@ public class GetSharedBlockVolumeSnapshotLanFreeLayoutAction extends AbstractAct
         }
     }
 
-    @Param(required = true, nonempty = true, nullElements = false, emptyString = true, noTrim = false)
+    @Param(required = true, nonempty = true, nullElements = false, emptyString = false, noTrim = false)
     public java.util.List snapshotUuids;
 
     @Param(required = false)

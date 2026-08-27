@@ -34,17 +34,19 @@ class SdkApiTemplate implements SdkTemplate {
     boolean isQueryApi
     String packageName
 
-    private static Map<Package, SDKPackage> packageSDKAnnotations = [:]
-
-    static {
-        Platform.reflections.getTypesAnnotatedWith(SDKPackage.class).each {
-            packageSDKAnnotations[it.package] = it.getAnnotation(SDKPackage.class)
-        }
-    }
+    private static volatile Map<Package, SDKPackage> defaultPackageSDKAnnotations
+    private Map<Package, SDKPackage> packageSDKAnnotations
 
     SdkApiTemplate(Class apiMessageClass) {
+        this(apiMessageClass, discoverPackageSDKAnnotations())
+    }
+
+    SdkApiTemplate(Class apiMessageClass,
+                   Map<Package, SDKPackage> packageSDKAnnotations) {
         try {
-            packageName = getPackageName(apiMessageClass)
+            this.packageSDKAnnotations = new LinkedHashMap<>(packageSDKAnnotations)
+            packageName = getPackageName(apiMessageClass,
+                    this.packageSDKAnnotations)
 
             this.apiMessageClass = apiMessageClass
             this.requestAnnotation = apiMessageClass.getAnnotation(RestRequest.class)
@@ -55,7 +57,7 @@ class SdkApiTemplate implements SdkTemplate {
             baseName = StringUtils.removeEnd(baseName, "Reply")
 
             resultClassName = StringUtils.capitalize(baseName)
-            resultClassName = "${getPackageName(requestAnnotation.responseClass())}.${resultClassName}Result"
+            resultClassName = "${getPackageName(requestAnnotation.responseClass(), this.packageSDKAnnotations)}.${resultClassName}Result"
 
             isQueryApi = APIQueryMessage.class.isAssignableFrom(apiMessageClass)
         } catch (Throwable t) {
@@ -63,15 +65,36 @@ class SdkApiTemplate implements SdkTemplate {
         }
     }
 
-    static String getFieldType(Field field) {
+    private static Map<Package, SDKPackage> discoverPackageSDKAnnotations() {
+        if (defaultPackageSDKAnnotations == null) {
+            synchronized (SdkApiTemplate.class) {
+                if (defaultPackageSDKAnnotations == null) {
+                    Map<Package, SDKPackage> annotations = [:]
+                    Platform.reflections.getTypesAnnotatedWith(SDKPackage.class).each {
+                        annotations[it.package] = it.getAnnotation(SDKPackage.class)
+                    }
+                    defaultPackageSDKAnnotations =
+                            Collections.unmodifiableMap(annotations)
+                }
+            }
+        }
+        return defaultPackageSDKAnnotations
+    }
+
+    String getFieldType(Field field) {
         if (!field.type.name.startsWith("org.zstack")) {
             return field.type.name
         }
 
-        return "${getPackageName(field.type)}.${field.type.simpleName}"
+        return "${getPackageName(field.type, packageSDKAnnotations)}.${field.type.simpleName}"
     }
 
     static String getPackageName(Class clz) {
+        return getPackageName(clz, discoverPackageSDKAnnotations())
+    }
+
+    static String getPackageName(Class clz,
+                                 Map<Package, SDKPackage> packageSDKAnnotations) {
         String packageName = "org.zstack.sdk"
 
         if (clz.getPackage() == null) {
@@ -190,14 +213,14 @@ class SdkApiTemplate implements SdkTemplate {
     @Param(${annotationFields.join(", ")})
     public ${getFieldType(f)} ${f.getName()}${{ ->
                 f.accessible = true
-                
+
                 Object val = f.get(msg)
                 if (val == null) {
                     return ";"
                 }
-                
+
                 if (val instanceof String) {
-                    return " = \"${StringEscapeUtils.escapeJava(val.toString())}\";" 
+                    return " = \"${StringEscapeUtils.escapeJava(val.toString())}\";"
                 } else if (val instanceof Long) {
                     return " = ${val.toString()}L;"
                 } else {
@@ -255,9 +278,9 @@ class SdkApiTemplate implements SdkTemplate {
             ret.error = res.error;
             return ret;
         }
-        
+
         ${resultClassName} value = res.getResult(${resultClassName}.class);
-        ret.value = value == null ? new ${resultClassName}() : value; 
+        ret.value = value == null ? new ${resultClassName}() : value;
 
         return ret;
     }
@@ -332,7 +355,7 @@ public class ${clzName} extends ${isQueryApi ? "QueryAction" : "AbstractAction"}
                     String.format("error[code: %s, description: %s, details: %s]", error.code, error.description, error.details)
                 );
             }
-            
+
             return this;
         }
     }
