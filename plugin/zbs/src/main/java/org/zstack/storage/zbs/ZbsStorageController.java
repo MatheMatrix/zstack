@@ -108,6 +108,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     public static final String CLONE_VOLUME_PATH = "/zbs/primarystorage/volume/clone";
     public static final String QUERY_VOLUME_PATH = "/zbs/primarystorage/volume/query";
     public static final String BATCH_QUERY_VOLUME_PATH = "/zbs/primarystorage/volume/query/batch";
+    public static final String BATCH_QUERY_VOLUME_WITH_SNAPSHOT_PATH = "/zbs/primarystorage/volume/query/batch/withsnapshot";
     public static final String EXPAND_VOLUME_PATH = "/zbs/primarystorage/volume/expand";
     public static final String FLATTEN_VOLUME_PATH = "/zbs/primarystorage/volume/flatten";
     public static final String CBD_TO_NBD_PATH = "/zbs/primarystorage/volume/cbdtonbd";
@@ -133,6 +134,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         scap.setSupport(true);
         scap.setArrangementType(VolumeSnapshotCapability.VolumeSnapshotArrangementType.INDIVIDUAL);
         scap.setPlacementType(VolumeSnapshotCapability.VolumeSnapshotPlacementType.INTERNAL);
+        scap.setMode(VolumeSnapshotCapability.VolumeSnapshotMode.COPY_ON_WRITE);
         scap.setSupportCreateOnHypervisor(false);
         scap.setSupportLazyDelete(false);
         scap.setVolumePathFromInternalSnapshotRegex("^[^@]+");
@@ -1322,13 +1324,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         httpCall(QUERY_VOLUME_PATH, cmd, QueryVolumeRsp.class, new ReturnValueCompletion<QueryVolumeRsp>(comp) {
             @Override
             public void success(QueryVolumeRsp returnValue) {
-                VolumeStats stats = new VolumeStats();
-                stats.setInstallPath(installPath);
-                stats.setSize(returnValue.getSize());
-                stats.setActualSize(returnValue.getActualSize());
-                stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
-                stats.setParentUri(ZbsHelper.normalizeToZbsPath(returnValue.getParentUri()));
-                comp.success(stats);
+                comp.success(toVolumeStats(installPath, returnValue));
             }
 
             @Override
@@ -1339,23 +1335,31 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
     }
 
     @Override
-    public void batchStats(Collection<String> installPaths, ReturnValueCompletion<List<VolumeStats>> comp) {
+    public void batchStats(Collection<String> installPaths, ReturnValueCompletion<List<StorageResourceStats>> comp) {
         BatchQueryVolumeCmd cmd = new BatchQueryVolumeCmd();
+        Collection<String> paths = installPaths == null ? Collections.emptyList() : installPaths;
+        List<String> cbdInstallPaths = paths.stream()
+                .map(it -> convertZbsPathToCbdPath(it, this::getPhysicalPoolName))
+                .collect(Collectors.toList());
+        boolean withSnapshot = cbdInstallPaths.stream().anyMatch(it -> it.contains("@"));
 
-        cmd.setInstallPaths(installPaths.stream().map(it -> convertZbsPathToCbdPath(it, this::getPhysicalPoolName))
-                .collect(Collectors.toList()));
+        cmd.setInstallPaths(cbdInstallPaths);
 
-        httpCall(BATCH_QUERY_VOLUME_PATH, cmd, BatchQueryVolumeRsp.class, new ReturnValueCompletion<BatchQueryVolumeRsp>(comp) {
+        String path = withSnapshot ? BATCH_QUERY_VOLUME_WITH_SNAPSHOT_PATH : BATCH_QUERY_VOLUME_PATH;
+        httpCall(path, cmd, BatchQueryVolumeRsp.class, new ReturnValueCompletion<BatchQueryVolumeRsp>(comp) {
             @Override
             public void success(BatchQueryVolumeRsp returnValue) {
-                List<VolumeStats> stats = returnValue.getVolumes().entrySet().stream().map(v -> {
+                List<StorageResourceStats> stats = returnValue.getVolumes().entrySet().stream().map(v -> {
                     VolumeStats s = new VolumeStats();
                     s.setInstallPath(ZbsHelper.normalizeToZbsPath(v.getKey()));
                     s.setSize(v.getValue().get("length"));
                     s.setActualSize(v.getValue().get("usedSize"));
                     s.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
-                    return s;
+                    return (StorageResourceStats) s;
                 }).collect(Collectors.toList());
+                if (withSnapshot) {
+                    stats.addAll(toVolumeSnapshotStats(returnValue.getSnapshots()));
+                }
                 comp.success(stats);
             }
 
@@ -1364,6 +1368,29 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
                 comp.fail(errorCode);
             }
         });
+    }
+
+    private VolumeStats toVolumeStats(String installPath, QueryVolumeRsp rsp) {
+        VolumeStats stats = new VolumeStats();
+        stats.setInstallPath(installPath);
+        stats.setSize(rsp.getSize());
+        stats.setActualSize(rsp.getActualSize());
+        stats.setFormat(VolumeConstant.VOLUME_FORMAT_RAW);
+        stats.setParentUri(ZbsHelper.normalizeToZbsPath(rsp.getParentUri()));
+        return stats;
+    }
+
+    private List<VolumeSnapshotStats> toVolumeSnapshotStats(Map<String, Map<String, Long>> snapshots) {
+        if (snapshots == null || snapshots.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return snapshots.entrySet().stream().map(e -> {
+            VolumeSnapshotStats stats = new VolumeSnapshotStats();
+            stats.setInstallPath(ZbsHelper.normalizeToZbsPath(e.getKey()));
+            stats.setActualSize(e.getValue().get("usedSize"));
+            return stats;
+        }).collect(Collectors.toList());
     }
 
     @Override
@@ -1906,6 +1933,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
         public void setParentUri(String parentUri) {
             this.parentUri = parentUri;
         }
+
     }
 
     public static class FlattenVolumeRsp extends QueryVolumeRsp {
@@ -1914,6 +1942,7 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
     public static class BatchQueryVolumeRsp extends AgentResponse {
         private Map<String, Map<String, Long>> volumes;
+        private Map<String, Map<String, Long>> snapshots;
 
         public Map<String, Map<String, Long>> getVolumes() {
             return volumes;
@@ -1921,6 +1950,14 @@ public class ZbsStorageController implements PrimaryStorageControllerSvc, Primar
 
         public void setVolumes(Map<String, Map<String, Long>> volumes) {
             this.volumes = volumes;
+        }
+
+        public Map<String, Map<String, Long>> getSnapshots() {
+            return snapshots;
+        }
+
+        public void setSnapshots(Map<String, Map<String, Long>> snapshots) {
+            this.snapshots = snapshots;
         }
     }
 
