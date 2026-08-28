@@ -8442,6 +8442,7 @@ public class VmInstanceBase extends AbstractVmInstance {
 
         RebootVmInstanceMsg rmsg = new RebootVmInstanceMsg();
         rmsg.setVmInstanceUuid(msg.getVmInstanceUuid());
+        rmsg.setFromApi(true);
         bus.makeTargetServiceIdByResourceUuid(rmsg, VmInstanceConstant.SERVICE_ID, rmsg.getVmInstanceUuid());
         bus.send(rmsg, new CloudBusCallBack(msg) {
             @Override
