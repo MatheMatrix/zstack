@@ -28,6 +28,7 @@ import org.zstack.header.identity.*;
 import org.zstack.header.identity.quota.QuotaMessageHandler;
 import org.zstack.header.message.*;
 import org.zstack.header.storage.backup.CleanUpVmBackupExtensionPoint;
+import org.zstack.header.storage.backup.BackupOperationConflictChecker.Operation;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.primary.VolumeSnapshotCapability.VolumeSnapshotArrangementType;
 import org.zstack.header.storage.snapshot.*;
@@ -43,6 +44,7 @@ import org.zstack.storage.snapshot.group.VolumeSnapshotGroupBase;
 import org.zstack.storage.snapshot.group.VolumeSnapshotGroupChecker;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceTreeBase;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
+import org.zstack.storage.backup.BackupOperationConflictManager;
 import org.zstack.storage.volume.FireSnapShotCanonicalEvent;
 import org.zstack.storage.volume.VolumeSystemTags;
 import org.zstack.tag.TagManager;
@@ -101,7 +103,8 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
     private CascadeFacade casf;
     @Autowired
     private VmInstanceDeviceManager vidm;
-
+    @Autowired
+    private BackupOperationConflictManager backupOperationConflictManager;
     private Map<String, MemorySnapshotGroupReferenceFactory> referenceFactories = Collections.synchronizedMap(new HashMap<>());
 
 
@@ -771,6 +774,14 @@ public class VolumeSnapshotManagerImpl extends AbstractService implements
         if (!capability.isSupport()) {
             throw new OperationFailureException(operr(ORG_ZSTACK_STORAGE_SNAPSHOT_10014, "primary storage[uuid:%s] doesn't support volume snapshot;" +
                     " cannot create snapshot for volume[uuid:%s]", primaryStorageUuid, vol.getUuid()));
+        }
+
+        if (VolumeSnapshotArrangementType.CHAIN == capability.getArrangementType() && vol.getVmInstanceUuid() != null) {
+            ErrorCode error = backupOperationConflictManager.check(
+                    Operation.CREATE_CHAIN_SNAPSHOT, vol.getVmInstanceUuid(), vol.getUuid());
+            if (error != null) {
+                throw new OperationFailureException(error);
+            }
         }
 
         final VolumeSnapshotVO vo = new VolumeSnapshotVO();

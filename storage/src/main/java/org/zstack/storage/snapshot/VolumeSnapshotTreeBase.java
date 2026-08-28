@@ -38,6 +38,7 @@ import org.zstack.header.storage.backup.AllocateBackupStorageMsg;
 import org.zstack.header.storage.backup.AllocateBackupStorageReply;
 import org.zstack.header.storage.backup.BackupStorageConstant;
 import org.zstack.header.storage.backup.ReturnBackupStorageMsg;
+import org.zstack.header.storage.backup.BackupOperationConflictChecker.Operation;
 import org.zstack.header.storage.primary.*;
 import org.zstack.header.storage.snapshot.*;
 import org.zstack.header.storage.snapshot.CreateTemplateFromVolumeSnapshotExtensionPoint.ParamIn;
@@ -56,6 +57,7 @@ import org.zstack.longjob.LongJobUtils;
 import org.zstack.storage.primary.PrimaryStorageCapacityUpdater;
 import org.zstack.storage.primary.PrimaryStorageGlobalProperty;
 import org.zstack.storage.snapshot.reference.VolumeSnapshotReferenceUtils;
+import org.zstack.storage.backup.BackupOperationConflictManager;
 import org.zstack.storage.volume.FireSnapShotCanonicalEvent;
 import org.zstack.tag.TagManager;
 import org.zstack.utils.CollectionUtils;
@@ -131,6 +133,8 @@ public class VolumeSnapshotTreeBase {
     private PluginRegistry pluginRgty;
     @Autowired
     private PrimaryStorageOverProvisioningManager psRaitoMgr;
+    @Autowired
+    private BackupOperationConflictManager backupOperationConflictManager;
 
     public VolumeSnapshotTreeBase(VolumeSnapshotVO vo, boolean syncOnVolume) {
         currentRoot = vo;
@@ -2828,6 +2832,12 @@ public class VolumeSnapshotTreeBase {
     }
 
     private void deleteVolumeSnapshot(final DeleteVolumeSnapshotMessage msg, Completion completion) {
+        ErrorCode conflict = checkBackupOperationConflictBeforeDelete();
+        if (conflict != null) {
+            completion.fail(conflict);
+            return;
+        }
+
         final String issuer = VolumeSnapshotVO.class.getSimpleName();
         VolumeSnapshotDeletionStructs ctx = new VolumeSnapshotDeletionStructs(
                 Collections.singletonList(getSelfInventory()), msg.getDirection(), msg.getScope());
@@ -2901,6 +2911,41 @@ public class VolumeSnapshotTreeBase {
                 completion.fail(err(ORG_ZSTACK_STORAGE_SNAPSHOT_10009, SysErrors.DELETE_RESOURCE_ERROR, errCode, errCode.getDetails()));
             }
         }).start();
+    }
+
+    private ErrorCode checkBackupOperationConflictBeforeDelete() {
+        if (currentRoot.getVolumeUuid() == null) {
+            return null;
+        }
+
+        VolumeVO volume = dbf.findByUuid(currentRoot.getVolumeUuid(), VolumeVO.class);
+        if (volume == null || volume.getVmInstanceUuid() == null || volume.getPrimaryStorageUuid() == null) {
+            return null;
+        }
+        PrimaryStorageState primaryStorageState = Q.New(PrimaryStorageVO.class)
+                .eq(PrimaryStorageVO_.uuid, volume.getPrimaryStorageUuid())
+                .select(PrimaryStorageVO_.state)
+                .findValue();
+        if (primaryStorageState != PrimaryStorageState.Enabled) {
+            return null;
+        }
+
+        AskVolumeSnapshotCapabilityMsg askMsg = new AskVolumeSnapshotCapabilityMsg();
+        askMsg.setPrimaryStorageUuid(volume.getPrimaryStorageUuid());
+        askMsg.setVolume(VolumeInventory.valueOf(volume));
+        bus.makeLocalServiceId(askMsg, PrimaryStorageConstant.SERVICE_ID);
+        MessageReply reply = bus.call(askMsg);
+        if (!reply.isSuccess()) {
+            return reply.getError();
+        }
+
+        AskVolumeSnapshotCapabilityReply askReply = reply.castReply();
+        if (askReply.getCapability().getArrangementType() == VolumeSnapshotCapability.VolumeSnapshotArrangementType.INDIVIDUAL) {
+            return null;
+        }
+
+        return backupOperationConflictManager.check(
+                Operation.DELETE_CHAIN_SNAPSHOT, volume.getVmInstanceUuid(), volume.getUuid());
     }
 
     private void handle(final APIDeleteVolumeSnapshotMsg msg) {
