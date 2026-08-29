@@ -93,6 +93,8 @@ context is propagated through the existing CloudBus task context, so child
 messages remain correlated when they cross management nodes. Agent spans and
 durable restart recovery remain follow-up work; a node restart can therefore
 produce `partial`/`UNKNOWN` data until a persistent store is introduced.
+The current `criticalPath` detail is a bounded event/stage view; causal path
+ranking across parallel branches is a follow-up enhancement.
 
 ## 3. Invariants
 
