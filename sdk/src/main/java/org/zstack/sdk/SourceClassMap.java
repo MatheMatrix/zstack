@@ -590,6 +590,10 @@ public class SourceClassMap {
 			put("org.zstack.storage.primary.sharedblock.SharedBlockGroupPrimaryStorageInventory", "org.zstack.sdk.SharedBlockGroupPrimaryStorageInventory");
 			put("org.zstack.storage.primary.sharedblock.SharedBlockGroupType", "org.zstack.sdk.SharedBlockGroupType");
 			put("org.zstack.storage.primary.sharedblock.SharedBlockInventory", "org.zstack.sdk.SharedBlockInventory");
+			put("org.zstack.storage.primary.sharedblock.SharedBlockVolumeSnapshotLanFreeLayout", "org.zstack.sdk.SharedBlockVolumeSnapshotLanFreeLayout");
+			put("org.zstack.storage.primary.sharedblock.SharedBlockVolumeSnapshotLanFreeLayer", "org.zstack.sdk.SharedBlockVolumeSnapshotLanFreeLayer");
+			put("org.zstack.storage.primary.sharedblock.SharedBlockLunDescriptor", "org.zstack.sdk.SharedBlockLunDescriptor");
+			put("org.zstack.storage.primary.sharedblock.SharedBlockLvRange", "org.zstack.sdk.SharedBlockLvRange");
 			put("org.zstack.storage.primary.sharedblock.SharedBlockState", "org.zstack.sdk.SharedBlockState");
 			put("org.zstack.storage.primary.sharedblock.SharedBlockStatus", "org.zstack.sdk.SharedBlockStatus");
 			put("org.zstack.storage.primary.sharedblock.SharedBlockType", "org.zstack.sdk.SharedBlockType");
@@ -1125,6 +1129,10 @@ public class SourceClassMap {
 			put("org.zstack.sdk.SharedBlockGroupPrimaryStorageInventory", "org.zstack.storage.primary.sharedblock.SharedBlockGroupPrimaryStorageInventory");
 			put("org.zstack.sdk.SharedBlockGroupType", "org.zstack.storage.primary.sharedblock.SharedBlockGroupType");
 			put("org.zstack.sdk.SharedBlockInventory", "org.zstack.storage.primary.sharedblock.SharedBlockInventory");
+			put("org.zstack.sdk.SharedBlockVolumeSnapshotLanFreeLayout", "org.zstack.storage.primary.sharedblock.SharedBlockVolumeSnapshotLanFreeLayout");
+			put("org.zstack.sdk.SharedBlockVolumeSnapshotLanFreeLayer", "org.zstack.storage.primary.sharedblock.SharedBlockVolumeSnapshotLanFreeLayer");
+			put("org.zstack.sdk.SharedBlockLunDescriptor", "org.zstack.storage.primary.sharedblock.SharedBlockLunDescriptor");
+			put("org.zstack.sdk.SharedBlockLvRange", "org.zstack.storage.primary.sharedblock.SharedBlockLvRange");
 			put("org.zstack.sdk.SharedBlockState", "org.zstack.storage.primary.sharedblock.SharedBlockState");
 			put("org.zstack.sdk.SharedBlockStatus", "org.zstack.storage.primary.sharedblock.SharedBlockStatus");
 			put("org.zstack.sdk.SharedBlockType", "org.zstack.storage.primary.sharedblock.SharedBlockType");

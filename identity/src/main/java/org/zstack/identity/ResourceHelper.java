@@ -141,6 +141,26 @@ public class ResourceHelper {
                 .list();
     }
 
+    public static <R extends ResourceVO> List<String> filterAccessibleResources(
+            Collection<String> resourceUuidList, String accountUuid,
+            Class<R> resourceType) {
+        if (resourceUuidList.isEmpty()) {
+            return Collections.emptyList();
+        }
+        if (resourceType == null) {
+            throw new IllegalArgumentException("resourceType cannot be null");
+        }
+
+        return SQL.New("select distinct ref.resourceUuid from AccountResourceRefVO ref " +
+                "where (ref.accountUuid = :accountUuid or ref.type = 'SharePublic') " +
+                "and ref.resourceType = :resourceType and ref.resourceUuid in (:ruuids)",
+                String.class)
+                .param("ruuids", resourceUuidList)
+                .param("accountUuid", accountUuid)
+                .param("resourceType", resourceType.getSimpleName())
+                .list();
+    }
+
     public static void cleanShareRecords(String resourceUuid) {
         SQL.New(AccountResourceRefVO.class)
                 .eq(AccountResourceRefVO_.resourceUuid, resourceUuid)
