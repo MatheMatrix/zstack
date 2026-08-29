@@ -4,4 +4,7 @@
     <message>
         <name>org.zstack.header.core.APIGetChainTaskMsg</name>
     </message>
+    <message>
+        <name>org.zstack.header.core.execution.APIQueryExecutionMsg</name>
+    </message>
 </service>

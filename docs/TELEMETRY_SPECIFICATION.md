@@ -7,6 +7,8 @@ Last Updated: 2026-01-24
 
 This specification defines the distributed tracing standards for ZStack and its agents (Python, Go, etc.). All implementations MUST follow this specification to ensure trace context propagation works correctly across the entire system.
 
+The execution-query contract and acceptance cases are maintained in [EXECUTION_OBSERVABILITY_API_TEST_CASES.md](EXECUTION_OBSERVABILITY_API_TEST_CASES.md).
+
 ---
 
 ## 1. Context Propagation

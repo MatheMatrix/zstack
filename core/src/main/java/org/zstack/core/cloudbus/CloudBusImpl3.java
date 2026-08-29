@@ -39,6 +39,7 @@ import org.zstack.header.Service;
 import org.zstack.header.apimediator.StopRoutingException;
 import org.zstack.header.core.*;
 import org.zstack.header.core.cloudbus.CloudBusExtensionPoint;
+import org.zstack.header.core.execution.ExecutionObservabilityFacade;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
@@ -105,6 +106,8 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
     private PluginRegistry pluginRgty;
     @Autowired
     private DeadMessageManager deadMessageManager;
+    @Autowired(required = false)
+    private ExecutionObservabilityFacade executionObservability;
 
     private final String NO_NEED_REPLY_MSG = "noReply";
     private final String CORRELATION_ID = "correlationId";
@@ -377,6 +380,9 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
     public FutureCompletion send(NeedReplyMessage msg, CloudBusCallBack callback) {
         evaluateMessageTimeout(msg);
         if (msg.getTimeout() <= 1) {
+            if (executionObservability != null) {
+                executionObservability.recordMessageTimeout(msg.getId());
+            }
             callback.run(createTimeoutReply(msg));
             return SEND_CONFIRMED;
         }
@@ -412,6 +418,10 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
 
                 timeoutTaskReceipt.cancel();
 
+                if (executionObservability != null) {
+                    executionObservability.recordMessageCancellation(msg.getId(), error);
+                }
+
                 callback.run(createErrorReply(msg, canerr(ORG_ZSTACK_CORE_CLOUDBUS_10003, error)));
             }
 
@@ -421,6 +431,10 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
 
                 if (!called.compareAndSet(false, true)) {
                     return;
+                }
+
+                if (executionObservability != null) {
+                    executionObservability.recordMessageTimeout(msg.getId());
                 }
 
                 callback.run(createTimeoutReply(msg));

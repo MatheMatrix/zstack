@@ -3,6 +3,7 @@ package org.zstack.core;
 import org.zstack.core.debug.APIDebugSignalMsg;
 import org.zstack.core.debug.APIGetDebugSignalMsg;
 import org.zstack.header.core.APIGetChainTaskMsg;
+import org.zstack.header.core.execution.APIQueryExecutionMsg;
 import org.zstack.header.identity.rbac.RBACDescription;
 import org.zstack.core.debug.APICleanQueueMsg;
 
@@ -11,7 +12,7 @@ public class RBACInfo implements RBACDescription {
     public void permissions() {
         permissionBuilder()
                 .adminOnlyAPIs(APIDebugSignalMsg.class, APIGetDebugSignalMsg.class, APICleanQueueMsg.class,
-                        APIGetChainTaskMsg.class)
+                        APIGetChainTaskMsg.class, APIQueryExecutionMsg.class)
                 .build();
     }
 

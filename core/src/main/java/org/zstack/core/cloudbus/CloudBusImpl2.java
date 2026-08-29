@@ -25,6 +25,7 @@ import org.zstack.header.apimediator.APIIsReadyToGoMsg;
 import org.zstack.header.apimediator.APIIsReadyToGoReply;
 import org.zstack.header.apimediator.StopRoutingException;
 import org.zstack.header.core.NoErrorCompletion;
+import org.zstack.header.core.execution.ExecutionObservabilityFacade;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.errorcode.SysErrors;
@@ -83,6 +84,8 @@ public class CloudBusImpl2 implements CloudBus, CloudBusIN, ManagementNodeChange
     private EventFacade evtf;
     @Autowired
     private ApiTimeoutManager timeoutMgr;
+    @Autowired(required = false)
+    private ExecutionObservabilityFacade executionObservability;
 
     private List<String> serverIps;
     private List<Service> services = new ArrayList<Service>();
@@ -1403,6 +1406,10 @@ public class CloudBusImpl2 implements CloudBus, CloudBusIN, ManagementNodeChange
                     return;
                 }
 
+                if (executionObservability != null) {
+                    executionObservability.recordMessageTimeout(msg.getId());
+                }
+
                 callback.run(createTimeoutReply(msg));
             }
 
@@ -1514,6 +1521,9 @@ public class CloudBusImpl2 implements CloudBus, CloudBusIN, ManagementNodeChange
                 for (final NeedReplyMessage m : msgs) {
                     MessageReply r = findReply(m);
                     if (r == null) {
+                        if (executionObservability != null) {
+                            executionObservability.recordMessageTimeout(m.getId());
+                        }
                         r = createTimeoutReply(m);
                     }
                     ret.add(r);
@@ -1827,6 +1837,9 @@ public class CloudBusImpl2 implements CloudBus, CloudBusIN, ManagementNodeChange
             public void timeout() {
                 envelopes.remove(msg.getId());
                 called.compareAndSet(false, true);
+                if (executionObservability != null) {
+                    executionObservability.recordMessageTimeout(msg.getId());
+                }
             }
 
             @Override
@@ -1913,6 +1926,11 @@ public class CloudBusImpl2 implements CloudBus, CloudBusIN, ManagementNodeChange
                 }
 
                 cleanup();
+                msgs.forEach(msg -> {
+                    if (!replies.containsKey(msg.getId()) && executionObservability != null) {
+                        executionObservability.recordMessageTimeout(msg.getId());
+                    }
+                });
                 ret.replies = replies;
             }
 

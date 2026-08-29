@@ -7,6 +7,7 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zstack.core.componentloader.PluginRegistry;
+import org.zstack.header.core.execution.ExecutionObservabilityFacade;
 import org.zstack.core.jmx.JmxFacade;
 import org.zstack.core.telemetry.TelemetryFacade;
 import org.zstack.core.telemetry.TelemetryGlobalProperty;
@@ -44,6 +45,8 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
     private TelemetryFacade telemetryFacade;
     @Autowired(required = false)
     private TelemetryMetricsFacade metricsFacade;
+    @Autowired(required = false)
+    private ExecutionObservabilityFacade executionObservability;
 
     private TelemetryFacade getTelemetryFacade() {
         return telemetryFacade;
@@ -342,8 +345,10 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
         @SuppressWarnings("unchecked")
         ScheduledFuture<Void> ret = (ScheduledFuture<Void>) _pool.scheduleAtFixedRate(new Runnable() {
             public void run() {
+                String executionUuid = executionObservability == null ? null
+                        : executionObservability.startScheduledTask(task.getName(), task.getClass().getName());
                 if (!isTelemetryEnabled()) {
-                    runWithoutTracing();
+                    runWithoutTracing(executionUuid);
                     return;
                 }
                 
@@ -367,6 +372,9 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
                         span.recordException(e);
                         span.setStatus(StatusCode.ERROR, e.getMessage());
                     }
+                    if (executionObservability != null) {
+                        executionObservability.finishScheduledTask(executionUuid, e);
+                    }
                     _logger.warn("An unhandled exception happened during executing periodic task: " + task.getName() + ", cancel it", e);
                     final Map<PeriodicTask, ScheduledFuture<?>> periodicTasks = getPeriodicTasks();
                     final ScheduledFuture<?> ft = periodicTasks.get(task);
@@ -378,6 +386,9 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
                                 + ", the exception happened too soon, will try to cancel the task next time the exception happens");
                     }
                 } finally {
+                    if (executionObservability != null && executionUuid != null) {
+                        executionObservability.finishScheduledTask(executionUuid, null);
+                    }
                     if (scope != null) {
                         scope.close();
                     }
@@ -387,10 +398,16 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
                 }
             }
             
-            private void runWithoutTracing() {
+            private void runWithoutTracing(String executionUuid) {
                 try {
                     task.run();
+                    if (executionObservability != null) {
+                        executionObservability.finishScheduledTask(executionUuid, null);
+                    }
                 } catch (Throwable e) {
+                    if (executionObservability != null) {
+                        executionObservability.finishScheduledTask(executionUuid, e);
+                    }
                     _logger.warn("An unhandled exception happened during executing periodic task: " + task.getName() + ", cancel it", e);
                     final Map<PeriodicTask, ScheduledFuture<?>> periodicTasks = getPeriodicTasks();
                     final ScheduledFuture<?> ft = periodicTasks.get(task);
@@ -477,9 +494,17 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
             @Override
             @AsyncThread
             public void run() {
+                String executionUuid = executionObservability == null ? null
+                        : executionObservability.startScheduledTask(task.getClass().getName(), task.getClass().getName());
                 try {
                     task.run();
+                    if (executionObservability != null) {
+                        executionObservability.finishScheduledTask(executionUuid, null);
+                    }
                 } catch (Throwable t) {
+                    if (executionObservability != null) {
+                        executionObservability.finishScheduledTask(executionUuid, t);
+                    }
                     _logger.warn(String.format("Unhandled exception happened when running %s", task.getClass().getName()), t);
                 } finally {
                     this.cancel();
@@ -505,11 +530,19 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
         java.util.TimerTask t = new java.util.TimerTask() {
             @Override
             public void run() {
+                String executionUuid = executionObservability == null ? null
+                        : executionObservability.startScheduledTask(task.getClass().getName(), task.getClass().getName());
                 try {
                     if (task.run()) {
                         cancel();
                     }
+                    if (executionObservability != null) {
+                        executionObservability.finishScheduledTask(executionUuid, null);
+                    }
                 } catch (Throwable t) {
+                    if (executionObservability != null) {
+                        executionObservability.finishScheduledTask(executionUuid, t);
+                    }
                     _logger.warn(String.format("Unhandled exception happened when running %s", task.getClass().getName()), t);
                 }
             }
@@ -621,8 +654,10 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
             }
 
             public void run() {
+                String executionUuid = executionObservability == null ? null
+                        : executionObservability.startScheduledTask(task.getName(), task.getClass().getName());
                 if (!isTelemetryEnabled()) {
-                    runWithoutTracing();
+                    runWithoutTracing(executionUuid);
                     return;
                 }
                 
@@ -651,9 +686,15 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
                         span.recordException(e);
                         span.setStatus(StatusCode.ERROR, e.getMessage());
                     }
+                    if (executionObservability != null) {
+                        executionObservability.finishScheduledTask(executionUuid, e);
+                    }
                     _logger.warn("An unhandled exception happened during executing periodic task: " + task.getName() + ", cancel it", e);
                     cancelTask();
                 } finally {
+                    if (executionObservability != null && executionUuid != null) {
+                        executionObservability.finishScheduledTask(executionUuid, null);
+                    }
                     if (scope != null) {
                         scope.close();
                     }
@@ -663,13 +704,19 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
                 }
             }
             
-            private void runWithoutTracing() {
+            private void runWithoutTracing(String executionUuid) {
                 try {
                     boolean cancel = task.run();
+                    if (executionObservability != null) {
+                        executionObservability.finishScheduledTask(executionUuid, null);
+                    }
                     if (cancel) {
                         cancelTask();
                     }
                 } catch (Throwable e) {
+                    if (executionObservability != null) {
+                        executionObservability.finishScheduledTask(executionUuid, e);
+                    }
                     _logger.warn("An unhandled exception happened during executing periodic task: " + task.getName() + ", cancel it", e);
                     cancelTask();
                 }
