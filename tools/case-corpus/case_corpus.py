@@ -16,6 +16,7 @@ from pathlib import Path
 
 SCHEMA_VERSION = 1
 METHOD_DISCOVERY = "syntax-scan-v1"
+SOURCE_HASH_ALGORITHM = "sha256-lf-v1"
 SHARD_ALGORITHM = "hrw-sha256-v1"
 NETWORK_MODULES = {
     "flatnetwork",
@@ -59,6 +60,18 @@ def _sha256(path):
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _canonical_source_bytes(path):
+    """Return source bytes with checkout-dependent CRLF converted to LF."""
+
+    return Path(path).read_bytes().replace(b"\r\n", b"\n")
+
+
+def source_sha256(path):
+    """Hash canonical source bytes so Git checkout line endings do not matter."""
+
+    return hashlib.sha256(_canonical_source_bytes(path)).hexdigest()
 
 
 def _declared_methods(source, class_name):
@@ -166,7 +179,8 @@ def _record_for(
         "repository": repository,
         "repository_commit": repository_commit,
         "source_path": relative_path.as_posix(),
-        "source_sha256": _sha256(source_path),
+        "source_hash_algorithm": SOURCE_HASH_ALGORITHM,
+        "source_sha256": source_sha256(source_path),
         "package": package,
         "class_name": class_name,
         "fully_qualified_class": fqcn,
@@ -510,7 +524,9 @@ def run_case(
 
     repository_root = zstack if record["repository"] == "zstack" else premium
     source_path = repository_root / Path(record["source_path"])
-    if not source_path.is_file() or _sha256(source_path) != record["source_sha256"]:
+    if record.get("source_hash_algorithm") != SOURCE_HASH_ALGORITHM:
+        raise CorpusError("Case source hash algorithm is unsupported")
+    if not source_path.is_file() or source_sha256(source_path) != record["source_sha256"]:
         raise CorpusError("Case source is missing or its SHA-256 does not match inventory")
     work_dir = zstack / record["run_requirements"]["working_directory"]
     if not work_dir.is_dir():
@@ -542,7 +558,7 @@ def run_case(
 
         source_snapshot = run_dir / "source" / source_path.name
         source_snapshot.parent.mkdir(parents=True)
-        shutil.copy2(source_path, source_snapshot)
+        source_snapshot.write_bytes(_canonical_source_bytes(source_path))
         _write_json(
             run_dir / "source" / "reference.json",
             {
@@ -550,6 +566,7 @@ def run_case(
                 "repository": record["repository"],
                 "repository_commit": record["repository_commit"],
                 "source_path": record["source_path"],
+                "source_hash_algorithm": record["source_hash_algorithm"],
                 "source_sha256": record["source_sha256"],
             },
         )

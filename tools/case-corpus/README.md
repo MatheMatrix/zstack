@@ -24,7 +24,9 @@ python3 tools/case-corpus/case_corpus.py inventory \
 Concrete `*Case.groovy` classes are included when their inheritance chain
 reaches `SubCase`, `PremiumSubCase`, or another base implementing `Case`.
 Abstract framework bases are excluded. Declared methods are a syntax scan, not
-a call graph; `selected_method` is the Case entry method `test`.
+a call graph; `selected_method` is the Case entry method `test`. Source
+SHA-256 uses the versioned `sha256-lf-v1` form, which canonicalizes CRLF to LF
+so the same Git source verifies across Windows and Linux checkouts.
 
 ## Manifest
 
@@ -71,7 +73,8 @@ an existing `management-server.log` into a `preexisting/` boundary, executes
 the inventory argv without a shell, and captures a new log plus stdout, stderr,
 exit code, UTC timing, source snapshot/reference, method list, build receipt,
 branch/commits, and SHA-256 checksums. A missing or empty MN log cannot be
-reported as success. Network-deferred and excluded Cases are refused by default.
+reported as success. The source snapshot also uses canonical LF bytes.
+Network-deferred and excluded Cases are refused by default.
 
 ## Verify and cleanup boundary
 

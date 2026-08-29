@@ -102,7 +102,7 @@ abstract class SubCase extends Test implements Case {}
         self.assertEqual(["environment", "helper", "test"], record["declared_methods"])
         self.assertEqual("test", record["selected_method"])
         self.assertEqual("syntax-scan-v1", record["method_discovery"])
-        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), record["source_sha256"])
+        self.assertEqual(case_corpus.source_sha256(source), record["source_sha256"])
         self.assertFalse(record["network_deferred"])
         self.assertEqual("test", record["maven_module"])
         self.assertEqual("z-head", record["repository_commit"])
@@ -165,6 +165,33 @@ class AlphaCase extends SubCase { void test() {} }
         self.assertEqual(first.read_bytes(), second.read_bytes())
         ids = [json.loads(line)["id"] for line in first.read_text().splitlines()]
         self.assertEqual(sorted(ids), ids)
+
+    def test_source_hash_is_independent_of_checkout_line_endings(self):
+        source = self.zstack / (
+            "test/src/test/groovy/org/zstack/test/integration/core/LineEndingCase.groovy"
+        )
+        source.parent.mkdir(parents=True, exist_ok=True)
+        crlf = (
+            b"package org.zstack.test.integration.core\r\n"
+            b"class LineEndingCase extends SubCase { void test() {} }\r\n"
+        )
+        lf = crlf.replace(b"\r\n", b"\n")
+        source.write_bytes(crlf)
+        write(
+            self.zstack
+            / "testlib/src/main/java/org/zstack/testlib/SubCase.groovy",
+            "package org.zstack.testlib\n"
+            "abstract class SubCase extends Test implements Case {}\n",
+        )
+
+        record = case_corpus.inventory_records(
+            self.zstack, self.premium, "z-head", "p-head"
+        )[0]
+
+        self.assertEqual("sha256-lf-v1", record["source_hash_algorithm"])
+        self.assertEqual(hashlib.sha256(lf).hexdigest(), record["source_sha256"])
+        source.write_bytes(lf)
+        self.assertEqual(record["source_sha256"], case_corpus.source_sha256(source))
 
     def test_discovers_transitive_case_inheritance_and_excludes_abstract_stubs(self):
         write(
@@ -329,9 +356,10 @@ raise SystemExit(3 if "--fail" in sys.argv else 0)
             "repository": "zstack",
             "repository_commit": self.zhead,
             "source_path": self.source_relative.as_posix(),
-            "source_sha256": hashlib.sha256(
-                (self.zstack / self.source_relative).read_bytes()
-            ).hexdigest(),
+            "source_hash_algorithm": "sha256-lf-v1",
+            "source_sha256": case_corpus.source_sha256(
+                self.zstack / self.source_relative
+            ),
             "package": "org.zstack.test.integration.core",
             "class_name": "FooCase",
             "fully_qualified_class": "org.zstack.test.integration.core.FooCase",
@@ -416,6 +444,42 @@ raise SystemExit(3 if "--fail" in sys.argv else 0)
         (run_dir / "runner/stdout.log").write_text("tampered", encoding="utf-8")
         errors = case_corpus.verify_evidence(run_dir)
         self.assertTrue(any("runner/stdout.log" in error for error in errors))
+
+    def test_accepts_clean_crlf_checkout_and_snapshots_canonical_source(self):
+        source_path = self.zstack / self.source_relative
+        write(self.zstack / ".gitattributes", "*.groovy -text\n")
+        source_path.write_bytes(self.source.encode("utf-8").replace(b"\n", b"\r\n"))
+        subprocess.run(
+            ["git", "add", ".gitattributes", self.source_relative.as_posix()],
+            cwd=str(self.zstack),
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "CRLF fixture"],
+            cwd=str(self.zstack),
+            check=True,
+        )
+        self.zhead = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=str(self.zstack),
+            universal_newlines=True,
+        ).strip()
+        status = subprocess.check_output(
+            ["git", "status", "--porcelain"], cwd=str(self.zstack)
+        )
+        self.assertEqual(b"", status)
+        self.record["repository_commit"] = self.zhead
+        self.record["source_hash_algorithm"] = "sha256-lf-v1"
+        self.record["source_sha256"] = hashlib.sha256(
+            self.source.encode("utf-8")
+        ).hexdigest()
+        self._write_inputs()
+
+        result = self._run()
+        snapshot = Path(result["evidence_dir"]) / "source/FooCase.groovy"
+
+        self.assertEqual(0, result["runner_exit_code"])
+        self.assertEqual(self.source.encode("utf-8"), snapshot.read_bytes())
 
     def test_missing_management_log_cannot_be_success(self):
         self.record = self._record([sys.executable, str(self.fake_maven), "--no-log"])
