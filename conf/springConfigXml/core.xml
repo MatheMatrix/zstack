@@ -19,13 +19,6 @@
         </zstack:plugin>
     </bean>
 
-    <bean id="ExecutionObservabilityFacade" class="org.zstack.core.execution.ExecutionObservabilityFacadeImpl">
-        <zstack:plugin>
-            <zstack:extension interface="org.zstack.header.Component"/>
-            <zstack:extension interface="org.zstack.header.rest.RestAPIExtensionPoint"/>
-        </zstack:plugin>
-    </bean>
-
     <bean id="MultiNodeSingleFlightImpl" class="org.zstack.core.singleflight.MultiNodeSingleFlightImpl" />
 
 </beans>

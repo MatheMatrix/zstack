@@ -1,4 +1,4 @@
-package org.zstack.core.execution;
+package org.zstack.observability;
 
 import io.opentelemetry.api.trace.Span;
 import org.apache.logging.log4j.ThreadContext;
@@ -39,9 +39,9 @@ import java.util.stream.Collectors;
 public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityFacade, Component,
         RestAPIExtensionPoint, BeforeDeliveryMessageInterceptor {
     private static final int MAX_RECORDS = 10000;
-    private static final String API_QUERY_CLASS = APIQueryExecutionMsg.class.getName();
     private static final String EXECUTION_UUID_HEADER = "__execution_uuid__";
     private static final String EXECUTION_STAGE_CONTEXT = "__execution_stage_uuid__";
+    private static final String IGNORED_EXECUTION_CONTEXT = "__execution_observation_ignored__";
     /*
      * CloudBus serializes the Log4j ThreadContext into the message task
      * context. Keeping the execution UUID in that context makes a child
@@ -53,8 +53,11 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
     private final Map<String, MutableExecution> executions = new ConcurrentHashMap<>();
     private final Map<String, String> messageToExecution = new ConcurrentHashMap<>();
     private final Map<String, String> messageToStage = new ConcurrentHashMap<>();
+    private final Set<String> ignoredExecutionContexts = ConcurrentHashMap.newKeySet();
     private final Map<String, String> httpToExecution = new ConcurrentHashMap<>();
     private final Map<String, Map<String, String>> scheduledThreadContexts = new ConcurrentHashMap<>();
+
+    private final ExecutionObservationPolicy observationPolicy = new ExecutionObservationPolicy();
 
     @Autowired
     private CloudBus bus;
@@ -94,7 +97,8 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
 
     @Override
     public void recordApiRequest(APIMessage message) {
-        if (message == null || API_QUERY_CLASS.equals(message.getClass().getName())) {
+        if (!observationPolicy.shouldObserveApi(message)) {
+            markIgnored(message);
             return;
         }
 
@@ -118,8 +122,10 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
             return;
         }
 
-        if (API_QUERY_CLASS.equals(message.getClass().getName())) {
+        if (message instanceof APIMessage
+                && !observationPolicy.shouldObserveApi((APIMessage) message)) {
             // Querying executions must not itself become an observed execution.
+            markIgnored((APIMessage) message);
             return;
         }
 
@@ -147,6 +153,10 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
             return;
         }
 
+        if (ThreadContext.get(IGNORED_EXECUTION_CONTEXT) != null) {
+            return;
+        }
+
         if (message instanceof APIMessage) {
             recordApiRequest((APIMessage) message);
             MutableExecution execution = executions.get(messageToExecution.get(message.getId()));
@@ -162,6 +172,9 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         }
         if (parentExecutionUuid == null) {
             parentExecutionUuid = ThreadContext.get(Constants.THREAD_CONTEXT_TASK);
+        }
+        if (parentExecutionUuid != null && ignoredExecutionContexts.contains(parentExecutionUuid)) {
+            return;
         }
         String mappedParentUuid = parentExecutionUuid == null ? null : messageToExecution.get(parentExecutionUuid);
         MutableExecution parent = parentExecutionUuid == null ? null
@@ -204,13 +217,33 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         }
         if (message instanceof APIEvent) {
             APIEvent event = (APIEvent) message;
+            clearIgnored(event.getApiId());
             finish(event.getApiId(), event.isSuccess(), event.getError() == null ? null : event.getError().getDetails());
             return;
         }
         String correlationId = message.getHeaderEntry("correlationId");
         if (correlationId != null && message instanceof MessageReply) {
+            clearIgnored(correlationId);
             MessageReply reply = (MessageReply) message;
             finish(correlationId, reply.isSuccess(), reply.getError() == null ? null : reply.getError().getDetails());
+        }
+    }
+
+    private void markIgnored(APIMessage message) {
+        if (message == null) {
+            return;
+        }
+        ignoredExecutionContexts.add(message.getId());
+        ThreadContext.put(IGNORED_EXECUTION_CONTEXT, message.getId());
+    }
+
+    private void clearIgnored(String apiUuid) {
+        if (apiUuid == null) {
+            return;
+        }
+        ignoredExecutionContexts.remove(apiUuid);
+        if (apiUuid.equals(ThreadContext.get(IGNORED_EXECUTION_CONTEXT))) {
+            ThreadContext.remove(IGNORED_EXECUTION_CONTEXT);
         }
     }
 
@@ -353,8 +386,8 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         MutableExecution oldest = executions.values().stream()
                 .min(Comparator.comparingLong(e -> e.acceptedAt)).orElse(null);
         if (oldest != null && executions.remove(oldest.executionUuid, oldest)) {
+            messageToStage.entrySet().removeIf(e -> oldest.executionUuid.equals(messageToExecution.get(e.getKey())));
             messageToExecution.entrySet().removeIf(e -> e.getValue().equals(oldest.executionUuid));
-            messageToStage.entrySet().removeIf(e -> e.getValue().equals(oldest.executionUuid));
         }
     }
 
@@ -787,6 +820,7 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         executions.clear();
         messageToExecution.clear();
         messageToStage.clear();
+        ignoredExecutionContexts.clear();
         httpToExecution.clear();
         scheduledThreadContexts.clear();
         return true;

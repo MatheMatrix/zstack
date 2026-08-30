@@ -8,7 +8,7 @@ import io.opentelemetry.context.Scope;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.zstack.core.componentloader.PluginRegistry;
-import org.zstack.header.core.execution.ExecutionObservabilityFacade;
+import org.zstack.header.core.execution.ExecutionObservationRecorder;
 import org.zstack.core.jmx.JmxFacade;
 import org.zstack.core.telemetry.TelemetryFacade;
 import org.zstack.core.telemetry.TelemetryGlobalProperty;
@@ -49,7 +49,7 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
     private TelemetryMetricsFacade metricsFacade;
     @Autowired(required = false)
     @Lazy
-    private ExecutionObservabilityFacade executionObservability;
+    private ExecutionObservationRecorder executionObservability;
 
     private TelemetryFacade getTelemetryFacade() {
         return telemetryFacade;

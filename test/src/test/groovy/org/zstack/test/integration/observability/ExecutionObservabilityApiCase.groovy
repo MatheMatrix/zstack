@@ -50,6 +50,7 @@ class ExecutionObservabilityApiCase extends SubCase {
 
             testApiExecutionLookup()
             testApiExecutionTimelineIsReadOnly()
+            testReadOnlyApiIsNotObserved()
             testScheduledTaskCreatesExecution()
             testContextFreeMessageCreatesExecution()
             testContextFreeMessageTimeoutIsObservable()
@@ -112,6 +113,34 @@ class ExecutionObservabilityApiCase extends SubCase {
             Map summaryAfter = getExecution(summaryBefore.executionUuid as String, "summary")
             assert summaryAfter.state == summaryBefore.state
             assert summaryAfter.executionUuid == summaryBefore.executionUuid
+        } finally {
+            deleteZone {
+                uuid = zoneUuid
+                sessionId = adminSession()
+            }
+        }
+    }
+
+    void testReadOnlyApiIsNotObserved() {
+        String apiUuid = Platform.uuid
+        String zoneUuid = Platform.uuid
+
+        createZone {
+            uuid = zoneUuid
+            name = "execution-observability-read-only-${apiUuid}"
+            apiId = apiUuid
+            sessionId = adminSession()
+        }
+
+        try {
+            assert queryZone { conditions = ["uuid=${zoneUuid}"] }
+            retryInSecs {
+                Map result = searchExecutions([
+                        triggerName: "org.zstack.header.zone.APIQueryZoneMsg"
+                ])
+                assert result.inventories instanceof Collection
+                assert result.inventories.empty
+            }
         } finally {
             deleteZone {
                 uuid = zoneUuid

@@ -39,7 +39,7 @@ import org.zstack.header.Service;
 import org.zstack.header.apimediator.StopRoutingException;
 import org.zstack.header.core.*;
 import org.zstack.header.core.cloudbus.CloudBusExtensionPoint;
-import org.zstack.header.core.execution.ExecutionObservabilityFacade;
+import org.zstack.header.core.execution.ExecutionObservationRecorder;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
@@ -107,7 +107,7 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
     @Autowired
     private DeadMessageManager deadMessageManager;
     @Autowired(required = false)
-    private ExecutionObservabilityFacade executionObservability;
+    private ExecutionObservationRecorder executionObservability;
 
     private final String NO_NEED_REPLY_MSG = "noReply";
     private final String CORRELATION_ID = "correlationId";
