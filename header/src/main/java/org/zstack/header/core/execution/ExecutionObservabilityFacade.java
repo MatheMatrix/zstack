@@ -24,6 +24,15 @@ public interface ExecutionObservabilityFacade {
     default void recordMessageCancellation(String messageUuid, String reason) {
     }
 
+    /** Start an outbound HTTP child stage under the current execution context. */
+    default String startHttpRequest(String method, String url) {
+        return null;
+    }
+
+    /** Finish an outbound HTTP child stage with a terminal state and status. */
+    default void finishHttpRequest(String requestUuid, String state, Integer statusCode, String error) {
+    }
+
     String startScheduledTask(String taskName, String taskClass);
 
     void finishScheduledTask(String executionUuid, Throwable error);

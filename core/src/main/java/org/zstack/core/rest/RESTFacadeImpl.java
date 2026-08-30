@@ -16,6 +16,7 @@ import org.apache.http.impl.nio.reactor.IOReactorConfig;
 import org.apache.http.nio.reactor.IOReactorException;
 import org.apache.logging.log4j.ThreadContext;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.*;
 import org.springframework.http.client.HttpComponentsAsyncClientHttpRequestFactory;
 import org.springframework.util.concurrent.ListenableFuture;
@@ -39,6 +40,7 @@ import org.zstack.core.validation.ValidationFacade;
 import org.zstack.header.Constants;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.ReturnValueCompletion;
+import org.zstack.header.core.execution.ExecutionObservabilityFacade;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.errorcode.SysErrors;
@@ -75,6 +77,9 @@ public class RESTFacadeImpl implements RESTFacade {
     private ApiTimeoutManager timeoutMgr;
     @Autowired
     private ValidationFacade vf;
+    @Autowired(required = false)
+    @Lazy
+    private ExecutionObservabilityFacade executionObservability;
 
     private TelemetryFacade telemetryFacade;
 
@@ -97,7 +102,7 @@ public class RESTFacadeImpl implements RESTFacade {
     private interface AsyncHttpWrapper {
         void fail(ErrorCode err);
 
-        void success(HttpEntity<String> responseEntity);
+        void success(HttpEntity<String> responseEntity, int statusCode);
 
         String getResourceUuid();
 
@@ -160,6 +165,29 @@ public class RESTFacadeImpl implements RESTFacade {
             } catch (Exception e) {
                 logger.trace("Failed to close HTTP scope", e);
             }
+        }
+    }
+
+    private String startExecutionHttpObservation(String method, String url) {
+        if (executionObservability == null) {
+            return null;
+        }
+        try {
+            return executionObservability.startHttpRequest(method, url);
+        } catch (Throwable t) {
+            logger.trace("Failed to start HTTP execution observation", t);
+            return null;
+        }
+    }
+
+    private void finishExecutionHttpObservation(String requestUuid, String state, Integer statusCode, String error) {
+        if (requestUuid == null || executionObservability == null) {
+            return;
+        }
+        try {
+            executionObservability.finishHttpRequest(requestUuid, state, statusCode, error);
+        } catch (Throwable t) {
+            logger.trace("Failed to finish HTTP execution observation", t);
         }
     }
 
@@ -317,7 +345,7 @@ public class RESTFacadeImpl implements RESTFacade {
             }
 
             rsp.setStatus(HttpStatus.SC_OK);
-            wrapper.success(entity);
+            wrapper.success(entity, rsp.getStatus());
         } catch (IOException e) {
             logger.warn(e.getMessage(), e);
         } catch (Throwable t) {
@@ -501,9 +529,11 @@ public class RESTFacadeImpl implements RESTFacade {
 
         final long sentAtMillis = System.currentTimeMillis();
         final String resourceUuid = (headers == null) ? null : headers.get(Constants.AGENT_HTTP_HEADER_RESOURCE_UUID);
+        final String httpRequestUuid = startExecutionHttpObservation(method.toString(), url);
 
         AsyncHttpWrapper wrapper = new AsyncHttpWrapper() {
             final AtomicBoolean called = new AtomicBoolean(false);
+            volatile int responseStatusCode;
 
             final AsyncHttpWrapper self = this;
             final TimeoutTaskReceipt timeoutTaskReceipt = thdf.submitTimeoutTask(new Runnable() {
@@ -530,6 +560,7 @@ public class RESTFacadeImpl implements RESTFacade {
                     }
 
                     try {
+                        finishExecutionHttpObservation(httpRequestUuid, "SUCCEEDED", responseStatusCode, null);
                         if (CoreGlobalProperty.PROFILER_HTTP_CALL) {
                             HttpCallStatistic stat = statistics.get(url);
                             stat.addStatistic(System.currentTimeMillis() - finalStime);
@@ -595,6 +626,10 @@ public class RESTFacadeImpl implements RESTFacade {
                     }
 
                     try {
+                        String state = err != null && SysErrors.TIMEOUT.toString().equals(err.getCode())
+                                ? "TIMEOUT" : "FAILED";
+                        finishExecutionHttpObservation(httpRequestUuid, state, null,
+                                err == null ? null : err.getDetails());
                         wrappers.remove(taskUuid);
                         if (!SysErrors.TIMEOUT.toString().equals(err.getCode())) {
                             cancelTimeout();
@@ -618,7 +653,8 @@ public class RESTFacadeImpl implements RESTFacade {
             }
 
             @Override
-            public void success(HttpEntity<String> responseEntity) {
+            public void success(HttpEntity<String> responseEntity, int statusCode) {
+                responseStatusCode = statusCode;
                 completion.success(responseEntity);
             }
 
@@ -790,6 +826,7 @@ public class RESTFacadeImpl implements RESTFacade {
         ResponseEntity<String> rsp;
         final String url = http.getPath();
         final HttpMethod method = http.getMethod();
+        final String httpRequestUuid = startExecutionHttpObservation(method.toString(), url);
 
         try {
             if (http.isRetry()) {
@@ -817,6 +854,9 @@ public class RESTFacadeImpl implements RESTFacade {
                         template.exchange(url, method, req, String.class);
             }
         } catch (Exception e) {
+            Integer statusCode = e instanceof HttpStatusCodeException
+                    ? ((HttpStatusCodeException) e).getRawStatusCode() : null;
+            finishExecutionHttpObservation(httpRequestUuid, "FAILED", statusCode, e.getMessage());
             if (http.getErrorCodeBuilder() != null) {
                 ErrorCode errorCode = http.getErrorCodeBuilder().apply(e, http);
                 if (errorCode != null) {
@@ -825,6 +865,8 @@ public class RESTFacadeImpl implements RESTFacade {
             }
             throw e;
         }
+
+        finishExecutionHttpObservation(httpRequestUuid, "SUCCEEDED", rsp.getStatusCodeValue(), null);
 
         boolean valid = false;
         if (method == HttpMethod.DELETE && rsp.getStatusCode() == org.springframework.http.HttpStatus.NO_CONTENT) {

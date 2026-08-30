@@ -6,6 +6,7 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.zstack.core.componentloader.PluginRegistry;
 import org.zstack.header.core.execution.ExecutionObservabilityFacade;
 import org.zstack.core.jmx.JmxFacade;
@@ -20,6 +21,7 @@ import org.zstack.utils.logging.CLogger;
 import org.zstack.utils.logging.CLoggerImpl;
 
 import javax.annotation.Nonnull;
+import javax.annotation.PostConstruct;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,6 +48,7 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
     @Autowired(required = false)
     private TelemetryMetricsFacade metricsFacade;
     @Autowired(required = false)
+    @Lazy
     private ExecutionObservabilityFacade executionObservability;
 
     private TelemetryFacade getTelemetryFacade() {
@@ -270,7 +273,11 @@ public class ThreadFacadeImpl implements ThreadFacade, ThreadFactory, RejectedEx
         return Math.min(totalThreadNum, Math.max(n, 150));
     }
 
+    @PostConstruct
     public void init() {
+        if (_pool != null) {
+            return;
+        }
         int totalThreadNum = ThreadGlobalProperty.MAX_THREAD_NUM;
         if (totalThreadNum < 10) {
             _logger.warn(String.format("ThreadFacade.maxThreadNum is configured to %s, which is too small for running zstack. Change it to 10", ThreadGlobalProperty.MAX_THREAD_NUM));

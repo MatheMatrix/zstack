@@ -18,6 +18,10 @@ public class ExecutionStageInventory implements Serializable {
     private Timestamp startedAt;
     private Timestamp finishedAt;
     private Long elapsedMs;
+    private String httpMethod;
+    private String httpUrl;
+    private Integer httpStatusCode;
+    private Long httpElapsedMs;
 
     public String getStageUuid() {
         return stageUuid;
@@ -105,5 +109,37 @@ public class ExecutionStageInventory implements Serializable {
 
     public void setElapsedMs(Long elapsedMs) {
         this.elapsedMs = elapsedMs;
+    }
+
+    public String getHttpMethod() {
+        return httpMethod;
+    }
+
+    public void setHttpMethod(String httpMethod) {
+        this.httpMethod = httpMethod;
+    }
+
+    public String getHttpUrl() {
+        return httpUrl;
+    }
+
+    public void setHttpUrl(String httpUrl) {
+        this.httpUrl = httpUrl;
+    }
+
+    public Integer getHttpStatusCode() {
+        return httpStatusCode;
+    }
+
+    public void setHttpStatusCode(Integer httpStatusCode) {
+        this.httpStatusCode = httpStatusCode;
+    }
+
+    public Long getHttpElapsedMs() {
+        return httpElapsedMs;
+    }
+
+    public void setHttpElapsedMs(Long httpElapsedMs) {
+        this.httpElapsedMs = httpElapsedMs;
     }
 }

@@ -2,13 +2,19 @@ package org.zstack.test.integration.observability
 
 import org.springframework.web.util.UriComponentsBuilder
 import org.zstack.core.Platform
+import org.zstack.sdk.CreateVmInstanceAction
+import org.zstack.sdk.ZSClient
+import org.zstack.sdk.ZSConfig
 import org.zstack.header.rest.RESTFacade
-import org.zstack.sdk.VmInstanceInventory
 import org.zstack.test.integration.kvm.Env
 import org.zstack.test.integration.kvm.KvmTest
 import org.zstack.testlib.EnvSpec
 import org.zstack.testlib.SkipTestSuite
 import org.zstack.testlib.SubCase
+import org.zstack.testlib.WebBeanConstructor
+
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Integration case for observing a real CreateVmInstance API. The suite is
@@ -44,43 +50,81 @@ class CreateVmExecutionObservabilityCase extends SubCase {
 
     void testCreateVmExecutionLookup() {
         String apiUuid = Platform.uuid
-        VmInstanceInventory vm
+        String vmUuid
+        CountDownLatch completed = new CountDownLatch(1)
+        CreateVmInstanceAction.Result actionResult
 
         try {
-            vm = createVmInstance {
-                apiId = apiUuid
-                name = "execution-observability-vm-${apiUuid}"
-                instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
-                imageUuid = env.inventoryByName("image1").uuid
-                l3NetworkUuids = [env.inventoryByName("l3").uuid]
-                sessionId = adminSession()
-            }
-            assert vm?.uuid
+            ZSClient.configure(new ZSConfig.Builder()
+                    .setHostname("localhost")
+                    .setPort(WebBeanConstructor.port)
+                    .setDefaultPollingInterval(100, TimeUnit.MILLISECONDS)
+                    .setDefaultPollingTimeout(10, TimeUnit.MINUTES)
+                    .setReadTimeout(10, TimeUnit.MINUTES)
+                    .setWriteTimeout(10, TimeUnit.MINUTES)
+                    .build())
 
-            retryInSecs {
+            CreateVmInstanceAction action = new CreateVmInstanceAction()
+            action.apiId = apiUuid
+            action.name = "execution-observability-vm-${apiUuid}"
+            action.instanceOfferingUuid = env.inventoryByName("instanceOffering").uuid
+            action.imageUuid = env.inventoryByName("image1").uuid
+            action.l3NetworkUuids = [env.inventoryByName("l3").uuid]
+            action.sessionId = adminSession()
+            action.call(new org.zstack.sdk.Completion<CreateVmInstanceAction.Result>() {
+                @Override
+                void complete(CreateVmInstanceAction.Result result) {
+                    actionResult = result
+                    vmUuid = result?.value?.inventory?.uuid
+                    completed.countDown()
+                }
+            })
+
+            long deadline = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10)
+            int snapshot = 0
+            while (!completed.await(250, TimeUnit.MILLISECONDS)) {
+                if (System.currentTimeMillis() >= deadline) {
+                    assert false: "CreateVmInstance did not complete"
+                }
                 Map result = queryExecutions([apiUuid: apiUuid])
-                assert result.inventories instanceof Collection
-                assert result.inventories.size() == 1
+                if (result.inventories instanceof Collection && result.inventories.size() == 1) {
+                    Map execution = result.inventories[0] as Map
+                    Map timeline = getExecution(execution.executionUuid as String, "timeline")
+                    printExecutionSnapshot(snapshot++, execution, timeline)
+                }
+            }
 
-                Map execution = result.inventories[0] as Map
-                assert execution.executionUuid
-                assert execution.apiUuid == apiUuid
-                assert execution.trigger?.type == "API"
-                assert execution.trigger?.name
-                assert execution.state
-                assert execution.nodeUuid
-                assert execution.sourceNodes instanceof Collection
+            assert completed.await(10, TimeUnit.SECONDS)
+            assert actionResult?.error == null
+            assert vmUuid
 
-                Map timeline = getExecution(execution.executionUuid as String, "timeline")
-                assert timeline.executionUuid == execution.executionUuid
-                assert timeline.events instanceof Collection
-                assert timeline.events.every { !it.containsKey("stageId") }
-                assert timeline.events.any { it.type == "API_ACCEPTED" }
+            Map result = queryExecutions([apiUuid: apiUuid])
+            assert result.inventories instanceof Collection
+            assert result.inventories.size() == 1
+            Map execution = result.inventories[0] as Map
+            assert execution.executionUuid
+            assert execution.apiUuid == apiUuid
+            assert execution.trigger?.type == "API"
+            assert execution.trigger?.name
+            assert execution.state == "SUCCEEDED"
+            assert execution.nodeUuid
+            assert execution.sourceNodes instanceof Collection
+
+            Map timeline = getExecution(execution.executionUuid as String, "timeline")
+            printExecutionSnapshot(snapshot, execution, timeline)
+            assert timeline.executionUuid == execution.executionUuid
+            assert timeline.events instanceof Collection
+            assert timeline.events.every { !it.containsKey("stageId") }
+            assert timeline.events.any { it.type == "API_ACCEPTED" }
+            def httpEvents = timeline.events.findAll { it.type == "HTTP_REQUEST_SUCCEEDED" }
+            assert httpEvents
+            assert httpEvents.every {
+                it.httpMethod && it.httpUrl && it.httpStatusCode == 200 && it.httpElapsedMs >= 0
             }
         } finally {
-            if (vm?.uuid) {
-                deleteVmInstance {
-                    uuid = vm.uuid
+            if (vmUuid) {
+                destroyVmInstance {
+                    uuid = vmUuid
                     sessionId = adminSession()
                 }
             }
@@ -109,6 +153,26 @@ class CreateVmExecutionObservabilityCase extends SubCase {
     }
 
     private Map<String, String> authHeaders() {
-        return [("Authorization"): "OAuth ${adminSession()}"]
+        return [("Authorization"): "OAuth " + adminSession()]
+    }
+
+    private void printExecutionSnapshot(int number, Map execution, Map timeline) {
+        def events = timeline.events.collect { event ->
+            [sequence: event.sequence, type: event.type, stageUuid: event.stageUuid,
+             stageName: event.stageName, stageKind: event.stageKind,
+             parentStageUuid: event.parentStageUuid, messageUuid: event.messageUuid,
+             httpMethod: event.httpMethod, httpUrl: event.httpUrl,
+             httpStatusCode: event.httpStatusCode, httpElapsedMs: event.httpElapsedMs]
+        }
+        def active = timeline.activeStages.collect { stage ->
+            [stageUuid: stage.stageUuid, parentStageUuid: stage.parentStageUuid,
+             name: stage.name, kind: stage.kind, state: stage.state,
+             httpMethod: stage.httpMethod, httpUrl: stage.httpUrl]
+        }
+        println("EXECUTION_QUERY_SNAPSHOT ${number}: " + groovy.json.JsonOutput.toJson([
+                executionUuid: execution.executionUuid, state: execution.state,
+                elapsedMs: execution.elapsedMs, executionMs: execution.executionMs,
+                downstreamWaitMs: execution.downstreamWaitMs, activeStages: active,
+                events: events]))
     }
 }

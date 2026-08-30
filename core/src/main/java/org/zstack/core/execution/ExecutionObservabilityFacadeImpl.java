@@ -18,6 +18,8 @@ import org.zstack.header.rest.RestAPIExtensionPoint;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -39,6 +41,7 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
     private static final int MAX_RECORDS = 10000;
     private static final String API_QUERY_CLASS = APIQueryExecutionMsg.class.getName();
     private static final String EXECUTION_UUID_HEADER = "__execution_uuid__";
+    private static final String EXECUTION_STAGE_CONTEXT = "__execution_stage_uuid__";
     /*
      * CloudBus serializes the Log4j ThreadContext into the message task
      * context. Keeping the execution UUID in that context makes a child
@@ -50,6 +53,7 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
     private final Map<String, MutableExecution> executions = new ConcurrentHashMap<>();
     private final Map<String, String> messageToExecution = new ConcurrentHashMap<>();
     private final Map<String, String> messageToStage = new ConcurrentHashMap<>();
+    private final Map<String, String> httpToExecution = new ConcurrentHashMap<>();
     private final Map<String, Map<String, String>> scheduledThreadContexts = new ConcurrentHashMap<>();
 
     @Autowired
@@ -111,6 +115,11 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
     @Override
     public void recordMessageDelivery(Message message) {
         if (message == null) {
+            return;
+        }
+
+        if (API_QUERY_CLASS.equals(message.getClass().getName())) {
+            // Querying executions must not itself become an observed execution.
             return;
         }
 
@@ -213,6 +222,42 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
     @Override
     public void recordMessageCancellation(String messageUuid, String reason) {
         finishTerminal(messageUuid, "CANCELLED", reason);
+    }
+
+    @Override
+    public String startHttpRequest(String method, String url) {
+        String parentExecutionUuid = ThreadContext.get(EXECUTION_UUID_CONTEXT);
+        if (parentExecutionUuid == null) {
+            parentExecutionUuid = ThreadContext.get(Constants.THREAD_CONTEXT_API);
+        }
+        if (parentExecutionUuid == null) {
+            parentExecutionUuid = ThreadContext.get(Constants.THREAD_CONTEXT_TASK);
+        }
+
+        String mappedExecutionUuid = parentExecutionUuid == null ? null : messageToExecution.get(parentExecutionUuid);
+        MutableExecution execution = parentExecutionUuid == null ? null
+                : executions.get(mappedExecutionUuid == null ? parentExecutionUuid : mappedExecutionUuid);
+        if (execution == null) {
+            return null;
+        }
+
+        String requestUuid = uuid();
+        String parentStageUuid = ThreadContext.get(EXECUTION_STAGE_CONTEXT);
+        execution.startHttpStage(requestUuid, parentStageUuid, method, sanitizeHttpUrl(url));
+        httpToExecution.put(requestUuid, execution.executionUuid);
+        return requestUuid;
+    }
+
+    @Override
+    public void finishHttpRequest(String requestUuid, String state, Integer statusCode, String error) {
+        if (requestUuid == null) {
+            return;
+        }
+        String executionUuid = httpToExecution.remove(requestUuid);
+        MutableExecution execution = executionUuid == null ? null : executions.get(executionUuid);
+        if (execution != null) {
+            execution.finishHttpStage(requestUuid, state, statusCode, error);
+        }
     }
 
     @Override
@@ -321,6 +366,34 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         return Timestamp.from(Instant.now());
     }
 
+    private static String sanitizeHttpUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return null;
+        }
+        try {
+            URI uri = new URI(url);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            if (scheme != null && host != null) {
+                StringBuilder sanitized = new StringBuilder(scheme).append("://");
+                if (host.contains(":")) {
+                    sanitized.append('[').append(host).append(']');
+                } else {
+                    sanitized.append(host);
+                }
+                if (uri.getPort() > 0) {
+                    sanitized.append(':').append(uri.getPort());
+                }
+                String path = uri.getRawPath();
+                sanitized.append(path == null || path.isEmpty() ? "/" : path);
+                return sanitized.toString();
+            }
+        } catch (URISyntaxException ignored) {
+            // Keep malformed URLs from breaking the HTTP call or its callback.
+        }
+        return "<invalid-url>";
+    }
+
     private static Timestamp parseTimestamp(String value) {
         if (value == null || value.isEmpty()) {
             return null;
@@ -361,6 +434,7 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         private volatile long startedAt;
         private volatile long finishedAt;
         private volatile long lastHeartbeatAt;
+        private volatile long downstreamWaitMs;
         private volatile String state = "RECEIVED";
         private volatile String error;
 
@@ -459,12 +533,17 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
             }
             ExecutionStageInventory stage = new ExecutionStageInventory();
             stage.setStageUuid(stageUuid);
+            String parentStageUuid = ThreadContext.get(EXECUTION_STAGE_CONTEXT);
+            if (parentStageUuid != null && !parentStageUuid.equals(stageUuid)) {
+                stage.setParentStageUuid(parentStageUuid);
+            }
             stage.setName(message.getClass().getName());
             stage.setKind("MESSAGE");
             stage.setState("RUNNING");
             stage.setNodeUuid(nodeUuid);
             stage.setStartedAt(now());
             stages.put(stageUuid, stage);
+            ThreadContext.put(EXECUTION_STAGE_CONTEXT, stageUuid);
             addEvent("STAGE_STARTED", stageUuid, null);
             lastHeartbeatAt = System.currentTimeMillis();
             return stageUuid;
@@ -483,7 +562,50 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
             stage.setFinishedAt(finished);
             stage.setState(terminalState);
             stage.setElapsedMs(Math.max(0, finished.getTime() - stage.getStartedAt().getTime()));
-            addEvent("STAGE_" + terminalState, stageUuid, details);
+            addEvent("STAGE_" + terminalState, stageUuid, details, stage);
+            if (stageUuid.equals(ThreadContext.get(EXECUTION_STAGE_CONTEXT))) {
+                ThreadContext.remove(EXECUTION_STAGE_CONTEXT);
+            }
+            lastHeartbeatAt = finished.getTime();
+        }
+
+        synchronized String startHttpStage(String requestUuid, String parentStageUuid, String method, String url) {
+            if (startedAt == 0) {
+                startedAt = System.currentTimeMillis();
+            }
+            if ("RECEIVED".equals(state) || "QUEUED".equals(state)) {
+                state = "RUNNING";
+            }
+            ExecutionStageInventory stage = new ExecutionStageInventory();
+            stage.setStageUuid(requestUuid);
+            stage.setParentStageUuid(parentStageUuid);
+            stage.setName("HTTP " + method + " " + url);
+            stage.setKind("HTTP");
+            stage.setState("RUNNING");
+            stage.setNodeUuid(nodeUuid);
+            stage.setStartedAt(now());
+            stage.setHttpMethod(method);
+            stage.setHttpUrl(url);
+            stages.put(requestUuid, stage);
+            addHttpEvent("HTTP_REQUEST_STARTED", stage, null, null);
+            lastHeartbeatAt = System.currentTimeMillis();
+            return requestUuid;
+        }
+
+        synchronized void finishHttpStage(String requestUuid, String terminalState, Integer statusCode, String error) {
+            ExecutionStageInventory stage = stages.remove(requestUuid);
+            if (stage == null) {
+                return;
+            }
+            Timestamp finished = now();
+            long elapsed = Math.max(0, finished.getTime() - stage.getStartedAt().getTime());
+            stage.setFinishedAt(finished);
+            stage.setState(terminalState);
+            stage.setElapsedMs(elapsed);
+            stage.setHttpStatusCode(statusCode);
+            stage.setHttpElapsedMs(elapsed);
+            downstreamWaitMs += elapsed;
+            addHttpEvent("HTTP_REQUEST_" + terminalState, stage, statusCode, error);
             lastHeartbeatAt = finished.getTime();
         }
 
@@ -549,7 +671,7 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
             inventory.setElapsedMs(startedAt == 0 ? null : (finishedAt == 0 ? System.currentTimeMillis() : finishedAt) - acceptedAt);
             inventory.setQueueWaitMs(startedAt == 0 ? null : startedAt - acceptedAt);
             inventory.setExecutionMs(startedAt == 0 ? null : (finishedAt == 0 ? System.currentTimeMillis() : finishedAt) - startedAt);
-            inventory.setDownstreamWaitMs(0L);
+            inventory.setDownstreamWaitMs(downstreamWaitMs);
             List<ExecutionStageInventory> active = new ArrayList<>();
             stages.values().forEach(stage -> active.add(copyStage(stage)));
             inventory.setActiveStages(active);
@@ -577,7 +699,33 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
             stage.setStartedAt(source.getStartedAt());
             stage.setFinishedAt(source.getFinishedAt());
             stage.setElapsedMs(source.getElapsedMs());
+            stage.setHttpMethod(source.getHttpMethod());
+            stage.setHttpUrl(source.getHttpUrl());
+            stage.setHttpStatusCode(source.getHttpStatusCode());
+            stage.setHttpElapsedMs(source.getHttpElapsedMs());
             return stage;
+        }
+
+        private void addHttpEvent(String type, ExecutionStageInventory stage, Integer statusCode, String details) {
+            ExecutionEventInventory event = new ExecutionEventInventory();
+            event.setSequence(sequence.incrementAndGet());
+            event.setTimestamp(now());
+            event.setType(type);
+            event.setStageUuid(stage.getStageUuid());
+            event.setStageName(stage.getName());
+            event.setStageKind(stage.getKind());
+            event.setNodeUuid(nodeUuid);
+            event.setMessageUuid(stage.getStageUuid());
+            event.setParentStageUuid(stage.getParentStageUuid());
+            event.setDetails(details);
+            event.setHttpMethod(stage.getHttpMethod());
+            event.setHttpUrl(stage.getHttpUrl());
+            event.setHttpStatusCode(statusCode);
+            event.setHttpElapsedMs(stage.getHttpElapsedMs());
+            events.add(event);
+            if (events.size() > 256) {
+                events.remove(0);
+            }
         }
 
         private void addEvent(String type, String details) {
@@ -592,6 +740,30 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
             event.setStageUuid(stageUuid);
             event.setNodeUuid(nodeUuid);
             event.setMessageUuid(stageUuid == null ? messageUuid : stageUuid);
+            ExecutionStageInventory stage = stageUuid == null ? null : stages.get(stageUuid);
+            if (stage != null) {
+                event.setStageName(stage.getName());
+                event.setStageKind(stage.getKind());
+                event.setParentStageUuid(stage.getParentStageUuid());
+            }
+            event.setDetails(details);
+            events.add(event);
+            if (events.size() > 256) {
+                events.remove(0);
+            }
+        }
+
+        private void addEvent(String type, String stageUuid, String details, ExecutionStageInventory stage) {
+            ExecutionEventInventory event = new ExecutionEventInventory();
+            event.setSequence(sequence.incrementAndGet());
+            event.setTimestamp(now());
+            event.setType(type);
+            event.setStageUuid(stageUuid);
+            event.setNodeUuid(nodeUuid);
+            event.setMessageUuid(stageUuid == null ? messageUuid : stageUuid);
+            event.setStageName(stage == null ? null : stage.getName());
+            event.setStageKind(stage == null ? null : stage.getKind());
+            event.setParentStageUuid(stage == null ? null : stage.getParentStageUuid());
             event.setDetails(details);
             events.add(event);
             if (events.size() > 256) {
@@ -615,6 +787,7 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         executions.clear();
         messageToExecution.clear();
         messageToStage.clear();
+        httpToExecution.clear();
         scheduledThreadContexts.clear();
         return true;
     }

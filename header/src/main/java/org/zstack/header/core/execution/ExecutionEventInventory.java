@@ -11,10 +11,16 @@ public class ExecutionEventInventory implements Serializable {
     private Timestamp timestamp;
     private String type;
     private String stageUuid;
+    private String stageName;
+    private String stageKind;
     private String nodeUuid;
     private String messageUuid;
     private String parentStageUuid;
     private String details;
+    private String httpMethod;
+    private String httpUrl;
+    private Integer httpStatusCode;
+    private Long httpElapsedMs;
 
     public Long getSequence() {
         return sequence;
@@ -48,6 +54,22 @@ public class ExecutionEventInventory implements Serializable {
         this.stageUuid = stageUuid;
     }
 
+    public String getStageName() {
+        return stageName;
+    }
+
+    public void setStageName(String stageName) {
+        this.stageName = stageName;
+    }
+
+    public String getStageKind() {
+        return stageKind;
+    }
+
+    public void setStageKind(String stageKind) {
+        this.stageKind = stageKind;
+    }
+
     public String getNodeUuid() {
         return nodeUuid;
     }
@@ -78,5 +100,37 @@ public class ExecutionEventInventory implements Serializable {
 
     public void setDetails(String details) {
         this.details = details;
+    }
+
+    public String getHttpMethod() {
+        return httpMethod;
+    }
+
+    public void setHttpMethod(String httpMethod) {
+        this.httpMethod = httpMethod;
+    }
+
+    public String getHttpUrl() {
+        return httpUrl;
+    }
+
+    public void setHttpUrl(String httpUrl) {
+        this.httpUrl = httpUrl;
+    }
+
+    public Integer getHttpStatusCode() {
+        return httpStatusCode;
+    }
+
+    public void setHttpStatusCode(Integer httpStatusCode) {
+        this.httpStatusCode = httpStatusCode;
+    }
+
+    public Long getHttpElapsedMs() {
+        return httpElapsedMs;
+    }
+
+    public void setHttpElapsedMs(Long httpElapsedMs) {
+        this.httpElapsedMs = httpElapsedMs;
     }
 }
