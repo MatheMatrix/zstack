@@ -6,7 +6,7 @@ Related specification: [TELEMETRY_SPECIFICATION.md](TELEMETRY_SPECIFICATION.md)
 
 API declaration: [APIQueryExecutionMsg.java](../header/src/main/java/org/zstack/header/core/execution/APIQueryExecutionMsg.java) and [APIQueryExecutionReply.java](../header/src/main/java/org/zstack/header/core/execution/APIQueryExecutionReply.java).
 
-Integration cases: [ExecutionObservabilityApiCase.groovy](../test/src/test/groovy/org/zstack/test/integration/observability/ExecutionObservabilityApiCase.groovy) and [CreateVmExecutionObservabilityCase.groovy](../test/src/test/groovy/org/zstack/test/integration/observability/CreateVmExecutionObservabilityCase.groovy). Both cases are currently annotated with `@SkipTestSuite` so they remain opt-in until the CI integration profile enrolls the new package; remove that annotation when the profile is ready.
+Integration cases: [ExecutionObservabilityApiCase.groovy](../test/src/test/groovy/org/zstack/test/integration/observability/ExecutionObservabilityApiCase.groovy), [HttpExecutionObservabilityCase.groovy](../test/src/test/groovy/org/zstack/test/integration/observability/HttpExecutionObservabilityCase.groovy), and [CreateVmExecutionObservabilityCase.groovy](../test/src/test/groovy/org/zstack/test/integration/observability/CreateVmExecutionObservabilityCase.groovy). These cases are enabled in the integration test suite.
 
 ## 1. Scope
 

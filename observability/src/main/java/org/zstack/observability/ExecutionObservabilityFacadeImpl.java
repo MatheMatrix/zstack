@@ -180,7 +180,12 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         String mappedParentUuid = parentExecutionUuid == null ? null : messageToExecution.get(parentExecutionUuid);
         MutableExecution parent = parentExecutionUuid == null ? null
                 : executions.get(mappedParentUuid == null ? parentExecutionUuid : mappedParentUuid);
-        if (parent == null && parentExecutionUuid != null) {
+        // CloudBus uses the root message id as THREAD_CONTEXT_TASK for a
+        // context-free message. That is the message being observed, not an
+        // inherited parent execution; let the message branch below create
+        // the execution with the message id as its rootMessageUuid.
+        if (parent == null && parentExecutionUuid != null
+                && !parentExecutionUuid.equals(message.getId())) {
             final String inheritedExecutionUuid = parentExecutionUuid;
             parent = executions.computeIfAbsent(inheritedExecutionUuid,
                     id -> MutableExecution.inherited(inheritedExecutionUuid,

@@ -13,7 +13,6 @@ import org.zstack.header.rest.AsyncRESTCallback
 import org.zstack.header.rest.RESTFacade
 import org.zstack.test.integration.ZStackTest
 import org.zstack.testlib.EnvSpec
-import org.zstack.testlib.SkipTestSuite
 import org.zstack.testlib.SubCase
 import org.zstack.testlib.WebBeanConstructor
 import org.zstack.utils.URLBuilder
@@ -24,7 +23,6 @@ import java.util.concurrent.TimeUnit
 /**
  * Integration coverage for HTTP child stages exposed by the execution query API.
  */
-@SkipTestSuite
 class HttpExecutionObservabilityCase extends SubCase {
     EnvSpec env
 

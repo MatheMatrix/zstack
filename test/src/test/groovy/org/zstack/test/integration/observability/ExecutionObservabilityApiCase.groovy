@@ -12,7 +12,6 @@ import org.zstack.header.message.NeedReplyMessage
 import org.zstack.header.rest.RESTFacade
 import org.zstack.test.integration.ZStackTest
 import org.zstack.testlib.EnvSpec
-import org.zstack.testlib.SkipTestSuite
 import org.zstack.testlib.SubCase
 
 import java.util.concurrent.CountDownLatch
@@ -20,10 +19,8 @@ import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 
 /**
- * Integration cases for the execution observability query API. The suite is
- * kept opt-in until the CI integration profile enrolls the new package.
+ * Integration cases for the execution observability query API.
  */
-@SkipTestSuite
 class ExecutionObservabilityApiCase extends SubCase {
     EnvSpec env
     RESTFacade restf
@@ -63,7 +60,7 @@ class ExecutionObservabilityApiCase extends SubCase {
         String zoneUuid = Platform.uuid
 
         createZone {
-            uuid = zoneUuid
+            resourceUuid = zoneUuid
             name = "execution-observability-${requestApiUuid}"
             apiId = requestApiUuid
             sessionId = adminSession()
@@ -97,7 +94,7 @@ class ExecutionObservabilityApiCase extends SubCase {
         String zoneUuid = Platform.uuid
 
         createZone {
-            uuid = zoneUuid
+            resourceUuid = zoneUuid
             name = "execution-observability-timeline-${requestApiUuid}"
             apiId = requestApiUuid
             sessionId = adminSession()
@@ -126,7 +123,7 @@ class ExecutionObservabilityApiCase extends SubCase {
         String zoneUuid = Platform.uuid
 
         createZone {
-            uuid = zoneUuid
+            resourceUuid = zoneUuid
             name = "execution-observability-read-only-${apiUuid}"
             apiId = apiUuid
             sessionId = adminSession()
@@ -324,7 +321,7 @@ class ExecutionObservabilityApiCase extends SubCase {
     }
 
     private Map<String, String> authHeaders() {
-        return [("Authorization"): "OAuth ${adminSession()}"]
+        return [("Authorization"): "OAuth ${adminSession()}".toString()]
     }
 
     static class ContextFreeMessage extends NeedReplyMessage {

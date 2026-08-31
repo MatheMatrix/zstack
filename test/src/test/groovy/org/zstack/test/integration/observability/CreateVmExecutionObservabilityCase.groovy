@@ -9,7 +9,6 @@ import org.zstack.header.rest.RESTFacade
 import org.zstack.test.integration.kvm.Env
 import org.zstack.test.integration.kvm.KvmTest
 import org.zstack.testlib.EnvSpec
-import org.zstack.testlib.SkipTestSuite
 import org.zstack.testlib.SubCase
 import org.zstack.testlib.WebBeanConstructor
 
@@ -17,10 +16,8 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
- * Integration case for observing a real CreateVmInstance API. The suite is
- * kept opt-in until the CI integration profile enrolls the new package.
+ * Integration case for observing a real CreateVmInstance API.
  */
-@SkipTestSuite
 class CreateVmExecutionObservabilityCase extends SubCase {
     EnvSpec env
     RESTFacade restf
