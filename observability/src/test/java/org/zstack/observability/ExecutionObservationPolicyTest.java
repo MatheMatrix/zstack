@@ -36,15 +36,18 @@ public class ExecutionObservationPolicyTest {
         ExecutionObservabilityFacadeImpl recorder = new ExecutionObservabilityFacadeImpl();
         APIQueryZoneMsg queryApi = new APIQueryZoneMsg();
 
-        recorder.recordApiRequest(queryApi);
-        ThreadContext.put(Constants.THREAD_CONTEXT_API, queryApi.getId());
-        recorder.recordMessageDelivery(new ChildMessage());
+        try {
+            recorder.recordApiRequest(queryApi);
+            ThreadContext.put(Constants.THREAD_CONTEXT_API, queryApi.getId());
+            recorder.recordMessageDelivery(new ChildMessage());
 
-        APIQueryExecutionMsg query = new APIQueryExecutionMsg();
-        query.setTriggerName(ChildMessage.class.getName());
-        List<ExecutionInventory> inventories = recorder.queryLocal(query);
-        Assert.assertTrue(inventories.isEmpty());
-        ThreadContext.clearAll();
+            APIQueryExecutionMsg query = new APIQueryExecutionMsg();
+            query.setTriggerName(ChildMessage.class.getName());
+            List<ExecutionInventory> inventories = recorder.queryLocal(query);
+            Assert.assertTrue(inventories.isEmpty());
+        } finally {
+            ThreadContext.clearAll();
+        }
     }
 
     @Test

@@ -5,11 +5,11 @@ import org.zstack.core.thread.PeriodicTask;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-public class TestPeriodicTask implements PeriodicTask {
+public class ObservabilityPeriodicTaskCase implements PeriodicTask {
     private final String name;
     private final CountDownLatch latch;
 
-    public TestPeriodicTask(String name, CountDownLatch latch) {
+    public ObservabilityPeriodicTaskCase(String name, CountDownLatch latch) {
         this.name = name;
         this.latch = latch;
     }

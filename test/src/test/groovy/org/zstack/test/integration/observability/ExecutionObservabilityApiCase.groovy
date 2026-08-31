@@ -155,7 +155,7 @@ class ExecutionObservabilityApiCase extends SubCase {
         CountDownLatch ran = new CountDownLatch(1)
         long startedAfter = System.currentTimeMillis()
 
-        Future<Void> future = thdf.submitPeriodicTask(new TestPeriodicTask(taskName, ran))
+        Future<Void> future = thdf.submitPeriodicTask(new ObservabilityPeriodicTaskCase(taskName, ran))
 
         try {
             assert ran.await(10, TimeUnit.SECONDS)

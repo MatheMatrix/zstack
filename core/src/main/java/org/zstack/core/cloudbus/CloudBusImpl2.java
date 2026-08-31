@@ -1406,9 +1406,7 @@ public class CloudBusImpl2 implements CloudBus, CloudBusIN, ManagementNodeChange
                     return;
                 }
 
-                if (executionObservability != null) {
-                    executionObservability.recordMessageTimeout(msg.getId());
-                }
+                recordMessageTimeoutSafely(msg.getId());
 
                 callback.run(createTimeoutReply(msg));
             }
@@ -1434,6 +1432,17 @@ public class CloudBusImpl2 implements CloudBus, CloudBusIN, ManagementNodeChange
         r.setAMQPProperties(builder.deliveryMode(1).build());
         r.setError(touterr(ORG_ZSTACK_CORE_CLOUDBUS_10023, m.toErrorString()));
         return r;
+    }
+
+    private void recordMessageTimeoutSafely(String messageUuid) {
+        if (executionObservability == null) {
+            return;
+        }
+        try {
+            executionObservability.recordMessageTimeout(messageUuid);
+        } catch (Throwable t) {
+            logger.warn(String.format("failed to record message timeout for message[%s]", messageUuid), t);
+        }
     }
 
     @Override
@@ -1521,9 +1530,7 @@ public class CloudBusImpl2 implements CloudBus, CloudBusIN, ManagementNodeChange
                 for (final NeedReplyMessage m : msgs) {
                     MessageReply r = findReply(m);
                     if (r == null) {
-                        if (executionObservability != null) {
-                            executionObservability.recordMessageTimeout(m.getId());
-                        }
+                        recordMessageTimeoutSafely(m.getId());
                         r = createTimeoutReply(m);
                     }
                     ret.add(r);
@@ -1837,9 +1844,7 @@ public class CloudBusImpl2 implements CloudBus, CloudBusIN, ManagementNodeChange
             public void timeout() {
                 envelopes.remove(msg.getId());
                 called.compareAndSet(false, true);
-                if (executionObservability != null) {
-                    executionObservability.recordMessageTimeout(msg.getId());
-                }
+                recordMessageTimeoutSafely(msg.getId());
             }
 
             @Override
@@ -1927,8 +1932,8 @@ public class CloudBusImpl2 implements CloudBus, CloudBusIN, ManagementNodeChange
 
                 cleanup();
                 msgs.forEach(msg -> {
-                    if (!replies.containsKey(msg.getId()) && executionObservability != null) {
-                        executionObservability.recordMessageTimeout(msg.getId());
+                    if (!replies.containsKey(msg.getId())) {
+                        recordMessageTimeoutSafely(msg.getId());
                     }
                 });
                 ret.replies = replies;

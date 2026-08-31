@@ -102,7 +102,14 @@ public class RESTFacadeImpl implements RESTFacade {
     private interface AsyncHttpWrapper {
         void fail(ErrorCode err);
 
+        /**
+         * Completes the asynchronous request with the callback payload. The status code is
+         * supplied by the outbound HTTP exchange when available; the callback endpoint status
+         * is only a fallback for older agents that do not expose the exchange response.
+         */
         void success(HttpEntity<String> responseEntity, int statusCode);
+
+        void setResponseStatusCode(int statusCode);
 
         String getResourceUuid();
 
@@ -533,7 +540,7 @@ public class RESTFacadeImpl implements RESTFacade {
 
         AsyncHttpWrapper wrapper = new AsyncHttpWrapper() {
             final AtomicBoolean called = new AtomicBoolean(false);
-            volatile int responseStatusCode;
+            volatile Integer responseStatusCode;
 
             final AsyncHttpWrapper self = this;
             final TimeoutTaskReceipt timeoutTaskReceipt = thdf.submitTimeoutTask(new Runnable() {
@@ -654,8 +661,15 @@ public class RESTFacadeImpl implements RESTFacade {
 
             @Override
             public void success(HttpEntity<String> responseEntity, int statusCode) {
-                responseStatusCode = statusCode;
+                if (responseStatusCode == null) {
+                    responseStatusCode = statusCode;
+                }
                 completion.success(responseEntity);
+            }
+
+            @Override
+            public void setResponseStatusCode(int statusCode) {
+                responseStatusCode = statusCode;
             }
 
             @Override
@@ -677,7 +691,8 @@ public class RESTFacadeImpl implements RESTFacade {
             }
 
             ListenableFuture<ResponseEntity<String>> f = asyncRestTemplate.exchange(url, method, req, String.class);
-            f.addCallback(rsp -> {}, e -> wrapper.fail(err(ORG_ZSTACK_CORE_REST_10003, SysErrors.HTTP_ERROR, e.getLocalizedMessage())));
+            f.addCallback(rsp -> wrapper.setResponseStatusCode(rsp.getStatusCodeValue()),
+                    e -> wrapper.fail(err(ORG_ZSTACK_CORE_REST_10003, SysErrors.HTTP_ERROR, e.getLocalizedMessage())));
         } catch (RestClientException e) {
             logger.warn(String.format("Unable to %s to %s: %s", method.toString(), url, e.getMessage()));
             wrapper.fail(ExceptionDSL.isCausedBy(e, ResourceAccessException.class) ? err(ORG_ZSTACK_CORE_REST_10004, SysErrors.IO_ERROR, e.getMessage()) : inerr(ORG_ZSTACK_CORE_REST_10005, e.getMessage()));
@@ -866,8 +881,6 @@ public class RESTFacadeImpl implements RESTFacade {
             throw e;
         }
 
-        finishExecutionHttpObservation(httpRequestUuid, "SUCCEEDED", rsp.getStatusCodeValue(), null);
-
         boolean valid = false;
         if (method == HttpMethod.DELETE && rsp.getStatusCode() == org.springframework.http.HttpStatus.NO_CONTENT) {
             valid = true;
@@ -878,8 +891,12 @@ public class RESTFacadeImpl implements RESTFacade {
         }
 
         if (!valid) {
+            finishExecutionHttpObservation(httpRequestUuid, "FAILED", rsp.getStatusCodeValue(),
+                    String.format("unexpected HTTP status: %s", rsp.getStatusCode()));
             throw new OperationFailureException(operr(ORG_ZSTACK_CORE_REST_10008, "failed to %s to %s, status code: %s, response body: %s", method.toString().toLowerCase(), url, rsp.getStatusCode(), rsp.getBody()));
         }
+
+        finishExecutionHttpObservation(httpRequestUuid, "SUCCEEDED", rsp.getStatusCodeValue(), null);
 
         return rsp;
     }
@@ -964,6 +981,7 @@ public class RESTFacadeImpl implements RESTFacade {
         }
 
         ResponseEntity<String> rsp;
+        final String httpRequestUuid = startExecutionHttpObservation(method.toString(), url);
 
         try {
             if (CoreGlobalProperty.UNIT_TEST_ON) {
@@ -988,9 +1006,14 @@ public class RESTFacadeImpl implements RESTFacade {
                 }.run();
             }
         } catch (HttpStatusCodeException e) {
+            finishExecutionHttpObservation(httpRequestUuid, "FAILED", e.getRawStatusCode(), e.getMessage());
             throw new OperationFailureException(operr(ORG_ZSTACK_CORE_REST_10009, "failed to %s to %s, status code: %s, response body: %s", method.toString().toLowerCase(), url, e.getStatusCode(), e.getResponseBodyAsString()));
         } catch (ResourceAccessException e) {
+            finishExecutionHttpObservation(httpRequestUuid, "FAILED", null, e.getMessage());
             throw new OperationFailureException(operr(ORG_ZSTACK_CORE_REST_10010, "failed to %s to %s, IO Error: %s", method.toString().toLowerCase(), url, e.getMessage()));
+        } catch (RuntimeException e) {
+            finishExecutionHttpObservation(httpRequestUuid, "FAILED", null, e.getMessage());
+            throw e;
         }
 
         boolean valid = false;
@@ -1005,8 +1028,12 @@ public class RESTFacadeImpl implements RESTFacade {
         }
 
         if (!valid) {
+            finishExecutionHttpObservation(httpRequestUuid, "FAILED", rsp.getStatusCodeValue(),
+                    String.format("unexpected HTTP status: %s", rsp.getStatusCode()));
             throw new OperationFailureException(operr(ORG_ZSTACK_CORE_REST_10011, "failed to %s to %s, status code: %s, response body: %s", method.toString().toLowerCase(), url, rsp.getStatusCode(), rsp.getBody()));
         }
+
+        finishExecutionHttpObservation(httpRequestUuid, "SUCCEEDED", rsp.getStatusCodeValue(), null);
 
         return rsp;
     }

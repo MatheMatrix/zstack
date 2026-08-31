@@ -114,7 +114,7 @@ class CreateVmExecutionObservabilityCase extends SubCase {
             printExecutionSnapshot(snapshot, execution, timeline)
             assert timeline.executionUuid == execution.executionUuid
             assert timeline.events instanceof Collection
-            assert timeline.events.every { !it.containsKey("stageId") }
+            assert timeline.events.every { it.containsKey("sequence") && it.containsKey("type") }
             assert timeline.events.any { it.type == "API_ACCEPTED" }
             def httpEvents = timeline.events.findAll { it.type == "HTTP_REQUEST_SUCCEEDED" }
             assert httpEvents

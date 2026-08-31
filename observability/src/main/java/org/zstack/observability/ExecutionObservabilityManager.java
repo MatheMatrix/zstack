@@ -44,6 +44,7 @@ import static org.zstack.utils.clouderrorcode.CloudOperationsErrorCode.ORG_ZSTAC
  */
 public class ExecutionObservabilityManager extends AbstractService {
     private static final CLogger logger = Utils.getLogger(ExecutionObservabilityManager.class);
+    private static final int NODE_PAGE_SIZE = 200;
 
     @Autowired
     private ResourceDestinationMaker destMaker;
@@ -107,7 +108,7 @@ public class ExecutionObservabilityManager extends AbstractService {
         }
 
         List<ExecutionInventory> result = Collections.synchronizedList(
-                new ArrayList<>(executionObservability.queryLocal(queryAllFromNode(msg))));
+                new ArrayList<>(queryAllLocalFromNode(msg)));
         Collection<ResourceDestinationMaker.NodeInfo> nodes = destMaker.getAllNodeInfo();
         List<ResourceDestinationMaker.NodeInfo> remotes = nodes.stream()
                 .filter(n -> !n.getNodeUuid().equals(Platform.getManagementServerId()))
@@ -121,31 +122,78 @@ public class ExecutionObservabilityManager extends AbstractService {
         AtomicInteger pending = new AtomicInteger(remotes.size());
         AtomicBoolean partial = new AtomicBoolean(false);
         for (ResourceDestinationMaker.NodeInfo node : remotes) {
-            GetLocalExecutionMsg local = new GetLocalExecutionMsg();
-            local.setQuery(queryAllFromNode(msg));
-            bus.makeServiceIdByManagementNodeId(local, ExecutionObservabilityConstant.SERVICE_ID, node.getNodeUuid());
-            try {
-                bus.send(local, new CloudBusCallBack(msg) {
-                    @Override
-                    public void run(MessageReply r) {
-                        if (r.isSuccess()) {
-                            result.addAll(r.<GetLocalExecutionReply>castReply().getInventories());
-                        } else {
-                            partial.set(true);
-                        }
-                        if (pending.decrementAndGet() == 0) {
-                            finishExecutionQuery(msg, result, partial.get());
-                        }
-                    }
-                });
-            } catch (Throwable t) {
-                logger.warn(String.format("failed to query execution records from management node[%s]",
-                        node.getNodeUuid()), t);
-                partial.set(true);
-                if (pending.decrementAndGet() == 0) {
-                    finishExecutionQuery(msg, result, true);
-                }
+            queryNodeExecutions(msg, node, result, partial, pending, null);
+        }
+    }
+
+    private List<ExecutionInventory> queryAllLocalFromNode(APIQueryExecutionMsg source) {
+        List<ExecutionInventory> result = new ArrayList<>();
+        String cursor = null;
+        while (true) {
+            List<ExecutionInventory> page = executionObservability.queryLocal(queryAllFromNode(source, cursor));
+            if (page == null || page.isEmpty()) {
+                return result;
             }
+            result.addAll(page);
+            if (page.size() < NODE_PAGE_SIZE) {
+                return result;
+            }
+            cursor = nextNodeCursor(cursor, page.size());
+        }
+    }
+
+    private void queryNodeExecutions(APIQueryExecutionMsg source,
+                                     ResourceDestinationMaker.NodeInfo node,
+                                     List<ExecutionInventory> result,
+                                     AtomicBoolean partial,
+                                     AtomicInteger pending,
+                                     String cursor) {
+        GetLocalExecutionMsg local = new GetLocalExecutionMsg();
+        local.setQuery(queryAllFromNode(source, cursor));
+        bus.makeServiceIdByManagementNodeId(local, ExecutionObservabilityConstant.SERVICE_ID, node.getNodeUuid());
+        try {
+            bus.send(local, new CloudBusCallBack(source) {
+                @Override
+                public void run(MessageReply r) {
+                    try {
+                        if (!r.isSuccess()) {
+                            partial.set(true);
+                            finishNodeQuery(source, result, partial, pending);
+                            return;
+                        }
+
+                        List<ExecutionInventory> page = r.<GetLocalExecutionReply>castReply().getInventories();
+                        if (page != null) {
+                            result.addAll(page);
+                        }
+                        if (page != null && page.size() == NODE_PAGE_SIZE) {
+                            queryNodeExecutions(source, node, result, partial, pending,
+                                    nextNodeCursor(cursor, page.size()));
+                            return;
+                        }
+                        finishNodeQuery(source, result, partial, pending);
+                    } catch (Throwable t) {
+                        logger.warn(String.format("failed to process execution records from management node[%s]",
+                                node.getNodeUuid()), t);
+                        partial.set(true);
+                        finishNodeQuery(source, result, partial, pending);
+                    }
+                }
+            });
+        } catch (Throwable t) {
+            logger.warn(String.format("failed to query execution records from management node[%s]",
+                    node.getNodeUuid()), t);
+            partial.set(true);
+            finishNodeQuery(source, result, partial, pending);
+        }
+    }
+
+    private void finishNodeQuery(APIQueryExecutionMsg source,
+                                 List<ExecutionInventory> result,
+                                 AtomicBoolean partial,
+                                 AtomicInteger pending) {
+        if (pending.decrementAndGet() == 0) {
+            finishExecutionQuery(source, result, partial.get());
         }
     }
 
@@ -169,7 +217,7 @@ public class ExecutionObservabilityManager extends AbstractService {
         }
     }
 
-    private APIQueryExecutionMsg queryAllFromNode(APIQueryExecutionMsg source) {
+    private APIQueryExecutionMsg queryAllFromNode(APIQueryExecutionMsg source, String cursor) {
         APIQueryExecutionMsg query = new APIQueryExecutionMsg();
         query.setExecutionUuid(source.getExecutionUuid());
         query.setApiUuid(source.getApiUuid());
@@ -182,9 +230,21 @@ public class ExecutionObservabilityManager extends AbstractService {
         query.setStartedBefore(source.getStartedBefore());
         query.setNodeUuid(source.getNodeUuid());
         query.setDetail(source.getDetail());
-        query.setLimit(200);
-        query.setCursor(null);
+        query.setLimit(NODE_PAGE_SIZE);
+        query.setCursor(cursor);
         return query;
+    }
+
+    private String nextNodeCursor(String cursor, int pageSize) {
+        int offset = 0;
+        if (cursor != null) {
+            try {
+                offset = Math.max(0, Integer.parseInt(cursor));
+            } catch (NumberFormatException ignored) {
+                // Start over if an internal cursor is malformed.
+            }
+        }
+        return String.valueOf(offset + pageSize);
     }
 
     private void finishExecutionQuery(APIQueryExecutionMsg msg, List<ExecutionInventory> inventories, boolean partial) {

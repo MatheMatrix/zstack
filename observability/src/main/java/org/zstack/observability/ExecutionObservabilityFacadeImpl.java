@@ -39,6 +39,8 @@ import java.util.stream.Collectors;
 public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityFacade, Component,
         RestAPIExtensionPoint, BeforeDeliveryMessageInterceptor {
     private static final int MAX_RECORDS = 10000;
+    private static final int MAX_INDEX_ENTRIES = MAX_RECORDS * 2;
+    private static final int MAX_ACTIVE_STAGES = 256;
     private static final String EXECUTION_UUID_HEADER = "__execution_uuid__";
     private static final String EXECUTION_STAGE_CONTEXT = "__execution_stage_uuid__";
     private static final String IGNORED_EXECUTION_CONTEXT = "__execution_observation_ignored__";
@@ -189,6 +191,7 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
             String stageUuid = parent.startStage(message);
             messageToExecution.put(message.getId(), parent.executionUuid);
             messageToStage.put(message.getId(), stageUuid);
+            trimIfNeeded();
             return;
         }
 
@@ -235,6 +238,7 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         }
         ignoredExecutionContexts.add(message.getId());
         ThreadContext.put(IGNORED_EXECUTION_CONTEXT, message.getId());
+        trimIfNeeded();
     }
 
     private void clearIgnored(String apiUuid) {
@@ -278,6 +282,7 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         String parentStageUuid = ThreadContext.get(EXECUTION_STAGE_CONTEXT);
         execution.startHttpStage(requestUuid, parentStageUuid, method, sanitizeHttpUrl(url));
         httpToExecution.put(requestUuid, execution.executionUuid);
+        trimIfNeeded();
         return requestUuid;
     }
 
@@ -380,14 +385,71 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
     }
 
     private void trimIfNeeded() {
-        if (executions.size() <= MAX_RECORDS) {
+        if (executions.size() <= MAX_RECORDS
+                && messageToExecution.size() <= MAX_INDEX_ENTRIES
+                && messageToStage.size() <= MAX_INDEX_ENTRIES
+                && ignoredExecutionContexts.size() <= MAX_INDEX_ENTRIES
+                && httpToExecution.size() <= MAX_INDEX_ENTRIES
+                && scheduledThreadContexts.size() <= MAX_INDEX_ENTRIES) {
             return;
         }
-        MutableExecution oldest = executions.values().stream()
-                .min(Comparator.comparingLong(e -> e.acceptedAt)).orElse(null);
-        if (oldest != null && executions.remove(oldest.executionUuid, oldest)) {
-            messageToStage.entrySet().removeIf(e -> oldest.executionUuid.equals(messageToExecution.get(e.getKey())));
-            messageToExecution.entrySet().removeIf(e -> e.getValue().equals(oldest.executionUuid));
+
+        while (executions.size() > MAX_RECORDS) {
+            MutableExecution oldest = executions.values().stream()
+                    .min(Comparator.comparingLong(e -> e.acceptedAt)).orElse(null);
+            if (oldest == null || !executions.remove(oldest.executionUuid, oldest)) {
+                break;
+            }
+
+            Set<String> removedMessageUuids = messageToExecution.entrySet().stream()
+                    .filter(e -> oldest.executionUuid.equals(e.getValue()))
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toSet());
+            removedMessageUuids.forEach(messageUuid -> {
+                messageToExecution.remove(messageUuid, oldest.executionUuid);
+                messageToStage.remove(messageUuid);
+            });
+            scheduledThreadContexts.remove(oldest.executionUuid);
+        }
+
+        messageToExecution.entrySet().removeIf(e -> !executions.containsKey(e.getValue()));
+        messageToStage.entrySet().removeIf(e -> {
+            String executionUuid = messageToExecution.get(e.getKey());
+            return executionUuid == null || !executions.containsKey(executionUuid);
+        });
+        httpToExecution.entrySet().removeIf(e -> !executions.containsKey(e.getValue()));
+        scheduledThreadContexts.entrySet().removeIf(e -> !executions.containsKey(e.getKey()));
+
+        trimMapToSize(messageToExecution, MAX_INDEX_ENTRIES);
+        trimMapToSize(messageToStage, MAX_INDEX_ENTRIES);
+        trimMapToSize(httpToExecution, MAX_INDEX_ENTRIES);
+        trimMapToSize(scheduledThreadContexts, MAX_INDEX_ENTRIES);
+        trimSetToSize(ignoredExecutionContexts, MAX_INDEX_ENTRIES);
+    }
+
+    private static <K, V> void trimMapToSize(Map<K, V> map, int maxEntries) {
+        int excess = map.size() - maxEntries;
+        if (excess <= 0) {
+            return;
+        }
+        for (K key : map.keySet()) {
+            if (excess-- <= 0) {
+                break;
+            }
+            map.remove(key);
+        }
+    }
+
+    private static <T> void trimSetToSize(Set<T> set, int maxEntries) {
+        int excess = set.size() - maxEntries;
+        if (excess <= 0) {
+            return;
+        }
+        for (T value : set) {
+            if (excess-- <= 0) {
+                break;
+            }
+            set.remove(value);
         }
     }
 
@@ -409,7 +471,7 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
             String host = uri.getHost();
             if (scheme != null && host != null) {
                 StringBuilder sanitized = new StringBuilder(scheme).append("://");
-                if (host.contains(":")) {
+                if (host.contains(":") && !host.startsWith("[")) {
                     sanitized.append('[').append(host).append(']');
                 } else {
                     sanitized.append(host);
@@ -576,6 +638,7 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
             stage.setNodeUuid(nodeUuid);
             stage.setStartedAt(now());
             stages.put(stageUuid, stage);
+            trimStagesIfNeeded();
             ThreadContext.put(EXECUTION_STAGE_CONTEXT, stageUuid);
             addEvent("STAGE_STARTED", stageUuid, null);
             lastHeartbeatAt = System.currentTimeMillis();
@@ -620,9 +683,25 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
             stage.setHttpMethod(method);
             stage.setHttpUrl(url);
             stages.put(requestUuid, stage);
+            trimStagesIfNeeded();
             addHttpEvent("HTTP_REQUEST_STARTED", stage, null, null);
             lastHeartbeatAt = System.currentTimeMillis();
             return requestUuid;
+        }
+
+        private void trimStagesIfNeeded() {
+            while (stages.size() > MAX_ACTIVE_STAGES) {
+                ExecutionStageInventory oldest = stages.values().stream()
+                        .min(Comparator.comparingLong(stage -> stage.getStartedAt() == null
+                                ? Long.MIN_VALUE : stage.getStartedAt().getTime()))
+                        .orElse(null);
+                if (oldest == null || !stages.remove(oldest.getStageUuid(), oldest)) {
+                    return;
+                }
+                if (oldest.getStageUuid().equals(ThreadContext.get(EXECUTION_STAGE_CONTEXT))) {
+                    ThreadContext.remove(EXECUTION_STAGE_CONTEXT);
+                }
+            }
         }
 
         synchronized void finishHttpStage(String requestUuid, String terminalState, Integer statusCode, String error) {

@@ -376,13 +376,33 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
         return createErrorReply(m, touterr(ORG_ZSTACK_CORE_CLOUDBUS_10002, m.toErrorString()));
     }
 
+    private void recordMessageTimeoutSafely(String messageUuid) {
+        if (executionObservability == null) {
+            return;
+        }
+        try {
+            executionObservability.recordMessageTimeout(messageUuid);
+        } catch (Throwable t) {
+            logger.warn(String.format("failed to record message timeout for message[%s]", messageUuid), t);
+        }
+    }
+
+    private void recordMessageCancellationSafely(String messageUuid, String reason) {
+        if (executionObservability == null) {
+            return;
+        }
+        try {
+            executionObservability.recordMessageCancellation(messageUuid, reason);
+        } catch (Throwable t) {
+            logger.warn(String.format("failed to record message cancellation for message[%s]", messageUuid), t);
+        }
+    }
+
     @Override
     public FutureCompletion send(NeedReplyMessage msg, CloudBusCallBack callback) {
         evaluateMessageTimeout(msg);
         if (msg.getTimeout() <= 1) {
-            if (executionObservability != null) {
-                executionObservability.recordMessageTimeout(msg.getId());
-            }
+            recordMessageTimeoutSafely(msg.getId());
             callback.run(createTimeoutReply(msg));
             return SEND_CONFIRMED;
         }
@@ -418,9 +438,7 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
 
                 timeoutTaskReceipt.cancel();
 
-                if (executionObservability != null) {
-                    executionObservability.recordMessageCancellation(msg.getId(), error);
-                }
+                recordMessageCancellationSafely(msg.getId(), error);
 
                 callback.run(createErrorReply(msg, canerr(ORG_ZSTACK_CORE_CLOUDBUS_10003, error)));
             }
@@ -433,9 +451,7 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
                     return;
                 }
 
-                if (executionObservability != null) {
-                    executionObservability.recordMessageTimeout(msg.getId());
-                }
+                recordMessageTimeoutSafely(msg.getId());
 
                 callback.run(createTimeoutReply(msg));
             }
