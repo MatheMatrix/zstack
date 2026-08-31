@@ -25,7 +25,7 @@ import org.zstack.header.apimediator.APIIsReadyToGoMsg;
 import org.zstack.header.apimediator.APIIsReadyToGoReply;
 import org.zstack.header.apimediator.StopRoutingException;
 import org.zstack.header.core.NoErrorCompletion;
-import org.zstack.header.core.execution.ExecutionObservationRecorder;
+import org.zstack.header.core.execution.ExecutionMessageObserver;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.errorcode.SysErrors;
@@ -85,7 +85,7 @@ public class CloudBusImpl2 implements CloudBus, CloudBusIN, ManagementNodeChange
     @Autowired
     private ApiTimeoutManager timeoutMgr;
     @Autowired(required = false)
-    private ExecutionObservationRecorder executionObservability;
+    private ExecutionMessageObserver executionObservability;
 
     private List<String> serverIps;
     private List<Service> services = new ArrayList<Service>();

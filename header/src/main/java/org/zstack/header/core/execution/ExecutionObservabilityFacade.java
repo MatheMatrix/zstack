@@ -3,9 +3,11 @@ package org.zstack.header.core.execution;
 import java.util.List;
 
 /**
- * System-level execution observation hooks. Implementations must be non-blocking
- * from the caller's point of view; observation must never change message semantics.
+ * System-level execution observation query facade.
+ *
+ * <p>Integration hooks are exposed through narrow observer interfaces so that
+ * CloudBus, REST, and thread adapters only depend on the lifecycle they report.</p>
  */
-public interface ExecutionObservabilityFacade extends ExecutionObservationRecorder {
+public interface ExecutionObservabilityFacade {
     List<ExecutionInventory> queryLocal(APIQueryExecutionMsg query);
 }

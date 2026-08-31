@@ -40,7 +40,7 @@ import org.zstack.core.validation.ValidationFacade;
 import org.zstack.header.Constants;
 import org.zstack.header.core.Completion;
 import org.zstack.header.core.ReturnValueCompletion;
-import org.zstack.header.core.execution.ExecutionObservationRecorder;
+import org.zstack.header.core.execution.ExecutionHttpObserver;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.OperationFailureException;
 import org.zstack.header.errorcode.SysErrors;
@@ -79,7 +79,7 @@ public class RESTFacadeImpl implements RESTFacade {
     private ValidationFacade vf;
     @Autowired(required = false)
     @Lazy
-    private ExecutionObservationRecorder executionObservability;
+    private ExecutionHttpObserver executionObservability;
 
     private TelemetryFacade telemetryFacade;
 

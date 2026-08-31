@@ -36,7 +36,8 @@ import java.util.stream.Collectors;
  * registry from every management node through CloudBus, so no sticky REST
  * session or business-code changes are required.
  */
-public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityFacade, Component,
+public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityFacade,
+        ExecutionMessageObserver, ExecutionHttpObserver, ExecutionScheduledTaskObserver, Component,
         RestAPIExtensionPoint, BeforeDeliveryMessageInterceptor {
     private static final int MAX_RECORDS = 10000;
     private static final int MAX_INDEX_ENTRIES = MAX_RECORDS * 2;
@@ -97,7 +98,6 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         recordMessageDelivery(message);
     }
 
-    @Override
     public void recordApiRequest(APIMessage message) {
         if (!observationPolicy.shouldObserveApi(message)) {
             markIgnored(message);
@@ -118,7 +118,6 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         trimIfNeeded();
     }
 
-    @Override
     public void recordMessageDelivery(Message message) {
         if (message == null) {
             return;
@@ -213,7 +212,6 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         trimIfNeeded();
     }
 
-    @Override
     public void recordApiResponse(Message message) {
         if (message == null) {
             return;
