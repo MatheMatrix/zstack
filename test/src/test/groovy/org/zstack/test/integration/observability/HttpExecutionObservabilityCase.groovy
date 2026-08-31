@@ -111,12 +111,17 @@ class HttpExecutionObservabilityCase extends SubCase {
 
             assert requestStarted.await(10, TimeUnit.SECONDS)
             retryInSecs {
-                Map result = searchExecutions([messageUuid: msg.id])
-                assert result.inventories.size() == 1
-                Map execution = result.inventories[0] as Map
-                Map timeline = getExecution(execution.executionUuid as String, "timeline")
+                List result = queryExecution {
+                    messageUuid = msg.id
+                }
+                assert result.size() == 1
+                def execution = result[0]
+                def timeline = queryExecution {
+                    delegate.executionUuid = execution.executionUuid
+                    delegate.detail = "timeline"
+                }[0]
                 assert timeline.events.any { it.type == "HTTP_REQUEST_STARTED" }
-                Map http = timeline.events.find { it.type == "HTTP_REQUEST_STARTED" }
+                def http = timeline.events.find { it.type == "HTTP_REQUEST_STARTED" }
                 assert http.httpMethod == "POST"
                 assert http.httpUrl.contains(path)
                 assert http.stageName == "HTTP POST ${http.httpUrl}"
@@ -128,9 +133,14 @@ class HttpExecutionObservabilityCase extends SubCase {
             releaseRequest.countDown()
             assert messageCompleted.await(10, TimeUnit.SECONDS)
             retryInSecs {
-                Map execution = searchExecutions([messageUuid: msg.id]).inventories[0] as Map
-                Map timeline = getExecution(execution.executionUuid as String, "timeline")
-                Map http = timeline.events.find { it.type == "HTTP_REQUEST_SUCCEEDED" }
+                def execution = queryExecution {
+                    messageUuid = msg.id
+                }[0]
+                def timeline = queryExecution {
+                    delegate.executionUuid = execution.executionUuid
+                    delegate.detail = "timeline"
+                }[0]
+                def http = timeline.events.find { it.type == "HTTP_REQUEST_SUCCEEDED" }
                 assert http
                 assert http.httpStatusCode == 200
                 assert http.httpElapsedMs >= 0
@@ -139,33 +149,6 @@ class HttpExecutionObservabilityCase extends SubCase {
             releaseRequest.countDown()
             bus.unregisterService(service)
         }
-    }
-
-    private Map searchExecutions(Map<String, Object> filters) {
-        def builder = org.springframework.web.util.UriComponentsBuilder.fromHttpUrl(
-                bean(RESTFacade.class).makeUrl("/v1/executions"))
-        filters.each { String key, Object value ->
-            if (value != null) {
-                builder.queryParam(key, value)
-            }
-        }
-        String url = builder.build().toUriString()
-        return bean(RESTFacade.class).syncJsonGet(url, "", authHeaders(), LinkedHashMap.class)
-    }
-
-    private Map getExecution(String executionUuid, String detail) {
-        def builder = org.springframework.web.util.UriComponentsBuilder.fromHttpUrl(
-                bean(RESTFacade.class).makeUrl("/v1/executions/${executionUuid}"))
-        builder.queryParam("detail", detail)
-        Map result = bean(RESTFacade.class).syncJsonGet(
-                builder.build().toUriString(), "", authHeaders(), LinkedHashMap.class)
-        assert result.inventories instanceof Collection
-        assert result.inventories.size() == 1
-        return result.inventories[0] as Map
-    }
-
-    private Map<String, String> authHeaders() {
-        return [("Authorization"): "OAuth " + adminSession()]
     }
 
     static class ContextFreeMessage extends NeedReplyMessage {

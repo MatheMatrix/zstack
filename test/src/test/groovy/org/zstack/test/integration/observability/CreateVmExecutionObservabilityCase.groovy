@@ -1,16 +1,11 @@
 package org.zstack.test.integration.observability
 
-import org.springframework.web.util.UriComponentsBuilder
 import org.zstack.core.Platform
 import org.zstack.sdk.CreateVmInstanceAction
-import org.zstack.sdk.ZSClient
-import org.zstack.sdk.ZSConfig
-import org.zstack.header.rest.RESTFacade
 import org.zstack.test.integration.kvm.Env
 import org.zstack.test.integration.kvm.KvmTest
 import org.zstack.testlib.EnvSpec
 import org.zstack.testlib.SubCase
-import org.zstack.testlib.WebBeanConstructor
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -20,7 +15,6 @@ import java.util.concurrent.TimeUnit
  */
 class CreateVmExecutionObservabilityCase extends SubCase {
     EnvSpec env
-    RESTFacade restf
 
     @Override
     void clean() {
@@ -40,7 +34,6 @@ class CreateVmExecutionObservabilityCase extends SubCase {
     @Override
     void test() {
         env.create {
-            restf = bean(RESTFacade.class)
             testCreateVmExecutionLookup()
         }
     }
@@ -52,15 +45,6 @@ class CreateVmExecutionObservabilityCase extends SubCase {
         CreateVmInstanceAction.Result actionResult
 
         try {
-            ZSClient.configure(new ZSConfig.Builder()
-                    .setHostname("localhost")
-                    .setPort(WebBeanConstructor.port)
-                    .setDefaultPollingInterval(100, TimeUnit.MILLISECONDS)
-                    .setDefaultPollingTimeout(10, TimeUnit.MINUTES)
-                    .setReadTimeout(10, TimeUnit.MINUTES)
-                    .setWriteTimeout(10, TimeUnit.MINUTES)
-                    .build())
-
             CreateVmInstanceAction action = new CreateVmInstanceAction()
             action.apiId = apiUuid
             action.name = "execution-observability-vm-${apiUuid}"
@@ -77,28 +61,34 @@ class CreateVmExecutionObservabilityCase extends SubCase {
                 }
             })
 
-            long deadline = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10)
             int snapshot = 0
-            while (!completed.await(250, TimeUnit.MILLISECONDS)) {
-                if (System.currentTimeMillis() >= deadline) {
-                    assert false: "CreateVmInstance did not complete"
+            assert retryInSecs(600) {
+                if (completed.await(0, TimeUnit.MILLISECONDS)) {
+                    return true
                 }
-                Map result = queryExecutions([apiUuid: apiUuid])
-                if (result.inventories instanceof Collection && result.inventories.size() == 1) {
-                    Map execution = result.inventories[0] as Map
-                    Map timeline = getExecution(execution.executionUuid as String, "timeline")
+                List result = queryExecution {
+                    delegate.apiUuid = apiUuid
+                }
+                if (result instanceof Collection && result.size() == 1) {
+                    def execution = result[0]
+                    def timeline = queryExecution {
+                        delegate.executionUuid = execution.executionUuid
+                        delegate.detail = "timeline"
+                    }[0]
                     printExecutionSnapshot(snapshot++, execution, timeline)
                 }
-            }
+                return false
+            }: "CreateVmInstance did not complete"
 
-            assert completed.await(10, TimeUnit.SECONDS)
             assert actionResult?.error == null
             assert vmUuid
 
-            Map result = queryExecutions([apiUuid: apiUuid])
-            assert result.inventories instanceof Collection
-            assert result.inventories.size() == 1
-            Map execution = result.inventories[0] as Map
+            List result = queryExecution {
+                delegate.apiUuid = apiUuid
+            }
+            assert result instanceof Collection
+            assert result.size() == 1
+            def execution = result[0]
             assert execution.executionUuid
             assert execution.apiUuid == apiUuid
             assert execution.trigger?.type == "API"
@@ -107,11 +97,14 @@ class CreateVmExecutionObservabilityCase extends SubCase {
             assert execution.nodeUuid
             assert execution.sourceNodes instanceof Collection
 
-            Map timeline = getExecution(execution.executionUuid as String, "timeline")
+            def timeline = queryExecution {
+                delegate.executionUuid = execution.executionUuid
+                delegate.detail = "timeline"
+            }[0]
             printExecutionSnapshot(snapshot, execution, timeline)
             assert timeline.executionUuid == execution.executionUuid
             assert timeline.events instanceof Collection
-            assert timeline.events.every { it.containsKey("sequence") && it.containsKey("type") }
+            assert timeline.events.every { it.sequence != null && it.type != null }
             assert timeline.events.any { it.type == "API_ACCEPTED" }
             def httpEvents = timeline.events.findAll { it.type == "HTTP_REQUEST_SUCCEEDED" }
             assert httpEvents
@@ -128,32 +121,7 @@ class CreateVmExecutionObservabilityCase extends SubCase {
         }
     }
 
-    private Map queryExecutions(Map<String, Object> filters) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(restf.makeUrl("/v1/executions"))
-        filters.each { String key, Object value ->
-            if (value != null) {
-                builder.queryParam(key, value)
-            }
-        }
-
-        return restf.syncJsonGet(builder.build().toUriString(), "", authHeaders(), LinkedHashMap.class)
-    }
-
-    private Map getExecution(String executionUuid, String detail) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(
-                restf.makeUrl("/v1/executions/${executionUuid}"))
-        builder.queryParam("detail", detail)
-        Map result = restf.syncJsonGet(builder.build().toUriString(), "", authHeaders(), LinkedHashMap.class)
-        assert result.inventories instanceof Collection
-        assert result.inventories.size() == 1
-        return result.inventories[0] as Map
-    }
-
-    private Map<String, String> authHeaders() {
-        return [("Authorization"): "OAuth " + adminSession()]
-    }
-
-    private void printExecutionSnapshot(int number, Map execution, Map timeline) {
+    private void printExecutionSnapshot(int number, def execution, def timeline) {
         def events = timeline.events.collect { event ->
             [sequence: event.sequence, type: event.type, stageUuid: event.stageUuid,
              stageName: event.stageName, stageKind: event.stageKind,
