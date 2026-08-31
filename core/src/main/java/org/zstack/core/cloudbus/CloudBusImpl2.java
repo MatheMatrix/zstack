@@ -1434,12 +1434,14 @@ public class CloudBusImpl2 implements CloudBus, CloudBusIN, ManagementNodeChange
         return r;
     }
 
+    @AsyncThread
     private void recordMessageTimeoutSafely(String messageUuid) {
-        if (executionObservability == null) {
+        ExecutionMessageObserver observer = executionObservability;
+        if (observer == null) {
             return;
         }
         try {
-            executionObservability.recordMessageTimeout(messageUuid);
+            observer.recordMessageTimeout(messageUuid);
         } catch (Throwable t) {
             logger.warn(String.format("failed to record message timeout for message[%s]", messageUuid), t);
         }

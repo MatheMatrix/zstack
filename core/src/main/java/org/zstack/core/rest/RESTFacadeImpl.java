@@ -187,12 +187,14 @@ public class RESTFacadeImpl implements RESTFacade {
         }
     }
 
+    @AsyncThread
     private void finishExecutionHttpObservation(String requestUuid, String state, Integer statusCode, String error) {
-        if (requestUuid == null || executionObservability == null) {
+        ExecutionHttpObserver observer = executionObservability;
+        if (requestUuid == null || observer == null) {
             return;
         }
         try {
-            executionObservability.finishHttpRequest(requestUuid, state, statusCode, error);
+            observer.finishHttpRequest(requestUuid, state, statusCode, error);
         } catch (Throwable t) {
             logger.trace("Failed to finish HTTP execution observation", t);
         }

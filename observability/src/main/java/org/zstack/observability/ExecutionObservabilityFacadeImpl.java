@@ -27,9 +27,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+
+import org.zstack.utils.Utils;
+import org.zstack.utils.logging.CLogger;
 
 /**
  * A bounded, node-local execution registry. The API handler aggregates this
@@ -39,9 +49,11 @@ import java.util.stream.Collectors;
 public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityFacade,
         ExecutionMessageObserver, ExecutionHttpObserver, ExecutionScheduledTaskObserver, Component,
         RestAPIExtensionPoint, BeforeDeliveryMessageInterceptor {
+    private static final CLogger logger = Utils.getLogger(ExecutionObservabilityFacadeImpl.class);
     private static final int MAX_RECORDS = 10000;
     private static final int MAX_INDEX_ENTRIES = MAX_RECORDS * 2;
     private static final int MAX_ACTIVE_STAGES = 256;
+    private static final int OBSERVATION_QUEUE_SIZE = 2048;
     private static final String EXECUTION_UUID_HEADER = "__execution_uuid__";
     private static final String EXECUTION_STAGE_CONTEXT = "__execution_stage_uuid__";
     private static final String IGNORED_EXECUTION_CONTEXT = "__execution_observation_ignored__";
@@ -59,22 +71,87 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
     private final Set<String> ignoredExecutionContexts = ConcurrentHashMap.newKeySet();
     private final Map<String, String> httpToExecution = new ConcurrentHashMap<>();
     private final Map<String, Map<String, String>> scheduledThreadContexts = new ConcurrentHashMap<>();
+    private final ConcurrentLinkedQueue<String> executionOrder = new ConcurrentLinkedQueue<>();
+    private final AtomicBoolean cleanupQueued = new AtomicBoolean(false);
+
+    private volatile ThreadPoolExecutor observationExecutor;
 
     private final ExecutionObservationPolicy observationPolicy = new ExecutionObservationPolicy();
 
     @Autowired
     private CloudBus bus;
 
+    private MutableExecution getOrCreateExecution(String executionUuid,
+                                                  java.util.function.Supplier<MutableExecution> factory) {
+        MutableExecution existing = executions.get(executionUuid);
+        if (existing != null) {
+            return existing;
+        }
+
+        MutableExecution created = factory.get();
+        MutableExecution previous = executions.putIfAbsent(executionUuid, created);
+        if (previous != null) {
+            return previous;
+        }
+
+        executionOrder.offer(executionUuid);
+        return created;
+    }
+
+    private MutableExecution putExecutionIfAbsent(MutableExecution execution) {
+        MutableExecution previous = executions.putIfAbsent(execution.executionUuid, execution);
+        if (previous != null) {
+            return previous;
+        }
+
+        executionOrder.offer(execution.executionUuid);
+        return execution;
+    }
+
+    private boolean submitAsync(Runnable action, String operation) {
+        // @AsyncThread only detaches the core caller. This queue owns the
+        // observability backpressure and drop policy.
+        ThreadPoolExecutor executor = observationExecutor;
+        if (executor == null || executor.isShutdown()) {
+            return false;
+        }
+        try {
+            executor.execute(() -> {
+                try {
+                    action.run();
+                } catch (Throwable t) {
+                    logger.warn("failed to process asynchronous execution observation " + operation, t);
+                }
+            });
+            return true;
+        } catch (RejectedExecutionException ignored) {
+            logger.debug("dropping asynchronous execution observation " + operation + " because the queue is full");
+            return false;
+        } catch (Throwable t) {
+            logger.warn("failed to enqueue asynchronous execution observation " + operation, t);
+            return false;
+        }
+    }
+
     @Override
     public void afterAPIRequest(Message message) {
         if (message instanceof APIMessage) {
-            recordApiRequest((APIMessage) message);
+            try {
+                recordApiRequest((APIMessage) message);
+            } catch (Throwable t) {
+                logger.warn("failed to record API request observation", t);
+            }
         }
     }
 
     @Override
     public void beforeAPIResponse(Message message) {
-        recordApiResponse(message);
+        try {
+            clearIgnoredForResponse(message);
+        } catch (Throwable t) {
+            logger.warn("failed to clear API observation context", t);
+        }
+        submitAsync(() -> recordApiResponseInternal(message), "API response");
     }
 
     @Override
@@ -95,7 +172,18 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
 
     @Override
     public void beforeDeliveryMessage(Message message) {
-        recordMessageDelivery(message);
+        final Map<String, String> context = new HashMap<>(ThreadContext.getImmutableContext());
+        submitAsync(() -> {
+            Map<String, String> previous = new HashMap<>(ThreadContext.getImmutableContext());
+            try {
+                ThreadContext.clearAll();
+                ThreadContext.putAll(context);
+                recordMessageDelivery(message);
+            } finally {
+                ThreadContext.clearAll();
+                ThreadContext.putAll(previous);
+            }
+        }, "message delivery");
     }
 
     public void recordApiRequest(APIMessage message) {
@@ -110,8 +198,8 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
             message.putHeaderEntry(EXECUTION_UUID_HEADER, executionUuid);
         }
         final String finalExecutionUuid = executionUuid;
-        MutableExecution execution = executions.computeIfAbsent(finalExecutionUuid, id ->
-                MutableExecution.api(finalExecutionUuid, message));
+        MutableExecution execution = getOrCreateExecution(finalExecutionUuid,
+                () -> MutableExecution.api(finalExecutionUuid, message));
         messageToExecution.put(message.getId(), finalExecutionUuid);
         ThreadContext.put(EXECUTION_UUID_CONTEXT, finalExecutionUuid);
         execution.accepted();
@@ -187,8 +275,8 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         if (parent == null && parentExecutionUuid != null
                 && !parentExecutionUuid.equals(message.getId())) {
             final String inheritedExecutionUuid = parentExecutionUuid;
-            parent = executions.computeIfAbsent(inheritedExecutionUuid,
-                    id -> MutableExecution.inherited(inheritedExecutionUuid,
+            parent = getOrCreateExecution(inheritedExecutionUuid,
+                    () -> MutableExecution.inherited(inheritedExecutionUuid,
                             ThreadContext.get(Constants.THREAD_CONTEXT_TASK_NAME)));
         }
         if (parent != null) {
@@ -204,8 +292,8 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         // correlation from which a later completion could be inferred.
         MutableExecution execution = executions.get(messageToExecution.get(message.getId()));
         if (execution == null) {
-            execution = MutableExecution.message(message.getId(), message);
-            executions.put(execution.executionUuid, execution);
+            MutableExecution created = MutableExecution.message(message.getId(), message);
+            execution = putExecutionIfAbsent(created);
             messageToExecution.put(message.getId(), execution.executionUuid);
         }
         execution.deliveryStarted();
@@ -218,18 +306,34 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
     }
 
     public void recordApiResponse(Message message) {
+        clearIgnoredForResponse(message);
+        recordApiResponseInternal(message);
+    }
+
+    private void clearIgnoredForResponse(Message message) {
+        if (message instanceof APIEvent) {
+            clearIgnored(((APIEvent) message).getApiId());
+            return;
+        }
+        if (message instanceof MessageReply) {
+            String correlationId = message.getHeaderEntry("correlationId");
+            if (correlationId != null) {
+                clearIgnored(correlationId);
+            }
+        }
+    }
+
+    private void recordApiResponseInternal(Message message) {
         if (message == null) {
             return;
         }
         if (message instanceof APIEvent) {
             APIEvent event = (APIEvent) message;
-            clearIgnored(event.getApiId());
             finish(event.getApiId(), event.isSuccess(), event.getError() == null ? null : event.getError().getDetails());
             return;
         }
         String correlationId = message.getHeaderEntry("correlationId");
         if (correlationId != null && message instanceof MessageReply) {
-            clearIgnored(correlationId);
             MessageReply reply = (MessageReply) message;
             finish(correlationId, reply.isSuccess(), reply.getError() == null ? null : reply.getError().getDetails());
         }
@@ -256,16 +360,27 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
 
     @Override
     public void recordMessageTimeout(String messageUuid) {
-        finishTerminal(messageUuid, "TIMEOUT", "message timeout");
+        submitAsync(() -> finishTerminal(messageUuid, "TIMEOUT", "message timeout"),
+                "message timeout");
     }
 
     @Override
     public void recordMessageCancellation(String messageUuid, String reason) {
-        finishTerminal(messageUuid, "CANCELLED", reason);
+        submitAsync(() -> finishTerminal(messageUuid, "CANCELLED", reason),
+                "message cancellation");
     }
 
     @Override
     public String startHttpRequest(String method, String url) {
+        try {
+            return startHttpRequestInternal(method, url);
+        } catch (Throwable t) {
+            logger.warn("failed to start HTTP execution observation", t);
+            return null;
+        }
+    }
+
+    private String startHttpRequestInternal(String method, String url) {
         String parentExecutionUuid = ThreadContext.get(EXECUTION_UUID_CONTEXT);
         if (parentExecutionUuid == null) {
             parentExecutionUuid = ThreadContext.get(Constants.THREAD_CONTEXT_API);
@@ -291,6 +406,11 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
 
     @Override
     public void finishHttpRequest(String requestUuid, String state, Integer statusCode, String error) {
+        submitAsync(() -> finishHttpRequestInternal(requestUuid, state, statusCode, error),
+                "HTTP response");
+    }
+
+    private void finishHttpRequestInternal(String requestUuid, String state, Integer statusCode, String error) {
         if (requestUuid == null) {
             return;
         }
@@ -303,16 +423,35 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
 
     @Override
     public String startScheduledTask(String taskName, String taskClass) {
-        String executionUuid = uuid();
-        scheduledThreadContexts.put(executionUuid, new HashMap<>(ThreadContext.getImmutableContext()));
-        ThreadContext.put(Constants.THREAD_CONTEXT_API, executionUuid);
-        ThreadContext.put(Constants.THREAD_CONTEXT_TASK_NAME, taskName);
-        ThreadContext.put(EXECUTION_UUID_CONTEXT, executionUuid);
-        MutableExecution execution = MutableExecution.scheduled(executionUuid, taskName, taskClass);
-        executions.put(executionUuid, execution);
-        execution.started();
-        trimIfNeeded();
-        return executionUuid;
+        String executionUuid = null;
+        Map<String, String> previous = null;
+        try {
+            executionUuid = uuid();
+            previous = new HashMap<>(ThreadContext.getImmutableContext());
+            scheduledThreadContexts.put(executionUuid, previous);
+            ThreadContext.put(Constants.THREAD_CONTEXT_API, executionUuid);
+            ThreadContext.put(Constants.THREAD_CONTEXT_TASK_NAME, taskName);
+            ThreadContext.put(EXECUTION_UUID_CONTEXT, executionUuid);
+            MutableExecution execution = MutableExecution.scheduled(executionUuid, taskName, taskClass);
+            putExecutionIfAbsent(execution);
+            execution.started();
+            trimIfNeeded();
+            return executionUuid;
+        } catch (Throwable t) {
+            if (executionUuid != null) {
+                scheduledThreadContexts.remove(executionUuid);
+            }
+            if (previous != null) {
+                try {
+                    ThreadContext.clearAll();
+                    ThreadContext.putAll(previous);
+                } catch (Throwable restoreFailure) {
+                    logger.warn("failed to restore thread context after starting scheduled task observation", restoreFailure);
+                }
+            }
+            logger.warn("failed to start scheduled task observation", t);
+            return null;
+        }
     }
 
     @Override
@@ -320,14 +459,24 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         if (executionUuid == null) {
             return;
         }
+        try {
+            Map<String, String> previous = scheduledThreadContexts.remove(executionUuid);
+            if (previous != null) {
+                ThreadContext.clearAll();
+                ThreadContext.putAll(previous);
+            }
+        } catch (Throwable t) {
+            logger.warn(String.format("failed to restore thread context for scheduled task[%s]", executionUuid), t);
+        }
+        // Context restoration must happen on the task thread; only the
+        // terminal observation is handed to the asynchronous path.
+        submitAsync(() -> finishScheduledTaskInternal(executionUuid, error), "scheduled task response");
+    }
+
+    private void finishScheduledTaskInternal(String executionUuid, Throwable error) {
         MutableExecution execution = executions.get(executionUuid);
         if (execution != null) {
             execution.finish(error == null, error == null ? null : error.getMessage());
-        }
-        Map<String, String> previous = scheduledThreadContexts.remove(executionUuid);
-        if (previous != null) {
-            ThreadContext.clearAll();
-            ThreadContext.putAll(previous);
         }
     }
 
@@ -398,23 +547,41 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
         }
 
         while (executions.size() > MAX_RECORDS) {
-            MutableExecution oldest = executions.values().stream()
-                    .min(Comparator.comparingLong(e -> e.acceptedAt)).orElse(null);
-            if (oldest == null || !executions.remove(oldest.executionUuid, oldest)) {
+            String oldestUuid = executionOrder.poll();
+            if (oldestUuid == null) {
                 break;
             }
-
-            Set<String> removedMessageUuids = messageToExecution.entrySet().stream()
-                    .filter(e -> oldest.executionUuid.equals(e.getValue()))
-                    .map(Map.Entry::getKey)
-                    .collect(Collectors.toSet());
-            removedMessageUuids.forEach(messageUuid -> {
-                messageToExecution.remove(messageUuid, oldest.executionUuid);
-                messageToStage.remove(messageUuid);
-            });
-            scheduledThreadContexts.remove(oldest.executionUuid);
+            executions.remove(oldestUuid);
+            scheduledThreadContexts.remove(oldestUuid);
         }
 
+        if (cleanupQueued.compareAndSet(false, true)) {
+            boolean queued = submitAsync(() -> {
+                try {
+                    cleanupIndexes();
+                } finally {
+                    cleanupQueued.set(false);
+                    if (isOverLimit()) {
+                        trimIfNeeded();
+                    }
+                }
+            }, "registry cleanup");
+            if (!queued) {
+                cleanupQueued.set(false);
+            }
+        }
+    }
+
+    private boolean isOverLimit() {
+        return executions.size() > MAX_RECORDS
+                || messageToExecution.size() > MAX_INDEX_ENTRIES
+                || messageToStage.size() > MAX_INDEX_ENTRIES
+                || ignoredExecutionContexts.size() > MAX_INDEX_ENTRIES
+                || httpToExecution.size() > MAX_INDEX_ENTRIES
+                || scheduledThreadContexts.size() > MAX_INDEX_ENTRIES;
+    }
+
+    private void cleanupIndexes() {
         messageToExecution.entrySet().removeIf(e -> !executions.containsKey(e.getValue()));
         messageToStage.entrySet().removeIf(e -> {
             String executionUuid = messageToExecution.get(e.getKey());
@@ -893,18 +1060,43 @@ public class ExecutionObservabilityFacadeImpl implements ExecutionObservabilityF
 
     @Override
     public boolean start() {
+        cleanupQueued.set(false);
+        observationExecutor = new ThreadPoolExecutor(
+                1, 1, 60, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(OBSERVATION_QUEUE_SIZE),
+                new ObservationThreadFactory(),
+                new ThreadPoolExecutor.AbortPolicy());
         bus.installBeforeDeliveryMessageInterceptor(this);
         return true;
     }
 
     @Override
     public boolean stop() {
+        ThreadPoolExecutor executor = observationExecutor;
+        observationExecutor = null;
+        if (executor != null) {
+            executor.shutdownNow();
+        }
+        cleanupQueued.set(false);
         executions.clear();
+        executionOrder.clear();
         messageToExecution.clear();
         messageToStage.clear();
         ignoredExecutionContexts.clear();
         httpToExecution.clear();
         scheduledThreadContexts.clear();
         return true;
+    }
+
+    private static final class ObservationThreadFactory implements ThreadFactory {
+        private final AtomicLong sequence = new AtomicLong();
+
+        @Override
+        public Thread newThread(Runnable runnable) {
+            Thread thread = new Thread(runnable,
+                    "zs-execution-observation-" + sequence.incrementAndGet());
+            thread.setDaemon(true);
+            return thread;
+        }
     }
 }

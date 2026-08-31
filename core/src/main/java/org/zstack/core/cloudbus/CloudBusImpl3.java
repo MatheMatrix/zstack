@@ -376,23 +376,27 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
         return createErrorReply(m, touterr(ORG_ZSTACK_CORE_CLOUDBUS_10002, m.toErrorString()));
     }
 
+    @AsyncThread
     private void recordMessageTimeoutSafely(String messageUuid) {
-        if (executionObservability == null) {
+        ExecutionMessageObserver observer = executionObservability;
+        if (observer == null) {
             return;
         }
         try {
-            executionObservability.recordMessageTimeout(messageUuid);
+            observer.recordMessageTimeout(messageUuid);
         } catch (Throwable t) {
             logger.warn(String.format("failed to record message timeout for message[%s]", messageUuid), t);
         }
     }
 
+    @AsyncThread
     private void recordMessageCancellationSafely(String messageUuid, String reason) {
-        if (executionObservability == null) {
+        ExecutionMessageObserver observer = executionObservability;
+        if (observer == null) {
             return;
         }
         try {
-            executionObservability.recordMessageCancellation(messageUuid, reason);
+            observer.recordMessageCancellation(messageUuid, reason);
         } catch (Throwable t) {
             logger.warn(String.format("failed to record message cancellation for message[%s]", messageUuid), t);
         }
