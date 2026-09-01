@@ -9,6 +9,7 @@ import org.zstack.header.rest.APINoSee;
 import org.zstack.header.rest.RestRequest;
 import org.zstack.header.storage.snapshot.ConsistentType;
 import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
+import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupInventory;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupRefInventory;
 import org.zstack.header.storage.snapshot.group.VolumeSnapshotGroupVO;
 import org.zstack.header.vm.VmInstanceInventory;
@@ -122,10 +123,11 @@ public class APICreateVolumeSnapshotGroupMsg extends APICreateMessage implements
     public List<APIAuditor.Result> multiAudit(APIMessage msg, APIEvent rsp) {
         APICreateVolumeSnapshotGroupMsg cmsg = (APICreateVolumeSnapshotGroupMsg) msg;
         List<APIAuditor.Result> res = new ArrayList<>();
-        if (rsp.isSuccess()) {
-            res.add(new APIAuditor.Result(((APICreateVolumeSnapshotGroupEvent) rsp).getInventory().getUuid(), VolumeSnapshotGroupVO.class));
+        VolumeSnapshotGroupInventory inventory = ((APICreateVolumeSnapshotGroupEvent) rsp).getInventory();
+        if (inventory != null) {
+            res.add(new APIAuditor.Result(inventory.getUuid(), VolumeSnapshotGroupVO.class));
 
-            List<VolumeSnapshotGroupRefInventory> volumeSnapshotRefs = ((APICreateVolumeSnapshotGroupEvent) rsp).getInventory().getVolumeSnapshotRefs();
+            List<VolumeSnapshotGroupRefInventory> volumeSnapshotRefs = inventory.getVolumeSnapshotRefs();
             volumeSnapshotRefs.forEach(it -> {
                 if (it.isSnapshotDeleted()) {
                     return;

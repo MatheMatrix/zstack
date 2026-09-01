@@ -2147,10 +2147,10 @@ public class VolumeBase extends AbstractVolume implements Volume {
                 if (err != null) {
                     throw new OperationFailureException(err);
                 }
-                doCreateVolumeSnapshotGroup(msg, new ReturnValueCompletion<VolumeSnapshotGroupInventory>(chain) {
+                doCreateVolumeSnapshotGroup(msg, new ReturnValueCompletion<VolumeSnapshotGroupCreationResult>(chain) {
                     @Override
-                    public void success(VolumeSnapshotGroupInventory inv) {
-                        reply.setInventory(inv);
+                    public void success(VolumeSnapshotGroupCreationResult result) {
+                        reply.setInventory(result.inventory);
                         bus.reply(msg, reply);
                         chain.next();
                     }
@@ -2889,10 +2889,13 @@ public class VolumeBase extends AbstractVolume implements Volume {
             @Override
             public void run(SyncTaskChain chain) {
                 APICreateVolumeSnapshotGroupEvent evt = new APICreateVolumeSnapshotGroupEvent(msg.getId());
-                doCreateVolumeSnapshotGroup(msg, new ReturnValueCompletion<VolumeSnapshotGroupInventory>(chain) {
+                doCreateVolumeSnapshotGroup(msg, new ReturnValueCompletion<VolumeSnapshotGroupCreationResult>(chain) {
                     @Override
-                    public void success(VolumeSnapshotGroupInventory inv) {
-                        evt.setInventory(inv);
+                    public void success(VolumeSnapshotGroupCreationResult result) {
+                        evt.setInventory(result.inventory);
+                        if (result.partialError != null) {
+                            evt.setError(result.partialError);
+                        }
                         bus.publish(evt);
                         chain.next();
                     }
@@ -2913,8 +2916,19 @@ public class VolumeBase extends AbstractVolume implements Volume {
         });
     }
 
-    private void doCreateVolumeSnapshotGroup(CreateVolumeSnapshotGroupMessage msg, ReturnValueCompletion<VolumeSnapshotGroupInventory> completion) {
+    private static class VolumeSnapshotGroupCreationResult {
+        private final VolumeSnapshotGroupInventory inventory;
+        private final ErrorCode partialError;
+
+        private VolumeSnapshotGroupCreationResult(VolumeSnapshotGroupInventory inventory, ErrorCode partialError) {
+            this.inventory = inventory;
+            this.partialError = partialError;
+        }
+    }
+
+    private void doCreateVolumeSnapshotGroup(CreateVolumeSnapshotGroupMessage msg, ReturnValueCompletion<VolumeSnapshotGroupCreationResult> completion) {
         final String SNAPSHOT_GROUP_INV = "SNAPSHOT_GROUP_INV";
+        final String SNAPSHOT_GROUP_PARTIAL_ERROR = "SNAPSHOT_GROUP_PARTIAL_ERROR";
 
         FlowChain chain = new SimpleFlowChain();
         chain.setName(String.format("create-volume-%s-snapshot-group", msg.getRootVolumeUuid()));
@@ -2975,10 +2989,13 @@ public class VolumeBase extends AbstractVolume implements Volume {
             @Override
             public void run(FlowTrigger trigger, Map data) {
                 msg.setVmInstance(VmInstanceInventory.valueOf(dbf.findByUuid(msg.getVmInstance().getUuid(), VmInstanceVO.class)));
-                createSnapshotGroup(msg, new ReturnValueCompletion<VolumeSnapshotGroupInventory>(trigger) {
+                createSnapshotGroup(msg, new ReturnValueCompletion<VolumeSnapshotGroupCreationResult>(trigger) {
                     @Override
-                    public void success(VolumeSnapshotGroupInventory returnValue) {
-                        data.put(SNAPSHOT_GROUP_INV, returnValue);
+                    public void success(VolumeSnapshotGroupCreationResult result) {
+                        data.put(SNAPSHOT_GROUP_INV, result.inventory);
+                        if (result.partialError != null) {
+                            data.put(SNAPSHOT_GROUP_PARTIAL_ERROR, result.partialError);
+                        }
                         trigger.next();
                     }
 
@@ -3093,7 +3110,9 @@ public class VolumeBase extends AbstractVolume implements Volume {
         }).done(new FlowDoneHandler(completion) {
             @Override
             public void handle(Map data) {
-                completion.success((VolumeSnapshotGroupInventory) data.get(SNAPSHOT_GROUP_INV));
+                completion.success(new VolumeSnapshotGroupCreationResult(
+                        (VolumeSnapshotGroupInventory) data.get(SNAPSHOT_GROUP_INV),
+                        (ErrorCode) data.get(SNAPSHOT_GROUP_PARTIAL_ERROR)));
             }
         }).start();
     }
@@ -3116,7 +3135,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
 
     }
 
-    private void createSnapshotGroup(CreateVolumeSnapshotGroupMessage msg, ReturnValueCompletion<VolumeSnapshotGroupInventory> completion) {
+    private void createSnapshotGroup(CreateVolumeSnapshotGroupMessage msg, ReturnValueCompletion<VolumeSnapshotGroupCreationResult> completion) {
         VolumeSnapshotGroupOperationValidator.validate(msg.getVmInstance().getUuid(), VolumeSnapshotGroupOperationValidator.Operation.CREATE);
         CreateVolumesSnapshotMsg cmsg = new CreateVolumesSnapshotMsg();
         List<CreateVolumesSnapshotsJobStruct> volumesSnapshotsJobs = new ArrayList<>();
@@ -3148,6 +3167,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
         List<CreateVolumesSnapshotsJobStruct> failedSnapshotJobs = new ArrayList<>();
         List<String> hostBackupFileUuidList = new ArrayList<>();
         AtomicReference<VolumeSnapshotGroupVO> groupRef = new AtomicReference<>(null);
+        AtomicReference<ErrorCode> partialError = new AtomicReference<>(null);
         String resourceUuid = msg.getResourceUuid() == null ? getUuid() : msg.getResourceUuid();
 
         SimpleFlowChain.of("create-snapshot-group")
@@ -3174,6 +3194,7 @@ public class VolumeBase extends AbstractVolume implements Volume {
                             return;
                         }
                         if (r.getPartialError() != null) {
+                            partialError.set(r.getPartialError());
                             logger.warn(String.format("created volume snapshot group[uuid:%s] with %s failed snapshot jobs, partial error: %s",
                                     resourceUuid, failedSnapshotJobs.size(), r.getPartialError().getReadableDetails()));
                         }
@@ -3322,7 +3343,8 @@ public class VolumeBase extends AbstractVolume implements Volume {
             .done(() -> {
                 logger.debug(String.format("created volume snapshot group[uuid:%s] for vm[uuid:%s]",
                         groupRef.get().getUuid(), vm.getUuid()));
-                completion.success(VolumeSnapshotGroupInventory.valueOf(dbf.reload(groupRef.get())));
+                completion.success(new VolumeSnapshotGroupCreationResult(
+                        VolumeSnapshotGroupInventory.valueOf(dbf.reload(groupRef.get())), partialError.get()));
             })
             .error(completion::fail)
             .start();
