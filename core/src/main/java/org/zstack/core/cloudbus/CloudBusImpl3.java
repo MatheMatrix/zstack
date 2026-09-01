@@ -39,6 +39,7 @@ import org.zstack.header.Service;
 import org.zstack.header.apimediator.StopRoutingException;
 import org.zstack.header.core.*;
 import org.zstack.header.core.cloudbus.CloudBusExtensionPoint;
+import org.zstack.header.core.execution.ExecutionMessageObserver;
 import org.zstack.header.errorcode.ErrorCode;
 import org.zstack.header.errorcode.ErrorCodeList;
 import org.zstack.header.errorcode.OperationFailureException;
@@ -105,6 +106,8 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
     private PluginRegistry pluginRgty;
     @Autowired
     private DeadMessageManager deadMessageManager;
+    @Autowired(required = false)
+    private ExecutionMessageObserver executionObservability;
 
     private final String NO_NEED_REPLY_MSG = "noReply";
     private final String CORRELATION_ID = "correlationId";
@@ -373,10 +376,37 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
         return createErrorReply(m, touterr(ORG_ZSTACK_CORE_CLOUDBUS_10002, m.toErrorString()));
     }
 
+    @AsyncThread
+    private void recordMessageTimeoutSafely(String messageUuid) {
+        ExecutionMessageObserver observer = executionObservability;
+        if (observer == null) {
+            return;
+        }
+        try {
+            observer.recordMessageTimeout(messageUuid);
+        } catch (Throwable t) {
+            logger.warn(String.format("failed to record message timeout for message[%s]", messageUuid), t);
+        }
+    }
+
+    @AsyncThread
+    private void recordMessageCancellationSafely(String messageUuid, String reason) {
+        ExecutionMessageObserver observer = executionObservability;
+        if (observer == null) {
+            return;
+        }
+        try {
+            observer.recordMessageCancellation(messageUuid, reason);
+        } catch (Throwable t) {
+            logger.warn(String.format("failed to record message cancellation for message[%s]", messageUuid), t);
+        }
+    }
+
     @Override
     public FutureCompletion send(NeedReplyMessage msg, CloudBusCallBack callback) {
         evaluateMessageTimeout(msg);
         if (msg.getTimeout() <= 1) {
+            recordMessageTimeoutSafely(msg.getId());
             callback.run(createTimeoutReply(msg));
             return SEND_CONFIRMED;
         }
@@ -412,6 +442,8 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
 
                 timeoutTaskReceipt.cancel();
 
+                recordMessageCancellationSafely(msg.getId(), error);
+
                 callback.run(createErrorReply(msg, canerr(ORG_ZSTACK_CORE_CLOUDBUS_10003, error)));
             }
 
@@ -422,6 +454,8 @@ public class CloudBusImpl3 implements CloudBus, CloudBusIN {
                 if (!called.compareAndSet(false, true)) {
                     return;
                 }
+
+                recordMessageTimeoutSafely(msg.getId());
 
                 callback.run(createTimeoutReply(msg));
             }
