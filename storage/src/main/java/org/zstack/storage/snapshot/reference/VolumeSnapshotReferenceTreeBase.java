@@ -21,6 +21,8 @@ import org.zstack.header.storage.primary.DeleteVolumeChainOnPrimaryStorageMsg;
 import org.zstack.header.storage.primary.GetVolumeBackingChainFromPrimaryStorageMsg;
 import org.zstack.header.storage.primary.GetVolumeBackingChainFromPrimaryStorageReply;
 import org.zstack.header.storage.primary.PrimaryStorageConstant;
+import org.zstack.header.storage.snapshot.VolumeSnapshotVO;
+import org.zstack.header.storage.snapshot.VolumeSnapshotVO_;
 import org.zstack.header.storage.snapshot.reference.DeleteVolumeSnapshotReferenceLeafMsg;
 import org.zstack.header.storage.snapshot.reference.DeleteVolumeSnapshotReferenceLeafReply;
 import org.zstack.header.storage.snapshot.reference.VolumeSnapshotReferenceInventory;
@@ -110,10 +112,7 @@ public class VolumeSnapshotReferenceTreeBase {
             return;
         }
 
-        boolean rootDeleted = msg.getLeaf().getParentId() == null && !Q.New(VolumeVO.class)
-                .eq(VolumeVO_.uuid, msg.getLeaf().getVolumeUuid())
-                .eq(VolumeVO_.primaryStorageUuid, msg.getTree().getPrimaryStorageUuid())
-                .isExists();
+        boolean rootDeleted = msg.getLeaf().getParentId() == null && isRootDeleted(msg.getLeaf());
         String endPath = rootDeleted ? self.getRootInstallUrl() : msg.getLeaf().getVolumeSnapshotInstallUrl();
         String startPath = msg.getLeaf().getDirectSnapshotInstallUrl();
         if (startPath.equals(endPath) && !rootDeleted) {
@@ -229,6 +228,25 @@ public class VolumeSnapshotReferenceTreeBase {
                 completion.success();
             }
         }).start();
+    }
+
+    private boolean isRootDeleted(VolumeSnapshotReferenceInventory leaf) {
+        Q rootVolume = Q.New(VolumeVO.class)
+                .eq(VolumeVO_.uuid, leaf.getVolumeUuid())
+                .eq(VolumeVO_.primaryStorageUuid, self.getPrimaryStorageUuid());
+
+        if (!VolumeSnapshotReferenceUtils.isInternalSnapshot(leaf.getVolumeSnapshotInstallUrl())) {
+            return !rootVolume.isExists();
+        }
+
+        boolean rootVolumeDeleted = !rootVolume.eq(VolumeVO_.installPath, self.getRootInstallUrl()).isExists();
+        boolean rootSnapshotDeleted = !Q.New(VolumeSnapshotVO.class)
+                .eq(VolumeSnapshotVO_.uuid, leaf.getVolumeSnapshotUuid())
+                .eq(VolumeSnapshotVO_.primaryStorageUuid, self.getPrimaryStorageUuid())
+                .eq(VolumeSnapshotVO_.primaryStorageInstallPath, leaf.getVolumeSnapshotInstallUrl())
+                .isExists();
+
+        return rootVolumeDeleted && rootSnapshotDeleted;
     }
 
     private boolean hasSameVolumeResource(String snapshotInstallUrl, Set<String> snapshotInstallUrls) {

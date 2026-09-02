@@ -42,6 +42,10 @@ public class VolumeSnapshotReferenceUtils {
         VolumeSnapshotReferenceUtils.getResourceLocateHostUuidGetter = getter;
     }
 
+    public static boolean isInternalSnapshot(String installPath) {
+        return installPath.contains("@");
+    }
+
     public static List<String> getAllReferenceVolumeUuids(VolumeSnapshotTree.SnapshotLeaf currentLeaf) {
         List<String> descendantUuids = currentLeaf.getDescendants().stream()
                 .map(VolumeSnapshotInventory::getUuid)
@@ -258,6 +262,7 @@ public class VolumeSnapshotReferenceUtils {
                 VolumeSnapshotReferenceTreeVO tree = Q.New(VolumeSnapshotReferenceTreeVO.class)
                         .eq(VolumeSnapshotReferenceTreeVO_.rootVolumeUuid, baseSnapshot.getVolumeUuid())
                         .eq(VolumeSnapshotReferenceTreeVO_.primaryStorageUuid, baseSnapshot.getPrimaryStorageUuid())
+                        .eq(VolumeSnapshotReferenceTreeVO_.rootInstallUrl, vol.getInstallPath())
                         .find();
                 if (tree != null) {
                     return tree;
@@ -532,9 +537,12 @@ public class VolumeSnapshotReferenceUtils {
         boolean backingVolumeDeletedInDb = SQL.New("select vol.uuid from VolumeVO vol, VolumeSnapshotReferenceTreeVO tree" +
                         " where vol.uuid = :volUuid" +
                         " and tree.uuid = :treeUuid" +
-                        " and vol.primaryStorageUuid = tree.primaryStorageUuid", String.class)
+                        " and vol.primaryStorageUuid = tree.primaryStorageUuid" +
+                        " and (:internalSnapshot = false" +
+                        " or vol.installPath = tree.rootInstallUrl)", String.class)
                 .param("volUuid", ref.getVolumeUuid())
                 .param("treeUuid", ref.getTreeUuid())
+                .param("internalSnapshot", isInternalSnapshot(ref.getVolumeSnapshotInstallUrl()))
                 .find() == null;
 
         if (referenceRedirected || backingVolumeDeletedInDb) {

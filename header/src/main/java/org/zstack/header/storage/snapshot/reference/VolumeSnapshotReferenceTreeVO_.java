@@ -12,7 +12,7 @@ public class VolumeSnapshotReferenceTreeVO_ extends ResourceVO_ {
     public static volatile SingularAttribute<VolumeSnapshotReferenceTreeVO, String> rootVolumeSnapshotUuid;
     public static volatile SingularAttribute<VolumeSnapshotReferenceTreeVO, String> rootVolumeUuid;
     public static volatile SingularAttribute<VolumeSnapshotReferenceTreeVO, String> rootVolumeSnapshotTreeUuid;
-    public static volatile SingularAttribute<VolumeSnapshotReferenceTreeVO, String> rootVolumeSnapshotInstallUrl;
+    public static volatile SingularAttribute<VolumeSnapshotReferenceTreeVO, String> rootInstallUrl;
 
     public static volatile SingularAttribute<VolumeSnapshotReferenceTreeVO, String> primaryStorageUuid;
     public static volatile SingularAttribute<VolumeSnapshotReferenceTreeVO, String> hostUuid;
